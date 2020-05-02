@@ -67,7 +67,7 @@ static void test_strncpy_exact(void)
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Zero length output buffer");
-	fr_sbuff_start(&sbuff);
+	fr_sbuff_reset_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_strncpy_exact(out, 0, &sbuff, SIZE_MAX);
 	TEST_CHECK(slen == -26);
@@ -111,7 +111,7 @@ static void test_strncpy(void)
 	TEST_CHECK(strcmp(out, "i am a longer test") == 0);
 
 	TEST_CASE("Zero length output buffer");
-	fr_sbuff_start(&sbuff);
+	fr_sbuff_reset_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_strncpy(out, 0, &sbuff, SIZE_MAX);
 	TEST_CHECK(slen == 0);
@@ -139,7 +139,7 @@ static void test_no_advance(void)
 
 	TEST_CASE("Copy 5 bytes to out - no advance");
 	TEST_CHECK(sbuff.p == sbuff.start);
-	slen = fr_sbuff_strncpy_exact(out, sizeof(out), FR_SBUFF_NO_ADVANCE(&sbuff), 5);
+	slen = fr_sbuff_strncpy_exact(out, sizeof(out), &FR_SBUFF_NO_ADVANCE(&sbuff), 5);
 	TEST_CHECK(slen == 5);
 	TEST_CHECK(strcmp(out, "i am ") == 0);
 	TEST_CHECK(sbuff.p == sbuff.start);

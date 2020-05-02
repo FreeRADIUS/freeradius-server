@@ -35,25 +35,38 @@ extern "C" {
 #include <limits.h>
 #include <errno.h>
 
-typedef struct {
+typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
+struct fr_sbuff_ptr_s {
+	char			**ptr;				//!< Position we're tracking.
+	fr_sbuff_marker_t	*next;				//!< Next m in the list.
+};
+
+typedef struct fr_sbuff_s fr_sbuff_t;
+struct fr_sbuff_s {
 	union {
-		char const *start;		//!< Immutable start pointer.
-		char *start_m;			//!< Mutable start pointer.
+		char const *start_i;				//!< Immutable start pointer.
+		char *start;					//!< Mutable start pointer.
 	};
 
 	union {
-		char const *end;		//!< Immutable end pointer.
-		char *end_m;			//!< Mutable end pointer.
+		char const *end_i;				//!< Immutable end pointer.
+		char *end;					//!< Mutable end pointer.
 	};
 
 	union {
-		char const *p;			//!< Immutable position pointer.
-		char *p_m;			//!< Mutable position pointer.
+		char const *p_i;				//!< Immutable position pointer.
+		char *p;					//!< Mutable position pointer.
 	};
 
-	bool	is_const;			//!< Can't be modified.
-	bool	is_extendable;			//!< Dynamically allocated talloc buffer.
-} fr_sbuff_t;
+	uint32_t		is_const:1;			//!< Can't be modified.
+	uint32_t		is_extendable:1;		//!< Dynamically allocated talloc buffer.
+	uint32_t		adv_parent:1;			//!< If true, advance the parent.
+
+	fr_sbuff_t		*parent;			//!< sbuff this sbuff was copied from.
+
+	fr_sbuff_marker_t	*m;				//!< Pointers to update if the underlying
+								///< buffer changes.
+};
 
 typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
@@ -63,46 +76,303 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW	= -3		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
 
-/** @name Sbuff position manipulation
+/** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
+ *
+ */
+#define FR_SBUFF_RETURN(_func, _sbuff, ...) \
+do { \
+	size_t _slen; \
+	_slen = _func(_sbuff, ## __VA_ARGS__ ); \
+	if (_slen < 0) return _slen; \
+} while (0)
+
+/** @name Ephemeral copying macros
  * @{
  */
-/** Prevent an sbuff being advanced as it's passed into a parsing function
+
+/** Prevent an sbuff being advanced as it's passed into a printing or parsing function
  *
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
-#define FR_SBUFF_NO_ADVANCE(_sbuff) (fr_sbuff_t[]){ *(_sbuff) }
+#define FR_SBUFF_NO_ADVANCE(_sbuff) \
+(fr_sbuff_t){ \
+	.start	= (_sbuff)->start, \
+	.end	= (_sbuff)->end, \
+	.p	= (_sbuff)->p, \
+	.is_const = (_sbuff)->is_const, \
+	.is_extendable = (_sbuff)->is_extendable, \
+	.adv_parent = 0, \
+	.parent = (_sbuff) \
+}
+
+/** Copy all fields in an sbuff except ptrers
+ *
+ * @param[in] _sbuff	to make an ephemeral copy of.
+ */
+#define FR_SBUFF_COPY(_sbuff) \
+(fr_sbuff_t){ \
+	.start	= (_sbuff)->start, \
+	.end	= (_sbuff)->end, \
+	.p	= (_sbuff)->p, \
+	.is_const = (_sbuff)->is_const, \
+	.is_extendable = (_sbuff)->is_extendable, \
+	.adv_parent = (_sbuff)->adv_parent, \
+	.parent = (_sbuff) \
+}
+
+/** Creates a compound literal to pass into functions which accept a sbuff
+ *
+ * @note This should only be used as a temporary measure when refactoring code.
+ *
+ * @note The return value of the function should be used to determine how much
+ *	 data was written to the buffer.
+ *
+ * @param[in] _start		of the buffer.
+ * @param[in] _len_or_end	Length of the buffer or the end pointer.
+ */
+#define FR_SBUFF_TMP(_start, _len_or_end) \
+(fr_sbuff_t){ \
+	.start_i	= _start, \
+	.end_i		= _Generic((_len_or_end), \
+				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
+				long		: (char const *)(_start) + (size_t)(_len_or_end), \
+				char *		: (char const *)(_len_or_end), \
+				char const *	: (char const *)(_len_or_end) \
+			), \
+	.p_i		= _start, \
+	.is_const	= _Generic((_start), \
+				char *		: false, \
+				char const *	: true \
+	       		) \
+}
+
+/** @} */
+
+/** @name Length calculations
+ * @{
+ */
+
+/** How many free bytes remain in the buffer
+ *
+ */
+static inline size_t fr_sbuff_remaining(fr_sbuff_t const *sbuff)
+{
+	return sbuff->end - sbuff->p;
+}
+
+/** How many bytes we've used in the buffer
+ *
+ */
+static inline size_t fr_sbuff_used(fr_sbuff_t const *sbuff)
+{
+	return sbuff->p - sbuff->start;
+}
+
+/** How many bytes in the buffer total
+ *
+ */
+static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
+{
+	return sbuff->end - sbuff->start;
+}
+
+/** How many free bytes remain in the buffer (calculated from ptrer)
+ *
+ */
+static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+{
+	return sbuff->end - *(m->ptr);
+}
+
+/** How many bytes we've used in the buffer (calculated from ptrer)
+ *
+ */
+static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+{
+	return *(m->ptr) - sbuff->start;
+}
+
+/** Return the current position in the sbuff as a negative offset
+ *
+ */
+#define FR_SBUFF_ERROR_RETURN(_sbuff) return -(fr_sbuff_used(_sbuff))
+/** @} */
+
+/** @name Sbuff position manipulation
+ * @{
+ */
+
+/** Update the position of p in a list of sbuffs
+ *
+ * @note Do not call directly.
+ */
+static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char *p)
+{
+	sbuff->p = p;
+	if (sbuff->adv_parent && sbuff->parent) _fr_sbuff_set_recurse(sbuff->parent, p);
+}
+
+/** Set a new position for 'p' in an sbuff
+ *
+ * @param[out] sbuff	sbuff to set a position in.
+ * @param[in] p		Position to set.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
+{
+	char const *c;
+
+	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p < sbuff->start)) return 0;
+
+	c = sbuff->p;
+	sbuff->p_i = p;
+
+	return p - c;
+}
+
+/** Set the position in a sbuff using another sbuff, a char pointer, or a length
+ *
+ * @param[out] _dst	sbuff to advance.
+ * @param[in] _src	An sbuff, char pointer, or length value to advance
+ *			_dst by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+#define fr_sbuff_set(_dst, _src) \
+_fr_sbuff_set(_dst, \
+	      _Generic(_src, \
+			fr_sbuff_t *	: (_src)->p, \
+			char const *	: (_src), \
+			char *		: (_src), \
+			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
+	      ))
+
+/** Advance position in sbuff by N bytes
+ *
+ * @param[in] sbuff	to advance.
+ * @param[in] n		How much to advance sbuff by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
+{
+	size_t freespace = fr_sbuff_remaining(sbuff);
+	if (n > freespace) return -(n - freespace);
+	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
+	return n;
+}
+#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
+
+/** Return the current char and advance
+ *
+ */
+static inline char fr_sbuff_next_char(fr_sbuff_t *sbuff)
+{
+	if (sbuff->p >= sbuff->end) return '\0';
+
+	return *(sbuff->p++);
+}
+
+/** Set the start pointer to the current value of p
+ *
+ */
+static inline void fr_sbuff_trim_start(fr_sbuff_t *sbuff)
+{
+	sbuff->start = sbuff->p;
+}
+
+/** Set the end pointer to the current value of p
+ *
+ */
+static inline void fr_sbuff_trim_end(fr_sbuff_t *sbuff)
+{
+	sbuff->end = sbuff->p;
+}
 
 /** Reset the current position of the sbuff to the start of the string
  *
  */
-#define fr_sbuff_start(_sbuff) ((_sbuff)->p) = ((_sbuff)->start)
+static inline void fr_sbuff_reset_start(fr_sbuff_t *sbuff)
+{
+	_fr_sbuff_set_recurse(sbuff, sbuff->start);
+}
 
 /** Reset the current position of the sbuff to the end of the string
  *
  */
-#define fr_sbuff_end(_sbuff) ((_sbuff)->p) = ((_sbuff)->end)
+static inline void fr_sbuff_reset_end(fr_sbuff_t *sbuff)
+{
+	_fr_sbuff_set_recurse(sbuff, sbuff->end);
+}
 
-size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr);
+/** Adds a new pointer to the beginning of the list of pointers to update
+ *
+ */
+static inline char *fr_sbuff_marker(char **ptr, fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+{
+	m->next = sbuff->m;	/* Link into the head */
+	sbuff->m = m;
 
-size_t fr_sbuff_strchr(fr_sbuff_t *in, char c);
+	m->ptr = ptr;		/* Record which values we should be updating */
+	*ptr = sbuff->p;	/* Set the current position in the sbuff */
 
-size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len);
+	return sbuff->p;
+}
 
-size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in);
+/** Trims the linked list backed to the specified pointer
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ */
+static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+{
+	if (unlikely(sbuff->m != m)) return;
+	sbuff->m = m->next;
+}
+
+/** Resets the position in an sbuff to specified marker
+ *
+ */
+static inline void fr_sbuff_reset_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
+{
+	_fr_sbuff_set_recurse(sbuff, *(m->ptr));
+}
+
+size_t fr_sbuff_strchr_utf8(fr_sbuff_t *sbuff, char *chr);
+
+size_t fr_sbuff_strchr(fr_sbuff_t *sbuff, char c);
+
+size_t fr_sbuff_strstr(fr_sbuff_t *sbuff, char const *needle, ssize_t len);
+
+size_t fr_sbuff_skip_whitespace(fr_sbuff_t *sbuff);
+
 /** @} */
+
 
 /** @name Copy data out of an sbuff
  * @{
  */
-ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t len);
+ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
 
-size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len);
+size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
 
-size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t max_len,
-				char allowed_chars[static UINT8_MAX + 1]);
+size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t max_len,
+				bool const allowed_chars[static UINT8_MAX + 1]);
 
-size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
-			      char until[static UINT8_MAX + 1]);
+size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
+			      bool const until[static UINT8_MAX + 1]);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
@@ -111,21 +381,21 @@ size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t l
  * so that if the output variable type changes, the parse rules are automatically changed.
  * @{
  */
-size_t fr_sbuff_parse_int8_t(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_int16_t(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_int32_t(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_int64_t(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_uint8_t(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_uint16_t(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_uint32_t(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff);
 
-size_t fr_sbuff_parse_uint64_t(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *in);
+size_t fr_sbuff_parse_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff);
 
 
 /** Parse a value based on the output type
@@ -138,14 +408,14 @@ size_t fr_sbuff_parse_uint64_t(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sb
  */
 #define fr_sbuff_parse(_err, _out, _in) \
 	_Generic((_out), \
-		 int8_t *	: fr_sbuff_parse_int8_t(_err, _out, _in), \
-		 int16_t *	: fr_sbuff_parse_int16_t(_err, _out, _in), \
-		 int32_t *	: fr_sbuff_parse_int32_t(_err, _out, _in), \
-		 int64_t *	: fr_sbuff_parse_int64_t(_err, _out, _in), \
-		 uint8_t *	: fr_sbuff_parse_uint8_t(_err, _out, _in), \
-		 uint16_t *	: fr_sbuff_parse_uint16_t(_err, _out, _in), \
-		 uint32_t *	: fr_sbuff_parse_uint32_t(_err, _out, _in), \
-		 uint64_t *	: fr_sbuff_parse_uint64_t(_err, _out, _in) \
+		 int8_t *	: fr_sbuff_parse_int8(_err, _out, _in), \
+		 int16_t *	: fr_sbuff_parse_int16(_err, _out, _in), \
+		 int32_t *	: fr_sbuff_parse_int32(_err, _out, _in), \
+		 int64_t *	: fr_sbuff_parse_int64(_err, _out, _in), \
+		 uint8_t *	: fr_sbuff_parse_uint8(_err, _out, _in), \
+		 uint16_t *	: fr_sbuff_parse_uint16(_err, _out, _in), \
+		 uint32_t *	: fr_sbuff_parse_uint32(_err, _out, _in), \
+		 uint64_t *	: fr_sbuff_parse_uint64(_err, _out, _in) \
 	)
 /** @} */
 
@@ -153,8 +423,8 @@ static inline void _fr_sbuff_parse_init(fr_sbuff_t *out, char const *start, char
 {
 	if (unlikely(end < start)) end = start;	/* Could be an assert? */
 
-	out->p = out->start = start;
-	out->end = end;
+	out->p_i = out->start_i = start;
+	out->end_i = end;
 	out->is_const = is_const;
 	out->is_extendable = false;
 }
@@ -215,8 +485,8 @@ static inline void _fr_sbuff_print_init(fr_sbuff_t *out, char *start, char *end,
 {
 	if (unlikely((end - 1) < start)) end = start;	/* Could be an assert? */
 
-	out->p_m = out->start_m = start;
-	out->end_m = (end - 1);				/* Always leave room for \0 byte */
+	out->p = out->start = start;
+	out->end = (end - 1);				/* Always leave room for \0 byte */
 	out->is_const = false;
 	out->is_extendable = extendable;
 }

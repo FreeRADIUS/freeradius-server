@@ -46,12 +46,12 @@ static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be
 size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr)
 {
 	char const *found;
-	char const *p = in->p;
+	char const *p = in->p_i;
 
 	found = fr_utf8_strchr(NULL, p, in->end - in->p, chr);
 	if (!found) return 0;
 
-	in->p = found;
+	in->p_i = found;
 
 	return found - p;
 }
@@ -67,12 +67,12 @@ size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr)
 size_t fr_sbuff_strchr(fr_sbuff_t *in, char c)
 {
 	char const *found;
-	char const *p = in->p;
+	char const *p = in->p_i;
 
 	found = memchr(in->p, c, in->end - in->p);
 	if (!found) return 0;
 
-	in->p = found;
+	in->p_i = found;
 
 	return found - p;
 }
@@ -96,7 +96,7 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
 	found = memmem(in->p, in->end - in->p, needle, len );
 	if (!found) return 0;
 
-	in->p = found;
+	in->p_i = found;
 
 	return found - p;
 }
@@ -199,7 +199,7 @@ size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
-				char allowed_chars[static UINT8_MAX + 1])
+				bool const allowed_chars[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
 	char const	*end;
@@ -239,7 +239,7 @@ size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
-			      char until[static UINT8_MAX + 1])
+			      bool const until[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
 	char const	*end;
@@ -265,6 +265,7 @@ size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t l
 
 /** Used to define a number parsing functions for singed integers
  *
+ * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
  * @param[in] _min	value.
  * @param[in] _max	value.
@@ -272,14 +273,14 @@ size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t l
  *	- 0 no bytes copied.  Examine err.
  *	- >0 the number of bytes copied.
  */
-#define PARSE_INT_DEF(_type, _min, _max) \
-size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
+#define PARSE_INT_DEF(_name, _type, _min, _max) \
+size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
 { \
 	char		buff[sizeof(STRINGIFY(_min)) + 1]; \
 	char		*end; \
 	size_t		len; \
 	long long	num; \
-	len = fr_sbuff_strncpy(buff, sizeof(buff), FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_min))); \
+	len = fr_sbuff_strncpy(buff, sizeof(buff), &FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_min))); \
 	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 	num = strtoll(buff, &end, 10); \
 	if (end == buff) { \
@@ -296,27 +297,29 @@ size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
+	fr_sbuff_advance(in, end - buff); \
 	return end - buff; \
 }
 
-PARSE_INT_DEF(int8_t, INT8_MIN, INT8_MAX)
-PARSE_INT_DEF(int16_t, INT16_MIN, INT16_MAX)
-PARSE_INT_DEF(int32_t, INT32_MIN, INT32_MAX)
-PARSE_INT_DEF(int64_t, INT64_MIN, INT64_MAX)
+PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX)
+PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX)
+PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX)
+PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX)
 
 /** Used to define a number parsing functions for singed integers
  *
+ * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
  * @param[in] _max	value.
  */
-#define PARSE_UINT_DEF(_type, _max) \
-size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
+#define PARSE_UINT_DEF(_name, _type, _max) \
+size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
 { \
 	char			buff[sizeof(STRINGIFY(_max)) + 1]; \
 	char			*end; \
 	size_t			len; \
 	unsigned long long	num; \
-	len = fr_sbuff_strncpy(buff, sizeof(buff), FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_max))); \
+	len = fr_sbuff_strncpy(buff, sizeof(buff), &FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_max))); \
 	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 	num = strtoull(buff, &end, 10); \
 	if (end == buff) { \
@@ -330,10 +333,11 @@ size_t fr_sbuff_parse_##_type(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
+	fr_sbuff_advance(in, end - buff); \
 	return end - buff; \
 }
 
-PARSE_UINT_DEF(uint8_t, UINT8_MAX)
-PARSE_UINT_DEF(uint16_t, UINT16_MAX)
-PARSE_UINT_DEF(uint32_t, UINT32_MAX)
-PARSE_UINT_DEF(uint64_t, UINT64_MAX)
+PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX)
+PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX)
+PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX)
+PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX)
