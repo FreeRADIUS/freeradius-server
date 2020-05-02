@@ -760,7 +760,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	parsing the configuration files.
 	 */
 	slen = fr_dict_attr_by_qualified_name_substr(NULL, &vpt->tmpl_da,
-						     rules->dict_def, p, !rules->disallow_internal);
+						     rules->dict_def, &FR_SBUFF_TMP(p, strlen(p)),
+						     !rules->disallow_internal);
 	if (slen <= 0) {
 		fr_strerror();	/* Clear out any existing errors */
 

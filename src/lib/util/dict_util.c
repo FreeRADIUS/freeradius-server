@@ -97,7 +97,7 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 /** Characters allowed in dictionary names
  *
  */
-bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
+bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
 	['-'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
@@ -1316,15 +1316,17 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 	return dict->root;
 }
 
-ssize_t dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def)
+ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
+				fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
 
 	fr_dict_t		*dict;
-	char const		*p;
 	size_t			len;
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 
-	if (!dict_gctx || !name || !*name || !out) return 0;
+	if (!dict_gctx || !name || !fr_sbuff_remaining(name) || !out) return 0;
 
 	memset(&root, 0, sizeof(root));
 
@@ -1332,44 +1334,45 @@ ssize_t dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t con
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p] && (*p != '.'); p++);
+	len = fr_sbuff_strncpy_allowed(buffer, sizeof(buffer),
+				       &our_name, SIZE_MAX,
+				       fr_dict_attr_allowed_chars);
+	if (len == 0) {
+		fr_strerror_printf("Zero length attribute name");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return 0;
+	}
+	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name too long");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return -(FR_DICT_ATTR_MAX_NAME_LEN);
+	}
 
 	/*
 	 *	If what we stopped at wasn't a '.', then there
 	 *	can't be a protocol name in this string.
 	 */
-	if (*p != '.') {
+	if (*(our_name.p) != '.') {
 		memcpy(out, &dict_def, sizeof(*out));
 		return 0;
 	}
 
-	len = p - name;
-	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
-		return -(FR_DICT_ATTR_MAX_NAME_LEN);
-	}
-
-	root.name = talloc_bstrndup(NULL, name, len);
-	if (!root.name) {
-		fr_strerror_printf("Out of memory");
-		*out = NULL;
-		return 0;
-	}
+	root.name = buffer;
 	dict = fr_hash_table_finddata(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
-	talloc_const_free(root.name);
 
 	if (!dict) {
-		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, name);
+		fr_strerror_printf("Unknown protocol '%s'", root.name);
 		*out = NULL;
 		return 0;
 	}
 	*out = dict;
 
-	return p - name;
+	return (size_t)fr_sbuff_set(name, &our_name);
 }
 
 /** Look up a protocol name embedded in another string
  *
+ * @param[out] err		Parsing error.
  * @param[out] out		the resolve dictionary or NULL if the dictionary
  *				couldn't be resolved.
  * @param[in] name		string start.
@@ -1379,12 +1382,12 @@ ssize_t dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t con
  *	- <= 0 on error and (*out == NULL) (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
+ssize_t fr_dict_by_protocol_substr(fr_dict_attr_err_t *err, fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
 	ssize_t		slen;
 	fr_dict_t	*dict = NULL;
 
-	slen = dict_by_protocol_substr(&dict, name, dict_def);
+	slen = dict_by_protocol_substr(err, &dict, name, dict_def);
 	*out = dict;
 
 	return slen;
@@ -1717,53 +1720,41 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				    fr_dict_t const *dict, char const *name)
+				    fr_dict_t const *dict, fr_sbuff_t *name)
 {
 	fr_dict_attr_t const	*da;
-	char const		*p;
 	size_t			len;
-	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 	*out = NULL;
 
 	INTERNAL_IF_NULL(dict, 0);
 
-	if (!*name) {
-	zero_length_name:
+	len = fr_sbuff_strncpy_allowed(buffer, sizeof(buffer),
+				       &our_name, SIZE_MAX,
+				       fr_dict_attr_allowed_chars);
+	if (len == 0) {
 		fr_strerror_printf("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
 	}
-
-	/*
-	 *	Advance p until we get something that's not part of
-	 *	the dictionary attribute name.
-	 */
-	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p]; p++);
-
-	len = p - name;
-	if (len == 0) goto zero_length_name;
-
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	memcpy(buffer, name, len);
-	buffer[len] = '\0';
-
 	da = fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, name);
+		fr_strerror_printf("Unknown attribute '%s'", buffer);
 		return 0;
 	}
 
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return p - name;
+	return (size_t)fr_sbuff_set(name, &our_name);
 }
 
 /* Internal version of fr_dict_attr_by_name
@@ -1811,17 +1802,18 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					      fr_dict_t const *dict_def, char const *name, bool fallback)
+					      fr_dict_t const *dict_def, fr_sbuff_t *name, bool fallback)
 {
 	fr_dict_t		*dict = NULL;
 	fr_dict_t		*dict_iter = NULL;
-	char const		*p = name;
 	ssize_t			slen;
 	fr_dict_attr_err_t	aerr = FR_DICT_ATTR_OK;
 	bool			internal = false;
 	fr_hash_iter_t  	iter;
-
+	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 	*out = NULL;
+
+	fr_sbuff_trim_start(&our_name);	/* So we can figure out the amount we advanced */
 
 	INTERNAL_IF_NULL(dict_def, -1);
 
@@ -1829,9 +1821,8 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	 *	Figure out if we should use the default dictionary
 	 *	or if the string was qualified.
 	 */
-	slen = dict_by_protocol_substr(&dict, p, dict_def);
+	slen = dict_by_protocol_substr(err, &dict, &our_name, dict_def);
 	if (slen < 0) {
-		if (err) *err = FR_DICT_ATTR_PROTOCOL_NOTFOUND;
 		return 0;
 
 	/*
@@ -1844,12 +1835,10 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	 *	Has dictionary qualifier, can't fallback
 	 */
 	} else if (slen > 0) {
-		p += slen;
-
 		/*
 		 *	Next thing SHOULD be a '.'
 		 */
-		if (*p++ != '.') {
+		if (fr_sbuff_next_char(&our_name) != '.') {
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			return 0;
 		}
@@ -1858,8 +1847,11 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	}
 
 again:
-	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
-
+	/*
+	 *	We rely on the fact the sbuff is only
+	 *	advanced on success.
+	 */
+	fr_dict_attr_by_name_substr(&aerr, out, dict, &our_name);
 	switch (aerr) {
 	case FR_DICT_ATTR_OK:
 		break;
@@ -1904,17 +1896,15 @@ again:
 
 	fail:
 		if (err) *err = aerr;
-		return -((p - name) + slen);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 
 	/*
 	 *	Other error codes are the same
 	 */
 	default:
 		if (err) *err = aerr;
-		return -((p - name) + slen);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
-
-	p += slen;
 
 	/*
 	 *	If we're returning a success code indication,
@@ -1927,28 +1917,31 @@ again:
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return p - name;
+	return (size_t)fr_sbuff_set(name, &our_name);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
  *
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] attr		Dictionary/Attribute name.
+ * @param[in] name		Dictionary/Attribute name.
  * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return an #fr_dict_attr_err_t value.
  */
 fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
-						  char const *attr, bool fallback)
+						  char const *name, bool fallback)
 {
 	ssize_t			slen;
 	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
+	fr_sbuff_t		our_name;
 
-	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr, fallback);
+	fr_sbuff_parse_init(&our_name, name, strlen(name));
+
+	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, &our_name, fallback);
 	if (slen <= 0) return err;
 
-	if ((size_t)slen != strlen(attr)) {
-		fr_strerror_printf("Trailing garbage after attr string \"%s\"", attr);
+	if ((size_t)slen != fr_sbuff_len(&our_name)) {
+		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
 		return FR_DICT_ATTR_PARSE_ERROR;
 	}
 
@@ -2068,6 +2061,44 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	return dict_attr_child_by_num(parent, attr);
+}
+
+
+/** Look up an attribute by name in the dictionary that contains the parent
+ *
+ */
+ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
+					  fr_dict_attr_t const **out, fr_dict_attr_t const *parent, fr_sbuff_t *name,
+					  bool is_direct_decendent)
+{
+	ssize_t			slen;
+
+	DA_VERIFY(parent);
+
+	if (!parent->children) {
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return 0;
+	}
+
+	/*
+	 *	We return the child of the referenced attribute, and
+	 *	not of the "group" attribute.
+	 */
+	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
+
+	slen = fr_dict_attr_by_name_substr(err, out, fr_dict_by_da(parent), name);
+	if (slen <= 0) return slen;
+
+	if (is_direct_decendent) {
+		if ((*out)->parent != parent) {
+		not_decendent:
+			if (err) *err = FR_DICT_ATTR_NOT_DESCENDENT;
+			*out = NULL;
+			return 0;
+		}
+	} else if (!fr_dict_parent_common(parent, *out, true)) goto not_decendent;
+
+	return slen;
 }
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t

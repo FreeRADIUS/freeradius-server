@@ -29,6 +29,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/types.h>
 
@@ -187,7 +188,12 @@ typedef enum {
 	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.
 	FR_DICT_ATTR_PARSE_ERROR	= -3,			//!< Attribute string couldn't be parsed
 	FR_DICT_ATTR_OOM		= -4,			//!< Memory allocation error.
-	FR_DICT_ATTR_EINVAL		= -5			//!< Invalid arguments.
+	FR_DICT_ATTR_NOT_DESCENDENT	= -5,			//!< Attribute is not a descendent of the parent
+								///< attribute.
+	FR_DICT_ATTR_NOT_ANCESTOR	= -6,			//!< Attribute is not an ancestor of the child
+								///< attribute.
+	FR_DICT_ATTR_NO_CHILDREN	= -7,			//!< Child lookup in attribute with no children.
+	FR_DICT_ATTR_EINVAL		= -8			//!< Invalid arguments.
 } fr_dict_attr_err_t;
 
 typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
@@ -238,7 +244,7 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 /** Characters that are allowed in dictionary attribute names
  *
  */
-extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX];
+extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
 extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 
 /** @name Programatically create dictionary attributes and values
@@ -306,7 +312,8 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **pare
  */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
-ssize_t			fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def);
+ssize_t			fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
+						   fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 
 fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
@@ -358,13 +365,13 @@ fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-						    fr_dict_t const *dict, char const *name) CC_HINT(nonnull(2,4));
+						    fr_dict_t const *dict, fr_sbuff_t *name) CC_HINT(nonnull(2,4));
 
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 
 ssize_t			fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							      fr_dict_t const *dict_def,
-							      char const *attr, bool fallback);
+							      fr_sbuff_t *name, bool fallback);
 
 fr_dict_attr_err_t	fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
 						       fr_dict_t const *dict_def, char const *attr, bool fallback);
@@ -374,6 +381,10 @@ fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t 
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child) CC_HINT(nonnull);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
+ssize_t			fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
+							  fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+							  fr_sbuff_t *name, bool is_direct_decendent);
 
 fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 

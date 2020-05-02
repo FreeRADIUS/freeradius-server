@@ -198,7 +198,8 @@ fr_dict_attr_t		*dict_attr_by_name(fr_dict_t const *dict, char const *name);
 
 fr_dict_attr_t		*dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-ssize_t			dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def);
+ssize_t			dict_by_protocol_substr(fr_dict_attr_err_t *err,
+						fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 
 fr_dict_t		*dict_by_protocol_name(char const *name);
 
