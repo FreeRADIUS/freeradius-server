@@ -162,6 +162,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
+	fprintf(stderr, "  -C <client_port>       Assigning port number to client socket. Values may be 1..65535\n");
 	fprintf(stderr, "  -c <count>             Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
@@ -1211,7 +1212,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1226,6 +1227,17 @@ int main(int argc, char **argv)
 			resend_count = atoi(optarg);
 
 			if (resend_count < 1) usage();
+			break;
+
+		case 'C':
+		{
+			int tmp;
+
+			tmp = atoi(optarg);
+			if (tmp < 1 || tmp > 65535) usage();
+
+			client_port = (uint16_t)tmp;
+		}
 			break;
 
 		case 'D':
@@ -1473,7 +1485,7 @@ int main(int argc, char **argv)
 		client_ipaddr = request_head->packet->src_ipaddr;
 	}
 
-	client_port = request_head->packet->src_port;
+	if (client_port == 0) client_port = request_head->packet->src_port;
 
 	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
