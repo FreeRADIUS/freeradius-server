@@ -27,7 +27,6 @@
 
 RCSID("$Id$")
 
-
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/list.h>
@@ -91,16 +90,6 @@ fr_dict_autoload_t radclient_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_cleartext_password;
-static fr_dict_attr_t const *attr_digest_algorithm;
-static fr_dict_attr_t const *attr_digest_body_digest;
-static fr_dict_attr_t const *attr_digest_cnonce;
-static fr_dict_attr_t const *attr_digest_method;
-static fr_dict_attr_t const *attr_digest_nonce;
-static fr_dict_attr_t const *attr_digest_nonce_count;
-static fr_dict_attr_t const *attr_digest_qop;
-static fr_dict_attr_t const *attr_digest_realm;
-static fr_dict_attr_t const *attr_digest_uri;
-static fr_dict_attr_t const *attr_digest_user_name;
 
 static fr_dict_attr_t const *attr_ms_chap_challenge;
 static fr_dict_attr_t const *attr_ms_chap_password;
@@ -117,24 +106,12 @@ static fr_dict_attr_t const *attr_radclient_test_name;
 static fr_dict_attr_t const *attr_request_authenticator;
 
 static fr_dict_attr_t const *attr_chap_password;
-static fr_dict_attr_t const *attr_digest_attributes;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_cnonce, .name = "Digest-CNonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_qop, .name = "Digest-QOP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_uri, .name = "Digest-URI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
 	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_password, .name = "MS-CHAP-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -149,7 +126,6 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_request_authenticator, .name = "Request-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
@@ -537,45 +513,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					memset(request->packet->vector, 0, sizeof(request->packet->vector));
 					memcpy(request->packet->vector, vp->vp_octets, vp->vp_length);
 				}
-			} else if ((vp->da == attr_digest_realm) ||
-				   (vp->da == attr_digest_nonce) ||
-				   (vp->da == attr_digest_method) ||
-				   (vp->da == attr_digest_uri) ||
-				   (vp->da == attr_digest_qop) ||
-				   (vp->da == attr_digest_algorithm) ||
-				   (vp->da == attr_digest_body_digest) ||
-				   (vp->da == attr_digest_cnonce) ||
-				   (vp->da == attr_digest_nonce_count) ||
-				   (vp->da == attr_digest_user_name)) {
-				uint8_t *p, *q;
-
-				p = talloc_array(vp, uint8_t, vp->vp_length + 2);
-
-				memcpy(p + 2, vp->vp_octets, vp->vp_length);
-				p[0] = vp->da->attr - attr_digest_realm->attr + 1;
-				vp->vp_length += 2;
-				p[1] = vp->vp_length;
-
-				vp->da = attr_digest_attributes;
-
-				/*
-				 *	Re-do fr_pair_value_memsteal ourselves,
-				 *	because we play games with
-				 *	vp->da, and fr_pair_value_memsteal goes
-				 *	to GREAT lengths to sanitize
-				 *	and fix and change and
-				 *	double-check the various
-				 *	fields.
-				 */
-				memcpy(&q, &vp->vp_octets, sizeof(q));
-				talloc_free(q);
-
-				vp->vp_octets = talloc_steal(vp, p);
-				vp->data.type = FR_TYPE_OCTETS;
-				vp->data.enumv = NULL;
-				vp->type = VT_DATA;
-
-				VP_VERIFY(vp);
 			} else if (vp->da == attr_cleartext_password) {
 				request->password = vp;
 			/*
