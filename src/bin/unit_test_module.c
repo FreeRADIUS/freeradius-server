@@ -73,17 +73,6 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_chap_password;
-static fr_dict_attr_t const *attr_digest_algorithm;
-static fr_dict_attr_t const *attr_digest_attributes;
-static fr_dict_attr_t const *attr_digest_body_digest;
-static fr_dict_attr_t const *attr_digest_cnonce;
-static fr_dict_attr_t const *attr_digest_method;
-static fr_dict_attr_t const *attr_digest_nonce_count;
-static fr_dict_attr_t const *attr_digest_nonce;
-static fr_dict_attr_t const *attr_digest_qop;
-static fr_dict_attr_t const *attr_digest_realm;
-static fr_dict_attr_t const *attr_digest_uri;
-static fr_dict_attr_t const *attr_digest_user_name;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -98,16 +87,6 @@ static fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_cnonce, .name = "Digest-CNonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_qop, .name = "Digest-QOP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_uri, .name = "Digest-URI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
@@ -116,7 +95,6 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -243,9 +221,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->dst_port = 1812;
 
-	/*
-	 *	Fix up Digest-Attributes issues
-	 */
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
@@ -309,44 +284,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 				vp->vp_octets = p;
 				vp->vp_length = 17;
 			}
-		} else if ((vp->da == attr_digest_realm) ||
-			   (vp->da == attr_digest_nonce) ||
-			   (vp->da == attr_digest_method) ||
-			   (vp->da == attr_digest_uri) ||
-			   (vp->da == attr_digest_qop) ||
-			   (vp->da == attr_digest_algorithm) ||
-			   (vp->da == attr_digest_body_digest) ||
-			   (vp->da == attr_digest_cnonce) ||
-			   (vp->da == attr_digest_user_name)) {
-			uint8_t *p, *q;
-
-			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
-
-			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - attr_digest_realm->attr + 1;
-			vp->vp_length += 2;
-			p[1] = vp->vp_length;
-
-			vp->da = attr_digest_attributes;
-
-			/*
-			 *	Re-do fr_pair_value_memsteal ourselves,
-			 *	because we play games with
-			 *	vp->da, and fr_pair_value_memsteal goes
-			 *	to GREAT lengths to sanitize
-			 *	and fix and change and
-			 *	double-check the various
-			 *	fields.
-			 */
-			memcpy(&q, &vp->vp_octets, sizeof(q));
-			talloc_free(q);
-
-			vp->vp_octets = talloc_steal(vp, p);
-			vp->data.type = FR_TYPE_OCTETS;
-			vp->data.enumv = NULL;
-			vp->type = VT_DATA;
-
-			VP_VERIFY(vp);
 		}
 	} /* loop over the VP's we read in */
 
