@@ -46,8 +46,9 @@ fr_dict_autoload_t rlm_digest_dict[] = {
 static const fr_dict_attr_t *attr_auth_type;
 static const fr_dict_attr_t *attr_cleartext_password;
 
-static const fr_dict_attr_t *attr_digest_algorithm;
+static const fr_dict_attr_t *attr_digest_response;
 static const fr_dict_attr_t *attr_digest_attributes;
+static const fr_dict_attr_t *attr_digest_algorithm;
 static const fr_dict_attr_t *attr_digest_body_digest;
 static const fr_dict_attr_t *attr_digest_cnonce;
 static const fr_dict_attr_t *attr_digest_ha1;
@@ -56,7 +57,6 @@ static const fr_dict_attr_t *attr_digest_nonce;
 static const fr_dict_attr_t *attr_digest_nonce_count;
 static const fr_dict_attr_t *attr_digest_qop;
 static const fr_dict_attr_t *attr_digest_realm;
-static const fr_dict_attr_t *attr_digest_response;
 static const fr_dict_attr_t *attr_digest_uri;
 static const fr_dict_attr_t *attr_digest_user_name;
 
@@ -64,149 +64,43 @@ extern fr_dict_attr_autoload_t rlm_digest_dict_attr[];
 fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_cnonce, .name = "Digest-Cnonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_ha1, .name = "Digest-Ha1", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_qop, .name = "Digest-Qop", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_uri, .name = "Digest-Uri", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_digest_response, .name = "Digest-Response", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_TLV, .dict = &dict_radius },
+	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_cnonce, .name = "Digest-Cnonce", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_ha1, .name = "Digest-HA1", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_qop, .name = "Digest-Qop", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_uri, .name = "Digest-Uri", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
 
-static int digest_fix(REQUEST *request)
-{
-	VALUE_PAIR *first, *i;
-	fr_cursor_t cursor;
-
-	/*
-	 *	We need both of these attributes to do the authentication.
-	 */
-	first = fr_pair_find_by_da(request->packet->vps, attr_digest_response, TAG_ANY);
-	if (!first) {
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Check the sanity of the attribute.
-	 */
-	if (first->vp_length != 32) {
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Check for proper format of the Digest-Attributes
-	 */
-	RDEBUG2("Checking for correctly formatted Digest-Attributes");
-	fr_assert(attr_digest_attributes);
-
-	first = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_digest_attributes);
-	if (!first) return RLM_MODULE_NOOP;
-
-	for (i = fr_cursor_head(&cursor);
-	     i;
-	     i = fr_cursor_next(&cursor)) {
-		size_t attr_len;
-		uint8_t const *p = i->vp_octets, *end = i->vp_octets + i->vp_length;
-
-		RHEXDUMP3(p, i->vp_length, "Validating digest attribute");
-
-		/*
-		 *	Until this stupidly encoded attribute is exhausted.
-		 */
-		while (p < end) {
-			/*
-			 *	The attribute type must be valid
-			 */
-			if ((p[0] == 0) || (p[0] > 10)) {
-				RDEBUG2("Not formatted as Digest-Attributes: subtlv (%u) invalid", (unsigned int) p[0]);
-				return RLM_MODULE_NOOP;
-			}
-
-			attr_len = p[1];	/* stupid VSA format */
-
-			/*
-			 *	Too short.
-			 */
-			if (attr_len < 3) {
-				RDEBUG2("Not formatted as Digest-Attributes: TLV too short");
-				return RLM_MODULE_NOOP;
-			}
-
-			/*
-			 *	Too long.
-			 */
-			if (p + attr_len > end) {
-				RDEBUG2("Not formatted as Digest-Attributes: TLV too long)");
-				return RLM_MODULE_NOOP;
-			}
-
-
-			RHEXDUMP3(p, attr_len, "Found valid sub TLV %u, length %zu", p[0], attr_len);
-
-			p += attr_len;
-		} /* loop over this one attribute */
-	}
-
-	/*
-	 *	Convert them to something sane.
-	 */
-	RDEBUG2("Digest-Attributes validated, unpacking into interal attributes");
-	fr_cursor_head(&cursor);
-	for (i = fr_cursor_head(&cursor);
-	     i;
-	     i = fr_cursor_next(&cursor)) {
-		size_t		attr_len;
-		uint8_t const	*p = i->vp_octets, *end = i->vp_octets + i->vp_length;
-		VALUE_PAIR	*sub;
-
-		/*
-		 *	Until this stupidly encoded attribute is exhausted.
-		 */
-		while (p < end) {
-			attr_len = p[1];	/* stupid VSA format */
-
-			/*
-			 *	Create a new attribute, broken out of
-			 *	the stupid sub-attribute crap.
-			 *
-			 *	Didn't they know that VSA's exist?
-			 */
-			MEM(sub = fr_pair_afrom_child_num(request->packet,
-							  fr_dict_root(dict_freeradius),
-							  attr_digest_realm->attr - 1 + p[0]));
-			fr_pair_value_bstrncpy(sub, p + 2, attr_len - 2);
-			fr_pair_add(&request->packet->vps, sub);
-
-			RINDENT();
-			RDEBUG2("&%pP", sub);
-			REXDENT();
-
-			p += attr_len;
-		} /* loop over this one attribute */
-	}
-
-	return RLM_MODULE_OK;
-}
-
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_digest_t	*inst = instance;
-	rlm_rcode_t	rcode;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp;
 
 	/*
-	 *	Double-check and fix the attributes.
+	 *	Find the first attribute which is parented by Digest-Attributes.
 	 */
-	rcode = digest_fix(request);
-	if (rcode != RLM_MODULE_OK) return rcode;
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (vp->da->parent == attr_digest_attributes) break;
+	}
+	/*
+	 *	For simplicity, we allow the caller to omit things
+	 *	that they don't care about.
+	 */
+	if (!vp) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Everything's OK, add a digest authentication type.
@@ -245,37 +139,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	if (!passwd) {
 		REDEBUG("Cleartext-Password or Digest-HA1 is required for authentication");
 		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	We need these, too.
-	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_attributes, TAG_ANY);
-	if (!vp) {
-	error:
-		REDEBUG("You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	Look for the "internal" FreeRADIUS Digest attributes.
-	 *	If they don't exist, it means that someone forced
-	 *	Auth-Type = digest, without putting "digest" into the
-	 *	"authorize" section.  In that case, try to decode the
-	 *	attributes here.
-	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_digest_nonce, TAG_ANY)) {
-		int rcode;
-
-		rcode = digest_fix(request);
-
-		/*
-		 *	NOOP means "couldn't find the attributes".
-		 *	That's bad.
-		 */
-		if (rcode == RLM_MODULE_NOOP) goto error;
-
-		if (rcode != RLM_MODULE_OK) return rcode;
 	}
 
 	/*
