@@ -131,6 +131,11 @@ sql {
 	#		raddb/mods-config/sql/main/mongo/queries.conf
 	#		raddb/mods-config/sql/main/ippool/queries.conf
 	#
+	#	In order to use findAndModify with an aggretation pipleline, make
+	#	sure that you are running MongoDB version 4.2 or greater. FreeRADIUS
+	#	assumes that the paramaters passed to the methods are supported by the
+	#	version of MongoDB which it is connected to.
+	#
 	mongo {
 		#
 		#  The application name to use.
