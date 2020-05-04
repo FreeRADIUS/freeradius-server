@@ -25,6 +25,7 @@ ATTRIBUTE	Digest-QOP				.7	string
 ATTRIBUTE	Digest-Nonce-Count			.8	string
 ATTRIBUTE	Digest-CNonce				.9	string
 ATTRIBUTE	Digest-Body-Digest			.10	string
+ATTRIBUTE	Digest-HA1				.11	string
 
 #
 #	Integer Translations
