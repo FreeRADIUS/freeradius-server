@@ -1,8 +1,4 @@
 /*
- * arp.c	ARP processing.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,38 +12,68 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
  */
 
+/**
+ * $Id$
+ * @file proto_arp.c
+ * @brief RADIUS master protocol handler.
+ *
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
+ */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/arp/arp.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/pcap.h>
-#include <net/if_arp.h>
+
+extern fr_app_t proto_arp;
 
 typedef struct {
-	listen_socket_t	lsock;
-	uint64_t	counter;
-	RADCLIENT	client;
-} arp_socket_t;
+	CONF_SECTION			*server_cs;			//!< server CS for this listener
+	CONF_SECTION			*cs;				//!< my configuration
 
-/*
- *	ARP for ethernet && IPv4.
+	dl_module_inst_t	       	*io_submodule;			//!< As provided by the transport_parse
+									///< callback.  Broken out into the
+									///< app_io_* fields below for convenience.
+
+	CONF_SECTION			*app_io_conf;			//!< for the APP IO
+	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
+	void				*app_io_instance;		//!< Easy access to the app_io instance.
+
+	dl_module_inst_t		*app_process;			//!< app_process pointer
+	void				*process_instance;		//!< app_process instance
+
+	fr_dict_t			*dict;				//!< root dictionary
+
+	char const     			*interface;			//!< interface name
+	uint32_t			num_messages;			//!< for message ring buffer
+	uint32_t			priority;			//!< for packet processing, larger == higher
+
+	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
+
+	fr_listen_t			*listen;			//!< The listener structure which describes
+									//!< the I/O path.
+} proto_arp_t;
+
+
+/** How to parse an ARP listen section
+ *
  */
-typedef struct {
-	uint16_t	htype;			//!< Format of hardware address.
-	uint16_t	ptype;			//!< Format of protocol address.
-	uint8_t		hlen;			//!< Length of hardware address.
-	uint8_t		plen;			//!< Length of protocol address.
-	uint8_t		op;			//!< 1 - Request, 2 - Reply.
-	uint8_t		sha[ETHER_ADDR_LEN];	//!< sender hardware address.
-	uint8_t		spa[4];			//!< Sender protocol address.
-	uint8_t		tha[ETHER_ADDR_LEN];	//!< Target hardware address.
-	uint8_t		tpa[4];			//!< Target protocol address.
-} arp_over_ether_t;
+static CONF_PARSER const proto_arp_config[] = {
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, proto_arp_t,
+			  interface), .dflt = "eth0" },
+
+	/*
+	 *	@todo - allow for pcap filter
+	 */
+
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_arp_t, num_messages) } ,
+
+	CONF_PARSER_TERMINATOR
+};
 
 static fr_dict_t const *dict_arp;
 
@@ -57,282 +83,319 @@ fr_dict_autoload_t proto_arp_dict[] = {
 	{ NULL }
 };
 
-static int request_receive(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
-		    UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
-{
-	return 0;
-}
+#if 0
+static fr_dict_attr_t const *attr_packet_type;
 
-static rlm_rcode_t arp_process(REQUEST *request)
-{
-	CONF_SECTION *unlang;
-
-	request->server_cs = request->listener->server_cs;
-	unlang = cf_section_find(request->server_cs, "arp", NULL);
-
-	request->component = "arp";
-
-	return unlang_interpret_section(request, unlang, RLM_MODULE_NOOP);
-}
-
-
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
- */
-static int arp_socket_recv(rad_listen_t *listener)
-{
-	int ret;
-	arp_socket_t *sock = listener->data;
-	pcap_t *handle = sock->lsock.pcap->handle;
-
-	const uint8_t *data;
-	struct pcap_pkthdr *header;
-	ssize_t link_len;
-
-	arp_over_ether_t const *arp;
-	RADIUS_PACKET *packet;
-
-	ret = pcap_next_ex(handle, &header, &data);
-	if (ret == 0) {
-		DEBUG("No packet retrieved from pcap.");
-		return 0; /* no packet */
-	}
-
-	if (ret < 0) {
-		ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
-		return 0;
-	}
-
-	link_len = fr_pcap_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
-	if (link_len < 0) {
-		PERROR("Failed determining link layer header offset");
-		return 0;
-	}
-
-	/*
-	 *	Silently ignore it if it's too small to be ARP.
-	 *
-	 *	This can happen when pcap gets overloaded and starts truncating packets.
-	 */
-	if (header->caplen < (link_len + sizeof(*arp))) {
-		ERROR("Packet too small, we require at least %zu bytes, got %i bytes",
-		      link_len + sizeof(*arp), header->caplen);
-		return 0;
-	}
-
-	data += link_len;
-	arp = (arp_over_ether_t const *) data;
-
-	if (ntohs(arp->htype) != ARPHRD_ETHER) return 0;
-
-	if (ntohs(arp->ptype) != 0x0800) return 0;
-
-	if (arp->hlen != ETHER_ADDR_LEN) return 0; /* FIXME: malformed error */
-
-	if (arp->plen != 4) return 0; /* FIXME: malformed packet error */
-
-	packet = talloc_zero(NULL, RADIUS_PACKET);
-	if (!packet) return 0;
-
-	packet->dst_port = 1;	/* so it's not a "fake" request */
-	packet->data_len = header->caplen - link_len;
-	packet->data = talloc_memdup(packet, arp, packet->data_len);
-	talloc_set_type(packet->data, uint8_t);
-
-	DEBUG("ARP received on interface %s", sock->lsock.interface);
-
-	if (!request_receive(NULL, listener, packet, &sock->client, arp_process)) {
-		fr_radius_packet_free(&packet);
-		return 0;
-	}
-
-	return 1;
-}
-
-static int arp_socket_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
-{
-	return 0;
-}
-
-
-static int arp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
-{
-	return 0;
-}
-
-
-typedef struct {
-	char const	*name;
-	size_t		len;
-} arp_decode_t;
-
-static const arp_decode_t header_names[] = {
-	{ "ARP-Hardware-Format",		2 },
-	{ "ARP-Protocol-Format",		2 },
-	{ "ARP-Hardware-Address-Length",	1 },
-	{ "ARP-Protocol-Address-Length",	1 },
-	{ "ARP-Operation",			2 },
-	{ "ARP-Sender-Hardware-Address",	6 },
-	{ "ARP-Sender-Protocol-Address",	4 },
-	{ "ARP-Target-Hardware-Address",	6 },
-	{ "ARP-Target-Protocol-Address",	4 },
-
-	{ NULL, 0 }
+extern fr_dict_attr_autoload_t proto_arp_dict_attr[];
+fr_dict_attr_autoload_t proto_arp_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_arp},
+	{ NULL }
 };
+#endif
 
-static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
+/** Decode the packet
+ *
+ */
+static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	int			i;
-	uint8_t	const		*p = request->packet->data, *end = p + request->packet->data_len;
-	fr_cursor_t		cursor;
+//	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
+	fr_arp_packet_t	const	*arp;
 
-	fr_cursor_init(&cursor, &request->packet->vps);
+	/*
+	 *	Set the request dictionary so that we can do
+	 *	generic->protocol attribute conversions as
+	 *	the request runs through the server.
+	 */
+	request->dict = dict_arp;
 
-	for (i = 0; header_names[i].name != NULL; i++) {
-		ssize_t			ret;
-		size_t			len;
-		fr_dict_attr_t const	*da;
-		VALUE_PAIR		*vp = NULL;
+	if (fr_arp_decode(request->packet, data, data_len, &request->packet->vps) < 0) {
+		RPEDEBUG("Failed decoding packet");
+		return -1;
+	}
 
-		len = header_names[i].len;
+	arp = (fr_arp_packet_t const *) data;
+	request->packet->code = arp->op;
 
-		if (!fr_cond_assert((size_t)(end - p) < len)) return -1; /* Should have been detected in socket_recv */
+	request->packet->data = talloc_memdup(request->packet, data, data_len);
+	request->packet->data_len = data_len;
 
-		da = fr_dict_attr_by_name(dict_arp, header_names[i].name);
-		if (!da) return 0;
+	request->config = main_config;
+	REQUEST_VERIFY(request);
 
-		MEM(vp = fr_pair_afrom_da(request->packet, da));
-		ret = fr_value_box_from_network(vp, &vp->data, da->type, da, p, len, true);
-		if (ret <= 0) {
-			fr_pair_to_unknown(vp);
-			fr_pair_value_memcpy(vp, p, len, true);
-		}
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Received %d via socket %s",
+		       request->packet->code,
+		       request->async->listen->name);
 
-		DEBUG2("&%pP", vp);
-		fr_cursor_insert(&cursor, vp);
+		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 	}
 
 	return 0;
 }
 
-/** Build PCAP filter string to pass to libpcap
- * Will be called by init_pcap.
- *
- * @param this listen section (not used)
- * @return PCAP filter string
- */
-static const char * arp_pcap_filter_builder(UNUSED rad_listen_t *this)
+static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	return "arp";
+	ssize_t			slen;
+//	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
+
+	/*
+	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 */
+	if (buffer_len == 1) {
+		*buffer = true;
+		return 1;
+	}
+
+	/*
+	 *	"Do not respond"
+	 */
+	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_MAX_PACKET_CODE)) {
+		*buffer = false;
+		return 1;
+	}
+
+	slen = fr_arp_encode(buffer, buffer_len, request->reply->vps);
+	if (slen <= 0) {
+		RPEDEBUG("Failed encoding reply");
+		return -1;
+	}
+
+
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Sending %d via socket %s",
+		       request->reply->code,
+		       request->async->listen->name);
+
+		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+	}
+
+	return slen;
 }
 
-static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
-	int rcode;
-	arp_socket_t	*sock = this->data;
-	RADCLIENT	*client;
-	CONF_PAIR	*cp = NULL;
+	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
+	fr_app_worker_t const	*app_process;
 
-	sock->lsock.pcap_filter_builder = arp_pcap_filter_builder;
-	sock->lsock.pcap_type = PCAP_INTERFACE_IN;
+	/*
+	 *	Only one "process" function: proto_arp_process.
+	 */
+	app_process = (fr_app_worker_t const *) inst->app_process->module->common;
 
-	this->nodup = true;	/* don't check for duplicates */
+	request->server_cs = inst->server_cs;
+	request->async->process = app_process->entry_point;
+	request->async->process_inst = inst->process_instance;
+}
 
-	/* Add ipaddress to conf section as it is not required by ARP config */
-	cp = cf_pair_alloc(cs, "ipv4addr", "0.0.0.0", T_OP_SET, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_add(cs, cp);
 
-	rcode = common_socket_parse(cs, this);
-	if (rcode != 0) return rcode;
+/*
+ *	@todo - do actual priority setting
+ */
+static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
+{
+	return PRIORITY_NORMAL;
+}
 
-	if (!sock->lsock.interface) {
-		cf_log_err(cs, "'interface' is required for arp");
+/** Open listen sockets/connect to external event source
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] sc	to add our file descriptor to.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
+{
+	fr_listen_t	*li;
+	proto_arp_t 	*inst = talloc_get_type_abort(instance, proto_arp_t);
+
+	/*
+	 *	Build the #fr_listen_t.  This describes the complete
+	 *	path, data takes from the socket to the decoder and
+	 *	back again.
+	 */
+	li = talloc_zero(inst, fr_listen_t);
+	talloc_set_destructor(li, fr_io_listen_free);
+
+	li->app = &proto_arp;
+	li->app_instance = instance;
+	li->server_cs = inst->server_cs;
+
+	/*
+	 *	Set configurable parameters for message ring buffer.
+	 */
+	li->default_message_size = FR_ARP_PACKET_SIZE;
+	li->num_messages = inst->num_messages;
+
+	li->app_io = inst->app_io;
+	li->app_io_instance = inst->app_io_instance;
+	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->thread_inst_size);
+	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+
+	/*
+	 *	Open the raw socket.
+	 */
+	if (inst->app_io->open(li) < 0) {
+		talloc_free(li);
+		return -1;
+	}
+
+	li->name = talloc_asprintf(li, "arp on interface %s", inst->interface);
+
+	/*
+	 *	Watch the directory for changes.
+	 */
+	if (!fr_schedule_listen_add(sc, li)) {
+		talloc_free(li);
+		return -1;
+	}
+
+	inst->listen = li;	/* Probably won't need it, but doesn't hurt */
+	inst->sc = sc;
+
+	return 0;
+}
+
+/** Instantiate the application
+ *
+ * Instantiate I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	proto_arp_t		*inst = talloc_get_type_abort(instance, proto_arp_t);
+	fr_app_worker_t const	*app_process;
+
+	/*
+	 *	Instantiate the I/O module. But DON'T instantiate the
+	 *	work submodule.  We leave that until later.
+	 */
+	if (inst->app_io->instantiate &&
+	    (inst->app_io->instantiate(inst->app_io_instance,
+				       inst->app_io_conf) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+		return -1;
+	}
+
+	if (!inst->num_messages) inst->num_messages = 256;
+
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
+
+	/*
+	 *	Instantiate the ARP processor
+	 */
+	app_process = (fr_app_worker_t const *)inst->app_process->module->common;
+	if (app_process->instantiate && (app_process->instantiate(inst->app_process->data,
+								  inst->app_process->conf) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+		return -1;
+	}
+
+	return -1;
+}
+
+
+/** Bootstrap the application
+ *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	proto_arp_t 		*inst = talloc_get_type_abort(instance, proto_arp_t);
+	dl_module_inst_t	*parent_inst;
+	fr_app_worker_t const	*app_process;
+
+	/*
+	 *	Ensure that the server CONF_SECTION is always set.
+	 */
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
+
+	parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_arp"));
+	fr_assert(parent_inst);
+
+	if (dl_module_instance(inst->cs, &inst->io_submodule, inst->cs,
+			       parent_inst, "ethernet", DL_MODULE_TYPE_SUBMODULE) < 0) {
+		cf_log_perr(inst->cs, "Failed to load proto_arp_ethernet");
 		return -1;
 	}
 
 	/*
-	 *	The server core is still RADIUS, and needs a client.
-	 *	So we fake one here.
+	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
 	 */
-	client = &sock->client;
-	memset(client, 0, sizeof(*client));
-	client->ipaddr.af = AF_INET;
-	client->ipaddr.addr.v4.s_addr = INADDR_NONE;
-	client->ipaddr.prefix = 0;
-	client->longname = client->shortname = sock->lsock.interface;
-	client->secret = client->shortname;
-	client->nas_type = talloc_typed_strdup(sock, "none");
+	if (dl_module_instance(inst->cs, &inst->app_process, inst->cs,
+			       parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
+		cf_log_perr(inst->cs, "Failed to load proto_arp_process");
+		return -1;
+	}
 
-	return 0;
-}
+	/*
+	 *	Bootstrap the I/O module
+	 */
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
+	inst->app_io_instance = inst->io_submodule->data;
+	inst->app_io_conf = conf;
 
-static int arp_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
-{
-	arp_socket_t *sock = this->data;
+	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
+								inst->app_io_conf) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
+		return -1;
+	}
 
-	snprintf(buffer, bufsize, "arp interface %s", sock->lsock.interface);
-
-	return 1;
-}
-
-/*
- *	If there's no "arp" section, we can't bootstrap anything.
- */
-static int arp_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, "arp", NULL);
-	if (!cs) {
-		cf_log_err(server_cs, "No 'arp' sub-section found");
+	/*
+	 *	Bootstrap the ARP processor
+	 */
+	app_process = (fr_app_worker_t const *)(inst->app_process->module->common);
+	if (app_process->bootstrap && (app_process->bootstrap(inst->app_process->data,
+							      inst->app_process->conf) < 0)) {
+		cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 		return -1;
 	}
 
 	return 0;
 }
 
-/*
- *	Ensure that the "arp" section is compiled.
- */
-static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+static int mod_load(void)
 {
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, "arp", NULL);
-	if (!cs) {
-		cf_log_err(server_cs, "No 'arp' sub-section found");
+	if (fr_arp_init() < 0) {
+		PERROR("Failed initialising protocol library");
 		return -1;
 	}
-
-	cf_log_debug(cs, "Loading arp {...}");
-
-	if (unlang_compile(cs, MOD_POST_AUTH, NULL, NULL) < 0) {
-		cf_log_err(cs, "Failed compiling 'arp' section");
-		return -1;
-	}
-
 	return 0;
 }
 
-extern rad_protocol_t proto_arp;
-rad_protocol_t proto_arp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "arp",
-	.inst_size	= sizeof(arp_socket_t),
-	.transports	= 0,
-	.tls		= false,
+static void mod_unload(void)
+{
+	fr_arp_free();
+}
 
-	.bootstrap	= arp_socket_bootstrap,
-	.compile	= arp_socket_compile,
-	.parse		= arp_socket_parse,
-	.open		= common_socket_open,
-	.recv		= arp_socket_recv,
-	.send		= arp_socket_send,
-	.print		= arp_socket_print,
-	.debug		= common_packet_debug,
-	.encode		= arp_socket_encode,
-	.decode		= arp_socket_decode
+fr_app_t proto_arp = {
+	.magic			= RLM_MODULE_INIT,
+	.name			= "arp",
+	.config			= proto_arp_config,
+	.inst_size		= sizeof(proto_arp_t),
+	.dict			= &dict_arp,
+
+	.onload			= mod_load,
+	.unload			= mod_unload,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
+	.entry_point_set	= mod_entry_point_set,
+	.priority		= mod_priority_set
 };
