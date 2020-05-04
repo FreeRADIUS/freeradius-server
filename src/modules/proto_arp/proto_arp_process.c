@@ -199,7 +199,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		if (request->parent && RDEBUG_ENABLED) {
-			RDEBUG("Sending %d", request->reply->code, request->reply->id);
+			RDEBUG("Sending %d", request->reply->code);
 			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 		}
 		break;
