@@ -49,21 +49,6 @@ fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
 };
 
 
-/*
- *	ARP for ethernet && IPv4.
- */
-typedef struct {
-	uint8_t		htype[2];	       	//!< Format of hardware address.
-	uint8_t		ptype[2];	       	//!< Format of protocol address.
-	uint8_t		hlen;			//!< Length of hardware address.
-	uint8_t		plen;			//!< Length of protocol address.
-	uint8_t		op;			//!< 1 - Request, 2 - Reply.
-	uint8_t		sha[ETHER_ADDR_LEN];	//!< sender hardware address.
-	uint8_t		spa[4];			//!< Sender protocol address.
-	uint8_t		tha[ETHER_ADDR_LEN];	//!< Target hardware address.
-	uint8_t		tpa[4];			//!< Target protocol address.
-} fr_arp_packet_t;
-
 /** Encode VPS into a raw ARP packet.
  *
  */

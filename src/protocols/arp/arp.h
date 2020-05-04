@@ -38,3 +38,21 @@ void fr_arp_free(void);
 
 ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, VALUE_PAIR *vps);
 ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps);
+
+/*
+ *	ARP for ethernet && IPv4.
+ */
+typedef struct {
+	uint8_t		htype[2];	       	//!< Format of hardware address.
+	uint8_t		ptype[2];	       	//!< Format of protocol address.
+	uint8_t		hlen;			//!< Length of hardware address.
+	uint8_t		plen;			//!< Length of protocol address.
+	uint8_t		op;			//!< 1 - Request, 2 - Reply.
+	uint8_t		sha[ETHER_ADDR_LEN];	//!< sender hardware address.
+	uint8_t		spa[4];			//!< Sender protocol address.
+	uint8_t		tha[ETHER_ADDR_LEN];	//!< Target hardware address.
+	uint8_t		tpa[4];			//!< Target protocol address.
+} fr_arp_packet_t;
+
+#define FR_ARP_MAX_PACKET_CODE (256)
+#define FR_CODE_DO_NOT_RESPOND (256)
