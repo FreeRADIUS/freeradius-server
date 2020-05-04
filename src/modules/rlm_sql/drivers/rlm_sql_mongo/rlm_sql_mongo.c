@@ -411,12 +411,17 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		}
 
 		if (bson_iter_init_find(&iter, bson, "update")) {
-			if (!BSON_ITER_HOLDS_DOCUMENT(&iter)) {
-				DEBUG("rlm_sql_mongo: 'update' does not hold a document.");
+			if (!(BSON_ITER_HOLDS_DOCUMENT(&iter) || BSON_ITER_HOLDS_ARRAY(&iter))) {
+				DEBUG("rlm_sql_mongo: 'update' does not hold a document or array.");
 				goto error;
 			}
 
-			bson_iter_document(&iter, &document_len, &document);
+			if (BSON_ITER_HOLDS_DOCUMENT(&iter)) {
+				bson_iter_document(&iter, &document_len, &document);
+			} else {
+				bson_iter_array(&iter, &document_len, &document);
+			}
+
 			bson_update = bson_new_from_data(document, document_len);
 
 			if (!bson_update) {
