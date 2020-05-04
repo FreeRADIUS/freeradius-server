@@ -423,7 +423,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 						      reply->m.data, reply->m.rb_size);
 		}
 		if (slen < 0) {
-			ERROR("Failed encoding request");
+			RPERROR("Failed encoding request");
 			*reply->m.data = 0;
 			slen = 1;
 		}
