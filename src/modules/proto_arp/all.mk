@@ -1,12 +1,5 @@
-TARGETNAME	:= proto_arp
+SUBMAKEFILES := \
+	proto_arp.mk \
+	proto_arp_process.mk
 
-#
-#  ARP depends on pcap.
-#
-ifneq "$(PCAP_LIBS)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_arp.c
-TGT_PREREQS	:= libfreeradius-util.a
-TGT_LDLIBS	:= $(PCAP_LIBS)
+#	proto_arp_ethernet.mk \
