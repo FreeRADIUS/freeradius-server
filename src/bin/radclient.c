@@ -1351,7 +1351,7 @@ int main(int argc, char **argv)
 
 		case 'x':
 			fr_debug_lvl++;
-			if (fr_debug_lvl > 2) default_log.print_level = true;
+			if (fr_debug_lvl > 1) default_log.print_level = true;
 			break;
 
 		case 'h':
