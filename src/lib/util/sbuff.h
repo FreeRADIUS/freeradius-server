@@ -81,7 +81,7 @@ typedef enum {
  */
 #define FR_SBUFF_RETURN(_func, _sbuff, ...) \
 do { \
-	size_t _slen; \
+	ssize_t _slen; \
 	_slen = _func(_sbuff, ## __VA_ARGS__ ); \
 	if (_slen < 0) return _slen; \
 } while (0)

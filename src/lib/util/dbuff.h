@@ -239,7 +239,7 @@ static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
  */
 #define FR_DBUFF_RETURN(_func, _dbuff, ...) \
 do { \
-	size_t _slen; \
+	ssize_t _slen; \
 	_slen = _func(_dbuff, ## __VA_ARGS__ ); \
 	if (_slen < 0) return _slen; \
 } while (0)
