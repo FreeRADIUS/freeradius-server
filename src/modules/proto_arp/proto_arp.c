@@ -268,7 +268,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_arp_t		*inst = talloc_get_type_abort(instance, proto_arp_t);
 	fr_app_worker_t const	*app_process;
