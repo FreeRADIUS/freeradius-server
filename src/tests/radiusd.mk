@@ -73,5 +73,6 @@ ${2}/radiusd.pid: ${2}
 		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
 	fi
 
+.PHONY: $(TEST).radiusd_start
 $(TEST).radiusd_start: ${2}/radiusd.pid
 endef
