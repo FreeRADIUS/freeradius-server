@@ -49,6 +49,37 @@ fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
 };
 
 
+/*
+ *	grep VALUE share/dictionary/arp/dictionary.rfc826  | grep Op | awk '{print "[" $4 "] = \"" $3 "\","}'
+ */
+char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE] = {
+	[1] = "Request",
+	[2] = "Reply",
+	[3] = "Reverse-Request",
+	[4] = "Reverse-Reply",
+	[5] = "DRARP-Request",
+	[6] = "DRARP-Reply",
+	[7] = "DRARP-Error",
+	[8] = "InARP-Request",
+	[9] = "InARP-Reply",
+	[10] = "ARP-NAK",
+	[11] = "MARS-Request",
+	[12] = "MARS-Multi",
+	[13] = "MARS-MServ",
+	[14] = "MARS-Join",
+	[15] = "MARS-Leave",
+	[16] = "MARS-NAK",
+	[17] = "MARS-Unserv",
+	[18] = "MARS-SJoin",
+	[19] = "MARS-SLeave",
+	[20] = "MARS-Grouplist-Request",
+	[21] = "MARS-Grouplist-Reply",
+	[22] = "MARS-Redirect-MAP",
+	[23] = "MAPOS-UNARP",
+	[24] = "OP_EXP1",
+	[25] = "OP_EXP2",
+};
+
 /** Encode VPS into a raw ARP packet.
  *
  */

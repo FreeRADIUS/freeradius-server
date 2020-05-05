@@ -82,6 +82,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 
 	arp = (fr_arp_packet_t const *) data;
 	request->packet->code = (arp->op[0] << 8) | arp->op[1];
+	fr_assert(request->packet->code < FR_ARP_MAX_PACKET_CODE);
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
@@ -90,8 +91,8 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	REQUEST_VERIFY(request);
 
 	if (RDEBUG_ENABLED) {
-		RDEBUG("Received %d via socket %s",
-		       request->packet->code,
+		RDEBUG("Received ARP %s via socket %s",
+		       fr_arp_packet_codes[request->packet->code],
 		       request->async->listen->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
@@ -117,7 +118,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	"Do not respond"
 	 */
 	if (!inst->active ||
-	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == FR_ARP_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_MAX_PACKET_CODE)) {
 		*buffer = false;
 		return 1;

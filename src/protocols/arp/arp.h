@@ -55,5 +55,7 @@ typedef struct {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } fr_arp_packet_t;
 
-#define FR_ARP_MAX_PACKET_CODE (256)
-#define FR_CODE_DO_NOT_RESPOND (256)
+#define FR_ARP_MAX_PACKET_CODE (26)
+#define FR_ARP_CODE_DO_NOT_RESPOND (26)
+
+extern char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE];

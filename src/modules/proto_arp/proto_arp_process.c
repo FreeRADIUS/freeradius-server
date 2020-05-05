@@ -46,14 +46,14 @@ fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[UINT8_MAX + 1] = {
+static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
 	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
 	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
 };
 
-static int reply_fail[UINT8_MAX + 1] = {
-	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_CODE_DO_NOT_RESPOND,
-	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_CODE_DO_NOT_RESPOND,
+static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
+	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
+	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
 };
 
 static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
@@ -66,11 +66,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
+	fr_assert(request->packet->code < FR_ARP_MAX_PACKET_CODE);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
-			RDEBUG("Received ARP %d", request->packet->code);
+			RDEBUG("Received ARP %s", fr_arp_packet_codes[request->packet->code]);
 			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 		}
 
@@ -85,7 +86,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv %s' section", dv->name);
-			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
 
@@ -125,7 +126,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			break;
 
 		case RLM_MODULE_HANDLED:
-			if (!request->reply->code) request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			if (!request->reply->code) request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
 			break;
 		}
 
@@ -171,13 +172,13 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			 *	If we over-ride an ACK with a NAK, run
 			 *	the NAK section.
 			 */
-			if (request->reply->code != FR_CODE_DO_NOT_RESPOND) {
+			if (request->reply->code != FR_ARP_CODE_DO_NOT_RESPOND) {
 				dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint8(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->name);
 
-				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
+				dv = fr_dict_enum_by_value(da, fr_box_uint16(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
@@ -190,16 +191,20 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 	send_reply:
+		if (request->reply->code >= FR_ARP_MAX_PACKET_CODE) {
+			request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
+		}
+
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+		if (request->reply->code == FR_ARP_CODE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client");
 			return RLM_MODULE_HANDLED;
 		}
 
 		if (request->parent && RDEBUG_ENABLED) {
-			RDEBUG("Sending %d", request->reply->code);
+			RDEBUG("Sending %s", fr_arp_packet_codes[request->reply->code]);
 			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 		}
 		break;

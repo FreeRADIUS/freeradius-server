@@ -95,7 +95,12 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return 0;
 	}
 
-	fr_assert(buffer_len >= FR_ARP_PACKET_SIZE);
+	/*
+	 *	Shouldn't happen.
+	 */
+	if (buffer_len < FR_ARP_PACKET_SIZE) {
+		return 0;
+	}
 
 	memcpy(buffer, p, FR_ARP_PACKET_SIZE);
 
