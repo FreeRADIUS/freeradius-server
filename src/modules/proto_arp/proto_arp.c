@@ -37,6 +37,8 @@ extern fr_app_t proto_arp;
 static CONF_PARSER const proto_arp_config[] = {
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_arp_t, num_messages) } ,
 
+	{ FR_CONF_OFFSET("active", FR_TYPE_BOOL, proto_arp_t, active), .dflt = "false" } ,
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -98,10 +100,10 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			slen;
-//	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
+	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
@@ -114,7 +116,8 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 	/*
 	 *	"Do not respond"
 	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	if (!inst->active ||
+	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_MAX_PACKET_CODE)) {
 		*buffer = false;
 		return 1;
@@ -125,7 +128,6 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 		RPEDEBUG("Failed encoding reply");
 		return -1;
 	}
-
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %d via socket %s",

@@ -25,7 +25,7 @@
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
@@ -112,7 +112,41 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 {
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 
-	DEBUG("Fake write ARP");
+	int			ret;
+	uint8_t			arp_packet[64] = { 0 };
+	ethernet_header_t	*eth_hdr;
+	fr_arp_packet_t		*arp;
+	/* Pointer to the current position in the frame */
+	uint8_t			*end = arp_packet;
+
+	/*
+	 *	Don't write anything.
+	 */
+	if (buffer_len == 1) return buffer_len;
+
+	/* fill in Ethernet layer (L2) */
+	eth_hdr = (ethernet_header_t *)arp_packet;
+	memcpy(eth_hdr->ether_src, thread->pcap->ether_addr, ETHER_ADDR_LEN);
+	eth_hdr->ether_type = htons(ETH_TYPE_ARP);
+	end += ETHER_ADDR_LEN + ETHER_ADDR_LEN + sizeof(eth_hdr->ether_type);
+
+	/*
+	 *	Just copy what FreeRADIUS has encoded for us.
+	 */
+	arp = (fr_arp_packet_t *) end;
+	memcpy(arp, buffer, buffer_len);
+	memcpy(eth_hdr->ether_dst, arp->tha, ETHER_ADDR_LEN);
+
+	/*
+	 *	If we fail injecting the reply, just ignore it.
+	 *	Returning <0 means "close the socket", which is likely
+	 *	not what we want.
+	 */
+	ret = pcap_inject(thread->pcap->handle, arp_packet, (end - arp_packet + buffer_len));
+	if (ret < 0) {
+		fr_strerror_printf("Error sending packet with pcap: %d, %s", ret, pcap_geterr(thread->pcap->handle));
+		return 0;
+	}
 
 	/*
 	 *	@todo - mirror src/protocols/dhcpv4/pcap.c for ARP send / receive.
