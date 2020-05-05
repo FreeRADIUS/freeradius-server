@@ -893,11 +893,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 
 	DEBUG4("Freeing rlm_radius_udp handle %p", handle);
 
-#ifndef NDEBUG
-	talloc_free(h->status_r);
-	talloc_free(h->status_request);
-	talloc_free(h->status_u);
-#endif
 	talloc_free(h);
 }
 
