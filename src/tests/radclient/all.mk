@@ -31,7 +31,7 @@ $(eval $(call RADIUSD_SERVICE,tapioca,$(OUTPUT)))
 #
 #	Run the radclient commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% test.radclient.radiusd_kill test.radclient.radiusd_start
+$(OUTPUT)/%: $(DIR)/% | test.radclient.radiusd_kill test.radclient.radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval TYPE     := $(shell echo $(TARGET) | cut -f1 -d '_'))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
@@ -51,7 +51,7 @@ $(OUTPUT)/%: $(DIR)/% test.radclient.radiusd_kill test.radclient.radiusd_start
 #
 #	Lets normalize the loopback interface on OSX
 #
-	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i -- 's/via lo0/via lo/g' $(FOUND); fi
+	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i .bak 's/via lo0/via lo/g' $(FOUND); fi
 #
 #	Checking.
 #
@@ -67,7 +67,7 @@ $(OUTPUT)/%: $(DIR)/% test.radclient.radiusd_kill test.radclient.radiusd_start
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
 		diff $(EXPECTED) $(FOUND);                                  \
-		$(MAKE) test.radclient.radiusd_kill;                        \
+		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
@@ -75,10 +75,10 @@ $(OUTPUT)/%: $(DIR)/% test.radclient.radiusd_kill test.radclient.radiusd_start
 		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
-		$(MAKE) test.radclient.radiusd_kill;                        \
+		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
 	fi
-	$(Q)touch $(FOUND)
+	$(Q)touch $@
 
 $(TEST):
-	$(Q)$(MAKE) test.radclient.radiusd_kill
+	$(Q)$(MAKE) --no-print-directory test.radclient.radiusd_kill
