@@ -80,10 +80,12 @@ char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE] = {
 	[25] = "OP_EXP2",
 };
 
+static uint8_t const zeros[6] = { 0 };
+
 /** Encode VPS into a raw ARP packet.
  *
  */
-ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, VALUE_PAIR *vps)
+ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request, VALUE_PAIR *vps)
 {
 	ssize_t			slen;
 	VALUE_PAIR		*vp;
@@ -133,6 +135,26 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, VALUE_PAIR *vps)
 	if ((arp->ptype[0] == 0) && (arp->ptype[1] == 0)) arp->ptype[0] = (FR_PROTOCOL_FORMAT_VALUE_IPV4 >> 8); /* 0x0800 */
 	if (arp->hlen == 0) arp->hlen = 6;
 	if (arp->plen == 0) arp->plen = 4;
+
+	/*
+	 *	The reply generally swaps Sender / Target addresses,
+	 *	BUT fills out the Sender-Hardware-Address with the
+	 *	queried MAC address.  Ensure that the admin doesn't
+	 *	have to fill out all of the fields.
+	 */
+	if (request) {
+		fr_arp_packet_t const *original = (fr_arp_packet_t const *) request;
+
+#define COPY(_a, _b) do { \
+	if (memcmp(arp->_a, zeros, sizeof(arp->_a)) == 0) { \
+		memcpy(arp->_a, original->_b, sizeof(arp->_a)); \
+	} \
+  } while (0)
+
+		COPY(spa, tpa);		/* answer is about the asked-for target */
+		COPY(tha, sha);		/* answer is sent to the requestor hardware address */
+		COPY(tpa, spa);		/* answer is sent to the requestor protocol address */
+	}
 
 	return FR_ARP_PACKET_SIZE;
 }
@@ -251,7 +273,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
  */
 static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_encode(data, data_len, vps);
+	return fr_arp_encode(data, data_len, NULL, vps);
 }
 
 extern fr_test_point_proto_encode_t arp_tp_encode_proto;

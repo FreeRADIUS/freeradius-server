@@ -37,7 +37,7 @@
 int fr_arp_init(void);
 void fr_arp_free(void);
 
-ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, VALUE_PAIR *vps);
+ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, VALUE_PAIR *vps);
 ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps);
 
 /*
