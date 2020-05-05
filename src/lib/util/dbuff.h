@@ -30,6 +30,7 @@ extern "C" {
 #  endif
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/net.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -336,6 +337,78 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 #define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff, _c, _inlen)
+
+/** Copy an unsigned 16-bit integer into a buffer in wire format (big endian)
+ *
+ * @param[in] dbuff	to copy data to
+ * @param[in] num	value to copy
+ * @return
+ * 	0	no data set
+ * 	>0	(2, actually) the number of bytes set in the dbuff
+ * 	<0	the number of bytes required
+ */
+static inline ssize_t fr_dbuff_net_from_uint16(fr_dbuff_t *dbuff, uint16_t num)
+{
+	size_t	freespace = fr_dbuff_remaining(dbuff);
+
+	fr_assert(!dbuff->is_const);
+
+	if (sizeof(uint16_t) > freespace) return -(sizeof(uint16_t) - freespace);
+
+	fr_net_from_uint16(dbuff->p, num);
+	dbuff->p += sizeof(uint16_t);
+
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint16_t)) : ((ssize_t) sizeof(uint16_t));
+}
+#define FR_DBUFF_NET_FROM_UINT16_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint16, _dbuff, _num)
+
+/** Copy an unsigned 32-bit integer into a buffer in wire format (big endian)
+ *
+ * @param[in] dbuff	to copy data to
+ * @param[in] num	value to copy
+ * @return
+ * 	0	no data set
+ * 	>0	(4, actually) the number of bytes set in the dbuff
+ * 	<0	the number of bytes required
+ */
+static inline ssize_t fr_dbuff_net_from_uint32(fr_dbuff_t *dbuff, uint32_t num)
+{
+	size_t freespace = fr_dbuff_remaining(dbuff);
+
+	fr_assert(!dbuff->is_const);
+
+	if (sizeof(uint32_t) > freespace) return -(sizeof(uint32_t) - freespace);
+
+	fr_net_from_uint32(dbuff->p, num);
+	dbuff->p += sizeof(uint32_t);
+
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint32_t)) : ((ssize_t) sizeof(uint32_t));
+}
+#define FR_DBUFF_NET_FROM_UINT32_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint32, _dbuff, _num)
+
+/** Copy an unsigned 64-bit integer into a buffer in wire format (big endian)
+ *
+ * @param[in] dbuff	to copy data to
+ * @param[in] num	value to copy
+ * @return
+ * 	0	no data set
+ * 	>0	(8, actually) the number of bytes set in the dbuff
+ * 	<0	the number of bytes required
+ */
+static inline ssize_t fr_dbuff_net_from_uint64(fr_dbuff_t *dbuff, uint64_t num)
+{
+	size_t freespace = fr_dbuff_remaining(dbuff);
+
+	fr_assert(!dbuff->is_const);
+
+	if (sizeof(uint64_t) > freespace) return -(sizeof(uint64_t) - freespace);
+
+	fr_net_from_uint64(dbuff->p, num);
+	dbuff->p += sizeof(uint64_t);
+
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint64_t)) : ((ssize_t) sizeof(uint64_t));
+}
+#define FR_DBUFF_NET_FROM_UINT64_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint64, _dbuff, _num)
 
 /** @} */
 
