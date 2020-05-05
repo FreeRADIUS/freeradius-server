@@ -42,27 +42,36 @@ ATTRIBUTE	Relax-Filter				501	bool
 
 #
 #	Range:	1 - 10
-#		Section codes
+#		Attribute lists
 #
-ATTRIBUTE	Protocol				1	integer
-ATTRIBUTE	Auth-Type				2	integer
-#ATTRIBUTE	Autz-Type				3	integer
-#ATTRIBUTE	Acct-Type				4	integer
-#ATTRIBUTE	Session-Type				5	integer
-#ATTRIBUTE	Post-Auth-Type				6	integer
-#ATTRIBUTE	Pre-Proxy-Type				7	integer
-#ATTRIBUTE	Post-Proxy-Type				8	integer
-#ATTRIBUTE	Pre-Acct-Type				9	integer
+ATTRIBUTE	Request					1	group
+ATTRIBUTE	Reply					2	group
+ATTRIBUTE	Session-State				3	group
+ATTRIBUTE	Control					4	group
 
 #
-#	Range:	10 - 49
+#	Range:	11 - 19
+#		Section codes
+#
+ATTRIBUTE	Protocol				11	integer
+ATTRIBUTE	Auth-Type				12	integer
+#ATTRIBUTE	Autz-Type				13	integer
+#ATTRIBUTE	Acct-Type				14	integer
+#ATTRIBUTE	Session-Type				15	integer
+#ATTRIBUTE	Post-Auth-Type				16	integer
+#ATTRIBUTE	Pre-Proxy-Type				17	integer
+#ATTRIBUTE	Post-Proxy-Type				18	integer
+#ATTRIBUTE	Pre-Acct-Type				19	integer
+
+#
+#	Range:	20 - 49
 #		Unlang attributes
 #
-ATTRIBUTE	Load-Balance-Key			10	string
-ATTRIBUTE	Proxy-To-Realm				11	string
-ATTRIBUTE	Replicate-To-Realm			12	string
-ATTRIBUTE	Virtual-Server				13	string virtual
-ATTRIBUTE	Module-Return-Code			14	integer virtual
+ATTRIBUTE	Load-Balance-Key			20	string
+ATTRIBUTE	Proxy-To-Realm				21	string
+ATTRIBUTE	Replicate-To-Realm			22	string
+ATTRIBUTE	Virtual-Server				23	string virtual
+ATTRIBUTE	Module-Return-Code			24	integer virtual
 
 VALUE	Module-Return-Code		reject			0
 VALUE	Module-Return-Code		fail			1
@@ -74,7 +83,7 @@ VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
-ATTRIBUTE	Request-Processing-Stage		15	string virtual
+ATTRIBUTE	Request-Processing-Stage		25	string virtual
 
 #
 #	Range:	50 - 99
