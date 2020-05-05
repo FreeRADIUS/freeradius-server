@@ -95,7 +95,6 @@ static rbtree_t *listen_addr_root = NULL;
 static rbtree_t *server_section_name_tree = NULL;
 
 static int server_section_name_cmp(void const *one, void const *two);
-static int virtual_server_section_register(virtual_server_compile_t const *entry);
 
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -1370,7 +1369,7 @@ static int server_section_name_cmp(void const *one, void const *two)
  *  This function is called from the virtual server bootstrap routine,
  *  which happens before module_bootstrap();
  */
-static int virtual_server_section_register(virtual_server_compile_t const *entry)
+int virtual_server_section_register(virtual_server_compile_t const *entry)
 {
 	virtual_server_compile_t *old;
 
