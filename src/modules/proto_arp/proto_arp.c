@@ -23,53 +23,18 @@
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/arp/arp.h>
-#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
+#include "proto_arp.h"
 
 extern fr_app_t proto_arp;
-
-typedef struct {
-	CONF_SECTION			*server_cs;			//!< server CS for this listener
-	CONF_SECTION			*cs;				//!< my configuration
-
-	dl_module_inst_t	       	*io_submodule;			//!< As provided by the transport_parse
-									///< callback.  Broken out into the
-									///< app_io_* fields below for convenience.
-
-	CONF_SECTION			*app_io_conf;			//!< for the APP IO
-	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
-	void				*app_io_instance;		//!< Easy access to the app_io instance.
-
-	dl_module_inst_t		*app_process;			//!< app_process pointer
-	void				*process_instance;		//!< app_process instance
-
-	fr_dict_t			*dict;				//!< root dictionary
-
-	char const     			*interface;			//!< interface name
-	uint32_t			num_messages;			//!< for message ring buffer
-	uint32_t			priority;			//!< for packet processing, larger == higher
-
-	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
-
-	fr_listen_t			*listen;			//!< The listener structure which describes
-									//!< the I/O path.
-} proto_arp_t;
-
 
 /** How to parse an ARP listen section
  *
  */
 static CONF_PARSER const proto_arp_config[] = {
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, proto_arp_t,
-			  interface), .dflt = "eth0" },
-
-	/*
-	 *	@todo - allow for pcap filter
-	 */
-
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_arp_t, num_messages) } ,
 
 	CONF_PARSER_TERMINATOR
@@ -114,7 +79,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	}
 
 	arp = (fr_arp_packet_t const *) data;
-	request->packet->code = arp->op;
+	request->packet->code = (arp->op[0] << 8) | arp->op[1];
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
@@ -231,8 +196,10 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 
 	li->app_io = inst->app_io;
 	li->app_io_instance = inst->app_io_instance;
-	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->thread_inst_size);
-	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+	if (li->app_io->thread_inst_size) {
+		li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->thread_inst_size);
+		talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+	}
 
 	/*
 	 *	Open the raw socket.
@@ -241,8 +208,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 		talloc_free(li);
 		return -1;
 	}
+	fr_assert(li->fd >= 0);
 
-	li->name = talloc_asprintf(li, "arp on interface %s", inst->interface);
+	li->name = inst->app_io->get_name(li);
 
 	/*
 	 *	Watch the directory for changes.
@@ -299,7 +267,21 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	return -1;
+	/*
+	 *	Compile the processing sections.
+	 */
+	if (app_process->compile_list) {
+		vp_tmpl_rules_t		parse_rules;
+
+		memset(&parse_rules, 0, sizeof(parse_rules));
+		parse_rules.dict_def = dict_arp;
+
+		if (virtual_server_compile_sections(inst->server_cs, app_process->compile_list, &parse_rules, inst->app_process->data) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 
@@ -323,6 +305,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
+	inst->cs = conf;
 
 	parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_arp"));
 	fr_assert(parent_inst);
@@ -363,6 +346,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							      inst->app_process->conf) < 0)) {
 		cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 		return -1;
+	}
+
+	/*
+	 *	Register the processing sections with the
+	 *	module manager.
+	 *
+	 *	We have to do this ourselves because we don't call
+	 *	fr_app_process_bootstrap().  That function requires a
+	 *	"type = ..." configuration, which isn't used for ARP.
+	 */
+	if (app_process->compile_list) {
+		int j;
+		virtual_server_compile_t const *list = app_process->compile_list;
+
+		for (j = 0; list[j].name != NULL; j++) {
+			if (list[j].name == CF_IDENT_ANY) continue;
+
+			if (virtual_server_section_register(&list[j]) < 0) {
+				cf_log_err(conf, "Failed registering section name for %s",
+					   app_process->name);
+				return -1;
+			}
+		}
 	}
 
 	return 0;

@@ -42,7 +42,7 @@ static fr_dict_attr_t const *attr_arp_operation;
 
 extern fr_dict_attr_autoload_t proto_arp_process_dict_attr[];
 fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
-	{ .out = &attr_arp_operation, .name = "ARP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_arp},
+	{ .out = &attr_arp_operation, .name = "ARP-Operation", .type = FR_TYPE_UINT16, .dict = &dict_arp},
 	{ NULL }
 };
 
@@ -76,7 +76,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 		request->component = "arp";
 
-		dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint8(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint16(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:ARP-Operation");
 			return RLM_MODULE_FAIL;
