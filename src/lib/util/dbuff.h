@@ -123,6 +123,7 @@ static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t
 	out->p_i = out->start_i = start;
 	out->end_i = end;
 	out->is_const = is_const;
+	out->parent = NULL;
 }
 
 /** Initialise an dbuff for encoding or decoding

@@ -32,11 +32,22 @@ static void test_dbuff_init(void)
 	TEST_CHECK(dbuff.end == in + sizeof(in));
 }
 
+static void test_dbuff_init_no_parent(void)
+{	uint8_t const	in[] = { 0x01, 0x02, 0x03, 0x04 };
+	fr_dbuff_t	dbuff;
+
+	TEST_CASE("Confirm init returns parentless dbuff");
+	fr_dbuff_init(&dbuff, in, sizeof(in));
+
+	TEST_CHECK(dbuff.parent == NULL);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
 	 */
 	{ "fr_dbuff_init",				test_dbuff_init },
+	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 
 	{ NULL }
 };
