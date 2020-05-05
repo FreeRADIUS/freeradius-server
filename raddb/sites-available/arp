@@ -33,29 +33,43 @@
 #
 server arp {
 	#
-	#  ### listen { ... }
+	#  namespace::
 	#
-	#  Please see `listen` for more.
+	#  In v4, all "server" sections MUST start with a "namespace"
+	#  parameter.  This tells the server which protocol is being used.
+	#
+	#  All of the "listen" sections in this virtual server will
+	#  only accept packets for that protocol.
+	#
+	namespace = arp
+
+	#
+	#  ### The listen section
+	#
+	#  The `listen` sections in v4 are very different from the
+	#  `listen sections in v3.  The changes were necessary in
+	#  order to make FreeRADIUS more flexible, and to make the
+	#  configuration simpler and more consistent.
 	#
 	listen {
-		#
-		#  type:: ARP is type arp.
-		#
-		type = arp
-
 		#
 		#  interface:: The only configuration possible for ARP
 		#  is the name of the interface.
 		#
-		interface = en1
+		interface = en0
 	}
 
-	#
-	#  ### arp { ... }
-	#
-	#  If you need to know the interface, use `%{listen:interface}`
-	#
-	arp {
-		ok
-	}
+#
+#  ### Process an ARP request
+#
+recv Request {
+	ok
+}
+
+#
+#  ### Process an ARP reply before sending it
+#
+send Reply {
+	ok
+}
 }
