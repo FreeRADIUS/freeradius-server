@@ -646,7 +646,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	}
 
 	fr_assert(cd->m.data != NULL);
-	fr_assert(cd->m.rb_size >= 256);
 
 next_message:
 	/*
