@@ -177,7 +177,7 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 	 *	zero length string to the specified type and
 	 *	see what happens...
 	 */
-	if (fr_value_box_cast(n->mod->rhs, &tmpl_value(n->mod->rhs),
+	if (fr_value_box_cast(n->mod->rhs, tmpl_value(n->mod->rhs),
 			      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
 			      tmpl_da(mutated->lhs), &empty_string) < 0) {
 		talloc_free(n);
@@ -410,7 +410,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	getting the buffer value from may be freed
 			 *	before this map is applied.
 			 */
-			if (fr_value_box_copy(n_mod->rhs, &tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
+			if (fr_value_box_copy(n_mod->rhs, tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
 			fr_cursor_append(&to, n_mod);
 		} while ((vp = fr_cursor_next(&from)));
 
@@ -432,7 +432,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		fr_cursor_init(&values, &head);
 
-		if (fr_value_box_from_str(n->mod, &tmpl_value(n->mod->rhs), &type,
+		if (fr_value_box_from_str(n->mod, tmpl_value(n->mod->rhs), &type,
 					  tmpl_da(mutated->lhs),
 					  mutated->rhs->name, mutated->rhs->len, mutated->rhs->quote, false)) {
 			RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
@@ -596,7 +596,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		vb_head = &tmpl_value(mutated->rhs);
+		vb_head = tmpl_value(mutated->rhs);
 
 		for (vb = fr_cursor_init(&from, &vb_head);
 		     vb;
@@ -745,8 +745,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	fr_value_box_copy(n->mod->rhs, &tmpl_value(n->mod->rhs), head);
-	tmpl_value(n->mod->rhs).next = head->next;
+	fr_value_box_copy(n->mod->rhs, tmpl_value(n->mod->rhs), head);
+	tmpl_value(n->mod->rhs)->next = head->next;
 	talloc_free(head);
 
 finish:
@@ -797,8 +797,8 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 	/*
 	 *	Fast path...
 	 */
-	if (!vlm->mod->next && !tmpl_value(vlm->mod->rhs).next) {
-		return map_list_mod_to_vp(ctx, vlm->mod->lhs, &tmpl_value(vlm->mod->rhs));
+	if (!vlm->mod->next && !tmpl_value(vlm->mod->rhs)->next) {
+		return map_list_mod_to_vp(ctx, vlm->mod->lhs, tmpl_value(vlm->mod->rhs));
 	}
 
 	/*
@@ -811,7 +811,7 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 		fr_value_box_t	*vb;
 		VALUE_PAIR	*vp;
 
-		for (vb = &tmpl_value(mod->rhs);
+		for (vb = tmpl_value(mod->rhs);
 	     	     vb;
 	     	     vb = vb->next) {
 			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
@@ -947,7 +947,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	map_list_mod_debug()
 		 */
 		if (RDEBUG_ENABLED2) {
-			for (vb = &tmpl_value(mod->rhs);
+			for (vb = tmpl_value(mod->rhs);
 			     vb;
 			     vb = vb->next) {
 				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
@@ -1100,7 +1100,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	any of these values.
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
-			fr_value_box_t	*vb = &tmpl_value(vlm->mod->rhs);
+			fr_value_box_t	*vb = tmpl_value(vlm->mod->rhs);
 
 			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
@@ -1118,7 +1118,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	matches any of these values.
 		 */
 		do {
-		     	fr_value_box_t	*vb = &tmpl_value(vlm->mod->rhs);
+		     	fr_value_box_t	*vb = tmpl_value(vlm->mod->rhs);
 
 		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
@@ -1205,7 +1205,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	Instance specific[n] filter
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
-			fr_value_box_t	*vb = &tmpl_value(mod->rhs);
+			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
 			do {
@@ -1220,7 +1220,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	All instances[*] filter
 		 */
 		do {
-			fr_value_box_t	*vb = &tmpl_value(mod->rhs);
+			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
 			do {

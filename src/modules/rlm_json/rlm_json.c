@@ -368,7 +368,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 				cf_log_err(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = tmpl_value(map->rhs).vb_strvalue;
+			p = tmpl_value(map->rhs)->vb_strvalue;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, tmpl_value_length(map->rhs));
 			if (slen <= 0) goto error;
 			break;

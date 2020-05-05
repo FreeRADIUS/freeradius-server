@@ -223,7 +223,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	if (tmpl_da(head->lhs) == attr_cache_created) {
 		vp_map_t *map;
 
-		c->created = tmpl_value(head->rhs).vb_date;
+		c->created = tmpl_value(head->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -236,7 +236,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	if (tmpl_da(head->lhs) == attr_cache_expires) {
 		vp_map_t *map;
 
-		c->expires = tmpl_value(head->rhs).vb_date;
+		c->expires = tmpl_value(head->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -302,7 +302,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 */
 	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	tmpl_value_type(&created_value) = FR_TYPE_DATE;
-	tmpl_value(&created_value).vb_date = c->created;
+	tmpl_value(&created_value)->vb_date = c->created;
 
 	/*
 	 *	Encode the entry expiry time
@@ -312,7 +312,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 */
 	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	tmpl_value_type(&expires_value) = FR_TYPE_DATE;
-	tmpl_value(&expires_value).vb_date = c->expires;
+	tmpl_value(&expires_value)->vb_date = c->expires;
 	expires.next = c->maps;	/* Head of the list */
 
 	for (cnt = 0, map = &created; map; cnt++, map = map->next);

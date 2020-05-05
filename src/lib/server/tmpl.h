@@ -252,7 +252,7 @@ struct vp_tmpl_s {
  *
  * @{
  */
-#define tmpl_value(_tmpl)		(_tmpl)->data.literal
+#define tmpl_value(_tmpl)		(&(_tmpl)->data.literal)
 #define tmpl_value_length(_tmpl)	(_tmpl)->data.literal.datum.length
 #define tmpl_value_type(_tmpl)		(_tmpl)->data.literal.type
 

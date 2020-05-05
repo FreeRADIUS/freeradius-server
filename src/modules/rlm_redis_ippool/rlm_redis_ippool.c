@@ -696,21 +696,21 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				tmp.vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
 				tmp.type = FR_TYPE_UINT32;
 
-				if (fr_value_box_cast(NULL, &tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
+				if (fr_value_box_cast(NULL, tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
 						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
 					ret = IPPOOL_RCODE_FAIL;
 					goto finish;
 				}
 			} else {
-				tmpl_value(ip_map.rhs).vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
+				tmpl_value(ip_map.rhs)->vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
 				tmpl_value_type(ip_map.rhs) = FR_TYPE_UINT32;
 			}
 		}
 			goto do_ip_map;
 
 		case REDIS_REPLY_STRING:
-			tmpl_value(ip_map.rhs).vb_strvalue = reply->element[1]->str;
+			tmpl_value(ip_map.rhs)->vb_strvalue = reply->element[1]->str;
 			tmpl_value_length(ip_map.rhs) = reply->element[1]->len;
 			tmpl_value_type(ip_map.rhs) = FR_TYPE_STRING;
 
@@ -749,7 +749,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
 			tmpl_value_type_set(&range_rhs, FR_TYPE_STRING);
 
-			tmpl_value(range_map.rhs).vb_strvalue = reply->element[2]->str;
+			tmpl_value(range_map.rhs)->vb_strvalue = reply->element[2]->str;
 			tmpl_value_length(range_map.rhs) = reply->element[2]->len;
 			tmpl_value_type(range_map.rhs) = FR_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
@@ -791,7 +791,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 
-		tmpl_value(expiry_map.rhs).vb_uint32 = reply->element[3]->integer;
+		tmpl_value(expiry_map.rhs)->vb_uint32 = reply->element[3]->integer;
 		tmpl_value_type(expiry_map.rhs) = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -900,7 +900,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		 *	Add range ID to request
 		 */
 		case REDIS_REPLY_STRING:
-			tmpl_value(range_map.rhs).vb_strvalue = reply->element[1]->str;
+			tmpl_value(range_map.rhs)->vb_strvalue = reply->element[1]->str;
 			tmpl_value_length(range_map.rhs) = reply->element[1]->len;
 			tmpl_value_type(range_map.rhs) = FR_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
@@ -935,7 +935,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		tmpl_init(&expiry_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
 		tmpl_value_type_set(&expiry_rhs, FR_TYPE_STRING);
 
-		tmpl_value(expiry_map.rhs).vb_uint32 = expires;
+		tmpl_value(expiry_map.rhs)->vb_uint32 = expires;
 		tmpl_value_type(expiry_map.rhs) = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -1193,7 +1193,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 				};
 
 				tmpl_value_length(&ip_rhs) = strlen(ip_str);
-				tmpl_value(&ip_rhs).vb_strvalue = ip_str;
+				tmpl_value(&ip_rhs)->vb_strvalue = ip_str;
 				tmpl_value_type(&ip_rhs) = FR_TYPE_STRING;
 
 				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;

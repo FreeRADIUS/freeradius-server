@@ -557,12 +557,12 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 		  (data->type == FR_TYPE_STRING) ? T_SINGLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (fr_value_box_steal(vpt, &tmpl_value(vpt), data) < 0) {
+		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
 	} else {
-		if (fr_value_box_copy(vpt, &tmpl_value(vpt), data) < 0) {
+		if (fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
@@ -1121,11 +1121,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			tmpl_value(vpt).datum.ptr = talloc_array(vpt, uint8_t, binlen);
+			tmpl_value(vpt)->datum.ptr = talloc_array(vpt, uint8_t, binlen);
 			tmpl_value_length_set(vpt, binlen);
 			tmpl_value_type_set(vpt, FR_TYPE_OCTETS);
 
-			len = fr_hex2bin(tmpl_value(vpt).datum.ptr, binlen, in + 2, inlen - 2);
+			len = fr_hex2bin(tmpl_value(vpt)->datum.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains non-hex char");
 				talloc_free(vpt);
@@ -1323,7 +1323,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (fr_value_box_from_str(vpt, &tmpl_value(vpt), &tmpl_value_type(vpt),
+		if (fr_value_box_from_str(vpt, tmpl_value(vpt), &tmpl_value_type(vpt),
 					  enumv, vpt->name, vpt->len, '\0', false) < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
@@ -1334,7 +1334,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 		if (type == tmpl_value_type(vpt)) return 0;	/* noop */
 
-		if (fr_value_box_cast(vpt, &new, type, enumv, &tmpl_value(vpt)) < 0) return -1;
+		if (fr_value_box_cast(vpt, &new, type, enumv, tmpl_value(vpt)) < 0) return -1;
 
 		/*
 		 *	Free old value buffers
@@ -1342,14 +1342,14 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 		switch (tmpl_value_type(vpt)) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
-			talloc_free(tmpl_value(vpt).datum.ptr);
+			talloc_free(tmpl_value(vpt)->datum.ptr);
 			break;
 
 		default:
 			break;
 		}
 
-		fr_value_box_copy(vpt, &tmpl_value(vpt), &new);
+		fr_value_box_copy(vpt, tmpl_value(vpt), &new);
 	}
 		break;
 
@@ -1373,12 +1373,12 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 	fr_assert(vpt != NULL);
 	fr_assert(tmpl_is_unparsed(vpt));
 
-	tmpl_value(vpt).vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
-	fr_assert(tmpl_value(vpt).vb_strvalue != NULL);
+	tmpl_value(vpt)->vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
+	fr_assert(tmpl_value(vpt)->vb_strvalue != NULL);
 
 	vpt->type = TMPL_TYPE_DATA;
 	tmpl_value_type_set(vpt, FR_TYPE_STRING);
-	tmpl_value_length_set(vpt, talloc_array_length(tmpl_value(vpt).vb_strvalue) - 1);
+	tmpl_value_length_set(vpt, talloc_array_length(tmpl_value(vpt)->vb_strvalue) - 1);
 }
 
 /** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
@@ -1415,7 +1415,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		VP_VERIFY(vp);
 		fr_assert(vp->vp_type == tmpl_value_type(vpt));
 
-		fr_value_box_copy(vp, &vp->data, &tmpl_value(vpt));
+		fr_value_box_copy(vp, &vp->data, tmpl_value(vpt));
 		*out = vp;
 		return 0;
 	}
@@ -1691,7 +1691,7 @@ ssize_t _tmpl_to_type(void *out,
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		to_cast = &tmpl_value(vpt);
+		to_cast = tmpl_value(vpt);
 		src_type = tmpl_value_type(vpt);
 	}
 		break;
@@ -2013,7 +2013,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = &tmpl_value(vpt);
+		to_cast = tmpl_value(vpt);
 		switch (to_cast->type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
@@ -2307,7 +2307,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return fr_value_box_snprint(out, end - out_p, &tmpl_value(vpt), fr_token_quote[vpt->quote]);
+		return fr_value_box_snprint(out, end - out_p, tmpl_value(vpt), fr_token_quote[vpt->quote]);
 
 	default:
 		goto empty;
@@ -2836,7 +2836,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		 */
 		switch (tmpl_value_type(vpt)) {
 		case FR_TYPE_STRING:
-			if (tmpl_value(vpt).vb_strvalue[tmpl_value_length(vpt)] != '\0') {
+			if (tmpl_value(vpt)->vb_strvalue[tmpl_value_length(vpt)] != '\0') {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
 						     "terminated", file, line);
 			}

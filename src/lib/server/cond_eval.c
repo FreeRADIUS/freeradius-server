@@ -489,7 +489,7 @@ do {\
 		break;
 
 	case TMPL_TYPE_DATA:
-		rhs = &tmpl_value(map->rhs);
+		rhs = tmpl_value(map->rhs);
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
@@ -630,7 +630,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		break;
 
 	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_and_cmp(request, c, &tmpl_value(map->lhs));
+		rcode = cond_normalise_and_cmp(request, c, tmpl_value(map->lhs));
 		break;
 
 	case TMPL_TYPE_UNPARSED:

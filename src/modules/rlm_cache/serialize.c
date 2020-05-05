@@ -74,7 +74,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 			goto error;
 		}
 
-		value = fr_value_box_asprint(value_pool, &tmpl_value(map->rhs), '\'');
+		value = fr_value_box_asprint(value_pool, tmpl_value(map->rhs), '\'');
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
@@ -151,12 +151,12 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		 */
 		if (fr_dict_attr_is_top_level(tmpl_da(map->lhs))) switch (tmpl_da(map->lhs)->attr) {
 		case FR_CACHE_CREATED:
-			c->created = tmpl_value(map->rhs).vb_date;
+			c->created = tmpl_value(map->rhs)->vb_date;
 			talloc_free(map);
 			goto next;
 
 		case FR_CACHE_EXPIRES:
-			c->expires = tmpl_value(map->rhs).vb_date;
+			c->expires = tmpl_value(map->rhs)->vb_date;
 			talloc_free(map);
 			goto next;
 

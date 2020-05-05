@@ -717,7 +717,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, vp_tmpl_rules_
 		break;
 	}
 
-	fr_value_box_copy(map->rhs, &tmpl_value(map->rhs), &vp->data);
+	fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data);
 
 	*out = map;
 
@@ -1104,14 +1104,13 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
 		if (tmpl_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
-			if (fr_value_box_copy(n, &n->data, &tmpl_value(map->rhs)) < 0) {
+			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
 				rcode = -1;
 				talloc_free(n);
 				goto error;
 			}
 		} else {
-			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da,
-					   &tmpl_value(map->rhs)) < 0) {
+			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da, tmpl_value(map->rhs)) < 0) {
 				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
 				talloc_free(n);

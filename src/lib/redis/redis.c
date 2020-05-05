@@ -375,7 +375,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	switch (tmpl_value_type(map->rhs)) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		out[2] = tmpl_value(map->rhs).datum.ptr;
+		out[2] = tmpl_value(map->rhs)->datum.ptr;
 		out_len[2] = tmpl_value_length(map->rhs);
 		break;
 
@@ -383,7 +383,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	 *	For everything else we get the string representation
 	 */
 	default:
-		new = fr_value_box_asprint(pool, &tmpl_value(map->rhs), '\0');
+		new = fr_value_box_asprint(pool, tmpl_value(map->rhs), '\0');
 		if (!new) {
 			talloc_free(key);
 			return -1;
