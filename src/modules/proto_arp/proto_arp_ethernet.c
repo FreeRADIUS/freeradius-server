@@ -46,6 +46,7 @@ typedef struct {
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
 	char const			*interface;		//!< Interface to bind to.
+	char const			*filter;		//!< Additional PCAP filter
 } proto_arp_ethernet_t;
 
 
@@ -56,9 +57,7 @@ static CONF_PARSER const arp_listen_config[] = {
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, proto_arp_ethernet_t,
 			  interface), .dflt = "eth0" },
 
-	/*
-	 *	@todo - allow for pcap filter
-	 */
+	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, proto_arp_ethernet_t, filter) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -166,6 +165,8 @@ static int mod_open(fr_listen_t *li)
 
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
+	char const			*filter;
+	char				buffer[256];
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
@@ -179,12 +180,17 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	/*
-	 *	Ensure that we only get ARP.
-	 *
-	 *	@todo - only get ARP requests?
+	 *	Ensure that we only get ARP, and an optional additional filter.
 	 */
-	if (fr_pcap_apply_filter(thread->pcap, "arp") < 0) {
-		PERROR("Failed applying pcap filter");
+	if (!inst->filter) {
+		filter = "arp";
+	} else {
+		filter = buffer;
+		snprintf(buffer, sizeof(buffer), "arp and %s", filter);
+	}
+
+	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
+		PERROR("Failed applying pcap filter '%s'", filter);
 		return -1;
 	}
 
