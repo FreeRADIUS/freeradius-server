@@ -56,7 +56,23 @@ server arp {
 		#  You can also filter on ethernet via
 		#  `ether src foo` or `ether dst foo`.
 		#
+		#  Or to accept only ARP Request packets, and filter
+		#  out replies, use:
+		#
+		#	`(arp[6] == 0) and (arp[7] == 1)`
+		#
 #		filter = "host 192.0.2.1"
+
+		#
+		#  active:: Whether or not we response to ARP requests
+		#
+		#  Generally we want an "arpwatch" style functionality,
+		#  so the default is `active = no`
+		#
+		#  When `active = no`, the virtual server will NEVER
+		#  send an ARP reply.
+		#
+#		active = no
 	}
 
 #
