@@ -130,7 +130,6 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 
 	/* fill in Ethernet layer (L2) */
 	eth_hdr = (ethernet_header_t *)arp_packet;
-	memcpy(eth_hdr->ether_src, thread->pcap->ether_addr, ETHER_ADDR_LEN);
 	eth_hdr->ether_type = htons(ETH_TYPE_ARP);
 	end += ETHER_ADDR_LEN + ETHER_ADDR_LEN + sizeof(eth_hdr->ether_type);
 
@@ -139,6 +138,14 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 */
 	arp = (fr_arp_packet_t *) end;
 	memcpy(arp, buffer, buffer_len);
+
+	/*
+	 *	Set our MAC address as the ethernet source.
+	 *
+	 *	Set the destination MAC as the target address from
+	 *	ARP.
+	 */
+	memcpy(eth_hdr->ether_src, thread->pcap->ether_addr, ETHER_ADDR_LEN);
 	memcpy(eth_hdr->ether_dst, arp->tha, ETHER_ADDR_LEN);
 
 	/*

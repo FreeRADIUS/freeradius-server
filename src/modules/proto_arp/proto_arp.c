@@ -101,10 +101,13 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	return 0;
 }
 
+static uint8_t const zeros[6] = { 0 };
+
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			slen;
 	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
+	fr_arp_packet_t		*arp, *original;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
@@ -129,6 +132,36 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		RPEDEBUG("Failed encoding reply");
 		return -1;
 	}
+	fr_assert(slen == FR_ARP_PACKET_SIZE);
+
+	/*
+	 *	The reply generally swaps Sender / Target addresses,
+	 *	BUT fills out the Sender-Hardware-Address with the
+	 *	queried MAC address.  Ensure that the admin doesn't
+	 *	have to fill out all of the fields.
+	 */
+	arp = (fr_arp_packet_t *) buffer;
+	original = (fr_arp_packet_t *) request->packet->data;
+	fr_assert(request->packet->data_len == FR_ARP_PACKET_SIZE);
+
+	if (memcmp(arp->sha, zeros, sizeof(arp->sha)) == 0) {
+		RDEBUG("WARNING: Sender-Hardware-Address of zeros will likely cause problems");
+	}
+
+	/*
+	 *	On the reply, the Sender fields contain the requested
+	 *	information.  The Target fields contain the addresses
+	 *	of the system which queried for the information.
+	 */
+#define COPY(_a, _b) do { \
+	if (memcmp(arp->_a, zeros, sizeof(arp->_a)) == 0) { \
+		memcpy(arp->_a, original->_b, sizeof(arp->_a)); \
+	} \
+  } while (0)
+
+	COPY(spa, tpa);		/* answer is about the asked-for target */
+	COPY(tha, sha);		/* answer is sent to the requestor hardware address */
+	COPY(tpa, spa);		/* answer is sent to the requestor protocol address */
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %d via socket %s",
