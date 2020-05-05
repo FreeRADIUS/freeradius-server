@@ -167,14 +167,14 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
-		preg = map->rhs->tmpl_preg;
+		preg = tmpl_preg(map->rhs);
 		break;
 
 	default:
 		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
 		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->datum.length,
-				     &map->rhs->tmpl_regex_flags, true, true);
+				     &tmpl_regex_flags(map->rhs), true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);
@@ -283,7 +283,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
 		fr_assert(tmpl_is_attr(map->lhs));
 
-		MEM(vp = fr_pair_afrom_da(request, map->lhs->tmpl_da));
+		MEM(vp = fr_pair_afrom_da(request, tmpl_da(map->lhs)));
 		vp->op = c->data.map->op;
 
 		fr_value_box_copy(vp, &vp->data, rhs);
@@ -429,9 +429,9 @@ do {\
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
 		fr_assert(!c->cast);
 		fr_assert(tmpl_is_attr(map->lhs));
-		fr_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(map->rhs->tmpl_da)); /* expensive assert */
+		fr_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(tmpl_da(map->rhs))); /* expensive assert */
 
-		cast = map->lhs->tmpl_da;
+		cast = tmpl_da(map->lhs);
 
 		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
@@ -446,19 +446,19 @@ do {\
 		EVAL_DEBUG("NORMALISATION TYPE %s (EXPLICIT CAST)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
 	} else if (tmpl_is_attr(map->lhs)) {
-		cast = map->lhs->tmpl_da;
+		cast = tmpl_da(map->lhs);
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS REF)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
 	} else if (tmpl_is_attr(map->rhs)) {
-		cast = map->rhs->tmpl_da;
+		cast = tmpl_da(map->rhs);
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
 	} else if (tmpl_is_data(map->lhs)) {
-		cast_type = map->lhs->tmpl_value_type;
+		cast_type = tmpl_value_type(map->lhs);
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	} else if (tmpl_is_data(map->rhs)) {
-		cast_type = map->rhs->tmpl_value_type;
+		cast_type = tmpl_value_type(map->rhs);
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	}
@@ -489,7 +489,7 @@ do {\
 		break;
 
 	case TMPL_TYPE_DATA:
-		rhs = &map->rhs->tmpl_value;
+		rhs = &tmpl_value(map->rhs);
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
@@ -610,7 +610,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		 */
 		if ((c->pass2_fixup == PASS2_PAIRCOMPARE) && (map->op != T_OP_REG_EQ)) {
 #ifndef NDEBUG
-			fr_assert(paircmp_find(map->lhs->tmpl_da)); /* expensive assert */
+			fr_assert(paircmp_find(tmpl_da(map->lhs))); /* expensive assert */
 #endif
 			rcode = cond_normalise_and_cmp(request, c, NULL);
 			break;
@@ -630,7 +630,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		break;
 
 	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_and_cmp(request, c, &map->lhs->tmpl_value);
+		rcode = cond_normalise_and_cmp(request, c, &tmpl_value(map->lhs));
 		break;
 
 	case TMPL_TYPE_UNPARSED:

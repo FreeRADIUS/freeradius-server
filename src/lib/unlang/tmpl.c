@@ -455,7 +455,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		frame->interpret = unlang_tmpl_exec_nowait_resume;
 
 		repeatable_set(frame);
-		unlang_xlat_push(state->ctx, &state->box, request, ut->tmpl->tmpl_xlat, false);
+		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -465,7 +465,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	if (ut->tmpl->type == TMPL_TYPE_XLAT_STRUCT) {
 		frame->interpret = unlang_tmpl_resume;
 		repeatable_set(frame);
-		unlang_xlat_push(state->ctx, &state->box, request, ut->tmpl->tmpl_xlat, false);
+		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -485,7 +485,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	xlat = ut->tmpl->tmpl_xlat;
+	xlat = tmpl_xlat(ut->tmpl);
 
 	/*
 	 *	No pre-parsed xlat, do that now.

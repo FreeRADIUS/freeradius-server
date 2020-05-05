@@ -283,7 +283,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
-		cf_log_err(map->ci, "Unknown attribute %s", map->lhs->tmpl_unknown_name);
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->lhs));
 		return -1;
 
 	default:
@@ -305,7 +305,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
-		cf_log_err(map->ci, "Unknown attribute %s", map->rhs->tmpl_unknown_name);
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->rhs));
 		return -1;
 
 	default:
@@ -646,7 +646,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	 *	FIXME: allow multiple entries.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		da = map->lhs->tmpl_da;
+		da = tmpl_da(map->lhs);
 
 	} else {
 		char *attr;
@@ -671,7 +671,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 
 	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1, '\0', true) < 0) {
 		RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue_buffer(str),
-			map->lhs->tmpl_da->name, fr_strerror());
+			tmpl_da(map->lhs)->name, fr_strerror());
 		talloc_free(vp);
 
 		return -1;

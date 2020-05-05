@@ -177,9 +177,9 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 	 *	zero length string to the specified type and
 	 *	see what happens...
 	 */
-	if (fr_value_box_cast(n->mod->rhs, &n->mod->rhs->tmpl_value,
-			      mutated->cast ? mutated->cast : mutated->lhs->tmpl_da->type,
-			      mutated->lhs->tmpl_da, &empty_string) < 0) {
+	if (fr_value_box_cast(n->mod->rhs, &tmpl_value(n->mod->rhs),
+			      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
+			      tmpl_da(mutated->lhs), &empty_string) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -201,13 +201,13 @@ static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const
 	REQUEST *context = request;
 	VALUE_PAIR **list;
 
-	if (radius_request(&context, src_dst->tmpl_request) < 0) {
+	if (radius_request(&context, tmpl_request(src_dst)) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 		return NULL;
 	}
 
-	list = radius_list(context, src_dst->tmpl_list);
+	list = radius_list(context, tmpl_list(src_dst));
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
@@ -391,10 +391,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 */
 			n_mod->lhs = tmpl_alloc(n, TMPL_TYPE_ATTR, mutated->lhs->name, mutated->lhs->len, T_BARE_WORD);
 			if (!n_mod->lhs) goto error;
-			n_mod->lhs->tmpl_request = mutated->lhs->tmpl_request;
-			n_mod->lhs->tmpl_list = mutated->lhs->tmpl_list;
-			n_mod->lhs->tmpl_da = vp->da;
-			n_mod->lhs->tmpl_tag = vp->tag;
+			tmpl_request(n_mod->lhs) = tmpl_request(mutated->lhs);
+			tmpl_list(n_mod->lhs) = tmpl_list(mutated->lhs);
+			tmpl_da(n_mod->lhs) = vp->da;
+			tmpl_tag(n_mod->lhs) = vp->tag;
 
 			/*
 			 *	For the RHS we copy the value of the attribute
@@ -410,7 +410,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	getting the buffer value from may be freed
 			 *	before this map is applied.
 			 */
-			if (fr_value_box_copy(n_mod->rhs, &n_mod->rhs->tmpl_value, &vp->data) < 0) goto error;
+			if (fr_value_box_copy(n_mod->rhs, &tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
 			fr_cursor_append(&to, n_mod);
 		} while ((vp = fr_cursor_next(&from)));
 
@@ -422,20 +422,20 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	can only have a single value.
 	 */
 	if (tmpl_is_unparsed(mutated->rhs)) {
-		fr_type_t type = mutated->lhs->tmpl_da->type;
+		fr_type_t type = tmpl_da(mutated->lhs)->type;
 
 		fr_assert(tmpl_is_attr(mutated->lhs));
-		fr_assert(mutated->lhs->tmpl_da);	/* We need to know which attribute to create */
+		fr_assert(tmpl_da(mutated->lhs));	/* We need to know which attribute to create */
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
 		fr_cursor_init(&values, &head);
 
-		if (fr_value_box_from_str(n->mod, &n->mod->rhs->tmpl_value, &type,
-					  mutated->lhs->tmpl_da,
+		if (fr_value_box_from_str(n->mod, &tmpl_value(n->mod->rhs), &type,
+					  tmpl_da(mutated->lhs),
 					  mutated->rhs->name, mutated->rhs->len, mutated->rhs->quote, false)) {
-			RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
+			RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 			goto error;
 		}
 		goto finish;
@@ -450,7 +450,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	switch (mutated->rhs->type) {
 	case TMPL_TYPE_XLAT_STRUCT:
-		fr_assert(mutated->rhs->tmpl_xlat != NULL);
+		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
 		/* FALL-THROUGH */
 
 	case TMPL_TYPE_XLAT:
@@ -460,7 +460,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	assign_values:
 		fr_assert(tmpl_is_attr(mutated->lhs));
-		fr_assert(mutated->lhs->tmpl_da);		/* We need to know which attribute to create */
+		fr_assert(tmpl_da(mutated->lhs));		/* We need to know which attribute to create */
 
 		/*
 		 *	Empty value - Try and cast an empty string
@@ -471,7 +471,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		if (!rhs_result || !*rhs_result) {
 			n = list_mod_empty_string_afrom_map(ctx, original, mutated);
 			if (!n) {
-				RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
+				RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 			xlat_error:
 				fr_cursor_head(&values);
 				fr_cursor_free_list(&values);
@@ -488,7 +488,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		(void)fr_cursor_init(&from, rhs_result);
 		while ((vb = fr_cursor_remove(&from))) {
-			if (vb->type != mutated->lhs->tmpl_da->type) {
+			if (vb->type != tmpl_da(mutated->lhs)->type) {
 				n_vb = fr_value_box_alloc_null(n->mod->rhs);
 				if (!n_vb) {
 					fr_cursor_head(&from);
@@ -497,9 +497,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				}
 
 				if (fr_value_box_cast(n_vb, n_vb,
-						      mutated->cast ? mutated->cast : mutated->lhs->tmpl_da->type,
-						      mutated->lhs->tmpl_da, vb) < 0) {
-					RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
+						      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
+						      tmpl_da(mutated->lhs), vb) < 0) {
+					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 
 					fr_cursor_head(&from);
 					fr_cursor_free_list(&from);
@@ -522,8 +522,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		int		err;
 
 		fr_assert(!rhs_result || !*rhs_result);
-		fr_assert((tmpl_is_attr(mutated->lhs) && mutated->lhs->tmpl_da) ||
-			   (tmpl_is_list(mutated->lhs) && !mutated->lhs->tmpl_da));
+		fr_assert((tmpl_is_attr(mutated->lhs) && tmpl_da(mutated->lhs)) ||
+			   (tmpl_is_list(mutated->lhs) && !tmpl_da(mutated->lhs)));
 
 		/*
 		 *	Check source list
@@ -540,7 +540,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			break;
 
 		case -1:		/* No input pairs */
-			RDEBUG3("No matching pairs found for \"%s\"", mutated->rhs->tmpl_da->name);
+			RDEBUG3("No matching pairs found for \"%s\"", tmpl_da(mutated->rhs)->name);
 			/*
 			 *	Special case for := if RHS had no attributes
 			 *	we should delete all LHS attributes.
@@ -569,11 +569,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				goto error;
 			}
 
-			if (vp->data.type != mutated->lhs->tmpl_da->type) {
+			if (vp->data.type != tmpl_da(mutated->lhs)->type) {
 				if (fr_value_box_cast(n_vb, n_vb,
-						      mutated->cast ? mutated->cast : mutated->lhs->tmpl_da->type,
-						      mutated->lhs->tmpl_da, &vp->data) < 0) {
-					RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
+						      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
+						      tmpl_da(mutated->lhs), &vp->data) < 0) {
+					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 					goto attr_error;
 				}
 			} else {
@@ -590,13 +590,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_value_box_t	*vb, *vb_head, *n_vb;
 
 		fr_assert(!rhs_result || !*rhs_result);
-		fr_assert(mutated->lhs->tmpl_da);
+		fr_assert(tmpl_da(mutated->lhs));
 		fr_assert(tmpl_is_attr(mutated->lhs));
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		vb_head = &mutated->rhs->tmpl_value;
+		vb_head = &tmpl_value(mutated->rhs);
 
 		for (vb = fr_cursor_init(&from, &vb_head);
 		     vb;
@@ -614,11 +614,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	maps we still need to check if we need to
 			 *	cast.
 			 */
-			if (mutated->lhs->tmpl_da->type != mutated->rhs->tmpl_value_type) {
+			if (tmpl_da(mutated->lhs)->type != tmpl_value_type(mutated->rhs)) {
 				if (fr_value_box_cast(n_vb, n_vb,
-						      mutated->cast ? mutated->cast : mutated->lhs->tmpl_da->type,
-						      mutated->lhs->tmpl_da, vb) < 0) {
-					RPEDEBUG("Assigning value to \"%s\" failed", mutated->lhs->tmpl_da->name);
+						      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
+						      tmpl_da(mutated->lhs), vb) < 0) {
+					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 					goto data_error;
 				}
 			} else {
@@ -699,8 +699,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			vp_tmpl_rules_t rules;
 
 			memset(&rules, 0, sizeof(rules));
-			rules.request_def = mutated->lhs->tmpl_request;
-			rules.list_def = mutated->lhs->tmpl_list;
+			rules.request_def = tmpl_request(mutated->lhs);
+			rules.list_def = tmpl_list(mutated->lhs);
 
 			if (map_afrom_vp(n, &mod, vp, &rules) < 0) {
 				RPEDEBUG("Failed converting VP to map");
@@ -745,8 +745,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	fr_value_box_copy(n->mod->rhs, &n->mod->rhs->tmpl_value, head);
-	n->mod->rhs->tmpl_value.next = head->next;
+	fr_value_box_copy(n->mod->rhs, &tmpl_value(n->mod->rhs), head);
+	tmpl_value(n->mod->rhs).next = head->next;
 	talloc_free(head);
 
 finish:
@@ -771,8 +771,8 @@ static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, vp_tmpl_t const *a
 {
 	VALUE_PAIR *vp;
 
-	MEM(vp = fr_pair_afrom_da(ctx, attr->tmpl_da));
-	vp->tag = attr->tmpl_tag;
+	MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(attr)));
+	vp->tag = tmpl_tag(attr);
 
 	if (fr_value_box_copy(vp, &vp->data, value) < 0) {
 		talloc_free(vp);
@@ -797,8 +797,8 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 	/*
 	 *	Fast path...
 	 */
-	if (!vlm->mod->next && !vlm->mod->rhs->tmpl_value.next) {
-		return map_list_mod_to_vp(ctx, vlm->mod->lhs, &vlm->mod->rhs->tmpl_value);
+	if (!vlm->mod->next && !tmpl_value(vlm->mod->rhs).next) {
+		return map_list_mod_to_vp(ctx, vlm->mod->lhs, &tmpl_value(vlm->mod->rhs));
 	}
 
 	/*
@@ -811,7 +811,7 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 		fr_value_box_t	*vb;
 		VALUE_PAIR	*vp;
 
-		for (vb = &mod->rhs->tmpl_value;
+		for (vb = &tmpl_value(mod->rhs);
 	     	     vb;
 	     	     vb = vb->next) {
 			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
@@ -947,7 +947,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	map_list_mod_debug()
 		 */
 		if (RDEBUG_ENABLED2) {
-			for (vb = &mod->rhs->tmpl_value;
+			for (vb = &tmpl_value(mod->rhs);
 			     vb;
 			     vb = vb->next) {
 				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
@@ -960,12 +960,12 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	 *	All this has been checked by #map_to_list_mod
 	 */
 	context = request;
-	if (!fr_cond_assert(mod && radius_request(&context, mod->lhs->tmpl_request) == 0)) return -1;
+	if (!fr_cond_assert(mod && radius_request(&context, tmpl_request(mod->lhs)) == 0)) return -1;
 
-	vp_list = radius_list(context, mod->lhs->tmpl_list);
+	vp_list = radius_list(context, tmpl_list(mod->lhs));
 	if (!fr_cond_assert(vp_list)) return -1;
 
-	parent = radius_list_ctx(context, mod->lhs->tmpl_list);
+	parent = radius_list_ctx(context, tmpl_list(mod->lhs));
 	fr_assert(parent);
 
 	/*
@@ -1048,7 +1048,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	 *	being NULL (no attribute at that index).
 	 */
 	found = tmpl_cursor_init(NULL, &list, request, mod->lhs);
-	fr_assert(!found || (mod->lhs->tmpl_da == found->da));
+	fr_assert(!found || (tmpl_da(mod->lhs) == found->da));
 
 	/*
 	 *	The destination is an attribute
@@ -1063,7 +1063,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		/*
 		 *	The cursor was set to the Nth one.  Delete it, and only it.
 		 */
-		if (map->lhs->tmpl_num != NUM_ALL) {
+		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_cursor_free_item(&list);
 		/*
 		 *	Wildcard: delete all of the matching ones, based on tag.
@@ -1083,9 +1083,9 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	 *	src_list attributes.
 	 *
 	 *	This operation has two modes:
-	 *	- If map->lhs->tmpl_num > 0, we check each of the src_list attributes against
+	 *	- If tmpl_num(map->lhs) > 0, we check each of the src_list attributes against
 	 *	  the found attribute, to see if any of their values match.
-	 *	- If map->lhs->tmpl_num == NUM_ANY, we compare all instances of the found attribute
+	 *	- If tmpl_num(map->lhs) == NUM_ANY, we compare all instances of the found attribute
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB:
@@ -1099,8 +1099,8 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	i.e. Remove this single instance if it matches
 		 *	any of these values.
 		 */
-		if (map->lhs->tmpl_num != NUM_ALL) {
-			fr_value_box_t	*vb = &vlm->mod->rhs->tmpl_value;
+		if (tmpl_num(map->lhs) != NUM_ALL) {
+			fr_value_box_t	*vb = &tmpl_value(vlm->mod->rhs);
 
 			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
@@ -1118,7 +1118,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	matches any of these values.
 		 */
 		do {
-		     	fr_value_box_t	*vb = &vlm->mod->rhs->tmpl_value;
+		     	fr_value_box_t	*vb = &tmpl_value(vlm->mod->rhs);
 
 		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
@@ -1169,7 +1169,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		/*
 		 *	Instance specific[n] overwrite
 		 */
-		if (map->lhs->tmpl_num != NUM_ALL) {
+		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_cursor_t	from;
 			VALUE_PAIR	*vp_from;
 
@@ -1204,8 +1204,8 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		/*
 		 *	Instance specific[n] filter
 		 */
-		if (map->lhs->tmpl_num != NUM_ALL) {
-			fr_value_box_t	*vb = &mod->rhs->tmpl_value;
+		if (tmpl_num(map->lhs) != NUM_ALL) {
+			fr_value_box_t	*vb = &tmpl_value(mod->rhs);
 			bool		remove = true;
 
 			do {
@@ -1220,7 +1220,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 *	All instances[*] filter
 		 */
 		do {
-			fr_value_box_t	*vb = &mod->rhs->tmpl_value;
+			fr_value_box_t	*vb = &tmpl_value(mod->rhs);
 			bool		remove = true;
 
 			do {

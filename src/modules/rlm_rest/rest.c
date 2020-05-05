@@ -752,20 +752,20 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 
-		if (radius_request(&current, dst->tmpl_request) < 0) {
+		if (radius_request(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
 
-		vps = radius_list(current, dst->tmpl_list);
+		vps = radius_list(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
-		ctx = radius_list_ctx(current, dst->tmpl_list);
-		da = dst->tmpl_da;
+		ctx = radius_list_ctx(current, tmpl_list(dst));
+		da = tmpl_da(dst);
 
 		fr_assert(vps);
 
@@ -1041,19 +1041,19 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			continue;
 		}
 
-		flags.tag = dst->tmpl_tag;
+		flags.tag = tmpl_tag(dst);
 
-		if (radius_request(&current, dst->tmpl_request) < 0) {
+		if (radius_request(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			continue;
 		}
 
-		vps = radius_list(current, dst->tmpl_list);
+		vps = radius_list(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
-		ctx = radius_list_ctx(current, dst->tmpl_list);
+		ctx = radius_list_ctx(current, tmpl_list(dst));
 
 		/*
 		 *  Alternative JSON structure which allows operator,
@@ -1157,11 +1157,11 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 						   level + 1, max_attrs);*/
 			} else {
 				vp = json_pair_alloc_leaf(instance, section, ctx, request,
-							  dst->tmpl_da, &flags, element);
+							  tmpl_da(dst), &flags, element);
 				if (!vp) continue;
 			}
 			RINDENT();
-			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, dst->tmpl_list, ""), vp);
+			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
 			REXDENT();
 			radius_pairmove(current, vps, vp, false);
 		/*

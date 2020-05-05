@@ -369,14 +369,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 			continue;
 		}
 
-		if (radius_request(&current, dst->tmpl_request) < 0) {
+		if (radius_request(&current, tmpl_request(dst)) < 0) {
 			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
 			      funcname, list_name, s1);
 			talloc_free(dst);
 			continue;
 		}
 
-		MEM(vp = fr_pair_afrom_da(ctx, dst->tmpl_da));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
 		vp->op = op;

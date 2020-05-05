@@ -213,12 +213,12 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		p += slen;
 
-		if (vpt->tmpl_num == NUM_COUNT) {
+		if (tmpl_num(vpt) == NUM_COUNT) {
 			REDEBUG("Attribute count is not supported");
 			return false;
 		}
 
-		if (vpt->tmpl_num == NUM_ALL) {
+		if (tmpl_num(vpt) == NUM_ALL) {
 			max = 65535;
 		} else {
 			max = 1;

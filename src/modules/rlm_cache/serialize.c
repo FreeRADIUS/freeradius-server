@@ -74,7 +74,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 			goto error;
 		}
 
-		value = fr_value_box_asprint(value_pool, &map->rhs->tmpl_value, '\'');
+		value = fr_value_box_asprint(value_pool, &tmpl_value(map->rhs), '\'');
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
@@ -143,20 +143,20 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		/*
 		 *	Convert literal to a type appropriate for the VP.
 		 */
-		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) goto error;
+		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) goto error;
 
 		/*
 		 *	Pull out the special attributes, and set the
 		 *	relevant cache entry fields.
 		 */
-		if (fr_dict_attr_is_top_level(map->lhs->tmpl_da)) switch (map->lhs->tmpl_da->attr) {
+		if (fr_dict_attr_is_top_level(tmpl_da(map->lhs))) switch (tmpl_da(map->lhs)->attr) {
 		case FR_CACHE_CREATED:
-			c->created = map->rhs->tmpl_value.vb_date;
+			c->created = tmpl_value(map->rhs).vb_date;
 			talloc_free(map);
 			goto next;
 
 		case FR_CACHE_EXPIRES:
-			c->expires = map->rhs->tmpl_value.vb_date;
+			c->expires = tmpl_value(map->rhs).vb_date;
 			talloc_free(map);
 			goto next;
 

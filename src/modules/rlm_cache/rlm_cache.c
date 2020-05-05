@@ -385,14 +385,14 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			do_rhs:
 				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, T_BARE_WORD));
-				if (fr_value_box_copy(c_map->rhs, &c_map->rhs->tmpl_value, &vp->data) < 0) {
+				if (fr_value_box_copy(c_map->rhs, &tmpl_value(c_map->rhs), &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
 				error:
 					talloc_free(pool);
 					talloc_free(c);
 					return RLM_MODULE_FAIL;
 				}
-				c_map->rhs->tmpl_value_type = vp->vp_type;
+				tmpl_value_type(c_map->rhs) = vp->vp_type;
 				if (vp->vp_type == FR_TYPE_STRING) {
 					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
 						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
@@ -411,16 +411,16 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
 				if (vp->da->flags.is_unknown) { /* for tmpl_verify() */
-					c_map->lhs->tmpl_unknown = fr_dict_unknown_acopy(c_map->lhs, vp->da);
-					c_map->lhs->tmpl_da = c_map->lhs->tmpl_unknown;
+					tmpl_unknown(c_map->lhs) = fr_dict_unknown_acopy(c_map->lhs, vp->da);
+					tmpl_da(c_map->lhs) = tmpl_unknown(c_map->lhs);
 				} else {
-					c_map->lhs->tmpl_da = vp->da;
+					tmpl_da(c_map->lhs) = vp->da;
 				}
 
-				c_map->lhs->tmpl_tag = vp->tag;
-				c_map->lhs->tmpl_list = map->lhs->tmpl_list;
-				c_map->lhs->tmpl_num = map->lhs->tmpl_num;
-				c_map->lhs->tmpl_request = map->lhs->tmpl_request;
+				tmpl_tag(c_map->lhs) = vp->tag;
+				tmpl_list(c_map->lhs) = tmpl_list(map->lhs);
+				tmpl_num(c_map->lhs) = tmpl_num(map->lhs);
+				tmpl_request(c_map->lhs) = tmpl_request(map->lhs);
 
 				/*
 				 *	We need to rebuild the attribute name, to be the
@@ -860,11 +860,11 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 	}
 
 	for (map = c->maps; map; map = map->next) {
-		if ((map->lhs->tmpl_da != target->tmpl_da) ||
-		    (map->lhs->tmpl_tag != target->tmpl_tag) ||
-		    (map->lhs->tmpl_list != target->tmpl_list)) continue;
+		if ((tmpl_da(map->lhs) != tmpl_da(target)) ||
+		    (tmpl_tag(map->lhs) != tmpl_tag(target)) ||
+		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
-		*out = fr_value_box_asprint(request, &map->rhs->tmpl_value, '\0');
+		*out = fr_value_box_asprint(request, &tmpl_value(map->rhs), '\0');
 		ret = talloc_array_length(*out) - 1;
 		break;
 	}

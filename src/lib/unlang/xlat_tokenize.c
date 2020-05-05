@@ -77,7 +77,7 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 	 *   Concat means something completely different as an attribute reference
 	 *   Count isn't implemented.
 	 */
-	if ((node->attr->tmpl_num == NUM_COUNT) || (node->attr->tmpl_num == NUM_ALL)) return NULL;
+	if ((tmpl_num(node->attr) == NUM_COUNT) || (tmpl_num(node->attr) == NUM_ALL)) return NULL;
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
 	if (!vpt) return NULL;
@@ -394,10 +394,10 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	list.
 	 */
 	if (tmpl_is_attr_undefined(vpt)) {
-		func = xlat_func_find(vpt->tmpl_unknown_name, -1);
+		func = xlat_func_find(tmpl_unknown_name(vpt), -1);
 		if (func && (func->type == XLAT_FUNC_SYNC)) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,
-					      vpt->tmpl_unknown_name, talloc_array_length(vpt->tmpl_unknown_name) - 1);
+					      tmpl_unknown_name(vpt), talloc_array_length(tmpl_unknown_name(vpt)) - 1);
 			talloc_free(vpt);	/* Free the tmpl, we don't need it */
 
 			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);
@@ -950,26 +950,26 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			break;
 
 		case XLAT_ATTRIBUTE:
-			fr_assert(node->attr->tmpl_da != NULL);
-			RDEBUG3("attribute --> %s", node->attr->tmpl_da->name);
+			fr_assert(tmpl_da(node->attr) != NULL);
+			RDEBUG3("attribute --> %s", tmpl_da(node->attr)->name);
 			fr_assert(node->child == NULL);
-			if ((node->attr->tmpl_tag != TAG_ANY) || (node->attr->tmpl_num != NUM_ANY)) {
+			if ((tmpl_tag(node->attr) != TAG_ANY) || (tmpl_num(node->attr) != NUM_ANY)) {
 				RDEBUG3("{");
 
 				RINDENT();
-				RDEBUG3("ref  %d", node->attr->tmpl_request);
-				RDEBUG3("list %d", node->attr->tmpl_list);
+				RDEBUG3("ref  %d", tmpl_request(node->attr));
+				RDEBUG3("list %d", tmpl_list(node->attr));
 
-				if (node->attr->tmpl_tag != TAG_ANY) {
-					RDEBUG3("tag %d", node->attr->tmpl_tag);
+				if (tmpl_tag(node->attr) != TAG_ANY) {
+					RDEBUG3("tag %d", tmpl_tag(node->attr));
 				}
-				if (node->attr->tmpl_num != NUM_ANY) {
-					if (node->attr->tmpl_num == NUM_COUNT) {
+				if (tmpl_num(node->attr) != NUM_ANY) {
+					if (tmpl_num(node->attr) == NUM_COUNT) {
 						RDEBUG3("[#]");
-					} else if (node->attr->tmpl_num == NUM_ALL) {
+					} else if (tmpl_num(node->attr) == NUM_ALL) {
 						RDEBUG3("[*]");
 					} else {
-						RDEBUG3("[%d]", node->attr->tmpl_num);
+						RDEBUG3("[%d]", tmpl_num(node->attr));
 					}
 				}
 				REXDENT();

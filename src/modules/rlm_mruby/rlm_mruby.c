@@ -370,13 +370,13 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 			continue;
 		}
 
-		if (radius_request(&request, dst->tmpl_request) < 0) {
+		if (radius_request(&request, tmpl_request(dst)) < 0) {
 			ERROR("Attribute name %s refers to outer request but not in a tunnel, skipping...", ckey);
 			talloc_free(dst);
 			continue;
 		}
 
-		MEM(vp = fr_pair_afrom_da(ctx, dst->tmpl_da));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
 		vp->op = op;

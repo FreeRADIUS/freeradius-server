@@ -64,8 +64,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 
 			vp_tmpl_rules_t	lhs_rules = {
 				.dict_def = request->dict,
-				.request_def = map->lhs->tmpl_request,
-				.list_def = map->lhs->tmpl_list,
+				.request_def = tmpl_request(map->lhs),
+				.list_def = tmpl_list(map->lhs),
 				.prefix = VP_ATTR_REF_PREFIX_AUTO,
 			};
 
@@ -106,21 +106,21 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 				continue;
 			}
 
-			if (attr->lhs->tmpl_request != map->lhs->tmpl_request) {
+			if (tmpl_request(attr->lhs) != tmpl_request(map->lhs)) {
 				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_value(request_ref_table, attr->lhs->tmpl_request, "<INVALID>"),
-					fr_table_str_by_value(request_ref_table, map->lhs->tmpl_request, "<INVALID>"));
+					fr_table_str_by_value(request_ref_table, tmpl_request(attr->lhs), "<INVALID>"),
+					fr_table_str_by_value(request_ref_table, tmpl_request(map->lhs), "<INVALID>"));
 			next_pair:
 				talloc_free(attr);
 				continue;
 			}
 
-			if ((attr->lhs->tmpl_list != map->lhs->tmpl_list)) {
+			if ((tmpl_list(attr->lhs) != tmpl_list(map->lhs))) {
 				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_value(pair_list_table, attr->lhs->tmpl_list, "<INVALID>"),
-					fr_table_str_by_value(pair_list_table, map->lhs->tmpl_list, "<INVALID>"));
+					fr_table_str_by_value(pair_list_table, tmpl_list(attr->lhs), "<INVALID>"),
+					fr_table_str_by_value(pair_list_table, tmpl_list(map->lhs), "<INVALID>"));
 				goto next_pair;
 			}
 
@@ -150,13 +150,13 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 		for (i = 0; i < self->count; i++) {
 			if (!self->values[i]->bv_len) continue;
 
-			MEM(vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da));
+			MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
 			if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
 						   self->values[i]->bv_len, '\0', true) < 0) {
 				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
 					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					 map->lhs->tmpl_da->name);
+					 tmpl_da(map->lhs)->name);
 
 				talloc_free(vp); /* also frees escaped */
 				continue;
@@ -193,7 +193,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
-		cf_log_err(map->ci, "Unknown attribute %s", map->lhs->tmpl_unknown_name);
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->lhs));
 		return -1;
 
 	default:
@@ -214,7 +214,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
-		cf_log_err(map->ci, "Unknown attribute %s", map->rhs->tmpl_unknown_name);
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->rhs));
 		return -1;
 
 	default:

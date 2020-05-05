@@ -336,7 +336,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		char const	*p;
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
-		if (tmpl_is_attr(map->lhs) && (map->lhs->tmpl_da->type == FR_TYPE_UINT64)) {
+		if (tmpl_is_attr(map->lhs) && (tmpl_da(map->lhs)->type == FR_TYPE_UINT64)) {
 			cf_log_err(cp, "64bit integers are not supported by linked json-c.  "
 				      "Upgrade to json-c >= 0.10 to use this feature");
 			return -1;
@@ -364,12 +364,12 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 			break;
 
 		case TMPL_TYPE_DATA:
-			if (map->rhs->tmpl_value_type != FR_TYPE_STRING) {
+			if (tmpl_value_type(map->rhs) != FR_TYPE_STRING) {
 				cf_log_err(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = map->rhs->tmpl_value.vb_strvalue;
-			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_value_length);
+			p = tmpl_value(map->rhs).vb_strvalue;
+			slen = fr_jpath_parse(cache, &cache->jpath, p, tmpl_value_length(map->rhs));
 			if (slen <= 0) goto error;
 			break;
 
@@ -413,7 +413,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 
 	*out = NULL;
 
-	ret = fr_jpath_evaluate_leaf(request, &head, map->lhs->tmpl_da->type, map->lhs->tmpl_da,
+	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
 	if (ret < 0) {
 		RPEDEBUG("Failed evaluating jpath");
@@ -425,7 +425,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	for (fr_cursor_init(&cursor, out), value = head;
 	     value;
 	     fr_cursor_append(&cursor, vp), value = value->next) {
-		MEM(vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {

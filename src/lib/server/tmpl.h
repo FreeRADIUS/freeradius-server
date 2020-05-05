@@ -222,29 +222,45 @@ struct vp_tmpl_s {
  *
  * @{
  */
-#define tmpl_request			data.attribute.request
-#define tmpl_list			data.attribute.list
-#define tmpl_da				data.attribute.da
-#define tmpl_unknown			data.attribute.unknown.da
-#define tmpl_unknown_name      		data.attribute.unknown.name
-#define tmpl_num			data.attribute.num
-#define tmpl_tag			data.attribute.tag
+#define tmpl_request(_tmpl)		(_tmpl)->data.attribute.request
+#define tmpl_list(_tmpl)		(_tmpl)->data.attribute.list
+#define tmpl_da(_tmpl)			(_tmpl)->data.attribute.da
+#define tmpl_unknown(_tmpl)		(_tmpl)->data.attribute.unknown.da
+#define tmpl_unknown_name(_tmpl)    	(_tmpl)->data.attribute.unknown.name
+#define tmpl_num(_tmpl)			(_tmpl)->data.attribute.num
+#define tmpl_tag(_tmpl)			(_tmpl)->data.attribute.tag
+
+/*
+ *	Temporary macros to track where we do assignments
+ */
+#define tmpl_request_set(_tmpl, _request)	(_tmpl)->data.attribute.request = (_request)
+#define tmpl_list_set(_tmpl, _list)		(_tmpl)->data.attribute.list = (_list)
+#define tmpl_unknown_name_set(_tmpl, _name)    	(_tmpl)->data.attribute.unknown.name = (_name)
+#define tmpl_tag_set(_tmpl, _tag)		(_tmpl)->data.attribute.tag = (_tag)
+#define tmpl_num_set(_tmpl, _num)		(_tmpl)->data.attribute.num = (_num)
+#define tmpl_da_set(_tmpl, _da)			(_tmpl)->data.attribute.da = (_da)
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_XLAT_STRUCT
  *
  * @{
  */
-#define tmpl_xlat			data.xlat
+#define tmpl_xlat(_tmpl)		(_tmpl)->data.xlat
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_DATA
  *
  * @{
  */
-#define tmpl_value			data.literal
-#define tmpl_value_length		data.literal.datum.length
-#define tmpl_value_type			data.literal.type
+#define tmpl_value(_tmpl)		(_tmpl)->data.literal
+#define tmpl_value_length(_tmpl)	(_tmpl)->data.literal.datum.length
+#define tmpl_value_type(_tmpl)		(_tmpl)->data.literal.type
+
+/*
+ *	Temporary macros to track where we do assignments
+ */
+#define tmpl_value_length_set(_tmpl, _len)	(_tmpl)->data.literal.datum.length = (_len)
+#define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
@@ -252,8 +268,8 @@ struct vp_tmpl_s {
  * @{
  */
 #ifdef HAVE_REGEX
-#  define tmpl_preg			data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
-#  define tmpl_regex_flags			data.regex_flags
+#  define tmpl_preg(_tmpl)		(_tmpl)->data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
+#  define tmpl_regex_flags(_tmpl)	(_tmpl)->data.regex_flags
 #endif
 /** @} */
 

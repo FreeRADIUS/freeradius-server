@@ -286,7 +286,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 			 *	If it's a virtual attribute, leave it
 			 *	alone.
 			 */
-			if (attr->tmpl_da->flags.virtual) {
+			if (tmpl_da(attr)->flags.virtual) {
 				talloc_free(attr);
 				return true;
 			}
@@ -295,7 +295,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 			 *	If the attribute is of incompatible
 			 *	type, leave it alone.
 			 */
-			if (da && (da->type != attr->tmpl_da->type)) {
+			if (da && (da->type != tmpl_da(attr)->type)) {
 				talloc_free(attr);
 				return true;
 			}
@@ -323,7 +323,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
 	vpt->type = TMPL_TYPE_XLAT_STRUCT;
-	vpt->tmpl_xlat = head;
+	tmpl_xlat(vpt) = head;
 
 	return true;
 }
@@ -353,7 +353,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 		return pass2_fixup_xlat(ci, &vpt, false, NULL, rules);
 	}
 
-	slen = regex_compile(vpt, &preg, vpt->name, vpt->len, &vpt->tmpl_regex_flags, true, false);
+	slen = regex_compile(vpt, &preg, vpt->name, vpt->len, &tmpl_regex_flags(vpt), true, false);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -370,7 +370,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 	}
 
 	vpt->type = TMPL_TYPE_REGEX_STRUCT;
-	vpt->tmpl_preg = preg;
+	tmpl_preg(vpt) = preg;
 
 	return true;
 }
@@ -382,7 +382,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 
 	fr_assert(tmpl_is_attr_undefined(vpt));
 
-	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) != FR_DICT_ATTR_OK) {
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_unknown_name(vpt), true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
 		fr_dict_attr_t *unknown_da;
 
@@ -390,8 +390,8 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 		 *	Can't find it under it's regular name.  Try an unknown attribute.
 		 */
 		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
-						     vpt->tmpl_unknown_name);
-		if ((slen <= 0) || (vpt->tmpl_unknown_name[slen] != '\0')) {
+						     tmpl_unknown_name(vpt));
+		if ((slen <= 0) || (tmpl_unknown_name(vpt)[slen] != '\0')) {
 			cf_log_perr(ci, "Failed resolving undefined attribute");
 			return false;
 		}
@@ -404,7 +404,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 		if (!unknown_da) return false;
 #endif
 
-		vpt->tmpl_da = vpt->tmpl_unknown = unknown_da;
+		tmpl_da(vpt) = tmpl_unknown(vpt) = unknown_da;
 		vpt->type = TMPL_TYPE_ATTR;
 		return true;
 	}
@@ -417,7 +417,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 	if (!da) return false;
 #endif
 
-	vpt->tmpl_da = da;
+	tmpl_da(vpt) = da;
 	vpt->type = TMPL_TYPE_ATTR;
 	return true;
 }
@@ -442,15 +442,15 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	/*
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
 	 */
-	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) {
-		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+		tmpl_xlat(vpt) = xlat_from_tmpl_attr(vpt, vpt);
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	}
 
 
 #ifndef NDEBUG
 	if (tmpl_is_exec(vpt)) {
-		fr_assert(vpt->tmpl_xlat != NULL);
+		fr_assert(tmpl_xlat(vpt) != NULL);
 	}
 #endif
 
@@ -470,9 +470,9 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!fr_dict_enum_by_name(map->lhs->tmpl_da, map->rhs->name, -1)) {
+		if (!fr_dict_enum_by_name(tmpl_da(map->lhs), map->rhs->name, -1)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   map->lhs->tmpl_da->name,
+				   tmpl_da(map->lhs)->name,
 				   map->rhs->name);
 			return false;
 		}
@@ -492,12 +492,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		 */
 		if (tmpl_is_attr_undefined(map->lhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
-			if (!cast) cast = map->lhs->tmpl_da;
+			if (!cast) cast = tmpl_da(map->lhs);
 		}
 
 		if (tmpl_is_attr_undefined(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
-			if (!cast) cast = map->rhs->tmpl_da;
+			if (!cast) cast = tmpl_da(map->rhs);
 		}
 
 		/*
@@ -601,12 +601,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 			if (tmpl_is_attr(map->lhs)) {
 				if ((map->rhs->len > 0) ||
 				    (map->op != T_OP_CMP_EQ) ||
-				    (map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
-				    (map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
+				    (tmpl_da(map->lhs)->type == FR_TYPE_STRING) ||
+				    (tmpl_da(map->lhs)->type == FR_TYPE_OCTETS)) {
 
-					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+					if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<UNKNOWN>"),
+							   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<UNKNOWN>"),
 							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 						return false;
 					} /* else the cast was successful */
@@ -653,7 +653,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		if (tmpl_is_attr(map->lhs)) {
 			fr_dict_attr_t const *da = c->cast;
 
-			if (!c->cast) da = map->lhs->tmpl_da;
+			if (!c->cast) da = tmpl_da(map->lhs);
 
 			if (!pass2_fixup_xlat(map->ci, &map->rhs, true, da, rules)) {
 				return false;
@@ -724,9 +724,9 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	xlat code does.
 	 */
 	vpt = c->data.map->lhs;
-	if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) {
-		if (!c->cast) c->cast = vpt->tmpl_da;
-		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+		if (!c->cast) c->cast = tmpl_da(vpt);
+		tmpl_xlat(vpt) = xlat_from_tmpl_attr(vpt, vpt);
 		vpt->type = TMPL_TYPE_XLAT_STRUCT;
 	}
 
@@ -740,12 +740,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	 *	with the request pairs.
 	 */
 	if (!tmpl_is_attr(map->lhs) ||
-	    (map->lhs->tmpl_request != REQUEST_CURRENT) ||
-	    (map->lhs->tmpl_list != PAIR_LIST_REQUEST)) {
+	    (tmpl_request(map->lhs) != REQUEST_CURRENT) ||
+	    (tmpl_list(map->lhs) != PAIR_LIST_REQUEST)) {
 		return true;
 	}
 
-	if (!paircmp_find(map->lhs->tmpl_da)) return true;
+	if (!paircmp_find(tmpl_da(map->lhs))) return true;
 
 	if (tmpl_is_regex(map->rhs)) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
@@ -814,7 +814,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	if (tmpl_is_xlat(map->lhs)) {
-		fr_assert(map->lhs->tmpl_xlat == NULL);
+		fr_assert(tmpl_xlat(map->lhs) == NULL);
 
 		/*
 		 *	FIXME: compile to attribute && handle
@@ -843,9 +843,9 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 	 */
 	if (parent) {
 		if (tmpl_is_attr(map->lhs)) {
-			if (map->lhs->tmpl_da->parent != parent) {
+			if (tmpl_da(map->lhs)->parent != parent) {
 				cf_log_err(map->ci, "Attribute %s is not a child of parent %s",
-					   map->lhs->tmpl_da->name, parent->name);
+					   tmpl_da(map->lhs)->name, parent->name);
 				return false;
 			}
 
@@ -859,7 +859,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 			 *	map_afrom_cs() already updates the rules with
 			 *	disallow_qualifiers.
 			 */
-			if (strcmp(map->lhs->name + 1, map->lhs->tmpl_da->name) != 0) {
+			if (strcmp(map->lhs->name + 1, tmpl_da(map->lhs)->name) != 0) {
 				cf_log_err(map->ci, "Attribute %s contains invalid reference to list / request",
 					   map->lhs->name);
 				return false;
@@ -876,7 +876,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 
 	if (map->rhs) {
 		if (tmpl_is_xlat(map->rhs)) {
-			fr_assert(map->rhs->tmpl_xlat == NULL);
+			fr_assert(tmpl_xlat(map->rhs) == NULL);
 
 			/*
 			 *	FIXME: compile to attribute && handle
@@ -909,13 +909,13 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 			return false;
 		}
 
-		if ((map->lhs->tmpl_da->type != FR_TYPE_GROUP) &&
-		    (map->lhs->tmpl_da->type != FR_TYPE_TLV)) {
+		if ((tmpl_da(map->lhs)->type != FR_TYPE_GROUP) &&
+		    (tmpl_da(map->lhs)->type != FR_TYPE_TLV)) {
 			cf_log_err(map->ci, "Sublists can only be assigned to attributes of type 'group' or 'tlv'");
 			return false;
 		}
 
-		return pass2_fixup_update_map(map->child, rules, map->lhs->tmpl_da);
+		return pass2_fixup_update_map(map->child, rules, tmpl_da(map->lhs));
 	}
 
 	return true;
@@ -1149,7 +1149,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (map->lhs->tmpl_num == NUM_ANY) map->lhs->tmpl_num = NUM_ALL;
+		if (tmpl_num(map->lhs) == NUM_ANY) tmpl_num(map->lhs) = NUM_ALL;
 		break;
 
 	default:
@@ -1162,7 +1162,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (map->rhs->tmpl_num == NUM_ANY) map->rhs->tmpl_num = NUM_ALL;
+		if (tmpl_num(map->rhs) == NUM_ANY) tmpl_num(map->rhs) = NUM_ALL;
 		break;
 
 	default:
@@ -1293,10 +1293,10 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
+				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
 			return -1;
 		}
 
@@ -1304,17 +1304,17 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	Fixup LHS da if it doesn't match the type
 		 *	of the RHS.
 		 */
-		if (map->lhs->tmpl_da->type != map->rhs->tmpl_value_type) {
+		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
 			fr_dict_attr_t const *da;
 
-			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
+			da = fr_dict_attr_by_type(tmpl_da(map->lhs), tmpl_value_type(map->rhs));
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_value(fr_value_box_type_table, map->rhs->tmpl_value_type,
-						   "<INVALID>"), map->lhs->tmpl_da->name);
+						   fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(map->rhs),
+						   "<INVALID>"), tmpl_da(map->lhs)->name);
 				return -1;
 			}
-			map->lhs->tmpl_da = da;
+			tmpl_da(map->lhs) = da;
 		}
 	} /* else we can't precompile the data */
 
@@ -1365,14 +1365,14 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
 	 */
-	if (map->lhs->tmpl_num == NUM_ANY) map->lhs->tmpl_num = NUM_ALL;
+	if (tmpl_num(map->lhs) == NUM_ANY) tmpl_num(map->lhs) = NUM_ALL;
 
 	/*
 	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
 	 */
 	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->tmpl_num == NUM_ANY)) {
-		map->rhs->tmpl_num = NUM_ALL;
+	    (tmpl_num(map->rhs) == NUM_ANY)) {
+		tmpl_num(map->rhs) = NUM_ALL;
 	}
 
 	/*
@@ -1423,10 +1423,10 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_value(fr_value_box_type_table, map->lhs->tmpl_da->type, "<INVALID>"));
+				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
 			return -1;
 		}
 
@@ -1434,17 +1434,17 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 		 *	Fixup LHS da if it doesn't match the type
 		 *	of the RHS.
 		 */
-		if (map->lhs->tmpl_da->type != map->rhs->tmpl_value_type) {
+		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
 			fr_dict_attr_t const *da;
 
-			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
+			da = fr_dict_attr_by_type(tmpl_da(map->lhs), tmpl_value_type(map->rhs));
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_value(fr_value_box_type_table, map->rhs->tmpl_value_type,
-						   "<INVALID>"), map->lhs->tmpl_da->name);
+						   fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(map->rhs),
+						   "<INVALID>"), tmpl_da(map->lhs)->name);
 				return -1;
 			}
-			map->lhs->tmpl_da = da;
+			tmpl_da(map->lhs) = da;
 		}
 	} /* else we can't precompile the data */
 
@@ -2365,9 +2365,9 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		if (tmpl_is_unparsed(vpt) &&
 		    tmpl_is_attr(f->vpt)) {
-			fr_assert(f->vpt->tmpl_da != NULL);
+			fr_assert(tmpl_da(f->vpt) != NULL);
 
-			if (tmpl_cast_in_place(vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
+			if (tmpl_cast_in_place(vpt, tmpl_da(f->vpt)->type, tmpl_da(f->vpt)) < 0) {
 				cf_log_err(cs, "Invalid argument for case statement: %s",
 					      fr_strerror());
 				talloc_free(vpt);
@@ -2382,7 +2382,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		if (tmpl_is_xlat(vpt)) {
 			fr_dict_attr_t const *da = NULL;
 
-			if (tmpl_is_attr(f->vpt)) da = f->vpt->tmpl_da;
+			if (tmpl_is_attr(f->vpt)) da = tmpl_da(f->vpt);
 
 			/*
 			 *	Don't expand xlat's into an
@@ -2488,7 +2488,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	if ((vpt->tmpl_num != NUM_ALL) && (vpt->tmpl_num != NUM_ANY)) {
+	if ((tmpl_num(vpt) != NUM_ALL) && (tmpl_num(vpt) != NUM_ANY)) {
 		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
 		talloc_free(vpt);
 		return NULL;
@@ -2499,7 +2499,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	the attribute. In a perfect consistent world, users would do
 	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
 	 */
-	vpt->tmpl_num = NUM_ALL;
+	tmpl_num(vpt) = NUM_ALL;
 
 	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH);
 	if (!c) {
@@ -2634,7 +2634,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
 	vpt->type = TMPL_TYPE_XLAT_STRUCT;
-	vpt->tmpl_xlat = head;
+	tmpl_xlat(vpt) = head;
 
 	ut->tmpl = vpt;	/* const issues */
 	return c;

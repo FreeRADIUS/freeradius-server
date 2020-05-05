@@ -309,7 +309,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vpt, value,
-						 map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+						 tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}
@@ -372,18 +372,18 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
-	switch (map->rhs->tmpl_value_type) {
+	switch (tmpl_value_type(map->rhs)) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_value.datum.ptr;
-		out_len[2] = map->rhs->tmpl_value_length;
+		out[2] = tmpl_value(map->rhs).datum.ptr;
+		out_len[2] = tmpl_value_length(map->rhs);
 		break;
 
 	/*
 	 *	For everything else we get the string representation
 	 */
 	default:
-		new = fr_value_box_asprint(pool, &map->rhs->tmpl_value, '\0');
+		new = fr_value_box_asprint(pool, &tmpl_value(map->rhs), '\0');
 		if (!new) {
 			talloc_free(key);
 			return -1;

@@ -669,15 +669,15 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process IP address
 	 */
 	if (reply->elements > 1) {
-		vp_tmpl_t ip_rhs = {
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING
-		};
+		vp_tmpl_t ip_rhs;
 		vp_map_t ip_map = {
 			.lhs = inst->allocated_address_attr,
 			.op = T_OP_SET,
 			.rhs = &ip_rhs
 		};
+
+		tmpl_init(&ip_rhs, TMPL_TYPE_DATA, "", 0, T_BARE_WORD);
+		tmpl_value_type_set(&ip_rhs, FR_TYPE_STRING);
 
 		switch (reply->element[1]->type) {
 		/*
@@ -688,7 +688,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		 */
 		case REDIS_REPLY_INTEGER:
 		{
-			if (ip_map.lhs->tmpl_da->type != FR_TYPE_IPV4_ADDR) {
+			if (tmpl_da(ip_map.lhs)->type != FR_TYPE_IPV4_ADDR) {
 				fr_value_box_t tmp;
 
 				memset(&tmp, 0, sizeof(tmp));
@@ -696,23 +696,23 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				tmp.vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
 				tmp.type = FR_TYPE_UINT32;
 
-				if (fr_value_box_cast(NULL, &ip_map.rhs->tmpl_value, FR_TYPE_IPV4_ADDR,
+				if (fr_value_box_cast(NULL, &tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
 						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
 					ret = IPPOOL_RCODE_FAIL;
 					goto finish;
 				}
 			} else {
-				ip_map.rhs->tmpl_value.vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
-				ip_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+				tmpl_value(ip_map.rhs).vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
+				tmpl_value_type(ip_map.rhs) = FR_TYPE_UINT32;
 			}
 		}
 			goto do_ip_map;
 
 		case REDIS_REPLY_STRING:
-			ip_map.rhs->tmpl_value.vb_strvalue = reply->element[1]->str;
-			ip_map.rhs->tmpl_value_length = reply->element[1]->len;
-			ip_map.rhs->tmpl_value_type = FR_TYPE_STRING;
+			tmpl_value(ip_map.rhs).vb_strvalue = reply->element[1]->str;
+			tmpl_value_length(ip_map.rhs) = reply->element[1]->len;
+			tmpl_value_type(ip_map.rhs) = FR_TYPE_STRING;
 
 		do_ip_map:
 			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
@@ -739,21 +739,19 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		 */
 		case REDIS_REPLY_STRING:
 		{
-			vp_tmpl_t range_rhs = {
-				.name = "",
-				.type = TMPL_TYPE_DATA,
-				.tmpl_value_type = FR_TYPE_STRING,
-				.quote = T_DOUBLE_QUOTED_STRING
-			};
+			vp_tmpl_t range_rhs;
 			vp_map_t range_map = {
 				.lhs = inst->range_attr,
 				.op = T_OP_SET,
 				.rhs = &range_rhs
 			};
 
-			range_map.rhs->tmpl_value.vb_strvalue = reply->element[2]->str;
-			range_map.rhs->tmpl_value_length = reply->element[2]->len;
-			range_map.rhs->tmpl_value_type = FR_TYPE_STRING;
+			tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+			tmpl_value_type_set(&range_rhs, FR_TYPE_STRING);
+
+			tmpl_value(range_map.rhs).vb_strvalue = reply->element[2]->str;
+			tmpl_value_length(range_map.rhs) = reply->element[2]->len;
+			tmpl_value_type(range_map.rhs) = FR_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
 				goto finish;
@@ -776,17 +774,15 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process Expiry time
 	 */
 	if (inst->expiry_attr && (reply->elements > 3)) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
+		vp_tmpl_t expiry_rhs;
 		vp_map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
 		};
+
+		tmpl_init(&expiry_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+		tmpl_value_type_set(&expiry_rhs, FR_TYPE_STRING);
 
 		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
 			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
@@ -795,8 +791,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 
-		expiry_map.rhs->tmpl_value.vb_uint32 = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+		tmpl_value(expiry_map.rhs).vb_uint32 = reply->element[3]->integer;
+		tmpl_value_type(expiry_map.rhs) = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -823,8 +819,11 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_value_type = FR_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
+	vp_tmpl_t		range_rhs;
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+
+	tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+	tmpl_value_type_set(&range_rhs, FR_TYPE_STRING);
 
 	now = fr_time_to_timeval(fr_time());
 
@@ -901,9 +900,9 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		 *	Add range ID to request
 		 */
 		case REDIS_REPLY_STRING:
-			range_map.rhs->tmpl_value.vb_strvalue = reply->element[1]->str;
-			range_map.rhs->tmpl_value_length = reply->element[1]->len;
-			range_map.rhs->tmpl_value_type = FR_TYPE_STRING;
+			tmpl_value(range_map.rhs).vb_strvalue = reply->element[1]->str;
+			tmpl_value_length(range_map.rhs) = reply->element[1]->len;
+			tmpl_value_type(range_map.rhs) = FR_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
 				goto finish;
@@ -925,20 +924,19 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	 *	Copy expiry time to expires attribute (if set)
 	 */
 	if (inst->expiry_attr) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
+		vp_tmpl_t expiry_rhs;
 		vp_map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
 		};
 
-		expiry_map.rhs->tmpl_value.vb_uint32 = expires;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+
+		tmpl_init(&expiry_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+		tmpl_value_type_set(&expiry_rhs, FR_TYPE_STRING);
+
+		tmpl_value(expiry_map.rhs).vb_uint32 = expires;
+		tmpl_value_type(expiry_map.rhs) = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -1194,9 +1192,9 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 					.rhs = &ip_rhs
 				};
 
-				ip_rhs.tmpl_value_length = strlen(ip_str);
-				ip_rhs.tmpl_value.vb_strvalue = ip_str;
-				ip_rhs.tmpl_value_type = FR_TYPE_STRING;
+				tmpl_value_length(&ip_rhs) = strlen(ip_str);
+				tmpl_value(&ip_rhs).vb_strvalue = ip_str;
+				tmpl_value_type(&ip_rhs) = FR_TYPE_STRING;
 
 				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;
 			}

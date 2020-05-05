@@ -119,13 +119,13 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 		    !tmpl_is_data(h->vpt)) {
 			map.rhs = g->vpt;
 			map.lhs = h->vpt;
-			cond.cast = g->vpt->tmpl_da;
+			cond.cast = tmpl_da(g->vpt);
 
 			/*
 			 *	Remove unnecessary casting.
 			 */
 			if (tmpl_is_attr(h->vpt) &&
-			    (g->vpt->tmpl_da->type == h->vpt->tmpl_da->type)) {
+			    (tmpl_da(g->vpt)->type == tmpl_da(h->vpt)->type)) {
 				cond.cast = NULL;
 			}
 

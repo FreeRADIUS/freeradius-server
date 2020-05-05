@@ -137,10 +137,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		 *	select which frame is being used.
 		 */
 		if (tmpl_is_attr(g->vpt) &&
-		    ((g->vpt->tmpl_da->type == FR_TYPE_UINT8) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT16) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT32) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT64))) {
+		    ((tmpl_da(g->vpt)->type == FR_TYPE_UINT8) ||
+		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT16) ||
+		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT32) ||
+		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT64))) {
 			VALUE_PAIR *vp;
 
 			slen = tmpl_find_vp(&vp, request, g->vpt);
@@ -149,7 +149,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 				goto randomly_choose;
 			}
 
-			switch (g->vpt->tmpl_da->type) {
+			switch (tmpl_da(g->vpt)->type) {
 			case FR_TYPE_UINT8:
 				start = ((uint32_t) vp->vp_uint8) % g->num_children;
 				break;

@@ -479,7 +479,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((inst->reply_attr->tmpl_da == attr_session_timeout) &&
+		if ((tmpl_da(inst->reply_attr) == attr_session_timeout) &&
 		    inst->reset_time &&
 		    (res >= (uint64_t)(inst->reset_time - fr_time_to_sec(request->packet->timestamp)))) {
 			uint64_t to_reset = inst->reset_time - fr_time_to_sec(request->packet->timestamp);
@@ -582,19 +582,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", inst->paircmp_attr->tmpl_da->name);
+	if (tmpl_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
-	if (paircmp_register_by_name(inst->paircmp_attr->tmpl_da->name, NULL, true,
+	if (paircmp_register_by_name(tmpl_da(inst->paircmp_attr)->name, NULL, true,
 					counter_cmp, inst) < 0) {
 		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
-			    inst->paircmp_attr->tmpl_da->name);
+			    tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
 
-	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64", inst->limit_attr->tmpl_da->name);
+	if (tmpl_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_da(inst->limit_attr)->name);
 		return -1;
 	}
 

@@ -435,7 +435,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	/*
 	 *	Virtual attributes always have a count of 1
 	 */
-	if (vpt->tmpl_num == NUM_COUNT) {
+	if (tmpl_num(vpt) == NUM_COUNT) {
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
 		value->datum.uint32 = 1;
 		goto done;
@@ -444,31 +444,31 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	/*
 	 *	Some non-packet expansions
 	 */
-	if (vpt->tmpl_da == attr_client_shortname) {
+	if (tmpl_da(vpt) == attr_client_shortname) {
 		if (!request->client || !request->client->shortname) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->client->shortname, false) < 0) {
+		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt), request->client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
 			return XLAT_ACTION_FAIL;
 		}
 		goto done;
-	} else if (vpt->tmpl_da == attr_request_processing_stage) {
+	} else if (tmpl_da(vpt) == attr_request_processing_stage) {
 		if (!request->component) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->component, false) < 0) goto error;
+		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
 		goto done;
-	} else if (vpt->tmpl_da == attr_virtual_server) {
+	} else if (tmpl_da(vpt) == attr_virtual_server) {
 		if (!request->server_cs) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da,
+		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt),
 					       cf_section_name2(request->server_cs), false) < 0) goto error;
 		goto done;
-	} else if (vpt->tmpl_da == attr_module_return_code) {
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, vpt->tmpl_da, false));
+	} else if (tmpl_da(vpt) == attr_module_return_code) {
+		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, tmpl_da(vpt), false));
 		value->datum.int32 = request->rcode;
 		goto done;
 	}
@@ -478,14 +478,14 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	 *	If there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
-	packet = radius_packet(request, vpt->tmpl_list);
+	packet = radius_packet(request, tmpl_list(vpt));
 	if (!packet) return XLAT_ACTION_DONE;
 
-	if (vpt->tmpl_da == attr_packet_type) {
+	if (tmpl_da(vpt) == attr_packet_type) {
 		if (!packet || !packet->code) return XLAT_ACTION_DONE;
 
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
-		value->enumv = vpt->tmpl_da;
+		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, false));
+		value->enumv = tmpl_da(vpt);
 		value->datum.int32 = packet->code;
 
 	/*
@@ -494,45 +494,45 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	} else if (vpt->tmpl_da == attr_packet_authentication_vector) {
+	} else if (tmpl_da(vpt) == attr_packet_authentication_vector) {
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_memcpy(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
-	} else if (vpt->tmpl_da == attr_client_ip_address) {
+		fr_value_box_memcpy(ctx, value, tmpl_da(vpt), packet->vector, sizeof(packet->vector), true);
+	} else if (tmpl_da(vpt) == attr_client_ip_address) {
 		if (request->client) {
 			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
 			goto done;
 		}
 		goto src_ip_address;
-	} else if (vpt->tmpl_da == attr_packet_src_ip_address) {
+	} else if (tmpl_da(vpt) == attr_packet_src_ip_address) {
 	src_ip_address:
 		if (packet->src_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
-	} else if (vpt->tmpl_da == attr_packet_dst_ip_address) {
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->src_ipaddr, true);
+	} else if (tmpl_da(vpt) == attr_packet_dst_ip_address) {
 		if (packet->dst_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
-	} else if (vpt->tmpl_da == attr_packet_src_ipv6_address) {
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->dst_ipaddr, true);
+	} else if (tmpl_da(vpt) == attr_packet_src_ipv6_address) {
 		if (packet->src_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
-	} else if (vpt->tmpl_da == attr_packet_dst_ipv6_address) {
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->src_ipaddr, true);
+	} else if (tmpl_da(vpt) == attr_packet_dst_ipv6_address) {
 		if (packet->dst_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
-	} else if (vpt->tmpl_da == attr_packet_src_port) {
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true));
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->dst_ipaddr, true);
+	} else if (tmpl_da(vpt) == attr_packet_src_port) {
+		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
 		value->datum.uint16 = packet->src_port;
-	} else if (vpt->tmpl_da == attr_packet_dst_port) {
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true));
+	} else if (tmpl_da(vpt) == attr_packet_dst_port) {
+		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
 		value->datum.uint16 = packet->dst_port;
 	} else {
-		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
+		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_da(vpt)->name);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -576,12 +576,12 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 	 *	virtual.
 	 */
 	if (!vp) {
-		if (tmpl_is_attr(vpt) && vpt->tmpl_da->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
+		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
 
 		/*
 		 *	Zero count.
 		 */
-		if (vpt->tmpl_num == NUM_COUNT) {
+		if (tmpl_num(vpt) == NUM_COUNT) {
 			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 			if (!value) {
 			oom:
@@ -599,7 +599,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 	}
 
 
-	switch (vpt->tmpl_num) {
+	switch (tmpl_num(vpt)) {
 	/*
 	 *	Return a count of the VPs.
 	 */

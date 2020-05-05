@@ -380,19 +380,19 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 		/*
 		 *	Ignore internal attributes.
 		 */
-		if (map->lhs->tmpl_da->flags.internal) continue;
+		if (tmpl_da(map->lhs)->flags.internal) continue;
 
 		/*
 		 *	Ignore signalling attributes.  They shouldn't exist.
 		 */
-		if ((map->lhs->tmpl_da == attr_proxy_state) ||
-		    (map->lhs->tmpl_da == attr_message_authenticator)) continue;
+		if ((tmpl_da(map->lhs) == attr_proxy_state) ||
+		    (tmpl_da(map->lhs) == attr_message_authenticator)) continue;
 
 		/*
 		 *	Allow passwords only in Access-Request packets.
 		 */
 		if ((inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
-		    (map->lhs->tmpl_da == attr_user_password)) continue;
+		    (tmpl_da(map->lhs) == attr_user_password)) continue;
 
 		(void) map_to_request(request, map, map_to_vp, NULL);
 	}

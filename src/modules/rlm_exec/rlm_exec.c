@@ -233,7 +233,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	MEM(inst->tmpl = tmpl_alloc(inst, TMPL_TYPE_EXEC, inst->program, strlen(inst->program), T_BACK_QUOTED_STRING));
 
-	slen = xlat_tokenize_argv(inst->tmpl, &inst->tmpl->tmpl_xlat, inst->program, strlen(inst->program),
+	slen = xlat_tokenize_argv(inst->tmpl, &tmpl_xlat(inst->tmpl), inst->program, strlen(inst->program),
 				  &(vp_tmpl_rules_t) { .dict_def = fr_dict_internal() });
 	if (slen <= 0) {
 		char *spaces, *text;
@@ -357,7 +357,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 
 		MEM(box = talloc_zero(ctx, fr_value_box_t));
 
-		return unlang_module_yield_to_xlat(request, &box, request, inst->tmpl->tmpl_xlat, mod_exec_nowait_resume, NULL, box);
+		return unlang_module_yield_to_xlat(request, &box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, box);
 	}
 
 	/*

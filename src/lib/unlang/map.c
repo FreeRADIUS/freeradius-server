@@ -151,7 +151,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 
 			case TMPL_TYPE_XLAT_STRUCT:
 				unlang_xlat_push(update_state, &update_state->lhs_result,
-						 request, map->lhs->tmpl_xlat, false);
+						 request, tmpl_xlat(map->lhs), false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
@@ -186,7 +186,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 
 			case TMPL_TYPE_XLAT_STRUCT:
 				unlang_xlat_push(update_state, &update_state->rhs_result,
-						 request, map->rhs->tmpl_xlat, false);
+						 request, tmpl_xlat(map->rhs), false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
@@ -336,7 +336,7 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 
 	case TMPL_TYPE_XLAT_STRUCT:
 		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
-				 request, inst->src->tmpl_xlat, false);
+				 request, tmpl_xlat(inst->src), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case TMPL_TYPE_REGEX:
