@@ -2835,7 +2835,10 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
-		fr_assert_fail(NULL);
+	invalid_cast:
+		fr_strerror_printf("Invalid cast from %s to %s",
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
 
@@ -2892,11 +2895,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			goto do_octets;
 
 		default:
-		invalid_cast:
-			fr_strerror_printf("Invalid cast from %s to %s",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
+			goto invalid_cast;
 		}
 		goto fixed_length;
 	}
