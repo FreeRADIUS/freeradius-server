@@ -440,7 +440,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			}
 
 			/*
-			 *	Fisallow list qualifiers for the child
+			 *	Disallow list qualifiers for the child
 			 *	templates.  The syntax requires that
 			 *	the child attributes go into the
 			 *	parent one.
