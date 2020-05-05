@@ -32,6 +32,7 @@
 #include <freeradius-devel/protocol/arp/rfc826.h>
 
 #define FR_ARP_PACKET_SIZE (28)
+#define ETH_TYPE_ARP (0x0806)
 
 int fr_arp_init(void);
 void fr_arp_free(void);
