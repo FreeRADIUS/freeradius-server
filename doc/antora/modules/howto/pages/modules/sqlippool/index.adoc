@@ -983,19 +983,20 @@ UPDATE SKIP LOCKED` statement which means that it is a very efficient backend
 for `sqlippool`.
 
 MySQL::
-Since version 8 the InnoDB storage enging provides a direct implementation of
-the `SELECT ... FOR UPDATE SKIP LOCKED` statement which means that it is a very
-efficient backend for `sqlippool`. Previous versions do not implement the `SKIP
-LOCKED` pragma and therefore may have poor performance under concurrent load.
-Ensure that you use a storage engine what supports transactions. Do not use
-MyISAM.
+Ensure that you use a storage engine what supports transactions such as InnoDB.
+Do not use MyISAM. Since version 8 the InnoDB storage engine provides a direct
+implementation of the `SELECT ... FOR UPDATE SKIP LOCKED` statement which means
+that it is a very efficient backend for `sqlippool`. Previous versions do not
+implement the `SKIP LOCKED` pragma and will therefore have poor performance
+under concurrent load, _but see the tip concerning the alternative stored
+procedure below_.
 
 MariaDB::
-Current versions lack `SKIP LOCKED` and therefore may have poor performance
-under concurrent load. For this reason, given the choice between MariaDB and
-a recent version of MySQL you should use MySQL for SQL IP Pools. Ensure that
-you use a storage engine what supports transactions such as InnoDB: Do not use
-MyISAM or Aria.
+Ensure that you use a storage engine what supports transactions such as InnoDB.
+Do not use MyISAM or Aria. All versions of MariaDB lack `SKIP LOCKED` and
+therefore will have poor performance under concurrent load, _but see the tip
+concerning the alternative stored procedure below_. Given the choice between
+MariaDB and a recent version of MySQL you should use MySQL for SQL IP Pools.
 
 MS SQL Server::
 Does not provide a `SELECT ... FOR UPDATE` implementation nor a direct means to
@@ -1018,6 +1019,30 @@ Does not provide a `SELECT ... FOR UPDATE` implementation due to its simplified
 locking characteristics. The only locking that is available for this purpose is
 an exclusive lock taken over the entire database. This makes it unsuitable for
 anything other than managing a small number of devices.
+
+[TIP]
+.Alternative stored procedure for MariaDB and MySQL < 8.0
+===================================================================================
+
+The file `procedure_no_skip_locked.sql` contains an alternative stored
+procedure that is intended exclusively for MySQL variants that do not support
+the `SKIP LOCKED` pragma, i.e. all MariaDB versions and versions of MySQL prior
+to 8.0.
+
+It should be a lot faster than using the default stored procedure under highly
+concurrent workloads and should not result in thread starvation. It can best be
+described as a useful hack that should not be used except when the
+better-performing `SKIP LOCKED` method is unavailable.
+
+This procedure works by using "user locks" to provide skippable, row-level
+locking that facilitates non-blocking selection of unique IP addresses from the
+pool. We pay a performance penalty for managing the locks, however it is
+nowhere near as bad as serialising all concurrent pool access.
+
+Since user locks are local to the database server instance this procedure is
+not suitable for a multi-master cluster.
+
+===================================================================================
 
 [#database-clusters]
 [NOTE]
