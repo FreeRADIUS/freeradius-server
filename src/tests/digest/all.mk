@@ -26,7 +26,7 @@ $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 #
 #	Run the digest commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
+$(OUTPUT)/%: $(DIR)/% | test.digest.radiusd_kill test.digest.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)))
 	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do	\
@@ -37,7 +37,7 @@ $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 		if ! $(TESTBIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
 			echo "FAILED";					\
 			cat $@.out;					\
-			$(MAKE) test.digest.radiusd_kill;		\
+			$(MAKE) --no-print-directory test.digest.radiusd_kill;		\
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
 			echo "RADCLIENT: $(TESTBIN)/radclient -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
 			exit 1;						\
@@ -46,4 +46,4 @@ $(OUTPUT)/%: $(DIR)/% test.digest.radiusd_kill test.digest.radiusd_start
 	done
 
 $(TEST):
-	${Q}$(MAKE) test.digest.radiusd_kill
+	${Q}$(MAKE) --no-print-directory test.digest.radiusd_kill
