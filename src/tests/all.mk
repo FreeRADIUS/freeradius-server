@@ -33,7 +33,7 @@ $(BUILD_DIR)/tests/radiusd-c:
 	${Q}touch $@
 
 .PHONY: test.radiusd-c
-test.radiusd-c: $(BUILD_DIR)/tests/radiusd-c raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
+test.radiusd-c: raddb/test.conf $(BUILD_DIR)/tests/radiusd-c ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
 
 #
 #  The tests are manually ordered for now, as it's a PITA to fix all
