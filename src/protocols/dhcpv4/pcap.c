@@ -51,8 +51,8 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET 
 
 	/* fill in Ethernet layer (L2) */
 	eth_hdr = (ethernet_header_t *)dhcp_packet;
-	memcpy(eth_hdr->ether_dst, dst_ether_addr, ETH_ADDR_LEN);
-	memcpy(eth_hdr->ether_src, pcap->ether_addr, ETH_ADDR_LEN);
+	memcpy(eth_hdr->src_addr, dst_ether_addr, ETH_ADDR_LEN);
+	memcpy(eth_hdr->dst_addr, pcap->ether_addr, ETH_ADDR_LEN);
 	eth_hdr->ether_type = htons(ETH_TYPE_IP);
 	end += ETH_ADDR_LEN + ETH_ADDR_LEN + sizeof(eth_hdr->ether_type);
 
