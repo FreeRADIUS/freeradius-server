@@ -8,7 +8,6 @@ SECRET := testing123
 #
 #  To work around OpenSSL issues with travis.
 #
-.PHONY:
 raddb/test.conf:
 	${Q}echo 'security {' >> $@
 	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
@@ -20,7 +19,7 @@ raddb/test.conf:
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
+$(BUILD_DIR)/tests/radiusd-c:
 	@printf "radiusd -C... "
 	${Q}if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
@@ -32,6 +31,9 @@ radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd
 	${Q}rm -f raddb/test.conf
 	@echo "ok"
 	${Q}touch $@
+
+.PHONY: test.radiusd-c
+test.radiusd-c: $(BUILD_DIR)/tests/radiusd-c raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
 
 #
 #  The tests are manually ordered for now, as it's a PITA to fix all
@@ -47,7 +49,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.xlat	\
 		test.map	\
 		test.modules	\
-		$(BUILD_DIR)/tests/radiusd-c \
+		test.radiusd-c	\
 		test.auth	\
 		test.radclient	\
 		test.digest	\
