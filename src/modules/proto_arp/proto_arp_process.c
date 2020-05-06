@@ -228,6 +228,11 @@ static virtual_server_compile_t compile_list[] = {
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
 	},
+	{			/* we can listen for others ARP replies, too */
+		.name = "recv",
+		.name2 = "Reply",
+		.component = MOD_POST_AUTH,
+	},
 	{
 		.name = "recv",
 		.name2 = "Reverse-Request",
