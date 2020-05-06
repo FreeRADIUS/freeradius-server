@@ -94,7 +94,6 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float32) == 4,
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 	      "vb_float64 has unexpected length");
 
-static ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value);
 
 /** Map data types to names representing those types
  */
@@ -1042,7 +1041,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	return fr_value_box_to_network_dbuff(need, &FR_DBUFF_TMP(dst, dst_len), value);
 }
 
-static ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value)
+ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value)
 {
 	size_t min, max;
 

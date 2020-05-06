@@ -36,7 +36,6 @@
 
 #include <talloc.h>
 
-static ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value);
 static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
 /** We use the same header for all types
@@ -272,21 +271,6 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(enc_field, (value_field + (flen - 1)) - enc_field, "header");
 
 	return value_end - enc_field;
-}
-
-/** Encode a single value box, serializing its contents in generic network format
- *
- * @note this is a dbuff-oriented layer around fr_value_box_to_network(); once
- * dbuffs become the convention, this layer should no longer be necessary.
- */
-static ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value)
-{
-	ssize_t	result;
-
-	result = fr_value_box_to_network(need, dbuff->p, fr_dbuff_remaining(dbuff), value);
-	if (result < 0) return result;
-	fr_dbuff_advance(dbuff, result);
-	return result;
 }
 
 /** Encode a data structure into an internal attribute
