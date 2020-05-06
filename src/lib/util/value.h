@@ -37,6 +37,7 @@ typedef struct value_box fr_value_box_t;
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/inet.h>
@@ -541,6 +542,8 @@ int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 size_t		fr_value_box_network_length(fr_value_box_t *value);
 
 ssize_t		fr_value_box_to_network(size_t *need, uint8_t *out, size_t outlen, fr_value_box_t const *value);
+
+ssize_t		fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value);
 
 /** Special value to indicate fr_value_box_from_network experienced a general error
  */
