@@ -122,8 +122,8 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	}
 
 	/* fill in Ethernet layer (L2) */
-	memcpy(eth_hdr->ether_dst, eth_bcast, ETH_ADDR_LEN);
-	memcpy(eth_hdr->ether_src, dhmac, ETH_ADDR_LEN);
+	memcpy(eth_hdr->dst_addr, eth_bcast, ETH_ADDR_LEN);
+	memcpy(eth_hdr->src_addr, dhmac, ETH_ADDR_LEN);
 	eth_hdr->ether_type = htons(ETH_TYPE_IP);
 
 	/* fill in IP layer (L3) */
@@ -225,13 +225,13 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	 *	If Ethernet destination is not broadcast (ff:ff:ff:ff:ff:ff)
 	 *	Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
 	 */
-	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
+	if ((memcmp(&eth_bcast, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0) &&
 	    (vp = fr_pair_find_by_da(request->vps, attr_dhcp_client_hardware_address, TAG_ANY)) &&
-	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
+	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0))) {
 
 		/* No match. */
 		DISCARD_RP("Ethernet destination (%pV) is not broadcast and doesn't match request source (%pV)",
-			   fr_box_ether(eth_hdr->ether_dst), &vp->data);
+			   fr_box_ether(eth_hdr->dst_addr), &vp->data);
 	}
 
 	/*

@@ -145,8 +145,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	Set the destination MAC as the target address from
 	 *	ARP.
 	 */
-	memcpy(eth_hdr->ether_src, thread->pcap->ether_addr, ETHER_ADDR_LEN);
-	memcpy(eth_hdr->ether_dst, arp->tha, ETHER_ADDR_LEN);
+	memcpy(eth_hdr->src_addr, thread->pcap->ether_addr, ETHER_ADDR_LEN);
+	memcpy(eth_hdr->dst_addr, arp->tha, ETHER_ADDR_LEN);
 
 	/*
 	 *	If we fail injecting the reply, just ignore it.

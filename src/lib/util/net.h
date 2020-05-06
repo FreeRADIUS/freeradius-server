@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/build.h>
+#include <freeradius-devel/ethernet/ethernet.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
@@ -96,15 +97,6 @@ typedef enum {
 #define	I_DF		0x4000		//!< Dont fragment flag.
 #define IP_MF		0x2000		//!< More fragments flag.
 #define IP_OFFMASK	0x1fff		//!< Mask for fragmenting bits.
-
-/*
- *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
- */
-typedef struct CC_HINT(__packed__) {
-	uint8_t		ether_dst[ETHER_ADDR_LEN];
-	uint8_t		ether_src[ETHER_ADDR_LEN];
-	uint16_t	ether_type;
-} ethernet_header_t;
 
 /*
  *	Structure of an internet header, naked of options.
