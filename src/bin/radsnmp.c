@@ -431,13 +431,13 @@ static int radsnmp_get_response(int fd,
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
 	      	 */
-		if (!fr_dict_parent_common(root, vp->da, true)) continue;
+		if (!fr_dict_attr_common_parent(root, vp->da, true)) continue;
 
 		/*
 		 *	Sanity checks to ensure we're processing attributes
 		 *	in the right order.
 		 */
-		common = fr_dict_parent_common(parent, vp->da, true);
+		common = fr_dict_attr_common_parent(parent, vp->da, true);
 		if (!common) {
 			fr_strerror_printf("Out of order index attributes.  \"%s\" is not a child of \"%s\"",
 					   vp->da->name, parent->name);

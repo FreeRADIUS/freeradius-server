@@ -150,7 +150,7 @@ void fr_proto_da_stack_partial_build(fr_da_stack_t *stack, fr_dict_attr_t const 
 	fr_dict_attr_t const	*da_p, **da_q, **da_o;
 
 #ifndef NDEBUG
-	if (!fr_cond_assert(fr_dict_parent_common(parent, da, true) == parent)) {
+	if (!fr_cond_assert(fr_dict_attr_common_parent(parent, da, true) == parent)) {
 		fr_strerror_printf("Expected \"%s\" to be a descendent of \"%s\" but it isn't",
 				   da->name, parent->name);
 		return;

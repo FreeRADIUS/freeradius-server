@@ -1125,7 +1125,7 @@ int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
  *	- Common ancestor if one exists.
  *	- NULL if no common ancestor exists.
  */
-fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor)
+fr_dict_attr_t const *fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor)
 {
 	unsigned int i;
 	fr_dict_attr_t const *p_a, *p_b;
@@ -2096,7 +2096,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 			*out = NULL;
 			return 0;
 		}
-	} else if (!fr_dict_parent_common(parent, *out, true)) goto not_decendent;
+	} else if (!fr_dict_attr_common_parent(parent, *out, true)) goto not_decendent;
 
 	return slen;
 }

@@ -77,7 +77,7 @@ static bool is_eap_aka_encodable(void *item, void *uctx)
 	 *	and absence is 'false'
 	 */
 	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
-	if (!fr_dict_parent_common(packet_ctx->root, vp->da, true)) return false;
+	if (!fr_dict_attr_common_parent(packet_ctx->root, vp->da, true)) return false;
 
 	return true;
 }

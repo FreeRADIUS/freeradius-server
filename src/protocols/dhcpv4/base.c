@@ -188,8 +188,8 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	 *
 	 *	Check if either of the options are descended from option 82.
 	 */
-	a_82 = fr_dict_parent_common(dhcp_option_82, my_a->da, true);
-	b_82 = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
+	a_82 = fr_dict_attr_common_parent(dhcp_option_82, my_a->da, true);
+	b_82 = fr_dict_attr_common_parent(dhcp_option_82, my_b->da, true);
 	if (a_82 && !b_82) return +1;
 	if (!a_82 && !b_82) return -1;
 

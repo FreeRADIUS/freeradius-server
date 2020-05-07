@@ -295,7 +295,7 @@ ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_t const *dict,
 
 void			fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth);
 
-fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
+fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
 int			fr_dict_oid_component(unsigned int *out, char const **oid);
 

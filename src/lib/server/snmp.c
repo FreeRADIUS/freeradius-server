@@ -658,10 +658,10 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 	 *	if it is an index attribute...
 	 */
 	next = fr_cursor_next_peek(cursor);
-	if (next && fr_dict_parent_common(vp->da, next->da, true)) {
+	if (next && fr_dict_attr_common_parent(vp->da, next->da, true)) {
 		fr_proto_da_stack_build(da_stack, next->da);
 
-		while ((next = fr_cursor_next(cursor))) if (fr_dict_parent_common(vp->da, next->da, true)) break;
+		while ((next = fr_cursor_next(cursor))) if (fr_dict_attr_common_parent(vp->da, next->da, true)) break;
 	}
 
 	return snmp_process_index(out, request,

@@ -2026,7 +2026,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			common = fr_dict_parent_common(ctx->stack[ctx->stack_depth].da, da, true);
+			common = fr_dict_attr_common_parent(ctx->stack[ctx->stack_depth].da, da, true);
 			if (!common ||
 			    (common->type == FR_TYPE_VSA)) {
 				fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",

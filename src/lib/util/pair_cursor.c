@@ -333,7 +333,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t 
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if (fr_dict_parent_common(ancestor, i->da, true) &&
+		if (fr_dict_attr_common_parent(ancestor, i->da, true) &&
 		    ATTR_TAG_MATCH(i, tag)) {
 			break;
 		}

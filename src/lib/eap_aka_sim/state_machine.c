@@ -850,7 +850,7 @@ static int common_encode(REQUEST *request, eap_session_t *eap_session, uint16_t 
 	 *	result.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		if (!fr_dict_parent_common(encoder_ctx.root, vp->da, true)) {
+		if (!fr_dict_attr_common_parent(encoder_ctx.root, vp->da, true)) {
 			fr_cursor_next(&cursor);
 			continue;
 		}
@@ -863,7 +863,7 @@ static int common_encode(REQUEST *request, eap_session_t *eap_session, uint16_t 
 		 *	wpa_supplicant to fail if sent before the challenge.
 		 */
 		if (!eap_aka_sim_session->allow_encrypted &&
-		    fr_dict_parent_common(attr_eap_aka_sim_encr_data, vp->da, true)) {
+		    fr_dict_attr_common_parent(attr_eap_aka_sim_encr_data, vp->da, true)) {
 			RWDEBUG("Silently discarding &reply:%s: Encrypted attributes not allowed in this round",
 				vp->da->name);
 			talloc_free(vp);

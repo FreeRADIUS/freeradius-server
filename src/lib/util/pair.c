@@ -370,7 +370,7 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
 
 	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
 		VP_VERIFY(c);
-		if (fr_dict_parent_common(da, c->da, true)) break;
+		if (fr_dict_attr_common_parent(da, c->da, true)) break;
 	}
 
 	*prev = p;
