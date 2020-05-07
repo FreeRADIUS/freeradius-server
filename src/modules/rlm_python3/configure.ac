@@ -61,9 +61,7 @@ if test x$with_[]modname != xno; then
 
 		dnl # From python 3.8, --embed is required
 		dnl # https://bugs.python.org/issue36721
-		if test x"$PYTHON_VERSION" = x"3.8"; then
-			EMBED="--embed"
-		fi
+		AX_COMPARE_VERSION(${PYTHON_VERSION}, [ge], [3.8], [EMBED="--embed"], [])
 
 		python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags $EMBED`
 		AC_MSG_NOTICE([${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"])
