@@ -75,4 +75,13 @@ ${2}/radiusd.pid: ${2}
 
 .PHONY: $(TEST).radiusd_start
 $(TEST).radiusd_start: ${2}/radiusd.pid
+
+#
+#  If this test framework needs radiusd to be started / stopped, then ensure that
+#  the output files depend on the radiusd binary.
+#
+ifneq "$(FILES.$(TEST))" ""
+$(foreach x, $(FILES.$(TEST)), $(eval $(OUTPUT.$(TEST))/$x: $(TESTBINDIR)/radiusd $(TESTBINDIR)/$(CLIENT)))
+endif
+
 endef

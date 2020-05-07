@@ -25,6 +25,7 @@ RADCLIENT_CLIENT_PORT = 1234
 #
 #  Generic rules to start / stop the radius service.
 #
+CLIENT := radclient
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,tapioca,$(OUTPUT)))
 

@@ -20,6 +20,7 @@ DIGEST_GDB_LOG    := $(DIGEST_BUILD_DIR)/gdb.log
 #
 #  Generic rules to start / stop the radius service.
 #
+CLIENT := radclient
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 
