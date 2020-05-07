@@ -466,6 +466,21 @@ static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
 	}
 }
 
+/** Free all items in a doubly linked list from the tail backwards
+ *
+ * @param[in] head of list to free.
+ */
+static inline void fr_dlist_talloc_reverse_free(fr_dlist_head_t *head)
+{
+	void *e = NULL;
+
+	e = fr_dlist_tail(head);
+	do {
+		e = fr_dlist_remove(head, e);
+		talloc_free(e);
+	} while (e);
+}
+
 /** Return the number of elements in the dlist
  *
  * @param[in] head of list to count elements for.
