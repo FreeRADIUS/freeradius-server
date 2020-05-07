@@ -36,9 +36,7 @@ typedef enum {
 	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
 	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),
 	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
-	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
-	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
-	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 3)
 } radius_signal_t;
 
 #include <freeradius-devel/server/client.h>
