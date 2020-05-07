@@ -101,6 +101,8 @@ char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(form
 
 char		*talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
 
+char		*talloc_bstrdup(TALLOC_CTX *ctx, char const *in);
+
 char		*talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen);
 
 char		*talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len);

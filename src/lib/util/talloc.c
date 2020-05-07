@@ -311,6 +311,30 @@ char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	return n;
 }
 
+/** Binary safe strdup function
+ *
+ * @param[in] ctx 	he talloc context to allocate new buffer in.
+ * @param[in] in	String to dup, may contain embedded '\0'.
+ * @return duped string.
+ */
+char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
+{
+	char	*p;
+	size_t	len = talloc_array_length(in);
+
+	if (len == 0) len = 1;
+
+	p = talloc_array(ctx, char, len);
+	if (!p) return NULL;
+
+	/*
+	 * C99 (7.21.1/2) - Length zero results in noop
+	 */
+	memcpy(p, in, len - 1);
+	p[len] = '\0';
+
+	return p;
+}
 
 /** Binary safe strndup function
  *
