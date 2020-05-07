@@ -44,6 +44,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)if ! $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
+		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
