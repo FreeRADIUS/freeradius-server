@@ -70,3 +70,6 @@ $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi
+
+$(TEST):
+	@touch $(BUILD_DIR)/tests/$@

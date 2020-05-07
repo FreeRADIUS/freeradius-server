@@ -52,7 +52,7 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 #
 #	Run the radmin commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% | test.radmin.radiusd_kill test.radmin.radiusd_start
+$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	@echo "RADMIN-TEST $(notdir $@)"
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
@@ -65,6 +65,7 @@ $(OUTPUT)/%: $(DIR)/% | test.radmin.radiusd_kill test.radmin.radiusd_start
 		echo "--------------------------------------------------"; \
 		echo "RADIUSD: $(RADIUSD_RUN)"; \
 		echo "RADMIN : $(TESTBIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
+		rm -f $(BUILD_DIR)/tests/test.radmin; \
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
 		exit 1; \
 	fi; \
@@ -76,6 +77,7 @@ $(OUTPUT)/%: $(DIR)/% | test.radmin.radiusd_kill test.radmin.radiusd_start
 		echo "If you did some update on the radmin code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)"; \
 		diff $(EXPECTED) $(FOUND); \
+		rm -f $(BUILD_DIR)/tests/test.radmin; \
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
 		exit 1; \
 	else \
@@ -83,4 +85,5 @@ $(OUTPUT)/%: $(DIR)/% | test.radmin.radiusd_kill test.radmin.radiusd_start
 	fi
 
 $(TEST):
-	${Q}$(MAKE) --no-print-directory test.radmin.radiusd_kill
+	${Q}$(MAKE) --no-print-directory $@.radiusd_kill
+	@touch $(BUILD_DIR)/tests/$@

@@ -143,12 +143,6 @@ $(foreach x,$(MODULE_TEST),$(eval $(call MODULE_TEST_TARGET,$x)))
 
 $(TEST.MODULES_FILES): $(TEST.AUTH_FILES)
 
-.PHONY: clean.test.modules
-clean.test.modules:
-	${Q}rm -rf $(BUILD_DIR)/tests/modules/
-
-clean.test: clean.test.modules
-
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
@@ -167,3 +161,12 @@ $(BUILD_DIR)/tests/modules/depends.mk: $(MODULE_UNLANG) | $(BUILD_DIR)/tests/mod
 		fi \
 	done
 
+.PHONY: clean.test.modules
+clean.test.modules:
+	${Q}rm -rf $(BUILD_DIR)/tests/modules/
+	${Q}rm -rf $(BUILD_DIR)/tests/test.modules
+
+clean.test: clean.test.modules
+
+test.modules:
+	${Q}touch $(BUILD_DIR)/tests/$@

@@ -141,6 +141,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 .PHONY: clean.$(TEST)
 clean.$(TEST):
 	$${Q}rm -rf $$(OUTPUT.$(TEST))
+	$${Q}rm -f $$(BUILD_DIR)/tests/$(TEST)
 
 clean.test: clean.$(TEST)
 endef

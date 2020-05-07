@@ -127,3 +127,6 @@ $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWOR
 			touch "$@"; \
 		fi \
 	fi
+
+$(TEST):
+	@touch $(BUILD_DIR)/tests/$@

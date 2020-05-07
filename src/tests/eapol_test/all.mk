@@ -76,13 +76,15 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		$(MAKE) test.eap.radiusd_kill;						\
 		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) METHOD=$(notdir $(patsubst %.conf,%,$<)) TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -n servers -d $(dir $<)config -D share/dictionary/ -lstdout -f";\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
-		$(MAKE) --no-print-directory test.eap.radiusd_kill			\
+		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
+		$(MAKE) --no-print-directory test.eap.radiusd_kill;			\
 		exit 1;\
 	fi
 	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
 	${Q}touch $@
 
 $(TEST): $(EAPOL_OK_FILES)
+	@touch $(BUILD_DIR)/tests/$@
 
 else
 #

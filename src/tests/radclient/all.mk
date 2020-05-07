@@ -32,7 +32,7 @@ $(eval $(call RADIUSD_SERVICE,tapioca,$(OUTPUT)))
 #
 #	Run the radclient commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% | test.radclient.radiusd_kill test.radclient.radiusd_start
+$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval TYPE     := $(shell echo $(TARGET) | cut -f1 -d '_'))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
@@ -44,7 +44,7 @@ $(OUTPUT)/%: $(DIR)/% | test.radclient.radiusd_kill test.radclient.radiusd_start
 	$(Q)if ! $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
-		$(MAKE) test.radclient.radiusd_kill;                        \
+		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		exit 1;                                                     \
@@ -68,6 +68,7 @@ $(OUTPUT)/%: $(DIR)/% | test.radclient.radiusd_kill test.radclient.radiusd_start
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
 		diff $(EXPECTED) $(FOUND);                                  \
+		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
@@ -76,10 +77,12 @@ $(OUTPUT)/%: $(DIR)/% | test.radclient.radiusd_kill test.radclient.radiusd_start
 		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
+		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
 	fi
 	$(Q)touch $@
 
 $(TEST):
-	$(Q)$(MAKE) --no-print-directory test.radclient.radiusd_kill
+	$(Q)$(MAKE) --no-print-directory $@.radiusd_kill
+	@touch $(BUILD_DIR)/tests/$@
