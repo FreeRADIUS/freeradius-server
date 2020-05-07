@@ -104,6 +104,14 @@ home_server <name> {
 }
 ```
 
+## Listing a Home Server
+
+It is possible to list all home servers and know which is dynamic or no.
+
+```
+$ radmin -e "show home_server list all"
+```
+
 ## Limitations
 
 Note that due to internal limitations, dynamic home servers are _not_
