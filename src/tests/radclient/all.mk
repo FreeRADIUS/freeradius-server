@@ -27,7 +27,7 @@ RADCLIENT_CLIENT_PORT = 1234
 #
 CLIENT := radclient
 include src/tests/radiusd.mk
-$(eval $(call RADIUSD_SERVICE,tapioca,$(OUTPUT)))
+$(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
 #
 #	Run the radclient commands against the radiusd.
