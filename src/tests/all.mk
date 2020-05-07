@@ -39,7 +39,7 @@ test.radiusd-c: raddb/test.conf $(BUILD_DIR)/tests/radiusd-c ${BUILD_DIR}/bin/ra
 #  The tests are manually ordered for now, as it's a PITA to fix all
 #  of the dependencies.
 #
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient ${BUILD_DIR}/bin/radsniff \
 		test.bin	\
 		test.trie	\
 		test.dict	\
@@ -54,6 +54,7 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.radclient	\
 		test.digest	\
 		test.radmin	\
+		test.radsniff	\
 		test.eap	\
 		| build.raddb
 
