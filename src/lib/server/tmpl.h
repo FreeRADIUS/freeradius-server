@@ -109,7 +109,7 @@ extern size_t request_ref_table_len;
 /** Types of #vp_tmpl_t
  */
 typedef enum tmpl_type_e {
-	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
+	TMPL_TYPE_UNINITIALISED = 0,	//!< Uninitialised.
 
 	TMPL_TYPE_NULL,			//!< Has no value.  Usually a placeholder in a binary
 					///< expression that's really a unary expression.
@@ -147,7 +147,7 @@ typedef enum tmpl_type_e {
 
 /** Helpers to verify the type of #vp_tmpl_t
  */
-#define tmpl_is_unknown(vpt) 		(vpt->type == TMPL_TYPE_UNKNOWN)
+#define tmpl_is_unknown(vpt) 		(vpt->type == TMPL_TYPE_UNINITIALISED)
 #define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
 #define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
 #define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)

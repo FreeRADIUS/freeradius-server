@@ -408,7 +408,7 @@ int radius_request(REQUEST **context, request_ref_t name)
 vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
 {
 	fr_assert(vpt);
-	fr_assert(type != TMPL_TYPE_UNKNOWN);
+	fr_assert(type != TMPL_TYPE_UNINITIALISED);
 	fr_assert(type <= TMPL_TYPE_NULL);
 
 	memset(vpt, 0, sizeof(vp_tmpl_t));
@@ -438,7 +438,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 {
 	vp_tmpl_t *vpt;
 
-	fr_assert(type != TMPL_TYPE_UNKNOWN);
+	fr_assert(type != TMPL_TYPE_UNINITIALISED);
 	fr_assert(type <= TMPL_TYPE_NULL);
 
 #ifndef HAVE_REGEX
@@ -1669,7 +1669,7 @@ ssize_t _tmpl_to_type(void *out,
 	/*
 	 *	We should never be expanding these.
 	 */
-	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_REGEX_UNPARSED:
@@ -2000,7 +2000,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	/*
 	 *	We should never be expanding these.
 	 */
-	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_REGEX_UNPARSED:
@@ -2611,7 +2611,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 	if (tmpl_is_unknown(vpt)) {
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was "
-				     "TMPL_TYPE_UNKNOWN (uninitialised)", file, line);
+				     "TMPL_TYPE_UNINITIALISED (uninitialised)", file, line);
 	}
 
 	if (vpt->type > TMPL_TYPE_NULL) {
@@ -2846,7 +2846,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 #endif
 		break;
 
-	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_UNINITIALISED:
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNKOWN", file, line);
 	}
 }

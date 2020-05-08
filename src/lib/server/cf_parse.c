@@ -1425,7 +1425,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			case TMPL_TYPE_XLAT:
 				break;
 
-			case TMPL_TYPE_UNKNOWN:
+			case TMPL_TYPE_UNINITIALISED:
 			case TMPL_TYPE_REGEX_UNPARSED:
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_NULL:
