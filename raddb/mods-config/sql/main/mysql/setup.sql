@@ -11,8 +11,7 @@
 #
 #  Create default administrator for RADIUS
 #
-CREATE USER 'radius'@'localhost';
-SET PASSWORD FOR 'radius'@'localhost' = PASSWORD('radpass');
+CREATE USER 'radius'@'localhost' IDENTIFIED BY 'radpass';
 
 # The server can read any table in SQL
 GRANT SELECT ON radius.* TO 'radius'@'localhost';
