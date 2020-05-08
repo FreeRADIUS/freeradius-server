@@ -210,14 +210,11 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
-			      void *rctx, fr_state_signal_t action)
+			      UNUSED void *rctx, fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
-
-
-	if (!fr_cond_assert(unlang_xlat_event_timeout_delete(request, rctx) == 0)) return;
 }
 
 /** Xlat to delay the request

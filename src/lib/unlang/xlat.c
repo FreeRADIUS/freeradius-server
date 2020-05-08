@@ -38,6 +38,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
+	TALLOC_CTX		*event_ctx;			//!< for temporary events
 	xlat_exp_t const	*exp;
 	fr_cursor_t		values;				//!< Values aggregated so far.
 
@@ -130,10 +131,21 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_tim
 	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
 
 	/* Remove old references from the request */
-	if (!fr_cond_assert(request_data_get(ev->request, ev->ctx, -1) == ev)) return;
 	talloc_free(ev);
 }
 
+/** Add a timeout for an xlat handler
+ *
+ * @note The timeout is automatically removed when the xlat is cancelled or resumed.
+ *
+ * @param[in] request	the request
+ * @param[in] callback	to run when the timeout hits
+ * @param[in] ctx	passed to the callback
+ * @param[in] when	when the timeout fires
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
 int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
 				  void const *ctx, fr_time_t when)
 {
@@ -145,7 +157,9 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	fr_assert(stack->depth > 0);
 	fr_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
 
-	ev = talloc_zero(request, unlang_xlat_event_t);
+	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
+
+	ev = talloc_zero(state->event_ctx, unlang_xlat_event_t);
 	if (!ev) return -1;
 
 	ev->request = request;
@@ -161,31 +175,9 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 		return -1;
 	}
 
-	(void) request_data_talloc_add(request, ctx, -1, unlang_xlat_event_t, ev, true, false, false);
-
 	talloc_set_destructor(ev, _unlang_xlat_event_free);
 
 	return 0;
-}
-
-/** Remove a pending timer
- *
- * @param[in] request	The current request.
- * @param[in] ctx	that was provided to #unlang_xlat_event_timeout_add.
- * @return
- *	- 0 if there was a pending timer and it was removed.
- *      - -1 if there was no pending timer.
- */
-int unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx)
-{
-	unlang_xlat_event_t *xev = request_data_get(request, ctx, -1);
-
-	if (xev) {
-		talloc_free(xev);
-		return 0;
-	}
-
-	return -1;
 }
 
 /** Push a pre-compiled xlat onto the stack for evaluation
@@ -295,6 +287,13 @@ static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
+	/*
+	 *	Delete timers, etc. when the xlat is cancelled.
+	 */
+	if (action == FR_SIGNAL_CANCEL) {
+		TALLOC_FREE(state->event_ctx);
+	}
+
 	if (!state->signal) return;
 
 	xlat_signal(state->signal, state->exp, request, state->rctx, action);
@@ -320,6 +319,11 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	xlat_action_t			xa;
 
 	fr_assert(state->resume != NULL);
+
+	/*
+	 *	Delete timers, etc. when the xlat is resumed.
+	 */
+	TALLOC_FREE(state->event_ctx);
 
 	xa = xlat_frame_eval_resume(state->ctx, &state->values,
 				    state->resume, state->exp,
@@ -378,7 +382,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	 *	Over-ride whatever functions were there before.
 	 */
 	state->resume = resume;
-	state->signal =signal;
+	state->signal = signal;
 	state->rctx = rctx;
 
 	return XLAT_ACTION_YIELD;
