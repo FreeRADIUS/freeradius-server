@@ -17,7 +17,7 @@ update {
 update {
 	&Attr-26.6139.1 = 0x00000013
 	&Attr-26.9.42 = 0x0001020304
-	&Attr-999 = 0x00
+	&Attr-255 = 0x00
 }
 
 if (&Attr-26.6139.1 != 0x00000013) {
@@ -28,7 +28,7 @@ if (&Attr-26.9.42 != 0x0001020304) {
 	test_fail
 }
 
-if (&Attr-999 != 0x00) {
+if (&Attr-255 != 0x00) {
 	test_fail
 }
 
