@@ -382,7 +382,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 
 	fr_assert(tmpl_is_attr_unparsed(vpt));
 
-	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_unknown_name(vpt), true) != FR_DICT_ATTR_OK) {
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_attr_unparsed(vpt), true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
 		fr_dict_attr_t *unknown_da;
 
@@ -390,8 +390,8 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 		 *	Can't find it under it's regular name.  Try an unknown attribute.
 		 */
 		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
-						     tmpl_unknown_name(vpt));
-		if ((slen <= 0) || (tmpl_unknown_name(vpt)[slen] != '\0')) {
+						     tmpl_attr_unparsed(vpt));
+		if ((slen <= 0) || (tmpl_attr_unparsed(vpt)[slen] != '\0')) {
 			cf_log_perr(ci, "Failed resolving undefined attribute");
 			return false;
 		}
