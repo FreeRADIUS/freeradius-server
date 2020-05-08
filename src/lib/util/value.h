@@ -530,7 +530,7 @@ void		fr_value_box_clear(fr_value_box_t *data);
  */
 int		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b);
 
-int		fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t const *b);
+int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b);
 
 /*
  *	Conversion

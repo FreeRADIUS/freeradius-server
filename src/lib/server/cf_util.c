@@ -1075,7 +1075,7 @@ char const *cf_section_argv(CONF_SECTION const *cs, int argc)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if cs was NULL.
  */
-FR_TOKEN cf_section_name2_quote(CONF_SECTION const *cs)
+fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
 {
 	if (!cs) return T_INVALID;
 
@@ -1093,7 +1093,7 @@ FR_TOKEN cf_section_name2_quote(CONF_SECTION const *cs)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if cs was NULL or the index was invalid.
  */
-FR_TOKEN cf_section_argv_quote(CONF_SECTION const *cs, int argc)
+fr_token_t cf_section_argv_quote(CONF_SECTION const *cs, int argc)
 {
 	if (!cs || !cs->argv_quote || (argc < 0) || (argc > cs->argc)) return T_INVALID;
 
@@ -1113,7 +1113,7 @@ FR_TOKEN cf_section_argv_quote(CONF_SECTION const *cs, int argc)
  *	- A new #CONF_SECTION parented by parent.
  */
 CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			 FR_TOKEN op, FR_TOKEN lhs_quote, FR_TOKEN rhs_quote)
+			 fr_token_t op, fr_token_t lhs_quote, fr_token_t rhs_quote)
 {
 	CONF_PAIR *cp;
 
@@ -1356,7 +1356,7 @@ char const *cf_pair_value(CONF_PAIR const *pair)
  *	- T_INVALID if pair was NULL.
  *	- T_OP_* (one of the operator constants).
  */
-FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
+fr_token_t cf_pair_operator(CONF_PAIR const *pair)
 {
 	return (pair ? pair->op : T_INVALID);
 }
@@ -1371,7 +1371,7 @@ FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if the pair is NULL.
  */
-FR_TOKEN cf_pair_attr_quote(CONF_PAIR const *pair)
+fr_token_t cf_pair_attr_quote(CONF_PAIR const *pair)
 {
 	return (pair ? pair->lhs_quote : T_INVALID);
 }
@@ -1386,7 +1386,7 @@ FR_TOKEN cf_pair_attr_quote(CONF_PAIR const *pair)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if the pair is NULL.
  */
-FR_TOKEN cf_pair_value_quote(CONF_PAIR const *pair)
+fr_token_t cf_pair_value_quote(CONF_PAIR const *pair)
 {
 	return (pair ? pair->rhs_quote : T_INVALID);
 }

@@ -405,7 +405,7 @@ int radius_request(REQUEST **context, request_ref_t name)
  * @param[in] quote The type of quoting around the template name.
  * @return a pointer to the initialised #vp_tmpl_t. The same value as vpt.
  */
-vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
+vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len, fr_token_t quote)
 {
 	fr_assert(vpt);
 	fr_assert(type != TMPL_TYPE_UNINITIALISED);
@@ -434,7 +434,7 @@ vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t
  * @param[in] quote The type of quoting around the template name.
  * @return the newly allocated #vp_tmpl_t.
  */
-vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
+vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len, fr_token_t quote)
 {
 	vp_tmpl_t *vpt;
 
@@ -1049,7 +1049,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
  * @see tmpl_afrom_attr_substr
  */
 ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
-		       char const *in, size_t inlen, FR_TOKEN type, vp_tmpl_rules_t const *rules, bool do_unescape)
+		       char const *in, size_t inlen, fr_token_t type, vp_tmpl_rules_t const *rules, bool do_unescape)
 {
 	bool		do_xlat;
 	char		quote;
@@ -2878,7 +2878,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-		      FR_TOKEN *type, char const **error,
+		      fr_token_t *type, char const **error,
 		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
 {
 	char const *p = in, *end = in + inlen;

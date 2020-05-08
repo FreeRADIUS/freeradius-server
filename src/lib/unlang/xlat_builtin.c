@@ -2170,7 +2170,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		FR_TOKEN op = vp->op;
+		fr_token_t op = vp->op;
 
 		vp->op = T_OP_EQ;
 		buff = fr_pair_asprint(ctx, vp, '"');

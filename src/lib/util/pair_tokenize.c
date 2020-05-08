@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static ssize_t op_to_token(FR_TOKEN *token, char const *op, size_t oplen)
+static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 {
 	char const *p = op;
 
@@ -148,7 +148,7 @@ static ssize_t op_to_token(FR_TOKEN *token, char const *op, size_t oplen)
  *  parsing.
  */
 static VALUE_PAIR *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
-					FR_TOKEN op,
+					fr_token_t op,
 					char const *value, size_t value_len,
 					char quote)
 {
@@ -189,7 +189,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	char const *value;
 	size_t value_len;
 	VALUE_PAIR *vp;
-	FR_TOKEN op;
+	fr_token_t op;
 
 	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent->dict, &FR_SBUFF_TMP(p, end - p));
 	if (slen <= 0) return slen - (in - start);

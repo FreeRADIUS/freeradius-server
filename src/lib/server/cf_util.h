@@ -148,14 +148,14 @@ char const	*cf_section_name1(CONF_SECTION const *cs);
 char const	*cf_section_name2(CONF_SECTION const *cs);
 char const	*cf_section_name(CONF_SECTION const *cs);
 char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
-FR_TOKEN	cf_section_name2_quote(CONF_SECTION const *cs);
-FR_TOKEN	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
+fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
+fr_token_t	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
 
 /*
  *	Pair manipulation and searching
  */
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
+			       fr_token_t op, fr_token_t lhs_type, fr_token_t rhs_type);
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 void		cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp);
@@ -168,10 +168,10 @@ int		cf_pair_count(CONF_SECTION const *cs);
 
 char const	*cf_pair_attr(CONF_PAIR const *pair);
 char const	*cf_pair_value(CONF_PAIR const *pair);
-FR_TOKEN	cf_pair_operator(CONF_PAIR const *pair);
+fr_token_t	cf_pair_operator(CONF_PAIR const *pair);
 
-FR_TOKEN	cf_pair_attr_quote(CONF_PAIR const *pair);
-FR_TOKEN	cf_pair_value_quote(CONF_PAIR const *pair);
+fr_token_t	cf_pair_attr_quote(CONF_PAIR const *pair);
+fr_token_t	cf_pair_value_quote(CONF_PAIR const *pair);
 
 /*
  *	Data manipulation and searching

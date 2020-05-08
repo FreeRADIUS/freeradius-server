@@ -252,7 +252,7 @@ const bool fr_str_tok[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
+static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 			 fr_table_num_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
 {
 	char			*s;
@@ -260,7 +260,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	char			quote;
 	unsigned int		x;
 	size_t			i;
-	FR_TOKEN rcode;
+	fr_token_t rcode;
 
 	buf[0] = '\0';
 
@@ -440,7 +440,7 @@ int getword(char const **ptr, char *buf, int buflen, bool unescape)
 /*
  *	Read the next word, use tokens as delimiters.
  */
-FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 {
 	return getthing(ptr, buf, buflen, true, fr_tokens_table, fr_tokens_table_len, unescape);
 }
@@ -448,10 +448,10 @@ FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 /*
  *	Expect an operator.
  */
-FR_TOKEN getop(char const **ptr)
+fr_token_t getop(char const **ptr)
 {
 	char op[3];
-	FR_TOKEN rcode;
+	fr_token_t rcode;
 
 	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
 	if (!fr_assignment_op[rcode] && !fr_equality_op[rcode]) {
@@ -464,7 +464,7 @@ FR_TOKEN getop(char const **ptr)
 /*
  *	Expect a string.
  */
-FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t getstring(char const **ptr, char *buf, int buflen, bool unescape)
 {
 	char const *p;
 

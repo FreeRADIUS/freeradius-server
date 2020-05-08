@@ -1193,7 +1193,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 	CONF_ITEM  	*ci;
 	CONF_PAIR	*cp;
 	CONF_SECTION 	*cs;
-	FR_TOKEN	op;
+	fr_token_t	op;
 	char		path[FR_MAX_STRING_LEN];
 
 	char		*p = path;

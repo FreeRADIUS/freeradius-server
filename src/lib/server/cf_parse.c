@@ -479,7 +479,7 @@ finish:
  *	- -1 on failure.
  */
 static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
-			   int type, char const *dflt, FR_TOKEN dflt_quote)
+			   int type, char const *dflt, fr_token_t dflt_quote)
 {
 	int		lineno = 0;
 	char const	*expanded;
@@ -555,7 +555,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 	unsigned int	type = rule->type;
 	char const	*dflt = rule->dflt;
-	FR_TOKEN	dflt_quote = rule->quote;
+	fr_token_t	dflt_quote = rule->quote;
 
 	fr_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
@@ -860,7 +860,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *	- -2 if deprecated.
  */
 int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
-		  unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote)
+		  unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote)
 {
 	CONF_PARSER rule = {
 		.name = name,

@@ -339,7 +339,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
  *	you need to read two tokens, you have to save the first one
  *	somewhere *outside* of the input buffer.
  */
-static int read_token(rlm_isc_dhcp_tokenizer_t *state, FR_TOKEN hint, int semicolon, bool allow_rcbrace)
+static int read_token(rlm_isc_dhcp_tokenizer_t *state, fr_token_t hint, int semicolon, bool allow_rcbrace)
 {
 	char *p;
 

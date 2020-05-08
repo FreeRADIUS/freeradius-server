@@ -730,7 +730,7 @@ static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info
 
 static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	FR_TOKEN token;
+	fr_token_t token;
 	CONF_ITEM *item;
 	CONF_PAIR *cp;
 

@@ -491,7 +491,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
  *
  *	reserved, prefix-len, data...
  */
-static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
+static int fr_value_box_cidr_cmp_op(fr_token_t op, int uint8s,
 				 uint8_t a_net, uint8_t const *a,
 				 uint8_t b_net, uint8_t const *b)
 {
@@ -608,7 +608,7 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
  *	- 0 if false
  *	- -1 on failure.
  */
-int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t const *b)
+int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
 

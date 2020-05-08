@@ -33,7 +33,7 @@
  *
  * To create new #vp_tmpl_t use one of the tmpl_*from_* functions.  These parse
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
- * most types of VPTs. It uses the type of quoting (passed as an #FR_TOKEN) to determine
+ * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
  * produce either a #TMPL_TYPE_XLAT_UNPARSED or a #TMPL_TYPE_UNPARSED (depending if the string
  * contained a non-literal expansion).
@@ -200,7 +200,7 @@ struct vp_tmpl_s {
 
 	char const	*name;		//!< Raw string used to create the template.
 	size_t		len;		//!< Length of the raw string used to create the template.
-	FR_TOKEN	quote;		//!< What type of quoting was around the raw string.
+	fr_token_t	quote;		//!< What type of quoting was around the raw string.
 
 	union {
 		struct {
@@ -484,10 +484,10 @@ int			radius_request(REQUEST **request, request_ref_t name);
 size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
 
 vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
-				   char const *name, ssize_t len, FR_TOKEN quote);
+				   char const *name, ssize_t len, fr_token_t quote);
 
 vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
-				    ssize_t len, FR_TOKEN quote);
+				    ssize_t len, fr_token_t quote);
 
 void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 				     request_ref_t request, pair_list_t list);
@@ -503,7 +503,7 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 					    vp_tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
-				       FR_TOKEN type, vp_tmpl_rules_t const *rules, bool do_escape);
+				       fr_token_t type, vp_tmpl_rules_t const *rules, bool do_escape);
 
 int			tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
@@ -547,7 +547,7 @@ int			tmpl_define_undefined_attr(fr_dict_t *dict, vp_tmpl_t *vpt,
 						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-				      FR_TOKEN *type, char const **error,
+				      fr_token_t *type, char const **error,
 				      fr_dict_attr_t const **castda, bool require_regex,
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
 

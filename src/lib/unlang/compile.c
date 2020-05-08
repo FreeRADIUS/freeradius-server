@@ -1611,7 +1611,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 */
 	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
 	if (tmpl_str) {
-		FR_TOKEN type;
+		fr_token_t type;
 
 		type = cf_section_argv_quote(cs, 0);
 
@@ -2187,7 +2187,7 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
-	FR_TOKEN type;
+	fr_token_t type;
 	char const *name1, *name2;
 	bool had_seen_default = false;
 	unlang_group_t *g;
@@ -2323,7 +2323,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	name2 = cf_section_name2(cs);
 	if (name2) {
 		ssize_t slen;
-		FR_TOKEN type;
+		fr_token_t type;
 		unlang_group_t *f;
 
 		type = cf_section_name2_quote(cs);
@@ -2425,7 +2425,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	FR_TOKEN		type;
+	fr_token_t		type;
 	char const		*name2;
 	unlang_t		*c;
 	unlang_group_t		*g;
@@ -2878,7 +2878,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	}
 
 	if (name2) {
-		FR_TOKEN type;
+		fr_token_t type;
 		ssize_t slen;
 
 		/*
@@ -3144,7 +3144,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_group_t		*g;
-	FR_TOKEN		type;
+	fr_token_t		type;
 	char const     		*server;
 	CONF_SECTION		*server_cs;
 	fr_dict_t const		*dict;

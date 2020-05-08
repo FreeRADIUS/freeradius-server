@@ -67,7 +67,7 @@ static inline vp_map_t *map_alloc(TALLOC_CTX *ctx)
  * @param rhs_type quotation type around rhs.
  * @param rhs string to re-parse.
  */
-bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
+bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 {
 	size_t			len;
 	uint8_t			*ptr;
@@ -202,7 +202,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	vp_map_t	*map;
 	char const	*attr, *value;
 	ssize_t		slen;
-	FR_TOKEN	type;
+	fr_token_t	type;
 
 	*out = NULL;
 
@@ -377,7 +377,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 		 */
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *subcs;
-			FR_TOKEN token;
+			fr_token_t token;
 			ssize_t slen;
 			bool qualifiers = our_lhs_rules.disallow_qualifiers;
 
@@ -517,9 +517,9 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
  *	- NULL on error.
  */
 int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
-		     char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
-		     FR_TOKEN op,
-		     char const *rhs, FR_TOKEN rhs_type, vp_tmpl_rules_t const *rhs_rules)
+		     char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+		     fr_token_t op,
+		     char const *rhs, fr_token_t rhs_type, vp_tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
 	vp_map_t *map;
@@ -571,8 +571,8 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
  *	- NULL on error.
  */
 int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-			char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
-			FR_TOKEN op,
+			char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+			fr_token_t op,
 			fr_value_box_t *rhs, bool steal_rhs_buffs)
 {
 	ssize_t slen;
@@ -620,7 +620,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		       vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules)
 {
 	char const *p = vp_str;
-	FR_TOKEN quote;
+	fr_token_t quote;
 
 	VALUE_PAIR_RAW raw;
 	vp_map_t *map = NULL;

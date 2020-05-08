@@ -309,7 +309,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 		Py_ssize_t	pair_len;
 		char const	*s1;
 		char const	*s2;
-		FR_TOKEN	op = T_OP_EQ;
+		fr_token_t	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(p_tuple_element)) {
 			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
@@ -352,7 +352,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
 				} else {
-					op = (FR_TOKEN)py_op;
+					op = (fr_token_t)py_op;
 				}
 			} else {
 				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",

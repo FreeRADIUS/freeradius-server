@@ -457,7 +457,7 @@ struct CONF_PARSER {
 		};
 	};
 
-	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
+	fr_token_t	quote;			//!< Quoting around the default value.  Only used for templates.
 };
 
 typedef struct {
@@ -482,7 +482,7 @@ typedef struct {
 int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 		CC_HINT(nonnull(2, 4, 5));
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
-			      unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote) CC_HINT(nonnull(2,3));
+			      unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote) CC_HINT(nonnull(2,3));
 int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);
 int		cf_section_parse_pass2(void *base, CONF_SECTION *cs);
 

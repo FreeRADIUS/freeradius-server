@@ -818,7 +818,7 @@ static bool invalid_location(CONF_SECTION *parent, char const *name, char const 
  *	Like gettoken(), but uses the new API which seems better for a
  *	host of reasons.
  */
-static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
+static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *token, char *buffer, size_t buflen,
 			char const *filename, int lineno)
 {
 	char const *ptr = *ptr_p;
@@ -1087,7 +1087,7 @@ static int process_template(cf_stack_t *stack)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
-	FR_TOKEN token;
+	fr_token_t token;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 
@@ -1281,7 +1281,7 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	char const *mod;
 	char const *value = NULL;
 	CONF_SECTION *css;
-	FR_TOKEN token;
+	fr_token_t token;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
@@ -1358,7 +1358,7 @@ alloc_section:
 	if (value) {
 		css->argv = talloc_array(css, char const *, 1);
 		css->argv[0] = talloc_typed_strdup(css->argv, value);
-		css->argv_quote = talloc_array(css, FR_TOKEN, 1);
+		css->argv_quote = talloc_array(css, fr_token_t, 1);
 		css->argv_quote[0] = token;
 		css->argc++;
 	}
@@ -1370,7 +1370,7 @@ alloc_section:
 
 
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
-		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
+		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
 		    char *buff, char const *filename, int lineno)
 {
 	CONF_DATA const *cd;
@@ -1435,7 +1435,7 @@ typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
 
 static int parse_input(cf_stack_t *stack)
 {
-	FR_TOKEN	name1_token, name2_token, value_token, op_token;
+	fr_token_t	name1_token, name2_token, value_token, op_token;
 	char const	*value;
 	CONF_SECTION	*css;
 	char const	*ptr = stack->ptr;
@@ -2266,7 +2266,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 
-static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
+static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, fr_token_t t)
 {
 	size_t	outlen;
 	char	c;

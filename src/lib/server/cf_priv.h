@@ -68,9 +68,9 @@ struct cf_pair {
 	char const		*attr;		//!< Attribute name
 	char const		*value;		//!< Attribute value
 
-	FR_TOKEN		op;		//!< Operator e.g. =, :=
-	FR_TOKEN		lhs_quote;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	FR_TOKEN		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	fr_token_t		op;		//!< Operator e.g. =, :=
+	fr_token_t		lhs_quote;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	fr_token_t		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 
 	bool			pass2;		//!< do expansion in pass2.
 	bool			parsed;		//!< Was this item used during parsing?
@@ -87,11 +87,11 @@ struct cf_section {
 	char const		*name1;		//!< First name token.  Given ``foo bar {}`` would be ``foo``.
 	char const		*name2;		//!< Second name token. Given ``foo bar {}`` would be ``bar``.
 
-	FR_TOKEN		name2_quote;	//!< The type of quoting around name2.
+	fr_token_t		name2_quote;	//!< The type of quoting around name2.
 
 	int			argc;		//!< number of additional arguments
 	char const		**argv;		//!< additional arguments
-	FR_TOKEN		*argv_quote;
+	fr_token_t		*argv_quote;
 
 	void			*base;
 	int			depth;

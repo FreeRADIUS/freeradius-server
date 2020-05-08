@@ -330,7 +330,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			FR_TOKEN op;
+			fr_token_t op;
 
 			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
 

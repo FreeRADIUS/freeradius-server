@@ -66,7 +66,7 @@ typedef enum fr_token {
 	T_SINGLE_QUOTED_STRING,		/* 'foo' */
 	T_BACK_QUOTED_STRING,		/* `foo` */
 	T_TOKEN_LAST
-} FR_TOKEN;
+} fr_token_t;
 
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
@@ -87,9 +87,9 @@ extern const bool fr_equality_op[];
 extern const bool fr_str_tok[];
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
-FR_TOKEN	gettoken(char const **ptr, char *buf, int buflen, bool unescape);
-FR_TOKEN	getop(char const **ptr);
-FR_TOKEN	getstring(char const **ptr, char *buf, int buflen, bool unescape);
+fr_token_t	gettoken(char const **ptr, char *buf, int buflen, bool unescape);
+fr_token_t	getop(char const **ptr);
+fr_token_t	getstring(char const **ptr, char *buf, int buflen, bool unescape);
 char const	*fr_token_name(int);
 ssize_t		fr_skip_string(char const *start, char const *end);
 

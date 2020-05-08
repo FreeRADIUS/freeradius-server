@@ -100,7 +100,7 @@ struct value_pair_s {
 	 *	Legacy stuff that needs to die.
 	 */
 	struct {
-		FR_TOKEN		op;			//!< Operator to use when moving or inserting
+		fr_token_t		op;			//!< Operator to use when moving or inserting
 								//!< valuepair into a list.
 
 		int8_t			tag;			//!< Tag value used to group valuepairs.
@@ -143,9 +143,9 @@ typedef struct {
 	char l_opand[256];					//!< Left hand side of the pair.
 	char r_opand[1024];					//!< Right hand side of the pair.
 
-	FR_TOKEN quote;						//!< Type of quoting around the r_opand.
+	fr_token_t quote;						//!< Type of quoting around the r_opand.
 
-	FR_TOKEN op;						//!< Operator.
+	fr_token_t op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
 #define vp_strvalue		data.vb_strvalue

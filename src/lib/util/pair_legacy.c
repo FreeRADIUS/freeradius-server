@@ -147,7 +147,7 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
  */
 static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					char const *attribute, char const *value,
-					FR_TOKEN op)
+					fr_token_t op)
 {
 	VALUE_PAIR		*vp;
 	fr_dict_attr_t		*n;
@@ -201,7 +201,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @return a new #VALUE_PAIR.
  */
 VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vps,
-			 char const *attribute, char const *value, FR_TOKEN op)
+			 char const *attribute, char const *value, fr_token_t op)
 {
 	fr_dict_attr_t const *da;
 	VALUE_PAIR	*vp;
@@ -375,11 +375,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, FR_TOKEN *token, int depth)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, fr_token_t *token, int depth)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p, *next;
-	FR_TOKEN	last_token = T_INVALID;
+	fr_token_t	last_token = T_INVALID;
 	VALUE_PAIR_RAW	raw;
 	fr_dict_attr_t const *root = fr_dict_root(dict);
 
@@ -503,7 +503,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			vp->vp_group = child;
 
 		} else {
-			FR_TOKEN quote;
+			fr_token_t quote;
 			char const *q;
 
 			/*
@@ -653,9 +653,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] list	where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
 {
-	FR_TOKEN token;
+	fr_token_t token;
 
 	(void) fr_pair_list_afrom_substr(ctx, dict, buffer, list, &token, 0);
 	return token;
@@ -667,7 +667,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char con
 int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 {
 	char buf[8192];
-	FR_TOKEN last_token = T_EOL;
+	fr_token_t last_token = T_EOL;
 
 	fr_cursor_t cursor;
 

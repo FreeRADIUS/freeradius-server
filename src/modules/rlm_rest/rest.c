@@ -225,7 +225,7 @@ typedef struct {
 	int do_xlat;		//!< If true value will be expanded with xlat.
 	int is_json;		//!< If true value will be inserted as raw JSON
 				// (multiple values not supported).
-	FR_TOKEN op;		//!< The operator that determines how the new VP
+	fr_token_t op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens_table
 
 	int8_t tag;		//!< Tag to assign to VP.

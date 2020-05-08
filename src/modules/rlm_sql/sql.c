@@ -119,7 +119,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	char const *ptr, *value;
 	char buf[FR_MAX_STRING_LEN];
 	char do_xlat = 0;
-	FR_TOKEN token, op = T_EOL;
+	fr_token_t token, op = T_EOL;
 
 	/*
 	 *	Verify the 'Attribute' field

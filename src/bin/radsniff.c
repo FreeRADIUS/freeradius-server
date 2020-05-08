@@ -1984,7 +1984,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 {
 	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
-	FR_TOKEN code;
+	fr_token_t code;
 
 	code = fr_pair_list_afrom_str(conf, dict_radius, filter, out);
 	if (code == T_INVALID) {

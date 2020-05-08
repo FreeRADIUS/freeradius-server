@@ -319,7 +319,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		char const	*ckey, *cval;
 		VALUE_PAIR	*vp;
 		vp_tmpl_t	*dst;
-		FR_TOKEN	op = T_OP_EQ;
+		fr_token_t	op = T_OP_EQ;
 
 		/* This tuple should be an array of length 2 */
 		if (mrb_type(tuple) != MRB_TT_ARRAY) {

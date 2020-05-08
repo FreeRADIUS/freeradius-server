@@ -369,8 +369,8 @@ cast_ok:
  *	See if two attribute comparisons are OK.
  */
 static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
-			       char const *lhs, FR_TOKEN lhs_type,
-				char const *rhs, FR_TOKEN rhs_type,
+			       char const *lhs, fr_token_t lhs_type,
+				char const *rhs, fr_token_t rhs_type,
 				char const **error)
 {
 	vp_tmpl_t *vpt;
@@ -580,7 +580,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
  *	Like tmpl_preparse(), but expands variables.
  */
 static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, char const *in, size_t inlen,
-			     FR_TOKEN *type, char const **error,
+			     fr_token_t *type, char const **error,
 			     fr_dict_attr_t const **castda, bool require_regex,
 			     CONF_SECTION *cs)
 {
@@ -670,7 +670,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	char const		*lhs, *rhs;
 	fr_cond_t		*c;
 	size_t			lhs_len, rhs_len;
-	FR_TOKEN		op, lhs_type, rhs_type;
+	fr_token_t		op, lhs_type, rhs_type;
 	bool			regex = false;
 	vp_tmpl_rules_t		parse_rules;
 

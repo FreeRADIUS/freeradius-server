@@ -767,7 +767,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
+static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, fr_token_t op,
 		      const char *hash_name, const char *list_name)
 {
 	char		*val;

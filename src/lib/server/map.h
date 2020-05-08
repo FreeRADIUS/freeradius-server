@@ -59,7 +59,7 @@ struct vp_map_s {
 	vp_tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
 						///< to copy or compare.
 
-	FR_TOKEN		op; 		//!< The operator that controls insertion of the dst attribute.
+	fr_token_t		op; 		//!< The operator that controls insertion of the dst attribute.
 	fr_type_t		cast;		//!< Cast value to this type.
 
 	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
@@ -101,13 +101,13 @@ int		map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
 int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
-				 char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
-				 FR_TOKEN op,
-				 char const *rhs, FR_TOKEN rhs_type, vp_tmpl_rules_t const *rhs_rules);
+				 char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+				 fr_token_t op,
+				 char const *rhs, fr_token_t rhs_type, vp_tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-				    char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
-				    FR_TOKEN op,
+				    char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+				    fr_token_t op,
 				    fr_value_box_t *rhs, bool steal_rhs_buffs);
 
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
@@ -135,7 +135,7 @@ size_t		map_snprint(size_t *need, char *out, size_t outlen, vp_map_t const *map)
 void		map_debug_log(REQUEST *request, vp_map_t const *map,
 			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
 
-bool		map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs);
+bool		map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs);
 #ifdef __cplusplus
 }
 #endif

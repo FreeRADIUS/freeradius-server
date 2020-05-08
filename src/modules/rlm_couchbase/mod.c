@@ -409,7 +409,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 	json_object_object_foreach(list_obj, attr_name, attr_value_obj) {
 	 	json_object		*value_obj, *op_obj;
 	 	fr_dict_attr_t const	*da;
-		FR_TOKEN		op;
+		fr_token_t		op;
 
 		if (!fr_json_object_is_type(attr_value_obj, json_type_object)) {
 			REDEBUG("Invalid json type for \"%s\" key - Attributes must be json objects", attr_name);

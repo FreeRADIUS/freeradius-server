@@ -95,7 +95,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	int order = 0;
 	int lineno = 0;
 	int entry_lineno = 0;
-	FR_TOKEN parsecode;
+	fr_token_t parsecode;
 #ifdef HAVE_REGEX_H
 	VALUE_PAIR *vp;
 	fr_cursor_t cursor;
