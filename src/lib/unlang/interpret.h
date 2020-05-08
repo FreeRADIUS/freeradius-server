@@ -119,6 +119,8 @@ int		unlang_interpret_stack_depth(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret_stack_result(REQUEST *request);
 
+TALLOC_CTX	*unlang_interpret_frame_talloc_ctx(REQUEST *request);
+
 void		unlang_interpret_init(void);
 #ifdef __cplusplus
 }

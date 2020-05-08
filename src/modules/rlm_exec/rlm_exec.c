@@ -347,7 +347,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	/*
 	 *	Get frame-local talloc ctx
 	 */
-	ctx = unlang_module_frame_talloc_ctx(request);
+	ctx = unlang_interpret_frame_talloc_ctx(request);
 
 	/*
 	 *	Do the asynchronous xlat expansion.

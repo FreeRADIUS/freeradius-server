@@ -1185,6 +1185,33 @@ void unlang_interpret_resumable(REQUEST *request)
 }
 
 
+/** Get a talloc_ctx which is valid only for this frame
+ *
+ * @param[in] request		The current request.
+ * @return
+ *	- a TALLOC_CTX which is valid only for this stack frame
+ */
+TALLOC_CTX *unlang_interpret_frame_talloc_ctx(REQUEST *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+
+	switch (frame->instruction->type) {
+	default:
+		break;
+
+	case UNLANG_TYPE_MODULE:
+	case UNLANG_TYPE_XLAT:
+		return (TALLOC_CTX *) frame->state;
+	}
+
+	/*
+	 *	Ensure that the memory is always cleaned up when the
+	 *	request exits.  And make sure that this function is safe to call from anywhere.
+	 */
+	return (TALLOC_CTX *) request;
+}
+
 /** Get information about the interpreter state
  *
  * @ingroup xlat_functions

@@ -855,22 +855,6 @@ done:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Yield a request back to the interpreter from within a module
- *
- * @param[in] request		The current request.
- * @return
- *	- a TALLOC_CTX which is valid only for this stack frame
- */
-TALLOC_CTX *unlang_module_frame_talloc_ctx(REQUEST *request)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-
-	return (TALLOC_CTX *) state;
-}
-
 void unlang_module_init(void)
 {
 	unlang_register(UNLANG_TYPE_MODULE,
