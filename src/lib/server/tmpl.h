@@ -143,6 +143,8 @@ typedef enum tmpl_type_e {
 
 	TMPL_TYPE_REGEX_UNPARSED,	//!< Unparsed regular expression.  May have a dynamic element.
 	/** @} */
+
+	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
 } tmpl_type_t;
 
 /** Helpers to verify the type of #vp_tmpl_t

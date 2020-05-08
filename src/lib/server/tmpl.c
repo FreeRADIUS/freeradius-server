@@ -2614,7 +2614,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				     "TMPL_TYPE_UNINITIALISED (uninitialised)", file, line);
 	}
 
-	if (vpt->type > TMPL_TYPE_NULL) {
+	if (vpt->type >= TMPL_TYPE_MAX) {
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was %i "
 				     "(outside range of tmpl_type_table)", file, line, vpt->type);
 	}
