@@ -1672,9 +1672,10 @@ ssize_t _tmpl_to_type(void *out,
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		return -1;
 	}
@@ -2003,9 +2004,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_ATTR_UNPARSED:
-	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		goto error;
 	}
@@ -2847,7 +2849,11 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNKOWN", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNINITIALISED", file, line);
+		break;
+
+	case TMPL_TYPE_MAX:
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_MAX", file, line);
 	}
 }
 #endif

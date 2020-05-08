@@ -559,6 +559,7 @@ do {\
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_REGEX_UNPARSED:	/* Should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		rcode = -1;
 		break;
@@ -670,6 +671,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_REGEX_UNPARSED:		/* should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
 	case TMPL_TYPE_REGEX:	/* not allowed as LHS */
+	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		rcode = -1;
 		break;

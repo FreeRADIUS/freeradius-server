@@ -1429,6 +1429,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			case TMPL_TYPE_REGEX_UNPARSED:
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_NULL:
+			case TMPL_TYPE_MAX:
 				fr_assert(0);
 			/* Don't add default */
 			}
