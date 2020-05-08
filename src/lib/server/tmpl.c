@@ -783,10 +783,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			}
 
 			/*
-			 *	Unknown attributes can't be encoded, as we don't
-			 *	know how to encode them!
+			 *	Unknown attributes can be encoded, BUT
+			 *	they must be of type "octets".
 			 */
-			tmpl_unknown(vpt)->flags.internal = 1;
+			fr_assert(tmpl_unknown(vpt)->type == FR_TYPE_OCTETS);
 			tmpl_da_set(vpt, tmpl_unknown(vpt));
 
 			p += slen;

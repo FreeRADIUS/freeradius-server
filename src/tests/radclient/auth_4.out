@@ -1,0 +1,9 @@
+Sent Access-Request Id 123 from 0.0.0.0:1234 to 127.0.0.1:12340 length 51 
+	Cleartext-Password = "hello"
+	User-Name = "bob"
+	User-Password = "hello"
+	NAS-Identifier = "auth_4"
+Received Access-Accept Id 123 from 127.0.0.1:12340 to 0.0.0.0:1234 via lo length 47 
+	Class = 0x483d342c493d34
+	Attr-26 = 0x483d342c493d34
+	Attr-26 = 0x483d342c493d43

@@ -1,0 +1,6 @@
+#
+#	ARGV: -i 123 -c 1 -x -F
+#
+User-Name = "bob",
+User-Password = "hello"
+NAS-Identifier = "auth_4"
