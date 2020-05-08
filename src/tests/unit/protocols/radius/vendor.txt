@@ -66,4 +66,4 @@ decode-pair 1a12000080000105abcdef02076161616161
 match Attr-26.32768.1 = 0xabcdef, Attr-26.32768.2 = 0x6161616161
 
 count
-match 35
+match 37
