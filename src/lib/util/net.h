@@ -90,7 +90,7 @@ typedef enum {
 
 
 #define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
-#define IP_HL(ip)       ((ip)->ip_vhl & 0x0f)
+#define IP_HL(ip)       (((ip)->ip_vhl & 0x0f) << 2)
 
 #define IP_VHL(v, hl) ((v & 0x0f) << 4) | (hl & 0x0f)
 
