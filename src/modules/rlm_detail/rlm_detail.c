@@ -242,7 +242,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *
  * @param[in] out Where to write entry.
  * @param[in] inst Instance of rlm_detail.
  * @param[in] request The current request.
- * @param[in] packet associated with the request (request, reply, proxy-request, proxy-reply...).
+ * @param[in] packet associated with the request (request, reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)

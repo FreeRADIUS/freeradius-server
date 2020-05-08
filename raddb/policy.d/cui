@@ -46,18 +46,6 @@ cui.authorize {
 	}
 }
 
-#
-#  Before proxing an Access-Request to a remote server, a NUL CUI
-#  attribute should be added, unless it is already present in the request.
-#
-cui.pre-proxy {
-	if (("%{request:Packet-Type}" == 'Access-Request') && ("%{client:add_cui}" == 'yes')) {
-		update proxy-request {
-			&Chargeable-User-Identity = 0x00
-		}
-	}
-}
-
 
 #
 #  Add a CUI attribute based on the User-Name, and a secret key

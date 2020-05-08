@@ -42,30 +42,6 @@ split_username_nai {
 }
 
 #
-#  If called in post-proxy we modify the proxy-reply message
-#
-split_username_nai.post-proxy {
-	if (&proxy-reply:User-Name && (&proxy-reply:User-Name =~ /${policy.nai_regexp}/)) {
-		update proxy-reply {
-			&Stripped-User-Name := "%{1}"
-		}
-
-		# Only add the Stripped-User-Domain attribute if
-		# we have a domain. This means presence checks
-		# for Stripped-User-Domain work.
-		if ("%{3}" != '') {
-			update proxy-reply {
-				&Stripped-User-Domain = "%{3}"
-			}
-		}
-		updated
-	}
-	else {
-		noop
-	}
-}
-
-#
 #  Normalize the MAC Addresses in the Calling/Called-Station-Id
 #
 mac-addr-regexp = '([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})'

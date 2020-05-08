@@ -447,11 +447,11 @@ Attributes may be referenced via the following syntax:
 	&<list>:Attribute-Name
 	&<list>:Attribute-Name:TAG[NUM]
 .DE
-Where <list> is one of "request", "reply", "control", "proxy-request",
-"proxy-reply", or "outer.request", "outer.reply", "outer.control",
-"outer.proxy-request", or "outer.proxy-reply". just as with the
-"update" section, above.  The "<list>:" prefix is optional, and if
-omitted, is assumed to refer to the "request" list.
+Where <list> is one of "request", "reply", "control",
+or "outer.request", "outer.reply", "outer.control",
+just as with the "update" section, above.  The "<list>:"
+prefix is optional, and if omitted, is assumed to refer to the
+"request" list.
 
 The TAG portion is a decimal integer between 1 and 31.  Please see RFC
 2868 for more information about tags.  Tags can only be used for

@@ -81,13 +81,8 @@ exec {
 	#  | request       | attributes from the request
 	#  | config        | attributes from the configuration items list
 	#  | reply         | attributes from the reply
-	#  | proxy-request | attributes from the proxy request
-	#  | proxy-reply   | attributes from the proxy reply
+	#  | session-state | attributes that persist over multiple request/response rounds.
 	#  |===
-	#
-	#  NOTE: Some attributes may not exist at some stages.
-	#  e.g. There may be no proxy-reply attributes if this module is used
-	#  in the `recv` section.
 	#
 	input_pairs = request
 
