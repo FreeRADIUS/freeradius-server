@@ -81,7 +81,7 @@ $(TEST).radiusd_start: ${2}/radiusd.pid
 #  the output files depend on the radiusd binary.
 #
 ifneq "$(FILES.$(TEST))" ""
-$(foreach x, $(FILES.$(TEST)), $(eval $x: $(TESTBINDIR)/radiusd $(TESTBINDIR)/$(CLIENT)))
+$(foreach x, $(FILES.$(TEST)), $(eval $x: $(TESTBINDIR)/radiusd $(TESTBINDIR)/$(CLIENT) $(top_srcdir)/src/tests/$(subst test.,,$(TEST))/config/${1}.conf))
 endif
 
 endef
