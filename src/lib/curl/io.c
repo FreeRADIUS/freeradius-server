@@ -372,6 +372,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
 int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_curl_io_request_t *randle)
 {
 	CURLcode		ret;
+	CURLMcode		mret;
 
 	REQUEST_VERIFY(request);
 
@@ -394,10 +395,10 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_c
 	 *      event loop modifications calls immediately.
 	 */
 	mhandle->transfers++;
-	ret = curl_multi_add_handle(mhandle->mandle, randle->candle);
-	if (ret != CURLE_OK) {
+	mret = curl_multi_add_handle(mhandle->mandle, randle->candle);
+	if (mret != CURLM_OK) {
 		mhandle->transfers--;
-		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
+		REDEBUG("Request failed: %i - %s", mret, curl_multi_strerror(mret));
 		return -1;
 	}
 
