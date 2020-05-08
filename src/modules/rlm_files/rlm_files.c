@@ -51,16 +51,6 @@ typedef struct {
 	char const *acct_usersfile;
 	rbtree_t *acct_users;
 
-#ifdef WITH_PROXY
-	/* pre-proxy */
-	char const *preproxy_usersfile;
-	rbtree_t *preproxy_users;
-
-	/* post-proxy */
-	char const *postproxy_usersfile;
-	rbtree_t *postproxy_users;
-#endif
-
 	/* post-authenticate */
 	char const *postauth_usersfile;
 	rbtree_t *postauth_users;
@@ -100,10 +90,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, usersfile) },
 	{ FR_CONF_OFFSET("acctusersfile", FR_TYPE_FILE_INPUT, rlm_files_t, acct_usersfile) },
-#ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("preproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile) },
-	{ FR_CONF_OFFSET("postproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile) },
-#endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
@@ -296,12 +282,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	READFILE(filename, common);
 	READFILE(usersfile, users);
 	READFILE(acct_usersfile, acct_users);
-
-#ifdef WITH_PROXY
-	READFILE(preproxy_usersfile, preproxy_users);
-	READFILE(postproxy_usersfile, postproxy_users);
-#endif
-
 	READFILE(auth_usersfile, auth_users);
 	READFILE(postauth_usersfile, postauth_users);
 
@@ -378,7 +358,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
-			/* ctx may be reply or proxy */
+			/* ctx may be reply */
 			MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
 
 			radius_pairmove(request, &reply->vps, reply_tmp, true);
@@ -440,26 +420,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thr
 			   request->packet, request->reply);
 }
 
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->preproxy_usersfile,
-			   inst->preproxy_users ? inst->preproxy_users : inst->common,
-			   request->packet, request->proxy->packet);
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->postproxy_usersfile,
-			   inst->postproxy_users ? inst->postproxy_users : inst->common,
-			   request->proxy->reply, request->reply);
-}
-#endif
-
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_files_t const *inst = instance;
@@ -491,11 +451,6 @@ module_t rlm_files = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
-
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

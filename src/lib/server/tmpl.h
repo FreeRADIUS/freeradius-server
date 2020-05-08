@@ -86,13 +86,6 @@ typedef enum pair_list_e {
 					///< modules.
 	PAIR_LIST_STATE,		//!< Attributes to store multiple rounds of
 					///< challenges/responses.
-#ifdef WITH_PROXY
-	PAIR_LIST_PROXY_REQUEST,	//!< A copy of attributes in the request list
-					///< that may be modified in pre-proxy before
-					//!< proxying the request.
-	PAIR_LIST_PROXY_REPLY,		//!< Attributes sent in response to the proxied
-					///< request.
-#endif
 	PAIR_LIST_UNKNOWN		//!< Unknown list.
 } pair_list_t;
 

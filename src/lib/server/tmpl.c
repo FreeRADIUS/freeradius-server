@@ -58,10 +58,6 @@ fr_table_num_ordered_t const pair_list_table[] = {
 	{ "control",		PAIR_LIST_CONTROL		},		/* New name should have priority */
 	{ "config",		PAIR_LIST_CONTROL		},
 	{ "session-state",	PAIR_LIST_STATE			},
-#ifdef WITH_PROXY
-	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST		},
-	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY		}
-#endif
 };
 size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
@@ -210,16 +206,6 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 
 	case PAIR_LIST_STATE:
 		return &request->state;
-
-#ifdef WITH_PROXY
-	case PAIR_LIST_PROXY_REQUEST:
-		if (!request->proxy || !request->proxy->packet) break;
-		return &request->proxy->packet->vps;
-
-	case PAIR_LIST_PROXY_REPLY:
-		if (!request->proxy || !request->proxy->reply) break;
-		return &request->proxy->reply->vps;
-#endif
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
@@ -255,16 +241,6 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
 
 	case PAIR_LIST_REPLY:
 		return request->reply;
-
-#ifdef WITH_PROXY
-	case PAIR_LIST_PROXY_REQUEST:
-		if (!request->proxy) return NULL;
-		return request->proxy->packet;
-
-	case PAIR_LIST_PROXY_REPLY:
-		if (!request->proxy) return NULL;
-		return request->proxy->reply;
-#endif
 	}
 
 	return NULL;
@@ -301,16 +277,6 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_list_t list)
 
 	case PAIR_LIST_STATE:
 		return request->state_ctx;
-
-#ifdef WITH_PROXY
-	case PAIR_LIST_PROXY_REQUEST:
-		if (!request->proxy) return NULL;
-		return request->proxy->packet;
-
-	case PAIR_LIST_PROXY_REPLY:
-		if (!request->proxy) return NULL;
-		return request->proxy->reply;
-#endif
 
 	/* Don't add default */
 	case PAIR_LIST_UNKNOWN:

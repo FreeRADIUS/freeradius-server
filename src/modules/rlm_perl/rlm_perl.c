@@ -63,10 +63,6 @@ typedef struct {
 	char const	*func_preacct;
 	char const	*func_detach;
 	char const	*func_xlat;
-#ifdef WITH_PROXY
-	char const	*func_pre_proxy;
-	char const	*func_post_proxy;
-#endif
 	char const	*func_post_auth;
 #ifdef WITH_COA
 	char const	*func_recv_coa;
@@ -105,10 +101,6 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(detach),
 	RLM_PERL_CONF(xlat),
 
-#ifdef WITH_PROXY
-	RLM_PERL_CONF(pre_proxy),
-	RLM_PERL_CONF(post_proxy),
-#endif
 #ifdef WITH_COA
 	RLM_PERL_CONF(recv_coa),
 	RLM_PERL_CONF(send_coa),
@@ -860,10 +852,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	HV		*rad_config_hv;
 	HV		*rad_request_hv;
 	HV		*rad_state_hv;
-#ifdef WITH_PROXY
-	HV		*rad_request_proxy_hv;
-	HV		*rad_request_proxy_reply_hv;
-#endif
 
 	/*
 	 *	Radius has told us to call this function, but none
@@ -902,25 +890,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
 		perl_store_vps(request, request, &request->control, rad_config_hv, "RAD_CONFIG", "control");
 		perl_store_vps(request->state_ctx, request, &request->state, rad_state_hv, "RAD_STATE", "session-state");
-
-#ifdef WITH_PROXY
-		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
-		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
-
-		if (request->proxy) {
-			perl_store_vps(request->proxy->packet, request, &request->proxy->packet->vps, rad_request_proxy_hv,
-				       "RAD_REQUEST_PROXY", "proxy-request");
-		} else {
-			hv_undef(rad_request_proxy_hv);
-		}
-
-		if (request->proxy && request->proxy->reply != NULL) {
-			perl_store_vps(request->proxy->reply, request, &request->proxy->reply->vps,
-				       rad_request_proxy_reply_hv, "RAD_REQUEST_PROXY_REPLY", "proxy-reply");
-		} else {
-			hv_undef(rad_request_proxy_reply_hv);
-		}
-#endif
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
@@ -981,25 +950,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			request->state = vp;
 			vp = NULL;
 		}
-
-#ifdef WITH_PROXY
-		if (request->proxy &&
-		    (get_hv_content(request->proxy->packet, request, rad_request_proxy_hv, &vp,
-		    		    "RAD_REQUEST_PROXY", "proxy-request") == 0)) {
-			fr_pair_list_free(&request->proxy->packet->vps);
-			request->proxy->packet->vps = vp;
-			vp = NULL;
-		}
-
-		if (request->proxy && request->proxy->reply &&
-		    (get_hv_content(request->proxy->reply, request, rad_request_proxy_reply_hv, &vp,
-		    		    "RAD_REQUEST_PROXY_REPLY", "proxy-reply") == 0)) {
-			fr_pair_list_free(&request->proxy->reply->vps);
-			request->proxy->reply->vps = vp;
-			vp = NULL;
-		}
-#endif
-
 	}
 	return exitstatus;
 }
@@ -1013,11 +963,6 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 RLM_PERL_FUNC(authorize)
 RLM_PERL_FUNC(authenticate)
 RLM_PERL_FUNC(post_auth)
-
-#ifdef WITH_PROXY
-RLM_PERL_FUNC(pre_proxy)
-RLM_PERL_FUNC(post_proxy)
-#endif
 
 #ifdef WITH_COA
 RLM_PERL_FUNC(recv_coa)
@@ -1172,10 +1117,6 @@ module_t rlm_perl = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa,

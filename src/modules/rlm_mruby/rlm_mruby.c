@@ -415,12 +415,6 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply->vps);
 	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control);
 	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state);
-#ifdef WITH_PROXY
-	if (request->proxy) {
-		mruby_set_vps(request, mrb, mruby_request, "@proxy_request", &request->proxy->packet->vps);
-		mruby_set_vps(request, mrb, mruby_request, "@proxy_reply", &request->proxy->reply->vps);
-	}
-#endif
 
 DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
@@ -487,10 +481,6 @@ RLM_MRUBY_FUNC(post_auth)
 RLM_MRUBY_FUNC(preacct)
 RLM_MRUBY_FUNC(accounting)
 #endif
-#ifdef WITH_PROXY
-RLM_MRUBY_FUNC(pre_proxy)
-RLM_MRUBY_FUNC(post_proxy)
-#endif
 #ifdef WITH_COA
 RLM_MRUBY_FUNC(recv_coa)
 RLM_MRUBY_FUNC(send_coa)
@@ -535,10 +525,6 @@ module_t rlm_mruby = {
 #ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa,
