@@ -1399,7 +1399,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_XLAT_UNPARSED:
 		break;

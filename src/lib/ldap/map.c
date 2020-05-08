@@ -192,7 +192,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_ATTR:
 		break;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->lhs));
 		return -1;
 
@@ -213,7 +213,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_UNPARSED:
 		break;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->rhs));
 		return -1;
 

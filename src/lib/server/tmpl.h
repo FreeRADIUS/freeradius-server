@@ -110,17 +110,39 @@ extern size_t request_ref_table_len;
  */
 typedef enum tmpl_type_e {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
-	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.
-	TMPL_TYPE_XLAT_UNPARSED,			//!< XLAT expansion.
-	TMPL_TYPE_ATTR,			//!< Dictionary attribute.
-	TMPL_TYPE_ATTR_UNDEFINED,	//!< Attribute not found in the global dictionary.
-	TMPL_TYPE_LIST,			//!< Attribute list.
-	TMPL_TYPE_REGEX,		//!< Regular expression.
+
+	TMPL_TYPE_NULL,			//!< Has no value.  Usually a placeholder in a binary
+					///< expression that's really a unary expression.
+	TMPL_TYPE_DATA,			//!< Value in native boxed format.
+
+	TMPL_TYPE_LIST,			//!< Reference to an attribute list.
+	TMPL_TYPE_ATTR,			//!< Reference to one or more attributes.
+
 	TMPL_TYPE_EXEC,			//!< Callout to an external script or program.
-	TMPL_TYPE_DATA,			//!< Value in native format.
-	TMPL_TYPE_XLAT,	      	//!< Pre-parsed XLAT expansion.
-	TMPL_TYPE_REGEX_STRUCT,	      	//!< Pre-parsed regular expression.
-	TMPL_TYPE_NULL			//!< Has no value.
+	TMPL_TYPE_XLAT,	      		//!< Pre-parsed xlat expansion.
+
+	TMPL_TYPE_REGEX,	      	//!< Compiled (and possibly JIT'd) regular expression.
+
+	/** @name Unparsed types
+	 *
+	 * These are tmpls which could not immediately be transformed into
+	 * their "parsed" or "compiled" form due to missing references,
+	 * or because the tmpl is "dynamic".
+	 *
+	 * @{
+	 */
+	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.  May be an intermediary phase
+					///< where the tmpl is created as a temporary structure
+					///< during parsing.
+
+	TMPL_TYPE_ATTR_UNPARSED,	//!< An attribute reference that we couldn't resolve.
+					///< May be resolvable later once more attributes are
+					///< defined.
+
+	TMPL_TYPE_XLAT_UNPARSED,	//!< Unparsed xlat expansion.  May have a dynamic element.
+
+	TMPL_TYPE_REGEX_UNPARSED,	//!< Unparsed regular expression.  May have a dynamic element.
+	/** @} */
 } tmpl_type_t;
 
 /** Helpers to verify the type of #vp_tmpl_t
@@ -129,13 +151,13 @@ typedef enum tmpl_type_e {
 #define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
 #define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
 #define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_attr_undefined(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNDEFINED)
+#define tmpl_is_attr_undefined(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
 #define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
-#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
+#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX_UNPARSED)
 #define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
 #define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
 #define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT)
-#define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX_STRUCT)
+#define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX)
 #define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
 
 extern fr_table_num_sorted_t const tmpl_type_table[];
@@ -169,7 +191,7 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
  *
  * @section conditional_maps Use in conditional vp_map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
- * - #TMPL_TYPE_REGEX_STRUCT (pre-parsed regex)
+ * - #TMPL_TYPE_REGEX (pre-parsed regex)
  *
  * @see vp_map_t
  */
@@ -211,7 +233,7 @@ struct vp_tmpl_s {
 	} data;
 };
 
-/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST
+/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNPARSED, #TMPL_TYPE_LIST
  *
  * @{
  */
@@ -256,12 +278,12 @@ struct vp_tmpl_s {
 #define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
+/** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_UNPARSED
  *
  * @{
  */
 #ifdef HAVE_REGEX
-#  define tmpl_preg(_tmpl)		(_tmpl)->data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
+#  define tmpl_preg(_tmpl)		(_tmpl)->data.preg	//!< #TMPL_TYPE_REGEX only.
 #  define tmpl_regex_flags(_tmpl)	(_tmpl)->data.regex_flags
 #endif
 /** @} */

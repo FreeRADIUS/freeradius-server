@@ -179,7 +179,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
 		/*
-		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
+		 *	This is so we produce TMPL_TYPE_ATTR_UNPARSED template that
 		 *	the bootstrap functions can use to create an attribute.
 		 *
 		 *	For other types of template such as xlats, we don't bother.
@@ -1411,7 +1411,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			/*
 			 *	All attributes should have been defined by this point.
 			 */
-			case TMPL_TYPE_ATTR_UNDEFINED:
+			case TMPL_TYPE_ATTR_UNPARSED:
 				cf_log_err(cp, "Unknown attribute '%s'", tmpl_unknown_name(vpt));
 				talloc_free(vpt);	/* Free last (vpt needed for log) */
 				return -1;
@@ -1426,8 +1426,8 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 				break;
 
 			case TMPL_TYPE_UNKNOWN:
+			case TMPL_TYPE_REGEX_UNPARSED:
 			case TMPL_TYPE_REGEX:
-			case TMPL_TYPE_REGEX_STRUCT:
 			case TMPL_TYPE_NULL:
 				fr_assert(0);
 			/* Don't add default */

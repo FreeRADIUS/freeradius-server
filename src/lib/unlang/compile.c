@@ -369,7 +369,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 		return false;
 	}
 
-	vpt->type = TMPL_TYPE_REGEX_STRUCT;
+	vpt->type = TMPL_TYPE_REGEX;
 	tmpl_preg(vpt) = preg;
 
 	return true;
@@ -1632,7 +1632,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		case TMPL_TYPE_UNPARSED:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_XLAT_UNPARSED:
-		case TMPL_TYPE_ATTR_UNDEFINED:
+		case TMPL_TYPE_ATTR_UNPARSED:
 		case TMPL_TYPE_EXEC:
 			break;
 

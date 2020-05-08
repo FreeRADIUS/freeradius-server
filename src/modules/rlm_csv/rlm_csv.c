@@ -282,7 +282,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	case TMPL_TYPE_ATTR:
 		break;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->lhs));
 		return -1;
 
@@ -304,7 +304,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 		}
 		break;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_unknown_name(map->rhs));
 		return -1;
 

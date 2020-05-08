@@ -1418,7 +1418,7 @@ done:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT_UNPARSED:
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_ATTR_UNDEFINED:
+		case TMPL_TYPE_ATTR_UNPARSED:
 		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;

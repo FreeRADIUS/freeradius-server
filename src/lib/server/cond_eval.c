@@ -125,8 +125,8 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 	/*
 	 *	Can't have a bare ... (/foo/) ...
 	 */
+	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_REGEX_STRUCT:
 		fr_assert(0 == 1);
 		/* FALL-THROUGH */
 
@@ -166,7 +166,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	EVAL_DEBUG("CMP WITH REGEX");
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
+	case TMPL_TYPE_REGEX: /* pre-compiled to a regex */
 		preg = tmpl_preg(map->rhs);
 		break;
 
@@ -547,7 +547,7 @@ do {\
 	/*
 	 *	RHS is a compiled regex, we don't need to do anything with it.
 	 */
-	case TMPL_TYPE_REGEX_STRUCT:
+	case TMPL_TYPE_REGEX:
 		CAST(lhs);
 		rcode = cond_cmp_values(request, c, lhs, NULL);
 		break;
@@ -557,8 +557,8 @@ do {\
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_ATTR_UNPARSED:
+	case TMPL_TYPE_REGEX_UNPARSED:	/* Should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
 		fr_assert(0);
 		rcode = -1;
 		break;
@@ -666,10 +666,10 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT */
-	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
+	case TMPL_TYPE_REGEX_UNPARSED:		/* should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_REGEX:	/* not allowed as LHS */
 		fr_assert(0);
 		rcode = -1;
 		break;

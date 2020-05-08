@@ -36,17 +36,21 @@ RCSID("$Id$")
 /** Map #tmpl_type_t values to descriptive strings
  */
 fr_table_num_sorted_t const tmpl_type_table[] = {
-	{ "attr",		TMPL_TYPE_ATTR			},
-	{ "data",		TMPL_TYPE_DATA			},
-	{ "exec",		TMPL_TYPE_EXEC			},
-	{ "list",		TMPL_TYPE_LIST			},
-	{ "literal",		TMPL_TYPE_UNPARSED 		},
 	{ "null",		TMPL_TYPE_NULL			},
-	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT		},
-	{ "parsed xlat",	TMPL_TYPE_XLAT		},
+	{ "data",		TMPL_TYPE_DATA			},
+
+	{ "attr",		TMPL_TYPE_ATTR			},
+	{ "list",		TMPL_TYPE_LIST			},
+
+	{ "exec",		TMPL_TYPE_EXEC			},
+	{ "xlat",		TMPL_TYPE_XLAT			},
+
 	{ "regex",		TMPL_TYPE_REGEX			},
-	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
-	{ "xlat",		TMPL_TYPE_XLAT_UNPARSED			}
+
+	{ "literal",		TMPL_TYPE_UNPARSED 		},
+	{ "attr-undefined",	TMPL_TYPE_ATTR_UNPARSED		},
+	{ "xlat-unparsed",	TMPL_TYPE_XLAT_UNPARSED		},
+	{ "regex-unparsed",	TMPL_TYPE_REGEX_UNPARSED	}
 };
 size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
@@ -438,7 +442,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	fr_assert(type <= TMPL_TYPE_NULL);
 
 #ifndef HAVE_REGEX
-	if ((type == TMPL_TYPE_REGEX) || (type == TMPL_TYPE_REGEX_STRUCT)) {
+	if ((type == TMPL_TYPE_REGEX_UNPARSED) || (type == TMPL_TYPE_REGEX)) {
 		return NULL;
 	}
 #endif
@@ -581,7 +585,7 @@ static vp_tmpl_rules_t const default_rules = {
  *							to search for a #VALUE_PAIR in a #REQUEST.
  *				- allow_undefined	If true, we don't generate a parse error on
  *							unknown attributes. If an unknown attribute is
- *							found a #TMPL_TYPE_ATTR_UNDEFINED
+ *							found a #TMPL_TYPE_ATTR_UNPARSED
  *							#vp_tmpl_t will be produced.
  *				- allow_foreign		If true, allow attribute names to be qualified
  *							with a protocol outside of the passed dict_def.
@@ -777,7 +781,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		/*
 		 *	Copy the name to a field for later resolution
 		 */
-		vpt->type = TMPL_TYPE_ATTR_UNDEFINED;
+		vpt->type = TMPL_TYPE_ATTR_UNPARSED;
 		for (q = p; (q < (name + name_len)) && ((*q == '.') || fr_dict_attr_allowed_chars[(uint8_t) *q]); q++);
 		if (q == p) {
 			fr_strerror_printf("Invalid attribute name");
@@ -1025,14 +1029,14 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
  * @param[in] type		of quoting around value. May be one of:
  *				- #T_BARE_WORD - If string begins with ``&``
  *				  produces #TMPL_TYPE_ATTR,
- *	  			  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
+ *	  			  #TMPL_TYPE_ATTR_UNPARSED, #TMPL_TYPE_LIST or error.
  *	  			  If string does not begin with ``&`` produces
  *				  #TMPL_TYPE_UNPARSED, #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  *				- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_UNPARSED
  *				- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT_UNPARSED or
  *				  #TMPL_TYPE_UNPARSED (if string doesn't contain ``%``).
  *				- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
- *				- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
+ *				- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX_UNPARSED
  * @param[in] rules		Parsing rules for attribute references.
  * @param[in] do_unescape	whether or not we should do unescaping.
  *				Should be false if the caller already did it.
@@ -1223,7 +1227,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		break;
 
 	case T_OP_REG_EQ: /* hack */
-		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, in, inlen, T_BARE_WORD);
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX_UNPARSED, in, inlen, T_BARE_WORD);
 		slen = vpt->len;
 		break;
 
@@ -1668,9 +1672,9 @@ ssize_t _tmpl_to_type(void *out,
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX_STRUCT:
 		fr_assert(0);
 		return -1;
 	}
@@ -1999,9 +2003,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX_STRUCT:
 		fr_assert(0);
 		goto error;
 	}
@@ -2108,7 +2112,7 @@ size_t tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t c
 		RETURN_IF_TRUNCATED(need, len, out_p, out, end);
 		goto inst_and_tag;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		p = tmpl_unknown_name(vpt);
 		goto print_name;
 
@@ -2208,7 +2212,7 @@ empty:
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 	case TMPL_TYPE_ATTR:
 		*out_p++ = '&';
 		return tmpl_snprint_attr_str(need, out_p, end - out_p, vpt) + 1;
@@ -2216,8 +2220,8 @@ empty:
 	/*
 	 *	Regexes have their own set of escaping rules
 	 */
+	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_REGEX_STRUCT:
 		if ((end - out_p) <= 3) {	/* / + <c> + / + \0 */
 		no_space:
 			if (out_p > end) out_p = end;	/* Safety */
@@ -2674,7 +2678,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		/* tmpl_xlat(vpt) can be initialized */
 		break;
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR_UNPARSED:
 		fr_assert(tmpl_da(vpt) == NULL);
 		break;
 
@@ -2818,26 +2822,26 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 		break;
 
-	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNPARSED:
 #ifdef HAVE_REGEX
 		if (tmpl_preg(vpt) != NULL) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_UNPARSED "
 					     "preg field was not NULL", file, line);
 		}
 #else
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX - No regex support",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_UNPARSED - No regex support",
 				     file, line);
 #endif
 		break;
 
-	case TMPL_TYPE_REGEX_STRUCT:
+	case TMPL_TYPE_REGEX:
 #ifdef HAVE_REGEX
 		if (tmpl_preg(vpt) == NULL) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
 					     "comp field was NULL", file, line);
 		}
 #else
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT - No regex support",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX - No regex support",
 				     file, line);
 #endif
 		break;
