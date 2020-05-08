@@ -227,11 +227,11 @@ static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const
  * @param[in] original		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  * @param[in] lhs_result	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
- *				- TMPL_TYPE_XLAT_STRUCT
+ *				- TMPL_TYPE_XLAT
  *				- TMPL_TYPE_EXEC (in future)
  * @param[in] rhs_result	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
- *				- TMPL_TYPE_XLAT_STRUCT
+ *				- TMPL_TYPE_XLAT
  *				- TMPL_TYPE_EXEC (in future)
  *				Once this function returns result will be invalidated even
  *				if this function errors.
@@ -281,7 +281,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	- "Attr-%{number}" := "value"
 	 */
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 	{
 		size_t slen;
 
@@ -449,11 +449,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	(void)fr_cursor_init(&values, &head);
 
 	switch (mutated->rhs->type) {
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
 		/* FALL-THROUGH */
 
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	{
 		fr_cursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
@@ -861,8 +861,8 @@ static inline void map_list_mod_debug(REQUEST *request,
 	 *	Just print the value being assigned
 	 */
 	default:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_DATA:
 		rhs = fr_asprintf(request, "%s%pV%s", quote, vb, quote);

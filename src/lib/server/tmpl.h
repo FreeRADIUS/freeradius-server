@@ -25,7 +25,7 @@
  *
  * #vp_tmpl_t (VPTs) specify either a data source, or a data sink.
  *
- * Examples of sources are #TMPL_TYPE_XLAT, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
+ * Examples of sources are #TMPL_TYPE_XLAT_UNPARSED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
  * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
  *
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #FR_TOKEN) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT or a #TMPL_TYPE_UNPARSED (depending if the string
+ * produce either a #TMPL_TYPE_XLAT_UNPARSED or a #TMPL_TYPE_UNPARSED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_str
@@ -111,14 +111,14 @@ extern size_t request_ref_table_len;
 typedef enum tmpl_type_e {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
 	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.
-	TMPL_TYPE_XLAT,			//!< XLAT expansion.
+	TMPL_TYPE_XLAT_UNPARSED,			//!< XLAT expansion.
 	TMPL_TYPE_ATTR,			//!< Dictionary attribute.
 	TMPL_TYPE_ATTR_UNDEFINED,	//!< Attribute not found in the global dictionary.
 	TMPL_TYPE_LIST,			//!< Attribute list.
 	TMPL_TYPE_REGEX,		//!< Regular expression.
 	TMPL_TYPE_EXEC,			//!< Callout to an external script or program.
 	TMPL_TYPE_DATA,			//!< Value in native format.
-	TMPL_TYPE_XLAT_STRUCT,	      	//!< Pre-parsed XLAT expansion.
+	TMPL_TYPE_XLAT,	      	//!< Pre-parsed XLAT expansion.
 	TMPL_TYPE_REGEX_STRUCT,	      	//!< Pre-parsed regular expression.
 	TMPL_TYPE_NULL			//!< Has no value.
 } tmpl_type_t;
@@ -127,14 +127,14 @@ typedef enum tmpl_type_e {
  */
 #define tmpl_is_unknown(vpt) 		(vpt->type == TMPL_TYPE_UNKNOWN)
 #define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
-#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT)
+#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
 #define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
 #define tmpl_is_attr_undefined(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNDEFINED)
 #define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
 #define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
 #define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
 #define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
-#define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT_STRUCT)
+#define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT)
 #define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX_STRUCT)
 #define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
 
@@ -160,12 +160,12 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
  * - #TMPL_TYPE_UNPARSED
- * - #TMPL_TYPE_XLAT
+ * - #TMPL_TYPE_XLAT_UNPARSED
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
  * - #TMPL_TYPE_EXEC
  * - #TMPL_TYPE_DATA
- * - #TMPL_TYPE_XLAT_STRUCT (pre-parsed xlat)
+ * - #TMPL_TYPE_XLAT (pre-parsed xlat)
  *
  * @section conditional_maps Use in conditional vp_map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
@@ -234,7 +234,7 @@ struct vp_tmpl_s {
 #define tmpl_da_set(_tmpl, _da)			(_tmpl)->data.attribute.da = (_da)
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_XLAT_STRUCT
+/** @name Field accessors for #TMPL_TYPE_XLAT
  *
  * @{
  */

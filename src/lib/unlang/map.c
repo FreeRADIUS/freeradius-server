@@ -149,14 +149,14 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 						 request, map->lhs, NULL, NULL);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
-			case TMPL_TYPE_XLAT_STRUCT:
+			case TMPL_TYPE_XLAT:
 				unlang_xlat_push(update_state, &update_state->lhs_result,
 						 request, tmpl_xlat(map->lhs), false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
-			case TMPL_TYPE_XLAT:
+			case TMPL_TYPE_XLAT_UNPARSED:
 				fr_assert(0);
 			error:
 				TALLOC_FREE(frame->state);
@@ -184,14 +184,14 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 						 request, map->rhs, NULL, NULL);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
-			case TMPL_TYPE_XLAT_STRUCT:
+			case TMPL_TYPE_XLAT:
 				unlang_xlat_push(update_state, &update_state->rhs_result,
 						 request, tmpl_xlat(map->rhs), false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
 			case TMPL_TYPE_REGEX_STRUCT:
-			case TMPL_TYPE_XLAT:
+			case TMPL_TYPE_XLAT_UNPARSED:
 				fr_assert(0);
 				goto error;
 			}
@@ -334,14 +334,14 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 				 request, inst->src, NULL, NULL);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
 				 request, tmpl_xlat(inst->src), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 		fr_assert(0);
 		goto error;
 	}

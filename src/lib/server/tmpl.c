@@ -43,10 +43,10 @@ fr_table_num_sorted_t const tmpl_type_table[] = {
 	{ "literal",		TMPL_TYPE_UNPARSED 		},
 	{ "null",		TMPL_TYPE_NULL			},
 	{ "parsed regex",	TMPL_TYPE_REGEX_STRUCT		},
-	{ "parsed xlat",	TMPL_TYPE_XLAT_STRUCT		},
+	{ "parsed xlat",	TMPL_TYPE_XLAT		},
 	{ "regex",		TMPL_TYPE_REGEX			},
 	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
-	{ "xlat",		TMPL_TYPE_XLAT			}
+	{ "xlat",		TMPL_TYPE_XLAT_UNPARSED			}
 };
 size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
@@ -1029,7 +1029,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
  *	  			  If string does not begin with ``&`` produces
  *				  #TMPL_TYPE_UNPARSED, #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  *				- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_UNPARSED
- *				- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or
+ *				- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT_UNPARSED or
  *				  #TMPL_TYPE_UNPARSED (if string doesn't contain ``%``).
  *				- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
  *				- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
@@ -1177,7 +1177,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in,
 						  inlen, fr_token_quote[type], false) < 0) return -1;
 			if (do_xlat) {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.vb_strvalue,
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT_UNPARSED, data.vb_strvalue,
 						 talloc_array_length(data.vb_strvalue) - 1, type);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.vb_strvalue,
@@ -1187,7 +1187,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 			talloc_free(data.datum.ptr);
 		} else {
 			if (do_xlat) {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, in, inlen, type);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT_UNPARSED, in, inlen, type);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen, type);
 				vpt->quote = T_DOUBLE_QUOTED_STRING;
@@ -1356,8 +1356,8 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
  * @param vpt to cast. Must be one of the following types:
  *	- #TMPL_TYPE_UNPARSED
  *	- #TMPL_TYPE_EXEC
+ *	- #TMPL_TYPE_XLAT_UNPARSED
  *	- #TMPL_TYPE_XLAT
- *	- #TMPL_TYPE_XLAT_STRUCT
  *	- #TMPL_TYPE_ATTR
  *	- #TMPL_TYPE_DATA
  * @param cast type of #VALUE_PAIR to create.
@@ -1526,15 +1526,15 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
  *				Must not be NULL.
  * @param[out] buff		Expansion buffer, may be NULL except for the following types:
  *				- #TMPL_TYPE_EXEC
+ *				- #TMPL_TYPE_XLAT_UNPARSED
  *				- #TMPL_TYPE_XLAT
- *				- #TMPL_TYPE_XLAT_STRUCT
  * @param[in] bufflen		Length of expansion buffer. Must be >= 2.
  * @param[in] request		Current request.
  * @param[in] vpt		to expand. Must be one of the following types:
  *				- #TMPL_TYPE_UNPARSED
  *				- #TMPL_TYPE_EXEC
+ *				- #TMPL_TYPE_XLAT_UNPARSED
  *				- #TMPL_TYPE_XLAT
- *				- #TMPL_TYPE_XLAT_STRUCT
  *				- #TMPL_TYPE_ATTR
  *				- #TMPL_TYPE_DATA
  * @param[in] escape		xlat escape function (only used for xlat types).
@@ -1592,7 +1592,7 @@ ssize_t _tmpl_to_type(void *out,
 	}
 		break;
 
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 		RDEBUG4("EXPAND TMPL XLAT");
 		if (!buff) {
 			fr_strerror_printf("Missing expansion buffer for XLAT");
@@ -1612,7 +1612,7 @@ ssize_t _tmpl_to_type(void *out,
 		value_to_cast.vb_strvalue = (char *)buff;
 		break;
 
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 		if (!buff) {
@@ -1828,12 +1828,12 @@ ssize_t _tmpl_to_type(void *out,
  * @param vpt		to expand. Must be one of the following types:
  *			- #TMPL_TYPE_UNPARSED
  *			- #TMPL_TYPE_EXEC
+ *			- #TMPL_TYPE_XLAT_UNPARSED
  *			- #TMPL_TYPE_XLAT
- *			- #TMPL_TYPE_XLAT_STRUCT
  *			- #TMPL_TYPE_ATTR
  *			- #TMPL_TYPE_DATA
- * @param escape xlat	escape function (only used for TMPL_TYPE_XLAT_* types).
- * @param escape_ctx	xlat escape function data (only used for TMPL_TYPE_XLAT_* types).
+ * @param escape xlat	escape function (only used for TMPL_TYPE_XLAT_UNPARSED_* types).
+ * @param escape_ctx	xlat escape function data (only used for TMPL_TYPE_XLAT_UNPARSED_* types).
  * @param dst_type	FR_TYPE_* matching out pointer.  @see tmpl_aexpand.
  * @return
  *	- -1 on failure.
@@ -1889,7 +1889,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		to_cast = &value;
 		break;
 
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	{
 		fr_value_box_t	tmp;
 		fr_type_t		src_type = FR_TYPE_STRING;
@@ -1918,7 +1918,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	}
 		break;
 
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 	{
 		fr_value_box_t	tmp;
 		fr_type_t		src_type = FR_TYPE_STRING;
@@ -2237,8 +2237,8 @@ empty:
 
 		goto finish;
 
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 		c = '"';
 		goto do_literal;
 
@@ -2650,21 +2650,21 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 		break;
 
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 		break;
 
 /* @todo When regexes get converted to xlat the flags field of the regex union is used
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_UNPARSED "
 					     "has non-zero bytes in its data union", file, line);
 		}
 		break;
 
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		if (CHECK_ZEROED(vpt, xlat)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_STRUCT "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
 					     "has non-zero bytes after the data.xlat pointer in the union", file, line);
 		}
 		break;
@@ -3283,10 +3283,10 @@ bool tmpl_async_required(vp_tmpl_t const *vpt)
 {
 	switch (vpt->type) {
 	case TMPL_TYPE_EXEC:	/* we don't have "exec no-wait" here */
-	case TMPL_TYPE_XLAT:	/* we have no idea, so be safe */
+	case TMPL_TYPE_XLAT_UNPARSED:	/* we have no idea, so be safe */
 		return true;
 
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		return xlat_async_required(tmpl_xlat(vpt));
 
 	default:

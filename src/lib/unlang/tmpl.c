@@ -462,14 +462,14 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	XLAT structs are allowed.
 	 */
-	if (ut->tmpl->type == TMPL_TYPE_XLAT_STRUCT) {
+	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
 		frame->interpret = unlang_tmpl_resume;
 		repeatable_set(frame);
 		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
+	if (ut->tmpl->type == TMPL_TYPE_XLAT_UNPARSED) {
 		REDEBUG("Xlat expansions MUST be compiled before being run asynchronously");
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;

@@ -1416,7 +1416,7 @@ done:
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		switch (c->data.vpt->type) {
-		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_XLAT_UNPARSED:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_ATTR_UNDEFINED:
 		case TMPL_TYPE_LIST:
@@ -1434,7 +1434,7 @@ done:
 			 *	'foo' and "foo" are true.
 			 *
 			 *	The str2tmpl function takes care of
-			 *	marking "%{foo}" as TMPL_TYPE_XLAT, so
+			 *	marking "%{foo}" as TMPL_TYPE_XLAT_UNPARSED, so
 			 *	the strings here are fixed at compile
 			 *	time.
 			 *

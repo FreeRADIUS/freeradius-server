@@ -960,7 +960,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	 *	And parse the RHS
 	 */
 	switch (map->rhs->type) {
-	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_XLAT:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
 		fr_assert(tmpl_xlat(map->rhs) != NULL);
@@ -997,7 +997,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		*out = n;
 		break;
 
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
 
@@ -1212,8 +1212,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	This allows the syntax like:
 	 *	- "Attr-%{number}" := "value"
 	 */
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_EXEC:
 	{
 		char *attr_str;
@@ -1675,8 +1675,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 

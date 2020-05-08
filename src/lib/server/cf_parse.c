@@ -1421,8 +1421,8 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			case TMPL_TYPE_LIST:
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
+			case TMPL_TYPE_XLAT_UNPARSED:
 			case TMPL_TYPE_XLAT:
-			case TMPL_TYPE_XLAT_STRUCT:
 				break;
 
 			case TMPL_TYPE_UNKNOWN:

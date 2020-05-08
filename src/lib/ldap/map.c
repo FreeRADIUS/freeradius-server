@@ -207,7 +207,7 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 	 *	we're retrieving from LDAP.
 	 */
 	switch (map->rhs->type) {
-	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_UNPARSED:

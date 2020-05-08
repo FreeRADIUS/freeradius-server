@@ -104,8 +104,8 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 		}
 		break;
 
-	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	{
 		char *p;
@@ -504,8 +504,8 @@ do {\
 	 */
 	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		ssize_t ret;
 		fr_value_box_t data;
@@ -558,7 +558,7 @@ do {\
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
+	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT */
 		fr_assert(0);
 		rcode = -1;
 		break;
@@ -635,8 +635,8 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 
 	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		char *p = NULL;
 		ssize_t ret;
@@ -668,7 +668,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
+	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT */
 	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
 		fr_assert(0);
 		rcode = -1;

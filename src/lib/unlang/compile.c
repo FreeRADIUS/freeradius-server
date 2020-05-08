@@ -322,7 +322,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	/*
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
-	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->type = TMPL_TYPE_XLAT;
 	tmpl_xlat(vpt) = head;
 
 	return true;
@@ -349,7 +349,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 	 *	XLAT instead of a REGEX.
 	 */
 	if (strchr(vpt->name, '%')) {
-		vpt->type = TMPL_TYPE_XLAT;
+		vpt->type = TMPL_TYPE_XLAT_UNPARSED;
 		return pass2_fixup_xlat(ci, &vpt, false, NULL, rules);
 	}
 
@@ -444,7 +444,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
 		tmpl_xlat(vpt) = xlat_from_tmpl_attr(vpt, vpt);
-		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+		vpt->type = TMPL_TYPE_XLAT;
 	}
 
 
@@ -727,7 +727,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
 		if (!c->cast) c->cast = tmpl_da(vpt);
 		tmpl_xlat(vpt) = xlat_from_tmpl_attr(vpt, vpt);
-		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+		vpt->type = TMPL_TYPE_XLAT;
 	}
 
 	/*
@@ -1081,8 +1081,8 @@ static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 		break;
 
 	default:
@@ -1094,8 +1094,8 @@ static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
 		break;
@@ -1224,7 +1224,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	operator like !*.
 		 */
 		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_XLAT_UNPARSED:
 		case TMPL_TYPE_UNPARSED:
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
 			return -1;
@@ -1631,7 +1631,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		switch (vpt->type) {
 		case TMPL_TYPE_UNPARSED:
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_XLAT_UNPARSED:
 		case TMPL_TYPE_ATTR_UNDEFINED:
 		case TMPL_TYPE_EXEC:
 			break;
@@ -2633,7 +2633,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	/*
 	 *	Re-write it to be a pre-parsed XLAT structure.
 	 */
-	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->type = TMPL_TYPE_XLAT;
 	tmpl_xlat(vpt) = head;
 
 	ut->tmpl = vpt;	/* const issues */
@@ -2922,7 +2922,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 			/*
 			 *	Allow only these ones.
 			 */
-		case TMPL_TYPE_XLAT_STRUCT:
+		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_EXEC:
 			break;
