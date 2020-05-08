@@ -153,7 +153,7 @@ typedef enum tmpl_type_e {
 #define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
 #define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
 #define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_attr_undefined(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
+#define tmpl_is_attr_unparsed(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
 #define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
 #define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX_UNPARSED)
 #define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)

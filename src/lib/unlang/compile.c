@@ -380,7 +380,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 {
 	fr_dict_attr_t const *da;
 
-	fr_assert(tmpl_is_attr_undefined(vpt));
+	fr_assert(tmpl_is_attr_unparsed(vpt));
 
 	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_unknown_name(vpt), true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
@@ -435,7 +435,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	 *	The existence check might have been &Foo-Bar,
 	 *	where Foo-Bar is defined by a module.
 	 */
-	if (tmpl_is_attr_undefined(vpt)) {
+	if (tmpl_is_attr_unparsed(vpt)) {
 		return pass2_fixup_undefined(ci, vpt, rules);
 	}
 
@@ -490,12 +490,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		/*
 		 *	Resolve the attribute references first
 		 */
-		if (tmpl_is_attr_undefined(map->lhs)) {
+		if (tmpl_is_attr_unparsed(map->lhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 			if (!cast) cast = tmpl_da(map->lhs);
 		}
 
-		if (tmpl_is_attr_undefined(map->rhs)) {
+		if (tmpl_is_attr_unparsed(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 			if (!cast) cast = tmpl_da(map->rhs);
 		}
@@ -834,7 +834,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 	/*
 	 *	Deal with undefined attributes now.
 	 */
-	if (tmpl_is_attr_undefined(map->lhs)) {
+	if (tmpl_is_attr_unparsed(map->lhs)) {
 		if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 	}
 
@@ -889,7 +889,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 
 		fr_assert(!tmpl_is_regex(map->rhs));
 
-		if (tmpl_is_attr_undefined(map->rhs)) {
+		if (tmpl_is_attr_unparsed(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 		}
 
@@ -2344,7 +2344,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-		if (tmpl_is_attr_undefined(vpt)) {
+		if (tmpl_is_attr_unparsed(vpt)) {
 			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;

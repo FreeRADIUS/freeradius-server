@@ -393,7 +393,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	to a normal function but called without an argument
 	 *	list.
 	 */
-	if (tmpl_is_attr_undefined(vpt)) {
+	if (tmpl_is_attr_unparsed(vpt)) {
 		func = xlat_func_find(tmpl_unknown_name(vpt), -1);
 		if (func && (func->type == XLAT_FUNC_SYNC)) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,

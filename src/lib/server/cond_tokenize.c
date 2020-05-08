@@ -822,7 +822,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P("Failed defining attribute");
 		}
 
-		if (tmpl_is_attr_undefined(c->data.vpt)) {
+		if (tmpl_is_attr_unparsed(c->data.vpt)) {
 			c->pass2_fixup = PASS2_FIXUP_ATTR;
 		}
 
@@ -1004,8 +1004,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		/*
 		 *	Unknown attributes get marked up for pass2.
 		 */
-		if (tmpl_is_attr_undefined(c->data.map->lhs) ||
-		    tmpl_is_attr_undefined(c->data.map->rhs)) {
+		if (tmpl_is_attr_unparsed(c->data.map->lhs) ||
+		    tmpl_is_attr_unparsed(c->data.map->rhs)) {
 			c->pass2_fixup = PASS2_FIXUP_ATTR;
 		}
 

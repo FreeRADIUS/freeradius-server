@@ -1469,7 +1469,7 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	TMPL_VERIFY(vpt);
 
-	if (!tmpl_is_attr_undefined(vpt)) return 1;
+	if (!tmpl_is_attr_unparsed(vpt)) return 1;
 
 	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal()), tmpl_unknown_name(vpt), -1, type, flags) < 0) {
 		return -1;
