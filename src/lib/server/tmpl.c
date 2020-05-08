@@ -36,6 +36,8 @@ RCSID("$Id$")
 /** Map #tmpl_type_t values to descriptive strings
  */
 fr_table_num_sorted_t const tmpl_type_table[] = {
+	{ "uninitialised",	TMPL_TYPE_UNINITIALISED		},
+
 	{ "null",		TMPL_TYPE_NULL			},
 	{ "data",		TMPL_TYPE_DATA			},
 
@@ -409,7 +411,6 @@ vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t
 {
 	fr_assert(vpt);
 	fr_assert(type != TMPL_TYPE_UNINITIALISED);
-	fr_assert(type <= TMPL_TYPE_NULL);
 
 	memset(vpt, 0, sizeof(vp_tmpl_t));
 	vpt->type = type;
@@ -439,7 +440,6 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	vp_tmpl_t *vpt;
 
 	fr_assert(type != TMPL_TYPE_UNINITIALISED);
-	fr_assert(type <= TMPL_TYPE_NULL);
 
 #ifndef HAVE_REGEX
 	if ((type == TMPL_TYPE_REGEX_UNPARSED) || (type == TMPL_TYPE_REGEX)) {
