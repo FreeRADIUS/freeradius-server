@@ -40,6 +40,11 @@ icmp {
 #	interface = eth0
 
 	#
+	#  src_ipaddr: Source address for ICMP messages.
+	#
+#	src_ipaddr = 192.0.2.128
+
+	#
 	#  timeout:: How long to wait for the reply.
 	#
 	#  Default is `1` seconds, which should be plenty for nearly
@@ -50,5 +55,14 @@ icmp {
 	#  lower value.  Doing so will improve network stability and
 	#  responsiveness.
 	#
+	timeout = 1s
+}
+
+#
+#  ## Ping
+#
+#  Copy of the `icmp` module, as it may be easier to remember "ping" than "icmp".
+#
+icmp ping {
 	timeout = 1s
 }

@@ -40,6 +40,7 @@ typedef struct {
 	char const	*xlat_name;
 	char const	*interface;
 	fr_time_delta_t	timeout;
+	fr_ipaddr_t	src_ipaddr;
 } rlm_icmp_t;
 
 typedef struct {
@@ -103,6 +104,7 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len)
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_icmp_t, interface) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_IPV4_ADDR, rlm_icmp_t, src_ipaddr) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_icmp_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
@@ -478,8 +480,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	(void) fcntl(fd, F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 
-#ifdef SO_BINDTODEVICE
 	if (inst->interface) {
+#ifdef SO_BINDTODEVICE
 		int rcode;
 		struct ifreq ifreq;
 
@@ -489,10 +491,30 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 		if (rcode < 0) {
 			fr_strerror_printf("Failed binding to interface %s: %s", inst->interface, fr_syserror(errno));
+			close(fd);
+			return -1;
+		}
+#endif
+	}
+
+	/*
+	 *	Bind to a source IP if that is specified.
+	 */
+	if (inst->src_ipaddr.af == AF_INET) {
+		struct sockaddr_storage salocal;
+		socklen_t		salen;
+
+		if (fr_ipaddr_to_sockaddr(&inst->src_ipaddr, 0, &salocal, &salen) < 0) {
+			close(fd);
+			return -1;
+		}
+
+		if (bind(fd, (struct sockaddr *) &salocal, salen) < 0) {
+			fr_strerror_printf("Failure binding to IP: %s", fr_syserror(errno));
+			close(fd);
 			return -1;
 		}
 	}
-#endif
 
 	/*
 	 *	We assume that the outbound socket is always writable.
