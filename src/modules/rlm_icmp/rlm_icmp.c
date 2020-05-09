@@ -494,6 +494,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 			close(fd);
 			return -1;
 		}
+#else
+		WARN("Ignoring 'interface = %s' - it is not supported on this system", inst->interface);
 #endif
 	}
 
