@@ -198,7 +198,10 @@ static int mod_open(fr_listen_t *li)
 		filter = "arp";
 	} else {
 		filter = buffer;
-		snprintf(buffer, sizeof(buffer), "arp and %s", filter);
+		if (snprintf(buffer, sizeof(buffer), "arp and %s", filter) >= (int)sizeof(buffer) ) {
+			PERROR("Filter length exceeds buffer");
+			return -1;
+		};
 	}
 
 	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
