@@ -1374,6 +1374,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	 *	Already in network byte order
 	 */
 	case FR_TYPE_IPV4_ADDR:
+		memset(&dst->vb_ip, 0, sizeof(dst->vb_ip));
 		memcpy(&dst->vb_ip.addr.v4, src, len);
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.prefix = 32;
@@ -1381,6 +1382,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
+		memset(&dst->vb_ip, 0, sizeof(dst->vb_ip));
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.prefix = *p++;
 		memcpy(&dst->vb_ip.addr.v4, p, sizeof(dst->vb_ip.addr.v4));
@@ -1388,6 +1390,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
+		memset(&dst->vb_ip, 0, sizeof(dst->vb_ip));
 		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
 		memcpy(&dst->vb_ip.addr.v6, p, sizeof(dst->vb_ip.addr.v6));
@@ -1395,6 +1398,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
+		memset(&dst->vb_ip, 0, sizeof(dst->vb_ip));
 		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
 		dst->vb_ip.prefix = *p++;
