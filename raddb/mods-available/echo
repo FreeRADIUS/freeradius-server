@@ -77,7 +77,7 @@ exec echo {
 	#  | config        | attributes from the configuration items list
 	#  | reply         | attributes from the reply
 	#  | session-state | attributes that persist over multiple request/response rounds.
-	#  |===.
+	#  |===
 	#
 	input_pairs = request
 
