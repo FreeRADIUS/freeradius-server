@@ -438,6 +438,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_worker = fr_worker_create(sc, el, "Worker", sc->log, sc->lvl, NULL);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
+			fr_network_destroy(sc->single_network);
 			goto pre_instantiate_st_fail;
 		}
 
@@ -452,6 +453,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
 				PERROR("Failed calling thread instantiate");
+			destroy_both:
+				fr_network_destroy(sc->single_network);
+				fr_worker_destroy(sc->single_worker);
 				goto pre_instantiate_st_fail;
 			}
 		}
@@ -460,7 +464,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			PERROR("Failed adding worker commands");
 		st_fail:
 			if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);
-			goto pre_instantiate_st_fail;
+			goto destroy_both;
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {
