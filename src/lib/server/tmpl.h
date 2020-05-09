@@ -149,18 +149,23 @@ typedef enum tmpl_type_e {
 
 /** Helpers to verify the type of #vp_tmpl_t
  */
-#define tmpl_is_unknown(vpt) 		(vpt->type == TMPL_TYPE_UNINITIALISED)
-#define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
-#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
-#define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_attr_unparsed(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
-#define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
-#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX_UNPARSED)
-#define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
-#define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
-#define tmpl_is_xlat_struct(vpt) 	(vpt->type == TMPL_TYPE_XLAT)
-#define tmpl_is_regex_struct(vpt) 	(vpt->type == TMPL_TYPE_REGEX)
+#define tmpl_is_uninitialised(vpt) 	(vpt->type == TMPL_TYPE_UNINITIALISED)
+
 #define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
+#define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
+
+#define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
+#define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
+
+#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT)
+#define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
+
+#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
+
+#define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
+#define tmpl_is_attr_unparsed(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
+#define tmpl_is_xlat_unparsed(vpt) 	(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
+#define tmpl_is_regex_unparsed(vpt) 	(vpt->type == TMPL_TYPE_REGEX_UNPARSED)
 
 extern fr_table_num_sorted_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
@@ -243,7 +248,7 @@ struct vp_tmpl_s {
 #define tmpl_list(_tmpl)		(_tmpl)->data.attribute.list
 #define tmpl_da(_tmpl)			(_tmpl)->data.attribute.da
 #define tmpl_unknown(_tmpl)		(_tmpl)->data.attribute.unknown.da
-#define tmpl_unknown_name(_tmpl)    	(_tmpl)->data.attribute.unknown.name
+#define tmpl_attr_unparsed(_tmpl)    	(_tmpl)->data.attribute.unknown.name
 #define tmpl_num(_tmpl)			(_tmpl)->data.attribute.num
 #define tmpl_tag(_tmpl)			(_tmpl)->data.attribute.tag
 
@@ -252,7 +257,7 @@ struct vp_tmpl_s {
  */
 #define tmpl_request_set(_tmpl, _request)	(_tmpl)->data.attribute.request = (_request)
 #define tmpl_list_set(_tmpl, _list)		(_tmpl)->data.attribute.list = (_list)
-#define tmpl_unknown_name_set(_tmpl, _name)    	(_tmpl)->data.attribute.unknown.name = (_name)
+#define tmpl_attr_unparsed_set(_tmpl, _name)    	(_tmpl)->data.attribute.unknown.name = (_name)
 #define tmpl_tag_set(_tmpl, _tag)		(_tmpl)->data.attribute.tag = (_tag)
 #define tmpl_num_set(_tmpl, _num)		(_tmpl)->data.attribute.num = (_num)
 #define tmpl_da_set(_tmpl, _da)			(_tmpl)->data.attribute.da = (_da)

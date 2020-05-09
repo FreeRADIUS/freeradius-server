@@ -80,8 +80,8 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	is evaluated once instead of for each 'case'
 	 *	statement.
 	 */
-	if (tmpl_is_xlat_struct(g->vpt) ||
-	    tmpl_is_xlat(g->vpt) ||
+	if (tmpl_is_xlat(g->vpt) ||
+	    tmpl_is_xlat_unparsed(g->vpt) ||
 	    tmpl_is_exec(g->vpt)) {
 		char *p;
 		ssize_t len;
@@ -132,8 +132,8 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 			/*
 			 *	Use the pre-expanded string.
 			 */
-		} else if (tmpl_is_xlat_struct(g->vpt) ||
-			   tmpl_is_xlat(g->vpt) ||
+		} else if (tmpl_is_xlat(g->vpt) ||
+			   tmpl_is_xlat_unparsed(g->vpt) ||
 			   tmpl_is_exec(g->vpt)) {
 			map.rhs = h->vpt;
 			map.lhs = &vpt;

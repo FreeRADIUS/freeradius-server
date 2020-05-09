@@ -259,7 +259,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	fr_assert(tmpl_is_list(original->lhs) ||
 		   tmpl_is_attr(original->lhs) ||
-		   tmpl_is_xlat_struct(original->lhs));
+		   tmpl_is_xlat(original->lhs));
 
 	*out = NULL;
 

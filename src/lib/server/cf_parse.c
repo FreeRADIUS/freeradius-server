@@ -1412,7 +1412,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	All attributes should have been defined by this point.
 			 */
 			case TMPL_TYPE_ATTR_UNPARSED:
-				cf_log_err(cp, "Unknown attribute '%s'", tmpl_unknown_name(vpt));
+				cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unparsed(vpt));
 				talloc_free(vpt);	/* Free last (vpt needed for log) */
 				return -1;
 

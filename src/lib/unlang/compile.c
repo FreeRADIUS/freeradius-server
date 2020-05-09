@@ -256,7 +256,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 	vpt = *pvpt;
 
-	fr_assert(tmpl_is_xlat(vpt));
+	fr_assert(tmpl_is_xlat_unparsed(vpt));
 
 	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
@@ -335,7 +335,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 	ssize_t slen;
 	regex_t *preg;
 
-	fr_assert(tmpl_is_regex(vpt));
+	fr_assert(tmpl_is_regex_unparsed(vpt));
 
 	/*
 	 *	It's a dynamic expansion.  We can't expand the string,
@@ -427,7 +427,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 {
 	vp_tmpl_t *vpt = *pvpt;
 
-	if (tmpl_is_xlat(vpt)) {
+	if (tmpl_is_xlat_unparsed(vpt)) {
 		return pass2_fixup_xlat(ci, pvpt, convert, NULL, rules);
 	}
 
@@ -570,7 +570,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	/*
 	 *	Precompile xlat's
 	 */
-	if (tmpl_is_xlat(map->lhs)) {
+	if (tmpl_is_xlat_unparsed(map->lhs)) {
 		/*
 		 *	Compile the LHS to an attribute reference only
 		 *	if the RHS is a literal.
@@ -639,7 +639,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 		}
 	}
 
-	if (tmpl_is_xlat(map->rhs)) {
+	if (tmpl_is_xlat_unparsed(map->rhs)) {
 		/*
 		 *	Convert the RHS to an attribute reference only
 		 *	if the LHS is an attribute reference, AND is
@@ -709,12 +709,12 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	}
 
 #ifdef HAVE_REGEX
-	if (tmpl_is_regex(map->rhs)) {
+	if (tmpl_is_regex_unparsed(map->rhs)) {
 		if (!pass2_fixup_regex(map->ci, map->rhs, rules)) {
 			return false;
 		}
 	}
-	fr_assert(!tmpl_is_regex(map->lhs));
+	fr_assert(!tmpl_is_regex_unparsed(map->lhs));
 #endif
 
 	/*
@@ -747,7 +747,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 	if (!paircmp_find(tmpl_da(map->lhs))) return true;
 
-	if (tmpl_is_regex(map->rhs)) {
+	if (tmpl_is_regex_unparsed(map->rhs)) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
 		return false;
 	}
@@ -793,7 +793,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	 *	Fix up the template.
 	 */
 	case COND_TYPE_EXISTS:
-		fr_assert(!tmpl_is_regex(c->data.vpt));
+		fr_assert(!tmpl_is_regex_unparsed(c->data.vpt));
 		return pass2_fixup_tmpl(c->ci, &c->data.vpt, unlang_ctx->rules, true);
 
 	/*
@@ -813,7 +813,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
-	if (tmpl_is_xlat(map->lhs)) {
+	if (tmpl_is_xlat_unparsed(map->lhs)) {
 		fr_assert(tmpl_xlat(map->lhs) == NULL);
 
 		/*
@@ -875,7 +875,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_xlat(map->rhs)) {
+		if (tmpl_is_xlat_unparsed(map->rhs)) {
 			fr_assert(tmpl_xlat(map->rhs) == NULL);
 
 			/*
@@ -887,7 +887,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 			}
 		}
 
-		fr_assert(!tmpl_is_regex(map->rhs));
+		fr_assert(!tmpl_is_regex_unparsed(map->rhs));
 
 		if (tmpl_is_attr_unparsed(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
@@ -2379,7 +2379,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	Compile and sanity check xlat
 		 *	expansions.
 		 */
-		if (tmpl_is_xlat(vpt)) {
+		if (tmpl_is_xlat_unparsed(vpt)) {
 			fr_dict_attr_t const *da = NULL;
 
 			if (tmpl_is_attr(f->vpt)) da = tmpl_da(f->vpt);

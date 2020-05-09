@@ -796,7 +796,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			slen = -(p - name);
 			goto error;
 		}
-		tmpl_unknown_name_set(vpt, talloc_strndup(vpt, p, q - p));
+		tmpl_attr_unparsed_set(vpt, talloc_strndup(vpt, p, q - p));
 		p = q;
 
 		goto do_num;
@@ -1447,7 +1447,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	are identical.
  *
  * @param[in] dict_def	Default dictionary to use if none is
- *			specified by the tmpl_unknown_name.
+ *			specified by the tmpl_attr_unparsed.
  * @param[in] vpt	specifying undefined attribute to add.
  *			``tmpl_da`` pointer will be updated to
  *			point to the #fr_dict_attr_t inserted
@@ -1471,10 +1471,10 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	if (!tmpl_is_attr_unparsed(vpt)) return 1;
 
-	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal()), tmpl_unknown_name(vpt), -1, type, flags) < 0) {
+	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal()), tmpl_attr_unparsed(vpt), -1, type, flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(dict_def, tmpl_unknown_name(vpt));
+	da = fr_dict_attr_by_name(dict_def, tmpl_attr_unparsed(vpt));
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -2115,7 +2115,7 @@ size_t tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t c
 		goto inst_and_tag;
 
 	case TMPL_TYPE_ATTR_UNPARSED:
-		p = tmpl_unknown_name(vpt);
+		p = tmpl_attr_unparsed(vpt);
 		goto print_name;
 
 	case TMPL_TYPE_ATTR:
@@ -2611,7 +2611,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 {
 	fr_assert(vpt);
 
-	if (tmpl_is_unknown(vpt)) {
+	if (tmpl_is_uninitialised(vpt)) {
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was "
 				     "TMPL_TYPE_UNINITIALISED (uninitialised)", file, line);
 	}

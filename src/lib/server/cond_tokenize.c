@@ -256,7 +256,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	}
 
 #ifdef HAVE_REGEX
-	if (tmpl_is_regex(c->data.map->rhs)) {
+	if (tmpl_is_regex_unparsed(c->data.map->rhs)) {
 		*error = "Cannot use cast with regex comparison";
 		return -(rhs - start);
 	}
@@ -512,8 +512,8 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	 *	there, too.
 	 */
 	if (tmpl_is_attr(c->data.map->lhs) &&
-	    (tmpl_is_xlat(c->data.map->rhs) ||
-	     tmpl_is_xlat_struct(c->data.map->rhs) ||
+	    (tmpl_is_xlat_unparsed(c->data.map->rhs) ||
+	     tmpl_is_xlat(c->data.map->rhs) ||
 	     tmpl_is_exec(c->data.map->rhs))) {
 		if (tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV4_ADDR) {
 			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
@@ -815,7 +815,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P(fr_strerror());
 		}
 
-		fr_assert(!tmpl_is_regex(c->data.vpt));
+		fr_assert(!tmpl_is_regex_unparsed(c->data.vpt));
 
 		if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
 			p = lhs - tlen;
@@ -1020,7 +1020,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 
 			memset(&regex_flags, 0, sizeof(regex_flags));
 
-			if (!tmpl_is_regex(c->data.map->rhs)) {
+			if (!tmpl_is_regex_unparsed(c->data.map->rhs)) {
 				return_rhs("Expected regex");
 			}
 
