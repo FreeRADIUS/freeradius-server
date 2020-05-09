@@ -49,11 +49,13 @@ typedef struct {
 	rbtree_t	*tree;
 	int		fd;
 	fr_event_list_t *el;
+	uint32_t	counter;
 } rlm_icmp_thread_t;
 
 typedef struct {
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
+	uint32_t	counter;	       	//!< for pinging the same IP multiple times
 	REQUEST		*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
 
@@ -72,6 +74,7 @@ typedef struct CC_HINT(__packed__) {
 	uint16_t	ident;
 	uint16_t	sequence;
 	uint32_t	data;			//!< another 32-bits of randomness
+	uint32_t	counter;		//!< so that requests for the same IP are unique
 } icmp_header_t;
 
 #define ICMP_ECHOREPLY		(0)
@@ -195,21 +198,14 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	MEM(echo = talloc_zero(ctx, rlm_icmp_echo_t));
 	echo->ip = *in;
 	echo->request = request;
-
-	/*
-	 *	@todo - piggyback on other requests for the same IP.
-	 *	Maybe by adding a dlist?  This situation should be
-	 *	rare enough that it's not worth dealing with.
-	 */
-	if (rbtree_finddata(thread->t->tree, echo) != NULL) {
-		REDEBUG("We are already pinging %pV", echo->ip);
-		talloc_free(echo);
-		return XLAT_ACTION_FAIL;
-	}
+	echo->counter = thread->t->counter++;
 
 	/*
 	 *	Add the IP to the local tracking heap, so that the IO
 	 *	functions can find it.
+	 *
+	 *	This insert will never fail, because of the unique
+	 *	counter above.
 	 */
 	if (!rbtree_insert(thread->t->tree, echo)) {
 		RPEDEBUG("Failed inserting IP into tracking table");
@@ -234,6 +230,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	icmp.ident = thread->t->ident;
 	icmp.sequence = 0;
 	icmp.data = thread->t->data;
+	icmp.counter = echo->counter;
 
 	/*
 	 *	Calculate the checksum
@@ -326,11 +323,15 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, UNUSED void *thread)
 
 static int echo_cmp(void const *one, void const *two)
 {
+	int rcode;
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;
 
 	fr_assert(a->ip->type == FR_TYPE_IPV4_ADDR);
 	fr_assert(b->ip->type == FR_TYPE_IPV4_ADDR);
+
+	rcode = (a->counter < b->counter) - (a->counter > b->counter);
+	if (rcode != 0) return rcode;
 
 	return fr_value_box_cmp(a->ip, b->ip);
 }
@@ -406,6 +407,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	underlying request as resumable.
 	 */
 	my_echo.ip = &box;
+	my_echo.counter = icmp->counter;
 	echo = rbtree_finddata(t->tree, &my_echo);
 	if (!echo) {
 		DEBUG4("Can't find packet %pV in tree", &box);
