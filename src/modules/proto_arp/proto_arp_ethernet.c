@@ -178,6 +178,7 @@ static int mod_open(fr_listen_t *li)
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
 	char const			*filter;
+	char				*our_filter = NULL;
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
@@ -196,13 +197,15 @@ static int mod_open(fr_listen_t *li)
 	if (!inst->filter) {
 		filter = "arp";
 	} else {
-		filter = talloc_asprintf(li, "arp and %s", inst->filter);
+		MEM(filter = our_filter = talloc_asprintf(li, "arp and %s", inst->filter));
 	}
 
 	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
 		PERROR("Failed applying pcap filter '%s'", filter);
+		talloc_free(our_filter);
 		return -1;
 	}
+	talloc_free(our_filter);
 
 	li->fd = thread->pcap->fd;
 
