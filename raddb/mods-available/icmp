@@ -40,7 +40,7 @@ icmp {
 #	interface = eth0
 
 	#
-	#  timeout:: Set a time wait for the program to finish.
+	#  timeout:: How long to wait for the reply.
 	#
 	#  Default is `1` seconds, which should be plenty for nearly
 	#  anything. Range is `0.1s` to `10s`.
