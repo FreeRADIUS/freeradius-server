@@ -447,6 +447,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	int fd;
 	rlm_icmp_t *inst = talloc_get_type_abort(instance, rlm_icmp_t);
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
+	fr_ipaddr_t ipaddr, *src;
 
 	MEM(t->tree = rbtree_create(t, echo_cmp, NULL, RBTREE_FLAG_NONE));
 	t->inst = inst;
@@ -480,42 +481,20 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	(void) fcntl(fd, F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 
-	if (inst->interface) {
-#ifdef SO_BINDTODEVICE
-		int rcode;
-		struct ifreq ifreq;
-
-		memset(&ifreq, 0, sizeof(ifreq));
-		strlcpy(ifreq.ifr_name, inst->interface, sizeof(ifreq.ifr_name));
-
-		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
-		if (rcode < 0) {
-			fr_strerror_printf("Failed binding to interface %s: %s", inst->interface, fr_syserror(errno));
-			close(fd);
-			return -1;
-		}
-#else
-		WARN("Ignoring 'interface = %s' - it is not supported on this system", inst->interface);
-#endif
+	if (inst->src_ipaddr.af == AF_INET) {
+		ipaddr = inst->src_ipaddr;
+		src = &ipaddr;
+	} else {
+		src = NULL;
 	}
 
 	/*
-	 *	Bind to a source IP if that is specified.
+	 *	Only bind if we have a src and interface.
 	 */
-	if (inst->src_ipaddr.af == AF_INET) {
-		struct sockaddr_storage salocal;
-		socklen_t		salen;
-
-		if (fr_ipaddr_to_sockaddr(&inst->src_ipaddr, 0, &salocal, &salen) < 0) {
-			close(fd);
-			return -1;
-		}
-
-		if (bind(fd, (struct sockaddr *) &salocal, salen) < 0) {
-			fr_strerror_printf("Failure binding to IP: %s", fr_syserror(errno));
-			close(fd);
-			return -1;
-		}
+	if (src && inst->interface && (fr_socket_bind(fd, src, NULL, inst->interface) < 0)) {
+		fr_strerror_printf("Failed binding to socket: %s", fr_strerror());
+		close(fd);
+		return -1;
 	}
 
 	/*
