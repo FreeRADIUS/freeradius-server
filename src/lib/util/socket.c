@@ -37,6 +37,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifndef SO_BINDTODEVICE
+#include <net/if.h>
+#include <ifaddrs.h>
+#endif
+
 /*
  *	This is used during binding ports less than 1024
  *	which is a privilege that processes don't
@@ -871,7 +876,11 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	socklen_t			salen;
 
 	if (src_port) my_port = *src_port;
-	if (src_ipaddr) my_ipaddr = *src_ipaddr;
+	if (src_ipaddr) {
+		my_ipaddr = *src_ipaddr;
+	} else {
+		my_ipaddr.af = AF_UNSPEC;
+	}
 
 #ifdef HAVE_CAPABILITY_H
 	/*
@@ -937,6 +946,8 @@ skip_cap:
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
 	if (interface) {
+		bool bound = false;
+
 #ifdef HAVE_NET_IF_H
 		uint32_t scope_id;
 
@@ -975,10 +986,60 @@ skip_cap:
 			 *	Set the scope ID.
 			 */
 			my_ipaddr.scope_id = scope_id;
+			bound = true;
+		}
+#else
+		struct ifaddrs *list = NULL;
+
+		/*
+		 *	Bind manually to an IP used by the named interface.
+		 */
+		if (getifaddrs(&list) == 0) {
+			struct ifaddrs *i;
+
+			for (i = list; i != NULL; i = i->ifa_next) {
+				if (i->ifa_addr && i->ifa_name && (strcmp(i->ifa_name, interface) == 0)) {
+					/*
+					 *	Bind JUST to an interface with no src IP/
+					 *	Just pick any IPv4 address.  If the caller wanted IPv6,
+					 *	he should have specified that.
+					 *
+					 *	We also update my_ipaddr to point to this particular IP,
+					 *	so that we can later bind() to it.  This gets us the same
+					 *	effect as SO_BINDTODEVICE without actually doing it.
+					 */
+					if (!src_ipaddr && (i->ifa_addr->sa_family == AF_INET)) {
+						salen = (src_ipaddr->af == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+						(void) fr_ipaddr_from_sockaddr((struct sockaddr_storage *) i->ifa_addr,
+									       salen, &my_ipaddr, NULL);
+						bound = true;
+						break;
+					}
+
+					/*
+					 *	The caller specified a source IP, and we find a matching
+					 *	address family.  Allow it.
+					 *
+					 *	Note that we do NOT check for matching IPs here.  If we did,
+					 *	then binding to an interface and the *wrong* IP would get us
+					 *	a "bind to device is unsupported" message.
+					 *
+					 *	Instead we say "yes, we found a matching interface", and then
+					 *	allow the bind() call below to run.  If that fails, we get a
+					 *	"Can't assign requested address" error, which is more informative.
+					 */
+					if (src_ipaddr && (src_ipaddr->af == i->ifa_addr->sa_family)) {
+						bound = true;
+						break;
+					}
+				}
+			}
+
+			freeifaddrs(list);
 		}
 #endif
 
-		if (!my_ipaddr.scope_id) {
+		if (!bound) {
 			/*
 			 *	IPv4: no link local addresses,
 			 *	and no bind to device.
@@ -990,9 +1051,9 @@ skip_cap:
 	} /* else no interface */
 
 	/*
-	 *	Don't bind if there's no src IP.
+	 *	Don't bind to an IP address if there's no src IP address.
 	 */
-	if (!src_ipaddr) goto done;
+	if (my_ipaddr.af == AF_UNSPEC) goto done;
 
 	/*
 	 *	Set up sockaddr stuff.
@@ -1005,10 +1066,16 @@ skip_cap:
 		return rcode;
 	}
 
+	if (!src_port) goto done;
+
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 	 *	kernel instead binds us to a 1.2.3.4.  So once the
 	 *	socket is bound, ask it what it's IP address is.
+	 *
+	 *	@todo - Uh... we don't update src_ipaddr with the new
+	 *	IP address.  This means that we don't tell the caller
+	 *	what IP address we're bound to.  That seems wrong.
 	 */
 	salen = sizeof(salocal);
 	memset(&salocal, 0, salen);
@@ -1018,7 +1085,7 @@ skip_cap:
 	}
 
 	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
-	if (src_port) *src_port = my_port;
+	*src_port = my_port;
 
 done:
 #ifdef HAVE_CAPABILITY_H
