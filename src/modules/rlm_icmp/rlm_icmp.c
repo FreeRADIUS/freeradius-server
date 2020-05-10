@@ -51,6 +51,10 @@ typedef struct {
 	int		fd;
 	fr_event_list_t *el;
 	uint32_t	counter;
+
+	fr_type_t	ipaddr_type;
+	uint8_t		request_type;
+	uint8_t		reply_type;
 } rlm_icmp_thread_t;
 
 typedef struct {
@@ -81,6 +85,9 @@ typedef struct CC_HINT(__packed__) {
 #define ICMP_ECHOREPLY		(0)
 #define ICMP_ECHOREQUEST	(8)
 
+#define ICMPV6_ECHOREPLY	(128)
+#define ICMPV6_ECHOREQUEST	(129)
+
 static uint16_t icmp_checksum(uint8_t *data, size_t data_len)
 {
 	icmp_header_t *icmp = (icmp_header_t *) data;
@@ -104,7 +111,7 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len)
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_icmp_t, interface) },
-	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_IPV4_ADDR, rlm_icmp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_icmp_t, src_ipaddr) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_icmp_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
@@ -192,8 +199,8 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_cast_in_place(ctx, *in, FR_TYPE_IPV4_ADDR, NULL) < 0) {
-		RPEDEBUG("Failed casting result to IPv4 address");
+	if (fr_value_box_cast_in_place(ctx, *in, thread->t->ipaddr_type, NULL) < 0) {
+		RPEDEBUG("Failed casting result to IP address");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -214,8 +221,6 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
-	fr_assert(echo->ip->type == FR_TYPE_IPV4_ADDR);
-	RDEBUG("adding packet %p %pV", echo->ip, echo->ip);
 
 	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo, fr_time() + inst->timeout) < 0) {
 		RPEDEBUG("Failed adding timeout");
@@ -226,7 +231,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 	RDEBUG("Sending ICMP request to %pV", echo->ip);
 
-	icmp.type = ICMP_ECHOREQUEST;
+	icmp.type = thread->t->request_type;
 	icmp.code = 0;
 	icmp.checksum = 0;
 	icmp.ident = thread->t->ident;
@@ -329,9 +334,6 @@ static int echo_cmp(void const *one, void const *two)
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;
 
-	fr_assert(a->ip->type == FR_TYPE_IPV4_ADDR);
-	fr_assert(b->ip->type == FR_TYPE_IPV4_ADDR);
-
 	rcode = (a->counter < b->counter) - (a->counter > b->counter);
 	if (rcode != 0) return rcode;
 
@@ -343,12 +345,10 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	rlm_icmp_thread_t *t = talloc_get_type_abort(ctx, rlm_icmp_thread_t);
 	rlm_icmp_t *inst = t->inst;
 	ssize_t len;
-	ip_header_t *ip;
 	icmp_header_t *icmp;
 	fr_value_box_t box;
 	rlm_icmp_echo_t my_echo, *echo;
-	uint32_t src_addr;
-	uint64_t buffer[32];
+	uint64_t buffer[256];
 
 	len = read(t->fd, (char *) buffer, sizeof(buffer));
 	if (len <= 0) return;
@@ -364,24 +364,68 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	}
 
 	// buffer is actually the IP header + the ICMP packet
-	ip = (ip_header_t *) buffer;
-	if (IP_V(ip) != 4) {
-		DEBUG4("Packet is not IPv4");
+	if (t->ipaddr_type == FR_TYPE_IPV4_ADDR) {
+		ip_header_t *ip = (ip_header_t *) buffer;
+		uint8_t src_addr[sizeof(ip->ip_src)];
+
+		if (IP_V(ip) != 4) {
+			DEBUG4("Packet is not IPv4");
+			return;
+		}
+
+		if ((IP_HL(ip) + sizeof(*icmp)) > sizeof(buffer)) {
+			DEBUG4("Packet overflows buffer");
+			return;
+		}
+
+		icmp = (icmp_header_t *) (((uint8_t *) buffer) + IP_HL(ip));
+
+		/*
+		 *	Look up the source IP.  We can't use ip->ip_src
+		 *	directly, because the parent structure is "packed".
+		 */
+		memcpy(&src_addr, &ip->ip_src, sizeof(ip->ip_src));
+		if (fr_value_box_from_network(t, &box, t->ipaddr_type, NULL,
+					      (uint8_t *) &src_addr, sizeof(src_addr), true) != sizeof(src_addr)) {
+			DEBUG4("Can't convert IP address to value box");
+			return;
+		}
+
+	} else if (t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
+		ip_header6_t *ip6 = (ip_header6_t *) buffer;
+		uint8_t src_addr[sizeof(ip6->ip_src)];
+
+		if ((fr_net_to_uint16((uint8_t *) &ip6->ip_len) + sizeof(*icmp)) > sizeof(buffer)) {
+			DEBUG4("Packet overflows buffer");
+			return;
+		}
+
+		if (ip6->ip_next != IPPROTO_ICMPV6) return;
+
+		icmp = (icmp_header_t *) (((uint8_t *) buffer) + fr_net_to_uint16((uint8_t *) &ip6->ip_len));
+
+		/*
+		 *	Look up the source IP.  We can't use ip6->ip_src
+		 *	directly, because the parent structure is "packed".
+		 */
+		memcpy(&src_addr, &ip6->ip_src, sizeof(ip6->ip_src));
+		if (fr_value_box_from_network(t, &box, t->ipaddr_type, NULL,
+					      (uint8_t *) &src_addr, sizeof(src_addr), true) != sizeof(src_addr)) {
+			DEBUG4("Can't convert IP address to value box");
+			return;
+		}
+	} else {
+		/*
+		 *	No idea.  Ignore it.
+		 */
 		return;
 	}
-
-	if ((IP_HL(ip) + sizeof(*icmp)) > sizeof(buffer)) {
-		DEBUG4("Packet overflows buffer");
-		return;
-	}
-
-	icmp = (icmp_header_t *) (((uint8_t *) buffer) + IP_HL(ip));
 
 	/*
 	 *	Ignore packets which aren't an echo reply, or which
 	 *	weren't for us.
 	 */
-	if ((icmp->type != ICMP_ECHOREPLY) ||
+	if ((icmp->type != t->reply_type) ||
 	    (icmp->ident != t->ident) || (icmp->data != t->data)) {
 		DEBUG4("Packet not for us %d %04x %08x",
 			icmp->type, icmp->ident, icmp->data);
@@ -390,19 +434,8 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 		return;
 	}
 
-	/*
-	 *	Look up the source IP.  We can't use ip->ip_src
-	 *	directly, because the parent structure is "packed".
-	 *
-	 *	We have to clear the destination box, because "from_n
-	 */
-	memcpy(&src_addr, &ip->ip_src, sizeof(ip->ip_src));
-	if (fr_value_box_from_network(t, &box, FR_TYPE_IPV4_ADDR, NULL,
-				      (uint8_t *) &src_addr, sizeof(src_addr), true) != 4) {
-		DEBUG4("Can't convert IP to value box");
-		return;
-	}
-	fr_assert(box.type == FR_TYPE_IPV4_ADDR);
+#if 0
+#endif
 
 	/*
 	 *	If we sent an ICMP echo request for this IP, mark the
@@ -444,7 +477,7 @@ static void mod_icmp_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED
  */
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
-	int fd;
+	int fd, af, proto;
 	rlm_icmp_t *inst = talloc_get_type_abort(instance, rlm_icmp_t);
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
 	fr_ipaddr_t ipaddr, *src;
@@ -467,15 +500,39 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->data = fr_rand();
 	t->el = el;
 
+	af = inst->src_ipaddr.af;
+	switch (af) {
+	default:
+		fr_strerror_printf("Unsupported address family");
+		return -1;
+
+	case AF_UNSPEC:
+	case AF_INET:
+		af = AF_INET;
+		proto = IPPROTO_ICMP;
+		t->request_type = ICMP_ECHOREQUEST;
+		t->reply_type = ICMP_ECHOREPLY;
+		t->ipaddr_type = FR_TYPE_IPV4_ADDR;
+		break;
+
+	case AF_INET6:
+		af = AF_INET6;
+		proto = IPPROTO_ICMPV6;
+		t->request_type = ICMPV6_ECHOREQUEST;
+		t->reply_type = ICMPV6_ECHOREPLY;
+		t->ipaddr_type = FR_TYPE_IPV6_ADDR;
+		break;
+	}
+
 	/*
 	 *	Try to use capabilities if possible.  If not, try to
 	 *	use "root".
 	 */
 	if (fr_cap_net_raw() == 0) {
-		fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+		fd = socket(af, SOCK_RAW, proto);
 	} else {
 		rad_suid_up();
-		fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+		fd = socket(af, SOCK_RAW, proto);
 		rad_suid_down();
 	}
 	if (fd < 0) {
@@ -489,7 +546,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	(void) fcntl(fd, F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 
-	if (inst->src_ipaddr.af == AF_INET) {
+	if (inst->src_ipaddr.af != AF_UNSPEC) {
 		ipaddr = inst->src_ipaddr;
 		src = &ipaddr;
 	} else {

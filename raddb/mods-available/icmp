@@ -66,3 +66,11 @@ icmp {
 icmp ping {
 	timeout = 1s
 }
+
+#
+# A version for ICMPv6
+#
+icmp icmp6 {
+	timeout = 1s
+	src_ipaddr = 2001:DB8::
+}
