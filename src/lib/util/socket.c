@@ -443,7 +443,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 	 *	kernel instead binds us to a 1.2.3.4.  So once the
 	 *	socket is bound, ask it what it's IP address is.
 	 */
-	if (src_ipaddr || src_port) {
+	if (src_port) {
 		fr_ipaddr_t		my_ipaddr;
 		uint16_t		my_port;
 
@@ -855,7 +855,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
  * ...to open a file descriptor, then call this function to bind the socket to an IP address.
  *
  * @param[in] sockfd		the socket which opened by fr_socket_server_*.
- * @param[in,out] src_ipaddr	The IP address to bind to.
+ * @param[in,out] src_ipaddr	The IP address to bind to.  NULL to just bind to an interface.
  * @param[in] src_port		the port to bind to.  NULL if any port is allowed.
  * @param[in] interface		to bind to.
  * @return
@@ -866,11 +866,12 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 {
 	int				rcode;
 	uint16_t			my_port = 0;
-	fr_ipaddr_t			my_ipaddr = *src_ipaddr;
+	fr_ipaddr_t			my_ipaddr;
 	struct sockaddr_storage		salocal;
 	socklen_t			salen;
 
 	if (src_port) my_port = *src_port;
+	if (src_ipaddr) my_ipaddr = *src_ipaddr;
 
 #ifdef HAVE_CAPABILITY_H
 	/*
@@ -989,6 +990,11 @@ skip_cap:
 	} /* else no interface */
 
 	/*
+	 *	Don't bind if there's no src IP.
+	 */
+	if (!src_ipaddr) goto done;
+
+	/*
 	 *	Set up sockaddr stuff.
 	 */
 	if (fr_ipaddr_to_sockaddr(&my_ipaddr, my_port, &salocal, &salen) < 0) return -1;
@@ -1014,6 +1020,7 @@ skip_cap:
 	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
 	if (src_port) *src_port = my_port;
 
+done:
 #ifdef HAVE_CAPABILITY_H
 	/*
 	 *	Clear any errors we may have produced in the
