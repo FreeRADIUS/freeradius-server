@@ -267,7 +267,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 	rcode = sendto(thread->t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
 	if (rcode < 0) {
-		REDEBUG("Failed sending ICMP request: %s", fr_syserror(errno));
+		REDEBUG("Failed sending ICMP request to %pV: %s", echo->ip, fr_syserror(errno));
 		(void) rbtree_deletebydata(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
@@ -453,9 +453,6 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 		return;
 	}
 
-#if 0
-#endif
-
 	/*
 	 *	If we sent an ICMP echo request for this IP, mark the
 	 *	underlying request as resumable.
@@ -576,7 +573,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	Only bind if we have a src and interface.
 	 */
 	if (src && inst->interface && (fr_socket_bind(fd, src, NULL, inst->interface) < 0)) {
-		fr_strerror_printf("Failed binding to socket: %s", fr_strerror());
 		close(fd);
 		return -1;
 	}
