@@ -1097,3 +1097,90 @@ done:
 #endif
 	return 0;
 }
+
+#ifndef HAVE_CAPABILITY_H
+int fr_cap_net_raw(void)
+{
+	if (geteuid() == 0) return 0;
+
+	fr_strerror_printf("CAP_NET_RAW is unsupported on this platform");
+	return -1;
+}
+#else
+static bool cap_net_raw = false;
+
+/** Set CAP_NET_RAW if possible.
+ *
+ * @note that a negative return from this function should NOT always
+ * be interpreted as an error.  The server MAY already be running as
+ * root, OR the system may not support CAP_NET_RAW.  It is almost
+ * always better to use a negative return value to print a warning
+ * message as to why CAP_NET_RAW was not set.
+ *
+ *
+ * @return
+ *	- <0 on "cannot set it"
+ *	- 0 on "can set it"
+ */
+int fr_cap_net_raw(void)
+{
+	int			rcode = -1;
+	cap_t			caps;
+	cap_flag_value_t	state;
+
+	if (cap_net_raw || (geteuid() == 0)) return 0;
+
+	caps = cap_get_proc();
+	if (!caps) {
+		fr_strerror_printf_push("Failed getting process capabilities: %s", fr_syserror(errno));
+		goto skip_cap;
+	}
+
+	if (cap_get_flag(caps, CAP_NET_RAW, CAP_PERMITTED, &state) < 0) {
+		fr_strerror_printf_push("Failed getting CAP_NET_RAW permitted state: %s",
+					fr_syserror(errno));
+		goto skip_cap;
+	}
+
+	/*
+	 *	We're not permitted to set the CAP_NET_RAW
+	 *	capability, so skip to just attempting the bind.
+	 */
+	if (state == CAP_CLEAR) {
+		fr_strerror_printf_push("Binding to raw interfaces will likely fail as we lack the correct "
+					"capabilities. Use the following command to allow this bind: "
+					"setcap cap_net_raw+ep <path_to_radiusd>");
+		goto skip_cap;
+	}
+
+	if (cap_get_flag(caps, CAP_NET_RAW, CAP_EFFECTIVE, &state) < 0) {
+		fr_strerror_printf_push("Failed getting CAP_NET_RAW effective state: %s",
+					fr_syserror(errno));
+		goto skip_cap;
+	}
+
+	/*
+	 *	Permitted bit is high effective bit is low, see
+	 *	if we can fix that.
+	 */
+	if (state == CAP_CLEAR) {
+		cap_value_t const to_set[] = {
+			CAP_NET_RAW
+		};
+
+		if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
+			fr_strerror_printf_push("Failed setting CAP_NET_RAW effective state: %s",
+						fr_syserror(errno));
+			goto skip_cap;
+		}
+
+		rcode = 0;
+		cap_net_raw = true;
+	}
+
+skip_cap:
+	if (caps) cap_free(caps);
+
+	return rcode;
+}
+#endif	/* HAVE_CAPABILITY_H */

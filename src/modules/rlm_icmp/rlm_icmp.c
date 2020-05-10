@@ -467,9 +467,17 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->data = fr_rand();
 	t->el = el;
 
-	rad_suid_up();
-	fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	rad_suid_down();
+	/*
+	 *	Try to use capabilities if possible.  If not, try to
+	 *	use "root".
+	 */
+	if (fr_cap_net_raw() == 0) {
+		fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	} else {
+		rad_suid_up();
+		fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+		rad_suid_down();
+	}
 	if (fd < 0) {
 		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
 		return -1;
