@@ -162,3 +162,23 @@ uint16_t fr_ip_header_checksum(uint8_t const *data, uint8_t ihl)
 	sum += (sum >> 16);
 	return ((uint16_t) ~sum);
 }
+
+uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *dst, uint16_t ip_len, uint8_t ip_next)
+{
+	uint64_t sum = 0;
+	ip_pseudo_header6_t ip6;
+	uint16_t const *p = (uint16_t const *) &ip6;
+	int8_t nwords = sizeof(ip6) >> 1; /* number of 16-bit words */
+
+	memcpy(&ip6.ip_src, src, sizeof(ip6.ip_src));
+	memcpy(&ip6.ip_dst, dst, sizeof(ip6.ip_dst));
+	ip6.ip_len = ip_len;
+	ip6.ip_next = ip_next;
+
+	for (sum = 0; nwords > 0; nwords--) {
+		sum += *p++;
+	}
+	sum = (sum >> 16) + (sum & 0xffff);
+	sum += (sum >> 16);
+	return ((uint16_t) ~sum);
+}

@@ -125,6 +125,12 @@ typedef struct CC_HINT(__packed__) {
 	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
 } ip_header6_t;
 
+typedef struct CC_HINT(__packed__) {
+	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
+	uint32_t	ip_len;		//!< length
+	uint32_t	ip_next;	//!< upper 24 bits must be zero
+} ip_pseudo_header6_t;
+
 /*
  *	UDP protocol header.
  *	Per RFC 768, September, 1981.
@@ -147,6 +153,7 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
+uint16_t	fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *dst, uint16_t ip_len, uint8_t ip_next);
 
 /** Write out an unsigned 16bit integer in wire format (big endian)
  *
