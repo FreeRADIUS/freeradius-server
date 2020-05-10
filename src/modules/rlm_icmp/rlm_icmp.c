@@ -477,7 +477,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	unlang_interpret_resumable(echo->request);
 }
 
-static void mod_icmp_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
+static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
 			   UNUSED int fd_errno, void *ctx)
 {
 	rlm_icmp_thread_t *t = talloc_get_type_abort(ctx, rlm_icmp_thread_t);
