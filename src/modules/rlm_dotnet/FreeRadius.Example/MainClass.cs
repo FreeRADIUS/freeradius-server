@@ -15,10 +15,13 @@ namespace FreeRadius.Example
     public class MainClass
     {
         private static Dictionary<string, int> radiusDictionary = new Dictionary<string, int>();
+        private static Log logger;
 
         // https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.marshalasattribute.sizeparamindex
         public static void Instantiate(int numberStrings, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)] RadiusString[] strings, Log logger)
         {
+            MainClass.logger = logger;
+
             // Build the dictionary from the strings sent down
             foreach (var element in strings)
             {
@@ -34,6 +37,16 @@ namespace FreeRadius.Example
             {
                 logger(radiusDictionary["L_INFO"], $"{_string.Name} = {_string.Value}");
             }
+        }
+
+        public static void Authenticate()
+        {
+            logger(radiusDictionary["L_INFO"], "Hello from Authenticate");
+        }
+
+        public static void Authorize()
+        {
+            logger(radiusDictionary["L_INFO"], "Hello from Authorize");
         }
     }
 }
