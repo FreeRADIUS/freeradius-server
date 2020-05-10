@@ -334,7 +334,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 /** Destroy thread data for the submodule.
  *
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, UNUSED void *thread)
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
 {
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
 
