@@ -1207,17 +1207,17 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		} else switch (value->enumv->flags.length) {
 		case 2:
 			if (date > UINT16_MAX) date = UINT16_MAX;
-			fr_dbuff_net_from_uint16(dbuff, date);
+			fr_dbuff_net_encode(dbuff, (int16_t) date);
 			break;
 
 		date_size4:
 		case 4:
 			if (date > UINT32_MAX) date = UINT32_MAX;
-			fr_dbuff_net_from_uint32(dbuff, date);
+			fr_dbuff_net_encode(dbuff, (int32_t) date);
 			break;
 
 		case 8:
-			fr_dbuff_net_from_uint64(dbuff, date);
+			fr_dbuff_net_encode(dbuff, date);
 			break;
 
 		default:
@@ -1266,7 +1266,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			} else if (date > INT16_MAX) {
 				date = INT16_MAX;
 			}
-			fr_dbuff_net_from_uint16(dbuff, (uint16_t)date);
+			fr_dbuff_net_encode(dbuff, (int16_t)date);
 			break;
 
 		delta_size4:
@@ -1276,11 +1276,11 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			} else if (date > INT32_MAX) {
 				date = INT32_MAX;
 			}
-			fr_dbuff_net_from_uint32(dbuff, (uint32_t)date);
+			fr_dbuff_net_encode(dbuff, (int32_t)date);
 			break;
 
 		case 8:
-			fr_dbuff_net_from_uint64(dbuff, (uint64_t)date);
+			fr_dbuff_net_encode(dbuff, (int64_t)date);
 			break;
 
 		default:

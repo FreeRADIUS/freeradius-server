@@ -110,10 +110,8 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_net_from_uint64v(buff, da->attr);
+	flen = fr_dbuff_net_encode_uint64v(dbuff, da->attr);
 	enc_field[0] |= ((flen - 1) << 5);
-
-	fr_dbuff_memcpy_in(dbuff, buff, flen);
 
 	/*
 	 *	Mark where the length field will be, and
