@@ -88,25 +88,30 @@ typedef struct CC_HINT(__packed__) {
 #define ICMPV6_ECHOREPLY	(128)
 #define ICMPV6_ECHOREQUEST	(129)
 
-static uint16_t icmp_checksum(uint8_t *data, size_t data_len)
+/*
+ *	ICMP checksum is just over the ICMP packet.
+ *
+ *	@todo - ICMPv6 checksum is calculated over the IPv6
+ *	pseudo-header, ala TCP.  i.e. src/dst addr, length, and 'next'
+ *	field, followed by the ICMP packet
+ */
+static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 {
-	icmp_header_t *icmp = (icmp_header_t *) data;
 	uint8_t *p, *end;
-	uint64_t checksum;
+	uint64_t sum;
+
+	sum = checksum;
 
 	p = data;
 	end = data + data_len;
-	icmp->checksum = 0;
-
-	checksum = 0;
 	while (p < end) {
-		checksum += ((p[0] << 8) | p[1]); /* type / code */
+		sum += ((p[0] << 8) | p[1]); /* type / code */
 		p += 2;
 	}
 
-	while (checksum >> 16) checksum = (checksum & 0xffff) + (checksum >> 16);
+	while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
 
-	return ((uint16_t) ~checksum);
+	return ((uint16_t) ~sum);
 }
 
 static const CONF_PARSER module_config[] = {
@@ -181,6 +186,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	xlat_icmp_thread_inst_t	*thread = talloc_get_type_abort(xlat_thread_inst, xlat_icmp_thread_inst_t);
 	rlm_icmp_echo_t		*echo;
 	icmp_header_t		icmp;
+	uint16_t		checksum;
 	ssize_t			rcode;
 	socklen_t      		salen;
 	struct sockaddr_storage	dst;
@@ -239,12 +245,25 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	icmp.data = thread->t->data;
 	icmp.counter = echo->counter;
 
+	(void) fr_ipaddr_to_sockaddr(&echo->ip->vb_ip, 0, &dst, &salen);
+
 	/*
 	 *	Calculate the checksum
 	 */
-	icmp.checksum = htons(icmp_checksum((uint8_t *) &icmp, sizeof(icmp)));
+	checksum = 0;
 
-	(void) fr_ipaddr_to_sockaddr(&echo->ip->vb_ip, 0, &dst, &salen);
+	/*
+	 *	Start off with the IPv6 pseudo-header checksum
+	 */
+	if (thread->t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
+		checksum = fr_ip6_pesudo_header_checksum(&thread->t->inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
+							 sizeof(ip_header6_t) + sizeof(icmp), IPPROTO_ICMPV6);
+	}
+
+	/*
+	 *	Followed by checksumming the actual ICMP packet.
+	 */
+	icmp.checksum = htons(icmp_checksum((uint8_t *) &icmp, sizeof(icmp), checksum));
 
 	rcode = sendto(thread->t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
 	if (rcode < 0) {
