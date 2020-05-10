@@ -63,12 +63,14 @@ icmp {
 #
 #  Copy of the `icmp` module, as it may be easier to remember "ping" than "icmp".
 #
+#  Since no `src_ipaddr` is defined, this module is only for IPv4.
+#
 icmp ping {
 	timeout = 1s
 }
 
 #
-# A version for ICMPv6
+# ## A version for ICMPv6
 #
 icmp icmp6 {
 	timeout = 1s
