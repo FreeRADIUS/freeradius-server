@@ -879,7 +879,9 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	if (src_ipaddr) {
 		my_ipaddr = *src_ipaddr;
 	} else {
-		my_ipaddr.af = AF_UNSPEC;
+		my_ipaddr = (fr_ipaddr_t) {
+			.af = AF_UNSPEC,
+		};
 	}
 
 #ifdef HAVE_CAPABILITY_H
@@ -1009,9 +1011,8 @@ skip_cap:
 					 *	effect as SO_BINDTODEVICE without actually doing it.
 					 */
 					if (!src_ipaddr && (i->ifa_addr->sa_family == AF_INET)) {
-						salen = (src_ipaddr->af == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 						(void) fr_ipaddr_from_sockaddr((struct sockaddr_storage *) i->ifa_addr,
-									       salen, &my_ipaddr, NULL);
+									       sizeof(struct sockaddr_in), &my_ipaddr, NULL);
 						bound = true;
 						break;
 					}
