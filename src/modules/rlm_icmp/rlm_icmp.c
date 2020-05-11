@@ -101,6 +101,7 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 	uint64_t sum;
 
 	sum = checksum;
+	data_len &= ~((size_t) 1); /* ensure it's always 16-bit aligned */
 
 	p = data;
 	end = data + data_len;
