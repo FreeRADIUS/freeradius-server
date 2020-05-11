@@ -88,6 +88,49 @@ static struct {
 	A(RLM_MODULE_UPDATED)
 	A(RLM_MODULE_NUMCODES)
 
+	A(T_OP_INCRM)
+	A(T_OP_ADD)
+	A(T_OP_SUB)
+	A(T_OP_SET)
+	A(T_OP_EQ)
+	A(T_OP_NE)
+	A(T_OP_GE)
+	A(T_OP_GT)
+	A(T_OP_LE)
+	A(T_OP_LT)
+	A(T_OP_REG_EQ)
+	A(T_OP_REG_NE)
+	A(T_OP_CMP_TRUE)
+	A(T_OP_CMP_FALSE)
+	A(T_OP_CMP_EQ)
+
+	A(PW_TYPE_INVALID)
+	A(PW_TYPE_STRING)
+	A(PW_TYPE_INTEGER)
+	A(PW_TYPE_IPV4_ADDR)
+	A(PW_TYPE_DATE)
+	A(PW_TYPE_ABINARY)
+	A(PW_TYPE_OCTETS)
+	A(PW_TYPE_IFID)
+	A(PW_TYPE_IPV6_ADDR)
+	A(PW_TYPE_IPV6_PREFIX)
+	A(PW_TYPE_BYTE)
+	A(PW_TYPE_SHORT)
+	A(PW_TYPE_ETHERNET)
+	A(PW_TYPE_SIGNED)
+	A(PW_TYPE_COMBO_IP_ADDR)
+	A(PW_TYPE_TLV)
+	A(PW_TYPE_EXTENDED)
+	A(PW_TYPE_LONG_EXTENDED)
+	A(PW_TYPE_EVS)
+	A(PW_TYPE_INTEGER64)
+	A(PW_TYPE_IPV4_PREFIX)
+	A(PW_TYPE_VSA)
+	A(PW_TYPE_TIMEVAL)
+	A(PW_TYPE_BOOLEAN)
+	A(PW_TYPE_COMBO_IP_PREFIX)
+	A(PW_TYPE_MAX)
+
 #undef A
 
 	{ NULL, 0 },
@@ -150,6 +193,18 @@ static const CONF_PARSER module_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+typedef struct dotnet_vp {
+	char const* name;
+	PW_TYPE value_type;
+	int value_length;
+	void* value;
+} dotnet_vp_t;
+
+typedef struct dotnet_vp_collection {
+	size_t	count;
+	dotnet_vp_t* vps;
+} dotnet_vp_collection_t;
 
 static void mod_radlog(int status, char const* msg)
 {
@@ -352,8 +407,81 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst,UNUSED REQUEST *request,UNUSED void *pFunc,UNUSED char const *funcname)
+static void make_vp(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp)
 {
+	char namebuf[256];
+	char const* name;
+
+	/*
+	 *	Tagged attributes are added to the hash with name
+	 *	<attribute>:<tag>, others just use the normal attribute
+	 *	name as the key.
+	 */
+	if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
+		snprintf(namebuf, sizeof(namebuf), "%s:%d", vp->da->name, vp->tag);
+		name = namebuf;
+	} else {
+		name = vp->da->name;
+	}
+	final_vp->name = talloc_strdup(ctx, name);
+
+	final_vp->value_type = vp->da->type;
+	final_vp->value_length = vp->length;
+#define A(x, y)		case x:	\
+				 		final_vp->value = talloc_array(ctx, char, vp->length);	\
+						memcpy(final_vp->value, &vp->y, vp->length);					\
+						break;
+
+	switch (vp->da->type) {
+		case PW_TYPE_STRING:
+			final_vp->value = talloc_strdup(ctx, vp->vp_strvalue);
+			break;
+
+		A(PW_TYPE_IPV4_ADDR,	vp_ipaddr)
+		A(PW_TYPE_DATE, 		vp_date)
+
+		default:
+			ERROR("Unknown vp type %d", vp->da->type);
+			final_vp->value_length = 0;
+			final_vp->value = NULL;
+			break;
+	}
+
+#undef A
+}
+
+static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **vps)
+{
+	dotnet_vp_collection_t* collection = talloc(ctx, dotnet_vp_collection_t);
+	vp_cursor_t cursor;
+	VALUE_PAIR* vp;
+	size_t counter = 0;
+
+	collection->count = 0;
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+			 ++collection->count;
+		 }
+
+	collection->vps = talloc_array(collection, dotnet_vp_t, collection->count);
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+			 make_vp(collection, vp, &collection->vps[counter++]);
+		 }
+
+	return collection;
+}
+
+static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname)
+{
+	void (*function)(size_t count, dotnet_vp_t* vps) = pFunc;
+
+	dotnet_vp_collection_t* collection = make_vp_collection(request->packet, &request->packet->vps);
+	// Just call it and party
+
+	function(collection->count, collection->vps);
 	return RLM_MODULE_NOOP;
 }
 
