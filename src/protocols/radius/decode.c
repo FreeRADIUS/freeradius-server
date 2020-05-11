@@ -1445,8 +1445,14 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	vp->tag = tag;
 
 	switch (parent->type) {
-	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
+		/*
+		 *	This attribute SHOULD have fixed size, but it
+		 *	doesn't.  Therefor it's malformed.
+		 */
+		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
+
+	case FR_TYPE_STRING:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_BOOL:
