@@ -48,12 +48,13 @@ namespace FreeRadius.Example
             }
         }
 
-        public static void Authenticate()
+        public static int Authenticate()
         {
             logger(radiusDictionary["L_INFO"], "Hello from Authenticate");
+            return radiusDictionary["RLM_MODULE_NOOP"];
         }
 
-        public static void Authorize(int numberValues, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)] ValuePair[] vps)
+        public static int Authorize(int numberValues, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)] ValuePair[] vps)
         {
             foreach (var vp in vps)
             {
@@ -78,6 +79,7 @@ namespace FreeRadius.Example
                     logger(radiusDictionary["L_INFO"], $"IP address is {innerIPAddress}");
                 }
             }
+            return radiusDictionary["RLM_MODULE_NOOP"];
         }
     }
 }

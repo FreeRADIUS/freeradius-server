@@ -476,13 +476,12 @@ static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **
 
 static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname)
 {
-	void (*function)(size_t count, dotnet_vp_t* vps) = pFunc;
+	rlm_rcode_t (*function)(size_t count, dotnet_vp_t* vps) = pFunc;
 
 	dotnet_vp_collection_t* collection = make_vp_collection(request->packet, &request->packet->vps);
 	// Just call it and party
 
-	function(collection->count, collection->vps);
-	return RLM_MODULE_NOOP;
+	return function(collection->count, collection->vps);
 }
 
 #define MOD_FUNC(x) \
