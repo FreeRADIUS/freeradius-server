@@ -1,0 +1,34 @@
+ARG from=freeradius/ubuntu20-deps
+FROM ${from}
+
+SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
+
+ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recommends"
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+#
+#  This is necessary for the jenkins server to talk to the docker instance
+#
+RUN apt-get update && \
+    apt-get upgrade $APT_OPTS --option=Dpkg::Options::=--force-confdef --option=Dpkg::Options::=--force-confold && \
+    apt-get install $APT_OPTS \
+        software-properties-common
+RUN apt-add-repository ppa:openjdk-r/ppa
+RUN apt-get update && \
+    apt-get install $APT_OPTS \
+        openjdk-8-jre-headless \
+        openssh-server \
+        sudo && \
+    apt-get -y upgrade
+
+RUN useradd -m jenkins
+RUN echo "jenkins:jenkins1" | chpasswd
+RUN echo "jenkins ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers
+RUN mkdir /var/run/sshd
+
+# RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
+RUN sed -i 's|session    required     pam_loginuid.so|session    optional     pam_loginuid.so|g' /etc/pam.d/sshd
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd","-D"]
