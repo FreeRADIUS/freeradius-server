@@ -4203,12 +4203,16 @@ static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	above_target:
 		/*
 		 *	Edge - Below target to above target (too many requests per conn - spawn more)
+		 *
+		 *	The equality check is correct here as both values start at 0.
 		 */
 		if (trunk->pub.last_above_target <= trunk->pub.last_below_target) trunk->pub.last_above_target = now;
 	} else if (average < trunk->conf.target_req_per_conn) {
 	below_target:
 		/*
 		 *	Edge - Above target to below target (too few requests per conn - close some)
+		 *
+		 *	The equality check is correct here as both values start at 0.
 		 */
 		if (trunk->pub.last_below_target <= trunk->pub.last_above_target) trunk->pub.last_below_target = now;
 	}
