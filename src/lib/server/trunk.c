@@ -266,6 +266,8 @@ struct fr_trunk_s {
 
 	bool			managing_connections;	//!< Whether the trunk is allowed to manage
 							///< (open/close) connections.
+
+	uint64_t		last_req_per_conn;	//!< The last request to connection ratio we calculated.
 	/** @} */
 };
 
@@ -404,7 +406,7 @@ do { \
 	     fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->pub.state = _new; \
 	CONN_TRIGGER(_new); \
-	trunk_requests_per_connection(NULL, NULL, trunk, fr_time()); \
+	trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false); \
 } while (0)
 
 #define CONN_BAD_STATE_TRANSITION(_new) \
@@ -697,8 +699,8 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq);
 static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq);
 
-static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_conn_out,
-					       fr_trunk_t *trunk, fr_time_t now);
+static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_conn_out,
+					      fr_trunk_t *trunk, fr_time_t now, NDEBUG_UNUSED bool verify);
 
 static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now);
 static inline void trunk_connection_auto_full(fr_trunk_connection_t *tconn);
@@ -898,7 +900,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 	 *	A new request has entered the trunk.
 	 *	Re-calculate request/connection ratios.
 	 */
-	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
+	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false);
 
 	/*
 	 *	To reduce latency, if there's no connections
@@ -971,7 +973,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	 *	A new request has entered the trunk.
 	 *	Re-calculate request/connection ratios.
 	 */
-	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
+	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false);
 
 	/*
 	 *	Check if we need to automatically transition the
@@ -1702,7 +1704,7 @@ done:
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_INACTIVE_DRAINING:
-		trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
+		trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false);
 		break;
 
 	default:
@@ -2038,7 +2040,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	connections, or on connection
 	 *      state changes.
 	 */
-	trunk_requests_per_connection(NULL, NULL, treq->pub.trunk, fr_time());
+	trunk_requests_per_connection(NULL, NULL, treq->pub.trunk, fr_time(), false);
 
 	/*
 	 *	This tracks the total number of requests
@@ -3848,7 +3850,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;
 		}
 
-		trunk_requests_per_connection(&conn_count, &req_count, trunk, now);
+		trunk_requests_per_connection(&conn_count, &req_count, trunk, now, true);
 
 		/*
 		 *	Only apply hysteresis if we have at least
@@ -3860,13 +3862,6 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			       fr_box_time_delta(now - trunk->pub.last_above_target));
 			return;	/* too soon */
 		}
-
-		/*
-		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connection
-		 *	was missed.
-		 */
-		fr_assert(trunk->pub.last_above_target >= trunk->pub.last_below_target);
 
 		/*
 		 *	We don't consider 'draining' connections
@@ -3954,14 +3949,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;	/* too soon */
 		}
 
-		trunk_requests_per_connection(&conn_count, &req_count, trunk, now);
-
-		/*
-		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connection
-		 *	was missed.
-		 */
-		fr_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
+		trunk_requests_per_connection(&conn_count, &req_count, trunk, now, true);
 
 		if (!conn_count) {
 			DEBUG3("Not closing connection - No connections to close!");
@@ -4135,16 +4123,21 @@ do { \
  * @param[out] req_count_out	How many requests we considered.
  * @param[in] trunk		to operate on.
  * @param[in] now		The current time.
+ * @param[in] verify		if true (and this is a debug build), then assert if req_per_conn
+ *				has changed.
  * @return
  *	- 0 if the average couldn't be calculated (no requests or no connections).
  *	- The average number of requests per connection.
  */
-static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_count_out,
-					       fr_trunk_t *trunk, fr_time_t now)
+static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_count_out,
+					      fr_trunk_t *trunk, fr_time_t now,
+					      NDEBUG_UNUSED bool verify)
 {
 	uint32_t req_count = 0;
 	uint16_t conn_count = 0;
-	uint32_t average = 0;
+	uint64_t req_per_conn = 0;
+
+	fr_assert(now > 0);
 
 	/*
 	 *	No need to update these as the trunk is being freed
@@ -4196,10 +4189,10 @@ static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	}
 
 	/*
-	 *	Calculate the average
+	 *	Calculate the req_per_conn
 	 */
-	average = ROUND_UP_DIV(req_count, conn_count);
-	if (average > trunk->conf.target_req_per_conn) {
+	req_per_conn = ROUND_UP_DIV(req_count, conn_count);
+	if (req_per_conn > trunk->conf.target_req_per_conn) {
 	above_target:
 		/*
 		 *	Edge - Below target to above target (too many requests per conn - spawn more)
@@ -4207,7 +4200,7 @@ static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 		 *	The equality check is correct here as both values start at 0.
 		 */
 		if (trunk->pub.last_above_target <= trunk->pub.last_below_target) trunk->pub.last_above_target = now;
-	} else if (average < trunk->conf.target_req_per_conn) {
+	} else if (req_per_conn < trunk->conf.target_req_per_conn) {
 	below_target:
 		/*
 		 *	Edge - Above target to below target (too few requests per conn - close some)
@@ -4221,7 +4214,14 @@ done:
 	if (conn_count_out) *conn_count_out = conn_count;
 	if (req_count_out) *req_count_out = req_count;
 
-	return average;
+	/*
+	 *	Check we haven't missed a call to trunk_requests_per_connection
+	 */
+	fr_assert(!verify || (trunk->last_req_per_conn == 0) || (req_per_conn == trunk->last_req_per_conn));
+
+	trunk->last_req_per_conn = req_per_conn;
+
+	return req_per_conn;
 }
 
 /** Drain the backlog of as many requests as possible
