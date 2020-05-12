@@ -404,7 +404,7 @@ do { \
 	     fr_table_str_by_value(fr_trunk_connection_states, _new, "<INVALID>")); \
 	tconn->pub.state = _new; \
 	CONN_TRIGGER(_new); \
-	trunk_requests_per_connnection(NULL, NULL, trunk, fr_time()); \
+	trunk_requests_per_connection(NULL, NULL, trunk, fr_time()); \
 } while (0)
 
 #define CONN_BAD_STATE_TRANSITION(_new) \
@@ -697,7 +697,7 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq);
 static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq);
 
-static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_t *req_conn_out,
+static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_conn_out,
 					       fr_trunk_t *trunk, fr_time_t now);
 
 static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now);
@@ -898,7 +898,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 	 *	A new request has entered the trunk.
 	 *	Re-calculate request/connection ratios.
 	 */
-	if (new) trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
 
 	/*
 	 *	To reduce latency, if there's no connections
@@ -971,7 +971,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	 *	A new request has entered the trunk.
 	 *	Re-calculate request/connection ratios.
 	 */
-	if (new) trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+	if (new) trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
 
 	/*
 	 *	Check if we need to automatically transition the
@@ -1702,7 +1702,7 @@ done:
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_DRAINING:
 	case FR_TRUNK_CONN_INACTIVE_DRAINING:
-		trunk_requests_per_connnection(NULL, NULL, trunk, fr_time());
+		trunk_requests_per_connection(NULL, NULL, trunk, fr_time());
 		break;
 
 	default:
@@ -2038,7 +2038,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	connections, or on connection
 	 *      state changes.
 	 */
-	trunk_requests_per_connnection(NULL, NULL, treq->pub.trunk, fr_time());
+	trunk_requests_per_connection(NULL, NULL, treq->pub.trunk, fr_time());
 
 	/*
 	 *	This tracks the total number of requests
@@ -3848,7 +3848,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;
 		}
 
-		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+		trunk_requests_per_connection(&conn_count, &req_count, trunk, now);
 
 		/*
 		 *	Only apply hysteresis if we have at least
@@ -3863,7 +3863,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 
 		/*
 		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connnection
+		 *	that a call to trunk_requests_per_connection
 		 *	was missed.
 		 */
 		fr_assert(trunk->pub.last_above_target >= trunk->pub.last_below_target);
@@ -3954,11 +3954,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 			return;	/* too soon */
 		}
 
-		trunk_requests_per_connnection(&conn_count, &req_count, trunk, now);
+		trunk_requests_per_connection(&conn_count, &req_count, trunk, now);
 
 		/*
 		 *	If this assert is triggered it means
-		 *	that a call to trunk_requests_per_connnection
+		 *	that a call to trunk_requests_per_connection
 		 *	was missed.
 		 */
 		fr_assert(trunk->pub.last_below_target > trunk->pub.last_above_target);
@@ -4139,7 +4139,7 @@ do { \
  *	- 0 if the average couldn't be calculated (no requests or no connections).
  *	- The average number of requests per connection.
  */
-static uint32_t trunk_requests_per_connnection(uint16_t *conn_count_out, uint32_t *req_count_out,
+static uint32_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_count_out,
 					       fr_trunk_t *trunk, fr_time_t now)
 {
 	uint32_t req_count = 0;
