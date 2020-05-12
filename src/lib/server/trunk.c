@@ -716,7 +716,7 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 static void trunk_connection_enter_active(fr_trunk_connection_t *tconn);
 
 static void trunk_rebalance(fr_trunk_t *trunk);
-static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller);
+static void trunk_manage(fr_trunk_t *trunk, fr_time_t now);
 static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
 static void trunk_backlog_drain(fr_trunk_t *trunk);
 
@@ -916,7 +916,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 	 */
 	if ((fr_trunk_connection_count_by_state(treq->pub.trunk, FR_TRUNK_CONN_CONNECTING) == 0) ||
 	    (fr_trunk_connection_count_by_state(treq->pub.trunk, FR_TRUNK_CONN_DRAINING) > 0)) {
-		trunk_manage(treq->pub.trunk, fr_time(), __FUNCTION__);
+		fr_trunk_connection_manage_schedule(treq->pub.trunk);
 	}
 }
 
@@ -3801,7 +3801,7 @@ static void trunk_rebalance(fr_trunk_t *trunk)
  * - Return if we last closed a connection within 'closed_delay'.
  * - Otherwise we move a connection to draining state.
  */
-static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
+static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 {
 	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_request_t	*treq;
@@ -3809,7 +3809,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now, char const *caller)
 	uint32_t		req_count;
 	uint16_t		conn_count;
 
-	DEBUG3("%s - Managing trunk", caller);
+	DEBUG3("Managing trunk");
 
 	/*
 	 *	Cleanup requests in our request cache which
@@ -4082,12 +4082,14 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_t *trunk = talloc_get_type_abort(uctx, fr_trunk_t);
 
-	trunk_manage(trunk, now, __FUNCTION__);
+	trunk_manage(trunk, now);
 
-	if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
-			      _trunk_timer, trunk) < 0) {
-		PERROR("Failed inserting trunk management event");
-		/* Not much we can do, hopefully the trunk will be freed soon */
+	if (trunk->conf.manage_interval > 0) {
+		if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
+				      _trunk_timer, trunk) < 0) {
+			PERROR("Failed inserting trunk management event");
+			/* Not much we can do, hopefully the trunk will be freed soon */
+		}
 	}
 }
 
@@ -4354,11 +4356,11 @@ int fr_trunk_start(fr_trunk_t *trunk)
 		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
 	}
 
-	/*
-	 *	Insert the event timer to manage
-	 *	the interval between managing connections.
-	 */
 	if (trunk->conf.manage_interval > 0) {
+		/*
+		 *	Insert the event timer to manage
+		 *	the interval between managing connections.
+		 */
 		if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf.manage_interval,
 				      _trunk_timer, trunk) < 0) {
 			PERROR("Failed inserting trunk management event");
@@ -4391,6 +4393,20 @@ void fr_trunk_connection_manage_stop(fr_trunk_t *trunk)
 
 	DEBUG3("Connection management disabled");
 	trunk->managing_connections = false;
+}
+
+/** Schedule a trunk management event for the next time the event loop is executed
+ */
+int fr_trunk_connection_manage_schedule(fr_trunk_t *trunk)
+{
+	if (!trunk->started || !trunk->managing_connections) return 0;
+
+	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, 0, _trunk_timer, trunk) < 0) {
+		PERROR("Failed inserting trunk management event");
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Order connections by queue depth

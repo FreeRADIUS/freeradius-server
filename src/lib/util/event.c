@@ -1263,7 +1263,8 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 
 		/*
 		 *	Event may have fired, in which case the
-		 *	event will no longer be in the event loop.
+		 *	event will no longer be in the event loop,
+		 *	but just in case, extract it anyway.
 		 */
 		(void) fr_heap_extract(el->times, ev);
 	}

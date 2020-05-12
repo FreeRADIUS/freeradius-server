@@ -831,6 +831,8 @@ void		fr_trunk_connection_manage_start(fr_trunk_t *trunk) CC_HINT(nonnull);
 
 void		fr_trunk_connection_manage_stop(fr_trunk_t *trunk) CC_HINT(nonnull);
 
+int		fr_trunk_connection_manage_schedule(fr_trunk_t *trunk) CC_HINT(nonnull);
+
 fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
 				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
