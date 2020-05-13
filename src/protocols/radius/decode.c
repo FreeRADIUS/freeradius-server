@@ -1451,6 +1451,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	doesn't.  Therefor it's malformed.
 		 */
 		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
+		/* FALL-THROUGH */
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_IPV4_ADDR:
