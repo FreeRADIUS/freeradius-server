@@ -801,7 +801,11 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		dup2(devnull, STDERR_FILENO);
 		log->print_level = false;
 
-	} else if (fr_debug_lvl) {
+	} else if (fr_debug_lvl
+#ifdef WITH_VERIFY_PTR
+	 || log->file
+#endif
+	) {
 		/*
 		 *	If we're debugging, allow STDOUT and STDERR to
 		 *	go to the log file.
