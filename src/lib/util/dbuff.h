@@ -339,139 +339,107 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 }
 #define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff, _c, _inlen)
 
+#define FR_DBUFF_NUM_IN_FUNC(_type) \
+static inline ssize_t fr_dbuff_##_type##_in(fr_dbuff_t *dbuff, _type##_t num) \
+{ \
+	size_t	freespace = fr_dbuff_remaining(dbuff); \
+	fr_assert(!dbuff->is_const); \
+	if (sizeof(_type##_t) > freespace) return -(sizeof(_type##_t) - freespace); \
+	fr_net_from_##_type(dbuff->p, num); \
+	dbuff->p += sizeof(_type##_t); \
+	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(_type##_t)) : ((ssize_t) sizeof(_type##_t)); \
+}
+FR_DBUFF_NUM_IN_FUNC(uint16)
+FR_DBUFF_NUM_IN_FUNC(uint32)
+FR_DBUFF_NUM_IN_FUNC(uint64)
+FR_DBUFF_NUM_IN_FUNC(int16)
+FR_DBUFF_NUM_IN_FUNC(int32)
+FR_DBUFF_NUM_IN_FUNC(int64)
+
 /** Copy an unsigned 16-bit integer into a buffer in wire format (big endian)
  *
  * @param[in] dbuff	to copy data to
  * @param[in] num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(2, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (2).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_uint16(fr_dbuff_t *dbuff, uint16_t num)
-{
-	size_t	freespace = fr_dbuff_remaining(dbuff);
-
-	fr_assert(!dbuff->is_const);
-
-	if (sizeof(uint16_t) > freespace) return -(sizeof(uint16_t) - freespace);
-
-	fr_net_from_uint16(dbuff->p, num);
-	dbuff->p += sizeof(uint16_t);
-
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint16_t)) : ((ssize_t) sizeof(uint16_t));
-}
-#define FR_DBUFF_NET_FROM_UINT16_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint16, _dbuff, _num)
+#define FR_DBUFF_UINT16_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_uint16_in, _dbuff, _num)
 
 /** Copy an unsigned 32-bit integer into a buffer in wire format (big endian)
  *
- * @param[in] dbuff	to copy data to
- * @param[in] num	value to copy
+ * @param[in] _dbuff	to copy data to
+ * @param[in] _num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(4, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (4).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_uint32(fr_dbuff_t *dbuff, uint32_t num)
-{
-	size_t freespace = fr_dbuff_remaining(dbuff);
-
-	fr_assert(!dbuff->is_const);
-
-	if (sizeof(uint32_t) > freespace) return -(sizeof(uint32_t) - freespace);
-
-	fr_net_from_uint32(dbuff->p, num);
-	dbuff->p += sizeof(uint32_t);
-
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint32_t)) : ((ssize_t) sizeof(uint32_t));
-}
-#define FR_DBUFF_NET_FROM_UINT32_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint32, _dbuff, _num)
+#define FR_DBUFF_UINT32_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_uint32_in, _dbuff, _num)
 
 /** Copy an unsigned 64-bit integer into a buffer in wire format (big endian)
  *
  * @param[in] dbuff	to copy data to
  * @param[in] num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(8, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (8).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_uint64(fr_dbuff_t *dbuff, uint64_t num)
-{
-	size_t freespace = fr_dbuff_remaining(dbuff);
-
-	fr_assert(!dbuff->is_const);
-
-	if (sizeof(uint64_t) > freespace) return -(sizeof(uint64_t) - freespace);
-
-	fr_net_from_uint64(dbuff->p, num);
-	dbuff->p += sizeof(uint64_t);
-
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(uint64_t)) : ((ssize_t) sizeof(uint64_t));
-}
-#define FR_DBUFF_NET_FROM_UINT64_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint64, _dbuff, _num)
+#define FR_DBUFF_UINT64_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_uint64_in, _dbuff, _num)
 
 /** Copy a signed 16-bit integer into a buffer in wire format (big endian)
  *
  * @param[in] dbuff	to copy data to
  * @param[in] num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(2, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (2).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_int16(fr_dbuff_t *dbuff, int16_t num)
-{
-	return fr_dbuff_net_encode_uint16(dbuff, (uint16_t) num);
-}
-#define FR_DBUFF_NET_FROM_INT16_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_int16, _dbuff, _num)
+#define FR_DBUFF_INT16_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_int16_in, _dbuff, _num)
 
 /** Copy a signed 32-bit integer into a buffer in wire format (big endian)
  *
  * @param[in] dbuff	to copy data to
  * @param[in] num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(4, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (4).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_int32(fr_dbuff_t *dbuff, int32_t num)
-{
-	return fr_dbuff_net_encode_uint32(dbuff, (uint32_t) num);
-}
-#define FR_DBUFF_NET_FROM_INT32_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_int32, _dbuff, _num)
+#define FR_DBUFF_INT32_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_int32_in,, _dbuff, _num)
 
 /** Copy a signed 64-bit integer into a buffer in wire format (big endian)
  *
  * @param[in] dbuff	to copy data to
  * @param[in] num	value to copy
  * @return
- * 	0	no data set
- * 	>0	(8, actually) the number of bytes set in the dbuff
- * 	<0	the number of bytes required
+ * 	- 0	no data set
+ * 	- >0	the number of bytes added to the dbuff (8).
+ * 	- <0	the number of bytes required
  */
-static inline ssize_t fr_dbuff_net_encode_int64(fr_dbuff_t *dbuff, int64_t num)
-{
-	return fr_dbuff_net_encode_uint64(dbuff, (uint64_t) num);
-}
-#define FR_DBUFF_NET_FROM_UINT64_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_net_from_uint64, _dbuff, _num)
+#define FR_DBUFF_INT64_IN_RETURN(_dbuff, _num) FR_DBUFF_RETURN(fr_dbuff_int64_in, _dbuff, _num)
 
-#define fr_dbuff_net_encode(dbuff, value) \
+#define fr_dbuff_in(dbuff, value) \
 	_Generic((value), \
-		int16_t		: fr_dbuff_net_encode_int16(dbuff, (int16_t) value), \
-		int32_t		: fr_dbuff_net_encode_int32(dbuff, (int32_t) value), \
-		int64_t		: fr_dbuff_net_encode_int64(dbuff, (int64_t) value), \
-		uint16_t	: fr_dbuff_net_encode_uint16(dbuff, (uint16_t) value), \
-		uint32_t	: fr_dbuff_net_encode_uint32(dbuff, (uint32_t) value), \
-		uint64_t	: fr_dbuff_net_encode_uint64(dbuff, (uint64_t) value) \
+		int16_t		: fr_dbuff_int16_in(dbuff, (int16_t)value), \
+		int32_t		: fr_dbuff_int32_in(dbuff, (int32_t)value), \
+		int64_t		: fr_dbuff_int64_in(dbuff, (int64_t)value), \
+		uint16_t	: fr_dbuff_uint16_in(dbuff, (uint16_t)value), \
+		uint32_t	: fr_dbuff_uint32_in(dbuff, (uint32_t)value), \
+		uint64_t	: fr_dbuff_uint64_in(dbuff, (uint64_t)value) \
 	)
 
-static inline ssize_t fr_dbuff_net_encode_uint64v(fr_dbuff_t *dbuff, uint64_t num)
+static inline ssize_t fr_dbuff_uint64v_in(fr_dbuff_t *dbuff, uint64_t num)
 {
-	size_t	num_bytes = ROUND_UP_DIV((size_t)fr_high_bit_pos(num), 8);
+	size_t	ret;
 
+	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x08), 8);
 	num = ntohll(num);
-	return fr_dbuff_memcpy_in(dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - num_bytes), num_bytes);
+
+	return fr_dbuff_memcpy_in(dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
 /** @} */
 

@@ -44,7 +44,7 @@ static void test_dbuff_init_no_parent(void)
 
 /** Test the various dbuff_net_encode() functions and macros
  *
- * @note Passing constants to fr_dbuff_net_encode() as it is written results in
+ * @note Passing constants to fr_dbuff_in() as it is written results in
  * 	 warnings about narrowing casts on the constants--but those casts are in
  * 	 the underlying inlined fr_net_from*() functions. They have to be there;
  * 	 that's how those functions work. (The tests worked despite the warnings.)
@@ -66,7 +66,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, u16val) == sizeof(uint16_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, u16val) == sizeof(uint16_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 
@@ -74,7 +74,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, u32val) == sizeof(uint32_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, u32val) == sizeof(uint32_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -84,7 +84,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, u64val) == sizeof(uint64_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == sizeof(uint64_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -98,7 +98,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, i16val) == sizeof(int16_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, i16val) == sizeof(int16_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 
@@ -106,7 +106,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, i32val) == sizeof(int32_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, i32val) == sizeof(int32_t));
 	TEST_CHECK(buff[0] == 0x00);
 	TEST_CHECK(buff[1] == 0x00);
 	TEST_CHECK(buff[2] == 0xd3);
@@ -117,7 +117,7 @@ static void test_dbuff_net_encode(void)
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, i64val) == sizeof(int64_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, i64val) == sizeof(int64_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -130,25 +130,25 @@ static void test_dbuff_net_encode(void)
 	TEST_CASE("Generate wire format variable-width");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x12) == 1);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x12) == 1);
 	TEST_CHECK(buff[0] == 0x12);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x1234) == 2);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x1234) == 2);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x123456) == 3);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456) == 3);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x12345678) == 4);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x12345678) == 4);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -156,7 +156,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x123456789a) == 5);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789a) == 5);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -165,7 +165,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x123456789abc) == 6);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abc) == 6);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -175,7 +175,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x123456789abcde) == 7);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abcde) == 7);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -186,7 +186,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_net_encode_uint64v(&dbuff, 0x123456789abcdef0) == 8);
+	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abcdef0) == 8);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -199,7 +199,7 @@ static void test_dbuff_net_encode(void)
 	TEST_CASE("Refuse to write to too-small space");
 	fr_dbuff_init(&dbuff, buff, sizeof(uint32_t));
 
-	TEST_CHECK(fr_dbuff_net_encode(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
+	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
 
@@ -209,7 +209,7 @@ TEST_LIST = {
 	 */
 	{ "fr_dbuff_init",				test_dbuff_init },
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
-	{ "fr_dbuff_net_encode",			test_dbuff_net_encode },
+	{ "fr_dbuff_in",			test_dbuff_net_encode },
 
 	{ NULL }
 };

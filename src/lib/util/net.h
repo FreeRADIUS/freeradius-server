@@ -188,6 +188,39 @@ static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint
 	fr_net_from_uint32(out + sizeof(uint32_t), (uint32_t)num);
 }
 
+/** Write out an signed 16bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int16(uint8_t out[static sizeof(int16_t)], int16_t num)
+{
+	out[0] = (num >> 8) & 0xff;
+	out[1] = num & 0xff;
+}
+
+/** Write out an signed 32bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int32(uint8_t out[static sizeof(int32_t)], int32_t num)
+{
+	fr_net_from_uint16(out, (int16_t) (num >> 16));
+	fr_net_from_uint16(out + sizeof(int16_t), (int16_t) num);
+}
+
+/** Write out an signed 64bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int64(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+{
+	fr_net_from_uint32(out, (int32_t)(num >> 32));
+	fr_net_from_uint32(out + sizeof(int32_t), (int32_t)num);
+}
+
 /** Write out an unsigned 64bit integer in wire format using the fewest bytes possible
  *
  * @param[out] out	Where to write big endian encoding of num.
@@ -198,15 +231,8 @@ static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint
 static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], uint64_t num)
 {
 	size_t ret;
-	/*
-	 *	Special case for zero.
-	 */
-	if (num == 0) {
-		out[0] = 0;
-		return 1;
-	}
 
-	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num), 8);
+	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x80), 8);
 	num = ntohll(num);
 	memcpy(out, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);	/* aligned */
 
@@ -241,6 +267,36 @@ static inline uint32_t fr_net_to_uint32(uint8_t const data[static sizeof(uint32_
 static inline uint64_t fr_net_to_uint64(uint8_t const data[static sizeof(uint64_t)])
 {
 	return ((uint64_t)fr_net_to_uint32(data) << 32) | fr_net_to_uint32(data + sizeof(uint32_t));
+}
+
+/** Read an signed 16bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 16bit signed integer of native endianness.
+ * @return a 16 bit signed integer of native endianness.
+ */
+static inline int16_t fr_net_to_int16(int8_t const data[static sizeof(int16_t)])
+{
+	return (((int16_t)data[0]) << 8) | data[1];
+}
+
+/** Read an signed 32bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 32bit signed integer of native endianness.
+ * @return a 32 bit signed integer of native endianness.
+ */
+static inline int32_t fr_net_to_int32(int8_t const data[static sizeof(int32_t)])
+{
+	return ((int32_t)fr_net_to_int16(data) << 16) | fr_net_to_int16(data + sizeof(int16_t));
+}
+
+/** Read an signed 64bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 64bit signed integer of native endianness.
+ * @return a 64 bit signed integer of native endianness.
+ */
+static inline int64_t fr_net_to_int64(int8_t const data[static sizeof(int64_t)])
+{
+	return ((int64_t)fr_net_to_int32(data) << 32) | fr_net_to_int32(data + sizeof(int32_t));
 }
 
 /** Read an unsigned 64bit integer from wire format (big endian) with a variable length encoding

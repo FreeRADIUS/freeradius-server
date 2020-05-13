@@ -110,7 +110,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_dbuff_net_encode_uint64v(dbuff, da->attr);
+	flen = fr_dbuff_uint64v_in(dbuff, da->attr);
 	enc_field[0] |= ((flen - 1) << 5);
 
 	/*
