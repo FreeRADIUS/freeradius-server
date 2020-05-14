@@ -111,8 +111,8 @@ struct fr_dbuff_s {
  * @param[in] _dbuff	to reserve bytes in.
  * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX(_dbuff,  _max) (fr_dbuff_remaining(_dbuff) > (_max)) ? \
-	FR_DBUFF_RESERVE(_dbuff, fr_dbuff_remaining(_dbuff) - (_max)) : \
+#define FR_DBUFF_MAX(_dbuff,  _max) ((fr_dbuff_remaining(_dbuff) > (_max)) ? \
+	&FR_DBUFF_RESERVE(_dbuff, fr_dbuff_remaining(_dbuff) - (_max)) : \
 	_dbuff)
 
 /** Does the actual work of initialising a dbuff
