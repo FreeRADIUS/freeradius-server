@@ -30,8 +30,14 @@ RCSID("$Id$")
  */
 fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t *n;
-	fr_dict_attr_t const *parent;
+	fr_dict_attr_t		*n;
+	fr_dict_attr_t const	*parent;
+	fr_dict_attr_flags_t	flags = da->flags;
+
+	/*
+	 *	Set the unknown flag.
+	 */
+	flags.is_unknown = 1;
 
 	/*
 	 *	Allocate an attribute.
@@ -59,7 +65,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(n, parent, da->attr, da->type, &da->flags);
+	dict_attr_init(n, parent, da->attr, da->type, &flags);
 
 	DA_VERIFY(n);
 
