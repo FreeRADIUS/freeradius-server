@@ -250,7 +250,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		hp->p[parent] = hp->p[max];
 
 		fr_heap_bubble(hp, parent);
-		return 0;
 	}
 
 	return 0;
