@@ -2189,6 +2189,32 @@ static const char *decade_names[18] = {
 	"1Ms", "10Ms", "100Ms",	/* 1 year is 300Ms */
 };
 
+typedef struct {
+	char const	*file;
+	int		line;
+	uint32_t	count;
+} fr_event_counter_t;
+
+static int event_timer_location_cmp(void const *one, void const *two)
+{
+	fr_event_counter_t const	*a = one;
+	fr_event_counter_t const	*b = two;
+	int				ret;
+
+	ret = (a->file > b->file) - (a->file < b->file);
+	if (ret != 0) return ret;
+
+	return (a->line > b->line) - (a->line < b->line);
+}
+
+static int event_timer_print_location(void *node, UNUSED void *uctx)
+{
+	fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
+
+	EVENT_DEBUG("                       : %u allocd at %s[%u]", counter->count, counter->file, counter->line);
+	return 0;
+}
+
 /** Print out information about the number of events in the event loop
  *
  */
@@ -2196,43 +2222,72 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_heap_iter_t		iter;
 	fr_event_timer_t const	*ev;
-	int			i;
-	fr_time_t		now;
+	size_t			i;
+
 	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
-	rbtree_t		*locations;
+	rbtree_t		*locations[NUM_ELEMENTS(decades)];
+	TALLOC_CTX		*tmp_ctx;
 
 	EVENT_DEBUG("Event list %p", el);
-	EVENT_DEBUG("   fd events        : %u", fr_event_list_num_fds(el));
-	EVENT_DEBUG("   events last iter : %u", el->num_fd_events);
-	EVENT_DEBUG("   num timer events : %u", fr_event_list_num_timers(el));
+	EVENT_DEBUG("    fd events          : %u", fr_event_list_num_fds(el));
+	EVENT_DEBUG("    events last iter   : %u", el->num_fd_events);
+	EVENT_DEBUG("    num timer events   : %u", fr_event_list_num_timers(el));
 
-	rbtree_alloc
+	tmp_ctx = talloc_init_const("temporary stats");
+	if (!tmp_ctx) {
+	oom:
+		EVENT_DEBUG("Can't do report, out of memory");
+		talloc_free(tmp_ctx);
+		return;
+	}
+
+	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
+		locations[i] = rbtree_alloc(tmp_ctx, event_timer_location_cmp, NULL, 0);
+		if (!locations[i]) goto oom;
+	}
 
 	/*
-	 *	Show which events are due, and when.
+	 *	Show which events are due, when they're due,
+	 *	and where they were allocated
 	 */
 	for (ev = fr_heap_iter_init(el->times, &iter);
 	     ev != NULL;
 	     ev = fr_heap_iter_next(el->times, &iter)) {
-		fr_time_delta_t diff = when - now;
+		fr_time_delta_t diff = ev->when - now;
 
 		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-			if (diff <= decades[i]) {
+			if ((diff <= decades[i]) || (i == NUM_ELEMENTS(decades) - 1)) {
+				fr_event_counter_t find = { .file = ev->file, .line = ev->line };
+				fr_event_counter_t *counter;
+
+				counter = rbtree_finddata(locations[i], &find);
+				if (!counter) {
+					counter = talloc(locations[i], fr_event_counter_t);
+					if (!counter) goto oom;
+					counter->file = ev->file;
+					counter->line = ev->line;
+					counter->count = 1;
+					rbtree_insert(locations[i], counter);
+				} else {
+					counter->count++;
+				}
+
 				array[i]++;
-				goto next;
+				break;
 			}
 		}
-		array[NUM_ELEMENTS(decades) - 1]++;
-	next:
 	}
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
 		if (!array[i]) continue;
 
-		EVENT_DEBUG("   %5s: %zu", decade_name[i], array[i]);
+		EVENT_DEBUG("    events in %c= %5s : %zu", i == NUM_ELEMENTS(decades) - 1 ? '>' : '<',
+			    decade_names[i], array[i]);
+		rbtree_walk(locations[i], RBTREE_IN_ORDER, event_timer_print_location, NULL);
 	}
 
 	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
+	talloc_free(tmp_ctx);
 }
 
 #ifndef NDEBUG
