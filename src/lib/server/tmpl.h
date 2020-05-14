@@ -177,10 +177,73 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/regex.h>
 
+/*
+ *	Allow public and private versions of the same structures
+ */
+#ifndef _TMPL_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
+typedef enum {
+	TMPL_ATTR_TYPE_NORMAL = 0,			//!< Normal, resolved, attribute ref.
+	TMPL_ATTR_TYPE_UNKNOWN,				//!< We have an attribute number but
+							///< it doesn't match anything in the
+							///< dictionary, or isn't a child of
+							///< the previous ref.  May be resolved
+							///< later.
+	TMPL_ATTR_TYPE_UNPARSED				//!< We have a name, but nothing else
+							///< to identify the attribute.
+							///< may be resolved later.
+} vp_tmpl_attr_type_t;
+
 #define NUM_ANY			INT16_MIN
 #define NUM_ALL			(INT16_MIN + 1)
 #define NUM_COUNT		(INT16_MIN + 2)
 #define NUM_LAST		(INT16_MIN + 3)
+
+/** An element in a list of nested attribute references
+ *
+ */
+typedef struct {
+	fr_dlist_t		_CONST entry;		//!< Entry in the doubly linked list
+							///< of attribute references.
+
+	fr_dict_attr_t const	* _CONST da;		//!< Resolved dictionary attribute.
+
+	union {
+		fr_dict_attr_t		* _CONST da;		//!< Unknown dictionary attribute.
+		char			* _CONST name;		//!< Undefined attr ref type.
+	} unknown;
+
+	int16_t			_CONST num;		//!< For array references.
+	int8_t			_CONST tag;		//!< For tag references.
+
+	vp_tmpl_attr_type_t	_CONST type;
+} vp_tmpl_attr_t;
+
+/** An element in a list of request references
+ *
+ */
+typedef struct {
+	fr_dlist_t		_CONST entry;		//!< Entry in the doubly linked list
+							///< of requestreferences.
+
+	request_ref_t		_CONST request;
+} vp_tmpl_request_t;
+
+/** @name Field accessors for attribute references
+ *
+ * @{
+ */
+#define ar_da				da
+#define ar_unknown			unknown.da
+#define ar_unparsed			unknown.name
+#define ar_num				num
+#define ar_tag				tag
+/** @} */
+
 /** A source or sink of value data.
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
@@ -209,23 +272,20 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 struct vp_tmpl_s {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
 
-	char const	*name;		//!< Raw string used to create the template.
-	size_t		len;		//!< Length of the raw string used to create the template.
-	fr_token_t	quote;		//!< What type of quoting was around the raw string.
+	char const	* _CONST name;		//!< Raw string used to create the template.
+	size_t		_CONST len;		//!< Length of the raw string used to create the template.
+	fr_token_t	_CONST quote;		//!< What type of quoting was around the raw string.
 
 	union {
-		struct {
-			request_ref_t		request;		//!< Request to search or insert in.
-			pair_list_t		list;			//!< List to search or insert in.
+		_CONST struct {
+			fr_dlist_head_t		rr;	//!< Request to search or insert in.
 
-			fr_dict_attr_t const	*da;			//!< Resolved dictionary attribute.
-			union {
-				fr_dict_attr_t		*da;		//!< Unknown dictionary
-									//!< attribute buffer.
-				char			*name;
-			} unknown;
-			int			num;			 //!< For array references.
-			int8_t			tag;			 //!< For tag references.
+			pair_list_t		list;	//!< List to search or insert in.
+							///< deprecated.
+
+			fr_dlist_head_t		ar;	//!< Head of the attribute reference list.
+
+			bool			was_oid;
 		} attribute;
 
 		/*
@@ -244,27 +304,72 @@ struct vp_tmpl_s {
 	} data;
 };
 
+/** Convenience macro for printing a meaningful assert message when we get a bad tmpl type
+ */
+#define tmpl_assert_type(_cond) \
+	fr_assert_msg(_cond, "Unexpected tmpl type '%s'", \
+		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"))
+
 /** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNPARSED, #TMPL_TYPE_LIST
  *
  * @{
  */
-#define tmpl_request(_tmpl)		(_tmpl)->data.attribute.request
-#define tmpl_list(_tmpl)		(_tmpl)->data.attribute.list
-#define tmpl_da(_tmpl)			(_tmpl)->data.attribute.da
-#define tmpl_unknown(_tmpl)		(_tmpl)->data.attribute.unknown.da
-#define tmpl_attr_unparsed(_tmpl)    	(_tmpl)->data.attribute.unknown.name
-#define tmpl_num(_tmpl)			(_tmpl)->data.attribute.num
-#define tmpl_tag(_tmpl)			(_tmpl)->data.attribute.tag
+static inline request_ref_t tmpl_request(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unparsed(vpt) ||
+			 tmpl_is_list(vpt));
 
-/*
- *	Temporary macros to track where we do assignments
- */
-#define tmpl_request_set(_tmpl, _request)	(_tmpl)->data.attribute.request = (_request)
-#define tmpl_list_set(_tmpl, _list)		(_tmpl)->data.attribute.list = (_list)
-#define tmpl_attr_unparsed_set(_tmpl, _name)    	(_tmpl)->data.attribute.unknown.name = (_name)
-#define tmpl_tag_set(_tmpl, _tag)		(_tmpl)->data.attribute.tag = (_tag)
-#define tmpl_num_set(_tmpl, _num)		(_tmpl)->data.attribute.num = (_num)
-#define tmpl_da_set(_tmpl, _da)			(_tmpl)->data.attribute.da = (_da)
+	return ((vp_tmpl_request_t *)fr_dlist_tail(&vpt->data.attribute.rr))->request;
+}
+
+static inline fr_dict_attr_t const *tmpl_da(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_da;
+}
+
+static inline fr_dict_attr_t const *tmpl_unknown(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unknown;
+}
+
+static inline char const *tmpl_attr_unparsed(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNPARSED);
+
+	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unparsed;
+}
+
+static inline int16_t tmpl_num(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unparsed(vpt) ||
+			 tmpl_is_list(vpt));
+
+	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
+}
+
+static inline int8_t tmpl_tag(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once tags are part of ar dlist */
+			 tmpl_is_list(vpt));
+
+	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_tag;
+}
+
+static inline pair_list_t tmpl_list(vp_tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once list is part of ar dlist */
+			 tmpl_is_list(vpt));
+
+	return vpt->data.attribute.list;
+}
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_XLAT
@@ -500,10 +605,42 @@ vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
 vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len, fr_token_t quote);
 
-void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
-				     request_ref_t request, pair_list_t list);
+void			tmpl_set_name(vp_tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
+
+#ifndef NDEBUG
+void			tmpl_attr_debug(vp_tmpl_t const *vpt) CC_HINT(nonnull);
+#endif
+
+int			tmpl_attr_copy(vp_tmpl_t *dst, vp_tmpl_t const *src) CC_HINT(nonnull);
+
+int			tmpl_attr_abstract_to_concrete(vp_tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);
+
+void			tmpl_attr_to_raw(vp_tmpl_t *vpt) CC_HINT(nonnull);
+
+int			tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
+
+int			tmpl_attr_resolve_undefined(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
+
+void			tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
+
+int			tmpl_attr_set_leaf_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
+
+void			tmpl_attr_set_leaf_num(vp_tmpl_t *vpt, int16_t num) CC_HINT(nonnull);
+
+void			tmpl_attr_rewrite_leaf_num(vp_tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
+
+void			tmpl_attr_rewrite_num(vp_tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
+
+void			tmpl_attr_set_leaf_tag(vp_tmpl_t *vpt, int8_t tag) CC_HINT(nonnull);
+
+void			tmpl_attr_set_request(vp_tmpl_t *vpt, request_ref_t request) CC_HINT(nonnull);
+
+void			tmpl_attr_set_list(vp_tmpl_t *vpt, pair_list_t list) CC_HINT(nonnull);
+
+int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, vp_tmpl_t **out, vp_tmpl_t const *list,
+					     fr_dict_attr_t const *da, int8_t tag);
 
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 					       vp_tmpl_t **out, char const *name, ssize_t name_len,
@@ -563,6 +700,8 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
 
 bool			tmpl_async_required(vp_tmpl_t const *vpt);
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

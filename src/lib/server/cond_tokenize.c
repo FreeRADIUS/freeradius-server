@@ -473,8 +473,6 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 				       c->cast ? NULL : tmpl_da(c->data.map->lhs)) < 0) {
 			fr_dict_attr_t const *da = tmpl_da(c->data.map->lhs);
 
-			if (!fr_dict_attr_is_top_level(da)) goto bad_type;
-
 			switch (da->attr) {
 			case FR_AUTH_TYPE:
 				/*
@@ -485,8 +483,19 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 				break;
 
 			default:
-			bad_type:
-				return_rhs("Failed to parse value for attribute");
+				if (!c->data.map->lhs->data.attribute.was_oid) {
+					return_rhs("Failed to parse value for attribute");
+				}
+				/*
+				 *	Convert the lhs to a raw type and
+				 *	try the cast again.
+				 */
+				tmpl_attr_to_raw(c->data.map->lhs);
+				if (tmpl_cast_in_place(c->data.map->rhs, tmpl_da(c->data.map->lhs)->type,
+						       c->cast ? NULL : tmpl_da(c->data.map->lhs)) < 0) {
+					return_rhs("Failed to parse value for attribute");
+				}
+				break;
 			}
 		}
 
@@ -496,14 +505,10 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 		 *	type of the RHS.
 		 */
 		if (tmpl_da(c->data.map->lhs)->type == FR_TYPE_COMBO_IP_ADDR) {
-			fr_dict_attr_t const *da;
-
-			da = fr_dict_attr_by_type(tmpl_da(c->data.map->lhs),
-						  tmpl_value_type(c->data.map->rhs));
-			if (!da) {
+			if (tmpl_attr_abstract_to_concrete(c->data.map->lhs,
+							       tmpl_value_type(c->data.map->rhs)) < 0) {
 				return_rhs("Cannot find type for attribute");
 			}
-			tmpl_da(c->data.map->lhs) = da;
 		}
 	} /* attr to literal comparison */
 
@@ -951,29 +956,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		map->op = op;
 
 		/*
-		 *	If the RHS is 0xabcdef... automatically cast it to octets
-		 *	unless the LHS is an attribute of type octets, or an
-		 *	integer type.
-		 */
-		if (!c->cast && (rhs_type == T_BARE_WORD) &&
-		    (rhs[0] == '0') && (rhs[1] == 'x') &&
-		    ((slen & 0x01) == 0)) {
-			if (slen == 2) {
-				return_P("Empty octet string is invalid");
-			}
-
-			if ((map->lhs->type != TMPL_TYPE_ATTR) ||
-			    !((tmpl_da(map->lhs)->type == FR_TYPE_OCTETS) ||
-			      (tmpl_da(map->lhs)->type == FR_TYPE_UINT8) ||
-			      (tmpl_da(map->lhs)->type == FR_TYPE_UINT16) ||
-			      (tmpl_da(map->lhs)->type == FR_TYPE_UINT32) ||
-			      (tmpl_da(map->lhs)->type == FR_TYPE_UINT64))) {
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-								    FR_CAST_BASE + FR_TYPE_OCTETS);
-			}
-		}
-
-		/*
 		 *	This code converts '&Attr-1.2.3.4 == 0xabcdef'
 		 *	into "&Known-Attribure == value"
 		 *
@@ -981,11 +963,34 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 *	so that the comparisons are done to known attributes.
 		 */
 		if (tmpl_is_attr(map->lhs) &&
-		    tmpl_da(map->lhs)->flags.is_raw &&
+		    (tmpl_da(map->lhs)->flags.is_raw || map->lhs->data.attribute.was_oid) &&
 		    map_cast_from_hex(map, rhs_type, rhs)) {
 			/* do nothing */
 
 		} else {
+			/*
+			 *	If the RHS is 0xabcdef... automatically cast it to octets
+			 *	unless the LHS is an attribute of type octets, or an
+			 *	integer type.
+			 */
+			if (!c->cast && (rhs_type == T_BARE_WORD) &&
+			    (rhs[0] == '0') && (rhs[1] == 'x') &&
+			    ((slen & 0x01) == 0)) {
+				if (slen == 2) {
+					return_P("Empty octet string is invalid");
+				}
+
+				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+				    !((tmpl_da(map->lhs)->type == FR_TYPE_OCTETS) ||
+				      (tmpl_da(map->lhs)->type == FR_TYPE_UINT8) ||
+				      (tmpl_da(map->lhs)->type == FR_TYPE_UINT16) ||
+				      (tmpl_da(map->lhs)->type == FR_TYPE_UINT32) ||
+				      (tmpl_da(map->lhs)->type == FR_TYPE_UINT64))) {
+					c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
+									    FR_CAST_BASE + FR_TYPE_OCTETS);
+				}
+			}
+
 			tlen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_len, rhs_type,
 					      &parse_rules, true);
 			if (tlen < 0) {

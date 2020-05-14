@@ -140,8 +140,8 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 	 *	(drum roll) exactly the same thing it was before.
 	 */
 	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, NULL, -1, T_BARE_WORD);
-	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
-	tmpl_da(vpt) = da;
+	tmpl_attr_copy(vpt, map->lhs);
+	tmpl_attr_set_leaf_da(vpt, da);
 
 	/*
 	 *	Be sure to keep the "&control:" or "control:" prefix.
@@ -156,16 +156,10 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 	len = radius_list_name(&list, p, PAIR_LIST_UNKNOWN);
 
 	if (list != PAIR_LIST_UNKNOWN) {
-		vpt->name = talloc_typed_asprintf(vpt, "%.*s:%s",
-					    (int) len, map->lhs->name,
-					    tmpl_da(map->lhs)->name);
+		tmpl_set_name(vpt, T_BARE_WORD, "%.*s:%s", (int) len, map->lhs->name, tmpl_da(map->lhs)->name);
 	} else {
-		vpt->name = talloc_typed_asprintf(vpt, "&%s",
-					    tmpl_da(map->lhs)->name);
+		tmpl_set_name(vpt, T_BARE_WORD, "&%s", tmpl_da(map->lhs)->name);
 	}
-	vpt->len = strlen(vpt->name);
-	vpt->quote = T_BARE_WORD;
-
 	talloc_free(map->lhs);
 	map->lhs = vpt;
 
@@ -689,31 +683,26 @@ int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, vp_tmpl_rules_
 	map->lhs = tmpl_alloc(map, TMPL_TYPE_ATTR, NULL, -1, T_BARE_WORD);
 	if (!map->lhs) goto oom;
 
-	tmpl_da(map->lhs) = vp->da;
-	tmpl_request(map->lhs) = rules->request_def;
-	tmpl_list(map->lhs) = rules->list_def;
-	tmpl_num(map->lhs) = NUM_ANY;
-	tmpl_tag(map->lhs) = vp->tag;
+	tmpl_attr_set_da(map->lhs, vp->da);
+	tmpl_attr_set_leaf_num(map->lhs, NUM_ANY);
+	tmpl_attr_set_leaf_tag(map->lhs, vp->tag);
+
+	tmpl_attr_set_request(map->lhs, rules->request_def);
+	tmpl_attr_set_list(map->lhs, rules->list_def);
 
 	tmpl_snprint(NULL, buffer, sizeof(buffer), map->lhs);
-	map->lhs->name = talloc_typed_strdup(map->lhs, buffer);
-	map->lhs->len = talloc_array_length(map->lhs->name) - 1;
-	map->lhs->quote = T_BARE_WORD;
+	tmpl_set_name(map->lhs, T_BARE_WORD, "%s", buffer);
 
 	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, -1, T_BARE_WORD);
 	if (!map->lhs) goto oom;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_QUOTED:
-		map->rhs->name = fr_value_box_asprint(map->rhs, &vp->data, '"');
-		map->rhs->len = talloc_array_length(map->rhs->name) - 1;
-		map->rhs->quote = T_DOUBLE_QUOTED_STRING;
+		tmpl_set_name(map->rhs, T_DOUBLE_QUOTED_STRING, "%pV", &vp->data);
 		break;
 
 	default:
-		map->rhs->name = fr_value_box_asprint(map->rhs, &vp->data, '\0');
-		map->rhs->len = talloc_array_length(map->rhs->name) - 1;
-		map->rhs->quote = T_BARE_WORD;
+		tmpl_set_name(map->rhs, T_BARE_WORD, "%pV", &vp->data);
 		break;
 	}
 
@@ -1691,22 +1680,19 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	case TMPL_TYPE_LIST:
 	{
-		vp_tmpl_t	vpt;
-		char const	*quote;
+		vp_tmpl_t	*vpt;
+		char const	*quote = (vp->vp_type == FR_TYPE_STRING) ? "\"" : "";
 
-		quote = (vp->vp_type == FR_TYPE_STRING) ? "\"" : "";
+		vpt = tmpl_alloc(request, TMPL_TYPE_ATTR, map->rhs->name, strlen(map->rhs->name), *quote);
 
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
 		 *	this is a combination of the original list tmpl, and values from
 		 *	the VALUE_PAIR. This way, we get tag info included.
 		 */
-		memcpy(&vpt, map->rhs, sizeof(vpt));
-		tmpl_da(&vpt) = vp->da;
-		tmpl_num(&vpt) = NUM_ANY;
-		vpt.type = TMPL_TYPE_ATTR;
-
-		if (vp->da->flags.is_unknown) memcpy(&tmpl_unknown(&vpt), &vp->da, sizeof(tmpl_unknown(&vpt)));
+		tmpl_attr_copy(vpt, map->rhs);
+		tmpl_attr_set_leaf_da(vpt, vp->da);
+		tmpl_attr_set_leaf_num(vpt, NUM_ANY);
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
@@ -1714,8 +1700,10 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	the quoting based on the data type.
 		 */
 		value = fr_pair_value_asprint(request, vp, quote[0]);
-		tmpl_snprint(NULL, buffer, sizeof(buffer), &vpt);
+		tmpl_snprint(NULL, buffer, sizeof(buffer), vpt);
 		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
+
+		talloc_free(vpt);
 	}
 		break;
 

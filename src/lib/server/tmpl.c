@@ -26,6 +26,9 @@
  */
 RCSID("$Id$")
 
+#define _TMPL_PRIVATE 1
+
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -76,6 +79,17 @@ fr_table_num_sorted_t const request_ref_table[] = {
 	{ "proxy",		REQUEST_PROXY			}
 };
 size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
+
+
+/** Special attribute reference indexes
+ */
+static fr_table_num_sorted_t const attr_num_table[] = {
+	{ "*",			NUM_ALL				},
+	{ "#",			NUM_COUNT			},
+	{ "any",		NUM_ANY				},
+	{ "n",			NUM_LAST			}
+};
+static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 
 /** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
  *
@@ -421,6 +435,19 @@ vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t
 				     (size_t) len;
 		vpt->quote = quote;
 	}
+
+	switch (type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_ATTR_TYPE_UNPARSED:
+	case TMPL_TYPE_LIST:
+		fr_dlist_talloc_init(&vpt->data.attribute.ar, vp_tmpl_attr_t, entry);
+		fr_dlist_talloc_init(&vpt->data.attribute.rr, vp_tmpl_request_t, entry);
+		break;
+
+	default:
+		break;
+	}
+
 	return vpt;
 }
 
@@ -439,12 +466,8 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 {
 	vp_tmpl_t *vpt;
 
-	fr_assert(type != TMPL_TYPE_UNINITIALISED);
-
 #ifndef HAVE_REGEX
-	if ((type == TMPL_TYPE_REGEX_UNPARSED) || (type == TMPL_TYPE_REGEX)) {
-		return NULL;
-	}
+	if ((type == TMPL_TYPE_REGEX_UNPARSED) || (type == TMPL_TYPE_REGEX)) return NULL;
 #endif
 
 	vpt = talloc_zero(ctx, vp_tmpl_t);
@@ -456,7 +479,61 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 		vpt->quote = quote;
 	}
 
+	/*
+	 *	Don't add default here.  We want to warn
+	 *	if there may be special initialisation
+	 *	needed.
+	 */
+	switch (type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_ATTR_UNPARSED:
+	case TMPL_TYPE_LIST:
+		fr_dlist_talloc_init(&vpt->data.attribute.ar, vp_tmpl_attr_t, entry);
+		fr_dlist_talloc_init(&vpt->data.attribute.rr, vp_tmpl_request_t, entry);
+		break;
+
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_REGEX_UNPARSED:
+		break;
+
+	case TMPL_TYPE_UNINITIALISED:
+	case TMPL_TYPE_MAX:
+		fr_assert(0);
+	}
+
 	return vpt;
+}
+
+/** Set a new name for a vp_tmpl_t
+ *
+ * @param[in] vpt	to set name for.
+ * @param[in] quote	Original quoting around the name.
+ * @param[in] fmt	string.
+ * @param[in] ...	format arguments.
+ */
+void tmpl_set_name(vp_tmpl_t *vpt, fr_token_t quote, char const *fmt, ...)
+{
+	va_list		ap;
+	char const	*old;
+
+	old = vpt->name;
+	if (fmt) {
+		va_start(ap, fmt);
+		MEM(vpt->name = fr_vasprintf(vpt, fmt, ap));
+		va_end(ap);
+		vpt->len = talloc_array_length(vpt->name) - 1;
+	} else {
+		vpt->name = NULL;
+		vpt->len = 0;
+	}
+	talloc_const_free(old);	/* Do this last, so the caller can pass in the current name */
+	vpt->quote = quote;
 }
 /** @} */
 
@@ -465,44 +542,49 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
  * @{
  */
 
-/** Initialise a #vp_tmpl_t to search for, or create attributes
+ /** Allocate a new request reference and add it to the end of the attribute reference list
  *
- * @param vpt to initialise.
- * @param da of #VALUE_PAIR type to operate on.
- * @param tag Must be one of:
- *	- A positive integer specifying a specific tag.
- *	- #TAG_ANY - Attribute with no specific tag value.
- *	- #TAG_NONE - No tag.
- * @param num Specific instance, or all instances. Must be one of:
- *	- A positive integer specifying an instance.
- *	- #NUM_ALL - All instances.
- *	- #NUM_ANY - The first instance found.
- *	- #NUM_LAST - The last instance found.
- * @param request to operate on.
- * @param list to operate on.
  */
-void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
-		  request_ref_t request, pair_list_t list)
+static vp_tmpl_request_t *tmpl_rr_add(vp_tmpl_t *vpt, request_ref_t request)
 {
-	static char const name[] = "internal";
+	vp_tmpl_request_t	*rr;
+	TALLOC_CTX		*ctx;
 
-	fr_assert(da);
-
-	tmpl_init(vpt, TMPL_TYPE_ATTR, name, sizeof(name), T_BARE_WORD);
-	tmpl_da_set(vpt, da);
-
-	tmpl_request_set(vpt, request);
-	tmpl_list_set(vpt, list);
-
-	/*
-	 *	No tags can't have any tags
-	 */
-	if (!tmpl_da(vpt)->flags.has_tag) {
-		tmpl_tag_set(vpt, TAG_NONE);
+	if (fr_dlist_num_elements(&vpt->data.attribute.rr) == 0) {
+		ctx = vpt;
 	} else {
-		tmpl_tag_set(vpt, tag);
+		ctx = fr_dlist_tail(&vpt->data.attribute.rr);
 	}
-	tmpl_num_set(vpt, num);
+
+	MEM(rr = talloc_zero(ctx, vp_tmpl_request_t));
+	rr->request = request;
+
+	fr_dlist_insert_tail(&vpt->data.attribute.rr, rr);
+
+	return rr;
+}
+
+/** Allocate a new attribute reference and add it to the end of the attribute reference list
+ *
+ */
+static vp_tmpl_attr_t *tmpl_ar_add(vp_tmpl_t *vpt, vp_tmpl_attr_type_t type)
+{
+	vp_tmpl_attr_t	*ar;
+	TALLOC_CTX	*ctx;
+
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0) {
+		ctx = vpt;
+	} else {
+		ctx = fr_dlist_tail(&vpt->data.attribute.ar);
+	}
+
+	MEM(ar = talloc_zero(ctx, vp_tmpl_attr_t));
+	ar->type = type;
+	ar->num = NUM_ANY;
+
+	fr_dlist_insert_tail(&vpt->data.attribute.ar, ar);
+
+	return ar;
 }
 
 /** Create a #vp_tmpl_t from a #fr_value_box_t
@@ -537,6 +619,439 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 			return -1;
 		}
 	}
+	*out = vpt;
+
+	return 0;
+}
+
+#ifndef NDEBUG
+void tmpl_attr_debug(vp_tmpl_t const *vpt)
+{
+	vp_tmpl_attr_t		*ar = NULL;
+	unsigned int		i = 0;
+	char			buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
+
+	INFO("%s (%p)", vpt->name, vpt);
+	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
+		snprintf(buffer, sizeof(buffer), "%i", ar->num);
+
+		switch (ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			if (!ar->da) {
+				INFO("\t[%u] null%s%s%s",
+				     i,
+				     ar->num != NUM_ANY ? "[" : "",
+			     	     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     	     ar->num != NUM_ANY ? "]" : "");
+				goto next;
+			}
+
+			INFO("\t[%u] <%s> %s%s%s%s%s",
+			     i,
+			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
+			     ar->da->name,
+			     ar->num != NUM_ANY ? "[" : "",
+			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_ANY ? "]" : "",
+			     ar->da->flags.is_unknown ? " - is_unknown" : ""
+			);
+			break;
+
+
+		case TMPL_ATTR_TYPE_UNPARSED:
+			INFO("\t[%u] %s%s%s%s - unparsed",
+			     i, ar->unknown.name,
+			     ar->num != NUM_ANY ? "[" : "",
+			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_ANY ? "]" : "");
+			break;
+
+		default:
+			INFO("\t[%u] Bad type %u", i, ar->type);
+			break;
+		}
+
+	next:
+		i++;
+	}
+}
+#endif
+
+/** Copy a list of attribute and request references from one tmpl to another
+ *
+ */
+int tmpl_attr_copy(vp_tmpl_t *dst, vp_tmpl_t const *src)
+{
+	vp_tmpl_attr_t		*src_ar = NULL, *dst_ar;
+	vp_tmpl_request_t	*src_rr = NULL, *dst_rr;
+
+	/*
+	 *	Clear any existing attribute references
+	 */
+	if (fr_dlist_num_elements(&dst->data.attribute.ar) > 0) fr_dlist_talloc_reverse_free(&dst->data.attribute.ar);
+
+	while ((src_ar = fr_dlist_next(&src->data.attribute.ar, src_ar))) {
+		dst_ar = tmpl_ar_add(dst, src_ar->type);
+
+		switch (src_ar->type) {
+	 	case TMPL_ATTR_TYPE_NORMAL:
+	 		dst_ar->ar_da = src_ar->ar_da;
+	 		break;
+
+	 	case TMPL_ATTR_TYPE_UNKNOWN:
+	 		dst_ar->ar_unknown = fr_dict_unknown_acopy(dst_ar, src_ar->ar_unknown);
+	 		break;
+
+	 	case TMPL_ATTR_TYPE_UNPARSED:
+	 		dst_ar->ar_unparsed = talloc_bstrdup(dst_ar, src_ar->ar_unparsed);
+	 		break;
+
+	 	default:
+	 		if (!fr_cond_assert(0)) return -1;
+	 	}
+
+	 	dst_ar->ar_tag = src_ar->ar_tag;
+	 	dst_ar->ar_num = src_ar->ar_num;
+	}
+
+	/*
+	 *	Clear any existing request references
+	 */
+	if (fr_dlist_num_elements(&dst->data.attribute.rr) > 0) fr_dlist_talloc_reverse_free(&dst->data.attribute.rr);
+
+	while ((src_rr = fr_dlist_next(&src->data.attribute.rr, src_rr))) {
+		MEM(dst_rr = tmpl_rr_add(dst, src_rr->request));
+	}
+
+	/*
+	 *	Remove me...
+	 */
+	dst->data.attribute.list = src->data.attribute.list;
+
+	return 0;
+}
+
+/** Convert an abstract da into a concrete one
+ *
+ * Usually used to fixup combo ip addresses
+ */
+int tmpl_attr_abstract_to_concrete(vp_tmpl_t *vpt, fr_type_t type)
+{
+	fr_dict_attr_t const	*abstract;
+	fr_dict_attr_t const	*concrete;
+	vp_tmpl_attr_t	*ref;
+
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	abstract = tmpl_da(vpt);
+	if (abstract->type != FR_TYPE_COMBO_IP_ADDR) {
+		fr_strerror_printf("Abstract attribute \"%s\" is of incorrect type '%s'", abstract->name,
+				   fr_table_str_by_value(fr_value_box_type_table, abstract->type, "<INVALID>"));
+		return -1;
+	}
+
+	concrete = fr_dict_attr_by_type(abstract, type);
+	if (!concrete) {
+		fr_strerror_printf("Can't convert abstract type '%s' to concrete type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, abstract->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+		return -1;
+	}
+
+	ref = fr_dlist_tail(&vpt->data.attribute.ar);
+	ref->da = concrete;
+
+	return 0;
+}
+
+/** Covert the leaf attribute of a tmpl to a unknown/raw type
+ *
+ */
+void tmpl_attr_to_raw(vp_tmpl_t *vpt)
+{
+	vp_tmpl_attr_t *ref;
+
+	ref = fr_dlist_tail(&vpt->data.attribute.ar);
+	switch (ref->type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+	{
+		char		buffer[256] = "Attr-";
+		char		*p = buffer + strlen(buffer);
+		char		*end = buffer + sizeof(buffer);
+		size_t		len;
+		fr_dict_attr_t	*da;
+
+		len = fr_dict_print_attr_oid(NULL, p, end - p, NULL, ref->da);
+		p += len;
+
+		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy(vpt, ref->da);
+		ref->ar_unknown->type = FR_TYPE_OCTETS;
+		ref->ar_unknown->flags.is_raw = 1;
+
+		talloc_const_free(da->name);
+		MEM(da->name = talloc_bstrndup(da, buffer, p - buffer));
+
+		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
+	}
+		break;
+
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		ref->ar_unknown->type = FR_TYPE_OCTETS;
+		ref->ar_unknown->flags.is_raw = 1;
+		break;
+
+	case TMPL_ATTR_TYPE_UNPARSED:
+		fr_assert(0);
+		break;
+	}
+}
+
+/** Replace the current attribute reference
+ *
+ */
+int tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
+{
+	vp_tmpl_attr_t *ref;
+
+	(void)talloc_get_type_abort(da, fr_dict_attr_t);
+
+	/*
+	 *	Clear any existing references
+	 */
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) {
+		fr_dlist_talloc_reverse_free(&vpt->data.attribute.ar);
+	}
+
+	/*
+	 *	Unknown attributes get copied
+	 */
+	if (da->flags.is_unknown) {
+		ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da);
+	} else {
+		ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+		ref->da = da;
+	}
+
+	return 0;
+}
+
+/** Replace the leaf attribute only
+ *
+ */
+int tmpl_attr_set_leaf_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
+{
+	vp_tmpl_attr_t *ref, *parent = NULL;
+
+	tmpl_assert_type(tmpl_is_attr(vpt));
+	(void)talloc_get_type_abort(da, fr_dict_attr_t);
+
+	/*
+	 *	Clear any existing references
+	 */
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) {
+		if (fr_dlist_num_elements(&vpt->data.attribute.ar) > 1) {
+			ref = fr_dlist_tail(&vpt->data.attribute.ar);
+			parent = fr_dlist_prev(&vpt->data.attribute.ar, ref);
+
+			if (!fr_dict_attr_common_parent(parent->ar_da, da, true)) {
+				fr_strerror_printf("New leaf da and old leaf da do not share the same ancestor");
+				return -1;
+			}
+		} else {
+			ref = fr_dlist_tail(&vpt->data.attribute.ar);
+		}
+
+		/*
+		 *	Free old unknown and undefined attributes...
+		 */
+		talloc_free_children(ref);
+	} else {
+		ref = tmpl_ar_add(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
+	}
+
+
+	/*
+	 *	Unknown attributes get copied
+	 */
+	if (da->flags.is_unknown || (parent && parent->ar_da->flags.is_unknown)) {
+		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
+		ref->da= ref->ar_unknown = fr_dict_unknown_acopy(vpt, da);
+	} else {
+		ref->type = TMPL_ATTR_TYPE_NORMAL;
+		ref->da = da;
+	}
+
+	return 0;
+}
+
+void tmpl_attr_set_leaf_num(vp_tmpl_t *vpt, int16_t num)
+{
+	vp_tmpl_attr_t *ref;
+
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unparsed(vpt));
+
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0) {
+		ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+	} else {
+		ref = fr_dlist_tail(&vpt->data.attribute.ar);
+	}
+
+	ref->num = num;
+}
+
+/** Rewrite the leaf's instance number
+ *
+ */
+void tmpl_attr_rewrite_leaf_num(vp_tmpl_t *vpt, int16_t from, int16_t to)
+{
+	vp_tmpl_attr_t *ref = NULL;
+
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unparsed(vpt));
+
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0) return;
+
+	ref = fr_dlist_tail(&vpt->data.attribute.ar);
+	if (ref->ar_num == from) ref->ar_num = to;
+}
+
+/** Rewrite all instances of an array number
+ *
+ */
+void tmpl_attr_rewrite_num(vp_tmpl_t *vpt, int16_t from, int16_t to)
+{
+	vp_tmpl_attr_t *ref = NULL;
+
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unparsed(vpt));
+
+	while ((ref = fr_dlist_next(&vpt->data.attribute.ar, ref))) if (ref->ar_num == from) ref->ar_num = to;
+}
+
+void tmpl_attr_set_leaf_tag(vp_tmpl_t *vpt, int8_t tag)
+{
+	vp_tmpl_attr_t *ref;
+
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unparsed(vpt));
+
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0) {
+		ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+	} else {
+		ref = fr_dlist_tail(&vpt->data.attribute.ar);
+	}
+	ref->tag = tag;
+}
+
+void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
+{
+	vp_tmpl_attr_t *ref;
+
+	tmpl_assert_type(tmpl_is_attr_unparsed(vpt));
+
+	/*
+	 *	Clear any existing references
+	 */
+	if (fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) {
+		fr_dlist_talloc_reverse_free(&vpt->data.attribute.ar);
+	}
+
+	ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_UNPARSED);
+	ref->ar_unparsed = talloc_strndup(vpt, name, len);
+
+	fr_dlist_insert_tail(&vpt->data.attribute.ar, ref);
+}
+
+/** Resolve an undefined attribute using the specified rules
+ *
+ */
+int tmpl_attr_resolve_undefined(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
+{
+	fr_dict_attr_t const *da;
+
+	fr_assert_msg(tmpl_is_attr_unparsed(vpt), "Expected tmpl type 'undefined-attr', got '%s'",
+		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_attr_unparsed(vpt), true) != FR_DICT_ATTR_OK) {
+		ssize_t		slen;
+		fr_dict_attr_t	*unknown_da;
+
+		/*
+		 *	Can't find it under it's regular name.  Try an unknown attribute.
+		 */
+		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
+						     tmpl_attr_unparsed(vpt));
+		if ((slen <= 0) || (tmpl_attr_unparsed(vpt)[slen] != '\0')) {
+			fr_strerror_printf_push("Failed resolving undefined attribute");
+			return -1;
+		}
+
+		tmpl_attr_set_da(vpt, unknown_da);
+		vpt->type = TMPL_TYPE_ATTR;
+		return 0;
+	}
+
+	tmpl_attr_set_da(vpt, da);
+	vpt->type = TMPL_TYPE_ATTR;
+
+	return true;
+}
+
+/** Set the request for an attribute ref
+ *
+ */
+void tmpl_attr_set_request(vp_tmpl_t *vpt, request_ref_t request)
+{
+	fr_assert_msg(tmpl_is_attr(vpt), "Expected tmpl type 'attr', got '%s'",
+		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+
+	if (fr_dlist_num_elements(&vpt->data.attribute.rr) > 0) fr_dlist_talloc_reverse_free(&vpt->data.attribute.rr);
+
+	tmpl_rr_add(vpt, request);
+}
+
+void tmpl_attr_set_list(vp_tmpl_t *vpt, pair_list_t list)
+{
+	vpt->data.attribute.list = list;
+}
+
+/** Create a new tmpl from a list tmpl and a da
+ *
+ */
+int tmpl_attr_afrom_list(TALLOC_CTX *ctx, vp_tmpl_t **out, vp_tmpl_t const *list,
+			 fr_dict_attr_t const *da, int8_t tag)
+{
+	vp_tmpl_t *vpt;
+
+	char attr[256];
+	size_t need, len;
+
+	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, NULL, 0, T_BARE_WORD));
+
+	/*
+	 *	Copies request refs and the list ref
+	 */
+	tmpl_attr_copy(vpt, list);
+	tmpl_attr_set_list(vpt, tmpl_list(list));	/* Remove when lists are attributes */
+	tmpl_attr_set_leaf_da(vpt, da);			/* This should add a new da when lists are attributes */
+	tmpl_attr_set_leaf_num(vpt, tmpl_num(list));
+	tmpl_attr_set_leaf_tag(vpt, tag);
+
+	/*
+	 *	We need to rebuild the attribute name, to be the
+	 *	one we copied from the source list.
+	 */
+	len = tmpl_snprint(&need, attr, sizeof(attr), vpt);
+	if (need) {
+		fr_strerror_printf("Serialized attribute too long.  Must be < "
+				   STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
+		talloc_free(vpt);
+		return -1;
+	}
+
+	vpt->len = len;
+	vpt->name = talloc_typed_strdup(vpt, attr);
+	vpt->quote = T_BARE_WORD;
+
 	*out = vpt;
 
 	return 0;
@@ -601,10 +1116,14 @@ static vp_tmpl_rules_t const default_rules = {
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			       vp_tmpl_t **out, char const *name, ssize_t name_len, vp_tmpl_rules_t const *rules)
 {
-	char const	*p, *q;
-	long		num;
-	ssize_t		slen;
-	vp_tmpl_t	*vpt;
+	char const		*p, *q;
+	long			num;
+	ssize_t			slen;
+	vp_tmpl_t		*vpt;
+	request_ref_t		request_ref;
+	pair_list_t		list;
+	fr_dict_attr_t const	*da;
+	bool			is_raw = false;
 
 	if (!rules) rules = &default_rules;	/* Use the defaults */
 
@@ -646,7 +1165,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		break;
 	}
 
-	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));
+	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, NULL, 0, T_BARE_WORD));
 
 	/*
 	 *	Search for a recognised list
@@ -658,14 +1177,15 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	The next check for a list qualifier
 	 */
 	q = p;
-	p += radius_request_name(&tmpl_request(vpt), p, rules->request_def);
+	p += radius_request_name(&request_ref, p, rules->request_def);
 
 	if (rules->disallow_qualifiers && (p != q)) {
 		fr_strerror_printf("It is not permitted to specify a request list here.");
 		goto invalid_list;
 	}
+	tmpl_attr_set_request(vpt, request_ref);
 
-	if (tmpl_request(vpt) == REQUEST_UNKNOWN) tmpl_request_set(vpt, rules->request_def);
+	if (tmpl_request(vpt) == REQUEST_UNKNOWN) tmpl_attr_set_request(vpt, rules->request_def);
 
 	/*
 	 *	Finding a list qualifier is optional
@@ -677,7 +1197,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	the input string is invalid.
 	 */
 	q = p;
-	p += radius_list_name(&tmpl_list(vpt), p, rules->list_def);
+	p += radius_list_name(&list, p, rules->list_def);
 
 	if (rules->disallow_qualifiers && (p != q)) {
 		fr_strerror_printf("It is not permitted to specify a pair list here.");
@@ -687,7 +1207,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		goto error;
 	}
 
-	if (tmpl_list(vpt) == PAIR_LIST_UNKNOWN) {
+	if (list == PAIR_LIST_UNKNOWN) {
 		fr_strerror_printf("Invalid list qualifier");
 		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
 		slen = -(p - name);
@@ -696,9 +1216,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		return slen;
 	}
 
-	tmpl_tag_set(vpt, TAG_NONE);
-	tmpl_num_set(vpt, NUM_ANY);
-	vpt->type = TMPL_TYPE_ATTR;
+	tmpl_attr_set_list(vpt, list);
+	tmpl_attr_set_leaf_tag(vpt, TAG_NONE);
+	tmpl_attr_set_leaf_num(vpt, NUM_ANY);
 
 	/*
 	 *	No more input after parsing the list ref, we're done.
@@ -726,25 +1246,49 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	}
 
 	/*
+	 *	Hack to markup attributes as raw
+	 */
+	if (strncmp(p, "raw.", 4) == 0) {
+		is_raw = true;
+		p += 4;
+	}
+
+	/*
 	 *	Look up by name, *including* any Attr-1.2.3.4 which was created when
 	 *	parsing the configuration files.
 	 */
-	slen = fr_dict_attr_by_qualified_name_substr(NULL, &tmpl_da(vpt),
+	slen = fr_dict_attr_by_qualified_name_substr(NULL, &da,
 						     rules->dict_def, &FR_SBUFF_TMP(p, strlen(p)),
 						     !rules->disallow_internal);
 	if (slen <= 0) {
+		fr_dict_attr_t *unknown_da;
+
 		fr_strerror();	/* Clear out any existing errors */
 
 		/*
 		 *	At this point, the OID *must* be unknown, and
 		 *	not previously used.
 		 */
-		slen = fr_dict_unknown_afrom_oid_substr(vpt, &tmpl_unknown(vpt),
+		slen = fr_dict_unknown_afrom_oid_substr(vpt, &unknown_da,
 						    	fr_dict_root(rules->dict_def), p);
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
 		if (slen > 0) {
+			vpt->data.attribute.was_oid = true;
+
+			if (!is_raw) {
+				da = fr_dict_attr_known(fr_dict_by_da(unknown_da), unknown_da);
+				if (da) {
+					talloc_free(unknown_da);
+					tmpl_attr_set_leaf_da(vpt, da);
+
+					p += slen;
+
+					goto do_num;
+				}
+			}
+
 			if (!rules->allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
 				if (err) *err = ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED;
@@ -756,8 +1300,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			 *	Unknown attributes can be encoded, BUT
 			 *	they must be of type "octets".
 			 */
-			fr_assert(tmpl_unknown(vpt)->type == FR_TYPE_OCTETS);
-			tmpl_da_set(vpt, tmpl_unknown(vpt));
+			fr_assert(unknown_da->type == FR_TYPE_OCTETS);
+			tmpl_attr_set_leaf_da(vpt, unknown_da);
+			talloc_free(unknown_da);
 
 			p += slen;
 
@@ -796,10 +1341,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			slen = -(p - name);
 			goto error;
 		}
-		tmpl_attr_unparsed_set(vpt, talloc_strndup(vpt, p, q - p));
+		tmpl_attr_set_unparsed(vpt, p, q - p);
 		p = q;
 
 		goto do_num;
+	} else {
+		tmpl_attr_set_leaf_da(vpt, da);
 	}
 
 	/*
@@ -874,7 +1421,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		 *	Allow '*' as an explicit wildcard.
 		 */
 		if (p[1] == '*') {
-			tmpl_tag_set(vpt, TAG_ANY);
+			tmpl_attr_set_leaf_tag(vpt, TAG_ANY);
 			p += 2;
 
 		} else {
@@ -886,7 +1433,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 				goto error;
 			}
 
-			tmpl_tag_set(vpt, num);
+			tmpl_attr_set_leaf_tag(vpt, num);
 			p = end;
 		}
 
@@ -897,7 +1444,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	no matter what the tag".
 	 */
 	} else if (tmpl_da(vpt)->flags.has_tag) {
-		tmpl_tag_set(vpt, TAG_ANY);
+		tmpl_attr_set_leaf_tag(vpt, TAG_ANY);
 	}
 
 do_num:
@@ -908,17 +1455,17 @@ do_num:
 
 		switch (*p) {
 		case '#':
-			tmpl_num_set(vpt, NUM_COUNT);
+			tmpl_attr_set_leaf_num(vpt, NUM_COUNT);
 			p++;
 			break;
 
 		case '*':
-			tmpl_num_set(vpt, NUM_ALL);
+			tmpl_attr_set_leaf_num(vpt, NUM_ALL);
 			p++;
 			break;
 
 		case 'n':
-			tmpl_num_set(vpt, NUM_LAST);
+			tmpl_attr_set_leaf_num(vpt, NUM_LAST);
 			p++;
 			break;
 
@@ -940,7 +1487,7 @@ do_num:
 				slen = -(p - name);
 				goto error;
 			}
-			tmpl_num_set(vpt, num);
+			tmpl_attr_set_leaf_num(vpt, num);
 			p = end;
 		}
 			break;
@@ -959,12 +1506,6 @@ finish:
 	vpt->name = talloc_strndup(vpt, name, p - name);
 	vpt->len = p - name;
 	vpt->quote = T_BARE_WORD;
-
-	/*
-	 *	Copy over the attribute definition, now we're
-	 *	sure what we were passed is valid.
-	 */
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.is_unknown) tmpl_da_set(vpt, tmpl_unknown(vpt));
 
 	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
 
@@ -1288,14 +1829,18 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-		tmpl_value_type_set(vpt, type);
+	{
+		fr_type_t	concrete_type = type;
 
 		/*
-		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
+		 *	Why do we pass a pointer to a temporary type
+		 *	variable? Goddamn WiMAX.
 		 */
-		if (fr_value_box_from_str(vpt, tmpl_value(vpt), &tmpl_value_type(vpt),
+		if (fr_value_box_from_str(vpt, &vpt->data.literal, &concrete_type,
 					  enumv, vpt->name, vpt->len, '\0', false) < 0) return -1;
+		tmpl_value_type_set(vpt, concrete_type);
 		vpt->type = TMPL_TYPE_DATA;
+	}
 		break;
 
 	case TMPL_TYPE_DATA:
@@ -1304,22 +1849,10 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 		if (type == tmpl_value_type(vpt)) return 0;	/* noop */
 
-		if (fr_value_box_cast(vpt, &new, type, enumv, tmpl_value(vpt)) < 0) return -1;
+		if (fr_value_box_cast(vpt, &new, type, enumv, &vpt->data.literal) < 0) return -1;
 
-		/*
-		 *	Free old value buffers
-		 */
-		switch (tmpl_value_type(vpt)) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			talloc_free(tmpl_value(vpt)->datum.ptr);
-			break;
-
-		default:
-			break;
-		}
-
-		fr_value_box_copy(vpt, tmpl_value(vpt), &new);
+		fr_value_box_clear(&vpt->data.literal);
+		fr_value_box_copy(vpt, &vpt->data.literal, &new);
 	}
 		break;
 
@@ -1434,7 +1967,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	da = fr_dict_unknown_add(fr_dict_unconst(fr_dict_internal()), tmpl_da(vpt));
 	if (!da) return -1;
-	tmpl_da_set(vpt, da);
+	tmpl_attr_set_leaf_da(vpt, da);
 
 	return 0;
 }
@@ -1489,14 +2022,7 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 		return -1;
 	}
 
-#ifndef NDEBUG
-	/*
-	 *	Clear existing data (so we don't trip TMPL_VERIFY);
-	 */
-	memset(&vpt->data.attribute.unknown, 0, sizeof(vpt->data.attribute.unknown));
-#endif
-
-	tmpl_da_set(vpt, da);
+	tmpl_attr_set_da(vpt, da);
 	vpt->type = TMPL_TYPE_ATTR;
 
 	return 0;
@@ -2609,6 +3135,8 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
  */
 void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 {
+	uint8_t const *nz;
+
 	fr_assert(vpt);
 
 	if (tmpl_is_uninitialised(vpt)) {
@@ -2643,14 +3171,19 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_NULL:
-		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
+		if ((nz = not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data)))) {
+			HEX_MARKER1((uint8_t const *)&vpt->data, sizeof(vpt->data),
+				    nz - (uint8_t const *)&vpt->data, "non-zero memory", "");
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_NULL "
 					     "has non-zero bytes in its data union", file, line);
 		}
 		break;
 
 	case TMPL_TYPE_UNPARSED:
-		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
+		if ((nz = not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data)))) {
+			HEX_MARKER1((uint8_t const *)&vpt->data, sizeof(vpt->data),
+				    nz - (uint8_t const *)&vpt->data, "non-zero memory", "");
+
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNPARSED "
 					     "has non-zero bytes in its data union", file, line);
 		}
@@ -2681,11 +3214,20 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_ATTR_UNPARSED:
-		fr_assert(tmpl_da(vpt) == NULL);
+		if ((fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) &&
+		    ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->da) {
+#ifndef NDEBUG
+			tmpl_attr_debug(vpt);
+#endif
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR_UNPARSED contains %zu "
+					     "references", file, line, fr_dlist_num_elements(&vpt->data.attribute.ar));
+		}
 		break;
 
 	case TMPL_TYPE_ATTR:
-		if (CHECK_ZEROED(vpt, attribute)) {
+		if ((nz = CHECK_ZEROED(vpt, attribute))) {
+			HEX_MARKER1((uint8_t const *)&vpt->data.attribute, sizeof(vpt->data.attribute),
+				    nz - (uint8_t const *)&vpt->data.attribute, "non-zero memory", "");
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "has non-zero bytes after the data.attribute struct in the union",
 					     file, line);
@@ -2774,20 +3316,28 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_LIST:
-		if (CHECK_ZEROED(vpt, attribute)) {
+		if ((nz = CHECK_ZEROED(vpt, attribute))) {
+			HEX_MARKER1((uint8_t const *)&vpt->data.attribute, sizeof(vpt->data.attribute),
+				    nz - (uint8_t const *)&vpt->data.attribute, "non-zero memory", "");
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST"
 					     "has non-zero bytes after the data.attribute struct in the union",
 					     file, line);
 		}
 
-		if (tmpl_da(vpt) != NULL) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST da pointer was not NULL. "
-					     "da name was %s", file, line, tmpl_da(vpt)->name);
+		if ((fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) &&
+		    ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->da) {
+#ifndef NDEBUG
+			tmpl_attr_debug(vpt);
+#endif
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST contains %zu "
+					     "references", file, line, fr_dlist_num_elements(&vpt->data.attribute.ar));
 		}
 		break;
 
 	case TMPL_TYPE_DATA:
-		if (CHECK_ZEROED(vpt, literal)) {
+		if ((nz = CHECK_ZEROED(vpt, literal))) {
+			HEX_MARKER1((uint8_t const *)&vpt->data.attribute, sizeof(vpt->data.attribute),
+				    nz - (uint8_t const *)&vpt->data.attribute, "non-zero memory", "");
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA "
 					     "has non-zero bytes after the data.literal struct in the union",
 					     file, line);
@@ -2856,7 +3406,6 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 	}
 }
 #endif
-
 
 #define return_P(_x) *error = _x;goto return_p
 

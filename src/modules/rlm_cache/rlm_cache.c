@@ -300,7 +300,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	VALUE_PAIR		*vp;
 	bool			merge = false;
 	rlm_cache_entry_t	*c;
-	size_t			len;
 
 	TALLOC_CTX		*pool;
 
@@ -381,10 +380,19 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			 *	RHS with the fr_value_box_t from the VALUE_PAIR.
 			 */
 			case TMPL_TYPE_ATTR:
+			{
+				fr_token_t	quote;
 				c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
 			do_rhs:
-				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
-							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, T_BARE_WORD));
+				if (vp->vp_type == FR_TYPE_STRING) {
+					quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
+							     T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
+				} else {
+					quote = T_BARE_WORD;
+				}
+
+				MEM(c_map->rhs = tmpl_alloc(c_map,
+							    TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, quote));
 				if (fr_value_box_copy(c_map->rhs, tmpl_value(c_map->rhs), &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
 				error:
@@ -393,10 +401,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 					return RLM_MODULE_FAIL;
 				}
 				tmpl_value_type(c_map->rhs) = vp->vp_type;
-				if (vp->vp_type == FR_TYPE_STRING) {
-					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
-						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
-				}
+
+			}
 				break;
 
 			/*
@@ -404,37 +410,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			 *	which is a combination of the LHS list and the attribute.
 			 */
 			case TMPL_TYPE_LIST:
-			{
-				char attr[256];
-				size_t need;
-
-				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
-							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
-				if (vp->da->flags.is_unknown) { /* for tmpl_verify() */
-					tmpl_unknown(c_map->lhs) = fr_dict_unknown_acopy(c_map->lhs, vp->da);
-					tmpl_da(c_map->lhs) = tmpl_unknown(c_map->lhs);
-				} else {
-					tmpl_da(c_map->lhs) = vp->da;
-				}
-
-				tmpl_tag(c_map->lhs) = vp->tag;
-				tmpl_list(c_map->lhs) = tmpl_list(map->lhs);
-				tmpl_num(c_map->lhs) = tmpl_num(map->lhs);
-				tmpl_request(c_map->lhs) = tmpl_request(map->lhs);
-
-				/*
-				 *	We need to rebuild the attribute name, to be the
-				 *	one we copied from the source list.
-				 */
-				len = tmpl_snprint(&need, attr, sizeof(attr), c_map->lhs);
-				if (need) {
-					REDEBUG("Serialized attribute too long.  Must be < "
-						STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
+				if (tmpl_attr_afrom_list(c_map, &c_map->lhs, map->lhs, vp->da, vp->tag) < 0) {
+					RPERROR("Failed attribute -> list copy");
 					goto error;
 				}
-				c_map->lhs->len = len;
-				c_map->lhs->name = talloc_typed_strdup(c_map->lhs, attr);
-			}
 				goto do_rhs;
 
 			default:

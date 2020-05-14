@@ -198,8 +198,8 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
  */
 static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, vp_tmpl_t const *src_dst)
 {
-	REQUEST *context = request;
-	VALUE_PAIR **list;
+	REQUEST		*context = request;
+	VALUE_PAIR	**list;
 
 	if (radius_request(&context, tmpl_request(src_dst)) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
@@ -391,10 +391,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 */
 			n_mod->lhs = tmpl_alloc(n, TMPL_TYPE_ATTR, mutated->lhs->name, mutated->lhs->len, T_BARE_WORD);
 			if (!n_mod->lhs) goto error;
-			tmpl_request(n_mod->lhs) = tmpl_request(mutated->lhs);
-			tmpl_list(n_mod->lhs) = tmpl_list(mutated->lhs);
-			tmpl_da(n_mod->lhs) = vp->da;
-			tmpl_tag(n_mod->lhs) = vp->tag;
+
+			if (tmpl_attr_copy(n_mod->lhs, mutated->lhs) < 0) goto error;
+
+			tmpl_attr_set_leaf_da(n_mod->lhs, vp->da);
+			tmpl_attr_set_leaf_tag(n_mod->lhs, vp->tag);
 
 			/*
 			 *	For the RHS we copy the value of the attribute

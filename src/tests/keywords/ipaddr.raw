@@ -9,16 +9,16 @@ update control {
 #  Malformed NAS-IP-Address
 #
 update request {
-	&Attr-4 = 0x010203
+	&raw.Attr-4 = 0x010203
 }
 
-if (!&Attr-4) {
+if (!&raw.Attr-4) {
 	update reply {
 		&Filter-Id := "Cannot find newly added raw attribute"
 	}
 }
 else {
-	if (&Attr-4 != 0x010203) {
+	if (&raw.Attr-4 != 0x010203) {
 		update reply {
 			&Filter-Id := "Attr-4 is not 0x0120203"
 		}

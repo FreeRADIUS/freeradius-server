@@ -81,7 +81,8 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
 	if (!vpt) return NULL;
-	memcpy(&vpt->data, &node->attr->data, sizeof(vpt->data));
+
+	tmpl_attr_copy(vpt, node->attr);
 
 	TMPL_VERIFY(vpt);
 

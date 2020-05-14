@@ -378,47 +378,13 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 
 static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 {
-	fr_dict_attr_t const *da;
-
 	fr_assert(tmpl_is_attr_unparsed(vpt));
 
-	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_attr_unparsed(vpt), true) != FR_DICT_ATTR_OK) {
-		ssize_t slen;
-		fr_dict_attr_t *unknown_da;
-
-		/*
-		 *	Can't find it under it's regular name.  Try an unknown attribute.
-		 */
-		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
-						     tmpl_attr_unparsed(vpt));
-		if ((slen <= 0) || (tmpl_attr_unparsed(vpt)[slen] != '\0')) {
-			cf_log_perr(ci, "Failed resolving undefined attribute");
-			return false;
-		}
-
-#ifdef __clang_analyzer__
-		/*
-		 *	This can't happen, but clang analyzer
-		 *	can't deal with the call depth.
-		 */
-		if (!unknown_da) return false;
-#endif
-
-		tmpl_da(vpt) = tmpl_unknown(vpt) = unknown_da;
-		vpt->type = TMPL_TYPE_ATTR;
-		return true;
+	if (tmpl_attr_resolve_undefined(vpt, rules) < 0) {
+		cf_log_perr(ci, "Failed resolving undefined attribute");
+		return false;
 	}
 
-#ifdef __clang_analyzer__
-	/*
-	 *	This can't happen, but clang analyzer
-	 *	can't deal with the call depth.
-	 */
-	if (!da) return false;
-#endif
-
-	tmpl_da(vpt) = da;
-	vpt->type = TMPL_TYPE_ATTR;
 	return true;
 }
 
@@ -1149,7 +1115,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (tmpl_num(map->lhs) == NUM_ANY) tmpl_num(map->lhs) = NUM_ALL;
+		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
 		break;
 
 	default:
@@ -1162,7 +1128,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (tmpl_num(map->rhs) == NUM_ANY) tmpl_num(map->rhs) = NUM_ALL;
+		tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
 		break;
 
 	default:
@@ -1305,16 +1271,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	of the RHS.
 		 */
 		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
-			fr_dict_attr_t const *da;
-
-			da = fr_dict_attr_by_type(tmpl_da(map->lhs), tmpl_value_type(map->rhs));
-			if (!da) {
-				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(map->rhs),
-						   "<INVALID>"), tmpl_da(map->lhs)->name);
-				return -1;
-			}
-			tmpl_da(map->lhs) = da;
+			if (tmpl_attr_abstract_to_concrete(map->lhs, tmpl_value_type(map->rhs)) < 0) return -1;
 		}
 	} /* else we can't precompile the data */
 
@@ -1365,15 +1322,12 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
 	 */
-	if (tmpl_num(map->lhs) == NUM_ANY) tmpl_num(map->lhs) = NUM_ALL;
+	if (tmpl_is_attr(map->lhs)) tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
 
 	/*
 	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
 	 */
-	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
-	    (tmpl_num(map->rhs) == NUM_ANY)) {
-		tmpl_num(map->rhs) = NUM_ALL;
-	}
+	if (tmpl_is_attr(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
 
 	/*
 	 *	Values used by unary operators should be literal ANY
@@ -1435,16 +1389,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 		 *	of the RHS.
 		 */
 		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
-			fr_dict_attr_t const *da;
-
-			da = fr_dict_attr_by_type(tmpl_da(map->lhs), tmpl_value_type(map->rhs));
-			if (!da) {
-				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(map->rhs),
-						   "<INVALID>"), tmpl_da(map->lhs)->name);
-				return -1;
-			}
-			tmpl_da(map->lhs) = da;
+			if (tmpl_attr_abstract_to_concrete(map->lhs, tmpl_value_type(map->rhs)) < 0) return -1;
 		}
 	} /* else we can't precompile the data */
 
@@ -2499,7 +2444,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	the attribute. In a perfect consistent world, users would do
 	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
 	 */
-	tmpl_num(vpt) = NUM_ALL;
+	tmpl_attr_rewrite_leaf_num(vpt, NUM_ANY, NUM_ALL);
 
 	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH);
 	if (!c) {
