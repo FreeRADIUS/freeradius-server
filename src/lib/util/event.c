@@ -2192,13 +2192,13 @@ static const char *decade_names[18] = {
 /** Print out information about the number of events in the event loop
  *
  */
-void fr_event_report(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	fr_heap_iter_t iter;
-	fr_event_timer_t const *ev;
-	int i;
-	fr_time_t now;
-	size_t array[18] = { 0 };
+	fr_heap_iter_t		iter;
+	fr_event_timer_t const	*ev;
+	int			i;
+	fr_time_t		now;
+	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
 
 	EVENT_DEBUG("Event list %p", el);
 	EVENT_DEBUG("   fd events        : %u", fr_event_list_num_fds(el));
@@ -2210,23 +2210,22 @@ void fr_event_report(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 	/*
 	 *	Show which events are due, and when.
 	 */
-	now = fr_time();
 	for (ev = fr_heap_iter_init(el->times, &iter);
 	     ev != NULL;
 	     ev = fr_heap_iter_next(el->times, &iter)) {
 		fr_time_delta_t diff = when - now;
 
-		for (i = 0; i < 18; i++) {
+		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
 			if (diff <= decades[i]) {
 				array[i]++;
 				goto next;
 			}
 		}
-		array[17]++;
+		array[NUM_ELEMENTS(decades) - 1]++;
 	next:
 	}
 
-	for (i = 0; i < 17; i++) {
+	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
 		if (!array[i]) continue;
 
 		EVENT_DEBUG("   %5s: %zu", decade_name[i], array[i]);
