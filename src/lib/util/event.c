@@ -43,6 +43,7 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 #ifdef NDEBUG
 /*
@@ -64,7 +65,7 @@ DIAG_ON(unused-macros)
 #endif
 
 #ifdef WITH_EVENT_DEBUG
-#  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");
 #  ifndef EVENT_REPORT_FREQ
 #    define EVENT_REPORT_FREQ	5
 #  endif
@@ -2181,10 +2182,10 @@ static const fr_time_delta_t decades[18] = {
 };
 
 static const char *decade_names[18] = {
-	"ns", "10ns", "100ns",
-	"us", "10us", "100us",
-	"ms", "10ms", "100ms",
-	"s", "10s", "100s",
+	"1ns", "10ns", "100ns",
+	"1us", "10us", "100us",
+	"1ms", "10ms", "100ms",
+	"1s", "10s", "100s",
 	"1Ks", "10Ks", "100Ks",
 	"1Ms", "10Ms", "100Ms",	/* 1 year is 300Ms */
 };
@@ -2211,7 +2212,7 @@ static int event_timer_print_location(void *node, UNUSED void *uctx)
 {
 	fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
-	EVENT_DEBUG("                       : %u allocd at %s[%u]", counter->count, counter->file, counter->line);
+	EVENT_DEBUG("                         : %u allocd at %s[%u]", counter->count, counter->file, counter->line);
 	return 0;
 }
 
@@ -2227,11 +2228,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
 	rbtree_t		*locations[NUM_ELEMENTS(decades)];
 	TALLOC_CTX		*tmp_ctx;
-
-	EVENT_DEBUG("Event list %p", el);
-	EVENT_DEBUG("    fd events          : %u", fr_event_list_num_fds(el));
-	EVENT_DEBUG("    events last iter   : %u", el->num_fd_events);
-	EVENT_DEBUG("    num timer events   : %u", fr_event_list_num_timers(el));
+	static pthread_mutex_t	print_lock = PTHREAD_MUTEX_INITIALIZER;
 
 	tmp_ctx = talloc_init_const("temporary stats");
 	if (!tmp_ctx) {
@@ -2278,13 +2275,26 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 		}
 	}
 
+	pthread_mutex_lock(&print_lock);
+	EVENT_DEBUG("Event list %p", el);
+	EVENT_DEBUG("    fd events            : %u", fr_event_list_num_fds(el));
+	EVENT_DEBUG("    events last iter     : %u", el->num_fd_events);
+	EVENT_DEBUG("    num timer events     : %u", fr_event_list_num_timers(el));
+
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
 		if (!array[i]) continue;
 
-		EVENT_DEBUG("    events in %c= %5s : %zu", i == NUM_ELEMENTS(decades) - 1 ? '>' : '<',
-			    decade_names[i], array[i]);
+		if (i == 0) {
+			EVENT_DEBUG("    events <= %5s      : %zu", decade_names[i], array[i]);
+		} else if (i == (NUM_ELEMENTS(decades) - 1)) {
+			EVENT_DEBUG("    events > %5s       : %zu", decade_names[i - 1], array[i]);
+		} else {
+			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
+		}
+
 		rbtree_walk(locations[i], RBTREE_IN_ORDER, event_timer_print_location, NULL);
 	}
+	pthread_mutex_unlock(&print_lock);
 
 	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
 	talloc_free(tmp_ctx);
