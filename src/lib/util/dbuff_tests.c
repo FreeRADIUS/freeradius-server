@@ -46,16 +46,16 @@ static void test_dbuff_max(void)
 {
 	uint8_t const	in[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 	fr_dbuff_t	dbuff;
-	fr_dbuff_t	*max_dbuff;
+	fr_dbuff_t	max_dbuff;
 
 	TEST_CASE("Confirm max constrains available space");
 	fr_dbuff_init(&dbuff, in, sizeof(in));
 
 	max_dbuff = FR_DBUFF_MAX(&dbuff, 4);
-	TEST_CHECK(fr_dbuff_remaining(max_dbuff) == 4);
+	TEST_CHECK(fr_dbuff_remaining(&max_dbuff) == 4);
 
 	max_dbuff = FR_DBUFF_MAX(&dbuff, 2 * sizeof(in));
-	TEST_CHECK(fr_dbuff_remaining(max_dbuff) == sizeof(in));
+	TEST_CHECK(fr_dbuff_remaining(&max_dbuff) == sizeof(in));
 }
 
 
