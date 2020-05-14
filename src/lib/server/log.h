@@ -625,3 +625,23 @@ do {\
 #define HEXDUMP2(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)
 #define HEXDUMP3(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_3, _data, _len, _fmt, ## __VA_ARGS__)
 #define HEXDUMP4(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_4, _data, _len, _fmt, ## __VA_ARGS__)
+
+/** Pretty print binary data as hex, with output as a wrapped block with addresses and a marker
+ *
+ * @param[in] _lvl	Debug level at which we start emitting the log message.
+ * @param[in] _data	Binary data to print.
+ * @param[in] _len	Length of binary data.
+ * @param[in] _slen	Where the marker should be placed.
+ * @param[in] _error	to print after the marker.
+ * @param[in] _fmt	Message to prefix hex output with.
+ * @param[in] ...	Additional arguments to print.
+ */
+#define _HEX_MARKER(_lvl, _data, _len, _slen, _error, _fmt, ...) \
+	if (debug_enabled(L_DBG, _lvl)) do { \
+		fr_log_hex_marker(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__); \
+	} while (0)
+
+#define HEX_MARKER1(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_1, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER2(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_2, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER3(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_3, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER4(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_4, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)

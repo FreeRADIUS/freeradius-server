@@ -726,7 +726,7 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 	/*
 	 *	If we're running in foreground mode, save STDIN /
 	 *	STDERR as higher FDs, which won't get used by anyone
-	 *	else.  When we fork/exec a program, it's STD FDs will
+	 *	else.  When we fork/exec a program, its STD FDs will
 	 *	get set to pipes.  We later set STDOUT / STDERR to
 	 *	/dev/null, so that any library trying to write to them
 	 *	doesn't screw anything up.
