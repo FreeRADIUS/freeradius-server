@@ -2171,17 +2171,66 @@ bool fr_event_list_empty(fr_event_list_t *el)
 }
 
 #ifdef WITH_EVENT_DEBUG
+static const fr_time_delta_t decades[18] = {
+	1, 10, 100,
+	1000, 10000, 100000,
+	1000000, 10000000, 100000000,
+	1000000000, 10000000000, 100000000000,
+	1000000000000, 10000000000000, 100000000000000,
+	1000000000000000, 10000000000000000, 100000000000000000,
+};
+
+static const char *decade_names[18] = {
+	"ns", "10ns", "100ns",
+	"us", "10us", "100us",
+	"ms", "10ms", "100ms",
+	"s", "10s", "100s",
+	"1Ks", "10Ks", "100Ks",
+	"1Ms", "10Ms", "100Ms",	/* 1 year is 300Ms */
+};
+
 /** Print out information about the number of events in the event loop
  *
  */
 void fr_event_report(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
+	fr_heap_iter_t iter;
+	fr_event_timer_t const *ev;
+	int i;
+	fr_time_t now;
+	size_t array[18] = { 0 };
+
 	EVENT_DEBUG("Event list %p", el);
 	EVENT_DEBUG("   fd events        : %u", fr_event_list_num_fds(el));
 	EVENT_DEBUG("   events last iter : %u", el->num_fd_events);
 	EVENT_DEBUG("   num timer events : %u", fr_event_list_num_timers(el));
 
 	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
+
+	/*
+	 *	Show which events are due, and when.
+	 */
+	now = fr_time();
+	for (ev = fr_heap_iter_init(el->times, &iter);
+	     ev != NULL;
+	     ev = fr_heap_iter_next(el->times, &iter)) {
+		fr_time_delta_t diff = when - now;
+
+		for (i = 0; i < 18; i++) {
+			if (diff <= decades[i]) {
+				array[i]++;
+				goto next;
+			}
+		}
+		array[17]++;
+	next:
+	}
+
+	for (i = 0; i < 17; i++) {
+		if (!array[i]) continue;
+
+		EVENT_DEBUG("   %5s: %zu", decade_name[i], array[i]);
+	}
 }
 
 #ifndef NDEBUG
