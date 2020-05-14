@@ -2118,7 +2118,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		return NULL;
 	}
 
-	el->fds = rbtree_talloc_create(el, fr_event_fd_cmp, fr_event_fd_t, NULL, 0);
+	el->fds = rbtree_talloc_alloc(el, fr_event_fd_cmp, fr_event_fd_t, NULL, 0);
 	if (!el->fds) {
 		fr_strerror_printf("Failed allocating FD tree");
 		goto error;
@@ -2199,13 +2199,14 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	int			i;
 	fr_time_t		now;
 	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
+	rbtree_t		*locations;
 
 	EVENT_DEBUG("Event list %p", el);
 	EVENT_DEBUG("   fd events        : %u", fr_event_list_num_fds(el));
 	EVENT_DEBUG("   events last iter : %u", el->num_fd_events);
 	EVENT_DEBUG("   num timer events : %u", fr_event_list_num_timers(el));
 
-	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
+	rbtree_alloc
 
 	/*
 	 *	Show which events are due, and when.
@@ -2230,6 +2231,8 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 		EVENT_DEBUG("   %5s: %zu", decade_name[i], array[i]);
 	}
+
+	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
 }
 
 #ifndef NDEBUG

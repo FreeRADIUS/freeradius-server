@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	filename_tree = rbtree_talloc_create(NULL, filename_cmp, rc_file_pair_t, NULL, 0);
+	filename_tree = rbtree_talloc_alloc(NULL, filename_cmp, rc_file_pair_t, NULL, 0);
 	if (!filename_tree) {
 	oom:
 		ERROR("Out of memory");

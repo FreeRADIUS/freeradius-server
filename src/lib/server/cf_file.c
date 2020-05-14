@@ -2176,7 +2176,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_item_add(cs, &(cp->item));
 
-	MEM(tree = rbtree_talloc_create(cs, _filename_cmp, cf_file_t, NULL, 0));
+	MEM(tree = rbtree_talloc_alloc(cs, _filename_cmp, cf_file_t, NULL, 0));
 
 	cf_data_add(cs, tree, "filename", false);
 

@@ -60,7 +60,7 @@ struct fr_heap_s {
 
 static void fr_heap_bubble(fr_heap_t *hp, int32_t child);
 
-fr_heap_t *_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset)
+fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset)
 {
 	fr_heap_t *fh;
 
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 		skip = atoi(argv[1]);
 	}
 
-	hp = fr_heap_create(NULL, heap_cmp, offsetof(heap_thing, heap_id));
+	hp = fr_heap_alloc(NULL, heap_cmp, offsetof(heap_thing, heap_id));
 	fr_fatal_assert_msg(hp, "Failed creating heap!");
 
 	for (i = 0; i < ARRAY_SIZE; i++) {

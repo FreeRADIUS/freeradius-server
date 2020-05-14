@@ -319,7 +319,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 
 	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	pl->tree = rbtree_create(pl, packet_entry_cmp, NULL, 0);	/* elements not talloc safe */
+	pl->tree = rbtree_alloc(pl, packet_entry_cmp, NULL, 0);	/* elements not talloc safe */
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;

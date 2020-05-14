@@ -115,7 +115,7 @@ int map_proc_register(void *mod_inst, char const *name,
 	fr_assert(name && name[0]);
 
 	if (!map_proc_root) {
-		map_proc_root = rbtree_talloc_create(NULL, map_proc_cmp, map_proc_t,
+		map_proc_root = rbtree_talloc_alloc(NULL, map_proc_cmp, map_proc_t,
 						     _map_proc_tree_free, RBTREE_FLAG_REPLACE);
 		if (!map_proc_root) {
 			DEBUG("map_proc: Failed to create tree");

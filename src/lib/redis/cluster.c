@@ -2351,7 +2351,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
-	cluster->used_nodes = rbtree_create(cluster, _cluster_node_cmp, NULL, 0);
+	cluster->used_nodes = rbtree_alloc(cluster, _cluster_node_cmp, NULL, 0);
 	if (!cluster->used_nodes) goto oom;
 
 	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);

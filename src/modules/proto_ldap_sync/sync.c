@@ -992,7 +992,7 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	 *	these are specific to the connection.
 	 */
 	if (!conn->uctx) {
-		MEM(tree = rbtree_talloc_create(conn, _sync_cmp, sync_state_t, NULL, RBTREE_FLAG_NONE));
+		MEM(tree = rbtree_talloc_alloc(conn, _sync_cmp, sync_state_t, NULL, RBTREE_FLAG_NONE));
 		conn->uctx = tree;
 	} else {
 		tree = talloc_get_type_abort(conn->uctx, rbtree_t);

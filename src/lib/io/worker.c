@@ -1143,7 +1143,7 @@ nomem:
 		goto fail;
 	}
 
-	worker->dedup = rbtree_talloc_create(worker, worker_dedup_cmp, REQUEST, NULL, RBTREE_FLAG_NONE);
+	worker->dedup = rbtree_talloc_alloc(worker, worker_dedup_cmp, REQUEST, NULL, RBTREE_FLAG_NONE);
 	if (!worker->dedup) {
 		fr_strerror_printf("Failed creating de_dup tree");
 		goto fail;

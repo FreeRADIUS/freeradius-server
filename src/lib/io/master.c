@@ -499,7 +499,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
+		MEM(connection->client->table = rbtree_talloc_alloc(client, track_cmp, fr_io_track_t,
 								     NULL, RBTREE_FLAG_NONE));
 	}
 
@@ -523,7 +523,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	Create a heap for packets which are pending for this
 	 *	client.
 	 */
-	MEM(connection->client->pending = fr_heap_create(connection->client, pending_packet_cmp,
+	MEM(connection->client->pending = fr_heap_alloc(connection->client, pending_packet_cmp,
 							 fr_io_pending_packet_t, heap_id));
 
 	/*
@@ -1393,7 +1393,7 @@ do_read:
 		 *	Create the pending heap for pending clients.
 		 */
 		if (state == PR_CLIENT_PENDING) {
-			MEM(client->pending = fr_heap_create(client, pending_packet_cmp,
+			MEM(client->pending = fr_heap_alloc(client, pending_packet_cmp,
 							     fr_io_pending_packet_t, heap_id));
 		}
 
@@ -1402,7 +1402,7 @@ do_read:
 		 */
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
-			MEM(client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
+			MEM(client->table = rbtree_talloc_alloc(client, track_cmp, fr_io_track_t,
 								 NULL, RBTREE_FLAG_NONE));
 		}
 
@@ -2366,7 +2366,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *
 	 */
 	if (!thread->pending_clients) {
-		MEM(thread->pending_clients = fr_heap_create(thread, pending_client_cmp,
+		MEM(thread->pending_clients = fr_heap_alloc(thread, pending_client_cmp,
 							   fr_io_client_t, pending_id));
 	}
 
@@ -2821,7 +2821,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread));
-	MEM(thread->alive_clients = fr_heap_create(thread, alive_client_cmp,
+	MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
 						   fr_io_client_t, alive_id));
 
 	/*

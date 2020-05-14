@@ -991,7 +991,7 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	memcpy(&s->listen, data, sizeof(s->listen));
 	s->number = nr->num_sockets++;
 
-	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
+	MEM(s->waiting = fr_heap_alloc(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -1066,7 +1066,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	memcpy(&s->listen, data, sizeof(s->listen));
 	s->number = nr->num_sockets++;
 
-	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
+	MEM(s->waiting = fr_heap_alloc(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -1626,19 +1626,19 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_talloc_create(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets = rbtree_talloc_alloc(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
 		fr_strerror_printf_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
-	nr->sockets_by_num = rbtree_talloc_create(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets_by_num = rbtree_talloc_alloc(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets_by_num) {
 		fr_strerror_printf_push("Failed creating number tree for sockets");
 		goto fail2;
 	}
 
-	nr->replies = fr_heap_create(nr, reply_cmp, fr_channel_data_t, channel.heap_id);
+	nr->replies = fr_heap_alloc(nr, reply_cmp, fr_channel_data_t, channel.heap_id);
 	if (!nr->replies) {
 		fr_strerror_printf_push("Failed creating heap for replies");
 		goto fail2;

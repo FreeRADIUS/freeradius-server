@@ -378,7 +378,7 @@ int sigtran_sccp_global_init(void)
 		return 0;
 	}
 
-	txn_tree = rbtree_talloc_create(NULL, sigtran_txn_cmp, sigtran_transaction_t, false, 0);
+	txn_tree = rbtree_talloc_alloc(NULL, sigtran_txn_cmp, sigtran_transaction_t, false, 0);
 	if (!txn_tree) return -1;
 
 	txn_tree_inst++;

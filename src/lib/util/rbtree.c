@@ -91,7 +91,7 @@ static void free_walker(rbtree_t *tree, rbnode_t *x)
 	talloc_free(x);
 }
 
-/** Wrapper function for rbtree_create to allow talloc node data to be freed
+/** Wrapper function for rbtree_alloc to allow talloc node data to be freed
  *
  * @param[in] data	Talloced data to free.
  */
@@ -152,7 +152,7 @@ static int _tree_free(rbtree_t *tree)
  *
  * @note Due to the node memory being allocated from a different pool to the main
  */
-rbtree_t *_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
+rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx, rb_comparator_t compare,
 			 char const *type, rb_free_t node_free, int flags)
 {
 	rbtree_t *tree;

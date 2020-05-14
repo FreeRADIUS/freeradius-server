@@ -51,8 +51,8 @@ typedef struct fr_heap_s fr_heap_t;
  * @param[in] _type		Of elements.
  * @param[in] _field		to store heap indexes in.
  */
-#define fr_heap_create(_ctx, _cmp, _type, _field) \
-	_fr_heap_create(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field))
+#define fr_heap_alloc(_ctx, _cmp, _type, _field) \
+	_fr_heap_alloc(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field))
 
 /** Creates a heap that verifies elements are of a specific talloc type
  *
@@ -65,9 +65,9 @@ typedef struct fr_heap_s fr_heap_t;
  *	- NULL on error.
  */
 #define fr_heap_talloc_create(_ctx, _cmp, _talloc_type, _field) \
-	_fr_heap_create(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
+	_fr_heap_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
 
-fr_heap_t	*_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
+fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
 
 int		fr_heap_insert(fr_heap_t *hp, void *data);
 int		fr_heap_extract(fr_heap_t *hp, void *data);

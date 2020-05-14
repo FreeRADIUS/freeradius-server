@@ -68,8 +68,8 @@ typedef void (*rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_talloc_create(_ctx, _cmp, _talloc_type, _node_free, _flags) \
-		_rbtree_create(_ctx, _cmp, #_talloc_type, _node_free, _flags)
+#define		rbtree_talloc_alloc(_ctx, _cmp, _talloc_type, _node_free, _flags) \
+		_rbtree_alloc(_ctx, _cmp, #_talloc_type, _node_free, _flags)
 
 /** Creates a red black tree
  *
@@ -84,11 +84,11 @@ typedef void (*rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_create(_ctx, _cmp, _node_free, _flags) \
-		_rbtree_create(_ctx, _cmp, NULL, _node_free, _flags)
+#define		rbtree_alloc(_ctx, _cmp, _node_free, _flags) \
+		_rbtree_alloc(_ctx, _cmp, NULL, _node_free, _flags)
 
-rbtree_t	*_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
-				char const *type, rb_free_t node_free, int flags);
+rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, rb_comparator_t compare,
+			       char const *type, rb_free_t node_free, int flags);
 
 void		rbtree_node_talloc_free(void *data);
 

@@ -1172,8 +1172,8 @@ void modules_free(void)
 
 int modules_init(void)
 {
-	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_name_tree = rbtree_alloc(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_data_tree = rbtree_alloc(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;

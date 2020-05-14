@@ -653,14 +653,14 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		return NULL;
 	}
 
-	dl_module_loader->inst_data_tree = rbtree_talloc_create(dl_module_loader,
+	dl_module_loader->inst_data_tree = rbtree_talloc_alloc(dl_module_loader,
 							        dl_module_inst_data_cmp, dl_module_inst_t, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->inst_data_tree");
 		goto error;
 	}
 
-	dl_module_loader->module_tree = rbtree_talloc_create(dl_module_loader,
+	dl_module_loader->module_tree = rbtree_talloc_alloc(dl_module_loader,
 							     dl_module_cmp, dl_module_t, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->module_tree");

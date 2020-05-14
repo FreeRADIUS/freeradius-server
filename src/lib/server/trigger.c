@@ -155,7 +155,7 @@ int trigger_exec_init(CONF_SECTION const *cs)
 		return 0;
 	}
 
-	MEM(trigger_last_fired_tree = rbtree_talloc_create(talloc_null_ctx(),
+	MEM(trigger_last_fired_tree = rbtree_talloc_alloc(talloc_null_ctx(),
 							   _trigger_last_fired_cmp, trigger_last_fired_t,
 							   _trigger_last_fired_free, 0));
 

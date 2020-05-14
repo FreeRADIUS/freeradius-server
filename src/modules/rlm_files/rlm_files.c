@@ -191,7 +191,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		entry = entry->next;
 	}
 
-	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	tree = rbtree_alloc(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;

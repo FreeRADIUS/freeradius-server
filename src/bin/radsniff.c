@@ -2616,7 +2616,7 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		link_tree = rbtree_talloc_create(conf, (rbcmp) rs_rtx_cmp, rs_request_t, _unmark_link, 0);
+		link_tree = rbtree_talloc_alloc(conf, (rbcmp) rs_rtx_cmp, rs_request_t, _unmark_link, 0);
 		if (!link_tree) {
 			ERROR("Failed creating RTX tree");
 			goto finish;
@@ -2674,7 +2674,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_talloc_create(conf, (rbcmp) rs_packet_cmp, rs_request_t, _unmark_request, 0);
+	request_tree = rbtree_talloc_alloc(conf, (rbcmp) rs_packet_cmp, rs_request_t, _unmark_request, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;

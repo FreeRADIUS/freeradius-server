@@ -113,7 +113,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = rbtree_talloc_create(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
+	driver->cache = rbtree_talloc_alloc(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;

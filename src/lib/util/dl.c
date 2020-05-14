@@ -722,7 +722,7 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bo
 		return NULL;
 	}
 
-	dl_loader->tree = rbtree_talloc_create(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
+	dl_loader->tree = rbtree_talloc_alloc(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl_loader->tree) {
 		fr_strerror_printf("Failed initialising dl->tree");
 	error:

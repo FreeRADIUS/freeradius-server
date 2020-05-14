@@ -451,7 +451,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
 	 */
-	inst->session_tree = rbtree_talloc_create(NULL, securid_session_cmp, SECURID_SESSION NULL, 0);
+	inst->session_tree = rbtree_talloc_alloc(NULL, securid_session_cmp, SECURID_SESSION NULL, 0);
 	if (!inst->session_tree) {
 		ERROR("Cannot initialize session tree");
 		return -1;

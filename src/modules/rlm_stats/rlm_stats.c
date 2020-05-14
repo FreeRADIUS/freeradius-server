@@ -343,8 +343,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
-	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
+	t->src = rbtree_talloc_alloc(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
+	t->dst = rbtree_talloc_alloc(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);

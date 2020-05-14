@@ -858,7 +858,7 @@ int virtual_namespace_register(char const *namespace,
 		 *	so it shouldn't be parented from
 		 *	virtual_server_root.
 		 */
-		MEM(vns_tree = rbtree_talloc_create(NULL,
+		MEM(vns_tree = rbtree_talloc_alloc(NULL,
 						    _virtual_namespace_cmp, fr_virtual_namespace_t,
 						    _virtual_namespace_free, RBTREE_FLAG_REPLACE));
 
@@ -965,8 +965,8 @@ int virtual_servers_init(CONF_SECTION *config)
 		return -1;
 	}
 
-	MEM(listen_addr_root = rbtree_create(NULL, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(server_section_name_tree = rbtree_create(NULL, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(listen_addr_root = rbtree_alloc(NULL, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(server_section_name_tree = rbtree_alloc(NULL, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
 
 	return 0;
 }
