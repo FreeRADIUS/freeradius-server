@@ -50,7 +50,7 @@ fr_table_num_sorted_t const tmpl_type_table[] = {
 	{ "regex",		TMPL_TYPE_REGEX			},
 
 	{ "literal",		TMPL_TYPE_UNPARSED 		},
-	{ "attr-undefined",	TMPL_TYPE_ATTR_UNPARSED		},
+	{ "attr-unparsed",	TMPL_TYPE_ATTR_UNPARSED		},
 	{ "xlat-unparsed",	TMPL_TYPE_XLAT_UNPARSED		},
 	{ "regex-unparsed",	TMPL_TYPE_REGEX_UNPARSED	}
 };
