@@ -593,7 +593,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  *	- NULL if we can't.
  *	- Known attribute if we can.
  */
-fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da)
+fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
 	INTERNAL_IF_NULL(dict, NULL);
 

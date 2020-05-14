@@ -284,7 +284,7 @@ ssize_t			fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent, char const *name);
 
-fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da);
+fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t const *da);
 /** @} */
 
 /** @name Attribute lineage
