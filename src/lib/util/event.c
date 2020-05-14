@@ -2311,9 +2311,10 @@ void fr_event_timer_dump(fr_event_list_t *el)
 
 	EVENT_DEBUG("Time is now %"PRId64"", now);
 
-	for (ev = talloc_get_type_abort(fr_heap_iter_init(el->times, &iter), fr_event_timer_t);
+	for (ev = fr_heap_iter_init(el->times, &iter);
 	     ev;
-	     ev = talloc_get_type_abort(fr_heap_iter_next(el->times, &iter), fr_event_timer_t)) {
+	     ev = fr_heap_iter_next(el->times, &iter)) {
+		(void)talloc_get_type_abort(ev, fr_event_timer_t);
 		EVENT_DEBUG("%s[%u]: %p time=%" PRId64 " (%c), callback=%p",
 			    ev->file, ev->line, ev, ev->when, now > ev->when ? '<' : '>', ev->callback);
 	}
