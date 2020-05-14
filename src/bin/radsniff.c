@@ -2997,13 +2997,13 @@ finish:
 
 	if (conf->daemonize) unlink(conf->pidfile);
 
-	fr_dict_autofree(radsniff_dict);
-	fr_radius_free();
-
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
 	talloc_free(conf);
+
+	fr_dict_autofree(radsniff_dict);
+	fr_radius_free();
 
 	return ret;
 }
