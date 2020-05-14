@@ -1885,11 +1885,10 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr));
+					   sizeof(dst->vb_ip.addr.v4.s_addr), src->datum.length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ip.addr.v4.s_addr));
@@ -1988,11 +1987,10 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1);
+					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->datum.length);
 			return -1;
 		}
 		dst->vb_ip.prefix = src->vb_octets[0];
@@ -2102,11 +2100,10 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr));
+					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->datum.length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
@@ -2186,11 +2183,10 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2);
+					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->datum.length);
 			return -1;
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
