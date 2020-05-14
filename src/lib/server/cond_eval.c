@@ -365,7 +365,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 
 	int			rcode;
 
-	fr_value_box_t		*rhs = NULL;
+	fr_value_box_t const	*rhs = NULL;
 
 	fr_dict_attr_t const	*cast = NULL;
 	fr_type_t		cast_type = FR_TYPE_INVALID;
