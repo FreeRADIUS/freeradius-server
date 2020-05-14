@@ -196,11 +196,6 @@ typedef struct {
 #define ATTR_TAG_MATCH(_a, _t) (!_a->da->flags.has_tag || TAG_EQ(_t, _a->tag))
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da) && (!_x->da->flags.has_tag || TAG_EQ(_x->tag, _y->tag)))
 
-#define NUM_ANY			INT_MIN
-#define NUM_ALL			(INT_MIN + 1)
-#define NUM_COUNT		(INT_MIN + 2)
-#define NUM_LAST		(INT_MIN + 3)
-
 #  ifdef WITH_VERIFY_PTR
 void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
 void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, VALUE_PAIR *vps);

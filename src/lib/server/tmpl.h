@@ -177,6 +177,10 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/regex.h>
 
+#define NUM_ANY			INT16_MIN
+#define NUM_ALL			(INT16_MIN + 1)
+#define NUM_COUNT		(INT16_MIN + 2)
+#define NUM_LAST		(INT16_MIN + 3)
 /** A source or sink of value data.
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
