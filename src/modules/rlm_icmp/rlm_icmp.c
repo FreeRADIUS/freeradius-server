@@ -106,7 +106,7 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 	p = data;
 	end = data + data_len;
 	while (p < end) {
-		sum += ((p[0] << 8) | p[1]); /* type / code */
+		sum += fr_net_to_uint16(p);	 /* type / code */
 		p += 2;
 	}
 
@@ -238,13 +238,12 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 	RDEBUG("Sending ICMP request to %pV", echo->ip);
 
-	icmp.type = thread->t->request_type;
-	icmp.code = 0;
-	icmp.checksum = 0;
-	icmp.ident = thread->t->ident;
-	icmp.sequence = 0;
-	icmp.data = thread->t->data;
-	icmp.counter = echo->counter;
+	icmp = (icmp_header_t) {
+		.type = thread->t->request_type,
+		.ident = thread->t->ident,
+		.data = thread->t->data,
+		.counter = echo->counter
+	};
 
 	(void) fr_ipaddr_to_sockaddr(&echo->ip->vb_ip, 0, &dst, &salen);
 
