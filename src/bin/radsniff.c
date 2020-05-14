@@ -1299,7 +1299,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	It seems many probes add trailing garbage to the end
 		 *	of each capture frame.  This has been observed with
-		 *	the F5 and Netscout.
+		 *	F5 load balancers and Netscout.
 		 *
 		 *	Leaving the code here in case it's ever needed for
 		 *	debugging.
@@ -1823,15 +1823,29 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
-	static uint64_t	count = 0;	/* Packets seen */
-	rs_event_t	*event = ctx;
-	pcap_t		*handle = event->in->handle;
+	static uint64_t		count = 0;	/* Packets seen */
+	static fr_time_t	last_sync = 0;
+	fr_time_t		now_real;
+	rs_event_t		*event = ctx;
+	pcap_t			*handle = event->in->handle;
 
-	int		i;
-	int		ret;
-	int		total = 0;
-	const		uint8_t *data;
-	struct		pcap_pkthdr *header;
+	int			i;
+	int			ret;
+	int			total = 0;
+	const			uint8_t *data;
+	struct			pcap_pkthdr *header;
+
+	/*
+	 *	Because the event loop might be running on synthetic
+	 *	pcap file time, we need to implement our own time
+	 *	tracking here, and run the monotonic/wallclock sync
+	 *	event ourselves.
+	 */
+	now_real = fr_time();
+	if ((now_real - last_sync) > fr_time_delta_from_sec(1)) {
+		fr_time_sync();
+		last_sync = now_real;
+	}
 
 	/*
 	 *	Consume entire capture, interleaving not currently possible
@@ -1902,14 +1916,14 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	}
 }
 
-static int  _rs_event_status(UNUSED void *ctx, fr_time_t wake_t)
+static int  _rs_event_status(UNUSED void *ctx, fr_time_delta_t wake_t)
 {
 	struct timeval wake;
 
-	wake = fr_time_to_timeval(wake_t);
+	wake = fr_time_delta_to_timeval(wake_t);
 
 	if ((wake.tv_sec != 0) || (wake.tv_usec >= 100000)) {
-		DEBUG2("Waking up in %d.%01u seconds.", (int) wake.tv_sec, (unsigned int) wake.tv_usec / 100000);
+		DEBUG2("Waking up in %d.%01u seconds", (int) wake.tv_sec, (unsigned int) wake.tv_usec / 100000);
 
 		if (RIDEBUG_ENABLED()) {
 			rs_time_print(timestr, sizeof(timestr), &wake);
@@ -2881,6 +2895,11 @@ int main(int argc, char *argv[])
 			goto finish;
 		}
 	}
+
+	/*
+	 *	Get the offset between server time and wallclock time
+	 */
+	fr_time_start();
 
 	/*
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
