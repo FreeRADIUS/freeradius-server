@@ -412,6 +412,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 */
 			if (fr_value_box_copy(n_mod->rhs, tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
 			fr_cursor_append(&to, n_mod);
+
+			MAP_VERIFY(n_mod);
 		} while ((vp = fr_cursor_next(&from)));
 
 		goto finish;
@@ -750,7 +752,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	talloc_free(head);
 
 finish:
-	if (n) *out = n;
+	if (n) {
+		MAP_VERIFY(n->map);
+		*out = n;
+	}
 
 	/*
 	 *	Reparent ephemeral LHS to the vp_list_mod_t.

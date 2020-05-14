@@ -440,6 +440,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			default:
 				fr_assert(0);
 			}
+			MAP_VERIFY(c_map);
 			*last = c_map;
 			last = &(*last)->next;
 		}
