@@ -2206,8 +2206,6 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	EVENT_DEBUG("   events last iter : %u", el->num_fd_events);
 	EVENT_DEBUG("   num timer events : %u", fr_event_list_num_timers(el));
 
-	rbtree_alloc
-
 	/*
 	 *	Show which events are due, and when.
 	 */
