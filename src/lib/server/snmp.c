@@ -778,7 +778,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 						    map_p->child, snmp_ctx, snmp_op);
 			}
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case FR_FREERADIUS_SNMP_OPERATION_VALUE_GET:
 	{
@@ -975,7 +975,7 @@ int fr_snmp_process(REQUEST *request)
 			case FR_TYPE_STRING:
 				talloc_free(vp->data.datum.ptr);
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 			default:
 				memset(&vp->data, 0, sizeof(vp->data));
 			}

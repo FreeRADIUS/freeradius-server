@@ -76,30 +76,30 @@ static int64_t fr_pow(int64_t base, int64_t exp)
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 5:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 4:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 3:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 2:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 1:
 		if (exp & 1) result *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	default:
 		return result;
 	}
@@ -328,7 +328,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 	default:
 	case TOKEN_SUBTRACT:
 		rhs = -rhs;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case TOKEN_ADD:
 		if ((rhs > 0) && (lhs > (int64_t) INT64_MAX - rhs)) {

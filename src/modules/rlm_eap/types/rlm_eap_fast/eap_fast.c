@@ -998,7 +998,8 @@ FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 		}
 
 		t->stage = EAP_FAST_COMPLETE;
-		/* fallthrough */
+		FALL_THROUGH;
+
 	case EAP_FAST_COMPLETE:
 		/*
 		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning

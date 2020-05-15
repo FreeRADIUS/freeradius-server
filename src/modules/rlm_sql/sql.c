@@ -174,7 +174,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		 */
 		case T_BACK_QUOTED_STRING:
 			do_xlat = 1;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Take the unquoted string.
@@ -399,7 +399,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Driver suggested using an alternative query

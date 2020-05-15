@@ -322,7 +322,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		case FR_TYPE_TLV:
 			fr_pair_to_unknown(vp);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_TYPE_OCTETS:
 			fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);

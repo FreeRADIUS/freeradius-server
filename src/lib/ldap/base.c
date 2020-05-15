@@ -331,8 +331,8 @@ process_error:
 	case LDAP_OPERATIONS_ERROR:
 		fr_strerror_printf("Please set 'chase_referrals=yes' and 'rebind=yes'. "
 				   "See the ldap module configuration for details");
+		FALL_THROUGH;
 
-		/* FALL-THROUGH */
 	default:
 		status = LDAP_PROC_ERROR;
 
@@ -826,9 +826,8 @@ fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
 		break;
 
 	case LDAP_PROC_BAD_CONN:
-		break;
+		FALL_THROUGH;
 
-		/* FALL-THROUGH */
 	default:
 		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
 

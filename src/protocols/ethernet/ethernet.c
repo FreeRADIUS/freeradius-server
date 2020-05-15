@@ -103,7 +103,7 @@ static ssize_t fr_ethernet_decode(void *proto_ctx, uint8_t const *data, size_t d
 		ether_ctx->svlan_dei = VLAN_DEI_UNPACK(vlan_hdr);
 		ether_ctx->svlan_vid = VLAN_VID_UNPACK(vlan_hdr);
 		vlan_hdr++;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	CVLAN
@@ -114,7 +114,7 @@ static ssize_t fr_ethernet_decode(void *proto_ctx, uint8_t const *data, size_t d
 		ether_ctx->cvlan_dei = VLAN_DEI_UNPACK(vlan_hdr);
 		ether_ctx->cvlan_vid = VLAN_VID_UNPACK(vlan_hdr);
 		vlan_hdr++;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	Naked

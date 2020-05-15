@@ -1542,6 +1542,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					return;
 				}
 			}
+				break;
+
 			default:
 				break;
 			}

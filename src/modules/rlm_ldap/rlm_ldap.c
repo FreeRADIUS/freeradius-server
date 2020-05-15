@@ -665,6 +665,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 		case RLM_MODULE_OK:
 			found = true;
+			FALL_THROUGH;
 
 		default:
 			goto finish;
@@ -683,6 +684,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 		case RLM_MODULE_OK:
 			found = true;
+			FALL_THROUGH;
 
 		default:
 			goto finish;
@@ -1110,7 +1112,7 @@ skip_edir:
 
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		default:
 			break;
 		}

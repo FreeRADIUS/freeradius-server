@@ -111,6 +111,15 @@ extern "C" {
 #define NEVER_RETURNS		CC_HINT(noreturn)
 #define UNUSED			CC_HINT(unused)
 
+/** clang 10 doesn't recognised the FALL-THROUGH comment anymore
+ *
+ */
+#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 7)
+#  define FALL_THROUGH		CC_HINT(fallthrough)
+#else
+#  define FALL_THROUGH		((void)0)
+#endif
+
 #ifndef NDEBUG
 #  define NDEBUG_UNUSED
 #else

@@ -2835,7 +2835,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 				*prev = curr;
 				return NULL;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case NUM_ALL:
 		case NUM_COUNT:				/* Iterator is called multiple time to get the count */
@@ -2880,7 +2880,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		switch (tmpl_num(vpt)) {
 		case NUM_ANY:				/* Bare attribute ref */
 			if (*prev) goto null_result;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case NUM_COUNT:				/* Iterate over the list, one attribute at a time */
 		case NUM_ALL:

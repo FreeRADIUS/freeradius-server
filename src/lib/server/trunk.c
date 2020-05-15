@@ -809,7 +809,7 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	case FR_TRUNK_CONN_FULL:
 		trunk_connection_auto_unfull(tconn);		/* Check if we can switch back to active */
 		if (tconn->pub.state == FR_TRUNK_CONN_FULL) break;	/* Only fallthrough if conn is now active */
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case FR_TRUNK_CONN_ACTIVE:
 		CONN_REORDER(tconn);
@@ -2688,11 +2688,8 @@ static void trunk_connection_event_update(fr_trunk_connection_t *tconn)
 							 FR_TRUNK_REQUEST_STATE_CANCEL_SENT : 0)) > 0) {
 			events |= FR_TRUNK_CONN_EVENT_READ;
 		}
+		break;
 
-	/*
-	 *	If the connection is no longer in one of the above
-	 *	states we need to de-register all the IO handlers.
-	 */
 	default:
 		break;
 	}

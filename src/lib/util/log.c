@@ -304,7 +304,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	case L_TIMESTAMP_AUTO:
 		if (log->dst == L_DST_SYSLOG) break;
 		if ((log->dst != L_DST_FILES) && (fr_debug_lvl <= L_DBG_LVL_2)) break;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case L_TIMESTAMP_ON:
 	{

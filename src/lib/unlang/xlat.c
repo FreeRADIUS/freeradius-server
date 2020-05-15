@@ -338,7 +338,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(0);
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case XLAT_ACTION_FAIL:
 		*presult = RLM_MODULE_FAIL;

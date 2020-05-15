@@ -1310,6 +1310,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 			memcpy(u->packet + RADIUS_AUTH_VECTOR_OFFSET + i, &hash, sizeof(hash));
 		}
 	}
+		FALL_THROUGH;
 
 	default:
 		break;

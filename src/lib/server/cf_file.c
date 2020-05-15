@@ -1638,7 +1638,7 @@ static int parse_input(cf_stack_t *stack)
 			      frame->filename, frame->lineno);
 			return -1;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case T_OP_EQ:
 	case T_OP_SET:

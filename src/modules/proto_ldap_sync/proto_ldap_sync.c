@@ -417,7 +417,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
@@ -425,16 +425,14 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
 		if (rcode == RLM_MODULE_YIELD) return;
+		FALL_THROUGH;
 
-		/* FALL-THROUGH */
 	default:
 	done:
 		switch (rcode) {
 		case RLM_MODULE_UPDATED:
 		case RLM_MODULE_OK:
-		{
-
-		}
+			break;
 
 		default:
 			break;

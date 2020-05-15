@@ -385,7 +385,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void 
 
 	default:
 		fr_assert(0);
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case SIGTRAN_RESPONSE_FAIL:
 		rcode = RLM_MODULE_FAIL;

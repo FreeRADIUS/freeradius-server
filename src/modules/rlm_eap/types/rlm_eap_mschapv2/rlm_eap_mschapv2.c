@@ -562,7 +562,7 @@ failure:
 				RDEBUG2("No stored attributes to copy to parent");
 			}
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_EAP_MSCHAPV2_ACK:
 #ifdef WITH_PROXY

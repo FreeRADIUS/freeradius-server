@@ -1947,7 +1947,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)) {
 			RDEBUG2("%s", fr_strerror());
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	-ASK process a redirect.

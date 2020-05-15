@@ -454,7 +454,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	switch (mutated->rhs->type) {
 	case TMPL_TYPE_XLAT:
 		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case TMPL_TYPE_XLAT_UNPARSED:
 	{

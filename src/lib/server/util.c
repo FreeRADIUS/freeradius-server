@@ -465,7 +465,7 @@ static int rad_copy_variable(char *to, char const *from)
 				break;
 			} /* else FIXME: catch %%{ ?*/
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		default:
 			*(to++) = *(from++);
 			length++;
@@ -610,7 +610,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 
 			case '\\':
 				if (from[1] == ' ') from++;
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 			default:
 				*(to++) = *(from++);

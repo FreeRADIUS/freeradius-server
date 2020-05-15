@@ -574,7 +574,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
 				return UNLANG_FRAME_ACTION_POP;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Execute the next instruction in this frame

@@ -519,7 +519,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	case ':':
 		slen = xlat_tokenize_function(ctx, head, in, inlen, rules);
 		if (slen != 0) return slen;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	Hint token is a:

@@ -2025,13 +2025,13 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 
 		case AKA_SIM_FULLAUTH_ID_REQ:
 		case AKA_SIM_PERMANENT_ID_REQ:
+		default:
 			REDEBUG("Last requested Full-Auth-Id or Permanent-Identity, "
 				"but received a Fast-Auth-Id.  Cannot continue");
 		failure:
 			return common_failure_notification_enter(inst, request, eap_session);
-
 		}
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Policy rejected the user
@@ -2098,7 +2098,7 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 			return common_failure_notification_enter(inst, request, eap_session);
 
 		}
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Policy rejected the user
@@ -2167,6 +2167,8 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 		failure:
 			return common_failure_notification_enter(inst, request, eap_session);
 		}
+		break;
+
 	/*
 	 *	Policy rejected the user
 	 */
@@ -2847,7 +2849,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 
 			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
 				fr_assert(0);
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 			case AKA_SIM_PERMANENT_ID_REQ:
 				REDEBUG("Peer sent no usable identities");
@@ -3016,7 +3018,7 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 
 			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
 				fr_assert(0);
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 			case AKA_SIM_PERMANENT_ID_REQ:
 				REDEBUG("Peer sent no usable identities");
@@ -3089,7 +3091,7 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	default:
 		break;
 	}
@@ -4082,7 +4084,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 						      (void *)common_challenge_enter);
 
 	case FR_IDENTITY_TYPE_VALUE_PERMANENT:
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 		break;

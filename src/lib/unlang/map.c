@@ -165,7 +165,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case UNLANG_UPDATE_MAP_EXPANDED_LHS:
 			/*
@@ -195,7 +195,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 				fr_assert(0);
 				goto error;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
 			/*

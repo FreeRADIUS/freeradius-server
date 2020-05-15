@@ -223,7 +223,6 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 			RDEBUG2("No cache entry found for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 			return RLM_MODULE_NOTFOUND;
 
-		/* FALL-THROUGH */
 		default:
 			return RLM_MODULE_FAIL;
 
@@ -271,8 +270,8 @@ static rlm_rcode_t cache_expire(rlm_cache_t const *inst, REQUEST *request,
 					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
+		FALL_THROUGH;
 
-	/* FALL-THROUGH */
 	default:
 		return RLM_MODULE_FAIL;
 

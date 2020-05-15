@@ -579,7 +579,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 	case 5: /* LOADSCRIPT + EVALSHA + WAIT */
 		if (ippool_wait_check(request, wait_num, replies[4]) < 0) goto error;
 		fr_redis_reply_free(&replies[4]);	/* Free the wait response */
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case 4: /* LOADSCRIPT + EVALSHA */
 		fr_redis_reply_free(&replies[2]);	/* Free the queued cmd response*/

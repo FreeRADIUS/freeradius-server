@@ -1403,8 +1403,14 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET6,
 			.scope_id = len == max ? *p++ : 0,
-			.prefix = *p++
 		};
+
+		/*
+		 *	Can't increment p multiple times
+		 *	in an initialiser because the operations
+		 *	aren't explicitly ordered.
+		 */
+		dst->vb_ip.prefix = *p++;
 		memcpy(&dst->vb_ip.addr.v6, p, (end - p));
 		break;
 

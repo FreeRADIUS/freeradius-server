@@ -1126,7 +1126,6 @@ static void sig_fatal(int sig)
 #endif
 		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 		break;
-		/* FALL-THROUGH */
 
 	default:
 		fr_exit(sig);

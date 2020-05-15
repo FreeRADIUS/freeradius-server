@@ -733,7 +733,7 @@ build_vector:
 			case EINVAL:
 			case EFAULT:
 				fr_assert(0);
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 			/* Normal errors that just cause the module to fail */
 			default:

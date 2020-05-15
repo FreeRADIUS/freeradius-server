@@ -344,7 +344,7 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_TRIPLETS:
 		ret = vector_gsm_from_triplets(request, vps, idx, keys);
@@ -354,7 +354,7 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
 		ret = vector_gsm_from_quintuplets(request, vps, idx, keys);
@@ -768,7 +768,7 @@ int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
 		ret = vector_umts_from_quintuplets(request, vps, keys);

@@ -128,7 +128,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 	case TMPL_TYPE_REGEX_UNPARSED:
 	case TMPL_TYPE_REGEX:
 		fr_assert(0 == 1);
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 		EVAL_DEBUG("FAIL %d", __LINE__);
@@ -336,7 +336,7 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 
 			*(p++) = '\\';
 			outlen--;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		default:
 			*(p++) = *(in++);

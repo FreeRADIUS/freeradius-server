@@ -741,7 +741,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 				break;
 			}
 
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
 			ret = sql_warnings(ctx, out, outlen - 1, handle, config);
 			if (ret > 0) i += ret;

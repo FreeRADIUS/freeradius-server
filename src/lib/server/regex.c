@@ -135,17 +135,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	switch (ret) {
 	case PCRE2_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Not finding a substring is fine
@@ -206,17 +196,8 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	switch (ret) {
 	case PCRE2_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
+
 	/*
 	 *	Not finding a substring is fine
 	 */
@@ -274,17 +255,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Not finding a substring is fine
@@ -343,17 +314,8 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
+
 	/*
 	 *	Not finding a substring is fine
 	 */

@@ -307,7 +307,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		unlang_interpret_push_instruction(request, inst->unlang_access_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
@@ -428,7 +428,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_PROCESS;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret(request);
@@ -542,7 +542,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 
 		default:
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_CODE_DO_NOT_RESPOND:
 			unlang = inst->send_do_not_respond;
@@ -562,7 +562,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		unlang_interpret_push_instruction(request, instruction, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);

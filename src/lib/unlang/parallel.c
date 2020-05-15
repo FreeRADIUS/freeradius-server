@@ -168,7 +168,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			state->children[i].child = child;
 			state->children[i].state = CHILD_RUNNABLE;
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 			/*
 			 *	Run this entry.
@@ -286,7 +286,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			state->children[i].state = CHILD_DONE;
 			state->children[i].child = NULL;		// someone else freed this somewhere
 			state->children[i].instruction = NULL;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 			/*
 			 *	Don't need to call this any more.
@@ -323,7 +323,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 *	Un-detached children are never in the
 			 *	runnable queue.
 			 */
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case CHILD_YIELDED:
 			REQUEST_VERIFY(state->children[i].child);
@@ -336,7 +336,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 			 */
 			unlang_interpret_signal(state->children[i].child, FR_SIGNAL_CANCEL);
 			TALLOC_FREE(state->children[i].child);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		default:
 			state->children[i].state = CHILD_DONE;

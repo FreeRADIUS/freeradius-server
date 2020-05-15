@@ -1327,16 +1327,18 @@ skip_reply:
 		RDEBUG3("... falling-through to group processing");
 		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
 		switch (ret) {
+
 		/*
 		 *	Nothing bad happened, continue...
 		 */
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
+
 		case RLM_MODULE_OK:
 			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			FALL_THROUGH;
 
-			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
 			break;
@@ -1385,11 +1387,12 @@ skip_reply:
 		 */
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
+
 		case RLM_MODULE_OK:
 			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			FALL_THROUGH;
 
-			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
 			break;

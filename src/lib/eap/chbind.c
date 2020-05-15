@@ -238,7 +238,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 			code = FR_CODE_ACCESS_ACCEPT;
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 		/* If we got any other response from the virtual server, it maps to a reject */
 	default:

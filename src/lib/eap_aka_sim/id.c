@@ -223,6 +223,7 @@ int fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hin
 		default:
 			break;
 		}
+		break;
 
 	default:
 		break;

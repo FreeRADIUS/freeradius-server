@@ -273,7 +273,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
@@ -372,7 +372,7 @@ stop_processing:
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_PROCESS;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret(request);
@@ -422,7 +422,7 @@ setup_send:
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
@@ -491,11 +491,10 @@ send_reply:
 			RPEDEBUG("Failed sending TACACS reply");
 			goto done;
 		}
+		FALL_THROUGH;
 
-		/* FALL-THROUGH */
-
-done:
 	default:
+	done:
 		(void) fr_heap_extract(request->backlog, request);
 		//request_delete(request);
 		break;

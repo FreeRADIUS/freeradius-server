@@ -666,7 +666,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 
 		rcode = RLM_MODULE_NOTFOUND;
 
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	default:
 		goto finish;
 	}

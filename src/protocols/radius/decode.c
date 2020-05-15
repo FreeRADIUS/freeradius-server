@@ -312,7 +312,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 				fr_strerror_printf("Attribute is longer than 256 octets");
 				return -1;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case 1:
 			attrlen = data[dv_type + dv_length - 1];
 			break;
@@ -1451,7 +1451,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	doesn't.  Therefor it's malformed.
 		 */
 		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_IPV4_ADDR:

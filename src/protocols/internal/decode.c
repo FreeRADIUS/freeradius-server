@@ -277,7 +277,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 			p = ext_field;
 			goto error;
 		}
-	/* FALL-THROUGH */
+	FALL_THROUGH;
 
 	case FR_TYPE_VENDOR:		/* A vendor definition */
 		if (unlikely(tainted)) {

@@ -207,7 +207,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			p += slen;
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case FR_TYPE_OCTETS:
 		/*

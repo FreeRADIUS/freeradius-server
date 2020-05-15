@@ -412,7 +412,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_CODE_COA_NAK:
 			if (!original) goto need_original;
 			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_CODE_ACCOUNTING_REQUEST:
 		case FR_CODE_DISCONNECT_REQUEST:
@@ -1215,7 +1215,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	switch (type) {
 	case FR_TYPE_EXTENDED:
 		if (flags->subtype == FLAG_EXTENDED_ATTR) break;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 	encrypt_fail:
@@ -1228,6 +1228,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_UINT32:
 	case FR_TYPE_OCTETS:
 		if (flags->subtype == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
+		break;
 
 	case FR_TYPE_STRING:
 		break;

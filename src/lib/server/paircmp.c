@@ -664,7 +664,7 @@ int paircmp(REQUEST *request,
 		default:
 			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
 				fr_table_str_by_value(fr_tokens_table, check_item->op, "<INVALID>"), check_item->da->name);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case T_OP_CMP_TRUE:
 		case T_OP_CMP_FALSE:
 		case T_OP_CMP_EQ:

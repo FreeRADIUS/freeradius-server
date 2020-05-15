@@ -360,7 +360,7 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 			ROPTIONAL(ERROR, REDEBUG, "\"WATCH\" can only be used before \"MULTI\"");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 		break;

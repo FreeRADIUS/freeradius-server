@@ -641,6 +641,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 
 		case PEAP_STATUS_PHASE2_INIT:
 			RDEBUG2("In state machine in phase2 init?");
+			break;
 
 		case PEAP_STATUS_PHASE2:
 			break;

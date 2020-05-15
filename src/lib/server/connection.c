@@ -1188,7 +1188,7 @@ void fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reason_
 		 	connection_state_enter_closed(conn);
 		 	break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_TIMEOUT:
@@ -1242,7 +1242,7 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 			connection_state_enter_shutdown(conn);
 			break;
 		}
-	/* FALL-THROUGH */
+	FALL_THROUGH;
 
 	/*
 	 *	If the connection is any of these states it
@@ -1256,7 +1256,7 @@ void fr_connection_signal_shutdown(fr_connection_t *conn)
 		connection_state_enter_closed(conn);
 		fr_assert(conn->is_closed);
 
-	/* FALL-THROUGH */
+	FALL_THROUGH;
 	case FR_CONNECTION_STATE_CLOSED:
 		connection_state_enter_halted(conn);
 		break;
@@ -1459,7 +1459,7 @@ static int _connection_free(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_CONNECTED:
 		connection_state_enter_closed(conn);
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 		connection_state_enter_halted(conn);

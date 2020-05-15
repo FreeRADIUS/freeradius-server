@@ -117,6 +117,8 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 			ret = fr_redis_command_status(conn, reply->element[i]);
 			if (ret < 0) return ret;
 		}
+		break;
+
 	default:
 		break;
 	}

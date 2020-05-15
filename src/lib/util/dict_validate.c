@@ -248,7 +248,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				fr_strerror_printf("Cannot use [..] and length=uint16");
 				return false;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_TYPE_STRING:
 			if (flags->subtype != FLAG_LENGTH_UINT16) {
@@ -630,7 +630,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 		if (da_is_key_field(parent)) break;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",

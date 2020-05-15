@@ -353,7 +353,7 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("%s %s", state, error);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case '0':		/* SQLSTATE 00 class means success */
 			res = RLM_SQL_OK;
 			break;

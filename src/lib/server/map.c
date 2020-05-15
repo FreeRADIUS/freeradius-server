@@ -1328,11 +1328,11 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				*list = head;
 				head = NULL;
 			} else {
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 		case T_OP_EQ:
 				fr_assert(tmpl_is_exec(map->rhs));
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 		case T_OP_ADD:
 				fr_pair_list_move(list, &head);
@@ -1741,7 +1741,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"), rhs);
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case TMPL_TYPE_ATTR:
 		tmpl_snprint(NULL, buffer, sizeof(buffer), map->lhs);
