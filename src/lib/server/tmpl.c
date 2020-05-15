@@ -814,7 +814,7 @@ int tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
 {
 	vp_tmpl_attr_t *ref;
 
-	(void)talloc_get_type_abort(da, fr_dict_attr_t);
+	(void)talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	/*
 	 *	Clear any existing references
@@ -845,7 +845,7 @@ int tmpl_attr_set_leaf_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
 	vp_tmpl_attr_t *ref, *parent = NULL;
 
 	tmpl_assert_type(tmpl_is_attr(vpt));
-	(void)talloc_get_type_abort(da, fr_dict_attr_t);
+	(void)talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	/*
 	 *	Clear any existing references
