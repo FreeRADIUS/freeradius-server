@@ -48,5 +48,5 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	done
 
 $(TEST):
-	${Q}$(MAKE) --no-print-directory $@.radiusd_kill
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@

@@ -41,8 +41,34 @@ include Make.inc
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(BIN_PATH)/radiusd)
 
+#
+#  Kill it.  We don't care if it failed or not.  However, we do care
+#  if we can't kill it.
+#
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
+	${Q}if [ -f ${2}/radiusd.pid ]; then \
+		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+		    rm -f ${2}/radiusd.pid; \
+		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
+		    echo "GDB output was:"; \
+		    cat "${2}/gdb.log" 2> /dev/null; \
+		    echo "--------------------------------------------------"; \
+		    tail -n 100 "${2}/gdb.log" 2> /dev/null; \
+		    echo "Last entries in server log (${2}/gdb.log):"; \
+		    exit 0; \
+		fi; \
+		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+			exit 1; \
+		fi; \
+		exit 0; \
+	fi
+
+#
+#  Stop it politely.
+#
+.PHONY: $(TEST).radiusd_stop
+$(TEST).radiusd_stop: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \

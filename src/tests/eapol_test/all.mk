@@ -60,7 +60,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 	@echo "EAPOL-TEST $(notdir $(patsubst %.conf,%,$<))"
-	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
+	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill
 	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.conf,%.log,$@))
@@ -80,7 +80,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		$(MAKE) --no-print-directory test.eap.radiusd_kill;			\
 		exit 1;\
 	fi
-	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill || true
+	${Q}$(MAKE) --no-print-directory test.eap.radiusd_stop
 	${Q}touch $@
 
 $(TEST): $(EAPOL_OK_FILES)
