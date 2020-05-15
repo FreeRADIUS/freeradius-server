@@ -958,7 +958,6 @@ void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
 	ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_UNPARSED);
 	ref->ar_unparsed = talloc_strndup(vpt, name, len);
 
-	fr_dlist_insert_tail(&vpt->data.attribute.ar, ref);
 }
 
 /** Resolve an undefined attribute using the specified rules
