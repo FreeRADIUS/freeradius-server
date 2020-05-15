@@ -1282,7 +1282,12 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 #endif
 
 	if (el->in_handler) {
-		fr_dlist_insert_head(&el->ev_to_add, ev);
+		/*
+		 *	Don't allow an event to be inserted
+		 *	into the deferred insertion list
+		 *	multiple times.
+		 */
+		if (!fr_dlist_entry_in_list(&ev->entry)) fr_dlist_insert_head(&el->ev_to_add, ev);
 	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 		fr_strerror_printf_push("Failed inserting event");
 		talloc_free(ev);
