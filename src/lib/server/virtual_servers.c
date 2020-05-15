@@ -598,9 +598,9 @@ int virtual_servers_instantiate(void)
 			name = cf_section_name1(subcs);
 
 			/*
-			 *	Skip listen sections
+			 *	Skip known "other" sections
 			 */
-			if (strcmp(name, "listen") == 0) continue;
+			if ((strcmp(name, "listen") == 0) || (strcmp(name, "client") == 0)) continue;
 
 			/*
 			 *	For every other section, warn if it hasn't
