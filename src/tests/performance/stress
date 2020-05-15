@@ -1,0 +1,48 @@
+#!/bin/bash
+# Author: Jorge Pereira <jpereira@freeradius.org>
+# Dummy script to flood the server
+#
+
+fr_server="${1:-127.0.0.1}"
+fr_secret="${2:-testing123}"
+n_packets=${3:-50000}
+forks=${forks:-3}
+
+#RADPERF_DIR=/Users/alandekok/git/radperf
+#radperf="${RADPERF_DIR}/radperf -d ${RADPERF_DIR}/share"
+
+#
+#  Use this if you have "radperf" in your $PATH
+#
+radperf=radperf
+
+function _cleanup() {
+	echo "Cleanup"
+	killall -15 radperf radperf.bin 1> /dev/null 2>&1
+	kill -9 $$
+}
+
+trap _cleanup HUP INT QUIT KILL TERM
+
+echo "Flooding the server ${fr_server} with ${n_packets} of auth/acct/coa."
+
+inter=1
+rnd=1
+while true; do
+	echo "# >> Interaction $inter"
+	echo "[$inter] Start the flood of auth/acct/coa"
+	for t in $(seq 1 $forks); do
+		${radperf} -q -s -f packets/packet-auth_pap.txt -p50 -c ${n_packets} ${fr_server}:1812 auth ${fr_secret} &
+		${radperf} -q -s -f packets/packet-acct.txt     -p50 -c ${n_packets} ${fr_server}:1813 acct ${fr_secret} &
+		${radperf} -q -s -f packets/packet-coa.txt      -p50 -c ${n_packets} ${fr_server}:3799 coa  ${fr_secret} &
+		echo "  > Fork $rnd";
+		let "rnd+=1"
+	done
+
+	echo "[*] Waiting"
+	wait
+
+	let "inter+=1"
+
+	[ -n "$once" ] && break
+done

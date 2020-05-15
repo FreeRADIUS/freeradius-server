@@ -1,0 +1,6 @@
+#!/bin/sh
+export FR_GLOBAL_POOL=4M
+
+BUILD_DIR=../../../build
+
+exec ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -sf -xx -l stdout -d . -D ../../../share/dictionary $@
