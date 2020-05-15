@@ -15,7 +15,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
-	$(Q)gzcat $< > $@
+	$(Q)gunzip -c $< > $@
 
 $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
