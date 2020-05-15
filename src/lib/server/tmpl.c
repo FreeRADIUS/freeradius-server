@@ -729,6 +729,8 @@ int tmpl_attr_copy(vp_tmpl_t *dst, vp_tmpl_t const *src)
 	 */
 	dst->data.attribute.list = src->data.attribute.list;
 
+	TMPL_ATTR_VERIFY(dst);
+
 	return 0;
 }
 
@@ -761,6 +763,8 @@ int tmpl_attr_abstract_to_concrete(vp_tmpl_t *vpt, fr_type_t type)
 
 	ref = fr_dlist_tail(&vpt->data.attribute.ar);
 	ref->da = concrete;
+
+	TMPL_ATTR_VERIFY(vpt);
 
 	return 0;
 }
@@ -805,6 +809,8 @@ void tmpl_attr_to_raw(vp_tmpl_t *vpt)
 		fr_assert(0);
 		break;
 	}
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Replace the current attribute reference
@@ -833,6 +839,8 @@ int tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
 		ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
 	}
+
+	TMPL_ATTR_VERIFY(vpt);
 
 	return 0;
 }
@@ -883,6 +891,8 @@ int tmpl_attr_set_leaf_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da)
 		ref->da = da;
 	}
 
+	TMPL_ATTR_VERIFY(vpt);
+
 	return 0;
 }
 
@@ -899,6 +909,8 @@ void tmpl_attr_set_leaf_num(vp_tmpl_t *vpt, int16_t num)
 	}
 
 	ref->num = num;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Rewrite the leaf's instance number
@@ -914,6 +926,8 @@ void tmpl_attr_rewrite_leaf_num(vp_tmpl_t *vpt, int16_t from, int16_t to)
 
 	ref = fr_dlist_tail(&vpt->data.attribute.ar);
 	if (ref->ar_num == from) ref->ar_num = to;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Rewrite all instances of an array number
@@ -926,6 +940,8 @@ void tmpl_attr_rewrite_num(vp_tmpl_t *vpt, int16_t from, int16_t to)
 	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unparsed(vpt));
 
 	while ((ref = fr_dlist_next(&vpt->data.attribute.ar, ref))) if (ref->ar_num == from) ref->ar_num = to;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 void tmpl_attr_set_leaf_tag(vp_tmpl_t *vpt, int8_t tag)
@@ -940,6 +956,8 @@ void tmpl_attr_set_leaf_tag(vp_tmpl_t *vpt, int8_t tag)
 		ref = fr_dlist_tail(&vpt->data.attribute.ar);
 	}
 	ref->tag = tag;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
@@ -958,6 +976,7 @@ void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
 	ref = tmpl_ar_add(vpt, TMPL_ATTR_TYPE_UNPARSED);
 	ref->ar_unparsed = talloc_strndup(vpt, name, len);
 
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Resolve an undefined attribute using the specified rules
@@ -986,13 +1005,18 @@ int tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 
 		tmpl_attr_set_da(vpt, unknown_da);
 		vpt->type = TMPL_TYPE_ATTR;
+
+		TMPL_ATTR_VERIFY(vpt);
+
 		return 0;
 	}
 
 	tmpl_attr_set_da(vpt, da);
 	vpt->type = TMPL_TYPE_ATTR;
 
-	return true;
+	TMPL_ATTR_VERIFY(vpt);
+
+	return 0;
 }
 
 /** Set the request for an attribute ref
@@ -1006,11 +1030,15 @@ void tmpl_attr_set_request(vp_tmpl_t *vpt, request_ref_t request)
 	if (fr_dlist_num_elements(&vpt->data.attribute.rr) > 0) fr_dlist_talloc_reverse_free(&vpt->data.attribute.rr);
 
 	tmpl_rr_add(vpt, request);
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 void tmpl_attr_set_list(vp_tmpl_t *vpt, pair_list_t list)
 {
 	vpt->data.attribute.list = list;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Create a new tmpl from a list tmpl and a da
@@ -1050,6 +1078,8 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, vp_tmpl_t **out, vp_tmpl_t const *list
 	vpt->len = len;
 	vpt->name = talloc_typed_strdup(vpt, attr);
 	vpt->quote = T_BARE_WORD;
+
+	TMPL_ATTR_VERIFY(vpt);
 
 	*out = vpt;
 
@@ -3124,6 +3154,92 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 
 #define CHECK_ZEROED(_vpt, _field) not_zeroed(((uint8_t const *)&(_vpt)->data) + sizeof((_vpt)->data._field), sizeof((_vpt)->data) - sizeof((_vpt)->data._field))
 
+/** Verify the attribute reference in a vp_tmpl_t make sense
+ *
+ * @note If the attribute refernece is is invalid, causes the server to exit.
+ *
+ * @param file obtained with __FILE__.
+ * @param line obtained with __LINE__.
+ * @param vpt to check.
+ */
+void tmpl_attr_verify(char const *file, int line, vp_tmpl_t const *vpt)
+{
+	vp_tmpl_attr_t	*ar = NULL;
+	vp_tmpl_attr_t  *slow = NULL, *fast = NULL;
+	vp_tmpl_attr_t	*seen_unknown = NULL;
+	vp_tmpl_attr_t	*seen_unparsed = NULL;
+
+	fr_assert(tmpl_is_attr_unparsed(vpt) || tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+	/*
+	 *	Loop detection
+	 */
+	while ((slow = fr_dlist_next(&vpt->data.attribute.ar, slow)) &&
+	       (fast = fr_dlist_next(&vpt->data.attribute.ar, fast))) {
+
+		/*
+		 *	Advances twice as fast as slow...
+		 */
+		fast = fr_dlist_next(&vpt->data.attribute.ar, fast);
+		fr_fatal_assert_msg(fast != slow,
+				    "CONSISTENCY CHECK FAILED %s[%u]:  Looping reference list found.  "
+				    "Fast pointer hit slow pointer at \"%s\"",
+				    file, line,
+				    slow->type == TMPL_ATTR_TYPE_UNPARSED ? slow->unknown.name :
+				    slow->da ? slow->da->name : "(null-attr)");
+	}
+
+	/*
+	 *	Lineage type check
+	 *
+	 *	Known attribute cannot come after unparsed or unknown attributes
+	 *	Unknown attributes cannot come after unparsed attributes
+	 */
+	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
+		switch (ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
+			if (seen_unknown) {
+				tmpl_attr_debug(vpt);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+						     "TMPL_TYPE_ATTR known attribute \"%s\" "
+						     "occurred after unknown attribute "
+						     "in attr ref list",
+						     file, line,
+						     ar->da->name,
+						     ar->unknown.da->name);
+			}
+			if (seen_unparsed) {
+				tmpl_attr_debug(vpt);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+						     "TMPL_TYPE_ATTR known attribute \"%s\" "
+						     "occurred after unparsed attribute \"%s\""
+						     "in attr ref list",
+						     file, line,
+						     ar->da->name,
+						     ar->unknown.name);
+			}
+			break;
+
+		case TMPL_ATTR_TYPE_UNPARSED:
+			seen_unparsed = ar;
+			break;
+
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			seen_unknown = ar;
+			if (seen_unparsed) {
+				tmpl_attr_debug(vpt);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+						     "TMPL_TYPE_ATTR unknown attribute \"%s\" "
+						     "occurred after unparsed attribute "
+						     "in attr ref list",
+						     file, line, ar->da->name,
+						     ar->unknown.name);
+			}
+			break;
+		}
+	}
+}
+
 /** Verify fields of a vp_tmpl_t make sense
  *
  * @note If the #vp_tmpl_t is invalid, causes the server to exit.
@@ -3311,6 +3427,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 						     "attribute \"%s\" has invalid list (%i)",
 						     file, line, tmpl_da(vpt)->name, tmpl_list(vpt));
 			}
+
+			tmpl_attr_verify(file, line, vpt);
 		}
 		break;
 

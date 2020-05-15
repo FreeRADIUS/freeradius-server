@@ -405,9 +405,12 @@ static inline pair_list_t tmpl_list(vp_tmpl_t const *vpt)
 /** @} */
 
 #ifndef WITH_VERIFY_PTR
-#  define TMPL_VERIFY(_x)
+#  define TMPL_ATTR_VERIFY(_vpt)
+#  define TMPL_VERIFY(_vpt)
 #else
-#  define TMPL_VERIFY(_x) tmpl_verify(__FILE__, __LINE__, _x)
+#  define TMPL_ATTR_VERIFY(_vpt) tmpl_attr_verify(__FILE__, __LINE__, _vpt)
+#  define TMPL_VERIFY(_vpt) tmpl_verify(__FILE__, __LINE__, _vpt)
+void tmpl_attr_verify(char const *file, int line, vp_tmpl_t const *vpt);
 void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 #endif
 
