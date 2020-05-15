@@ -2336,24 +2336,15 @@ static int run_mode(command_t *cmd)
 		}
 
 		strcpy(libpath, cmd->arglist->vals[0]);
-		add_dotlibs(libpath);
-#if 0
-		l = strrchr(libpath, '/');
-		if (!l) l = strrchr(libpath, '\\');
-		if (l) {
-			*l = '\0';
-			l = libpath;
-		} else {
-			l = ".libs/";
-		}
-#endif
 
-		l = "./build/lib/local/.libs";
-		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
+		l = strstr(libpath, "/bin");
+		if (l) strcpy(l, "/lib/local/.libs");
+
+		setenv(LD_LIBRARY_PATH_LOCAL, libpath, 1);
 #ifdef __APPLE__
-		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
+		setenv("DYLD_FALLBACK_LIBRARY_PATH", libpath, 1);
 #endif
-		setenv("FR_LIBRARY_PATH", "./build/lib/local/.libs", 1);
+		setenv("FR_LIBRARY_PATH", libpath, 1);
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
