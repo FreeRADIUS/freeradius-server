@@ -1826,7 +1826,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	static uint64_t		count = 0;	/* Packets seen */
 	static fr_time_t	last_sync = 0;
 	fr_time_t		now_real;
-	rs_event_t		*event = ctx;
+	rs_event_t		*event = talloc_get_type(ctx, rs_event_t);
 	pcap_t			*handle = event->in->handle;
 
 	int			i;
@@ -2930,6 +2930,17 @@ int main(int argc, char *argv[])
 			goto finish;
 		}
 
+		buff = fr_pcap_device_names(conf, in, ' ');
+		DEBUG("Sniffing on (%s)", buff);
+
+		/*
+		 *  Insert our stats processor
+		 */
+		if (conf->stats.interval && conf->from_dev) {
+			now = fr_time_to_timeval(fr_time());
+			rs_install_stats_processor(stats, events, in, &now, false);
+		}
+
 		/*
 		 *  Now add fd's for each of the pcap sessions we opened
 		 */
@@ -2944,7 +2955,20 @@ int main(int argc, char *argv[])
 			event->out = out;
 			event->stats = stats;
 
-			if (fr_event_fd_insert(NULL, events, in_p->fd,
+			/*
+			 *	kevent() doesn't indicate that the
+			 *	file is readable if there's not
+			 *	sufficient packets in the file.
+			 *
+			 *	Work around this by processing
+			 *	files immediately, and only inserting
+			 *	"live" inputs, i.e. stdin and
+			 *	actual pcap sockets into the
+			 *	event loop.
+			 */
+			if (event->in->type == PCAP_FILE_IN) {
+				rs_got_packet(events, in_p->fd, 0, event);
+			} else if (fr_event_fd_insert(NULL, events, in_p->fd,
 					       rs_got_packet,
 					       NULL,
 					       NULL,
@@ -2953,18 +2977,12 @@ int main(int argc, char *argv[])
 				goto finish;
 			}
 		}
-
-		buff = fr_pcap_device_names(conf, in, ' ');
-		DEBUG("Sniffing on (%s)", buff);
-
-		/*
-		 *  Insert our stats processor
-		 */
-		if (conf->stats.interval && conf->from_dev) {
-			now = fr_time_to_timeval(fr_time());
-			rs_install_stats_processor(stats, events, in, &now, false);
-		}
 	}
+
+	/*
+	 *	If we just have the pipe, then exit.
+	 */
+	if (fr_event_list_num_fds(events) == 1) goto finish;
 
 
 	/*
