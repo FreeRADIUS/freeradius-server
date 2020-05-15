@@ -2214,7 +2214,7 @@ int main(int argc, char *argv[])
 	fr_pcap_t	**in_head = &in;
 	fr_pcap_t	*out = NULL;
 
-	int		ret = 1;					/* Exit status */
+	int		ret = EXIT_SUCCESS;				/* Exit status */
 
 	char		errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
 	int		port = FR_AUTH_UDP_PORT;
