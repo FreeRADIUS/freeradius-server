@@ -15,7 +15,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
-	$(Q)gzcat $< >$@
+	$(Q)gzcat $< > $@
 
 $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
@@ -29,7 +29,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 	$(Q)if ! $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND) 2>&1; then         \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
-		echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;           \
+		echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary";               \
 		rm -f $@;										      \
 		exit 1;                                                                                       \
 	fi
@@ -37,7 +37,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 		grep -v "^#" $(EXPECTED) > $(FOUND).result;                                                   \
 		if ! cmp -s $(FOUND) $(FOUND).result; then                                                    \
 			echo "RADSNIFF FAILED $@";                                                                \
-			echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary";           \
+			echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";       \
 			echo "ERROR: File $(FOUND).result is not the same as $(EXPECTED)";                        \
 			echo "If you did some update on the radsniff code, please be sure to update the unit tests."; \
 			echo "e.g: $(EXPECTED)";                                                                      \
@@ -48,7 +48,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then                                             \
 		echo "RADSNIFF FAILED $@";                                                                    \
 		echo "RADSNIFF:   $(RADIUSD_RUN)";                                                            \
-		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)";                  \
+		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND) -xx";              \
 		echo "If you did some update on the radsniff code, please be sure to update the unit tests."; \
 		rm -f $@;										      \
 		exit 1;                                                                                       \
