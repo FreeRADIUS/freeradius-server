@@ -964,7 +964,7 @@ void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
 /** Resolve an undefined attribute using the specified rules
  *
  */
-int tmpl_attr_resolve_undefined(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
+int tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 {
 	fr_dict_attr_t const *da;
 

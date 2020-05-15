@@ -380,7 +380,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 {
 	fr_assert(tmpl_is_attr_unparsed(vpt));
 
-	if (tmpl_attr_resolve_undefined(vpt, rules) < 0) {
+	if (tmpl_attr_resolve_unparsed(vpt, rules) < 0) {
 		cf_log_perr(ci, "Failed resolving undefined attribute");
 		return false;
 	}

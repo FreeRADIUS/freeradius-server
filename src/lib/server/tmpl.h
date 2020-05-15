@@ -621,7 +621,7 @@ void			tmpl_attr_to_raw(vp_tmpl_t *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
-int			tmpl_attr_resolve_undefined(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
+int			tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
 
 void			tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
 
