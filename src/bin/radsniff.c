@@ -3007,7 +3007,6 @@ int main(int argc, char *argv[])
 	fr_event_loop(events);	/* Enter the main event loop */
 
 	DEBUG2("Done sniffing");
-	ret = 0;
 
 finish:
 	cleanup = true;
