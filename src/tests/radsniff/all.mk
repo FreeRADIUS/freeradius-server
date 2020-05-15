@@ -6,26 +6,33 @@
 #	Test name
 #
 TEST  := test.radsniff
-FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt $(DIR)/*.gz))
+FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
+
+#
+#	.pcap file to be injested
+#
+PCAP_IN := $(BUILD_DIR)/tests/radsniff/radius-auth+acct+coa-100pkts.pcap
 
 $(eval $(call TEST_BOOTSTRAP))
 
 #
-#	Run the radsniff commands
+#	Uncompress the input .pcap file
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
 	$(Q)gunzip -c $< > $@
 
-$(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
-	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
+#
+#	Run the radsniff commands
+#
+$(OUTPUT)/%.txt: $(DIR)/%.txt | $(TESTBINDIR)/radsniff $(PCAP_IN)
+	$(eval TARGET   := $(notdir $@))
 	$(eval FOUND    := $@)
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $<)
-	$(eval PCAP_IN  := $(patsubst %.txt,%.pcap,$@))
 	$(eval ARGV     := $(shell grep "^#.*ARGV:" $< | cut -f2 -d ':'))
 
-	$(Q)echo "RADSNIFF-TEST INPUT=$(TARGET).pcap ARGV=\"$(ARGV)\""
+	$(Q)echo "RADSNIFF-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	$(Q)if ! $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND) 2>&1; then         \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
@@ -34,7 +41,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 		exit 1;                                                                                       \
 	fi
 	$(Q)if [ -e "$(EXPECTED)" ]; then                                                                     \
-		grep -v "^#" $(EXPECTED) > $(FOUND).result;                                                   \
+		grep -v "^#" $(EXPECTED) > $(FOUND).result || true;                                           \
 		if ! cmp -s $(FOUND) $(FOUND).result; then                                                    \
 			echo "RADSNIFF FAILED $@";                                                                \
 			echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \
@@ -57,3 +64,4 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(OUTPUT)/%.pcap $(TESTBINDIR)/radsniff
 		exit 1;                                                                                       \
 	fi
 	$(Q)touch $@
+
