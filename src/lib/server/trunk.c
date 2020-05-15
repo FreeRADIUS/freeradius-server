@@ -1695,39 +1695,21 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	}
 
 done:
-	/*
-	 *	If the trunk connection was draining,
-	 *	its requests weren't counted in the requests
-	 *	per connection stats the last time they were
-	 *	calculated.  Those requests have now been
-	 *	moved onto active connections, so we need to
-	 *	update the ratio now.
-	 */
-	switch (tconn->pub.state) {
-	case FR_TRUNK_CONN_DRAINING:
-	case FR_TRUNK_CONN_INACTIVE_DRAINING:
 
 	/*
-	 *	If the trunk connection was active
-	 *	it may have been removed from the heap at
-	 *	the point the ratio was re-calculated.
+	 *	Always re-calculate the request/connection
+	 *	ratio at the end.
 	 *
-	 *	As we've now re-inserted it into the
-	 *	heap, we need to update the ratio.
+	 *	This avoids having the state transition
+	 *	functions do it.
+	 *
+	 *	The ratio would be wrong when they calculated
+	 *	it anyway, because a bunch of requests are
+	 *	dequeued from the connection and temporarily
+	 *	cease to exist from the perspective of the
+	 *	trunk_requests_per_connection code.
 	 */
-	case FR_TRUNK_CONN_ACTIVE:
-		trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false);
-		break;
-
-	default:
-		/*
-		 *	Verify the above logic is correct
-		 */
-#ifndef NDEBUG
-		trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), true);
-#endif
-		break;
-	}
+	trunk_requests_per_connection(NULL, NULL, trunk, fr_time(), false);
 
 	fr_connection_signals_resume(tconn->pub.conn);
 	return moved;
