@@ -1831,7 +1831,6 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 
 	int			i;
 	int			ret;
-	int			total = 0;
 	const			uint8_t *data;
 	struct			pcap_pkthdr *header;
 
@@ -1853,7 +1852,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	if ((event->in->type == PCAP_FILE_IN) || (event->in->type == PCAP_STDIO_IN)) {
 		bool stats_started = false;
 
-		while ((total < 5) && !fr_event_loop_exiting(el)) {
+		while (!fr_event_loop_exiting(el)) {
 			fr_time_t now;
 
 			ret = pcap_next_ex(handle, &header, &data);
@@ -1891,7 +1890,6 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 			count++;
 
 			rs_packet_process(count, event, header, data);
-			total++;
 		}
 		return;
 	}
