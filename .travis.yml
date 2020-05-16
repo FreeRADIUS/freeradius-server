@@ -55,7 +55,7 @@ addons:
     - libjson-perl
     - autoconf
     - build-essential
-    - clang-10
+    - clang-9
     - debhelper
     - devscripts
     - dh-make
@@ -102,7 +102,7 @@ addons:
     - libyubikey-dev
     - lintian
     # Needed for llvm-symbolizer
-    - llvm-10
+    - llvm-9
     - luajit
     - lynx
     - mysql-server
