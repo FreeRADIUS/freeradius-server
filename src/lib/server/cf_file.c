@@ -1484,7 +1484,7 @@ static int parse_input(cf_stack_t *stack)
 
 		if (parent == frame->special) frame->special = NULL;
 
-		frame->current = parent = cf_item_to_section(parent->item.parent);
+		frame->current = cf_item_to_section(parent->item.parent);
 		ptr++;
 		stack->ptr = ptr;
 		return 1;
@@ -1599,7 +1599,7 @@ static int parse_input(cf_stack_t *stack)
 		/*
 		 *	The current section is now the child section.
 		 */
-		frame->current = parent = css;
+		frame->current = css;
 		frame->braces++;
 		css = NULL;
 		stack->ptr = ptr;
