@@ -1212,8 +1212,6 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		 */
 		switch (fr_debug_state) {
 		default:
-			FALL_THROUGH;
-
 		case DEBUGGER_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
