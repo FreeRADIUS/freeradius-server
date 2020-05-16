@@ -45,16 +45,15 @@ addons:
     config:
       retries: true
     sources:
-    - llvm-toolchain-bionic-8
+    - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main'
+      key_url: https://apt.llvm.org/llvm-snapshot.gpg.key
     # For newer GCC
     - ubuntu-toolchain-r-test
-    # For newer libkqueue
-    - sourceline: ppa:rjvbertin/misc
     packages:
     - libjson-perl
     - autoconf
     - build-essential
-    - clang-8
+    - clang-10
     - debhelper
     - devscripts
     - dh-make
@@ -101,7 +100,7 @@ addons:
     - libyubikey-dev
     - lintian
     # Needed for llvm-symbolizer
-    - llvm-8
+    - llvm-10
     - luajit
     - lynx
     - mysql-server
@@ -125,8 +124,8 @@ before_install:
 - gem install asciidoctor
 - wget -q -O /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-1-amd64.deb && sudo dpkg -i /tmp/pandoc.deb
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && sudo update-alternatives --config clang; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-8 60 && sudo update-alternatives --config llvm-symbolizer; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 - make --version
 - asciidoctor --version
