@@ -93,7 +93,6 @@ addons:
     - libsnmp-dev
     - libssl-dev
     - libtalloc-dev
-    - libtalloc2-dbg
     - libunbound-dev
     - libwbclient-dev
     - libykclient-dev
