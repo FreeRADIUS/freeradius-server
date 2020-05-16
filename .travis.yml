@@ -104,8 +104,7 @@ addons:
     - lynx
     - mysql-server
     - pbuilder
-    - postgresql-12
-    - postgresql-client-12
+    - postgresql-client-10
     - python-dev
     - quilt
     # For rendering clang scan results
