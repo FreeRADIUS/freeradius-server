@@ -2,7 +2,6 @@ language: c
 compiler:
 - clang
 - gcc
-sudo: true
 cache:
   apt: true
 dist: bionic
