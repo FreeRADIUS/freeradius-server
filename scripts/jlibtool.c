@@ -104,7 +104,7 @@
 #  define ADD_MINUS_L
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(__sun) && !defined(__GNUC__)
@@ -126,7 +126,7 @@
 #  define HAS_REALPATH
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(_OSD_POSIX)
@@ -160,7 +160,7 @@
 #  define NEED_SNPRINTF
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(__MINGW32__)
@@ -329,6 +329,7 @@ static void add_rpath(count_chars *cc, char const *path);
 #endif
 
 static pid_t spawn_pid;
+char const *program = NULL;
 
 static void usage(int code)
 {
@@ -2328,32 +2329,21 @@ static int run_mode(command_t *cmd)
 			goto finish;
 		}
 
-		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
-			ERROR("Libpath too long no buffer space\n");
-			rv = 1;
+		/*
+		 *	jlibtool is in $(BUILD_DIR)/make/jlibtool
+		 */
+		strcpy(libpath, program);
 
-			goto finish;
-		}
+		/*
+		 *	Libraries are relative to jlibtool, in
+		 *	$(BUILD_DIR)/lib/local/.libs/
+		 */
+		l = strstr(libpath, "/make");
+		if (l) strcpy(l, "/lib/local/.libs");
 
-		strcpy(libpath, cmd->arglist->vals[0]);
-		add_dotlibs(libpath);
-#if 0
-		l = strrchr(libpath, '/');
-		if (!l) l = strrchr(libpath, '\\');
-		if (l) {
-			*l = '\0';
-			l = libpath;
-		} else {
-			l = ".libs/";
-		}
-#endif
+		setenv(LD_LIBRARY_PATH_LOCAL, libpath, 1);
+		setenv("FR_LIBRARY_PATH", libpath, 1);
 
-		l = "./build/lib/local/.libs";
-		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
-#ifdef __APPLE__
-		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
-#endif
-		setenv("FR_LIBRARY_PATH", "./build/lib/local/.libs", 1);
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
@@ -2710,6 +2700,7 @@ int main(int argc, char *argv[])
 	int rc;
 	command_t cmd;
 
+	program = argv[0];
 	memset(&cmd, 0, sizeof(cmd));
 
 	cmd.options.pic_mode = PIC_UNKNOWN;
