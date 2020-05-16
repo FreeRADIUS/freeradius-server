@@ -2105,6 +2105,7 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 	 */
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_DISALLOW:
+	reject:
 		return common_failure_notification_enter(inst, request, eap_session);
 
 	/*
@@ -2120,6 +2121,8 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 						      mod_signal,
 						      NULL);
 	}
+
+	goto reject;
 }
 
 /** Resume after 'load pseudonym { ... }'
@@ -2183,6 +2186,8 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 	case RLM_MODULE_UPDATED:
 		goto next_state;
 	}
+
+	goto failure;
 }
 
 /** Enter the REAUTHENTICATION state
