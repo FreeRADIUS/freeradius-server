@@ -46,7 +46,7 @@ addons:
     config:
       retries: true
     sources:
-    - llvm-toolchain-xenial-7
+    - llvm-toolchain-xenial-9
     # For newer GCC
     - ubuntu-toolchain-r-test
     # For newer libkqueue
