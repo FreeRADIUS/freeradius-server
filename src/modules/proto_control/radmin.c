@@ -219,6 +219,10 @@ static ssize_t do_challenge(int fd)
 	fr_conduit_type_t conduit;
 	uint8_t challenge[16];
 
+#ifdef __clang_analyzer__
+	if (!secret) return -1;
+#endif
+
 	challenge[0] = 0x00;
 
 	/*
