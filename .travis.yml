@@ -74,8 +74,8 @@ addons:
     - libidn11-dev
     - libiodbc2-dev
     - libiodbc2
-    - libjson0
-    - libjson0-dev
+    - libjson-c
+    - libjson-dev
     - libkrb5-dev
     - libkqueue-dev
     - libldap2-dev
