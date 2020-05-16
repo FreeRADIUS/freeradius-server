@@ -512,8 +512,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process module.
 	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+	while ((cp = cf_pair_find_next(conf, cp, "type")) != NULL) {
 		fr_app_worker_t const *app_process;
+
+#ifdef __clang_analyzer__
+		DEBUG("Instantiating %s", cf_pair_value(cp));
+#endif
 
 		app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule->data,
