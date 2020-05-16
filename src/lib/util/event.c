@@ -1154,9 +1154,9 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
  */
 static int _event_timer_free(fr_event_timer_t *ev)
 {
-	fr_event_list_t	*el = ev->el;
-	fr_event_timer_t const **ev_p;
-	int		ret;
+	fr_event_list_t		*el = ev->el;
+	fr_event_timer_t const	**ev_p;
+	int			ret;
 
 	if (fr_dlist_entry_in_list(&ev->entry)) {
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
@@ -1170,7 +1170,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	*ev_p = NULL;
 
 	/*
-	 *	Events MUST be in the heap
+	 *	Events MUST be in the heap (or the insertion list).
 	 */
 	if (!fr_cond_assert(ret == 0)) {
 		fr_strerror_printf("Event not found in heap");

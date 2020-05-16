@@ -183,10 +183,10 @@ static void fr_heap_bubble(fr_heap_t *hp, int32_t child)
 }
 
 
-/** Remove the top element, or object
+/** Remove a node from the heap
  *
- * @param[in] hp	The heap to insert an element into.
- * @param[in] data	Data to insert into the heap.
+ * @param[in] hp	The heap to extract an element from.
+ * @param[in] data	Data to extract from the heap.
  * @return
  *	- 0 on success.
  *	- -1 on failure (no elements or data not found).
@@ -199,7 +199,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		fr_strerror_printf("Tried to extract element from empty heap");
 		return -1;
 	}
-
 
 	max = hp->num_elements - 1;
 
