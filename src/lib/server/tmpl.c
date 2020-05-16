@@ -624,7 +624,6 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 	return 0;
 }
 
-#ifndef NDEBUG
 void tmpl_attr_debug(vp_tmpl_t const *vpt)
 {
 	vp_tmpl_attr_t		*ar = NULL;
@@ -676,7 +675,6 @@ void tmpl_attr_debug(vp_tmpl_t const *vpt)
 		i++;
 	}
 }
-#endif
 
 /** Copy a list of attribute and request references from one tmpl to another
  *

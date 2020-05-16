@@ -612,9 +612,7 @@ void			tmpl_set_name(vp_tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
 
-#ifndef NDEBUG
 void			tmpl_attr_debug(vp_tmpl_t const *vpt) CC_HINT(nonnull);
-#endif
 
 int			tmpl_attr_copy(vp_tmpl_t *dst, vp_tmpl_t const *src) CC_HINT(nonnull);
 
