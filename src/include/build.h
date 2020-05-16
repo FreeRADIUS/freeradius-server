@@ -114,7 +114,7 @@ extern "C" {
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore
  *
  */
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 7)
+#if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
 #  define FALL_THROUGH		CC_HINT(fallthrough)
 #else
 #  define FALL_THROUGH		((void)0)
