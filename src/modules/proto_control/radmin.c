@@ -133,7 +133,7 @@ typedef struct {
 //static radmin_state_t state;
 
 static bool echo = false;
-static char const *secret = NULL;
+static char const *secret = "";
 static bool unbuffered = false;
 static bool use_readline = true;
 
@@ -218,10 +218,6 @@ static ssize_t do_challenge(int fd)
 	ssize_t r;
 	fr_conduit_type_t conduit;
 	uint8_t challenge[16];
-
-#ifdef __clang_analyzer__
-	if (!secret) return -1;
-#endif
 
 	challenge[0] = 0x00;
 
@@ -880,6 +876,7 @@ int main(int argc, char **argv)
 	}
 
 	fr_debug_lvl = L_DBG_LVL_1;
+	secret = NULL;
 
 	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S:x")) != -1) switch (c) {
 		case 'd':
