@@ -174,7 +174,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		flags = p[0];
 		p++;
 
-		value_len = length = fr_net_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
+		value_len = fr_net_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
 		p += 3;
 
 		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */

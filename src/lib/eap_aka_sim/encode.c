@@ -1018,7 +1018,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 	 *	Encode all the things...
 	 */
 	(void)fr_cursor_head(&cursor);
-	while ((vp = fr_cursor_current(&cursor))) {
+	while (fr_cursor_current(&cursor)) {
 		slen = fr_aka_sim_encode_pair(p, end - p, &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
