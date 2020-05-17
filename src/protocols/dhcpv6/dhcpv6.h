@@ -37,6 +37,12 @@ extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 #define OPT_HDR_LEN	(sizeof(uint16_t) * 2)
 
 /*
+ *	Defined addresses from RFC 8415 Section 7.1
+ */
+#define IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS	"FF02::1:2"
+#define IN6_ADDR_ALL_DHCP_SERVERS			"FF05::1:3"
+
+/*
  *	Copied from src/include/protocols/dhcpv6/freeradius.internal.h
  *	and edited.
  */
@@ -89,6 +95,11 @@ enum {
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
 	FLAG_ENCODE_PARTIAL_DNS_LABEL, 			//!< encode as a partial DNS label
 };
+
+typedef struct CC_HINT(__packed__) {
+	uint8_t		code;
+	uint8_t		transaction_id[3];
+} fr_dhcpv6_packet_t;
 
 /*
  *	DHCPv6 defines dates to start from Jan 1, 2000.  Which is
