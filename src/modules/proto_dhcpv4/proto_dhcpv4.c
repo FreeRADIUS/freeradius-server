@@ -250,8 +250,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	RADCLIENT const *client;
 	RADIUS_PACKET *packet = request->packet;
 
-	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
-
 	/*
 	 *	Set the request dictionary so that we can do
 	 *	generic->protocol attribute conversions as
@@ -446,19 +444,25 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 }
 
 
-static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t buflen)
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
+	uint8_t const *code;
 
-	fr_assert(buffer[0] > 0);
-	fr_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
+	if (buflen < MIN_PACKET_SIZE) return -1;
+
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) buffer, buflen, attr_message_type);
+	fr_assert(code != NULL);
+	fr_assert(code[1] == 1);
+	fr_assert(code[2] != 0);
+	fr_assert(code[2] < FR_DHCP_MAX);
 
 	/*
 	 *	Disallowed packet
 	 */
-	if (!inst->priorities[buffer[0]]) return 0;
+	if (!inst->priorities[code[2]]) return 0;
 
-	if (!inst->type_submodule_by_code[buffer[0]]) return -1;
+	if (!inst->type_submodule_by_code[code[2]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -470,7 +474,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	/*
 	 *	Return the configured priority.
 	 */
-	return inst->priorities[buffer[0]];
+	return inst->priorities[code[2]];
 }
 
 /** Open listen sockets/connect to external event source
