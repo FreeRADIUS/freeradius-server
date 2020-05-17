@@ -88,6 +88,49 @@ size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
 };
 
+
+/*
+ * grep VALUE share/dictionary/dhcpv6/dictionary.freeradius.internal  | awk '{print "[" $4 "] = \"" $3 "\"," }'
+ */
+char const *fr_dhcpv6_packet_types[FR_DHCPV6_MAX_CODE] = {
+	 [0] = "invalid",
+	 [1] = "Solicit",
+	 [2] = "Advertise",
+	 [3] = "Request",
+	 [4] = "Confirm",
+	 [5] = "Renew",
+	 [6] = "Rebind",
+	 [7] = "Reply",
+	 [8] = "Release",
+	 [9] = "Decline",
+	 [10] = "Reconfigure",
+	 [11] = "Information-Request",
+	 [12] = "Relay-Forward",
+	 [13] = "Relay-Reply",
+	 [14] = "Lease-Query",
+	 [15] = "Lease-Query-Reply",
+	 [16] = "Lease-Query-Done",
+	 [17] = "Lease-Query-Data",
+	 [18] = "Reconfigure-Request",
+	 [19] = "Reconfigure-Reply",
+	 [20] = "DHCPv4-Query",
+	 [21] = "DHCPv4-Response",
+	 [22] = "Active-Lease-Query",
+	 [23] = "Start-TLS",
+	 [24] = "Bind-Update",
+	 [25] = "Bind-Reply",
+	 [26] = "Pool-Request",
+	 [27] = "Pool-Response",
+	 [28] = "Update-Request",
+	 [29] = "Update-Request-All",
+	 [30] = "Update-Done",
+	 [31] = "Connect",
+	 [32] = "Connect-Reply",
+	 [33] = "Disconnect",
+	 [34] = "State",
+	 [35] = "Contact",
+};
+
 /** Return the on-the-wire length of an attribute value
  *
  * @param[in] vp to return the length of.
