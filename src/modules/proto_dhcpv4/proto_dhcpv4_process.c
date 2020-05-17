@@ -125,7 +125,6 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
 	VALUE_PAIR *vp;
 
 	REQUEST_VERIFY(request);
@@ -209,7 +208,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 			}
 		}
 
-		dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
@@ -250,7 +249,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 				request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
