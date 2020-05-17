@@ -88,9 +88,8 @@ static const CONF_PARSER networks_config[] = {
 
 
 static const CONF_PARSER udp_listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_dhcpv4_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 
 	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, src_ipaddr) },
 
