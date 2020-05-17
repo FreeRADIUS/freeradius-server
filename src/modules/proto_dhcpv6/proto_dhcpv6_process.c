@@ -50,12 +50,20 @@ static int reply_ok[] = {
 	[0]			= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_SOLICIT]	= FR_DHCPV6_ADVERTISE,
 	[FR_DHCPV6_REQUEST]	= FR_DHCPV6_CONFIRM,
+	[FR_DHCPV6_RENEW]	= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_REBIND]	= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_DECLINE]	= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_REPLY,
 };
 
 static int reply_fail[] = {
 	[0]			= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_SOLICIT]	= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_RENEW]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_REBIND]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_DECLINE]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
 };
 
 
@@ -272,6 +280,37 @@ static virtual_server_compile_t compile_list[] = {
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
+
+	{
+		.name = "recv",
+		.name2 = "Renew",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Rebind",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Release",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Decline",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Information-Request",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
 	},
 
