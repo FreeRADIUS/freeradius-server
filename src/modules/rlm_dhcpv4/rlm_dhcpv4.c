@@ -148,7 +148,6 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_cursor_t	*cursor;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
-	VALUE_PAIR	*vp;
 
 	uint8_t		binbuf[2048];
 	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);

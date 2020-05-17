@@ -157,7 +157,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	while (p < end) {
 		ssize_t			ret;
 		uint32_t		attr, vendor;
-		uint64_t		length, value_len;
+		uint64_t		value_len;
 		uint8_t			flags;
 		fr_dict_attr_t const	*our_parent = parent;
 
