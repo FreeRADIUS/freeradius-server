@@ -177,6 +177,16 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		value_len = fr_net_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
 		p += 3;
 
+		if (value_len < 8) {
+			fr_strerror_printf("Malformed diameter VPs.  Needed at least length of 8, got %zu", value_len);
+			goto error;
+		}
+
+		if ((p + ((value_len + 0x03) & ~0x03)) > end) {
+			fr_strerror_printf("Malformed diameter VPs.  Value length %zu overflows input", value_len);
+			goto error;
+		}
+
 		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */
 
 		MEM(vp = fr_pair_alloc(ctx));
