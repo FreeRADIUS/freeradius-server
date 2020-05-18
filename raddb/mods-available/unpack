@@ -48,6 +48,11 @@
 #  substring at offset 1 (i.e. "e"), and it will take two characters
 #  from that offset, i.e. "el".
 #
+#  As a special case, you can unpack an entire string by specifying
+#  the offset, and nothing for the length:
+#
+#	%{unpack:&User-Name 1 string()}
+#
 #  When "octets(len)" is used, the output is printed as hex.  e.g. for
 #  the above example with Class:
 #
