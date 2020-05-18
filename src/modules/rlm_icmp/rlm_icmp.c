@@ -540,17 +540,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 		break;
 	}
 
-	/*
-	 *	Try to use capabilities if possible.  If not, try to
-	 *	use "root".
-	 */
-	if (fr_cap_net_raw() == 0) {
-		fd = socket(af, SOCK_RAW, proto);
-	} else {
-		rad_suid_up();
-		fd = socket(af, SOCK_RAW, proto);
-		rad_suid_down();
-	}
+	fd = socket(af, SOCK_DGRAM, proto);
 	if (fd < 0) {
 		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
 		return -1;
