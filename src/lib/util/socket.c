@@ -39,8 +39,9 @@
 
 #ifndef SO_BINDTODEVICE
 #include <net/if.h>
-#include <ifaddrs.h>
 #endif
+
+#include <ifaddrs.h>
 
 /*
  *	This is used during binding ports less than 1024
@@ -1207,7 +1208,7 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 	for (i = list; i != NULL; i = i->ifa_next) {
 		int scope_id;
 		fr_ipaddr_t my_ipaddr;
-		
+
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
 		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
@@ -1230,7 +1231,7 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 			break;
 		}
 	}
-	
+
 	freeifaddrs(list);
 	return interface;
 }
