@@ -972,6 +972,11 @@ skip_cap:
 #endif
 
 #ifdef SO_BINDTODEVICE
+		/*
+		 *	The caller didn't specify a scope_id, but we
+		 *	have one from above.  Call "bind to device",
+		 *	and set the scope_id.
+		 */
 		if (!my_ipaddr.scope_id) {
 			struct ifreq ifreq;
 
@@ -994,7 +999,7 @@ skip_cap:
 		struct ifaddrs *list = NULL;
 
 		/*
-		 *	Bind manually to an IP used by the named interface.
+		 *	Troll through all interfaces to see if there's
 		 */
 		if (getifaddrs(&list) == 0) {
 			struct ifaddrs *i;
@@ -1002,17 +1007,18 @@ skip_cap:
 			for (i = list; i != NULL; i = i->ifa_next) {
 				if (i->ifa_addr && i->ifa_name && (strcmp(i->ifa_name, interface) == 0)) {
 					/*
-					 *	Bind JUST to an interface with no src IP/
-					 *	Just pick any IPv4 address.  If the caller wanted IPv6,
-					 *	he should have specified that.
+					 *	IPv4, and there's either no src_ip, OR src_ip is INADDR_ANY,
+					 *	it's a match.
 					 *
 					 *	We also update my_ipaddr to point to this particular IP,
 					 *	so that we can later bind() to it.  This gets us the same
-					 *	effect as SO_BINDTODEVICE without actually doing it.
+					 *	effect as SO_BINDTODEVICE.
 					 */
-					if (!src_ipaddr && (i->ifa_addr->sa_family == AF_INET)) {
+					if ((i->ifa_addr->sa_family == AF_INET) &&
+					    (!src_ipaddr || fr_ipaddr_is_inaddr_any(src_ipaddr))) {
 						(void) fr_ipaddr_from_sockaddr((struct sockaddr_storage *) i->ifa_addr,
 									       sizeof(struct sockaddr_in), &my_ipaddr, NULL);
+						my_ipaddr.scope_id = scope_id;
 						bound = true;
 						break;
 					}
@@ -1030,6 +1036,7 @@ skip_cap:
 					 *	"Can't assign requested address" error, which is more informative.
 					 */
 					if (src_ipaddr && (src_ipaddr->af == i->ifa_addr->sa_family)) {
+						my_ipaddr.scope_id = scope_id;
 						bound = true;
 						break;
 					}
