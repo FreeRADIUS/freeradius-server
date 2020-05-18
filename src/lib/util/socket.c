@@ -1193,7 +1193,7 @@ skip_cap:
 }
 #endif	/* HAVE_CAPABILITY_H */
 
-char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t const *ipaddr)
+char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 {
 	struct ifaddrs *list = NULL;
 	struct ifaddrs *i;
@@ -1205,23 +1205,32 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t const *ipaddr)
 	if (getifaddrs(&list) < 0) return NULL;
 
 	for (i = list; i != NULL; i = i->ifa_next) {
+		int scope_id;
+		fr_ipaddr_t my_ipaddr;
+		
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		if ((ipaddr->af == AF_INET) &&
-		    (memcmp(&ipaddr->addr.v4.s_addr, &i->ifa_addr->sa_data, sizeof(ipaddr->addr.v4.s_addr)) == 0)) {
+		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
+
+		/*
+		 *	my_ipaddr will have a scope_id, but the input
+		 *	ipaddr won't have one.  We therefore set the
+		 *	local one to zero, so that we can do correct
+		 *	IP address comparisons.
+		 *
+		 *	If the comparison succeeds, then we return
+		 *	both the interface name, and we update the
+		 *	input ipaddr with the correct scope_id.
+		 */
+		scope_id = my_ipaddr.scope_id;
+		my_ipaddr.scope_id = 0;
+		if (fr_ipaddr_cmp(ipaddr, &my_ipaddr) == 0) {
 			interface = talloc_strdup(ctx, i->ifa_name);
+			ipaddr->scope_id = scope_id;
 			break;
 		}
-
-		if ((ipaddr->af == AF_INET6) &&
-		    (memcmp(&ipaddr->addr.v6.s6_addr, &((struct sockaddr_in6 *) &i->ifa_addr)->sin6_addr, sizeof(ipaddr->addr.v6.s6_addr)) == 0)) {
-			interface = talloc_strdup(ctx, i->ifa_name);
-			break;
-		}
-
-		break;
 	}
-
+	
 	freeifaddrs(list);
 	return interface;
 }
