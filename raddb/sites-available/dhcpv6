@@ -1,0 +1,140 @@
+#  -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles DHCPv6.
+#
+#	$Id$
+#
+######################################################################
+
+#######################################################################
+#
+#  = The DHCPv6 Virtual Server
+#
+#
+#  ## The Virtual Server
+#
+server dhcpv6 {
+	#
+	#  namespace:: Needs to be "dhcpv6" for DHCPv6 dunctionality.
+	#
+	namespace = dhcpv6
+
+	#
+	#  ### The listen section
+	#
+	#  DHCPv6 relies on multicast packets to work.  We suggest
+	#  defining only one DHCPv6 "listen" per host machine.  This
+	#  suggestion is because all DHCPv6 listeners will receive all
+	#  DHCPv6 packets.
+	#
+	listen {
+		#
+		#  type:: The type of packet to accept.
+		#
+		#  Multiple types can be accepted by using multiple
+		#  lines of `type = ...`.
+		#
+		#  All DHCPv6 request types are supported.  Relaying
+		#  is not supported.
+		#
+		type = Solicit
+		type = Request
+
+		#
+		#  transport:: The transport protocol.
+		#
+		#  Only `udp` is allowed.
+		#
+		transport = udp
+
+		#
+		#  #### UDP Transport
+		#
+		#  When the `listen` section contains `transport =
+		#  udp`, it looks for a "udp" subsection.  This
+		#  subsection contains all of the configuration for
+		#  the UDP transport.
+		#
+		udp {
+			#
+			#  ipaddr:: The IP address where we accept
+			#  packets.
+			#
+			#  The address can be IPv6, or a host name.
+			#  If a host name is used, the IPv6 address is
+			#  preferred.  When there is no IPv6 address
+			#  for a host name, an error will occur.
+			#
+			ipaddr = 2001:db8::
+
+			#
+			#  port:: The port where we accept packets.
+			#
+			#   The port should be 547 for a production
+			#   network. We do NOT suggest setting it to
+			#   547 on a production network unless you
+			#   know what you are doing. Even if nothing
+			#   is configured below, the server may still
+			#   NAK legitimate responses from clients.
+			#
+			port = 5470
+
+			#
+			#  interface:: Interface where we receive packets.
+			#
+			#  Either an `interface` or a `ipaddr` MUST be
+			#  specified.  The use of multicast requires
+			#  that the server bind to a particular
+			#  interface.
+			#	
+			#  If not set, the server will try to
+			#  automatically determine the correct
+			#  interface from the `ipaddr` given above.
+#			interface = eth0
+
+			#
+			#  src_ipaddr:: The source IP address used for
+			#  unicast messages.
+			#
+			#  If not specified, it defaults to `ipaddr.
+			#
+#			src_ipaddr = ${ipaddr}
+
+			#  multicast:: Whether or not we listen on the
+			#  DHCPv6 multicast addresses.
+			#
+			#  The actual multicast addresses used are
+			#  defined by the specifications, and are not
+			#  configurable.
+			#
+			#  DHCPv6 normally requires multicast.  However, we allow
+			#  multicast to be turned off when testing.  Multicast should
+			#  only be turned off when `port != 547`.
+			#
+			multicast = no
+		}
+	}
+
+#
+#  Receive a Solicit message
+#
+recv Solicit {
+	ok
+}
+
+#
+#  Receive a Solicit message
+#
+recv Request {
+	ok
+}
+
+#
+#  We also support recv / send for all normal DHCPv6 packet types.
+#
+#  See dictionary/dhcpv6/dictionary.freeradius.internal for a list of
+#  packet type names.
+#
+
+}
