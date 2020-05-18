@@ -96,7 +96,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, proto_dhcpv6_udp_t, interface) },
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_dhcpv6_udp_t, port_name) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_dhcpv6_udp_t, port), .dflt = "546"  },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_dhcpv6_udp_t, port), .dflt = "547"  },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_dhcpv6_udp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("multicast", FR_TYPE_BOOL, proto_dhcpv6_udp_t, multicast) } ,
@@ -105,7 +105,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_dhcpv6_udp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dhcpv6_udp_t, max_packet_size), .dflt = "4096" } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dhcpv6_udp_t, max_packet_size), .dflt = "8192" } ,
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_dhcpv6_udp_t, max_attributes), .dflt = STRINGIFY(DHCPV4_MAX_ATTRIBUTES) } ,
 
 	CONF_PARSER_TERMINATOR
@@ -129,6 +129,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
+	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -183,9 +184,16 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	from being received on a unicast address.
 	 */
 	if (address->dst_ipaddr.addr.v6.s6_addr[0] != 0xff) {
-		if ((packet->code == FR_DHCPV6_SOLICIT) ||
-		    (packet->code == FR_DHCPV6_REBIND) ||
-		    (packet->code == FR_DHCPV6_CONFIRM)) {
+		/*
+		 *	However as a special dispensation, if we
+		 *	intentionally disabled multicast, then we
+		 *	allow these packets.  This exception permits
+		 *	non-multicast testing.
+		 */
+		if (inst->multicast &&
+		    ((packet->code == FR_DHCPV6_SOLICIT) ||
+		     (packet->code == FR_DHCPV6_REBIND) ||
+		     (packet->code == FR_DHCPV6_CONFIRM))) {
 			DEBUG2("proto_dhcpv6_udp got unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
 			return 0;
 		}
@@ -334,6 +342,10 @@ static int mod_open(fr_listen_t *li)
 	if (inst->multicast) {
 		struct ipv6_mreq mreq;
 
+#if 0
+		/*
+		 *	We don't do relay agents for now
+		 */
 		if (inet_pton(AF_INET6, IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
 			ERROR("Failed parsing %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
@@ -344,6 +356,7 @@ static int mod_open(fr_listen_t *li)
 			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
 		}
+#endif
 
 		/*
 		 *	@todo - If we're JUST a relay agent, then we
@@ -351,12 +364,9 @@ static int mod_open(fr_listen_t *li)
 		 *	otherwise we will receive relay packets that
 		 *	we send.
 		 */
-		if (inet_pton(AF_INET6, IN6ADDR_ALL_DHCP_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
-			PERROR("Failed parsing %s ", IN6ADDR_ALL_DHCP_SERVERS);
-			goto close_error;
-		}
+		mreq.ipv6mr_multiaddr = (struct in6_addr) IN6ADDR_ALL_DHCP_SERVERS_INIT;
+		mreq.ipv6mr_interface = if_nametoindex(inst->interface);
 
-		// mreq.ipv6mr_interface should be unchanged
 		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq)) < 0) {
 			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
@@ -468,6 +478,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 4);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
+
+	/*
+	 *	Multicast requires binding to a particular interface.
+	 *	If the admin didn't specify one, then try to find one
+	 *	automatically.
+	 */
+	if (inst->multicast && !inst->interface) {
+		inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
+		if (!inst->interface) {
+			cf_log_err(cs, "No 'interface' specified, and we cannot determine one for 'ipaddr = %pV'",
+				   fr_box_ipaddr(inst->ipaddr));
+			return -1;
+		}
+	}
 
 	if (!inst->port) {
 		struct servent *s;
