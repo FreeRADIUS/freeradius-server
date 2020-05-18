@@ -168,12 +168,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-#if 0
-	if (IN6_IS_ADDR_MULTICAST(&address->dst_ipaddr)) {
-		// do stuff
-	}
-#endif
-
 	/*
 	 *	We've seen a server reply to this port, but the giaddr
 	 *	is *not* our address.  Drop it.
@@ -183,11 +177,25 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		DEBUG2("proto_dhcpv6_udp got unsupported packet code %d: ignoring", packet->code);
 		return 0;
 	}
-	xid = (packet->transaction_id[0] << 16) | (packet->transaction_id[1] << 8) | packet->transaction_id[2];
+
+	/*
+	 *	RFC 8415 Section 18.4 forbids certain types of packets
+	 *	from being received on a unicast address.
+	 */
+	if (address->dst_ipaddr.addr.v6.s6_addr[0] != 0xff) {
+		if ((packet->code == FR_DHCPV6_SOLICIT) ||
+		    (packet->code == FR_DHCPV6_REBIND) ||
+		    (packet->code == FR_DHCPV6_CONFIRM)) {
+			DEBUG2("proto_dhcpv6_udp got unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
+			return 0;
+		}
+	} /* else it was multicast... remember that */
 
 	/*
 	 *	proto_dhcpv6 sets the priority
 	 */
+
+	xid = (packet->transaction_id[0] << 16) | (packet->transaction_id[1] << 8) | packet->transaction_id[2];
 
 	/*
 	 *	Print out what we received.
@@ -326,14 +334,14 @@ static int mod_open(fr_listen_t *li)
 	if (inst->multicast) {
 		struct ipv6_mreq mreq;
 
-		if (inet_pton(AF_INET6, IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
-			ERROR("Failed parsing %s ", IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
+		if (inet_pton(AF_INET6, IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
+			ERROR("Failed parsing %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
 		}
 
 		mreq.ipv6mr_interface = if_nametoindex(inst->interface);
 		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq)) < 0) {
-			PERROR("Failed joining multicast group %s ", IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
+			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
 		}
 
@@ -343,14 +351,14 @@ static int mod_open(fr_listen_t *li)
 		 *	otherwise we will receive relay packets that
 		 *	we send.
 		 */
-		if (inet_pton(AF_INET6, IN6_ADDR_ALL_DHCP_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
-			PERROR("Failed parsing %s ", IN6_ADDR_ALL_DHCP_SERVERS);
+		if (inet_pton(AF_INET6, IN6ADDR_ALL_DHCP_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
+			PERROR("Failed parsing %s ", IN6ADDR_ALL_DHCP_SERVERS);
 			goto close_error;
 		}
 
 		// mreq.ipv6mr_interface should be unchanged
 		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq)) < 0) {
-			PERROR("Failed joining multicast group %s ", IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
+			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
 			goto close_error;
 		}
 
