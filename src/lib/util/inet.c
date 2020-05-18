@@ -416,6 +416,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 {
 	char		*p;
 	unsigned int	mask;
+	char const	*end;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
 
@@ -424,6 +425,14 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	like scope_id hanging around with garbage values.
 	 */
 	memset(out, 0, sizeof(*out));
+
+	end = value + inlen;
+	while (isspace((int) *value) && (value < end)) value++;
+	if (value == end) {
+		fr_strerror_printf("Empty IPv4 address string is invalid");
+		return -1;
+	}
+	inlen = end - value;
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -539,7 +548,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
  */
 int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
 {
-	char const	*p;
+	char const	*p, *end;
 	unsigned int	prefix;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
@@ -549,6 +558,14 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	like scope_id hanging around with garbage values.
 	 */
 	memset(out, 0, sizeof(*out));
+
+	end = value + inlen;
+	while (isspace((int) *value) && (value < end)) value++;
+	if (value == end) {
+		fr_strerror_printf("Empty IPv4 address string is invalid");
+		return -1;
+	}
+	inlen = end - value;
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -649,6 +666,15 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	bool hostname = true;
 	bool ipv4 = true;
 	bool ipv6 = true;
+	char const *end;
+
+	end = value + inlen;
+	while (isspace((int) *value) && (value < end)) value++;
+	if (value == end) {
+		fr_strerror_printf("Empty IPv4 address string is invalid");
+		return -1;
+	}
+	inlen = end - value;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
 
