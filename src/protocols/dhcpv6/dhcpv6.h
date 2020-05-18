@@ -39,8 +39,10 @@ extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 /*
  *	Defined addresses from RFC 8415 Section 7.1
  */
-#define IN6_ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS	"FF02::1:2"
-#define IN6_ADDR_ALL_DHCP_SERVERS			"FF05::1:3"
+#define IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS	"FF02::1:2"
+#define IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS_INIT   {{{ 0xff,0x02,0,0,0,0,0,0,0,0,0,0,0,0,1,2}}}
+#define IN6ADDR_ALL_DHCP_SERVERS			"FF05::1:3"
+#define IN6ADDR_ALL_DHCP_SERVERS_INIT			{{{ 0xff,0x05,0,0,0,0,0,0,0,0,0,0,0,0,1,3}}}
 
 /*
  *	Copied from src/include/protocols/dhcpv6/freeradius.internal.h
