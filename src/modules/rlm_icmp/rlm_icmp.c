@@ -369,7 +369,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	if (len <= 0) return;
 
 	DEBUG4("GOT %zd bytes", len);
-
+	HEXDUMP4((uint8_t const *)buffer, len, "received packet[length %ld]", len);
 	/*
 	 *	Ignore packets if we haven't sent any requests.
 	 */
