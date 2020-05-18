@@ -1185,3 +1185,36 @@ skip_cap:
 	return rcode;
 }
 #endif	/* HAVE_CAPABILITY_H */
+
+char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t const *ipaddr)
+{
+	struct ifaddrs *list = NULL;
+	struct ifaddrs *i;
+	char *interface = NULL;
+
+	/*
+	 *	Bind manually to an IP used by the named interface.
+	 */
+	if (getifaddrs(&list) < 0) return NULL;
+
+	for (i = list; i != NULL; i = i->ifa_next) {
+		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
+
+		if ((ipaddr->af == AF_INET) &&
+		    (memcmp(&ipaddr->addr.v4.s_addr, &i->ifa_addr->sa_data, sizeof(ipaddr->addr.v4.s_addr)) == 0)) {
+			interface = talloc_strdup(ctx, i->ifa_name);
+			break;
+		}
+
+		if ((ipaddr->af == AF_INET6) &&
+		    (memcmp(&ipaddr->addr.v6.s6_addr, &i->ifa_addr->sa_data, sizeof(ipaddr->addr.v6.s6_addr)) == 0)) {
+			interface = talloc_strdup(ctx, i->ifa_name);
+			break;
+		}
+
+		break;
+	}
+
+	freeifaddrs(list);
+	return interface;
+}
