@@ -1207,7 +1207,7 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t const *ipaddr)
 		}
 
 		if ((ipaddr->af == AF_INET6) &&
-		    (memcmp(&ipaddr->addr.v6.s6_addr, &i->ifa_addr->sa_data, sizeof(ipaddr->addr.v6.s6_addr)) == 0)) {
+		    (memcmp(&ipaddr->addr.v6.s6_addr, &((struct sockaddr_in6 *) &i->ifa_addr)->sin6_addr, sizeof(ipaddr->addr.v6.s6_addr)) == 0)) {
 			interface = talloc_strdup(ctx, i->ifa_name);
 			break;
 		}
