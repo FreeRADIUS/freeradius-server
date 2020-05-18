@@ -455,20 +455,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	If src_ipaddr is defined, it must be of the same address family as "ipaddr"
+	 *	Set src_ipaddr to ipaddr if not otherwise specified
 	 */
-	if ((inst->src_ipaddr.af != AF_UNSPEC) &&
-	    (inst->src_ipaddr.af != inst->ipaddr.af)) {
-		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
-		return -1;
+	if (inst->src_ipaddr.af == AF_UNSPEC) {
+		inst->src_ipaddr = inst->ipaddr;
 	}
 
 	/*
-	 *	Set src_ipaddr to INADDR_NONE if not otherwise specified
+	 *	src_ipaddr must be of the same address family as "ipaddr"
 	 */
-	if (inst->src_ipaddr.af == AF_UNSPEC) {
-		memset(&inst->src_ipaddr, 0, sizeof(inst->src_ipaddr));
-		inst->src_ipaddr.af = AF_INET6;
+	if (inst->src_ipaddr.af != inst->ipaddr.af) {
+		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
+		return -1;
 	}
 
 	if (inst->recv_buff_is_set) {
@@ -480,11 +478,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
 	/*
-	 *	Multicast requires binding to a particular interface.
-	 *	If the admin didn't specify one, then try to find one
-	 *	automatically.
+	 *	If the admin didn't specify an interface, then try to
+	 *	find one automatically.
 	 */
-	if (inst->multicast && !inst->interface) {
+	if (!inst->interface) {
 		inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
 		if (!inst->interface) {
 			cf_log_err(cs, "No 'interface' specified, and we cannot determine one for 'ipaddr = %pV'",
