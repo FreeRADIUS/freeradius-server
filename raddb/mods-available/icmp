@@ -42,7 +42,7 @@ icmp {
 	#
 	#  src_ipaddr: Source address for ICMP messages.
 	#
-#	src_ipaddr = 192.0.2.128
+#	src_ipaddr = *
 
 	#
 	#  timeout:: How long to wait for the reply.
@@ -67,12 +67,13 @@ icmp {
 #
 icmp ping {
 	timeout = 1s
+	src_ipaddr = *
 }
 
 #
 # ## A version for ICMPv6
 #
-icmp icmp6 {
+icmp ping6 {
 	timeout = 1s
-	src_ipaddr = 2001:DB8::
+	src_ipaddr = ::
 }
