@@ -1167,7 +1167,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_ATTRIBUTE:
 		XLAT_DEBUG("xlat_aprint ATTR");
-		if (xlat_eval_pair_real(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
+		if (tmpl_da(node->attr)->flags.virtual) {
+			if (xlat_eval_pair_virtual(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
+		} else {
+			if (xlat_eval_pair_real(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
+		}
 
 		value = fr_cursor_head(&cursor);
 		if (!value) return NULL;
