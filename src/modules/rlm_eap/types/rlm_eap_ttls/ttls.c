@@ -178,12 +178,14 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		p += 3;
 
 		if (value_len < 8) {
-			fr_strerror_printf("Malformed diameter VPs.  Needed at least length of 8, got %zu", value_len);
+			fr_strerror_printf("Malformed diameter VPs.  Needed at least length of 8, got %u",
+					   (unsigned int) value_len);
 			goto error;
 		}
 
 		if ((p + ((value_len + 0x03) & ~0x03)) > end) {
-			fr_strerror_printf("Malformed diameter VPs.  Value length %zu overflows input", value_len);
+			fr_strerror_printf("Malformed diameter VPs.  Value length %u overflows input",
+					   (unsigned int) value_len);
 			goto error;
 		}
 
