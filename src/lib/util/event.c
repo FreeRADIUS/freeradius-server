@@ -1173,8 +1173,8 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	 *	Events MUST be in the heap (or the insertion list).
 	 */
 	if (!fr_cond_assert_msg(ret == 0,
-				"Event %p, heap_id %i, allocd %s[%u], was not found in the event heap or insertion list"
-				"when freed", ev, ev->heap_id,
+				"Event %p, heap_id %i, allocd %s[%u], was not found in the event heap or insertion "
+				"list when freed", ev, ev->heap_id,
 #ifndef NDEBUG
 				ev->file, ev->line
 #else
