@@ -484,7 +484,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
-	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+	ci = cf_parent(inst->cs); /* listen { ... } */
+	fr_assert(ci != NULL);
+	ci = cf_parent(ci);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
