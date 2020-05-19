@@ -982,36 +982,67 @@ void tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len)
  */
 int tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 {
-	fr_dict_attr_t const *da;
+	vp_tmpl_attr_t		*ar = NULL;
+	fr_dict_attr_t const	*parent = NULL;
+	fr_dict_attr_t const	*da;
 
 	fr_assert_msg(tmpl_is_attr_unparsed(vpt), "Expected tmpl type 'undefined-attr', got '%s'",
 		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
 
-	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, tmpl_attr_unparsed(vpt), true) != FR_DICT_ATTR_OK) {
-		ssize_t		slen;
-		fr_dict_attr_t	*unknown_da;
-
-		/*
-		 *	Can't find it under it's regular name.  Try an unknown attribute.
-		 */
-		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
-						     tmpl_attr_unparsed(vpt));
-		if ((slen <= 0) || (tmpl_attr_unparsed(vpt)[slen] != '\0')) {
-			fr_strerror_printf_push("Failed resolving undefined attribute");
-			return -1;
-		}
-
-		tmpl_attr_set_da(vpt, unknown_da);
-		vpt->type = TMPL_TYPE_ATTR;
-
-		TMPL_ATTR_VERIFY(vpt);
-
-		return 0;
+	/*
+	 *	First ref is special as it can resolve in the
+	 *	internal dictionary or the protocol specific
+	 *	dictionary.
+	 */
+	ar = fr_dlist_head(&vpt->data.attribute.ar);
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def,
+					   ar->unknown.name, true) != FR_DICT_ATTR_OK) {
+		parent = fr_dict_root(rules->dict_def);
+		goto unknown;
+	} else {
+		ar->da = da;
+		ar->type = TMPL_ATTR_TYPE_NORMAL;
+		parent = ar->da;
 	}
 
-	tmpl_attr_set_da(vpt, da);
-	vpt->type = TMPL_TYPE_ATTR;
+	/*
+	 *	Loop, resolving each unparsed attribute in turn
+	 */
+	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
+		ssize_t		slen;
 
+		slen = fr_dict_attr_child_by_name_substr(NULL, &da, parent,
+							 &FR_SBUFF_TMP(ar->unknown.name,
+							 strlen(ar->unknown.name)),
+							 false);
+		if (slen <= 0) {
+			fr_dict_attr_t	*unknown_da;
+
+		unknown:
+			/*
+			 *	Can't find it under it's regular name.  Try an unknown attribute.
+			 */
+			slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, parent, ar->unknown.name);
+			if ((slen <= 0) || (ar->unknown.name[slen] != '\0')) {
+				fr_strerror_printf_push("Failed resolving undefined attribute");
+				return -1;
+			}
+
+			ar->type = TMPL_ATTR_TYPE_UNKNOWN;
+			ar->da = ar->unknown.da = unknown_da;
+			parent = ar->da;
+			continue;
+		}
+
+		/*
+		 *	Known attribute, just rewrite.
+		 */
+		ar->da = da;
+		ar->type = TMPL_ATTR_TYPE_NORMAL;
+		parent = ar->da;
+	}
+
+	vpt->type = TMPL_TYPE_ATTR;
 	TMPL_ATTR_VERIFY(vpt);
 
 	return 0;
