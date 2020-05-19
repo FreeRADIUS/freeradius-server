@@ -29,14 +29,15 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/print.h>
 
 #include <ctype.h>
 
 #ifdef WITH_UNLANG
 #ifdef WITH_EVAL_DEBUG
-#  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");fr_fprintf(stdout, fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #  define EVAL_DEBUG(...)
 #endif
