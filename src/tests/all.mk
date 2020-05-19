@@ -54,7 +54,6 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient ${BUILD_DIR}/bin/radsn
 		test.radclient	\
 		test.digest	\
 		test.radmin	\
-		test.radsniff	\
 		test.eap	\
 		| build.raddb
 
