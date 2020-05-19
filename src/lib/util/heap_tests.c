@@ -216,30 +216,6 @@ static void heap_cycle(void)
 	free(remaining);
 }
 
-static void heap_cycle(void)
-{
-	fr_heap_t	*hp;
-	int		i;
-	heap_thing	*array;
-	heap_thing	*remaining;
-	int		to_remove;
-	int		ret;
-
-	static bool	done_init = false;
-
-	if (!done_init) {
-		sranddev();
-		done_init = true;
-	}
-
-	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
-	TEST_CHECK(hp != NULL);
-
-	array = malloc(sizeof(heap_thing) * HEAP_CYCLE_SIZE);
-
-	for (i = 0; i < HEAP_CYCLE_SIZE; i++) array[i].data = rand() % 65537;
-}
-
 TEST_LIST = {
 	/*
 	 *	Basic tests
