@@ -211,7 +211,6 @@ static int mod_open(fr_listen_t *li)
 
 	fr_ipaddr_t			ipaddr;
 	CONF_ITEM			*ci;
-	CONF_SECTION			*server_cs;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, (int *) &thread->sockets) < 0) {
 		PERROR("Failed opening /dev/null: %s", fr_syserror(errno));
@@ -228,8 +227,6 @@ static int mod_open(fr_listen_t *li)
 	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
 	fr_assert(ci != NULL);
-
-	server_cs = cf_item_to_section(ci);
 
 	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
