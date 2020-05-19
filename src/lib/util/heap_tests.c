@@ -48,7 +48,7 @@ static void heap_test(int skip)
 	static bool	done_init = false;
 
 	if (!done_init) {
-		sranddev();
+		srand((unsigned int)time(NULL));
 		done_init = true;
 	}
 
@@ -146,7 +146,7 @@ static void heap_cycle(void)
 	static bool	done_init = false;
 
 	if (!done_init) {
-		sranddev();
+		srand((unsigned int)time(NULL));
 		done_init = true;
 	}
 
