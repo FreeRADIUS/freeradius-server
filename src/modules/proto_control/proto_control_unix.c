@@ -975,7 +975,7 @@ static int mod_open(fr_listen_t *li)
 	thread->radclient.ipaddr.af = AF_INET;
 	thread->radclient.src_ipaddr.af = AF_INET;
 
-	thread->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(inst->cs)));
+	thread->radclient.server_cs = server_cs;
 	fr_assert(thread->radclient.server_cs != NULL);
 	thread->radclient.server = cf_section_name2(thread->radclient.server_cs);
 
