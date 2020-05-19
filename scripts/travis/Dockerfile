@@ -5,6 +5,7 @@ RUN apt-get update && \
 	apt-get upgrade -y
 
 RUN apt-get install -y \
+	apt-transport-https \
 	software-properties-common \
 	wget \
 	curl
