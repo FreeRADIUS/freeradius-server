@@ -1437,7 +1437,10 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 		dict = da->dict;
 		while (da_p->parent) {
 			da_p = da_p->parent;
-			fr_cond_assert_msg(da_p->dict == dict, "Inconsistent dict membership");
+			fr_cond_assert_msg(da_p->dict == dict, "Inconsistent dict membership.  "
+					   "Expected %s, got %s",
+					   !da_p->dict ? "(null)" : fr_dict_root(da_p->dict)->name,
+					   !dict ? "(null)" : fr_dict_root(da_p->dict)->name);
 			DA_VERIFY(da_p);
 		}
 
