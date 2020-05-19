@@ -105,7 +105,7 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 
 	node = xlat_exp_alloc(ctx, XLAT_ATTRIBUTE, vpt->name, vpt->len);
 	node->attr = tmpl_alloc(node, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
-	memcpy(&node->attr->data, &vpt->data, sizeof(vpt->data));
+	tmpl_attr_copy(node->attr, vpt);
 
 	return node;
 }
