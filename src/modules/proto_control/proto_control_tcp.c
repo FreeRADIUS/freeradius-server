@@ -231,6 +231,8 @@ static int mod_open(fr_listen_t *li)
 
 	inst->sockfd = sockfd;
 
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+
 	inst->name = fr_app_io_socket_name(inst, &proto_control_tcp,
 					   NULL, 0,
 					   &inst->ipaddr, inst->port);

@@ -352,6 +352,8 @@ static int mod_open(fr_listen_t *li)
 
 	thread->sockfd = sockfd;
 
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_udp,
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,
@@ -482,10 +484,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
 	server_cs = cf_item_to_section(ci);
 

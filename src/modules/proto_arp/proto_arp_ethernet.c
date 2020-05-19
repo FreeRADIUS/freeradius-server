@@ -175,7 +175,6 @@ static int mod_open(fr_listen_t *li)
 	proto_arp_ethernet_t const      *inst = talloc_get_type_abort_const(li->app_io_instance, proto_arp_ethernet_t);
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 
-	CONF_ITEM			*ci;
 	char const			*filter;
 	char				*our_filter = NULL;
 
@@ -208,8 +207,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = thread->pcap->fd;
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
+	fr_assert(cf_parent(inst->cs) != NULL);	/* listen { ... } */
 
 	thread->name = talloc_asprintf(thread, "arp on interface %s", inst->interface);
 	return 0;

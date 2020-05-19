@@ -383,6 +383,8 @@ static int mod_open(fr_listen_t *li)
 
 	thread->sockfd = sockfd;
 
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv6_udp,
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,

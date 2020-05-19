@@ -222,6 +222,8 @@ static int mod_open(fr_listen_t *li)
 	ipaddr.af = AF_INET;
 	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &ipaddr, 0);
 
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+
 	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
 
