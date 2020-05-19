@@ -244,10 +244,6 @@ static int mod_open(fr_listen_t *li)
 					   NULL, 0,
 					   &inst->ipaddr, inst->port);
 
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on control address %s bound to virtual server %s",
-	      inst->name, cf_section_name2(server_cs));
-
 	return 0;
 }
 

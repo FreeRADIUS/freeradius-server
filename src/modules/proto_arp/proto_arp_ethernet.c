@@ -213,11 +213,7 @@ static int mod_open(fr_listen_t *li)
 	fr_assert(ci != NULL);
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_asprintf(thread, "proto arp on interface %s", inst->interface);
-
-	DEBUG("Listening on %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
-
+	thread->name = talloc_asprintf(thread, "arp on interface %s", inst->interface);
 	return 0;
 }
 

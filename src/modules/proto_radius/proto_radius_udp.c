@@ -366,10 +366,6 @@ static int mod_open(fr_listen_t *li)
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on radius address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
-
 	return 0;
 }
 

@@ -966,11 +966,7 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_typed_asprintf(thread, "proto unix filename %s", inst->filename);
-
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on control address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
+	thread->name = talloc_typed_asprintf(thread, "control_unix from filename %s", inst->filename);
 
 	/*
 	 *	Set up the fake client

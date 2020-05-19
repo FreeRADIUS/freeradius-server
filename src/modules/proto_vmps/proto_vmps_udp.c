@@ -349,11 +349,6 @@ static int mod_open(fr_listen_t *li)
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
-
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on vmps address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
-
 	return 0;
 }
 
@@ -502,6 +497,13 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 	return client_find(NULL, ipaddr, ipproto);
 }
 
+static char const *mod_name(fr_listen_t *li)
+{
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
+
+	return thread->name;
+}
+
 fr_app_io_t proto_vmps_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "vmps_udp",
@@ -521,4 +523,5 @@ fr_app_io_t proto_vmps_udp = {
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
+	.get_name		= mod_name,
 };

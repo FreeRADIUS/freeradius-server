@@ -1037,6 +1037,12 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	(void) rbtree_insert(nr->sockets, s);
 	(void) rbtree_insert(nr->sockets_by_num, s);
 
+	/*
+	 *	We use fr_log() here to avoid the "Network - " prefix.
+	 */
+	fr_log(nr->log, L_DBG, __FILE__, __LINE__, "Listening on %s bound to virtual server %s",
+	      s->listen->name, cf_section_name2(s->listen->server_cs));
+
 	DEBUG3("Using new socket %s with FD %d", s->listen->name, s->listen->fd);
 }
 

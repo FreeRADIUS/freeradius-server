@@ -231,11 +231,8 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_typed_asprintf(thread, "load generation from file %s", inst->filename ? inst->filename : "none");
+	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
-
-	DEBUG("Listening on radius address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
