@@ -1037,7 +1037,7 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	(void) rbtree_insert(nr->sockets, s);
 	(void) rbtree_insert(nr->sockets_by_num, s);
 
-	DEBUG3("Using new socket with FD %d", s->listen->fd);
+	DEBUG3("Using new socket %s with FD %d", s->listen->name, s->listen->fd);
 }
 
 /** Handle a network control message callback for a new "watch directory"
