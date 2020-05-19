@@ -85,8 +85,8 @@ typedef struct CC_HINT(__packed__) {
 #define ICMP_ECHOREPLY		(0)
 #define ICMP_ECHOREQUEST	(8)
 
-#define ICMPV6_ECHOREPLY	(128)
-#define ICMPV6_ECHOREQUEST	(129)
+#define ICMPV6_ECHOREQUEST	(128)
+#define ICMPV6_ECHOREPLY	(129)
 
 /*
  *	ICMP checksum is just over the ICMP packet.
