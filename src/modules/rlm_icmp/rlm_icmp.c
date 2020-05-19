@@ -48,6 +48,9 @@ typedef struct {
 	rbtree_t	*tree;
 	int		fd;
 	fr_event_list_t *el;
+
+	uint32_t	data;
+	uint16_t	ident;
 	uint32_t	counter;
 
 	fr_type_t	ipaddr_type;
@@ -58,8 +61,6 @@ typedef struct {
 typedef struct {
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
-	uint16_t	ident;			//!< the packet identifier
-	uint32_t	data;			//!< the packet body.
 	uint32_t	counter;	       	//!< for pinging the same IP multiple times
 	REQUEST		*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
@@ -146,7 +147,7 @@ static void xlat_icmp_cancel(REQUEST *request, UNUSED void *xlat_inst, void *xla
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
-	RDEBUG2("Cancelling ICMP request for %pV (id=%#04x)", echo->ip, echo->ident);
+	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
 	(void) rbtree_deletebydata(thread->t->tree, echo);
 	talloc_free(echo);
@@ -160,7 +161,7 @@ static void _xlat_icmp_timeout(REQUEST *request,
 
 	if (echo->replied) return; /* it MUST already have been marked resumable. */
 
-	RDEBUG2("No response to ICMP request for %pV (id=%#04x)", echo->ip, echo->ident);
+	RDEBUG2("No response to ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
 	unlang_interpret_resumable(request);
 }
@@ -211,8 +212,6 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	echo->ip = *in;
 	echo->request = request;
 	echo->counter = thread->t->counter++;
-	echo->data = fr_rand();
-	echo->ident = fr_rand() & 0xffff;
 
 	/*
 	 *	Add the IP to the local tracking heap, so that the IO
@@ -234,12 +233,12 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	RDEBUG("Sending ICMP request to %pV (id=%#04x)", echo->ip, echo->ident);
+	RDEBUG("Sending ICMP request to %pV (counter=%d)", echo->ip, echo->counter);
 
 	icmp = (icmp_header_t) {
 		.type = thread->t->request_type,
-		.ident = echo->ident,
-		.data = echo->data,
+		.ident = thread->t->ident,
+		.data = thread->t->data,
 		.counter = echo->counter
 	};
 
@@ -347,14 +346,13 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 
 static int echo_cmp(void const *one, void const *two)
 {
-	int rcode;
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;
 
-	rcode = (a->counter < b->counter) - (a->counter > b->counter);
-	if (rcode != 0) return rcode;
-
-	return ((a->ident != b->ident) - (a->ident > b->ident));
+	/*
+	 *	No need to check IP, because "counter" is unique for each packet.
+	 */
+	return (a->counter < b->counter) - (a->counter > b->counter);
 }
 
 static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
@@ -369,14 +367,12 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	len = read(t->fd, (char *) buffer, sizeof(buffer));
 	if (len <= 0) return;
 
-	DEBUG4("GOT %zd bytes", len);
-	HEXDUMP4((uint8_t const *)buffer, len, "received packet[length %ld]", len);
+	HEXDUMP4((uint8_t const *)buffer, len, "received icmp packet ");
 
 	/*
 	 *	Ignore packets if we haven't sent any requests.
 	 */
 	if (rbtree_num_elements(t->tree) == 0) {
-		DEBUG4("Nothing in the tree");
 		return;
 	}
 
@@ -385,26 +381,23 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 		ip_header_t *ip = (ip_header_t *) buffer;
 
 		if (IP_V(ip) != 4) {
-			DEBUG4("Packet is not IPv4");
 			return;
 		}
 
 		if ((IP_HL(ip) + sizeof(*icmp)) > sizeof(buffer)) {
-			DEBUG4("Packet overflows buffer");
 			return;
 		}
 
 		icmp = (icmp_header_t *) (((uint8_t *) buffer) + IP_HL(ip));
 	} else if (t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
-		/**
-		 *	The documentation says about the socket(fd, IPPROTO_ICMPV6, ...),
-		 *
+		/*
 		 *	Outgoing packets automatically have an IPv6 header prepended to them
 		 *	(based on the destination address).  ICMPv6 pseudo header checksum field
-		 *	(icmp6_cksum) will be filled automatically by the kernel.	Incoming pack-
-		 *	ets are received without the IPv6 header nor IPv6 extension headers.
-		 *	Notice that this behavior is opposite from IPv4 raw sockets and.  ICMPv4
-		 *	sockets.
+		 *	(icmp6_cksum) will be filled automatically by the kernel. Incoming packets
+		 *	are received without the IPv6 header nor IPv6 extension headers.
+		 *
+		 *	Note that this behavior is opposite from IPv4
+		 *	raw sockets and ICMPv4 sockets.
 		 *
 		 *	Therefore, we don't have ip6 headers here. Only the icmp6 packet.
 		 */
@@ -417,26 +410,23 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	}
 
 	/*
-	 *	Look up the packet by the 'ident' icmp field.
+	 *	Ignore packets which aren't an echo reply, or which
+	 *	weren't for us.  This is done *before* looking packets
+	 *	up in the rbtree, as these checks ensure that the
+	 *	packet is for this specific thread.
 	 */
-	my_echo.ident = icmp->ident;
-	my_echo.counter = icmp->counter;
-	echo = rbtree_finddata(t->tree, &my_echo);
-	if (!echo) {
-		DEBUG("Can't find packet id %#04x in tree", icmp->ident);
+	if ((icmp->type != t->reply_type) ||
+	    (icmp->ident != t->ident) || (icmp->data != t->data)) {
 		return;
 	}
 
 	/*
-	 *	Ignore packets which aren't an echo reply, or which
-	 *	weren't for us.
+	 *	Look up the packet by the fields which determine *our* ICMP packets.
 	 */
-	if ((icmp->type != t->reply_type) ||
-	    (icmp->ident != echo->ident) || (icmp->data != echo->data)) {
-		DEBUG4("Packet not for us %d %04x %08x",
-			icmp->type, icmp->ident, icmp->data);
-		DEBUG4("Packet not for us    %04x %08x",
-		      echo->ident, echo->data);
+	my_echo.counter = icmp->counter;
+	echo = rbtree_finddata(t->tree, &my_echo);
+	if (!echo) {
+		DEBUG("Can't find packet counter=%d in tree", icmp->counter);
 		return;
 	}
 
@@ -476,6 +466,20 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	MEM(t->tree = rbtree_alloc(t, echo_cmp, NULL, RBTREE_FLAG_NONE));
 	t->inst = inst;
 	t->el = el;
+
+	/*
+	 *      Since these fields are random numbers, we don't care
+	 *      about network / host byte order.  No one other than us
+	 *      will be interpreting these fields.  As such, we can
+	 *      just treat them as host byte order.
+	 *
+	 *      The only side effect of this choice is that this code
+	 *      will use (e.g.) 0xabcd for the ident, and Wireshark,
+	 *      tcpdump, etc. may show the ident as 0xcdab.  That's
+	 *      fine.
+	 */
+	t->data = fr_rand();
+	t->ident = fr_rand();
 
 	af = inst->src_ipaddr.af;
 

@@ -42,7 +42,7 @@ icmp {
 	#
 	#  src_ipaddr: Source address for ICMP messages.
 	#
-#	src_ipaddr = *
+	src_ipaddr = *
 
 	#
 	#  timeout:: How long to wait for the reply.
@@ -59,11 +59,9 @@ icmp {
 }
 
 #
-#  ## Ping
+#  ## Ping for IPv4
 #
-#  Copy of the `icmp` module, as it may be easier to remember "ping" than "icmp".
-#
-#  Since no `src_ipaddr` is defined, this module is only for IPv4.
+#  Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
 #
 icmp ping {
 	timeout = 1s
