@@ -89,11 +89,7 @@ typedef struct CC_HINT(__packed__) {
 #define ICMPV6_ECHOREPLY	(129)
 
 /*
- *	ICMP checksum is just over the ICMP packet.
- *
- *	@todo - ICMPv6 checksum is calculated over the IPv6
- *	pseudo-header, ala TCP.  i.e. src/dst addr, length, and 'next'
- *	field, followed by the ICMP packet
+ *	Calculate the ICMP portion of the checksum
  */
 static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 {
