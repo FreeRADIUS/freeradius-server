@@ -207,7 +207,6 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd;
 	uint16_t			port = inst->port;
-	CONF_ITEM			*ci;
 
 	fr_assert(!inst->connection);
 
@@ -231,11 +230,6 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	inst->sockfd = sockfd;
-
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
 
 	inst->name = fr_app_io_socket_name(inst, &proto_control_tcp,
 					   NULL, 0,

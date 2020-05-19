@@ -461,7 +461,6 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd, rcode;
 	uint16_t			port = inst->port;
-	CONF_ITEM			*ci;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -496,12 +495,7 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
-	/*
-	 *	SUID up is really only needed if interface is set, OR port <1024.
-	 */
-	rad_suid_up();
 	rcode = fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface);
-	rad_suid_down();
 	if (rcode < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
@@ -509,11 +503,6 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	thread->sockfd = sockfd;
-
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
 					     NULL, 0,

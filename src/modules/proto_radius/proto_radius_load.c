@@ -210,7 +210,6 @@ static int mod_open(fr_listen_t *li)
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
 
 	fr_ipaddr_t			ipaddr;
-	CONF_ITEM			*ci;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, (int *) &thread->sockets) < 0) {
 		PERROR("Failed opening /dev/null: %s", fr_syserror(errno));
@@ -222,11 +221,6 @@ static int mod_open(fr_listen_t *li)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
 	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &ipaddr, 0);
-
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
 
 	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);

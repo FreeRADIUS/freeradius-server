@@ -300,7 +300,6 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd, rcode;
 	uint16_t			port = inst->port;
-	CONF_ITEM			*ci;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -383,11 +382,6 @@ static int mod_open(fr_listen_t *li)
 	} /* end of multicast checks */
 
 	thread->sockfd = sockfd;
-
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv6_udp,
 					     NULL, 0,
