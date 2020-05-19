@@ -111,11 +111,15 @@ addons:
     # For rendering clang scan results
     - slapd
     - libgoogle-perftools-dev
+    # we have some files on LFS
+    - git-lfs
 services:
 - mysql
 - postgresql
 - redis-server
 before_install:
+# We have some files on LFS
+- git lfs install
 # Add IPv6 interfaces: https://github.com/travis-ci/travis-ci/issues/8361
 - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
 - sudo ./scripts/travis/cassandra-install.sh
