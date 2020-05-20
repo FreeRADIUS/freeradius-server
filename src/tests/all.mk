@@ -50,6 +50,7 @@ test: \
 		test.map	\
 		test.modules	\
 		test.radiusd-c	\
+		test.radclient	\
 		test.auth	\
 		test.digest	\
 		test.radmin	\
