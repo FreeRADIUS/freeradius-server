@@ -1542,10 +1542,9 @@ void test_cursor_replace_3i_end(void)
 void test_cursor_remove_empty(void)
 {
 	fr_cursor_t	cursor;
-	test_item_t	*item_p;
 	test_item_t	*head = NULL;
 
-	item_p = _fr_cursor_init(&cursor, (void **)&head, offsetof(test_item_t, next), test_iter, &cursor, NULL);
+	_fr_cursor_init(&cursor, (void **)&head, offsetof(test_item_t, next), test_iter, &cursor, NULL);
 	TEST_CHECK(!fr_cursor_remove(&cursor));
 }
 
