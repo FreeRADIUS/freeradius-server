@@ -315,7 +315,9 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	 *	the heap.
 	 */
 	if (fr_heap_num_elements(client->pending) > 0) {
-		(void) fr_heap_insert(thread->pending_clients, client);
+		if (fr_heap_insert(thread->pending_clients, client) < 0) {
+			fr_assert(0 == 1);
+		}
 	}
 
 	fr_assert(thread->num_pending_packets > 0);

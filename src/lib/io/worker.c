@@ -685,9 +685,10 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, REQUEST *req
 	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
 	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
-	fr_assert(request->runnable_id < 0);
 
+	fr_assert(request->runnable_id < 0);
 	(void) fr_heap_insert(worker->runnable, request);
+
 	if (!worker->ev_cleanup) worker_max_request_timer(worker);
 }
 

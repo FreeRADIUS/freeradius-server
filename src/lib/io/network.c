@@ -410,7 +410,14 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 		fr_network_unsuspend(nr);
 	}
 
-	(void) fr_heap_insert(nr->replies, cd);
+	/*
+	 *	Ensure that heap insert works.
+	 */
+	cd->channel.heap_id = -1;
+	if (fr_heap_insert(nr->replies, cd) < 0) {
+		fr_message_done(&cd->m);
+		fr_assert(0 == 1);
+	}
 }
 
 /** Handle a network control message callback for a channel
