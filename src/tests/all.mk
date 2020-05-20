@@ -51,6 +51,7 @@ test: \
 		test.modules	\
 		test.radiusd-c	\
 		test.radclient	\
+		test.radsniff   \
 		test.auth	\
 		test.digest	\
 		test.radmin	\
