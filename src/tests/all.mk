@@ -51,7 +51,6 @@ test: \
 		test.modules	\
 		test.radiusd-c	\
 		test.auth	\
-		test.radclient	\
 		test.digest	\
 		test.radmin	\
 		test.eap	\
