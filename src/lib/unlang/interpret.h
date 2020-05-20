@@ -107,7 +107,7 @@ rlm_rcode_t	unlang_interpret(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 
-rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
+rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el);
 
 void		*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 

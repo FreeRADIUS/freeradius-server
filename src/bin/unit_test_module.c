@@ -521,7 +521,7 @@ static void process(REQUEST *request)
 		goto send_reply;
 	}
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOOP:
@@ -561,7 +561,7 @@ static void process(REQUEST *request)
 		goto send_reply;
 	}
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOOP:
@@ -580,7 +580,7 @@ send_reply:
 	unlang = cf_section_find(request->server_cs, "send", dv->name);
 	if (!unlang) return;
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
 	default:
 		break;
 

@@ -858,9 +858,10 @@ rlm_rcode_t unlang_interpret_section(REQUEST *request, CONF_SECTION *subcs, rlm_
  * @param[in] request	The current request.
  * @param[in] cs	Section with compiled unlang associated with it.
  * @param[in] action	The default return code to use.
+ * @param[in] child_el	Use a child event list
  * @return One of the RLM_MODULE_* macros.
  */
-rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el)
 {
 	fr_event_list_t *el, *old_el;
 	fr_heap_t	*backlog, *old_backlog;
@@ -870,23 +871,25 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	bool		wait_for_events;
 	int		iterations = 0;
 
-	/*
-	 *	Don't talloc from the request
-	 *	as we'll almost certainly leave holes in the memory pool.
-	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
-	if (!el) {
-		RPERROR("Failed creating temporary event loop");
-		fr_assert(0);		/* Cause debug builds to die */
-		return RLM_MODULE_FAIL;
+
+	old_el = request->el;
+	if (child_el) {
+		/*
+		 *	Don't talloc from the request
+		 *	as we'll almost certainly leave holes in the memory pool.
+		 */
+		el = fr_event_list_alloc(NULL, NULL, NULL);
+		if (!el) {
+			RPERROR("Failed creating temporary event loop");
+			fr_assert(0);		/* Cause debug builds to die */
+			return RLM_MODULE_FAIL;
+		}
 	}
 
-	MEM(backlog = fr_heap_talloc_alloc(el, fr_pointer_cmp, REQUEST, runnable_id));
-	old_el = request->el;
+	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, REQUEST, runnable_id));
 	old_backlog = request->backlog;
 	caller = request->module;
 
-	request->el = el;
 	request->backlog = backlog;
 
 	rcode = unlang_interpret_section(request, cs, action);
@@ -902,7 +905,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	well.
 		 */
 		DEBUG3("Gathering events - %s", wait_for_events ? "will wait" : "Will not wait");
-		num_events = fr_event_corral(el, fr_time(), wait_for_events);
+		num_events = fr_event_corral(request->el, fr_time(), wait_for_events);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
 			rcode = RLM_MODULE_FAIL;
@@ -929,7 +932,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 */
 		if (num_events > 0) {
 			DEBUG4("Servicing event(s)");
-			fr_event_service(el);
+			fr_event_service(request->el);
 		}
 
 		/*
@@ -977,7 +980,8 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		}
 	}
 
-	talloc_free(el);
+	if (child_el) talloc_free(el);
+	talloc_free(backlog);
 	request->el = old_el;
 	request->backlog = old_backlog;
 	request->module = caller;
