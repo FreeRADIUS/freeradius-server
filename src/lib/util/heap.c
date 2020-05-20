@@ -267,11 +267,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		fr_heap_bubble(hp, parent);
 	}
 
-	/*
-	 *	This node was removed from the heap.
-	 */
-	*((int32_t *)(((uint8_t *)data) + hp->offset)) = -1;
-
 	return 0;
 }
 
