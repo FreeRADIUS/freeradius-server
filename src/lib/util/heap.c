@@ -236,9 +236,9 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		}
 	}
 
-	fr_assert(parent <= hp->num_elements);
-	fr_assert(hp->p != NULL);
-	fr_assert(hp->p[parent] != NULL);
+	if (!fr_cond_assert(parent <= hp->num_elements)) return -1;
+	if (!fr_cond_assert(hp->p != NULL)) return -1;
+	if (!fr_cond_assert(hp->p[parent] != NULL)) return -1;
 
 	RESET_OFFSET(hp, parent);
 	child = HEAP_LEFT(parent);
