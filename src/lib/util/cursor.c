@@ -1546,6 +1546,7 @@ void test_cursor_remove_empty(void)
 	test_item_t	*head = NULL;
 
 	item_p = _fr_cursor_init(&cursor, (void **)&head, offsetof(test_item_t, next), test_iter, &cursor, NULL);
+	TEST_CHECK(!item_p);
 	TEST_CHECK(!fr_cursor_remove(&cursor));
 }
 
