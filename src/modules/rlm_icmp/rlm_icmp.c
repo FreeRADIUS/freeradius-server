@@ -324,6 +324,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));
 
+	/*
+	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
+	 */
+	(void) fr_cap_net_raw();
+
 	return 0;
 }
 
