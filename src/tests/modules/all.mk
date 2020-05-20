@@ -13,7 +13,6 @@ TEST_TARGETS := $(sort $(foreach x,$(TEST_SUBDIRS),$(findstring rlm_$x.la,$(ALL_
 #
 ifeq "$(TRAVIS)" "1"
 TEST_TARGETS := $(filter-out rlm_icmp.la,$(TEST_TARGETS))
-$(info $(TEST_TARGETS))
 endif
 
 TEST_BUILT := $(patsubst rlm_%.la,%,$(TEST_TARGETS))
