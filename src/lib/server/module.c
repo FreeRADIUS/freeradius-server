@@ -1246,7 +1246,7 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
 						     thread_inst_ctx->el, ti->data);
 		if (ret < 0) {
-			ERROR("Thread instantiation failed for module \"%s\"", mi->name);
+			ERROR("Thread instantiation failed for module \"%s\" - %s", mi->name, fr_strerror());
 			return -1;
 		}
 	}
