@@ -3551,7 +3551,7 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
 		return -1;
 	}
 
@@ -3697,7 +3697,7 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
 	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
 		return -1;
 	}
 
