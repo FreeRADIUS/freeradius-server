@@ -1,0 +1,103 @@
+#
+#  ARGV: 
+#
+2020-05-21 00:56:58.650943 (1) Access-Request Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 -> 127.0.0.1:1812 +0.000
+2020-05-21 00:56:58.652076 (2) Access-Accept Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 <- 127.0.0.1:1812 +0.001 +0.001
+2020-05-21 00:56:59.767770 (3) Accounting-Request Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 -> 127.0.0.1:1813 +0.425
+2020-05-21 00:56:59.790790 (4) Accounting-Response Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 <- 127.0.0.1:1813 +0.428 +0.002
+2020-05-21 00:56:59.499467 (5) CoA-Request Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 -> 127.0.0.1:3799 +0.848
+2020-05-21 00:56:59.505460 (6) CoA-ACK Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 <- 127.0.0.1:3799 +0.854 +0.005
+2020-05-21 00:56:59.929210 (7) Access-Request Id 96 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49655 -> 127.0.0.1:1812 +1.278
+2020-05-21 00:56:59.930695 (8) Access-Accept Id 96 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49655 <- 127.0.0.1:1812 +1.279 +0.001
+2020-05-21 00:57:00.351072 (9) Accounting-Request Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 -> 127.0.0.1:1813 +1.700
+2020-05-21 00:57:00.353281 (10) Accounting-Response Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 <- 127.0.0.1:1813 +1.702 +0.002
+2020-05-21 00:57:00.776572 (11) CoA-Request Id 211 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63826 -> 127.0.0.1:3799 +2.125
+2020-05-21 00:57:00.783349 (12) CoA-ACK Id 211 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63826 <- 127.0.0.1:3799 +2.132 +0.006
+2020-05-21 00:57:01.208827 (13) Access-Request Id 182 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60228 -> 127.0.0.1:1812 +2.557
+2020-05-21 00:57:01.210115 (14) Access-Accept Id 182 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60228 <- 127.0.0.1:1812 +2.559 +0.001
+2020-05-21 00:57:01.633813 (15) Accounting-Request Id 196 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60142 -> 127.0.0.1:1813 +2.982
+2020-05-21 00:57:01.636133 (16) Accounting-Response Id 196 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60142 <- 127.0.0.1:1813 +2.985 +0.002
+2020-05-21 00:57:02.551190 (17) CoA-Request Id 249 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:50391 -> 127.0.0.1:3799 +3.404
+2020-05-21 00:57:02.613080 (18) CoA-ACK Id 249 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:50391 <- 127.0.0.1:3799 +3.410 +0.006
+2020-05-21 00:57:02.484249 (19) Access-Request Id 21 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52074 -> 127.0.0.1:1812 +3.833
+2020-05-21 00:57:02.485497 (20) Access-Accept Id 21 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52074 <- 127.0.0.1:1812 +3.834 +0.001
+2020-05-21 00:57:02.907930 (21) Accounting-Request Id 135 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63411 -> 127.0.0.1:1813 +4.256
+2020-05-21 00:57:02.910046 (22) Accounting-Response Id 135 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63411 <- 127.0.0.1:1813 +4.259 +0.002
+2020-05-21 00:57:03.329481 (23) CoA-Request Id 244 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57185 -> 127.0.0.1:3799 +4.678
+2020-05-21 00:57:03.335410 (24) CoA-ACK Id 244 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57185 <- 127.0.0.1:3799 +4.684 +0.005
+2020-05-21 00:57:03.755999 (25) Access-Request Id 119 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61525 -> 127.0.0.1:1812 +5.105
+2020-05-21 00:57:03.758077 (26) Access-Accept Id 119 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61525 <- 127.0.0.1:1812 +5.107 +0.002
+2020-05-21 00:57:04.178509 (27) Accounting-Request Id 110 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63218 -> 127.0.0.1:1813 +5.527
+2020-05-21 00:57:04.180721 (28) Accounting-Response Id 110 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63218 <- 127.0.0.1:1813 +5.529 +0.002
+2020-05-21 00:57:04.602622 (29) CoA-Request Id 215 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:58591 -> 127.0.0.1:3799 +5.951
+2020-05-21 00:57:04.608646 (30) CoA-ACK Id 215 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:58591 <- 127.0.0.1:3799 +5.957 +0.006
+2020-05-21 00:57:05.304250 (31) Access-Request Id 112 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61631 -> 127.0.0.1:1812 +6.379
+2020-05-21 00:57:05.315110 (32) Access-Accept Id 112 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61631 <- 127.0.0.1:1812 +6.380 +0.001
+2020-05-21 00:57:05.452973 (33) Accounting-Request Id 136 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61812 -> 127.0.0.1:1813 +6.802
+2020-05-21 00:57:05.455379 (34) Accounting-Response Id 136 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61812 <- 127.0.0.1:1813 +6.804 +0.002
+2020-05-21 00:57:05.879802 (35) CoA-Request Id 161 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:62325 -> 127.0.0.1:3799 +7.228
+2020-05-21 00:57:05.885662 (36) CoA-ACK Id 161 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:62325 <- 127.0.0.1:3799 +7.234 +0.005
+2020-05-21 00:57:06.309252 (37) Access-Request Id 126 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:59944 -> 127.0.0.1:1812 +7.658
+2020-05-21 00:57:06.310331 (38) Access-Accept Id 126 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:59944 <- 127.0.0.1:1812 +7.659 +0.001
+2020-05-21 00:57:06.730371 (39) Accounting-Request Id 108 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49777 -> 127.0.0.1:1813 +8.079
+2020-05-21 00:57:06.732609 (40) Accounting-Response Id 108 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49777 <- 127.0.0.1:1813 +8.081 +0.002
+2020-05-21 00:57:07.156265 (41) CoA-Request Id 159 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54511 -> 127.0.0.1:3799 +8.505
+2020-05-21 00:57:07.162589 (42) CoA-ACK Id 159 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54511 <- 127.0.0.1:3799 +8.511 +0.006
+2020-05-21 00:57:07.586126 (43) Access-Request Id 162 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52394 -> 127.0.0.1:1812 +8.935
+2020-05-21 00:57:07.587261 (44) Access-Accept Id 162 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52394 <- 127.0.0.1:1812 +8.936 +0.001
+2020-05-21 00:57:08.701500 (45) Accounting-Request Id 234 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:51313 -> 127.0.0.1:1813 +9.356
+2020-05-21 00:57:08.977700 (46) Accounting-Response Id 234 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:51313 <- 127.0.0.1:1813 +9.358 +0.002
+2020-05-21 00:57:08.428150 (47) CoA-Request Id 254 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61738 -> 127.0.0.1:3799 +9.777
+2020-05-21 00:57:08.601981 (48) CoA-ACK Id 254 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61738 <- 127.0.0.1:3799 +9.951 +0.173
+2020-05-21 00:57:09.359500 (49) Access-Request Id 174 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:56544 -> 127.0.0.1:1812 +10.385
+2020-05-21 00:57:09.371280 (50) Access-Accept Id 174 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:56544 <- 127.0.0.1:1812 +10.386 +0.001
+2020-05-21 00:57:09.456303 (51) Accounting-Request Id 116 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:56470 -> 127.0.0.1:1813 +10.805
+2020-05-21 00:57:09.459495 (52) Accounting-Response Id 116 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:56470 <- 127.0.0.1:1813 +10.808 +0.003
+2020-05-21 00:57:09.879719 (53) CoA-Request Id 66 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55009 -> 127.0.0.1:3799 +11.228
+2020-05-21 00:57:09.883966 (54) CoA-ACK Id 66 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55009 <- 127.0.0.1:3799 +11.233 +0.004
+2020-05-21 00:57:10.308073 (55) Access-Request Id 220 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52712 -> 127.0.0.1:1812 +11.657
+2020-05-21 00:57:10.309330 (56) Access-Accept Id 220 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52712 <- 127.0.0.1:1812 +11.658 +0.001
+2020-05-21 00:57:10.731012 (57) Accounting-Request Id 206 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54365 -> 127.0.0.1:1813 +12.080
+2020-05-21 00:57:10.733170 (58) Accounting-Response Id 206 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54365 <- 127.0.0.1:1813 +12.082 +0.002
+2020-05-21 00:57:11.155090 (59) CoA-Request Id 206 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60270 -> 127.0.0.1:3799 +12.504
+2020-05-21 00:57:11.161337 (60) CoA-ACK Id 206 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60270 <- 127.0.0.1:3799 +12.510 +0.006
+2020-05-21 00:57:11.585522 (61) Access-Request Id 32 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57817 -> 127.0.0.1:1812 +12.934
+2020-05-21 00:57:11.587075 (62) Access-Accept Id 32 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57817 <- 127.0.0.1:1812 +12.936 +0.001
+2020-05-21 00:57:12.196250 (63) Accounting-Request Id 249 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63625 -> 127.0.0.1:1813 +13.368
+2020-05-21 00:57:12.219050 (64) Accounting-Response Id 249 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63625 <- 127.0.0.1:1813 +13.370 +0.002
+2020-05-21 00:57:12.447387 (65) CoA-Request Id 49 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55263 -> 127.0.0.1:3799 +13.796
+2020-05-21 00:57:12.454399 (66) CoA-ACK Id 49 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55263 <- 127.0.0.1:3799 +13.803 +0.007
+2020-05-21 00:57:12.879116 (67) Access-Request Id 84 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52534 -> 127.0.0.1:1812 +14.228
+2020-05-21 00:57:12.880241 (68) Access-Accept Id 84 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52534 <- 127.0.0.1:1812 +14.229 +0.001
+2020-05-21 00:57:13.297039 (69) Accounting-Request Id 93 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:53648 -> 127.0.0.1:1813 +14.646
+2020-05-21 00:57:13.299173 (70) Accounting-Response Id 93 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:53648 <- 127.0.0.1:1813 +14.648 +0.002
+2020-05-21 00:57:13.722005 (71) CoA-Request Id 240 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57177 -> 127.0.0.1:3799 +15.071
+2020-05-21 00:57:13.727576 (72) CoA-ACK Id 240 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57177 <- 127.0.0.1:3799 +15.076 +0.005
+2020-05-21 00:57:14.167738 (73) Access-Request Id 57 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60498 -> 127.0.0.1:1812 +15.516
+2020-05-21 00:57:14.168860 (74) Access-Accept Id 57 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60498 <- 127.0.0.1:1812 +15.517 +0.001
+2020-05-21 00:57:14.610858 (75) Accounting-Request Id 119 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:58229 -> 127.0.0.1:1813 +15.959
+2020-05-21 00:57:14.613972 (76) Accounting-Response Id 119 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:58229 <- 127.0.0.1:1813 +15.963 +0.003
+2020-05-21 00:57:15.442440 (77) CoA-Request Id 199 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:64354 -> 127.0.0.1:3799 +16.393
+2020-05-21 00:57:15.539640 (78) CoA-ACK Id 199 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:64354 <- 127.0.0.1:3799 +16.403 +0.009
+2020-05-21 00:57:15.475419 (79) Access-Request Id 134 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57413 -> 127.0.0.1:1812 +16.824
+2020-05-21 00:57:15.476516 (80) Access-Accept Id 134 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57413 <- 127.0.0.1:1812 +16.825 +0.001
+2020-05-21 00:57:15.898452 (81) Accounting-Request Id 25 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:51082 -> 127.0.0.1:1813 +17.247
+2020-05-21 00:57:15.900704 (82) Accounting-Response Id 25 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:51082 <- 127.0.0.1:1813 +17.249 +0.002
+2020-05-21 00:57:16.323447 (83) CoA-Request Id 157 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49259 -> 127.0.0.1:3799 +17.672
+2020-05-21 00:57:16.329155 (84) CoA-ACK Id 157 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49259 <- 127.0.0.1:3799 +17.678 +0.005
+2020-05-21 00:57:16.751809 (85) Access-Request Id 17 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61367 -> 127.0.0.1:1812 +18.100
+2020-05-21 00:57:16.752936 (86) Access-Accept Id 17 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61367 <- 127.0.0.1:1812 +18.101 +0.001
+2020-05-21 00:57:17.173903 (87) Accounting-Request Id 122 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54034 -> 127.0.0.1:1813 +18.522
+2020-05-21 00:57:17.176078 (88) Accounting-Response Id 122 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54034 <- 127.0.0.1:1813 +18.525 +0.002
+2020-05-21 00:57:17.618692 (89) CoA-Request Id 83 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52067 -> 127.0.0.1:3799 +18.967
+2020-05-21 00:57:17.625044 (90) CoA-ACK Id 83 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:52067 <- 127.0.0.1:3799 +18.974 +0.006
+2020-05-21 00:57:18.876290 (91) Access-Request Id 101 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54353 -> 127.0.0.1:1812 +19.436
+2020-05-21 00:57:18.893350 (92) Access-Accept Id 101 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:54353 <- 127.0.0.1:1812 +19.438 +0.001
+2020-05-21 00:57:18.574928 (93) Accounting-Request Id 230 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60856 -> 127.0.0.1:1813 +19.923
+2020-05-21 00:57:18.577440 (94) Accounting-Response Id 230 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60856 <- 127.0.0.1:1813 +19.926 +0.002
+2020-05-21 00:57:19.646100 (95) CoA-Request Id 137 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:65218 -> 127.0.0.1:3799 +20.413
+2020-05-21 00:57:19.701390 (96) CoA-ACK Id 137 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:65218 <- 127.0.0.1:3799 +20.419 +0.005
+2020-05-21 00:57:19.498702 (97) Access-Request Id 48 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61024 -> 127.0.0.1:1812 +20.847
+2020-05-21 00:57:19.499826 (98) Access-Accept Id 48 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:61024 <- 127.0.0.1:1812 +20.848 +0.001
+2020-05-21 00:57:19.934424 (99) Accounting-Request Id 255 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:65458 -> 127.0.0.1:1813 +21.283
+2020-05-21 00:57:19.937329 (100) Accounting-Response Id 255 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:65458 <- 127.0.0.1:1813 +21.286 +0.002

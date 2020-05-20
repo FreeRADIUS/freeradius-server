@@ -1,0 +1,9 @@
+#
+#  ARGV: -c 5
+#
+2020-05-21 00:56:58.650943 (1) Access-Request Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 -> 127.0.0.1:1812 +0.000
+2020-05-21 00:56:58.652076 (2) Access-Accept Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 <- 127.0.0.1:1812 +0.001 +0.001
+2020-05-21 00:56:59.767770 (3) Accounting-Request Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 -> 127.0.0.1:1813 +0.425
+2020-05-21 00:56:59.790790 (4) Accounting-Response Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 <- 127.0.0.1:1813 +0.428 +0.002
+2020-05-21 00:56:59.499467 (5) CoA-Request Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 -> 127.0.0.1:3799 +0.848
+Captured 5 packets, exiting...

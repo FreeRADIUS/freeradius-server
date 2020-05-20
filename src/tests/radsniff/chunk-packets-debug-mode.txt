@@ -1,0 +1,60 @@
+#
+#  ARGV: -x -c 10
+#
+	User-Name = "bob"
+	User-Password = "hello"
+	Called-Station-Id = "scald_pega_pilha"
+Logging all events
+Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
+2020-05-21 00:56:58.650943 (1) Access-Request Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 -> 127.0.0.1:1812 +0.000
+	Authenticator-Field = 0xd7b59d93741d7205b4966b72a21a790f
+	Reply-Message = "Hello, bob"
+2020-05-21 00:56:58.652076 (2) Access-Accept Id 243 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:57389 <- 127.0.0.1:1812 +0.001 +0.001
+	Authenticator-Field = 0xc27d2fc97ff6b40202404fa1eba447fc
+	Service-Type = Framed-User
+	User-Name = "testuser"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 123
+	Called-Station-Id = "scald_pega_pilha"
+	Calling-Station-Id = "btc100k"
+	Acct-Status-Type = Start
+	Acct-Session-Id = "0123456789"
+	Message-Authenticator = 0xd1851d10de31ceb79bbb5141d62b39ba
+	NAS-Port-Id = "0"
+2020-05-21 00:56:59.767770 (3) Accounting-Request Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 -> 127.0.0.1:1813 +0.425
+	Authenticator-Field = 0x00000000000000000000000000000000
+2020-05-21 00:56:59.790790 (4) Accounting-Response Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 <- 127.0.0.1:1813 +0.428 +0.002
+	Authenticator-Field = 0x113000da9020f10c71b6c248d4dda6bf
+	Service-Type = Framed-User
+	User-Name = "scald_left_lemos"
+	NAS-IP-Address = 127.0.0.1
+	Acct-Session-Id = "0123456789"
+	Message-Authenticator = 0x62a3e9f511e8bde563bd88ee44673fd5
+	NAS-Port-Id = "0"
+2020-05-21 00:56:59.499467 (5) CoA-Request Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 -> 127.0.0.1:3799 +0.848
+	Authenticator-Field = 0x00000000000000000000000000000000
+2020-05-21 00:56:59.505460 (6) CoA-ACK Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 <- 127.0.0.1:3799 +0.854 +0.005
+	Authenticator-Field = 0xab97b09e10f2a81bc1b81c0532540960
+	User-Name = "bob"
+	User-Password = "hello"
+	Called-Station-Id = "scald_pega_pilha"
+2020-05-21 00:56:59.929210 (7) Access-Request Id 96 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49655 -> 127.0.0.1:1812 +1.278
+	Authenticator-Field = 0x97a14f92201a132af4b1de64b89ad0b0
+	Reply-Message = "Hello, bob"
+2020-05-21 00:56:59.930695 (8) Access-Accept Id 96 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:49655 <- 127.0.0.1:1812 +1.279 +0.001
+	Authenticator-Field = 0xfb31422fb507b80be6518f14005a86dc
+	Service-Type = Framed-User
+	User-Name = "testuser"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 123
+	Called-Station-Id = "scald_pega_pilha"
+	Calling-Station-Id = "btc100k"
+	Acct-Status-Type = Start
+	Acct-Session-Id = "0123456789"
+	Message-Authenticator = 0x14aa9ea36bfae4e448437a2345d87c6a
+	NAS-Port-Id = "0"
+2020-05-21 00:57:00.351072 (9) Accounting-Request Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 -> 127.0.0.1:1813 +1.700
+	Authenticator-Field = 0x00000000000000000000000000000000
+2020-05-21 00:57:00.353281 (10) Accounting-Response Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 <- 127.0.0.1:1813 +1.702 +0.002
+	Authenticator-Field = 0x84ab5b7e68ebf30734f32c8196150091
+Captured 10 packets, exiting...
