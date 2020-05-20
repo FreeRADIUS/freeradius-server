@@ -1,0 +1,18 @@
+update control {
+	&Tmp-String-0 := "%{ping:127.0.0.1}"
+}
+
+#
+#  @todo - conditions do not yet support YIELD
+#
+if (&control:Tmp-String-0 == "yes") {
+	update {
+		&control:Cleartext-Password := "hello"
+		&reply:Reply-Message += "success"
+	}
+}
+else {
+	update reply {
+		&Reply-Message += "failed"
+	}
+}
