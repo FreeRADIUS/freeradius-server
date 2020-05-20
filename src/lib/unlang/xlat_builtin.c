@@ -2122,6 +2122,97 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 
+/** Pack multiple things together
+ *
+ * Example:
+@verbatim
+"%{pack:&Attr-Foo &Attr-bar}" == packed hex values of the attributes
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_t **in)
+{
+	fr_value_box_t	*vb;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	*cursor;
+	char		*buffer, *p, *next;
+
+	if (!*in) {
+		REDEBUG("Missing attribute reference");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Concatenate all input into a list of attribute references.
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	buffer = talloc_strdup(ctx, (*in)->vb_strvalue);
+
+	/*
+	 *	Allocate the initial box
+	 */
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false));
+	for (p = buffer; p != NULL; p = next) {
+		next = strchr(p, ' ');
+		if (next) {
+			while (isspace((int) *next)) {
+				*(next++) = '\0';
+			}
+		}
+
+		if (xlat_fmt_to_cursor(NULL, &cursor, NULL, request, p) < 0) {
+		fail:
+			talloc_free(buffer);
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 *	Loop over the input attributes, packing them together.
+		 */
+		for (vp = fr_cursor_head(cursor);
+		     vp;
+		     vp = fr_cursor_next(cursor)) {
+			fr_value_box_t *cast, box;
+
+			if (vp->da->type != FR_TYPE_OCTETS) {
+				if (fr_value_box_cast(ctx, &box, FR_TYPE_OCTETS, NULL, &vp->data) < 0) goto fail2;
+				cast = &box;
+			} else {
+				cast = &vp->data;
+			}
+
+			RDEBUG("Box  %pV", vb);
+			RDEBUG("Cast %pV", cast);
+
+			if (vb->datum.length == 0) {
+				(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->datum.length, cast->tainted);
+
+			} else if (fr_value_box_append_mem(vb, cast->vb_octets, cast->datum.length, cast->tainted) < 0) {
+			fail2:
+				talloc_free(cursor);
+				goto fail;
+			}
+
+			fr_assert(vb->vb_octets != NULL);
+		}
+		talloc_free(cursor);
+	}
+	talloc_free(buffer);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 /** Encode attributes as a series of string attribute/value pairs
  *
  * This is intended to serialize one or more attributes as a comma
@@ -3347,6 +3438,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "md4", xlat_func_md4);
 	xlat_async_register(NULL, "md5", xlat_func_md5);
 	xlat_async_register(NULL, "module", xlat_func_module);
+	xlat_async_register(NULL, "pack", xlat_func_pack);
 	xlat_async_register(NULL, "pairs", xlat_func_pairs);
 	xlat_async_register(NULL, "rand", xlat_func_rand);
 	xlat_async_register(NULL, "randstr", xlat_func_randstr);
