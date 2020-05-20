@@ -2189,9 +2189,6 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
 				cast = &vp->data;
 			}
 
-			RDEBUG("Box  %pV", vb);
-			RDEBUG("Cast %pV", cast);
-
 			if (vb->datum.length == 0) {
 				(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->datum.length, cast->tainted);
 
