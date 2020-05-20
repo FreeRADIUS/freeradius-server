@@ -31,13 +31,6 @@ RCSID("$Id$")
 #include <string.h>
 #include <unistd.h>
 
-typedef struct fr_talloc_link  fr_talloc_link_t;
-
-struct fr_talloc_link {			//!< Allocated in the context of the parent.
-	fr_talloc_link_t **self;	//!< Allocated in the context of the child.
-	TALLOC_CTX *child;		//!< Allocated in the context of the child.
-};
-
 /** Retrieve the current talloc NULL ctx
  *
  * Talloc doesn't provide a function to retrieve the top level memory tracking context.
@@ -57,49 +50,90 @@ void *talloc_null_ctx(void)
 	return null_ctx;
 }
 
-/** Called when the parent CTX is freed
+/** Called with the fire_ctx is freed
  *
  */
-static int _link_ctx_link_free(fr_talloc_link_t *link)
+static int _talloc_destructor_fire(fr_talloc_destructor_t *d)
 {
-	/*
-	 *	This hasn't been freed yet.  Mark it as "about to be
-	 *	freed", and then free it.
-	 */
-	if (link->self) {
-		fr_talloc_link_t **self = link->self;
-
-		link->self = NULL;
-		talloc_free(self);
+	if (d->ds) {
+		talloc_set_destructor(d->ds, NULL);	/* Disarm the disarmer */
+		TALLOC_FREE(d->ds);			/* Free the disarm trigger ctx */
 	}
-	talloc_free(link->child);
 
-	/* link is freed by talloc when this function returns */
-	return 0;
+	return d->func(d->fire, d->uctx);
 }
 
-/** Called when the child CTX is freed
+/** Called when the disarm_ctx ctx is freed
  *
  */
-static int _link_ctx_self_free(fr_talloc_link_t **link_p)
+static int _talloc_destructor_disarm(fr_talloc_destructor_disarm_t *ds)
 {
-	fr_talloc_link_t *link = *link_p;
+	talloc_set_destructor(ds->d, NULL);		/* Disarm the destructor */
+	return talloc_free(ds->d);			/* Free memory allocated to the destructor */
+}
 
-	/*
-	 *	link->child is freed by talloc at some other point,
-	 *	which results in this destructor being called.
-	 */
+/** Add an additional destructor to a talloc chunk
+ *
+ * @param[in] fire_ctx		When this ctx is freed the destructor function
+ *				will be called.
+ * @param[in] disarm_ctx	When this ctx is freed the destructor will be
+ *				disarmed. May be NULL.  #talloc_destructor_disarm
+ *				may be used to disarm the destructor too.
+ * @param[in] func		to call when the fire_ctx is freed.
+ * @param[in] uctx		data to pass to the above function.
+ * @return
+ *	- A handle to access the destructor on success.
+ *	- NULL on failure.
+ */
+fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *disarm_ctx,
+					      fr_talloc_free_func_t func, void const *uctx)
+{
+	fr_talloc_destructor_t *d;
 
-	/* link->self is freed by talloc when this function returns */
+	if (!fire_ctx) return NULL;
 
-	/*
-	 *	If link->self is still pointing to us, the link is
-	 *	still valid.  Mark it as "about to be freed", and free the link.
-	 */
-	if (link->self) {
-		link->self = NULL;
-		talloc_free(link);
+	d = talloc(fire_ctx, fr_talloc_destructor_t);
+	if (!d) return NULL;
+
+	d->fire = fire_ctx;
+	d->func = func;
+	memcpy(&d->uctx, &uctx, sizeof(d->uctx));
+
+	if (disarm_ctx) {
+		fr_talloc_destructor_disarm_t *ds;
+
+		ds = talloc(disarm_ctx, fr_talloc_destructor_disarm_t);
+		if (!ds) {
+			talloc_free(d);
+			return NULL;
+		}
+		ds->d = d;
+		d->ds = ds;
+		talloc_set_destructor(ds, _talloc_destructor_disarm);
 	}
+
+	talloc_set_destructor(d, _talloc_destructor_fire);
+
+	return d;
+}
+
+/** Disarm a destructor and free all memory allocated in the trigger ctxs
+ *
+ */
+void talloc_destructor_disarm(fr_talloc_destructor_t *d)
+{
+	if (d->ds) {
+		talloc_set_destructor(d->ds, NULL);	/* Disarm the disarmer */
+		TALLOC_FREE(d->ds);			/* Free the disarmer ctx */
+	}
+
+	talloc_set_destructor(d, NULL);			/* Disarm the destructor */
+	talloc_free(d);					/* Free the destructor ctx */
+}
+
+static int _talloc_link_ctx_free(UNUSED void *parent, void *child)
+{
+	talloc_free(child);
 
 	return 0;
 }
@@ -117,41 +151,7 @@ static int _link_ctx_self_free(fr_talloc_link_t **link_p)
  */
 int talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
-	fr_talloc_link_t *link;
-
-	/*
-	 *	Don't link to a NULL context.
-	 */
-	if (!parent) return 0;
-
-#if 0
-	/*
-	 *	Commented out for debugging.
-	 */
-	{
-		TALLOC_CTX *check;
-
-		check = talloc_parent(child);
-		if (fr_cond_assert(parent != check)) {
-			return -1;
-		}
-	}
-#endif
-
-	link = talloc(parent, fr_talloc_link_t);
-	if (!link) return -1;
-
-	link->self = talloc(child, fr_talloc_link_t *);
-	if (!link->self) {
-		talloc_free(link);
-		return -1;
-	}
-
-	link->child = child;
-	*(link->self) = link;
-
-	talloc_set_destructor(link, _link_ctx_link_free);
-	talloc_set_destructor(link->self, _link_ctx_self_free);
+	if (!talloc_destructor_add(parent, child, _talloc_link_ctx_free, child)) return -1;
 
 	return 0;
 }

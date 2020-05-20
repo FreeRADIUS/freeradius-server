@@ -36,6 +36,31 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+typedef int(* fr_talloc_free_func_t)(void *fire_ctx, void *uctx);
+
+typedef struct fr_talloc_destructor_s fr_talloc_destructor_t;
+typedef struct fr_talloc_destructor_disarm_s fr_talloc_destructor_disarm_t;
+
+/** Structure to record a destructor operation on a specific talloc chunk
+ *
+ * Provided here so that additional memory can be allocated with talloc pool.
+ */
+struct fr_talloc_destructor_s {
+	void				*fire;			//!< Parent chunk.
+
+	fr_talloc_free_func_t		func;			//!< Free function.
+	void				*uctx;			//!< uctx to pass to free function.
+	fr_talloc_destructor_disarm_t	*ds;			//!< Chunk to free.
+};
+
+/** Structure to record a destructor to disarm if a child talloc chunk is freed
+ *
+ * Provided here so that additional memory can be allocated with talloc pool.
+ */
+struct fr_talloc_destructor_disarm_s {
+	fr_talloc_destructor_t		*d;	//!< Destructor to disarm.
+};
+
 /** Allocate a top level chunk with a constant name
  *
  * @param[in] name	Must be a string literal.
@@ -57,7 +82,16 @@ static inline TALLOC_CTX *talloc_init_const(char const *name)
 
 void		*talloc_null_ctx(void);
 
+fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *disarm_ctx,
+					      fr_talloc_free_func_t func, void const *uctx);
+
+void		talloc_destructor_disarm(fr_talloc_destructor_t *d);
+
 int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
+
+fr_talloc_destructor_t *talloc_add_destructor(TALLOC_CTX *chunk, fr_talloc_free_func_t func, void const *uctx);
+
+void		talloc_disarm_destructor(fr_talloc_destructor_t *d);
 
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
 
