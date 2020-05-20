@@ -113,7 +113,23 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
  */
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
-	int32_t child = hp->num_elements;
+	int32_t child;
+
+	/*
+	 *	On insert, the heap_id MUST be either:
+	 *
+	 *	-1 = the node was added / removed from the heap
+	 *	     and the heap code set the ID to -1
+	 *	0  = the node was just allocated via an "alloc_zero"
+	 *	     function
+	 */
+	child = *((int32_t *)(((uint8_t *)data) + hp->offset));
+	if (child > 0) {
+		fr_strerror_printf("Node is already in the heap");
+		return -1;
+	}
+
+	child = hp->num_elements;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (hp->type) (void)_talloc_get_type_abort(data, hp->type, __location__);
@@ -251,6 +267,11 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		fr_heap_bubble(hp, parent);
 	}
 
+	/*
+	 *	This node was removed from the heap.
+	 */
+	*((int32_t *)(((uint8_t *)data) + hp->offset)) = -1;
+
 	return 0;
 }
 
@@ -274,7 +295,7 @@ void *fr_heap_pop(fr_heap_t *hp)
 	if (hp->num_elements == 0) return NULL;
 
 	data = hp->p[0];
-	(void) fr_heap_extract(hp, NULL);
+	(void) fr_heap_extract(hp, data);
 
 	return data;
 }
