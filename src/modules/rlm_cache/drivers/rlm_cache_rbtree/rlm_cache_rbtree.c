@@ -123,7 +123,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_create(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
+	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;

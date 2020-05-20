@@ -64,7 +64,7 @@ typedef struct fr_heap_s fr_heap_t;
  *	- A new heap.
  *	- NULL on error.
  */
-#define fr_heap_talloc_create(_ctx, _cmp, _talloc_type, _field) \
+#define fr_heap_talloc_alloc(_ctx, _cmp, _talloc_type, _field) \
 	_fr_heap_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
 
 fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);

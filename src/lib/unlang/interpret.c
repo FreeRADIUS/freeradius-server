@@ -881,7 +881,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		return RLM_MODULE_FAIL;
 	}
 
-	MEM(backlog = fr_heap_talloc_create(el, fr_pointer_cmp, REQUEST, runnable_id));
+	MEM(backlog = fr_heap_talloc_alloc(el, fr_pointer_cmp, REQUEST, runnable_id));
 	old_el = request->el;
 	old_backlog = request->backlog;
 	caller = request->module;
