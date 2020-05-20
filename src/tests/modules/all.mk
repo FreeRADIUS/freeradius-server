@@ -8,6 +8,14 @@ TEST_SUBDIRS := $(patsubst src/tests/modules/%/all.mk,%,$(wildcard src/tests/mod
 #
 TEST_TARGETS := $(sort $(foreach x,$(TEST_SUBDIRS),$(findstring rlm_$x.la,$(ALL_TGTS))))
 
+#
+#  Remove things which are known to not work under travis
+#
+ifeq "$(TRAVIS)" "1"
+TEST_TARGETS := $(filter-out rlm_icmp.la,$(TEST_TARGETS))
+$(info $(TEST_TARGETS))
+endif
+
 TEST_BUILT := $(patsubst rlm_%.la,%,$(TEST_TARGETS))
 
 #
