@@ -6,7 +6,7 @@ TEST_SUBDIRS := $(patsubst src/tests/modules/%/all.mk,%,$(wildcard src/tests/mod
 #
 #  Find out which of those have a similar target.  i.e. modules/foo -> rlm_foo.la
 #
-TEST_TARGETS := $(foreach x,$(TEST_SUBDIRS),$(findstring rlm_$x.la,$(ALL_TGTS)))
+TEST_TARGETS := $(sort $(foreach x,$(TEST_SUBDIRS),$(findstring rlm_$x.la,$(ALL_TGTS))))
 
 TEST_BUILT := $(patsubst rlm_%.la,%,$(TEST_TARGETS))
 
