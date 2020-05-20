@@ -547,7 +547,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 			       NULL,
 			       mod_icmp_error,
 			       t) < 0) {
-		fr_strerror_printf("Failed adding socket to event loop - %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding socket to event loop");
 		close(fd);
 		return -1;
 	}

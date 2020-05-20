@@ -348,7 +348,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (xlat_eval_pair(request, vp) < 0) {
-				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
+				RPWARN("Failed parsing expanded value for check item, skipping entry");
 				fr_pair_list_free(&check_tmp);
 				continue;
 			}

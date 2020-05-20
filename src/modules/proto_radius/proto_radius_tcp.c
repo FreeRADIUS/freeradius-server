@@ -114,7 +114,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 */
 	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
 	if (data_size < 0) {
-		DEBUG2("proto_radius_tcp got read error %zd: %s", data_size, fr_strerror());
+		PDEBUG2("proto_radius_tcp got read error %zd", data_size);
 		return data_size;
 	}
 

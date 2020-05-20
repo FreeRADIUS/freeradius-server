@@ -60,7 +60,7 @@ int fr_vqp_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_vqp) < 0) {
-		fr_strerror_printf("Failed loading the 'vmps' dictionary - %s", fr_strerror());
+		fr_strerror_printf_push("Failed loading the 'vmps' dictionary");
 		return -1;
 	}
 

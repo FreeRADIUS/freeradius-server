@@ -398,8 +398,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		}
 
 		if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
-			cf_log_err(cs, "Failed reading %s - %s",
-				   inst->filename, fr_strerror());
+			cf_log_perr(cs, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;
 		}
@@ -419,8 +418,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 				      client->secret, talloc_array_length(client->secret),
 				      code, 0, vps);
 	if (packet_len <= 0) {
-		cf_log_err(cs, "Failed encoding packet from %s - %s",
-			   inst->filename, fr_strerror());
+		cf_log_perr(cs, "Failed encoding packet from %s",
+			    inst->filename);
 		return -1;
 	}
 

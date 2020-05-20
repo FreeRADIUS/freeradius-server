@@ -1239,8 +1239,8 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 static int mod_load(void)
 {
-#define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
-#define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_INFO(_fmt, ...) fr_log_perror(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 
 	fr_assert(!Py_IsInitialized());
 
@@ -1253,7 +1253,7 @@ static int mod_load(void)
 	 *	can't find the symbols they need.
 	 */
 	python_dlhandle = dl_open_by_sym("Py_IsInitialized", RTLD_NOW | RTLD_GLOBAL);
-	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table: %s", fr_strerror());
+	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table");
 
 #if PY_MAJOR_VERSION == 3
 	/*

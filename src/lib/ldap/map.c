@@ -90,9 +90,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			if (map_afrom_attr_str(ctx, &attr,
 					       attr_str,
 					       &lhs_rules, &rhs_rules) < 0) {
-				RWDEBUG("Failed parsing \"%pV\" as valuepair (%s), skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_strerror());
+				RPWDEBUG("Failed parsing \"%pV\" as valuepair, skipping...",
+					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				talloc_free(attr_str);
 				continue;
 			}
@@ -375,8 +374,8 @@ int fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
 					       &parse_rules, &parse_rules) < 0) {
-				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
-					fr_strerror(), valuepair_attr, value);
+				RPWDEBUG("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
+					 valuepair_attr, value);
 				talloc_free(value);
 				continue;
 			}

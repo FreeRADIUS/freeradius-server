@@ -14,13 +14,13 @@ xlat should not start %%{expansion
 match should not start %{expansion
 
 xlat %
-match ERROR offset 1 'Invalid variable expansion'
+match ERROR offset 1: Invalid variable expansion
 
 xlat %%
 match %
 
 xlat \
-match ERROR offset 0 'Invalid escape at end of string'
+match ERROR offset 0: Invalid escape at end of string
 
 #
 #  Regex capture groups
@@ -32,16 +32,16 @@ xlat %{32}
 match %{32}
 
 xlat %{33}
-match ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 xlat %{3a}
-match ERROR offset 2 'Unknown attribute'
+match ERROR offset 2: Unknown attribute
 
 xlat %{-3}
-match ERROR offset 2 'Unknown attribute'
+match ERROR offset 2: Unknown attribute
 
 xlat %{3
-match ERROR offset 1 'No matching closing brace'
+match ERROR offset 1: No matching closing brace
 
 #
 #  Tests for xlat expansion
@@ -129,13 +129,13 @@ xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 
 xlat %{length}
-match ERROR offset 2 'Unknown attribute'
+match ERROR offset 2: Unknown attribute
 
 xlat %{length:
-match ERROR offset 1 'No matching closing brace'
+match ERROR offset 1: No matching closing brace
 
 xlat %{length:1 + 2
-match ERROR offset 14 'Missing closing brace at end of string'
+match ERROR offset 14: Missing closing brace at end of string
 
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
@@ -150,10 +150,10 @@ match \"foo %{test:foo}\"
 #  Alternations
 #
 xlat %{%{foo}:-%{bar}}
-match ERROR offset 4 'Unknown attribute'
+match ERROR offset 4: Unknown attribute
 
 xlat %{%{User-Name}:-%{bar}}
-match ERROR offset 18 'Unknown attribute'
+match ERROR offset 18: Unknown attribute
 
 xlat %{%{User-Name}:-bar}
 match %{%{User-Name}:-bar}
@@ -180,82 +180,82 @@ xlat %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
 match %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
 
 xlat %{:-}
-match ERROR offset 2 'First item in alternation cannot be empty'
+match ERROR offset 2: First item in alternation cannot be empty
 
 xlat %{:-%{User-Name}}
-match ERROR offset 2 'First item in alternation cannot be empty'
+match ERROR offset 2: First item in alternation cannot be empty
 
 xlat %{%{}:-}
-match ERROR offset 4 'Empty expression is invalid'
+match ERROR offset 4: Empty expression is invalid
 
 xlat %{%{}:-foo}
-match ERROR offset 4 'Empty expression is invalid'
+match ERROR offset 4: Empty expression is invalid
 
 xlat %{%{User-Name}:-
-match ERROR offset 2 'No matching closing brace'
+match ERROR offset 2: No matching closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{%{User-Name}:-foo
-match ERROR offset 19 'Missing closing brace at end of string'
+match ERROR offset 19: Missing closing brace at end of string
 
 xlat %{%{User-Name}:}
-match ERROR offset 15 'Expected '-' after ':''
+match ERROR offset 15: Expected '-' after ':'
 
 xlat %{%{User-Name}}
-match ERROR offset 14 'Expected ':' after first expansion, got '}''
+match ERROR offset 14: Expected ':' after first expansion, got '}'
 
 
 #
 #  Empty and malformed expansions
 #
 xlat %{
-match ERROR offset 1 'No matching closing brace'
+match ERROR offset 1: No matching closing brace
 
 xlat %{}
-match ERROR offset 2 'Empty expression is invalid'
+match ERROR offset 2: Empty expression is invalid
 
 xlat %{:}
-match ERROR offset 2 'Missing expansion function or list qualifier'
+match ERROR offset 2: Missing expansion function or list qualifier
 
 xlat %{:bar}
-match ERROR offset 2 'Missing expansion function or list qualifier'
+match ERROR offset 2: Missing expansion function or list qualifier
 
 xlat %{foo: bar}
-match ERROR offset 2 'Unknown expansion function or invalid list qualifier'
+match ERROR offset 2: Unknown expansion function or invalid list qualifier
 
 xlat %{[}
-match ERROR offset 2 'Missing attribute name'
+match ERROR offset 2: Missing attribute name
 
 xlat %{[baz}
-match ERROR offset 2 'Missing attribute name'
+match ERROR offset 2: Missing attribute name
 
 xlat %{ }
-match ERROR offset 2 'Invalid char ' ' in expression'
+match ERROR offset 2: Invalid char ' ' in expression
 
 xlat %{\t}
-match ERROR offset 2 'Invalid char '\t' in expression'
+match ERROR offset 2: Invalid char '\t' in expression
 
 xlat %{\n}
-match ERROR offset 2 'Invalid char '\n' in expression'
+match ERROR offset 2: Invalid char '\n' in expression
 
 xlat %{foo }
-match ERROR offset 5 'Invalid char ' ' in expression'
+match ERROR offset 5: Invalid char ' ' in expression
 
 xlat %{foo bar}
-match ERROR offset 5 'Invalid char ' ' in expression'
+match ERROR offset 5: Invalid char ' ' in expression
 
 xlat %{test:
-match ERROR offset 1 'No matching closing brace'
+match ERROR offset 1: No matching closing brace
 
 xlat %{test:%{User-Name
-match ERROR offset 8 'No matching closing brace'
+match ERROR offset 8: No matching closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{test:%{User-Name}
-match ERROR offset 19 'Missing closing brace at end of string'
+match ERROR offset 19: Missing closing brace at end of string
 
 xlat %{myfirstxlat
-match ERROR offset 1 'No matching closing brace'
+match ERROR offset 1: No matching closing brace
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -284,7 +284,7 @@ match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name} %{Filter-Id}" }
 
 # and errors
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 33 'No matching closing brace'
+match ERROR offset 33: No matching closing brace
 
 count
 match 171

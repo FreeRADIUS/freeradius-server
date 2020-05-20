@@ -1068,7 +1068,7 @@ DIAG_ON(nested-externs)
 
 static int mod_load(void)
 {
-#define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
+#define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
 
 	/*
 	 *	Load perl using RTLD_GLOBAL and dlopen.
@@ -1076,7 +1076,7 @@ static int mod_load(void)
 	 *	can't find the symbols they need.
 	 */
 	perl_dlhandle = dl_open_by_sym("perl_construct", RTLD_NOW | RTLD_GLOBAL);
-	if (!perl_dlhandle) LOAD_WARN("Failed loading libperl symbols into global symbol table: %s", fr_strerror());
+	if (!perl_dlhandle) LOAD_WARN("Failed loading libperl symbols into global symbol table");
 
 	return 0;
 }

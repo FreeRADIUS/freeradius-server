@@ -138,7 +138,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
-		DEBUG2("proto_radius_udp got read error: %s", fr_strerror());
+		PDEBUG2("proto_radius_udp got read error");
 		return data_size;
 	}
 
@@ -479,7 +479,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_err(cs, "Failed creating list of networks - %s", fr_strerror());
+			cf_log_perr(cs, "Failed creating list of networks");
 			return -1;
 		}
 	}

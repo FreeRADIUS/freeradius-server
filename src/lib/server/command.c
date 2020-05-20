@@ -1835,8 +1835,7 @@ redo:
 	 */
 	if (fr_value_box_from_str(ctx, box, &type,
 				  NULL, name, -1, quote, true) < 0) {
-		fr_strerror_printf("Failed parsing argument '%s' - %s",
-				   name, fr_strerror());
+		fr_strerror_printf_push("Failed parsing argument '%s'", name);
 		return -1;
 	}
 

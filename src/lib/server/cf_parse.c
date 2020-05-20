@@ -199,7 +199,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 				cf_log_err(cp, "Failed parsing attribute reference:");
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+				cf_log_perr(cp, "%s^", spaces);
 
 				talloc_free(spaces);
 				talloc_free(text);
@@ -1356,7 +1356,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				cf_log_err(cp, "Failed parsing expansion string:");
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+				cf_log_perr(cp, "%s^", spaces);
 
 				talloc_free(spaces);
 				talloc_free(text);
@@ -1394,7 +1394,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 				fr_canonicalize_error(vpt, &spaces, &text, slen, cp->value);
 
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+				cf_log_perr(cp, "%s^", spaces);
 
 				talloc_free(spaces);
 				talloc_free(text);

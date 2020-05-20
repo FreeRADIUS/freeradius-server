@@ -831,7 +831,7 @@ static ssize_t load_proto_library(char const *proto_name)
 
 		dl = dl_by_name(dl_loader, dl_name, NULL, false);
 		if (!dl) {
-			ERROR("Failed to link to library \"%s\": %s", dl_name, fr_strerror());
+			fr_perror("Failed to link to library \"%s\"", dl_name);
 			unload_proto_library();
 			return 0;
 		}
@@ -1093,7 +1093,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 	table->read_only = true;
 
 	if (fr_command_add(table, &command_head, NULL, NULL, table) < 0) {
-		fr_strerror_printf("ERROR: failed adding command - %s", fr_strerror());
+		fr_strerror_printf_push("ERROR: Failed adding command");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -2146,7 +2146,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	dec_len = xlat_tokenize(fmt, &head, fmt, len,
 				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (dec_len <= 0) {
-		fr_strerror_printf("ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
+		fr_strerror_printf_push("ERROR offset %d", (int) -dec_len);
 
 	return_error:
 		talloc_free(fmt);
@@ -2154,7 +2154,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	}
 
 	if (((size_t) dec_len != len) || (fmt[dec_len] != '\0')) {
-		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);
+		fr_strerror_printf_push("offset %d 'Too much text'", (int) dec_len);
 		goto return_error;
 	}
 
@@ -2183,13 +2183,13 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, in, input_len,
 				  &(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (slen <= 0) {
-		fr_strerror_printf("ERROR offset %d '%s'", (int) -slen, fr_strerror());
+		fr_strerror_printf_push("ERROR offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();
 	}
 
 	argc = xlat_flatten_compiled_argv(cc->tmp_ctx, &argv, head);
 	if (argc <= 0) {
-		fr_strerror_printf("ERROR in argument %d '%s'", (int) -argc, fr_strerror());
+		fr_strerror_printf_push("ERROR in argument %d", (int) -argc);
 		RETURN_OK_WITH_ERROR();
 	}
 

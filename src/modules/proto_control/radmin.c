@@ -798,7 +798,7 @@ static int local_command(char *line)
 
 	argc = fr_command_str_to_argv(local_cmds, &local_info, line);
 	if (argc < 0) {
-		fprintf(stderr, "Failed parsing local command: %s\n", fr_strerror());
+		fr_perror("Failed parsing local command");
 		return -1;
 	}
 

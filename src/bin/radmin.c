@@ -324,7 +324,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Parse error!  Oops..
 		 */
 		if (argc < 0) {
-			fprintf(stderr, "Failed parsing line: %s\n", fr_strerror());
+			fr_perror("Failed parsing line");
 			add_history(line); /* let them up-arrow and retype it */
 			goto next;
 		}
@@ -398,7 +398,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Reset this to the current context.
 		 */
 		if (fr_command_clear(context, info) < 0) {
-			fprintf(stderr, "Failing clearing buffers: %s\n", fr_strerror());
+			fr_perror("Failing clearing buffers");
 			break;
 		}
 

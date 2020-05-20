@@ -1139,7 +1139,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		struct passwd *pwd;
 
 		if (rad_getpwnam(cs, &pwd, inst->uid_name) < 0) {
-			ERROR("Failed getting uid for %s: %s", inst->uid_name, fr_strerror());
+			PERROR("Failed getting uid for %s", inst->uid_name);
 			return -1;
 		}
 		inst->uid = pwd->pw_uid;
@@ -1150,7 +1150,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	if (inst->gid_name) {
 		if (rad_getgid(cs, &inst->gid, inst->gid_name) < 0) {
-			ERROR("Failed getting gid for %s: %s", inst->gid_name, fr_strerror());
+			PERROR("Failed getting gid for %s", inst->gid_name);
 			return -1;
 		}
 	} else {

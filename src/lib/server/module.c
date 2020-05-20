@@ -1246,7 +1246,7 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
 						     thread_inst_ctx->el, ti->data);
 		if (ret < 0) {
-			ERROR("Thread instantiation failed for module \"%s\" - %s", mi->name, fr_strerror());
+			PERROR("Thread instantiation failed for module \"%s\"", mi->name);
 			return -1;
 		}
 	}
@@ -1313,8 +1313,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	if (mi->instantiated) return 0;
 
 	if (fr_command_register_hook(NULL, mi->name, mi, cmd_module_table) < 0) {
-		ERROR("Failed registering radmin commands for module %s - %s",
-		      mi->name, fr_strerror());
+		PERROR("Failed registering radmin commands for module %s", mi->name);
 		return -1;
 	}
 

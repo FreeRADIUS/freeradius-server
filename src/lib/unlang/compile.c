@@ -361,7 +361,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 
 		cf_log_err(ci, "Invalid regular expression:");
 		cf_log_err(ci, "%s", text);
-		cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+		cf_log_perr(ci, "%s^", spaces);
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -2313,8 +2313,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			fr_assert(tmpl_da(f->vpt) != NULL);
 
 			if (tmpl_cast_in_place(vpt, tmpl_da(f->vpt)->type, tmpl_da(f->vpt)) < 0) {
-				cf_log_err(cs, "Invalid argument for case statement: %s",
-					      fr_strerror());
+				cf_log_perr(cs, "Invalid argument for case statement");
 				talloc_free(vpt);
 				return NULL;
 			}

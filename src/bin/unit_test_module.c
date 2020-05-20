@@ -962,7 +962,7 @@ int main(int argc, char *argv[])
 	 */
 	request = request_from_file(autofree, fp, el, client);
 	if (!request) {
-		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
+		fr_perror("Failed reading input");
 		EXIT_WITH_FAILURE;
 	}
 	request->el = el;
@@ -996,8 +996,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (fr_pair_list_afrom_file(request, dict_radius, &filter_vps, fp, &filedone) < 0) {
-			fprintf(stderr, "Failed reading attributes from %s: %s\n",
-				filter_file, fr_strerror());
+			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
 
@@ -1005,8 +1004,7 @@ int main(int argc, char *argv[])
 		 *	Filter files can't be empty.
 		 */
 		if (!filter_vps) {
-			fprintf(stderr, "No attributes in filter file %s\n",
-				filter_file);
+			fr_perror("No attributes in filter file %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
 
@@ -1054,8 +1052,8 @@ int main(int argc, char *argv[])
 
 		if (filter_vps && !fr_pair_validate(failed, filter_vps, request->reply->vps)) {
 			fr_pair_validate_debug(request, failed);
-			fr_perror("Output file %s does not match attributes in filter %s (%s)",
-				  output_file ? output_file : input_file, filter_file, fr_strerror());
+			fr_perror("Output file %s does not match attributes in filter %s",
+				  output_file ? output_file : input_file, filter_file);
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}

@@ -670,8 +670,8 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	fr_assert(vp);
 
 	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1, '\0', true) < 0) {
-		RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue_buffer(str),
-			tmpl_da(map->lhs)->name, fr_strerror());
+		RPWDEBUG("Failed parsing value \"%pV\" for attribute %s", fr_box_strvalue_buffer(str),
+			tmpl_da(map->lhs)->name);
 		talloc_free(vp);
 
 		return -1;

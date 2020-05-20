@@ -208,7 +208,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
 
 		if (sc->worker_thread_instantiate(sw->ctx, sw->el, cs) < 0) {
-			ERROR("%s - Failed calling thread instantiate: %s", worker_name, fr_strerror());
+			PERROR("%s - Failed calling thread instantiate", worker_name);
 			goto fail;
 		}
 	}
@@ -569,7 +569,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_dlist_insert_head(&sc->workers, sw);
 
 		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
-			ERROR("Failed creating worker %u: %s", i, fr_strerror());
+			PERROR("Failed creating worker %u", i);
 			break;
 		}
 	}

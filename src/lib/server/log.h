@@ -174,9 +174,13 @@ void	log_global_free(void);
 #define INFO(_fmt, ...)		_FR_LOG_PREFIX(L_INFO, _fmt, ## __VA_ARGS__)
 #define WARN(_fmt, ...)		_FR_LOG_PREFIX(L_WARN, _fmt, ## __VA_ARGS__)
 #define ERROR(_fmt, ...)	_FR_LOG_PREFIX(L_ERR, _fmt, ## __VA_ARGS__)
-#define PERROR(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_ERR, _fmt, ## __VA_ARGS__)
-#define PWARN(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_WARN, _fmt, ## __VA_ARGS__)
 #define FATAL(_fmt, ...)	_FR_LOG_PREFIX_FATAL(_fmt, ## __VA_ARGS__)
+
+#define PINFO(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_INFO, _fmt, ## __VA_ARGS__)
+#define PWARN(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_WARN, _fmt, ## __VA_ARGS__)
+#define PERROR(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_ERR, _fmt, ## __VA_ARGS__)
+
+
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -213,6 +217,13 @@ void	log_global_free(void);
 #define DEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define DEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
 #define DEBUGX(_lvl, _fmt, ...)		_DEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
+
+#define _PDEBUG_LOG(_type, _lvl, _fmt, ...)	if (fr_debug_lvl >= _lvl) _FR_LOG_PREFIX_PERROR(_type, _fmt, ## __VA_ARGS__)
+#define PDEBUG(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define PDEBUG2(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define PDEBUG3(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define PDEBUG4(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define PDEBUGX(_lvl, _fmt, ...)		_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
@@ -236,6 +247,9 @@ void	log_global_free(void);
 #define RINFO(fmt, ...)		log_request(L_INFO, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RWARN(fmt, ...)		log_request(L_DBG_WARN, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RERROR(fmt, ...)	log_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+
+#define RPINFO(fmt, ...)	log_request_perror(L_DBG_INFO, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define RPWARN(fmt, ...)	log_request_perror(L_DBG_WARN, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RPERROR(fmt, ...)	log_request_perror(L_DBG_ERR, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 /** @} */
 
@@ -279,10 +293,20 @@ void	log_global_free(void);
 #define RDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
+#define RPDEBUG(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+
 #define RIDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+
+#define RPIDEBUG(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
 #define RWDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RWDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)

@@ -242,7 +242,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
 
 		cf_log_err(conf, "%s", text);
-		cf_log_err(conf, "%s^ - %s", spaces, fr_strerror());
+		cf_log_perr(conf, "%s^", spaces);
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -276,7 +276,7 @@ static rlm_rcode_t mod_exec_nowait_resume(void *instance, UNUSED void *thread, R
 	}
 
 	if (fr_exec_nowait(request, box, env_pairs) < 0) {
-		REDEBUG("Failed executing program - %s", fr_strerror());
+		RPEDEBUG("Failed executing program");
 		return RLM_MODULE_FAIL;
 	}
 

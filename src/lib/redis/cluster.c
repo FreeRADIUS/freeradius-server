@@ -1774,7 +1774,7 @@ finish:
 			fr_pool_connection_release(node->pool, request, *conn);
 			goto again;	/* New map, try again */
 		}
-		RDEBUG2("%s", fr_strerror());
+		RPDEBUG2("");
 	}
 
 	state->node = node;
@@ -1857,7 +1857,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		 *	Remap the cluster. On success, will clear the
 		 *	remap_needed flag.
 		 */
-		if (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS) RDEBUG2("%s", fr_strerror());
+		if (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)
+		RPDEBUG2("");
 	}
 
 	/*
@@ -1904,8 +1905,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		fr_redis_cluster_key_slot_t const *key_slot;
 
-		RERROR("[%i] Failed communicating with %s:%i: %s", state->node->id, state->node->name,
-		       state->node->addr.port, fr_strerror());
+		RPERROR("[%i] Failed communicating with %s:%i", state->node->id, state->node->name,
+		        state->node->addr.port);
 
 		fr_pool_connection_close(state->node->pool, request, *conn);	/* He's dead jim */
 
@@ -1945,7 +1946,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		fr_assert(*reply);
 
 		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)) {
-			RDEBUG2("%s", fr_strerror());
+			RPDEBUG2("");
 		}
 		FALL_THROUGH;
 
@@ -2471,7 +2472,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			}
 
 			if (cluster_map_apply(cluster, map) < 0) {
-				WARN("%s: Applying cluster map failed: %s", cluster->log_prefix, fr_strerror());
+				PWARN("%s: Applying cluster map failed", cluster->log_prefix);
 				fr_redis_reply_free(&map);
 				continue;
 			}
@@ -2483,14 +2484,12 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	Unusable bootstrap node
 		 */
 		case FR_REDIS_CLUSTER_RCODE_BAD_INPUT:
-			WARN("%s - Bootstrap server \"%s\" returned invalid data: %s",
-			     cluster->log_prefix, server, fr_strerror());
+			PWARN("%s - Bootstrap server \"%s\" returned invalid data", cluster->log_prefix, server);
 			fr_pool_connection_release(node->pool, NULL, conn);
 			continue;
 
 		case FR_REDIS_CLUSTER_RCODE_NO_CONNECTION:
-			WARN("%s - Can't contact bootstrap server \"%s\": %s",
-			     cluster->log_prefix, server, fr_strerror());
+			PWARN("%s - Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
 			fr_pool_connection_close(node->pool, NULL, conn);
 			continue;
 
@@ -2500,8 +2499,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 */
 		case FR_REDIS_CLUSTER_RCODE_FAILED:
 		case FR_REDIS_CLUSTER_RCODE_IGNORED:
-			DEBUG2("%s - Bootstrap server \"%s\" returned: %s",
-			       cluster->log_prefix, server, fr_strerror());
+			PDEBUG2("%s - Bootstrap server \"%s\" returned", cluster->log_prefix, server);
 			fr_pool_connection_release(node->pool, NULL, conn);
 			break;
 		}

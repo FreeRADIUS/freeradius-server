@@ -100,7 +100,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, dict_dhcpv4,
 						      p, end - p, NULL);
 			if (len <= 0) {
-				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+				RPERROR("DHCP option decoding failed");
 				fr_pair_list_free(&head);
 				return XLAT_ACTION_FAIL;
 			}

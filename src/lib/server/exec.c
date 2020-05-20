@@ -822,7 +822,7 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	if (input_fd) {
 		if (pipe(to_child) < 0) {
 		error2:
-			fr_strerror_printf("Failed opening pipe to read to child - %s", fr_strerror());
+			fr_strerror_printf_push("Failed opening pipe to read to child");
 			talloc_free(argv);
 			goto error;
 		}

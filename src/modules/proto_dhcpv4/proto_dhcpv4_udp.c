@@ -630,7 +630,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_err(cs, "Failed creating list of networks - %s", fr_strerror());
+			cf_log_perr(cs, "Failed creating list of networks");
 			return -1;
 		}
 	}

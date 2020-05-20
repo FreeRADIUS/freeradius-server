@@ -210,7 +210,7 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 
 		if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
 				      unlang_tmpl_exec_waitpid, request) < 0) {
-			RDEBUG("Failed adding watcher for child process - %s", fr_strerror());
+			RPEDEBUG("Failed adding watcher for child process");
 			unlang_interpret_resumable(request);
 			return;
 		}
@@ -354,7 +354,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	if (state->out) fd_p = &state->fd;
 
 	if (fr_exec_wait_start(request, state->box, state->vps, &pid, NULL, fd_p) < 0) {
-		REDEBUG("Failed executing program - %s", fr_strerror());
+		RPEDEBUG("Failed executing program");
 	fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -380,7 +380,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 */
 	if (state->fd >= 0) {
 		if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
-			REDEBUG("Failed adding event - %s", fr_strerror());
+			RPEDEBUG("Failed adding event");
 			unlang_tmpl_exec_cleanup(request);
 			goto fail;
 		}
@@ -406,7 +406,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(REQUEST *request, rlm_rcod
 								       unlang_frame_state_tmpl_t);
 
 	if (fr_exec_nowait(request, state->box, state->vps) < 0) {
-		REDEBUG("Failed executing program - %s", fr_strerror());
+		RPEDEBUG("Failed executing program");
 		*presult = RLM_MODULE_FAIL;
 
 	} else {
@@ -440,7 +440,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	if (!tmpl_async_required(ut->tmpl)) {
 		if (!ut->inline_exec) {
 			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
-				REDEBUG("Failed expanding %s - %s", ut->tmpl->name, fr_strerror());
+				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
 				*presult = RLM_MODULE_FAIL;
 			}
 
@@ -501,7 +501,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 			fr_canonicalize_error(state->ctx, &spaces, &text, slen, ut->tmpl->name);
 			REDEBUG("Failed parsing expansion string:");
 			REDEBUG("%s", text);
-			REDEBUG("%s^ %s", spaces, fr_strerror());
+			RPEDEBUG("%s^", spaces);
 
 			talloc_free(spaces);
 			talloc_free(text);

@@ -797,7 +797,7 @@ static int send_one_packet(rc_request_t *request)
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
 				if (mysockfd < 0) {
-					ERROR("Error opening socket: %s", fr_strerror());
+					fr_perror("Error opening socket");
 					return -1;
 				}
 			} else {
@@ -805,12 +805,12 @@ static int send_one_packet(rc_request_t *request)
 
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
-					ERROR("Error opening socket: %s", fr_strerror());
+					fr_perror("Error opening socket");
 					return -1;
 				}
 
 				if (fr_socket_bind(mysockfd, &client_ipaddr, &port, NULL) < 0) {
-					ERROR("Error binding socket: %s", fr_strerror());
+					fr_perror("Error binding socket");
 					return -1;
 				}
 			}
@@ -1288,7 +1288,7 @@ int main(int argc, char **argv)
 
 		case 't':
 			if (fr_time_delta_from_str(&timeout, optarg, FR_TIME_RES_SEC) < 0) {
-				ERROR("Failed parsing timeout value %s", fr_strerror());
+				fr_perror("Failed parsing timeout value");
 				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
@@ -1366,7 +1366,7 @@ int main(int argc, char **argv)
 	 */
 	if (strcmp(argv[1], "-") != 0) {
 		if (fr_inet_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true, true) < 0) {
-			ERROR("%s", fr_strerror());
+			fr_perror("radclient");
 			fr_exit_now(1);
 		}
 
@@ -1434,12 +1434,12 @@ int main(int argc, char **argv)
 	} else {
 		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
 		if (sockfd < 0) {
-			ERROR("Error opening socket: %s", fr_strerror());
+			fr_perror("Error opening socket");
 			return -1;
 		}
 
 		if (fr_socket_bind(sockfd, &client_ipaddr, &client_port, NULL) < 0) {
-			ERROR("Error binding socket: %s", fr_strerror());
+			fr_perror("Error binding socket");
 			return -1;
 		}
 	}

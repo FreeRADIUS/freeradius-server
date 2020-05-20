@@ -415,7 +415,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, dl, common);
 
 	if (dl_symbol_init(dl_module_loader->dl_loader, dl) < 0) {
-		cf_log_err(conf, "Failed calling initializers for module \"%s\": %s", module_name, fr_strerror());
+		cf_log_perr(conf, "Failed calling initializers for module \"%s\"", module_name);
 		goto error;
 	}
 

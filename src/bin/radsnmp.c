@@ -731,7 +731,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			ERROR("Failed evaluating OID:");
 			ERROR("%s", text);
-			ERROR("%s^ %s", spaces, fr_strerror());
+			fr_perror("%s^", spaces);
 
 			talloc_free(spaces);
 			talloc_free(text);
@@ -769,11 +769,11 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			unsigned int	i;
 
 			if (fr_radius_packet_encode(packet, NULL, conf->secret) < 0) {
-				ERROR("Failed encoding packet: %s", fr_strerror());
+				fr_perror("Failed encoding packet");
 				return EXIT_FAILURE;
 			}
 			if (fr_radius_packet_sign(packet, NULL, conf->secret) < 0) {
-				ERROR("Failed signing packet: %s", fr_strerror());
+				fr_perror("Failed signing packet");
 				return EXIT_FAILURE;
 			}
 
@@ -811,7 +811,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					reply = fr_radius_packet_recv(packet, packet->sockfd, UDP_FLAGS_NONE,
 								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
-						ERROR("Failed receiving reply: %s", fr_strerror());
+						fr_perror("Failed receiving reply");
 					recv_error:
 						RESPOND_STATIC("NONE");
 						talloc_free(packet);
@@ -819,7 +819,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					}
 					if (fr_radius_packet_decode(reply, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
-						ERROR("Failed decoding reply: %s", fr_strerror());
+						fr_perror("Failed decoding reply");
 						goto recv_error;
 					}
 					break;
@@ -848,7 +848,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 							   attr_freeradius_snmp_type, reply->vps);
 				switch (ret) {
 				case -1:
-					ERROR("Failed converting pairs to varbind response: %s", fr_strerror());
+					fr_perror("Failed converting pairs to varbind response");
 					return EXIT_FAILURE;
 
 				case 0:
@@ -863,7 +863,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			case RADSNMP_SET:
 				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, reply->vps) < 0) {
-					ERROR("Failed writing SET response: %s", fr_strerror());
+					fr_perror("Failed writing SET response");
 					return EXIT_FAILURE;
 				}
 				break;
@@ -999,7 +999,7 @@ int main(int argc, char **argv)
 
 		case 't':
 			if (fr_time_delta_from_str(&conf->timeout, optarg, FR_TIME_RES_SEC) < 0) {
-				ERROR("Failed parsing timeout value %s", fr_strerror());
+				fr_perror("Failed parsing timeout value");
 				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
@@ -1067,7 +1067,7 @@ int main(int argc, char **argv)
 	 *	Resolve hostname.
 	 */
 	if (fr_inet_pton_port(&conf->server_ipaddr, &conf->server_port, argv[1], -1, force_af, true, true) < 0) {
-		ERROR("%s", fr_strerror());
+		fr_perror("Failed resolving hostname");
 		fr_exit_now(EXIT_FAILURE);
 	}
 

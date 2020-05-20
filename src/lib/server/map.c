@@ -228,7 +228,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		marker:
 			fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
 			cf_log_err(cp, "%s", text);
-			cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+			cf_log_perr(cp, "%s^", spaces);
 
 			talloc_free(spaces);
 			talloc_free(text);

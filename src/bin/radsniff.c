@@ -1013,7 +1013,7 @@ static int _request_free(rs_request_t *request)
 
 		rcode = fr_event_timer_delete(&request->event);
 		if (rcode < 0) {
-			fprintf(stderr, "Failed deleting timer: %s\n", fr_strerror());
+			fr_perror("Failed deleting timer");
 			RS_ASSERT(0 == 1);
 		}
 	}
@@ -1363,7 +1363,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	packet->dst_port = ntohs(udp->dst);
 
 	if (!fr_radius_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
-		REDEBUG("%s", fr_strerror());
+		fr_perror("radsniff");
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in, packet, &elapsed, NULL, false, false);
 		}
@@ -1410,7 +1410,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			ret = fr_radius_packet_verify(packet, original->expect, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
-				REDEBUG("Failed verifying packet ID %d: %s", packet->id, fr_strerror());
+				fr_perror("Failed verifying packet ID %d", packet->id);
 				fr_radius_packet_free(&packet);
 				return;
 			}
@@ -1537,7 +1537,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				ret = fr_radius_packet_verify(packet, NULL, conf->radius_secret);
 				fr_log_fp = log_fp;
 				if (ret != 0) {
-					REDEBUG("Failed verifying packet ID %d: %s", packet->id, fr_strerror());
+					fr_perror("Failed verifying packet ID %d", packet->id);
 					fr_radius_packet_free(&packet);
 					return;
 				}
@@ -2002,7 +2002,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 
 	code = fr_pair_list_afrom_str(conf, dict_radius, filter, out);
 	if (code == T_INVALID) {
-		ERROR("Invalid RADIUS filter \"%s\" (%s)", filter, fr_strerror());
+		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}
 
@@ -2824,7 +2824,7 @@ int main(int argc, char *argv[])
 			in_p->promiscuous = conf->promiscuous;
 			in_p->buffer_pkts = conf->buffer_pkts;
 			if (fr_pcap_open(in_p) < 0) {
-				ERROR("Failed opening pcap handle (%s): %s", in_p->name, fr_strerror());
+				fr_perror("Failed opening pcap handle (%s)", in_p->name);
 				if (conf->from_auto || (in_p->type == PCAP_FILE_IN)) {
 					continue;
 				}
@@ -2847,7 +2847,7 @@ int main(int argc, char *argv[])
 				if ((!conf->pcap_filter_vlan ||
 				     (fr_pcap_apply_filter(in_p, conf->pcap_filter_vlan) < 0)) &&
 				     (fr_pcap_apply_filter(in_p, conf->pcap_filter) < 0)) {
-					ERROR("Failed applying filter: %s", fr_strerror());
+					fr_perror("Failed applying filter");
 					goto finish;
 				}
 			}
@@ -2891,7 +2891,7 @@ int main(int argc, char *argv[])
 		RS_ASSERT(out->link_layer >= 0);
 
 		if (fr_pcap_open(out) < 0) {
-			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());
+			fr_perror("Failed opening pcap output (%s)", out->name);
 			goto finish;
 		}
 	}
@@ -2928,7 +2928,7 @@ int main(int argc, char *argv[])
 				       NULL,
 				       NULL,
 				       events) < 0) {
-			ERROR("Failed inserting signal pipe descriptor: %s", fr_strerror());
+			fr_perror("Failed inserting signal pipe descriptor");
 			goto finish;
 		}
 

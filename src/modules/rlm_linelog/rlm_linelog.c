@@ -662,7 +662,7 @@ build_vector:
 		}
 
 		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
-			RWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
+			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
 		}
 
 		if (writev(fd, vector_p, vector_len) < 0) {

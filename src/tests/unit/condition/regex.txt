@@ -63,7 +63,7 @@ xlat %{1}
 match %{1}
 
 xlat %{33}
-match ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 condition &User-Name == /foo/
 match ERROR offset 14 Unexpected regular expression

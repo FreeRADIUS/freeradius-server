@@ -234,7 +234,7 @@ static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST 
 	 *	Execute the program without waiting for results.
 	 */
 	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
-		RERROR("Failed trigger %s - %s", ctx->name, fr_strerror());
+		RPERROR("Failed trigger %s", ctx->name);
 		return RLM_MODULE_FAIL;
 	}
 
