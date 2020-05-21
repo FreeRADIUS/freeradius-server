@@ -889,6 +889,31 @@ update reply {
 You should wait for 2520s
 ```
 
+=== +%{pack: &Attribute-Name &Attribute-Name ...}+
+
+Pack multiple multiple attributes into a binary string.  For best
+results, each attribute passed to `pack` should be fixed size.  That
+is, not data type `octets` or `string`.
+
+See also the `unpack` module, which is the inverse to `pack`.
+
+.Return: _octets_
+
+.Example:
+
+[source,unlang]
+----
+update reply {
+    &Class := "%{pack:&reply:Framed-IP-Address &NAS-IP-Address}"
+}
+----
+
+.Output
+
+```
+You should wait for 2520s
+```
+
 === +%{Packet-Type}+
 
 The packet type (`Access-Request`, etc.)
