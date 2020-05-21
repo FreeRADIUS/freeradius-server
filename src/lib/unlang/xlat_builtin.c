@@ -2082,7 +2082,7 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Prints the name of the current module processing the request
  *
- * For example will expand to "echo" (not "exec") in 
+ * For example will expand to "echo" (not "exec") in
 @verbatim
 exec echo {
   ...
@@ -2126,7 +2126,7 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example:
 @verbatim
-"%{pack:&Attr-Foo &Attr-bar}" == packed hex values of the attributes
+"%{pack:%{Attr-Foo}%{Attr-bar}" == packed hex values of the attributes
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2135,80 +2135,50 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
-	fr_value_box_t	*vb;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	*cursor;
-	char		*buffer, *p, *next;
+	fr_value_box_t	*vb, *in_vb;
+	fr_cursor_t	cursor;
 
 	if (!*in) {
-		REDEBUG("Missing attribute reference");
+		REDEBUG("Missing input boxes");
 		return XLAT_ACTION_FAIL;
 	}
 
-	/*
-	 *	Concatenate all input into a list of attribute references.
-	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	buffer = talloc_strdup(ctx, (*in)->vb_strvalue);
-
-	/*
-	 *	Allocate the initial box
-	 */
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false));
-	for (p = buffer; p != NULL; p = next) {
-		next = strchr(p, ' ');
-		if (next) {
-			while (isspace((int) *next)) {
-				*(next++) = '\0';
+
+	/*
+	 *	Loop over the input boxes, packing them together.
+	 */
+	for (in_vb = fr_cursor_init(&cursor, in);
+	     in_vb;
+	     in_vb = fr_cursor_next(&cursor)) {
+		fr_value_box_t *cast, box;
+
+		if (in_vb->type != FR_TYPE_OCTETS) {
+			if (fr_value_box_cast(ctx, &box, FR_TYPE_OCTETS, NULL, in_vb) < 0) {
+			error:
+				talloc_free(vb);
+				RPEDEBUG("Failed packing value");
+				return XLAT_ACTION_FAIL;
 			}
+			cast = &box;
+		} else {
+			cast = in_vb;
 		}
 
-		if (xlat_fmt_to_cursor(NULL, &cursor, NULL, request, p) < 0) {
-		fail:
-			talloc_free(buffer);
-			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+		if (vb->vb_length == 0) {
+			(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
+
+		} else if (fr_value_box_append_mem(vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
+			goto error;
 		}
 
-		/*
-		 *	Loop over the input attributes, packing them together.
-		 */
-		for (vp = fr_cursor_head(cursor);
-		     vp;
-		     vp = fr_cursor_next(cursor)) {
-			fr_value_box_t *cast, box;
-
-			if (vp->da->type != FR_TYPE_OCTETS) {
-				if (fr_value_box_cast(ctx, &box, FR_TYPE_OCTETS, NULL, &vp->data) < 0) goto fail2;
-				cast = &box;
-			} else {
-				cast = &vp->data;
-			}
-
-			if (vb->datum.length == 0) {
-				(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->datum.length, cast->tainted);
-
-			} else if (fr_value_box_append_mem(vb, cast->vb_octets, cast->datum.length, cast->tainted) < 0) {
-			fail2:
-				talloc_free(cursor);
-				goto fail;
-			}
-
-			fr_assert(vb->vb_octets != NULL);
-		}
-		talloc_free(cursor);
+		fr_assert(vb->vb_octets != NULL);
 	}
-	talloc_free(buffer);
 
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
-
 
 /** Encode attributes as a series of string attribute/value pairs
  *

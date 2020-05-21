@@ -889,11 +889,12 @@ update reply {
 You should wait for 2520s
 ```
 
-=== +%{pack: &Attribute-Name &Attribute-Name ...}+
+=== +%{pack:%{Attribute-Name}%{Attribute-Name}...}+
 
-Pack multiple multiple attributes into a binary string.  For best
-results, each attribute passed to `pack` should be fixed size.  That
-is, not data type `octets` or `string`.
+Pack multiple multiple attributes and/or literals into a binary string.
+For best results, each attribute passed to `pack` should be fixed size.
+That is, not data type `octets` or `string` as the length of those values
+will not be encoded.
 
 See also the `unpack` module, which is the inverse to `pack`.
 
@@ -904,7 +905,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 [source,unlang]
 ----
 update reply {
-    &Class := "%{pack:&reply:Framed-IP-Address &NAS-IP-Address}"
+    &Class := "%{pack:%{reply:Framed-IP-Address}%{NAS-IP-Address}}"
 }
 ----
 
