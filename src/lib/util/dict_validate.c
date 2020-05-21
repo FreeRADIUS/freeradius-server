@@ -352,6 +352,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_STRUCT:
 		flags->length = 0;
 
+		ALLOW_FLAG(internal);
 		if (all_flags) {
 			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
 			return false;
