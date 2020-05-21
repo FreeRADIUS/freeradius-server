@@ -1678,7 +1678,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 				}
 			}
 
-			if (fr_value_box_append_bstr(dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
+			if (fr_value_box_append_bstr(ctx, dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
 
 			if (n != vb) talloc_free(n);
 			fr_cursor_next(&cursor);
@@ -1751,7 +1751,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 				}
 			}
 
-			if (fr_value_box_append_mem(dst, n->vb_octets, n->vb_length, n->tainted) < 0) return -1;
+			if (fr_value_box_append_mem(ctx, dst, n->vb_octets, n->vb_length, n->tainted) < 0) return -1;
 
 			if (n != vb) talloc_free(n);
 			fr_cursor_next(&cursor);
@@ -3525,6 +3525,7 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 
 /** Append a buffer to an existing fr_value_box_t
  *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[in] dst	value box to append to.
  * @param[in] src	octets data to append.
  * @param[in] len	length of octets data.
@@ -3533,7 +3534,7 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_append_bstr(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
 {
 	char *ptr, *nptr;
 	size_t nlen;
@@ -3547,7 +3548,7 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 		return -1;
 	}
 
-	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	ptr = dst->datum.ptr;
 	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
@@ -3556,7 +3557,7 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 	}
 
 	nlen = dst->vb_length + len + 1;
-	nptr = talloc_realloc(talloc_parent(ptr), ptr, char, dst->vb_length + len + 1);
+	nptr = talloc_realloc(ctx, ptr, char, dst->vb_length + len + 1);
 	if (!nptr) {
 		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
 				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
@@ -3671,6 +3672,7 @@ int fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 /** Append a buffer to an existing fr_value_box_t
  *
+ * @param[in] ctx	Where to allocate any talloc buffers required. 
  * @param[in] dst	value box to append to.
  * @param[in] src	octets data to append.
  * @param[in] len	length of octets data.
@@ -3679,7 +3681,7 @@ int fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+int fr_value_box_append_mem(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
 {
 	uint8_t *ptr, *nptr;
 	size_t nlen;
@@ -3702,7 +3704,7 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
 	}
 
 	nlen = dst->vb_length + len;
-	nptr = talloc_realloc(talloc_parent(ptr), ptr, uint8_t, dst->vb_length + len);
+	nptr = talloc_realloc(ctx, ptr, uint8_t, dst->vb_length + len);
 	if (!nptr) {
 		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
 				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
@@ -4810,9 +4812,9 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		 *	Append the next value
 		 */
 		if (type == FR_TYPE_STRING) {
-			if (fr_value_box_append_bstr(out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_append_bstr(ctx, out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
 		} else {
-			if (fr_value_box_append_mem(out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_append_mem(ctx, out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
 		}
 
 		if (free_input) {

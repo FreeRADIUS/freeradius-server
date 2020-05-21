@@ -604,7 +604,7 @@ int		fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 int		fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				        char **src, size_t inlen, bool tainted);
 
-int		fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted);
+int		fr_value_box_append_bstr(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted);
 
 void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    char const *src, bool tainted);
@@ -613,7 +613,7 @@ int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 
 int		fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    uint8_t const *src, size_t len, bool tainted);
-int		fr_value_box_append_mem(fr_value_box_t *dst,
+int		fr_value_box_append_mem(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				       uint8_t const *src, size_t len, bool tainted);
 int		fr_value_box_memcpy_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   uint8_t *src, bool tainted);

@@ -2168,7 +2168,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
 		if (vb->vb_length == 0) {
 			(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
 
-		} else if (fr_value_box_append_mem(vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
+		} else if (fr_value_box_append_mem(ctx, vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
 			goto error;
 		}
 
