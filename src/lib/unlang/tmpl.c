@@ -370,7 +370,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 *
 	 *	@todo - make the timeout configurable
 	 */
-	if (fr_event_timer_in(request, request->el, &state->ev, fr_time_delta_from_sec(10), unlang_tmpl_exec_timeout, request) < 0) {
+	if (fr_event_timer_in(state->ctx, request->el, &state->ev, fr_time_delta_from_sec(10), unlang_tmpl_exec_timeout, request) < 0) {
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
