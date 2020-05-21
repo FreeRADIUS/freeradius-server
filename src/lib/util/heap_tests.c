@@ -132,7 +132,7 @@ static void heap_test_skip_10(void)
 	heap_test(10);
 }
 
-#define HEAP_CYCLE_SIZE (16000000)
+#define HEAP_CYCLE_SIZE (1600000)
 
 static void heap_cycle(void)
 {

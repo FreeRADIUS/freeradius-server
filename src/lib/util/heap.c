@@ -83,27 +83,31 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	return fh;
 }
 
-/*
- *	Insert element in heap. Normally, p != NULL, we insert p in a
- *	new position and bubble up. If p == NULL, then the element is
- *	already in place, and key is the position where to start the
- *	bubble-up.
- *
- *	Returns 1 on failure (cannot allocate new heap entry)
- *
- *	If offset > 0 the position (index, int) of the element in the
- *	heap is also stored in the element itself at the given offset
- *	in bytes.
- */
-#define SET_OFFSET(_heap, _node) *((int32_t *)(((uint8_t *)_heap->p[_node]) + _heap->offset)) = _node
+static CC_HINT(always_inline) int32_t index_get(fr_heap_t *hp, void *data)
+{
+	return *((int32_t const *)(((uint8_t const *)data) + hp->offset));
+}
 
-/*
- *	RESET_OFFSET is used for sanity checks. It sets offset to an
- *	invalid value.
- */
-#define RESET_OFFSET(_heap, _node) *((int32_t *)(((uint8_t *)_heap->p[_node]) + _heap->offset)) = -1
+static CC_HINT(always_inline) void index_set(fr_heap_t *hp, void *data, int32_t idx)
+{
+	*((int32_t *)(((uint8_t *)data) + hp->offset)) = idx;
+}
+
+#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
+#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], -1);
 
 /** Insert a new element into the heap
+ *
+ * Insert element in heap. Normally, p != NULL, we insert p in a
+ * new position and bubble up. If p == NULL, then the element is
+ * already in place, and key is the position where to start the
+ * bubble-up.
+ *
+ * Returns -1 on failure (cannot allocate new heap entry)
+ *
+ * If offset > 0 the position (index, int) of the element in the
+ * heap is also stored in the element itself at the given offset
+ * in bytes.
  *
  * @param[in] hp	The heap to insert an element into.
  * @param[in] data	Data to insert into the heap.
@@ -123,7 +127,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	 *	0  = the node was just allocated via an "alloc_zero"
 	 *	     function
 	 */
-	child = *((int32_t *)(((uint8_t *)data) + hp->offset));
+	child = index_get(hp, data);
 	if ((child > 0) || ((child == 0) && (data == hp->p[0]))) {
 		fr_strerror_printf("Node is already in the heap");
 		return -1;
@@ -192,10 +196,10 @@ static void fr_heap_bubble(fr_heap_t *hp, int32_t child)
 		 *	Child is smaller than the parent, repeat.
 		 */
 		HEAP_SWAP(hp->p[child], hp->p[parent]);
-		SET_OFFSET(hp, child);
+		OFFSET_SET(hp, child);
 		child = parent;
 	}
-	SET_OFFSET(hp, child);
+	OFFSET_SET(hp, child);
 }
 
 
@@ -225,7 +229,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		parent = 0;
 
 	} else {		/* extract from the middle */
-		parent = *((int32_t *)(((uint8_t *)data) + hp->offset));
+		parent = index_get(hp, data);
 
 		/*
 		 *	Out of bounds.
@@ -240,7 +244,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	if (!fr_cond_assert(hp->p != NULL)) return -1;
 	if (!fr_cond_assert(hp->p[parent] != NULL)) return -1;
 
-	RESET_OFFSET(hp, parent);
+	OFFSET_RESET(hp, parent);
 	child = HEAP_LEFT(parent);
 	while (child <= max) {
 		/*
@@ -251,7 +255,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 			child = child + 1;
 		}
 		hp->p[parent] = hp->p[child];
-		SET_OFFSET(hp, parent);
+		OFFSET_SET(hp, parent);
 		parent = child;
 		child = HEAP_LEFT(child);
 	}
