@@ -83,12 +83,12 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	return fh;
 }
 
-static CC_HINT(always_inline) int32_t index_get(fr_heap_t *hp, void *data)
+static inline CC_HINT(always_inline) int32_t index_get(fr_heap_t *hp, void *data)
 {
 	return *((int32_t const *)(((uint8_t const *)data) + hp->offset));
 }
 
-static CC_HINT(always_inline) void index_set(fr_heap_t *hp, void *data, int32_t idx)
+static inline CC_HINT(always_inline) void index_set(fr_heap_t *hp, void *data, int32_t idx)
 {
 	*((int32_t *)(((uint8_t *)data) + hp->offset)) = idx;
 }
