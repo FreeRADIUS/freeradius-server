@@ -1845,8 +1845,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
-	char *buff, *buff_p;
-	uint8_t const *p, *end;
+	char *p;
 	fr_value_box_t* vb;
 
 	/*
@@ -1862,20 +1861,10 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = (*in)->vb_octets;
-	end = p + (*in)->vb_length;
-
-	buff = buff_p = talloc_array(NULL, char, ((*in)->vb_length * 2) + 1);
-
-	while (p < end) {
-		snprintf(buff_p, 3, "%02x", *(p++));
-		buff_p += 2;
-	}
-
-	*buff_p = '\0';
-
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+	vb->vb_length = ((*in)->vb_length * 2);
+	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
+	fr_bin2hex(p, (*in)->vb_octets, (*in)->vb_length);
 
 	fr_cursor_append(out, vb);
 
