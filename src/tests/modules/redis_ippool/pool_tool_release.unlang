@@ -69,8 +69,8 @@ if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} range}" 
 	test_fail
 }
 
-# Check the ZSCORE
-if ("%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'}" == 0) {
+# Check the ZSCORE is less than now (ie. expired)
+if ("%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'}" < "%c") {
 	test_pass
 } else {
 	test_fail

@@ -74,7 +74,7 @@ typedef struct {
 	redis_ippool_lua_script_t	lua_add;
 	redis_ippool_lua_script_t	lua_delete;
 	redis_ippool_lua_script_t	lua_modify;
-	redis_ippool_lua_script_t	lua_release_tool;
+	redis_ippool_lua_script_t	lua_release;
 	redis_ippool_lua_script_t	lua_show;
 	redis_ippool_lua_script_t	lua_stats;
 } redis_driver_conf_t;
@@ -92,7 +92,7 @@ static CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("lua_add", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_add.file), .dflt = "${modconfdir}/redis_ippool/add.lua" },
 	{ FR_CONF_OFFSET("lua_delete", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_delete.file), .dflt = "${modconfdir}/redis_ippool/delete.lua" },
 	{ FR_CONF_OFFSET("lua_modify", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_modify.file), .dflt = "${modconfdir}/redis_ippool/modify.lua" },
-	{ FR_CONF_OFFSET("lua_release_tool", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_release_tool.file), .dflt = "${modconfdir}/redis_ippool/release_tool.lua" },
+	{ FR_CONF_OFFSET("lua_release", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_release.file), .dflt = "${modconfdir}/redis_ippool/release.lua" },
 	{ FR_CONF_OFFSET("lua_show", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_show.file), .dflt = "${modconfdir}/redis_ippool/show.lua" },
 	{ FR_CONF_OFFSET("lua_stats", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_stats.file), .dflt = "${modconfdir}/redis_ippool/stats.lua" },
 
@@ -437,9 +437,9 @@ static int lease_release(redis_driver_conf_t *inst, ippool_tool_operation_t cons
 	status = fr_redis_script(&reply, request, inst->cluster,
 			       op->pool, op->pool_len,
 			       inst->wait_num, inst->wait_timeout,
-			       inst->lua_release_tool.script,
+			       inst->lua_release.script,
 			       "EVALSHA %s 1 %b %s",
-			       inst->lua_release_tool.digest,
+			       inst->lua_release.digest,
 			       op->pool, op->pool_len,
 			       ip_buff);
 
@@ -928,7 +928,7 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **inst)
 		goto err2;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_modify))
 		goto err3;
-	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_release_tool))
+	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_release))
 		goto err4;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_delete))
 		goto err5;
@@ -946,7 +946,7 @@ err7:
 err6:
 	talloc_free(this->lua_delete.script);
 err5:
-	talloc_free(this->lua_release_tool.script);
+	talloc_free(this->lua_release.script);
 err4:
 	talloc_free(this->lua_modify.script);
 err3:
