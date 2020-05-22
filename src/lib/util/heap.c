@@ -224,7 +224,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	 *	Not in the heap.
 	 */
 	child = index_get(hp, data);
-	if ((child < 0) || ((child == 0) && (data == hp->p[0]))) {
+	if ((child < 0) || ((child == 0) && (data != hp->p[0]))) {
 		return -1;
 	}
 
