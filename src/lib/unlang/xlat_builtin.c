@@ -2190,7 +2190,6 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	vp_tmpl_t	*vpt = NULL;
 	fr_cursor_t	cursor;
-	char		*buff;
 	fr_value_box_t	*vb;
 
 	/*
@@ -2218,13 +2217,16 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		fr_token_t op = vp->op;
-
-		vp->op = T_OP_EQ;
-		buff = fr_pair_asprint(ctx, vp, '"');
-		vp->op = op;
+		char *buff;
 
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-		fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+		vp->op = T_OP_EQ;
+		buff = fr_pair_asprint(vb, vp, '"');
+		vp->op = op;
+
+		vb->vb_strvalue = buff;
+		vb->vb_length = talloc_array_length(buff) - 1;
 
 		fr_cursor_append(out, vb);
 	}
