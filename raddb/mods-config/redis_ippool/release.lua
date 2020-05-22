@@ -9,6 +9,8 @@
 --
 -- Sets the expiry time to be NOW() - 1 to maximise time between IP address allocations.
 --
+-- Sticky IPs work by setting the TTL on the device_key to 10x so do not remove it
+--
 -- Returns array { <rcode>[, <affected>, <counter>] }
 -- - IPPOOL_RCODE_SUCCESS lease updated.
 -- - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
@@ -45,10 +47,6 @@ time = tonumber(redis.call("TIME")[1])
 -- Set expiry time to now() - 1
 pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key.pool
 ret = redis.call("ZADD", pool_key, "XX", time - 1, ARGV[1])
-
--- Remove the association between the device and a lease
-device_key = "{" .. KEYS[1] .. "}:" .. ippool_key.device .. ":" .. found
-redis.call("DEL", device_key)
 
 return {
 	ippool_rcode.success,

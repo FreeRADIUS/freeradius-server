@@ -40,9 +40,9 @@ update request {
 }
 
 #
-#  Verify the association with the device has been removed
+#  Verify the association with the device will expire (hangs around for sticky IP reasons)
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" > '10') {
 	test_pass
 } else {
 	test_fail

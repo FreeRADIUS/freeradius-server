@@ -94,7 +94,8 @@ if (&reply:Framed-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:%{C
 }
 
 # 11. And that the device object will expire a suitable number of seconds into the future
-if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 60) {
+# Sticky IPs make this 10x larger
+if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" > 540) {
 	test_pass
 } else {
 	test_fail

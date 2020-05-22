@@ -6,6 +6,8 @@
 -- - ARGV[3] Device identifier.
 -- - ARGV[4] (optional) Gateway identifier.
 --
+-- Sticky IPs work by setting the TTL on the device_key to 10x ARGV[1]
+--
 -- Returns array { <rcode>[, <range>] }
 -- - IPPOOL_RCODE_SUCCESS lease updated.
 -- - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
@@ -20,11 +22,12 @@ local address_key
 local device_key
 
 local time
+local expires_in
 
 -- We either need to know that the IP was last allocated to the
 -- same device, or that the lease on the IP has NOT expired.
 address_key = "{" .. KEYS[1] .. "}:" .. ippool_key.address .. ":" .. ARGV[2]
-found = redis.call("HMGET", address_key, "range", "device", "gateway", "counter" )
+found = redis.call("HMGET", address_key, "range", "device", "gateway", "counter")
 
 -- Range may be nil (if not used), so we use the device key
 if not found[2] then
@@ -35,20 +38,14 @@ if found[2] ~= ARGV[3] then
 end
 
 time = tonumber(redis.call("TIME")[1])
+expires_in = tonumber(ARGV[1])
 
 -- Update the expiry time
 pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key.pool
-redis.call("ZADD", pool_key, "XX", time + tonumber(ARGV[1]), ARGV[2])
+redis.call("ZADD", pool_key, "XX", time + expires_in, ARGV[2])
 
--- The device key should usually exist, but
--- theoretically, if we were right on the cusp
--- of a lease being expired, it may have been
--- removed.
 device_key = "{" .. KEYS[1] .. "}:" .. ippool_key.device .. ":" .. ARGV[3]
-if redis.call("EXPIRE", device_key, ARGV[1]) == 0 then
-	redis.call("SET", device_key, ARGV[2])
-	redis.call("EXPIRE", device_key, ARGV[1])
-end
+redis.call("SET", device_key, ARGV[2], "EX", 10 * expires_in)
 
 -- Update the gateway address
 if ARGV[4] ~= found[3] then
