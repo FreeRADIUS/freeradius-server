@@ -1162,26 +1162,25 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 		ret = 0;
 	} else {
-		fr_assert(ev->heap_id >= 0);
 		ret = fr_heap_extract(el->times, ev);
 	}
-
-	ev_p = ev->parent;
-	fr_assert(*(ev->parent) == ev);
-	*ev_p = NULL;
 
 	/*
 	 *	Events MUST be in the heap (or the insertion list).
 	 */
 	if (!fr_cond_assert_msg(ret == 0,
 				"Event %p, heap_id %i, allocd %s[%u], was not found in the event heap or insertion "
-				"list when freed", ev, ev->heap_id,
+				"list when freed: %s", ev, ev->heap_id,
 #ifndef NDEBUG
-				ev->file, ev->line
+				ev->file, ev->line,
 #else
-				"not-available", 0
+				"not-available", 0,
 #endif
-				)) return -1;
+				fr_strerror())) return -1;
+
+	ev_p = ev->parent;
+	fr_assert(*(ev->parent) == ev);
+	*ev_p = NULL;
 
 	return 0;
 }
@@ -1273,7 +1272,6 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	will no longer be in the event loop, so check
 		 *	if it's in the heap before extracting it.
 		 */
-		fr_assert(ev->heap_id >= 0);
 		(void) fr_heap_extract(el->times, ev);
 	}
 
