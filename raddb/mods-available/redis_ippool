@@ -131,7 +131,6 @@ redis_ippool {
 	#lua_add = ${modconfdir}/redis_ippool/add.lua
 	#lua_alloc = ${modconfdir}/redis_ippool/alloc.lua
 	#lua_delete = ${modconfdir}/redis_ippool/delete.lua
-	#lua_modify = ${modconfdir}/redis_ippool/modify.lua
 	#lua_release = ${modconfdir}/redis_ippool/release.lua
 	#lua_show = ${modconfdir}/redis_ippool/show.lua
 	#lua_stats = ${modconfdir}/redis_ippool/stats.lua

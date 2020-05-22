@@ -73,7 +73,6 @@ typedef struct {
 	const char			*lua_preamble_file;
 	redis_ippool_lua_script_t	lua_add;
 	redis_ippool_lua_script_t	lua_delete;
-	redis_ippool_lua_script_t	lua_modify;
 	redis_ippool_lua_script_t	lua_release;
 	redis_ippool_lua_script_t	lua_show;
 	redis_ippool_lua_script_t	lua_stats;
@@ -91,7 +90,6 @@ static CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("lua_preamble", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_preamble_file), .dflt = "${modconfdir}/redis_ippool/preamble.lua" },
 	{ FR_CONF_OFFSET("lua_add", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_add.file), .dflt = "${modconfdir}/redis_ippool/add.lua" },
 	{ FR_CONF_OFFSET("lua_delete", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_delete.file), .dflt = "${modconfdir}/redis_ippool/delete.lua" },
-	{ FR_CONF_OFFSET("lua_modify", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_modify.file), .dflt = "${modconfdir}/redis_ippool/modify.lua" },
 	{ FR_CONF_OFFSET("lua_release", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_release.file), .dflt = "${modconfdir}/redis_ippool/release.lua" },
 	{ FR_CONF_OFFSET("lua_show", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_show.file), .dflt = "${modconfdir}/redis_ippool/show.lua" },
 	{ FR_CONF_OFFSET("lua_stats", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, redis_driver_conf_t, lua_stats.file), .dflt = "${modconfdir}/redis_ippool/stats.lua" },
@@ -317,69 +315,6 @@ static int64_t lease_delete(redis_driver_conf_t *inst, ippool_tool_operation_t c
 			       inst->lua_delete.digest,
 			       op->pool, op->pool_len,
 			       ip_buff);
-
-	talloc_free(request);
-
-	if (status != REDIS_RCODE_SUCCESS)
-		goto err;
-
-	if (reply->type != REDIS_REPLY_ARRAY) goto err;
-	if (reply->elements == 0) {
-		REDEBUG("Got empty result array");
-		goto err;
-	}
-
-	/*
-	 *	Process return code
-	 */
-	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
-		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
-			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		goto err;
-	}
-
-	/* errors are not important, they just result in a noop */
-	if (reply->element[0]->integer != IPPOOL_RCODE_SUCCESS) {
-		ret = 0;
-		goto err;
-	}
-	if (reply->elements < 2) goto err;
-	if (reply->element[1]->type != REDIS_REPLY_INTEGER) goto err;
-
-	ret = reply->element[1]->integer;
-
-	fr_redis_reply_free(&reply);
-
-	return ret;
-
-err:
-	fr_redis_reply_free(&reply);
-	return ret;
-}
-
-/**
- * Modify the range on a lease
- */
-static int lease_modify(redis_driver_conf_t *inst, ippool_tool_operation_t const *op, char const *ip_buff)
-{
-	REQUEST			*request;
-	fr_redis_rcode_t	status;
-	redisReply		*reply = NULL;
-	int64_t			ret = IPPOOL_RCODE_FAIL;
-
-	DEBUG("Modifying lease %s to pool \"%s\" (range: \"%s\")", ip_buff, op->pool, op->range);
-
-	request = request_alloc(inst);
-
-	status = fr_redis_script(&reply, request, inst->cluster,
-			       op->pool, op->pool_len,
-			       inst->wait_num, inst->wait_timeout,
-			       inst->lua_modify.script,
-			       "EVALSHA %s 1 %b %s %b",
-			       inst->lua_modify.digest,
-			       op->pool, op->pool_len,
-			       ip_buff,
-			       op->range, op->range_len);
 
 	talloc_free(request);
 
@@ -926,29 +861,25 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **inst)
 
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_add))
 		goto err2;
-	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_modify))
-		goto err3;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_release))
-		goto err4;
+		goto err3;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_delete))
-		goto err5;
+		goto err4;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_show))
-		goto err6;
+		goto err5;
 	if (fr_redis_ippool_loadscript(conf, &lua_preamble, &this->lua_stats))
-		goto err7;
+		goto err6;
 
 	talloc_free(lua_preamble.script);
 
 	return 0;
 
-err7:
-	talloc_free(this->lua_show.script);
 err6:
-	talloc_free(this->lua_delete.script);
+	talloc_free(this->lua_show.script);
 err5:
-	talloc_free(this->lua_release.script);
+	talloc_free(this->lua_delete.script);
 err4:
-	talloc_free(this->lua_modify.script);
+	talloc_free(this->lua_release.script);
 err3:
 	talloc_free(this->lua_add.script);
 err2:
@@ -1453,6 +1384,7 @@ do { \
 
 			switch (p->action) {
 			case IPPOOL_TOOL_ADD:
+			case IPPOOL_TOOL_MODIFY:
 				if ((ret = lease_add(inst, p, ip_buff)) < 0)
 					fr_exit_now(EXIT_FAILURE);
 				count += ret;
@@ -1460,12 +1392,6 @@ do { \
 
 			case IPPOOL_TOOL_DELETE:
 				if ((ret = lease_delete(inst, p, ip_buff)) < 0)
-					fr_exit_now(EXIT_FAILURE);
-				count += ret;
-				break;
-
-			case IPPOOL_TOOL_MODIFY:
-				if ((ret = lease_modify(inst, p, ip_buff)) < 0)
 					fr_exit_now(EXIT_FAILURE);
 				count += ret;
 				break;

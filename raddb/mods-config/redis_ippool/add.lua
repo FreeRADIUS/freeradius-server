@@ -7,17 +7,20 @@
 -- Returns array { <rcode> }
 -- - IPPOOL_RCODE_SUCCESS lease updated.
 
+local ret
+
 local pool_key
 local address_key
 
 pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key.pool
+ret = redis.call("ZADD", pool_key, "NX", 0, ARGV[1])
 
-if ARGV[2] ~= nil then
+if ARGV[2] then
 	address_key = "{" .. KEYS[1] .. "}:" .. ippool_key.address .. ":" .. ARGV[1]
-	redis.call("HSET", address_key, "range", ARGV[2])
+	ret = redis.call("HSET", address_key, "range", ARGV[2]) or ret
 end
 
 return {
 	ippool_rcode.success,
-	redis.call("ZADD", pool_key, "NX", 0, ARGV[1])
+	ret
 }
