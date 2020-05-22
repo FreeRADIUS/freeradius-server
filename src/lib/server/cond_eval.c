@@ -651,7 +651,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 				return ret;
 			}
 
-			fr_value_box_strdup_shallow(&data, NULL, p, false);
+			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		} else {
 			fr_value_box_bstrndup_shallow(&data, NULL, map->lhs->name, map->lhs->len, false);
 		}
