@@ -640,9 +640,9 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_XLAT:
 	{
-		char *p = NULL;
-		ssize_t ret;
-		fr_value_box_t data;
+		char		*p = NULL;
+		ssize_t		ret;
+		fr_value_box_t	data;
 
 		if (!tmpl_is_unparsed(map->lhs)) {
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
@@ -650,14 +650,11 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				return ret;
 			}
-			data.vb_strvalue = p;
-			data.datum.length = (size_t)ret;
+
+			fr_value_box_strdup_shallow(&data, NULL, p, false);
 		} else {
-			data.vb_strvalue = map->lhs->name;
-			data.datum.length = map->lhs->len;
+			fr_value_box_bstrndup_shallow(&data, NULL, map->lhs->name, map->lhs->len, false);
 		}
-		fr_assert(data.vb_strvalue);
-		data.type = FR_TYPE_STRING;
 
 		rcode = cond_normalise_and_cmp(request, c, &data);
 		if (p) talloc_free(p);
