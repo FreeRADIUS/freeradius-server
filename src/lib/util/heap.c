@@ -220,6 +220,14 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		return -1;
 	}
 
+	/*
+	 *	Not in the heap.
+	 */
+	child = index_get(hp, data);
+	if ((child < 0) || ((child == 0) && (data == hp->p[0]))) {
+		return -1;
+	}
+
 	max = hp->num_elements - 1;
 
 	/*
