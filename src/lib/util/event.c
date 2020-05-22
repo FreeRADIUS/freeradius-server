@@ -1162,6 +1162,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 		ret = 0;
 	} else {
+		fr_assert(ev->heap_id >= 0);
 		ret = fr_heap_extract(el->times, ev);
 	}
 
@@ -1272,7 +1273,8 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	will no longer be in the event loop, so check
 		 *	if it's in the heap before extracting it.
 		 */
-		if (ev->heap_id >= 0) fr_heap_extract(el->times, ev);
+		fr_assert(ev->heap_id >= 0);
+		(void) fr_heap_extract(el->times, ev);
 	}
 
 	ev->el = el;
