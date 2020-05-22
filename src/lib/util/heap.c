@@ -83,12 +83,12 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	return fh;
 }
 
-static inline CC_HINT(always_inline) int32_t index_get(fr_heap_t *hp, void *data)
+static inline CC_HINT(always_inline) CC_HINT(nonnull) int32_t index_get(fr_heap_t *hp, void *data)
 {
 	return *((int32_t const *)(((uint8_t const *)data) + hp->offset));
 }
 
-static inline CC_HINT(always_inline) void index_set(fr_heap_t *hp, void *data, int32_t idx)
+static inline CC_HINT(always_inline) CC_HINT(nonnull) void index_set(fr_heap_t *hp, void *data, int32_t idx)
 {
 	*((int32_t *)(((uint8_t *)data) + hp->offset)) = idx;
 }
@@ -215,27 +215,15 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 {
 	int32_t parent, child, max;
 
-	if (unlikely(hp->num_elements == 0)) {
-		fr_strerror_printf("Tried to extract element from empty heap");
-		return -1;
-	}
-
-	/*
-	 *	Not in the heap.
-	 */
-	child = index_get(hp, data);
-	if ((child < 0) || ((child == 0) && (data != hp->p[0]))) {
-		return -1;
-	}
-
-	max = hp->num_elements - 1;
-
 	/*
 	 *	Extract element.  Default is the first one (pop)
 	 */
 	if (!data) {
+		if (unlikely((hp->num_elements == 0) || !hp->p[0])) {
+			fr_strerror_printf("Tried to extract element from empty heap");
+			return -1;
+		}
 		parent = 0;
-
 	} else {		/* extract from the middle */
 		parent = index_get(hp, data);
 
@@ -246,11 +234,14 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 			fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, hp->num_elements);
 			return -1;
 		}
-	}
 
-	if (!fr_cond_assert(parent <= hp->num_elements)) return -1;
-	if (!fr_cond_assert(hp->p != NULL)) return -1;
-	if (!fr_cond_assert(hp->p[parent] != NULL)) return -1;
+		if (unlikely(data != hp->p[parent])) {
+			fr_strerror_printf("Invalid heap index.  Expected data %p at offset %i, got %p", data,
+					   parent, hp->p[parent]);
+			return -1;
+		}
+	}
+	max = hp->num_elements - 1;
 
 	OFFSET_RESET(hp, parent);
 	child = HEAP_LEFT(parent);
@@ -290,11 +281,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 void *fr_heap_peek(fr_heap_t *hp)
 {
 	if (!hp || (hp->num_elements == 0)) return NULL;
-
-	/*
-	 *	If this is NULL, we have a problem.
-	 */
-	fr_assert(hp->p[0] != NULL);
 
 	return hp->p[0];
 }

@@ -69,8 +69,8 @@ typedef struct fr_heap_s fr_heap_t;
 
 fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
 
-int		fr_heap_insert(fr_heap_t *hp, void *data);
-int		fr_heap_extract(fr_heap_t *hp, void *data);
+int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
+int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull(1));
 void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
 void		*fr_heap_peek(fr_heap_t *hp);
 void		*fr_heap_peek_tail(fr_heap_t *hp);
