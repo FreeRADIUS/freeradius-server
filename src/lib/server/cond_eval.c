@@ -642,7 +642,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	{
 		char *p = NULL;
 		ssize_t ret;
-		fr_value_box_t data;
+		fr_value_box_t data = { 0, };
 
 		if (!tmpl_is_unparsed(map->lhs)) {
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
