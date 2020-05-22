@@ -1156,13 +1156,12 @@ static int _event_timer_free(fr_event_timer_t *ev)
 {
 	fr_event_list_t		*el = ev->el;
 	fr_event_timer_t const	**ev_p;
-	int			ret;
+
 
 	if (fr_dlist_entry_in_list(&ev->entry)) {
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
-		ret = 0;
 	} else {
-		ret = fr_heap_extract(el->times, ev);
+		int	ret = fr_heap_extract(el->times, ev);
 
 		/*
 		 *	Events MUST be in the heap (or the insertion list).
