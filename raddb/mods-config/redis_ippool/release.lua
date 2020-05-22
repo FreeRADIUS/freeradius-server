@@ -29,7 +29,7 @@ if not found then
 	return { ippool_rcode.not_found }
 end
 if found and found ~= ARGV[2] then
-	return { ippool_rcode.device_mismatch, found[2] }
+	return { ippool_rcode.device_mismatch, found }
 end
 
 time = tonumber(redis.call("TIME")[1])
