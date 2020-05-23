@@ -668,7 +668,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 				MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 				t->username->vp_tainted = true;
 
-				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
+				fr_pair_value_bstrndup(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
 				RDEBUG2("Got tunneled identity of %pV", &t->username->data);
 			} else {

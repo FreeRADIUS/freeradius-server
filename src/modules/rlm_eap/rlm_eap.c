@@ -642,7 +642,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		request = eap_session->subrequest;	/* Set request for pair_add_request macro */
 
 		MEM(pair_add_request(&identity, attr_eap_identity) >= 0);
-		fr_pair_value_bstrncpy(identity, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+		fr_pair_value_bstrndup(identity, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
 	}
 
 	/*

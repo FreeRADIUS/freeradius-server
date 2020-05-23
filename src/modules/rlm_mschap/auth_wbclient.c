@@ -175,7 +175,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 
 		/* Set MS-CHAP-USER-NAME */
 		MEM(pair_update_request(&vp_chap_user_name, attr_ms_chap_user_name) >= 0);
-		fr_pair_value_bstrncpy(vp_chap_user_name,
+		fr_pair_value_bstrndup(vp_chap_user_name,
 				       normalised_username, talloc_array_length(normalised_username) - 1);
 
 		RDEBUG2("Retrying authentication request user \"%pV\" domain \"%pV\"",

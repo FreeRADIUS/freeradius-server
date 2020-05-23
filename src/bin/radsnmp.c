@@ -329,7 +329,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 			break;
 
 		case FR_TYPE_STRING:
-			fr_pair_value_bstrncpy(vp, "\0", 1);
+			fr_pair_value_bstrndup(vp, "\0", 1);
 			break;
 
 		/*

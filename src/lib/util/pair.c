@@ -1607,7 +1607,7 @@ int fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
  */
-void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
+void fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
 {
 	char *p;
 

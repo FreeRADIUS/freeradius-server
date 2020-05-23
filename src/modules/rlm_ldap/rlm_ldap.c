@@ -1039,7 +1039,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		 *	Add Cleartext-Password attribute to the request
 		 */
 		MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
-		fr_pair_value_bstrncpy(vp, password, pass_size);
+		fr_pair_value_bstrndup(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("Added eDirectory password.  control:%pP", vp);

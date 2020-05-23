@@ -686,7 +686,7 @@ do_header:
 			break;
 
 		case FR_TYPE_STRING:
-			fr_pair_value_bstrncpy(new, (uint8_t const *)p, end - p);
+			fr_pair_value_bstrndup(new, (uint8_t const *)p, end - p);
 			break;
 
 		default:
@@ -740,7 +740,7 @@ do_header:
 
 bad_header:
 	MEM(new = fr_pair_afrom_da(request, def));
-	fr_pair_value_bstrncpy(new, p, end - p);
+	fr_pair_value_bstrndup(new, p, end - p);
 
 	return new;
 }

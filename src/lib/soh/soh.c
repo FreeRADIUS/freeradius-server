@@ -289,7 +289,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 			p += 2;
 
 			MEM(pair_update_request(&vp, attr_soh_ms_machine_name) >= 0);
-			fr_pair_value_bstrncpy(vp, p, t);
+			fr_pair_value_bstrndup(vp, p, t);
 
 			p += t;
 			data_len -= 2 + t;

@@ -117,7 +117,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		 *	Not allowed to be an array, copy the whole value
 		 */
 		if (!vp->da->flags.array) {
-			fr_pair_value_bstrncpy(vp, (char const *)p, end - p);
+			fr_pair_value_bstrndup(vp, (char const *)p, end - p);
 			p = end;
 			goto finish;
 		}
@@ -128,7 +128,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 			/* Malformed but recoverable */
 			if (!q) q = end;
 
-			fr_pair_value_bstrncpy(vp, (char const *)p, q - p);
+			fr_pair_value_bstrndup(vp, (char const *)p, q - p);
 			p = q + 1;
 			vp->vp_tainted = true;
 

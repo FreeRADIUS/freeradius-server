@@ -529,11 +529,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				 *	CHAP-Password is octets, so it may not be zero terminated.
 				 */
 				MEM(pair_update_request(&request->password, attr_cleartext_password) >= 0);
-				fr_pair_value_bstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
+				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length);
 			} else if ((vp->da == attr_user_password) ||
 				   (vp->da == attr_ms_chap_password)) {
 				MEM(pair_update_request(&request->password, attr_cleartext_password) >= 0);
-				fr_pair_value_bstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
+				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length);
 			} else if (vp->da == attr_radclient_test_name) {
 				request->name = vp->vp_strvalue;
 			}

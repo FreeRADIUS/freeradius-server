@@ -158,7 +158,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 				uint8_t *q;
 
 				q = memchr(p, '\0', dhcp_header_sizes[i]);
-				fr_pair_value_bstrncpy(vp, p, q ? q - p : dhcp_header_sizes[i]);
+				fr_pair_value_bstrndup(vp, p, q ? q - p : dhcp_header_sizes[i]);
 			}
 			if (vp->vp_length == 0) TALLOC_FREE(vp);
 			break;

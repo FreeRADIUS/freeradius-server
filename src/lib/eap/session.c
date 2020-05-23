@@ -431,7 +431,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 		 */
 		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		MEM(pair_add_request(&user, attr_user_name) >= 0);
-		fr_pair_value_bstrncpy(user, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+		fr_pair_value_bstrndup(user, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
 	/*
 	 *	The RFC 3579 is pretty unambiguous, the main issue is that the EAP Identity Response
 	 *	can be significantly longer than 253 bytes (the maximum RADIUS

@@ -328,7 +328,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			 */
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
+				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len);
 				fr_cursor_append(&groups_cursor, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
@@ -345,7 +345,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			 */
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
+				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len);
 				fr_cursor_append(&groups_cursor, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
@@ -371,7 +371,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 				}
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, name, talloc_array_length(name) - 1);
+				fr_pair_value_bstrndup(vp, name, talloc_array_length(name) - 1);
 				fr_cursor_append(&groups_cursor, vp);
 				talloc_free(name);
 			}
@@ -513,7 +513,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 			if (!values) continue;
 
 			MEM(pair_add_control(&vp, inst->cache_da) == 0);
-			fr_pair_value_bstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
+			fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len);
 
 			RINDENT();
 			RDEBUG2("&control:%pP", vp);
