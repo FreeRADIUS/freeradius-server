@@ -375,11 +375,9 @@ extern size_t fr_ldap_tls_require_cert_len;
  * @param[out] value	to write berval values to.
  * @param[in] berval	to copy pointers/lengths from.
  */
-static inline void fr_ldap_berval_to_value(fr_value_box_t *value, struct berval *berval)
+static inline void fr_ldap_berval_to_value_shallow(fr_value_box_t *value, struct berval *berval)
 {
-	value->datum.ptr = berval->bv_val;
-	value->datum.length = berval->bv_len;
-	value->type = FR_TYPE_OCTETS;
+	fr_value_box_memdup_shallow(value, NULL, (uint8_t *)berval->bv_val, berval->bv_len, true);
 }
 
 /*

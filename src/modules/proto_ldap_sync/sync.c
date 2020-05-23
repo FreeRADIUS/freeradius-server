@@ -286,7 +286,7 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 		fr_value_box_t	uuid_box;
 
 		entry_dn = ldap_get_dn(sync->conn->handle, msg);
-		fr_ldap_berval_to_value(&uuid_box, &entry_uuid);
+		fr_ldap_berval_to_value_shallow(&uuid_box, &entry_uuid);
 
 		DEBUG3("Processing %s (%s), dn \"%s\", entryUUID %pV",
 		       fr_table_str_by_value(sync_protocol_op_table, ldap_msgtype(msg), "<unknown>"),
