@@ -38,6 +38,14 @@ extern "C" {
 #include <talloc.h>
 
 /*
+ *	Avoid circular type references.
+ */
+typedef struct dict_attr_s fr_dict_attr_t;
+typedef struct fr_dict fr_dict_t;
+
+#include <freeradius-devel/util/value.h>
+
+/*
  *	Allow public and private versions of the same structures
  */
 #ifndef _DICT_PRIVATE
@@ -45,14 +53,6 @@ extern "C" {
 #else
 #  define _CONST
 #endif
-
-/*
- *	Avoid circular type references.
- */
-typedef struct dict_attr_s fr_dict_attr_t;
-typedef struct fr_dict fr_dict_t;
-
-#include <freeradius-devel/util/value.h>
 
 #ifdef WITH_VERIFY_PTR
 #  define DA_VERIFY(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
