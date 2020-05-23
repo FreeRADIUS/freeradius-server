@@ -286,5 +286,9 @@ match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name} %{Filter-Id}" }
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
 match ERROR offset 33: No matching closing brace
 
+# and text immediately after a variable expansion
+xlat_argv echo hello %{Tmp-String-0}:1234 world
+match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
+
 count
-match 171
+match 173

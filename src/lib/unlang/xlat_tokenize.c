@@ -819,24 +819,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		node->type = XLAT_CHILD;
 		count++;
 
-		if (*p == '%') {
-			if ((p + 1) >= end) {
-				talloc_free(my_head);
-				fr_strerror_printf("Invalid variable expansion");
-				return -(p - in);
-			}
-
-			if (p[1] != '{') {
-				slen = 2;
-			} else {
-				slen = skip_xlat(p, end);
-				if (slen < 0) return slen - (p - in);
-			}
-
-			slen = xlat_tokenize_expansion(node, &node->child, p, slen, rules);
-			goto next;
-		}
-
 		/*
 		 *	Back-tick quoted strings are forbidden.
 		 */
@@ -883,7 +865,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 		 *	Tokenize this literal as a child.
 		 */
 		slen = xlat_tokenize_literal(node, &node->child, p, slen, false, rules);
-	next:
 		if (slen <= 0) {
 			talloc_free(my_head);
 			return slen - (p - in);
