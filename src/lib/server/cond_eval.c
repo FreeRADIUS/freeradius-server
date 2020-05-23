@@ -511,8 +511,6 @@ do {\
 		ssize_t ret;
 		fr_value_box_t data;
 
-		memset(&data, 0, sizeof(data));
-
 		if (!tmpl_is_unparsed(map->rhs)) {
 			char *p;
 
@@ -522,17 +520,10 @@ do {\
 				rcode = -1;
 				goto finish;
 			}
-			data.vb_strvalue = p;
-			data.datum.length = ret;
-
+			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		} else {
-			data.vb_strvalue = map->rhs->name;
-			data.datum.length = map->rhs->len;
+			fr_value_box_bstrndup_shallow(&data, NULL, map->rhs->name, map->rhs->len, false);
 		}
-		data.type = FR_TYPE_STRING;
-
-		fr_assert(data.vb_strvalue);
-
 		rhs = &data;
 
 		CHECK_INT_CAST(lhs, rhs);
