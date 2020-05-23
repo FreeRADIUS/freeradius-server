@@ -115,8 +115,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		break;
 
 	case json_type_double:
-		out->type = FR_TYPE_FLOAT64;
-		out->vb_float64 = json_object_get_double(object);
+		fr_value_box_shallow(out, json_object_get_double(object), tainted);
 		break;
 
 	case json_type_int:
@@ -132,38 +131,29 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 #else
 		num = json_object_get_int64(object);
 		if (num < INT32_MIN) {			/* 64bit signed*/
-			out->type = FR_TYPE_INT64;
-			out->vb_int64 = (int64_t) num;
+			fr_value_box_shallow(out, (int64_t)num, tainted);
 		} else if (num > UINT32_MAX) {		/* 64bit unsigned */
-			out->type = FR_TYPE_UINT64;
-			out->vb_uint64 = (uint64_t) num;
+			fr_value_box_shallow(out, (uint64_t)num, tainted);
 		} else
 #endif
 		if (num < INT16_MIN) {			/* 32bit signed */
-			out->type = FR_TYPE_INT32;
-			out->vb_int32 = (int32_t)num;
+			fr_value_box_shallow(out, (int32_t)num, tainted);
 		} else if (num < INT8_MIN) {		/* 16bit signed */
-			out->type = FR_TYPE_INT16;
-			out->vb_int16 = (int16_t)num;
+			fr_value_box_shallow(out, (int16_t)num, tainted);
 		} else if (num < 0) {			/* 8bit signed */
-			out->type = FR_TYPE_INT8;
-			out->vb_int8 = (int8_t)num;
+			fr_value_box_shallow(out, (int8_t)num, tainted);
 		} else if (num > UINT16_MAX) {		/* 32bit unsigned */
-			out->type = FR_TYPE_UINT32;
-			out->vb_uint32 = (uint32_t) num;
+			fr_value_box_shallow(out, (uint32_t)num, tainted);
 		} else if (num > UINT8_MAX) {		/* 16bit unsigned */
-			out->type = FR_TYPE_UINT16;
-			out->vb_uint16 = (uint16_t) num;
+			fr_value_box_shallow(out, (int16_t)num, tainted);
 		} else {				/* 8bit unsigned */
-			out->type = FR_TYPE_UINT8;
-			out->vb_uint8 = (uint8_t) num;
+			fr_value_box_shallow(out, (int8_t)num, tainted);
 		}
 	}
 		break;
 
 	case json_type_boolean:
-		out->type = FR_TYPE_BOOL;
-		out->datum.boolean = json_object_get_boolean(object);
+		fr_value_box_shallow(out, (bool)json_object_get_boolean(object), tainted);
 		break;
 
 	case json_type_null:
