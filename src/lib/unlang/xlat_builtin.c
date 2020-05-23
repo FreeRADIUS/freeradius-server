@@ -1647,12 +1647,8 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_assert((size_t)elen <= alen);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, (*in)->tainted) < 0) {
-		RPEDEBUG("Failed assigning encoded data buffer to box");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
+	(void) fr_value_box_bstrndup(vb, vb, NULL, buff, elen, (*in)->tainted);
+	talloc_free(buff);
 
 	fr_cursor_append(out, vb);
 
@@ -1790,7 +1786,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
-	fr_value_box_t	*result;
+	fr_value_box_t	*vb;
 	fr_value_box_t	*separator;
 	char		*buff;
 	char const	*sep;
@@ -1812,19 +1808,12 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	sep = separator->vb_strvalue;
 
-	result = fr_value_box_alloc_null(ctx);
-	if (!result) {
-	error:
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(buff = fr_value_box_list_asprint(vb, (*in)->next, sep, '\0'));
 
-	buff = fr_value_box_list_asprint(result, (*in)->next, sep, '\0');
-	if (!buff) goto error;
+	fr_value_box_bstrassign(vb, NULL, buff, fr_value_box_list_tainted((*in)->next));
 
-	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
-
-	fr_cursor_append(out, result);
+	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1861,9 +1850,10 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	vb->vb_length = ((*in)->vb_length * 2);
-	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	p = talloc_zero_array(vb, char, ((*in)->vb_length * 2) + 1);
+	(void) fr_value_box_bstrassign(vb, NULL, p, false);
+
 	fr_bin2hex(p, (*in)->vb_octets, (*in)->vb_length);
 
 	fr_cursor_append(out, vb);
@@ -2219,14 +2209,13 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_token_t op = vp->op;
 		char *buff;
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(vb = fr_value_box_alloc_null(ctx));
 
 		vp->op = T_OP_EQ;
 		buff = fr_pair_asprint(vb, vp, '"');
 		vp->op = op;
 
-		vb->vb_strvalue = buff;
-		vb->vb_length = talloc_array_length(buff) - 1;
+		(void) fr_value_box_bstrassign(vb, NULL, buff, false);
 
 		fr_cursor_append(out, vb);
 	}
@@ -2370,7 +2359,9 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 		p++;
 	}
 
-	buff = buff_p = talloc_array(NULL, char, outlen + 1);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	buff = buff_p = talloc_array(vb, char, outlen + 1);
+	(void) fr_value_box_bstrassign(vb, NULL, buff, false);
 
 	/* Reset p to start position */
 	p = start;
@@ -2465,7 +2456,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			default:
 				REDEBUG("Invalid character class '%c'", *p);
-				talloc_free(buff);
+				talloc_free(vb);
 
 				return XLAT_ACTION_FAIL;
 			}
@@ -2475,9 +2466,6 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	*buff_p++ = '\0';
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
 
 	fr_cursor_append(out, vb);
 
@@ -2508,15 +2496,16 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_value_box_t	*vb;
 		char		*p;
 
-		if (regex_request_to_sub(ctx, &p, request, 0) < 0) {
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		if (regex_request_to_sub(vb, &p, request, 0) < 0) {
+			talloc_free(vb);
 			REDEBUG2("No previous regex capture");
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_assert(p);
+		(void) fr_value_box_bstrassign(vb, NULL, p, false);
 
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
 		fr_cursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
@@ -2543,15 +2532,16 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (regex_request_to_sub(ctx, &p, request, idx.vb_uint32) < 0) {
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		if (regex_request_to_sub(vb, &p, request, idx.vb_uint32) < 0) {
+			talloc_free(vb);
 			REDEBUG2("No previous numbered regex capture group");
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_assert(p);
 
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
+		fr_value_box_bstrassign(vb, NULL, p, false);
 		fr_cursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
@@ -2570,15 +2560,16 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (regex_request_to_sub_named(request, &p, request, (*in)->vb_strvalue) < 0) {
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		if (regex_request_to_sub_named(vb, &p, request, (*in)->vb_strvalue) < 0) {
+			talloc_free(vb);
 			REDEBUG2("No previous named regex capture group");
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_assert(p);
 
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
+		fr_value_box_bstrassign(vb, NULL, p, false);
 		fr_cursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
@@ -2904,7 +2895,8 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		talloc_free(pattern);
 		return XLAT_ACTION_FAIL;
 	}
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, (*in)->tainted);
+
+	fr_value_box_bstrassign(vb, NULL, buff, (*in)->tainted);
 
 	fr_cursor_append(out, vb);
 
@@ -3110,7 +3102,8 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
 	p = (*in)->vb_strvalue;
 	end = p + (*in)->vb_length;
 
-	buff = buff_p = talloc_array(NULL, char, (*in)->vb_length + 1);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	buff = buff_p = talloc_array(vb, char, (*in)->vb_length + 1);
 
 	while (p < end) {
 		*(buff_p++) = upper ? toupper ((int) *(p++)) : tolower((int) *(p++));
@@ -3118,8 +3111,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p = '\0';
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+	fr_value_box_bstrassign(vb, NULL, buff, false);
 
 	fr_cursor_append(out, vb);
 
@@ -3215,7 +3207,8 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 		p++;
 	}
 
-	buff = buff_p = talloc_array(NULL, char, outlen + 1);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	buff = buff_p = talloc_array(vb, char, outlen + 1);
 
 	/* Reset p to start position */
 	p = (*in)->vb_strvalue;
@@ -3244,8 +3237,7 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p = '\0';
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+	fr_value_box_bstrassign(vb, NULL, buff, false);
 
 	fr_cursor_append(out, vb);
 
@@ -3302,7 +3294,8 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 		outlen++;
 	}
 
-	buff = buff_p = talloc_array(NULL, char, outlen + 1);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	buff = buff_p = talloc_array(vb, char, outlen + 1);
 
 	/* Reset p to start position */
 	p = (*in)->vb_strvalue;
@@ -3318,7 +3311,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
 			REMARKER((*in)->vb_strvalue, p - (*in)->vb_strvalue, "Non-hex char in %% sequence");
-			talloc_free(buff);
+			talloc_free(vb);
 
 			return XLAT_ACTION_FAIL;
 		}
@@ -3328,8 +3321,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p = '\0';
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+	fr_value_box_bstrassign(vb, NULL, buff, false);
 
 	fr_cursor_append(out, vb);
 
