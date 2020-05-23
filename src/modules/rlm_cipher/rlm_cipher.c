@@ -653,7 +653,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	uint8_t	const			*ciphertext;
 	size_t				ciphertext_len;
 
-	char				*plaintext;
+	char				*plaintext, *n;
 	size_t				plaintext_len;
 
 	fr_value_box_t			*vb;
@@ -682,6 +682,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(plaintext = talloc_array(ctx, char, plaintext_len + 1));
 	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
 			     ciphertext, ciphertext_len) <= 0) {
+		talloc_free(plaintext);
 		fr_tls_log_error(request, "Failed decrypting ciphertext");
 		return XLAT_ACTION_FAIL;
 	}
@@ -690,21 +691,17 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	Fixup the output buffer (and ensure it's \0 terminated)
 	 */
-	{
-		char *n;
-
-		n = talloc_bstr_realloc(ctx, plaintext, plaintext_len);
-		if (unlikely(!n)) {
-			REDEBUG("Failed shrinking plaintext buffer");
-			talloc_free(plaintext);
-			return XLAT_ACTION_FAIL;
-		}
-
-		plaintext = n;
-	}
-
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstrsteal(vb, vb, NULL, plaintext, false);
+	n = talloc_bstrndup(vb, plaintext, plaintext_len);
+	if (unlikely(!n)) {
+		REDEBUG("Failed shrinking plaintext buffer");
+		talloc_free(vb);
+		talloc_free(plaintext);
+		return XLAT_ACTION_FAIL;
+	}
+	talloc_free(plaintext);
+
+	fr_value_box_bstrassign(vb, NULL, n, false);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
