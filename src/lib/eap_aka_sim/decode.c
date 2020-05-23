@@ -614,7 +614,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return -1;
 
-		fr_pair_value_memcpy(vp, p + 2, res_len, true);
+		fr_pair_value_memdup(vp, p + 2, res_len, true);
 	}
 		goto done;
 
@@ -639,7 +639,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return -1;
 
-		fr_pair_value_memcpy(vp, p + 2, attr_len - 2, true);
+		fr_pair_value_memdup(vp, p + 2, attr_len - 2, true);
 		goto done;
 
 	default:
@@ -723,7 +723,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	 *	any reserved bytes.
 	 */
 	if (parent->flags.is_unknown || parent->flags.is_raw) {
-		fr_pair_value_memcpy(vp, p, attr_len, true);
+		fr_pair_value_memdup(vp, p, attr_len, true);
 		vp->vp_length = attr_len;
 		goto done;
 	}
@@ -768,12 +768,12 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 				return -1;
 			}
 
-			fr_pair_value_memcpy(vp, p + prefix, actual_len, true);
+			fr_pair_value_memdup(vp, p + prefix, actual_len, true);
 		/*
 		 *	Fixed length octets buffer
 		 */
 		} else {
-			fr_pair_value_memcpy(vp, p + prefix, attr_len - prefix, true);
+			fr_pair_value_memdup(vp, p + prefix, attr_len - prefix, true);
 		}
 		break;
 

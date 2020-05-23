@@ -244,7 +244,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
 		MEM(pair_add_reply(&vp, attr_message_authenticator) >= 0);
-		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector), false);
+		fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
 	}
 
 	/* Set request reply code, but only if it's not already set. */

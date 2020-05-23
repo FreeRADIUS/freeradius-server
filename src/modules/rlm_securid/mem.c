@@ -125,7 +125,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	the list.
 	 */
 	MEM(pair_update_reply(&state, attr_state) >= 0);
-	fr_pair_value_memcpy(state, session->state, sizeof(session->state), true);
+	fr_pair_value_memdup(state, session->state, sizeof(session->state), true);
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {

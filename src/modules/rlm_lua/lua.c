@@ -280,7 +280,7 @@ static int fr_lua_unmarshall(VALUE_PAIR **out,
 		if (!p) {
 			REDEBUG("Unmarshalling failed, user data was NULL");
 		}
-		fr_pair_value_memcpy(vp, p, len, true);
+		fr_pair_value_memdup(vp, p, len, true);
 	}
 		break;
 

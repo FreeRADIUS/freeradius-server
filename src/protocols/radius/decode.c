@@ -1707,7 +1707,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 		fr_strerror_printf("Failed creating Packet-Authentication-Vector");
 		return -1;
 	}
-	(void) fr_pair_value_memcpy(vp, data + 4, 16, true);
+	(void) fr_pair_value_memdup(vp, data + 4, 16, true);
 	fr_cursor_append(&cursor, vp);
 	vp = fr_cursor_tail(&cursor);
 

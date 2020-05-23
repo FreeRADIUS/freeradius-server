@@ -190,7 +190,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		pair_delete_reply(attr_ms_mppe_recv_key);
 
 		MEM(pair_update_reply(&vp, attr_wimax_msk) >= 0);
-		fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length, false);
+		fr_pair_value_memdup(vp, msk->vp_octets, msk->vp_length, false);
 	}
 
 	/*
@@ -292,7 +292,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		 *	Put MN-HA-PMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
 		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_key) >= 0);
-		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len, false);
+		fr_pair_value_memdup(vp, &mip_rk_1[0], rk1_len, false);
 
 		/*
 		 *	Put MN-HA-PMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
@@ -326,7 +326,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		 *	Put MN-HA-CMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
 		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_key) >= 0);
-		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len, false);
+		fr_pair_value_memdup(vp, &mip_rk_1[0], rk1_len, false);
 
 		/*
 		 *	Put MN-HA-CMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
@@ -360,7 +360,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		 *	Put MN-HA-CMIP6 into WiMAX-MN-hHA-MIP6-Key
 		 */
 		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip6_key) >= 0);
-		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len, false);
+		fr_pair_value_memdup(vp, &mip_rk_1[0], rk1_len, false);
 
 		/*
 		 *	Put MN-HA-CMIP6-SPI into WiMAX-MN-hHA-MIP6-SPI
@@ -386,7 +386,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
-		fr_pair_value_memcpy(fa_rk, &mip_rk_1[0], rk1_len, false);
+		fr_pair_value_memdup(fa_rk, &mip_rk_1[0], rk1_len, false);
 	}
 
 	/*

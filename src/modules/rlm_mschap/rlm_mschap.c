@@ -679,7 +679,7 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
-	fr_pair_value_memcpy(vp, value, len, false);
+	fr_pair_value_memdup(vp, value, len, false);
 	RINDENT();
 	RDEBUG2("&reply:%pP", vp);
 	REXDENT();
@@ -1043,7 +1043,7 @@ ntlm_auth_err:
 		 *  fall through to the authentication code using the new hash,
 		 *  not the old one.
 		 */
-		fr_pair_value_memcpy(nt_password, new_hash->vp_octets, new_hash->vp_length, false);
+		fr_pair_value_memdup(nt_password, new_hash->vp_octets, new_hash->vp_length, false);
 
 		/*
 		 *  Rock on! password change succeeded.

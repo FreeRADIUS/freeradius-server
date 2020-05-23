@@ -496,7 +496,7 @@ static VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
 			known_good->da->name, fr_table_str_by_value(normalise_table, normalised, 0),
 			known_good->vp_length, decoded);
 		MEM(out = fr_pair_afrom_da(ctx, known_good->da));
-		fr_pair_value_memcpy(out, buffer, decoded, known_good->vp_tainted);
+		fr_pair_value_memdup(out, buffer, decoded, known_good->vp_tainted);
 		return out;
 	}
 
@@ -682,7 +682,7 @@ do_header:
 		MEM(new = fr_pair_afrom_da(ctx, *(info->da)));
 		switch ((*(info->da))->type) {
 		case FR_TYPE_OCTETS:
-			fr_pair_value_memcpy(new, (uint8_t const *)p, end - p, true);
+			fr_pair_value_memdup(new, (uint8_t const *)p, end - p, true);
 			break;
 
 		case FR_TYPE_STRING:

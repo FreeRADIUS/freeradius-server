@@ -1426,7 +1426,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		packet_len += 7;
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
-		fr_pair_value_memcpy(vp, attr + 2, 5, true);
+		fr_pair_value_memdup(vp, attr + 2, 5, true);
 		fr_pair_add(&u->extra, vp);
 	}
 
@@ -2453,7 +2453,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 			fr_pair_delete_by_da(&reply, attr_message_authenticator);
 
 			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
-			(void) fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, false);
+			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
 			fr_pair_add(&request->reply->vps, vp);
 		}
 

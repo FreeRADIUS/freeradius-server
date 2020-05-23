@@ -1911,7 +1911,7 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, digest, digest_len, false);
+	fr_value_box_memdup(vb, vb, NULL, digest, digest_len, false);
 
 	fr_cursor_append(out, vb);
 
@@ -2021,7 +2021,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, digest, sizeof(digest), false);
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
 	fr_cursor_append(out, vb);
 
@@ -2061,7 +2061,7 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, digest, sizeof(digest), false);
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
 	fr_cursor_append(out, vb);
 
@@ -2155,7 +2155,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
 		}
 
 		if (vb->vb_length == 0) {
-			(void) fr_value_box_memcpy(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
+			(void) fr_value_box_memdup(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
 
 		} else if (fr_value_box_append_mem(ctx, vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
 			goto error;
@@ -2622,7 +2622,7 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_sha1_final(digest, &sha1_ctx);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, digest, sizeof(digest), false);
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
 	fr_cursor_append(out, vb);
 
@@ -2668,7 +2668,7 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
 	EVP_MD_CTX_destroy(md_ctx);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, digest, digestlen, false);
+	fr_value_box_memdup(vb, vb, NULL, digest, digestlen, false);
 
 	fr_cursor_append(out, vb);
 

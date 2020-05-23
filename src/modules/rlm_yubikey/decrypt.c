@@ -68,7 +68,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 	 *	Private ID used for validation purposes
 	 */
 	MEM(pair_update_request(&vp, attr_yubikey_private_id) >= 0);
-	fr_pair_value_memcpy(vp, token.uid, YUBIKEY_UID_SIZE, true);
+	fr_pair_value_memdup(vp, token.uid, YUBIKEY_UID_SIZE, true);
 
 	/*
 	 *	Token timestamp

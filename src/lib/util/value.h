@@ -611,17 +611,17 @@ void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enu
 int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 						   char const *src, bool tainted);
 
-int		fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    uint8_t const *src, size_t len, bool tainted);
 int		fr_value_box_append_mem(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				       uint8_t const *src, size_t len, bool tainted);
-int		fr_value_box_memcpy_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   uint8_t *src, bool tainted);
 void		fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				      uint8_t const *src, bool tainted);
-void		fr_value_box_memcpy_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+void		fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    uint8_t *src, size_t len, bool tainted);
-void		fr_value_box_memcpy_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+void		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 						   uint8_t *src, bool tainted);
 void		fr_value_box_increment(fr_value_box_t *vb);
 

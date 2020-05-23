@@ -290,7 +290,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	fr_cursor_append(&cursor, vp);
 	while (total < data_len) {
 		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
-		fr_pair_value_memcpy(vp, data + total, (data_len - total), false);
+		fr_pair_value_memdup(vp, data + total, (data_len - total), false);
 
 		total += vp->vp_length;
 

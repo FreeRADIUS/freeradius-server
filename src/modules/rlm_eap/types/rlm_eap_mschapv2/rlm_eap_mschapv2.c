@@ -491,7 +491,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 			RDEBUG2("Password change packet received");
 
 			MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
+			fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
 			p = talloc_array(cpw, uint8_t, 68);
@@ -647,7 +647,7 @@ failure:
 	 *	but it works.
 	 */
 	MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
+	fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 	MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
 	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);

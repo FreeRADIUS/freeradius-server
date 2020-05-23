@@ -459,7 +459,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
 		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da, p, len, true);
 		if (ret != len) {
 			fr_pair_to_unknown(vp);
-			fr_pair_value_memcpy(vp, p, len, true);
+			fr_pair_value_memdup(vp, p, len, true);
 		}
 		fr_cursor_append(cursor, vp);
 		p += len;
@@ -589,7 +589,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 */
 
 	MEM(fake->packet->vps = vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
-	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
+	fr_pair_value_memdup(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
 	log_request_pair_list(L_DBG_LVL_1, fake, fake->packet->vps, NULL);
@@ -646,12 +646,12 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
-			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
+			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
-			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
+			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
 		}

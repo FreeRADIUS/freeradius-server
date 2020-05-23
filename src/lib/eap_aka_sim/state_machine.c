@@ -555,7 +555,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 			fr_value_box_strdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
 		pair_update_request(&new, attr_session_id);
-		fr_pair_value_memcpy(new, (uint8_t const *)vp->vp_strvalue, vp->vp_length, vp->vp_tainted);
+		fr_pair_value_memdup(new, (uint8_t const *)vp->vp_strvalue, vp->vp_length, vp->vp_tainted);
 
 		MEM(eap_aka_sim_session->fastauth_sent = talloc_bstrndup(eap_aka_sim_session,
 									 vp->vp_strvalue, vp->vp_length));
@@ -567,7 +567,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 		case FR_EAP_METHOD_SIM:
 		case FR_EAP_METHOD_AKA:
 			MEM(pair_update_session_state(&vp, attr_session_data) >= 0);
-			fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.mk,
+			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.mk,
 					     sizeof(eap_aka_sim_session->keys.mk), false);
 			break;
 		/*
@@ -577,7 +577,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 		 */
 		case FR_EAP_METHOD_AKA_PRIME:
 			MEM(pair_update_session_state(&vp, attr_session_data) >= 0);
-			fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.k_re,
+			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.k_re,
 					     sizeof(eap_aka_sim_session->keys.k_re), false);
 			break;
 
@@ -731,7 +731,7 @@ static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, R
 		pair_delete_request(attr_session_id);
 
 		MEM(pair_update_request(&vp, attr_session_id) >= 0);
-		fr_value_box_memcpy(vp, &vp->data, NULL,
+		fr_value_box_memdup(vp, &vp->data, NULL,
 				    (uint8_t *)eap_aka_sim_session->fastauth_sent,
 				    talloc_array_length(eap_aka_sim_session->fastauth_sent) - 1, true);
 		TALLOC_FREE(eap_aka_sim_session->fastauth_sent);
@@ -980,7 +980,7 @@ static rlm_rcode_t common_failure_notification_send(eap_aka_sim_common_conf_t *i
 		 *	protect notifications.
 		 */
 		MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
-		fr_pair_value_memcpy(vp, NULL, 0, false);
+		fr_pair_value_memdup(vp, NULL, 0, false);
 	} else {
 		/*
 		 *	Only valid code is general failure
@@ -1085,7 +1085,7 @@ static rlm_rcode_t common_success_notification_send(eap_aka_sim_common_conf_t *i
 	 *	it will get calculated.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
-	fr_pair_value_memcpy(vp, NULL, 0, false);
+	fr_pair_value_memdup(vp, NULL, 0, false);
 
 	/*
 	 *	Encode the packet
@@ -1229,7 +1229,7 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 	  *	Add AT_NONCE_S
 	  */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_nonce_s) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.reauth.nonce_s,
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.reauth.nonce_s,
 			     sizeof(eap_aka_sim_session->keys.reauth.nonce_s), false);
 
 	/*
@@ -1243,7 +1243,7 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 	 *	the mac will get calculated.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
-	fr_pair_value_memcpy(vp, NULL, 0, false);
+	fr_pair_value_memdup(vp, NULL, 0, false);
 
 	/*
 	 *	If there's no checkcode_md we're not doing
@@ -1266,14 +1266,14 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 			eap_aka_sim_session->checkcode_len = slen;
 
 			MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-			fr_pair_value_memcpy(vp, eap_aka_sim_session->checkcode, slen, false);
+			fr_pair_value_memdup(vp, eap_aka_sim_session->checkcode, slen, false);
 		/*
 		 *	If we don't have checkcode data, then we exchanged
 		 *	no identity packets, so checkcode is zero.
 		 */
 		} else {
 			MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-			fr_pair_value_memcpy(vp, NULL, 0, false);
+			fr_pair_value_memdup(vp, NULL, 0, false);
 			eap_aka_sim_session->checkcode_len = 0;
 		}
 	}
@@ -1433,21 +1433,21 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_rand) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.umts.vector.rand, AKA_SIM_VECTOR_UMTS_RAND_SIZE, false);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.umts.vector.rand, AKA_SIM_VECTOR_UMTS_RAND_SIZE, false);
 
 	/*
 	 *	Send the AUTN value to the client, so it can authenticate
 	 *	whoever has knowledge of the Ki.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_autn) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.umts.vector.autn, AKA_SIM_VECTOR_UMTS_AUTN_SIZE, false);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.umts.vector.autn, AKA_SIM_VECTOR_UMTS_AUTN_SIZE, false);
 
 	/*
 	 *	need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
-	fr_pair_value_memcpy(vp, NULL, 0, false);
+	fr_pair_value_memdup(vp, NULL, 0, false);
 
 	/*
 	 *	If we have checkcode data, send that to the peer
@@ -1465,14 +1465,14 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 		eap_aka_sim_session->checkcode_len = slen;
 
 		MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-		fr_pair_value_memcpy(vp, eap_aka_sim_session->checkcode, slen, false);
+		fr_pair_value_memdup(vp, eap_aka_sim_session->checkcode, slen, false);
 	/*
 	 *	If we don't have checkcode data, then we exchanged
 	 *	no identity packets, so AT_CHECKCODE is zero.
 	 */
 	} else {
 		MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-		fr_pair_value_memcpy(vp, NULL, 0, false);
+		fr_pair_value_memdup(vp, NULL, 0, false);
 		eap_aka_sim_session->checkcode_len = 0;
 	}
 
@@ -1563,20 +1563,20 @@ static rlm_rcode_t sim_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 	 *	Okay, we got the challenges! Put them into attributes.
 	 */
 	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.gsm.vector[0].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[0].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
 	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.gsm.vector[1].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[1].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
 	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.gsm.vector[2].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[2].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
 	/*
 	 *	need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
-	fr_pair_value_memcpy(vp, NULL, 0, false);
+	fr_pair_value_memdup(vp, NULL, 0, false);
 
 	/*
 	 *	We've sent the challenge so the peer should now be able
@@ -2208,7 +2208,7 @@ static rlm_rcode_t common_reauthentication_enter(eap_aka_sim_common_conf_t *inst
 	 *	the cache module.
 	 */
 	MEM(pair_update_request(&vp, attr_session_id) >= 0);
-	fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.identity, eap_aka_sim_session->keys.identity_len, true);
+	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.identity, eap_aka_sim_session->keys.identity_len, true);
 
 	return unlang_module_yield_to_section(request,
 					      inst->actions.load_session,
@@ -2266,7 +2266,7 @@ static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
 		 *	Toggle the AMF high bit to indicate we're doing AKA'
 		 */
 		MEM(pair_update_control(&vp, attr_sim_amf) >= 0);
-		fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff), false);
+		fr_pair_value_memdup(vp, amf_buff, sizeof(amf_buff), false);
 
 	        /*
 	 	 *	Use the default network name we have configured
@@ -3600,11 +3600,11 @@ static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *r
 			vp->vp_uint64 = new_sqn;
 
 			MEM(pair_add_control(&vp, attr_sim_ki) >= 0);
-			fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.auc.ki,
+			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.auc.ki,
 					     sizeof(eap_aka_sim_session->keys.auc.ki), false);
 
 			MEM(pair_add_control(&vp, attr_sim_opc) >= 0);
-			fr_pair_value_memcpy(vp, eap_aka_sim_session->keys.auc.opc,
+			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.auc.opc,
 					     sizeof(eap_aka_sim_session->keys.auc.opc), false);
 			break;
 

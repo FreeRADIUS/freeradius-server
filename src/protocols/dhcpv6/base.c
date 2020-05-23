@@ -508,7 +508,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	/*
 	 *	The internal attribute is 64-bits, but the ID is 24 bits.
 	 */
-	(void) fr_pair_value_memcpy(vp, packet + 1, 3, false);
+	(void) fr_pair_value_memdup(vp, packet + 1, 3, false);
 
 	vp->type = VT_DATA;
 	fr_cursor_append(&cursor, vp);

@@ -138,7 +138,7 @@ VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		if (size > 253) size = 253;
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
-		fr_pair_value_memcpy(vp, ptr, size, false);
+		fr_pair_value_memdup(vp, ptr, size, false);
 
 		fr_cursor_append(&out, vp);
 
@@ -379,7 +379,7 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
-	fr_pair_value_memcpy(vp, value, len, false);
+	fr_pair_value_memdup(vp, value, len, false);
 
 	RINDENT();
 	RDEBUG2("&reply:%pP", vp);

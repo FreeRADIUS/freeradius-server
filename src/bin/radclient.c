@@ -845,7 +845,7 @@ static int send_one_packet(rc_request_t *request)
 							       fr_rand() & 0xff,
 							       request->password->vp_strvalue,
 							       request->password->vp_length);
-				fr_pair_value_memcpy(vp, buffer, sizeof(buffer), false);
+				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
 			} else if (fr_pair_find_by_da(request->packet->vps, attr_ms_chap_password, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);

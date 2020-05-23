@@ -867,7 +867,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAI
  * fr_json_afrom_pair_list().
  *
  * This function generates the "array_of_values" format,
- * JSON_MODE_ARRAY_OF_VALUES, listing just the attribute values. 
+ * JSON_MODE_ARRAY_OF_VALUES, listing just the attribute values.
  * @see fr_json_format_s
  *
  * @param[in] ctx	Talloc context.
@@ -917,7 +917,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, VAL
  * fr_json_afrom_pair_list().
  *
  * This function generates the "array_of_names" format,
- * JSON_MODE_ARRAY_OF_NAMES, listing just the attribute names. 
+ * JSON_MODE_ARRAY_OF_NAMES, listing just the attribute names.
  * @see fr_json_format_s
  *
  * @param[in] ctx	Talloc context.

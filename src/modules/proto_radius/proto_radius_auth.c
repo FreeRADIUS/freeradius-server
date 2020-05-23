@@ -521,7 +521,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 			fr_rand_buffer(buffer, sizeof(buffer));
 
 			MEM(pair_update_reply(&vp, attr_state) >= 0);
-			fr_pair_value_memcpy(vp, buffer, sizeof(buffer), false);
+			fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 		}
 
 		switch (request->reply->code) {

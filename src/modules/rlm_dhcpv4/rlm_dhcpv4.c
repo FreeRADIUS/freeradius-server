@@ -180,7 +180,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Pass the options string back
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
 	fr_cursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;

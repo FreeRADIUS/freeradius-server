@@ -1515,14 +1515,14 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
  *      - 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool tainted)
+int fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool tainted)
 {
 	int ret;
 
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	ret = fr_value_box_memcpy(vp, &vp->data, vp->da, src, size, tainted);
+	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, size, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
 		VP_VERIFY(vp);

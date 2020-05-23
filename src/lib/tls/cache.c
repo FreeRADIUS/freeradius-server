@@ -66,7 +66,7 @@ static int fr_tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, s
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memcpy(vp, key, key_len, false);
+	fr_pair_value_memdup(vp, key, key_len, false);
 
 	RINDENT();
 	RDEBUG2("&%pP", vp);
@@ -283,7 +283,7 @@ int fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session)
 	 *	Put the SSL data into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data));
-	fr_pair_value_memcpy(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob), false);
+	fr_pair_value_memdup(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob), false);
 	RINDENT();
 	RDEBUG2("&session-state:%pP", vp);
 	REXDENT();

@@ -325,7 +325,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 			FALL_THROUGH;
 
 		case FR_TYPE_OCTETS:
-			fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);
+			fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
 			break;
 
 		case FR_TYPE_STRING:
@@ -753,7 +753,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	request will be rejected.
 		 */
 		MEM(vp = fr_pair_afrom_da(packet, attr_message_authenticator));
-		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);
+		fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
 		fr_cursor_append(&cursor, vp);
 
 		/*

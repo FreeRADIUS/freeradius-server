@@ -216,7 +216,7 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 	memcpy(&buf[sizeof(buf) - sizeof(session_id)], &session_id, sizeof(session_id));
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_state));
-	fr_pair_value_memcpy(vp, (uint8_t const *)buf, sizeof(buf), true);
+	fr_pair_value_memdup(vp, (uint8_t const *)buf, sizeof(buf), true);
 	fr_pair_add(&packet->vps, vp);
 }
 

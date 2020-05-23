@@ -304,7 +304,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 		 */
 		case 6:
 			MEM(pair_update_request(&vp, attr_soh_ms_correlation_id) >= 0);
-			fr_pair_value_memcpy(vp, p, 24, true);
+			fr_pair_value_memdup(vp, p, 24, true);
 			p += 24;
 			data_len -= 24;
 			break;

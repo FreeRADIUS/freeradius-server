@@ -94,7 +94,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       (*in)->vb_strvalue, (*in)->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(vb, vb, NULL, chap_password, sizeof(chap_password), false);
+	fr_value_box_memdup(vb, vb, NULL, chap_password, sizeof(chap_password), false);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -127,7 +127,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		RDEBUG2("Creating &%s from request authenticator", attr_chap_challenge->name);
 
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_chap_challenge));
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
+		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 		fr_pair_add(&request->packet->vps, vp);
 	}
 

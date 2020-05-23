@@ -422,7 +422,7 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY) &&
 	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY)) {
 	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
+		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}
 }
 

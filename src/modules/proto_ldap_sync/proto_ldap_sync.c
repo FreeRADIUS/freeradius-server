@@ -689,7 +689,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 	proto_ldap_attributes_add(request, config);
 
 	MEM(pair_update_request(&vp, attr_ldap_sync_cookie) >= 0);
-	fr_pair_value_memcpy(vp, cookie, talloc_array_length(cookie), true);
+	fr_pair_value_memdup(vp, cookie, talloc_array_length(cookie), true);
 
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
@@ -744,7 +744,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 		ldap_memfree(entry_dn);
 
 		MEM(pair_update_request(&vp, attr_ldap_sync_entry_uuid) >= 0);
-		fr_pair_value_memcpy(vp, uuid, SYNC_UUID_LENGTH, true);
+		fr_pair_value_memdup(vp, uuid, SYNC_UUID_LENGTH, true);
 	}
 
 	/*

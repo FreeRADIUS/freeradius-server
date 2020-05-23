@@ -243,7 +243,7 @@ do_value:
 			}
 
 			fr_pair_to_unknown(vp);
-			fr_pair_value_memcpy(vp, p, value_len, true);
+			fr_pair_value_memdup(vp, p, value_len, true);
 		}
 
 		/*

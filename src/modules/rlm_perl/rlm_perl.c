@@ -791,7 +791,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		break;
 
 	case FR_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, (uint8_t const *)val, len, true);
+		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
 		break;
 
 	default:

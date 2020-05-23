@@ -133,7 +133,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	if (vp->vp_length == 0) fr_pair_value_strcpy(vp, "This is a challenge");
 
 	MEM(pair_add_reply(&vp, attr_state) >= 0);
-	fr_pair_value_memcpy(vp, (uint8_t *){ 0x00 }, 1, true);
+	fr_pair_value_memdup(vp, (uint8_t *){ 0x00 }, 1, true);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
