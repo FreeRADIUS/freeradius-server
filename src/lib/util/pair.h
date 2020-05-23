@@ -337,7 +337,7 @@ void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
 void		fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len);
-void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+int		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 /* Printing functions */
 size_t   	fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);

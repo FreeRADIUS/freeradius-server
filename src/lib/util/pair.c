@@ -1670,28 +1670,25 @@ void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len)
  * @param[in,out] vp to update
  * @param[in] fmt the format string
  */
-void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
+int fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
 {
-	va_list ap;
-	char *p;
+	int	ret;
+	va_list	ap;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
-
-	va_start(ap, fmt);
-	p = talloc_vasprintf(vp, fmt, ap);
-	va_end(ap);
-	if (!p) return;
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
+	va_start(ap, fmt);
+	ret = fr_value_box_vasprintf(vp, &vp->data, vp->da, false, fmt, ap);
+	va_end(ap);
 
-	vp->vp_strvalue = p;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+		return 0;
+	}
 
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
+	return -1;
 }
 
 /** Print the value of an attribute to a string
