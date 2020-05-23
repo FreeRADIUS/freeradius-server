@@ -2,15 +2,15 @@
 #   Only run EAP tests if we have a "test" target
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell test -e "$(OUTPUT)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
+EAPOL_TEST = $(shell test -e "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
 endif
-
-ifneq "$(EAPOL_TEST)" ""
 
 #
 #	Tests for EAP support
 #
 TEST := test.eap
+
+ifneq "$(EAPOL_TEST)" ""
 $(eval $(call TEST_BOOTSTRAP))
 
 TEST_PATH := ${top_srcdir}/src/tests/eapol_test
@@ -92,12 +92,12 @@ else
 #  if we don't touch the test skipped file immediately, users can
 #  cntrl-c out of the build process, and the skip file never gets
 #  created as the test.eap target is evaluated much later in the
-#  build process.2
+#  build process.
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-$(shell touch "$(OUTPUT)/eapol_test.skip")
+$(shell touch "$(BUILD_DIR/tests/eapol_test/eapol_test.skip")
 endif
 
-$(TEST): $(OUTPUT)
+$(TEST):
 	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 endif
