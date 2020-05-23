@@ -284,15 +284,15 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
 	status = fr_redis_script(&reply, request, inst->cluster,
-			       key_prefix, key_prefix_len,
-			       inst->wait_num, inst->wait_timeout,
-			       inst->lua_alloc.script,
-			       "EVALSHA %s 1 %b %u %b %b",
-			       inst->lua_alloc.digest,
-			       key_prefix, key_prefix_len,
-			       expires,
-			       device_id, device_id_len,
-			       gateway_id, gateway_id_len);
+				 key_prefix, key_prefix_len,
+				 inst->wait_num, inst->wait_timeout,
+				 inst->lua_alloc.script,
+				 "EVALSHA %s 1 %b %u %b %b",
+				 inst->lua_alloc.digest,
+				 key_prefix, key_prefix_len,
+				 expires,
+				 device_id, device_id_len,
+				 gateway_id, gateway_id_len);
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
@@ -477,31 +477,31 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = fr_redis_script(&reply, request, inst->cluster,
-				       key_prefix, key_prefix_len,
-				       inst->wait_num, inst->wait_timeout,
-				       inst->lua_update.script,
-				       "EVALSHA %s 1 %b %u %u %b %b",
-				       inst->lua_update.digest,
-				       key_prefix, key_prefix_len,
-				       expires,
-				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len,
-				       gateway_id, gateway_id_len);
+					 key_prefix, key_prefix_len,
+					 inst->wait_num, inst->wait_timeout,
+					 inst->lua_update.script,
+					 "EVALSHA %s 1 %b %u %u %b %b",
+					 inst->lua_update.digest,
+					 key_prefix, key_prefix_len,
+					 expires,
+					 htonl(ip->addr.v4.s_addr),
+					 device_id, device_id_len,
+					 gateway_id, gateway_id_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = fr_redis_script(&reply, request, inst->cluster,
-				       key_prefix, key_prefix_len,
-				       inst->wait_num, inst->wait_timeout,
-				       inst->lua_update.script,
-				       "EVALSHA %s 1 %b %u %s %b %b",
-				       inst->lua_update.digest,
-				       key_prefix, key_prefix_len,
-				       expires,
-				       ip_buff,
-				       device_id, device_id_len,
-				       gateway_id, gateway_id_len);
+					 key_prefix, key_prefix_len,
+					 inst->wait_num, inst->wait_timeout,
+					 inst->lua_update.script,
+					 "EVALSHA %s 1 %b %u %s %b %b",
+					 inst->lua_update.digest,
+					 key_prefix, key_prefix_len,
+					 expires,
+					 ip_buff,
+					 device_id, device_id_len,
+					 gateway_id, gateway_id_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
@@ -608,27 +608,27 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = fr_redis_script(&reply, request, inst->cluster,
-				       key_prefix, key_prefix_len,
-				       inst->wait_num, inst->wait_timeout,
-				       inst->lua_release.script,
-				       "EVALSHA %s 1 %b %u %b",
-				       inst->lua_release.digest,
-				       key_prefix, key_prefix_len,
-				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len);
+					 key_prefix, key_prefix_len,
+					 inst->wait_num, inst->wait_timeout,
+					 inst->lua_release.script,
+					 "EVALSHA %s 1 %b %u 0 %b",
+					 inst->lua_release.digest,
+					 key_prefix, key_prefix_len,
+					 htonl(ip->addr.v4.s_addr),
+					 device_id, device_id_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = fr_redis_script(&reply, request, inst->cluster,
-				       key_prefix, key_prefix_len,
-				       inst->wait_num, inst->wait_timeout,
-				       inst->lua_release.script,
-				       "EVALSHA %s 1 %b %s %b",
-				       inst->lua_release.digest,
-				       key_prefix, key_prefix_len,
-				       ip_buff,
-				       device_id, device_id_len);
+					 key_prefix, key_prefix_len,
+					 inst->wait_num, inst->wait_timeout,
+					 inst->lua_release.script,
+					 "EVALSHA %s 1 %b %s 0 %b",
+					 inst->lua_release.digest,
+					 key_prefix, key_prefix_len,
+					 ip_buff,
+					 device_id, device_id_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;

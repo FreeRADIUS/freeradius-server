@@ -7,7 +7,7 @@
 --
 -- Sticky IPs work by setting the TTL on the device_key to 10x ARGV[1]
 --
--- Returns { <rcode>[, <ip>][, <range>][, <lease time>][, <counter>] }
+-- Returns { <rcode>[, <ip>, <range>, <lease time> ] }
 -- - IPPOOL_RCODE_SUCCESS lease updated.
 -- - IPPOOL_RCODE_POOL_EMPTY no available leases in pool.
 
@@ -68,10 +68,11 @@ end
 
 redis.call("SET", device_key, ip, "EX", 10 * expires_in)
 
+redis.call("HINCRBY", address_key, "counter", 1)
+
 return {
 	ippool_rcode.success,
 	ip,
 	redis.call("HGET", address_key, "range"),
-	expires_in,
-	redis.call("HINCRBY", address_key, "counter", 1)
+	expires_in
 }

@@ -1,55 +1,66 @@
 -- Lua script for releasing leases
 --
 -- - KEYS[1] The pool name.
--- - ARGV[1] IP address to release.
--- - ARGV[2] (optional) Client identifier.
+-- - ARGV[1] IP address/range of lease(s).
+-- - ARGV[2] Prefix to add (0 = auto => 64 for IPv6, 32 for IPv4).
+-- - ARGV[3] (optional) Client identifier; use only as a guard when releasing a single IP.
 --
 -- Removes the IP entry in the ZSET, then removes the address hash, and the device key
 -- if one exists. Will do nothing if the lease is not found in the ZSET.
 --
--- Sets the expiry time to be NOW() - 1 to maximise time between IP address allocations.
---
 -- Sticky IPs work by setting the TTL on the device_key to 10x so do not remove it
 --
--- Returns array { <rcode>[, <affected>, <counter>] }
--- - IPPOOL_RCODE_SUCCESS lease updated.
--- - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
--- - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client.
+-- Sets the expiry time to be NOW() - 1 to maximise time between IP address allocations and
+-- improve the changes of Sticky IP opportunities.
 --
--- affected:
--- - 0 if no ip addresses were removed.
--- - 1 if an ip address was removed.
+-- Returns array { <rcode>[, <counter> ] }
+-- - IPPOOL_RCODE_SUCCESS
+-- - IPPOOL_RCODE_FAIL
+-- - IPPOOL_RCODE_NOT_FOUND
+-- - IPPOOL_RCODE_DEVICE_MISMATCH
 
-local ret
-local found
+local ok
+local range
+local prefix
 
 local pool_key
-local address_key
-local device_key
 
 local time
+local counter
 
-local found
+ok, range = pcall(iptool.parse, ARGV[1])
+if not ok then
+	return { ippool_rcode_fail }
+end
+prefix = toprefix(ARGV[1], ARGV[2])
+if guard(range, prefix) then
+	return { ippool_rcode_fail }
+end
 
--- Check that the device releasing was the one
--- the IP address is allocated to.
-address_key = "{" .. KEYS[1] .. "}:" .. ippool_key.address .. ":" .. ARGV[1]
-found = redis.call("HGET", address_key, "device")
-if not found then
-	return { ippool_rcode.not_found }
-end
-if ARGV[2] and found ~= ARGV[2] then
-	return { ippool_rcode.device_mismatch, found }
-end
+pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key.pool
 
 time = tonumber(redis.call("TIME")[1])
 
--- Set expiry time to now() - 1
-pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key.pool
-ret = redis.call("ZADD", pool_key, "XX", time - 1, ARGV[1])
+counter = 0
+for addr in iptool.iter(range, prefix) do
+	local address_key = "{" .. KEYS[1] .. "}:" .. ippool_key.address .. ":" .. addr
+
+	-- Check that the device releasing was the one the IP address is allocated to.
+	if ARGV[3] then
+		local found = redis.call("HGET", address_key, "device")
+		if found and found ~= ARGV[3] then
+			return { ippool_rcode.device_mismatch, found }
+		end
+	end
+
+	local ret = redis.call("ZADD", pool_key, "XX", time - 1, addr)
+	if ret == 1 then
+		redis.call("HINCRBY", address_key, "counter", 1)
+		counter = counter + 1
+	end
+end
 
 return {
 	ippool_rcode.success,
-	ret,
-	redis.call("HINCRBY", address_key, "counter", 1) - 1
+	counter,
 }
