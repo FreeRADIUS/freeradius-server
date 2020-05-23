@@ -399,8 +399,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 					talloc_free(c);
 					return RLM_MODULE_FAIL;
 				}
-				tmpl_value_type(c_map->rhs) = vp->vp_type;
-
 			}
 				break;
 
