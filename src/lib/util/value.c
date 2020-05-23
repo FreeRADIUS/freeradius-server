@@ -3234,6 +3234,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			fr_strerror_printf("Failed stealing string buffer");
 			return -1;
 		}
+		talloc_set_type(str, char);
 		dst->vb_strvalue = str;
 		fr_value_box_copy_meta(dst, src);
 	}
@@ -3248,6 +3249,8 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			fr_strerror_printf("Failed stealing octets buffer");
 			return -1;
 		}
+		talloc_set_type(bin, uint8_t);
+
 		dst->vb_octets = bin;
 		fr_value_box_copy_meta(dst, src);
 	}
@@ -3451,7 +3454,7 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
  *	- -1 on failure.
  */
 int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			  char *src, bool tainted)
+			   char *src, bool tainted)
 {
 	size_t	len;
 	char	*str;
@@ -3467,6 +3470,7 @@ int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 		fr_strerror_printf("Failed stealing string buffer");
 		return -1;
 	}
+	talloc_set_type(str, char);
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
@@ -3512,6 +3516,7 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 		str[inlen] = '\0';
 		*src = str;
 	}
+	talloc_set_type(str, char);
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
@@ -3563,6 +3568,7 @@ int fr_value_box_append_bstr(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *s
 				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
 		return -1;
 	}
+	talloc_set_type(nptr, char);
 	ptr = nptr;
 
 	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
@@ -3757,7 +3763,8 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 {
 	(void) talloc_get_type_abort_const(src, uint8_t);
 
-	(void) talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
+	src = talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
+	talloc_set_type(src, uint8_t);
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
