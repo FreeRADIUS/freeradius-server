@@ -827,6 +827,13 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	va_end(ap_p);
 	va_end(ap_q);
 
+	/*
+	 *	One of the above talloc calls sets the type to
+	 *	be the string.  We correct this here so we
+	 *	don't trigger talloc_aborts later...
+	 */
+	talloc_set_type(out, char);
+
 	return out;
 }
 DIAG_ON(format-nonliteral)
