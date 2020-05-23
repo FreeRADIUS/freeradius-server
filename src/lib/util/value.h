@@ -392,11 +392,14 @@ static inline int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t
 }
 
 #define DEF_BOXING_FUNC(_ctype, _field, _type) \
-static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype const value, bool tainted) { \
+static inline CC_HINT(always_inline) int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, \
+							       _ctype const value, bool tainted) { \
 	fr_value_box_init(dst, _type, enumv, tainted); \
 	dst->vb_##_field = value; \
 	return 0; \
 }
+
+DEF_BOXING_FUNC(bool, bool, FR_TYPE_BOOL)
 
 DEF_BOXING_FUNC(uint8_t, uint8, FR_TYPE_UINT8)
 DEF_BOXING_FUNC(uint16_t, uint16, FR_TYPE_UINT16)
@@ -431,6 +434,7 @@ DEF_BOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
 _Generic((_var), \
 	fr_ipaddr_t *		: fr_value_box_ipaddr, \
 	fr_ipaddr_t const *	: fr_value_box_ipaddr, \
+	bool			: fr_value_box_bool, \
 	uint8_t			: fr_value_box_uint8, \
 	uint8_t const		: fr_value_box_uint8, \
 	uint16_t		: fr_value_box_uint16, \
