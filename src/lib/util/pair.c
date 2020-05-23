@@ -128,8 +128,7 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	 *	Use the 'da' to initialize more fields.
 	 */
 	vp->da = da;
-	vp->vp_type = da->type;
-	vp->data.enumv = da;
+	fr_value_box_init(&vp->data, da->type, da, false);
 
 	return vp;
 }
@@ -1426,11 +1425,14 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
  * @param[in] in	where to copy the value from
  *			Must have an assigned value.
  */
-void fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in)
+int fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in)
 {
-	if (!fr_cond_assert(in->data.type != FR_TYPE_INVALID)) return;
+	if (!fr_cond_assert(in->data.type != FR_TYPE_INVALID)) return -1;
+
 	if (out->data.type != FR_TYPE_INVALID) fr_value_box_clear(&out->data);
 	fr_value_box_copy(out, &out->data, &in->data);
+
+	return 0;
 }
 
 /** Convert string value to native attribute value
@@ -1517,7 +1519,9 @@ int fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool t
 {
 	int ret;
 
-	fr_value_box_clear(&vp->data);	/* Clear existing values */
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memcpy(vp, &vp->data, vp->da, src, size, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
@@ -1535,12 +1539,17 @@ int fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool t
  * @param[in] src	buffer to steal.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
+int fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
 {
-	fr_value_box_clear(&vp->data);
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
 
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	fr_value_box_memsteal(vp, &vp->data, vp->da, src, tainted);
 	vp->type = VT_DATA;
+
+	VP_VERIFY(vp);
+
+	return 0;
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR
@@ -1548,20 +1557,17 @@ void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
  * @param[in,out] vp	to update
  * @param[in] src	buffer to steal.
  */
-void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
+int fr_pair_value_strsteal(VALUE_PAIR *vp, char *src)
 {
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
-	fr_value_box_clear(&vp->data);
-
-	vp->vp_strvalue = talloc_steal(vp, src);
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
-
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	fr_value_box_bstrsteal(vp, &vp->data, vp->da, src, false);
 	vp->type = VT_DATA;
 
 	VP_VERIFY(vp);
+
+	return 0;
 }
 
 /** Copy data into an "string" data type.
@@ -1570,25 +1576,24 @@ void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
  *
  * @param[in,out] vp to update
  * @param[in] src data to copy
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
+int fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
 {
-	char *p;
+	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
-	p = talloc_strdup(vp, src);
-	if (!p) return;
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, false);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
 
-	fr_value_box_clear(&vp->data);
-
-	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
-
-	VP_VERIFY(vp);
+	return ret;
 }
 
 /** Copy data into an "string" data type.
@@ -1615,12 +1620,7 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 	p[len] = '\0';
 
 	fr_value_box_clear(&vp->data);
-
-	vp->vp_strvalue = p;
-	vp->vp_length = len;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
-
+	fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, false);
 	vp->type = VT_DATA;
 
 	VP_VERIFY(vp);
@@ -1633,12 +1633,13 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
  * @note vp->da must be of type FR_TYPE_STRING.
  *
  * @param[in,out] vp	to update
- * @param[in] src	buffer to steal.
+ * @param[in,out] src_p	buffer to steal.
  * @param[in] len	of data in buffer.
  */
-void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len)
+void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char **src_p, size_t len)
 {
 	char	*p;
+	char	*src = *src_p;
 	size_t	buf_len;
 
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
@@ -1661,6 +1662,8 @@ void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len)
 	vp->type = VT_DATA;
 
 	VP_VERIFY(vp);
+
+	*src_p = NULL;
 }
 
 /** Print data into an "string" data type.
