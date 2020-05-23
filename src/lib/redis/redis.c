@@ -207,38 +207,36 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	 *	the greatest chance of success.
 	 */
 	case REDIS_REPLY_INTEGER:
-		if (reply->integer < INT32_MIN) {	/* 64bit signed (not supported)*/
-			fr_strerror_printf("Signed 64bit integers are not supported");
-			return -1;
+		if (reply->integer < INT32_MIN) {	/* 64bit signed */
+			fr_value_box_shallow(&in, (int64_t) reply->integer, true);
 		}
-		if (reply->integer < 0) {		/* 32bit signed (supported) */
-			in.type = FR_TYPE_INT32;
-			in.vb_int32 = (int32_t) reply->integer;
+		else if (reply->integer < INT16_MIN) {	/* 32bit signed */
+			fr_value_box_shallow(&in, (int32_t) reply->integer, true);
 		}
-		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
-			in.type = FR_TYPE_UINT64;
-			in.vb_uint64 = (uint64_t) reply->integer;
+		else if (reply->integer < INT8_MIN) {	/* 16bit signed */
+			fr_value_box_shallow(&in, (int16_t) reply->integer, true);
 		}
-		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			in.type = FR_TYPE_UINT32;
-			in.vb_uint32 = (uint32_t) reply->integer;
+		else if (reply->integer < 0) {	/* 8bit signed */
+			fr_value_box_shallow(&in, (int8_t) reply->integer, true);
 		}
-		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			in.type = FR_TYPE_UINT16;
-			in.vb_uint16 = (uint16_t) reply->integer;
+		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned */
+			fr_value_box_shallow(&in, (uint64_t) reply->integer, true);
 		}
-		else {		/* 8bit unsigned (supported) */
-			in.type = FR_TYPE_UINT8;
-			in.vb_uint8 = (uint8_t) reply->integer;
+		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned */
+			fr_value_box_shallow(&in, (uint32_t) reply->integer, true);
+		}
+		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned */
+			fr_value_box_shallow(&in, (uint16_t) reply->integer, true);
+		}
+		else {					/* 8bit unsigned */
+			fr_value_box_shallow(&in, (uint8_t) reply->integer, true);
 		}
 		break;
 
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_ERROR:
-		in.type = FR_TYPE_STRING;
-		in.datum.ptr = reply->str;
-		in.datum.length = reply->len;
+		fr_value_box_bstrndup_shallow(&in, NULL, reply->str, reply->len, true);
 		break;
 
 	case REDIS_REPLY_ARRAY:
