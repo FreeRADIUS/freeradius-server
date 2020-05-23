@@ -89,7 +89,7 @@ alloc:
 		}
 
 		vp->da = da;
-		vp->vp_type = da->type;	/* FR_TYPE_OCTETS */
+		fr_value_box_init(&vp->data, da->type, da, false);
 
 		return vp;
 	}
@@ -823,7 +823,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 				break;
 
 			case FR_TYPE_STRING:
-				fr_pair_value_strsteal(found, i->vp_strvalue);
+				fr_pair_value_strsteal(found, i->vp_ptr);
 				i->vp_strvalue = NULL;
 				found->tag = i->tag;
 				break;
