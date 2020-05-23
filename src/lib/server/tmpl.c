@@ -1887,18 +1887,13 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-	{
-		fr_type_t	concrete_type = type;
-
 		/*
 		 *	Why do we pass a pointer to a temporary type
 		 *	variable? Goddamn WiMAX.
 		 */
-		if (fr_value_box_from_str(vpt, &vpt->data.literal, &concrete_type,
+		if (fr_value_box_from_str(vpt, &vpt->data.literal, &type,
 					  enumv, vpt->name, vpt->len, '\0', false) < 0) return -1;
-		tmpl_value_type_set(vpt, concrete_type);
 		vpt->type = TMPL_TYPE_DATA;
-	}
 		break;
 
 	case TMPL_TYPE_DATA:
@@ -1934,12 +1929,9 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 	fr_assert(vpt != NULL);
 	fr_assert(tmpl_is_unparsed(vpt));
 
-	tmpl_value(vpt)->vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
-	fr_assert(tmpl_value(vpt)->vb_strvalue != NULL);
-
 	vpt->type = TMPL_TYPE_DATA;
-	tmpl_value_type_set(vpt, FR_TYPE_STRING);
-	tmpl_value_length_set(vpt, talloc_array_length(tmpl_value(vpt)->vb_strvalue) - 1);
+
+	fr_value_box_strdup(vpt, &vpt->data.literal, NULL, vpt->name, false);
 }
 
 /** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
@@ -2455,8 +2447,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL UNPARSED");
 
 		value.datum.length = vpt->len;
-		value.vb_strvalue = vpt->name;
-		value.type = FR_TYPE_STRING;
+		fr_value_box_bstrndup_shallow(&value, NULL, vpt->name, vpt->len, false);
 		to_cast = &value;
 		needs_dup = true;
 		break;
@@ -2481,7 +2472,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_XLAT_UNPARSED:
 	{
 		fr_value_box_t	tmp;
-		fr_type_t		src_type = FR_TYPE_STRING;
+		fr_type_t	src_type = FR_TYPE_STRING;
 
 		RDEBUG4("EXPAND TMPL XLAT");
 
@@ -2500,9 +2491,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 					    value.vb_strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
-		value.vb_strvalue = tmp.vb_strvalue;
-		value.datum.length = tmp.datum.length;
-		value.type = FR_TYPE_STRING;
+		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
 	}
 		break;
@@ -2531,9 +2520,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 					    value.vb_strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
-		value.vb_strvalue = tmp.vb_strvalue;
-		value.datum.length = tmp.datum.length;
-		value.type = FR_TYPE_STRING;
+		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
 
 		RDEBUG2("   --> %s", value.vb_strvalue);	/* Print post-unescaping */
