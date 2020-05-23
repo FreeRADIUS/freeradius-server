@@ -134,10 +134,12 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	state->out = out;
-	state->ctx = ctx;
-	state->vps = vps;
-	state->status_p = status;
+	*state = (unlang_frame_state_tmpl_t) {
+		.out = out,
+		.ctx = ctx,
+		.vps = vps,
+		.status_p = status
+	};
 }
 
 
