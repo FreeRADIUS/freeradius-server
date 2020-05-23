@@ -3435,6 +3435,45 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
 	return 0;
 }
 
+
+/** Assign a nul terminated talloced buffer into a #fr_value_box_t
+ *
+ * The buffer MUST be parented by the input value box.
+ *
+ * The buffer must be \0 terminated, or an error will be returned.
+ *
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_bstrassign(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			    char *src, bool tainted)
+{
+	size_t	len;
+
+	len = talloc_array_length(src);
+	if ((len == 0) || (src[len - 1] != '\0')) {
+		fr_strerror_printf("Input buffer empty or not \\0 terminated");
+		return -1;
+	}
+
+	fr_assert(dst == talloc_parent(src));
+
+	dst->type = FR_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->vb_strvalue = src;
+	dst->datum.length = len - 1;
+	dst->enumv = enumv;
+	dst->next = NULL;
+
+	return 0;
+}
+
+
 /** Steal a nul terminated talloced buffer into a specified ctx, and assign to a #fr_value_box_t
  *
  * Steal a talloced nul terminated buffer, setting fields in the dst value box appropriately.
