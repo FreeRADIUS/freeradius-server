@@ -25,15 +25,6 @@ endif
 $(eval $(call TEST_BOOTSTRAP))
 
 #
-#  Find which input files are needed by the tests
-#  strip out the ones which exist
-#  move the filenames to the build directory.
-#
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
-BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
-
-#
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
@@ -52,24 +43,6 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 			echo "" >> $@; \
 		fi \
 	done
-
-#
-#  These ones get copied over from the default input
-#
-$(BOOTSTRAP): $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
-
-#
-#  These ones get copied over from their original files
-#
-$(OUTPUT)/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
-
-#
-#  Don't auto-remove the files copied by the rule just above.
-#  It's unnecessary, and it clutters the output with crap.
-#
-.PRECIOUS: $(OUTPUT)/%.attrs
 
 #
 #  Cache the list of modules which are enabled, so that we don't run
@@ -102,11 +75,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #
 $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	@echo "KEYWORD-TEST $(notdir $@)"
-	${Q}if [ -f $<.attrs ] ; then \
-		cp $<.attrs $(BUILD_DIR)/tests/keywords/; \
-	else \
-		cp $(dir $<)/default-input.attrs $(BUILD_DIR)/tests/keywords/$(notdir $<).attrs; \
-	fi
+	${Q}cp $(if $(wildcard $<.attrs),$<.attrs,$(dir $<)/default-input.attrs) $@.attrs
 	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
