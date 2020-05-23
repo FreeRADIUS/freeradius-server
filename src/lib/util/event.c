@@ -1157,7 +1157,6 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	fr_event_list_t		*el = ev->el;
 	fr_event_timer_t const	**ev_p;
 
-
 	if (fr_dlist_entry_in_list(&ev->entry)) {
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 	} else {
@@ -1248,6 +1247,8 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		if (ctx != el) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
+		ev->heap_id = -1;
+
 	} else {
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
 
@@ -1310,6 +1311,8 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		if (!fr_dlist_entry_in_list(&ev->entry)) fr_dlist_insert_head(&el->ev_to_add, ev);
 	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 		fr_strerror_printf_push("Failed inserting event");
+		talloc_set_destructor(ev, NULL);
+		*ev_p = NULL;
 		talloc_free(ev);
 		return -1;
 	}
