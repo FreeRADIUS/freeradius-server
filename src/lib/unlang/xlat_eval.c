@@ -768,9 +768,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				result_str = talloc_typed_strdup(NULL, "");
 			}
 
-			MEM(value = fr_value_box_alloc_null(ctx));
 			if (node->xlat->buf_len > 0) {
-				str = talloc_array(value, char, node->xlat->buf_len);
+				str = talloc_array(ctx, char, node->xlat->buf_len);
 				str[0] = '\0';	/* Be sure the string is \0 terminated */
 			}
 
@@ -778,12 +777,12 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   node->fmt,
 				   fr_box_strvalue_len(result_str, talloc_array_length(result_str) - 1));
 
-			slen = node->xlat->func.sync(value, &str, node->xlat->buf_len,
+			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len,
 						     node->xlat->mod_inst, NULL, request, result_str);
 			xlat_debug_log_expansion(request, *in, *result);
 			if (slen < 0) {
 				talloc_free(result_str);
-				talloc_free(value);
+				talloc_free(str);
 				return XLAT_ACTION_FAIL;
 			}
 			if (slen == 0) {				/* Zero length result */
@@ -793,14 +792,19 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			(void)talloc_get_type_abort(str, char);		/* Check output buffer is sane */
 
 			/*
-			 *	Ensure that the string is the correct size.
+			 *	Shrink the buffer
 			 */
-			if ((size_t) slen != (talloc_array_length(str) - 1)) {
-				MEM(str = talloc_bstr_realloc(value, str, (size_t)slen));
+			if ((node->xlat->buf_len > 0) && (slen > 0)) {
+				MEM(str = talloc_bstr_realloc(ctx, str, (size_t)slen));
 			}
 
-			fr_value_box_bstrassign(value, NULL, str, false);
-			fr_cursor_append(out, value);
+			/*
+			 *	Fixup talloc lineage and assign the
+			 *	output of the function to a box.
+			 */
+			MEM(value = fr_value_box_alloc_null(ctx));
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
+			fr_cursor_append(out, value);			/* Append the result of the expansion */
 			talloc_free(result_str);
 			xlat_debug_log_result(request, value);
 		}
@@ -1020,19 +1024,13 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
-			MEM(value = fr_value_box_alloc_null(ctx));
-			slen = node->xlat->func.sync(value, &str, node->xlat->buf_len, node->xlat->mod_inst,
+			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst,
 						     NULL, request, NULL);
-			if (slen < 0) {
-				talloc_free(value);
-				goto fail;
-			}
-			if (slen == 0) {
-				talloc_free(value);
-				continue;
-			}
+			if (slen < 0) goto fail;
+			if (slen == 0) continue;
 
-			fr_value_box_bstrassign(value, NULL, str, false);
+			MEM(value = fr_value_box_alloc_null(ctx));
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 			fr_cursor_next(out);
 
@@ -1073,14 +1071,15 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
+			if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) continue;
 
+			/*
+			 *	Above call strdups the capture data, so
+			 *	we just need to fix up the talloc lineage
+			 *	and box it.
+			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (regex_request_to_sub(value, &str, request, node->regex_index) < 0) {
-				talloc_free(value);
-				continue;
-			}
-
-			fr_value_box_bstrassign(value, NULL, str, false);
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 		}
 			continue;

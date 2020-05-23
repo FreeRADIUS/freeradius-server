@@ -120,7 +120,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST 
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlikely(fr_value_box_bstrassign(vb, NULL, tmp, false) < 0)) {
+	if (unlikely(fr_value_box_bstrsteal(vb, vb, NULL, tmp, false) < 0)) {
 		REDEBUG("Failed to allocate JSON string");
 		goto error;
 	}
@@ -294,8 +294,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 		goto error;
 	}
 
-	if (unlikely(fr_value_box_bstrassign(vb, NULL, json_str, false) < 0)) {
-		talloc_free(vb);
+	if (unlikely(fr_value_box_bstrsteal(vb, vb, NULL, json_str, false) < 0)) {
 		REDEBUG("Failed to allocate JSON string");
 		goto error;
 	}

@@ -844,20 +844,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, s
 			 *	--foo=%{Bar}
 			 */
 			while ((q < end) && !isspace((int) *q)) {
-				/*
-				 *	Things like: echo foo"bar"
-				 *	are forbidden.
-				 *
-				 *	The Unix shell typically allows this
-				 *	kind of nonsense, but there's no reason
-				 *	for us to do so.
-				 */
-				if ((*q == '`') || (*q == '"') || (*q == '\'')) {
-					fr_strerror_printf("Unexpected quoted string");
-					talloc_free(my_head);
-					return -(q - in);
-				}
-
 				if (*q == '%') {
 					if (q[1] != '{') {
 						slen = 2;
