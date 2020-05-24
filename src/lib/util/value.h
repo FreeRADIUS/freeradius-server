@@ -52,6 +52,15 @@ typedef struct value_box fr_value_box_t;
 extern "C" {
 #endif
 
+/*
+ *	Allow public and private versions of the same structures
+ */
+#ifndef _VALUE_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
 extern fr_table_num_ordered_t const fr_value_box_type_table[];
 extern size_t fr_value_box_type_table_len;
 
@@ -134,9 +143,9 @@ struct value_box {
 		fr_value_box_list_t	children;		//!< for groups
 	} datum;
 
-	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
+	fr_type_t		_CONST type;			//!< Type of this value-box.
 
-	fr_type_t			type;			//!< Type of this value-box.
+	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
@@ -701,6 +710,9 @@ int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_bo
 char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
+
+#undef _CONST
+
 #ifdef __cplusplus
 }
 #endif
