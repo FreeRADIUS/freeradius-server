@@ -331,11 +331,17 @@ int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 /* Value manipulation */
 int		fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in);
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
+
+int		fr_pair_value_mem_alloc(VALUE_PAIR *vp, uint8_t **out, size_t size, bool tainted);
+int		fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size);
 int		fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
 int		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
 int		fr_pair_value_strsteal(VALUE_PAIR *vp, char *src);
 int		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
-void		fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len);
+
+int		fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted);
+int		fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size);
+int		fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len);
 int		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 /* Printing functions */

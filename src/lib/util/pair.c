@@ -1503,6 +1503,60 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
 	return 0;
 }
 
+/** Pre-allocate a memory buffer for a "octets" type value pair
+ *
+ * @note Will clear existing values (including buffers).
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_mem_alloc(VALUE_PAIR *vp, uint8_t **out, size_t size, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_mem_alloc(vp, out, &vp->data, vp->da, size, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Change the length of a buffer for a "octets" type value pair
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	ret = fr_value_box_mem_realloc(vp, out, &vp->data, size);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
 /** Copy data into an "octets" data type.
  *
  * @note Will clear existing values (including buffers).
@@ -1596,6 +1650,61 @@ int fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
 	return ret;
 }
 
+
+/** Pre-allocate a memory buffer for a "string" type value pair
+ *
+ * @note Will clear existing values (including buffers).
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Change the length of a buffer for a "string" type value pair
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
 /** Copy data into an "string" data type.
  *
  * @note unlike the original strncpy, this function does not stop
@@ -1606,24 +1715,24 @@ int fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
  * @param[in,out] vp to update.
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
  */
-void fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
+int fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
 {
-	char *p;
+	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
-
-	p = talloc_array(vp, char, len + 1);
-	if (!p) return;
-
-	memcpy(p, src, len);	/* embdedded \0 safe */
-	p[len] = '\0';
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
-	fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, false);
-	vp->type = VT_DATA;
+	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, false);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
 
-	VP_VERIFY(vp);
+	return ret;
 }
 
 /** Print data into an "string" data type.

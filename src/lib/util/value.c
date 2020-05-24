@@ -3593,6 +3593,52 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
 	return 0;
 }
 
+/** Change the length of a buffer already allocated to a value box
+ *
+ * @note Do not use on an uninitialised box.
+ *
+ * @param[in] ctx	to realloc buffer in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to realloc buffer for.
+ * @return
+ *	- 0 on success.
+ *	 - -1 on failure.
+ */
+int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
+{
+	size_t	clen;
+	char	*cstr;
+	char	*str;
+
+	fr_assert(dst->type == FR_TYPE_STRING);
+
+	memcpy(&cstr, &dst->vb_strvalue, sizeof(cstr));
+
+	clen = talloc_array_length(dst->vb_strvalue) - 1;
+	if (clen == len) return 0;	/* No change */
+
+	str = talloc_realloc(ctx, cstr, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len + 1);
+		return -1;
+	}
+
+	/*
+	 *	Zero out the additional bytes
+	 */
+	if (clen < len) {
+		memset(str + clen, '\0', (len - clen) + 1);
+	} else {
+		cstr[len] = '\0';
+	}
+	dst->vb_strvalue = str;
+	dst->vb_length = len;
+
+	if (out) *out = str;
+
+	return 0;
+}
+
 /** Copy a string to to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
@@ -3852,6 +3898,48 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = bin;
 	dst->datum.length = len;
+
+	if (out) *out = bin;
+
+	return 0;
+}
+
+/** Change the length of a buffer already allocated to a value box
+ *
+ * @note Do not use on an uninitialised box.
+ *
+ * @param[in] ctx	to realloc buffer in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to realloc buffer for.
+ * @return
+ *	- 0 on success.
+ *	 - -1 on failure.
+ */
+int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
+{
+	size_t	clen;
+	uint8_t	*cbin;
+	uint8_t	*bin;
+
+	fr_assert(dst->type == FR_TYPE_OCTETS);
+
+	memcpy(&cbin, &dst->vb_octets, sizeof(cbin));
+
+	clen = talloc_array_length(dst->vb_octets);
+	if (clen == len) return 0;	/* No change */
+
+	bin = talloc_realloc(ctx, cbin, uint8_t, len);
+	if (!bin) {
+		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len);
+		return -1;
+	}
+
+	/*
+	 *	Zero out the additional bytes
+	 */
+	if (clen < len) memset(bin + clen, 0x00, len - clen);
+	dst->vb_octets = bin;
+	dst->vb_length = len;
 
 	if (out) *out = bin;
 
