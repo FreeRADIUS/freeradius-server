@@ -1635,7 +1635,12 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	alen = FR_BASE64_ENC_LENGTH((*in)->vb_length);
-	MEM(buff = talloc_array(ctx, char, alen + 1));
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_bstr_alloc(vb, &buff, vb, NULL, alen, false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
 
 	elen = fr_base64_encode(buff, alen + 1, (*in)->vb_octets, (*in)->vb_length);
 	if (elen < 0) {
@@ -1645,15 +1650,6 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	fr_assert((size_t)elen <= alen);
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	if (fr_value_box_bstrnsteal(vb, vb, NULL, &buff, elen, (*in)->tainted) < 0) {
-		RPEDEBUG("Failed assigning encoded data buffer to box");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

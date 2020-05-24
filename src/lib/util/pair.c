@@ -1626,33 +1626,6 @@ void fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
 	VP_VERIFY(vp);
 }
 
-/** Reparent an allocated char buffer to a VALUE_PAIR reallocating the buffer to the correct size
- *
- * If len is larger than the current buffer, the additional space will be filled with '\0'
- *
- * @note vp->da must be of type FR_TYPE_STRING.
- *
- * @param[in,out] vp	to update
- * @param[in,out] src_p	buffer to steal.
- * @param[in] len	of data in buffer.
- */
-int fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char **src_p, size_t len)
-{
-	int	ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);
-	ret = fr_value_box_bstrnsteal(vp, &vp->data, vp->da, src_p, len, false);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-		return 0;
-	}
-
-	return ret;
-}
-
 /** Print data into an "string" data type.
  *
  * @note vp->da must be of type FR_TYPE_STRING.

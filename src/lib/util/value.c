@@ -3818,49 +3818,6 @@ int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 	return 0;
 }
 
-/** Steal a talloced string buffer into a specified ctx, reallocing if necessary
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced buffer.
- * @param[in] inlen	length of data in the buffer.  Buffer will be realloced if necessary.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_value_box_bstrnsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			    char **src, size_t inlen, bool tainted)
-{
-	size_t	len;
-	char	*str;
-
-	str = talloc_steal(ctx, *src);
-	if (!str) {
-		fr_strerror_printf("Failed stealing string buffer");
-		return -1;
-	}
-
-	len = talloc_array_length(*src);
-	if (len != (inlen + 1)) {	/* +1 for \0 */
-		str = talloc_realloc_size(ctx, *src, inlen + 1);
-		if (!str) {
-			fr_strerror_printf("Failed reallocing string buffer");
-			return -1;
-		}
-		str[inlen] = '\0';
-		*src = str;
-	}
-	talloc_set_type(str, char);
-
-	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = str;
-	dst->vb_length = inlen;
-
-	return 0;
-}
-
 /** Pre-allocate an octets buffer for filling by the caller
  *
  * @note Buffer will not be zeroed, as it's assumed the caller will be filling it.
