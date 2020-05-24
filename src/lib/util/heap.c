@@ -128,7 +128,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	 *	     function
 	 */
 	child = index_get(hp, data);
-	if ((child > 0) || ((child == 0) && (data == hp->p[0]))) {
+	if ((child > 0) || ((child == 0) && (hp->num_elements > 0) && (data == hp->p[0]))) {
 		fr_strerror_printf("Node is already in the heap");
 		return -1;
 	}
