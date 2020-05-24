@@ -1680,54 +1680,64 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
-		dst->vb_strvalue = talloc_bstrndup(ctx, (char const *)src->vb_octets, src->datum.length);
-		dst->datum.length = src->datum.length;	/* It's the same, even though the buffer is slightly bigger */
-		break;
+		return fr_value_box_bstrndup(ctx, dst, dst_enumv,
+					     (char const *)src->vb_octets, src->vb_length, src->tainted);
 
 	case FR_TYPE_GROUP:
 	{
 		fr_cursor_t cursor;
 		fr_value_box_t *vb;
 
-		dst->type = FR_TYPE_STRING;
-		dst->vb_strvalue = talloc_typed_strdup(ctx, "");
-		dst->datum.length = 0;
+		/*
+		 *	Initialise an empty buffer we can
+		 *	append to.
+		 */
+		if (fr_value_box_bstrndup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		fr_cursor_init(&cursor, &src->vb_group);
-		while ((vb = fr_cursor_current(&cursor)) != NULL) {
-			fr_value_box_t *n = vb;
-
+		for (vb = fr_cursor_init(&cursor, &src->vb_group);
+		     vb;
+		     vb = fr_cursor_next(&cursor)) {
+			/*
+			 *	Attempt to cast to a string so
+			 *	we can append.
+			 */
 			if (vb->type != FR_TYPE_STRING) {
-				n = talloc_zero(ctx, fr_value_box_t);
-				if (!n) return -1;
+				fr_value_box_t	tmp;
+				int		ret;
 
-				if (fr_value_box_cast(n, n, FR_TYPE_STRING, NULL, vb) < 0) {
+				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_STRING, NULL, vb) < 0) return -1;
+
+				/*
+				 *	Append and continue
+				 */
+				ret = fr_value_box_bstr_append_buffer(ctx, dst, tmp.vb_strvalue, tmp.tainted);
+				fr_value_box_clear(&tmp);
+				if (ret < 0) {
+				error:
+					fr_value_box_clear(dst);
 					return -1;
 				}
+				continue;
 			}
 
-			if (fr_value_box_bstr_append(ctx, dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
-
-			if (n != vb) talloc_free(n);
-			fr_cursor_next(&cursor);
+			if (fr_value_box_bstr_append_buffer(ctx, dst, vb->vb_strvalue, vb->tainted) < 0) goto error;
 		}
 	}
-		break;
+		return 0;
 
 	/*
 	 *	Get the presentation format
 	 */
 	default:
-		dst->vb_strvalue = fr_value_box_asprint(ctx, src, '\0');
-		dst->datum.length = talloc_array_length(dst->vb_strvalue) - 1;
-		break;
+	{
+		char *str;
+
+		str = fr_value_box_asprint(ctx, src, '\0');
+		if (unlikely(!str)) return -1;
+
+		return fr_value_box_bstrdup_buffer_shallow(ctx, dst, dst_enumv, str, src->tainted);
 	}
-
-	if (!dst->vb_strvalue) return -1;
-	dst->type = FR_TYPE_STRING;
-	dst->enumv = dst_enumv;
-
-	return 0;
+	}
 }
 
 /** Convert any supported type to octets
