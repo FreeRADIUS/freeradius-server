@@ -295,8 +295,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 	switch (vp->op) {
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
-		vp->vp_strvalue = NULL;
-		vp->vp_length = 0;
+		fr_value_box_clear(&vp->data);
 		value = NULL;	/* ignore it! */
 		break;
 
