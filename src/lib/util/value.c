@@ -979,11 +979,11 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->vb_uint32 = htonl(dst->vb_uint32);
+		dst->vb_float32 = htonl((uint32_t)src->vb_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->vb_uint64 = htonll(dst->vb_uint64);
+		dst->vb_float64 = htonll((uint64_t)src->vb_float64);
 		break;
 
 	default:
