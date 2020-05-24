@@ -1851,7 +1851,25 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_ADDR)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV4_ADDR);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.prefix = 32;
+	dst->vb_ip.scope_id = 0;
 
 	switch (src->type) {
 	case FR_TYPE_IPV6_ADDR:
@@ -1894,11 +1912,6 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		       sizeof(dst->vb_ip.addr.v4));
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
@@ -1926,12 +1939,6 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		return -1;
 	}
 
-	dst->vb_ip.af = AF_INET;
-	dst->vb_ip.prefix = 32;
-	dst->vb_ip.scope_id = 0;
-	dst->type = FR_TYPE_IPV4_ADDR;
-	dst->enumv = dst_enumv;
-
 	return 0;
 }
 
@@ -1953,7 +1960,24 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_PREFIX)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV4_PREFIX);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.scope_id = 0;
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -1995,12 +2019,6 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		dst->vb_ip.prefix = src->vb_ip.prefix - (sizeof(v4_v6_map) << 3);
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
@@ -2030,11 +2048,6 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		return -1;
 	}
 
-	dst->vb_ip.af = AF_INET;
-	dst->vb_ip.scope_id = 0;
-	dst->type = FR_TYPE_IPV4_PREFIX;
-	dst->enumv = dst_enumv;
-
 	return 0;
 }
 
@@ -2056,10 +2069,27 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV6_ADDR)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
 
 	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
 		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET6;
+	dst->vb_ip.prefix = 128;
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -2109,11 +2139,6 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
@@ -2131,11 +2156,6 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		break;
 	}
-
-	dst->vb_ip.af = AF_INET6;
-	dst->vb_ip.prefix = 128;
-	dst->type = FR_TYPE_IPV6_ADDR;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2158,6 +2178,24 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_IPV6_PREFIX);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET6;
+
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
@@ -2192,11 +2230,6 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
@@ -2216,11 +2249,6 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->vb_ip.af = AF_INET6;
-	dst->type = FR_TYPE_IPV6_PREFIX;
-	dst->enumv = dst_enumv;
-
 	return 0;
 }
 
@@ -2241,16 +2269,28 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_ETHERNET);
+
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
+		return 0;
 
 	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
+		return 0;
 
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
+	switch (src->type) {
 	case FR_TYPE_UINT64: {
 		uint8_t array[8];
 
@@ -2271,9 +2311,6 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_ETHERNET;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2309,6 +2346,9 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 	}
 
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
 	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 
 	switch (src->type) {
