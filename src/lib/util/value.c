@@ -910,6 +910,42 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
 	switch (src->type) {
+	default:
+		break;
+
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_INT8:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_ABINARY:
+		fr_value_box_copy(NULL, dst, src);
+		return 0;
+
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_NON_VALUES:
+		fr_assert_fail(NULL);
+		return -1; /* shouldn't happen */
+	}
+
+	/*
+	 *	If we're not just flipping in place
+	 *	initialise the destination box
+	 *	with similar meta data as the src.
+	 *
+	 *	Don't use the copy meta data function
+	 *	here as that doesn't initialise the
+	 *	destination box.
+	 */
+	if (dst != src) fr_value_box_init(dst, src->type, src->enumv, src->tainted);
+
+	switch (src->type) {
 	case FR_TYPE_UINT16:
 		dst->vb_uint16 = htons(src->vb_uint16);
 		break;
@@ -950,28 +986,10 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		dst->vb_uint64 = htonll(dst->vb_uint64);
 		break;
 
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_INT8:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
-		fr_value_box_copy(NULL, dst, src);
-		return 0;
-
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-	case FR_TYPE_NON_VALUES:
+	default:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
-
-	if (dst != src) fr_value_box_copy_meta(dst, src);
 
 	return 0;
 }
