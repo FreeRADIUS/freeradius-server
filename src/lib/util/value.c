@@ -3550,11 +3550,12 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
 {
 	char	*str;
 
-	str = talloc_array(ctx, char, len);
+	str = talloc_array(ctx, char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed allocating string buffer");
 		return -1;
 	}
+	str[len] = '\0';
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
