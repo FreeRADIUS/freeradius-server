@@ -1636,34 +1636,21 @@ void fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
  * @param[in,out] src_p	buffer to steal.
  * @param[in] len	of data in buffer.
  */
-void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char **src_p, size_t len)
+int fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char **src_p, size_t len)
 {
-	char	*p;
-	char	*src = *src_p;
-	size_t	buf_len;
+	int	ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
-
-	buf_len = talloc_array_length(src);
-	if (buf_len > (len + 1)) {
-		vp->vp_strvalue = talloc_realloc_size(vp, src, len + 1);
-	} else if (buf_len < (len + 1)) {
-		vp->vp_strvalue = p = talloc_realloc_size(vp, src, len + 1);
-		memset(p + (buf_len - 1), '\0', (len + 1) - (buf_len - 1));
-	} else {
-		vp->vp_strvalue = talloc_steal(vp, src);
+	ret = fr_value_box_bstrnsteal(vp, &vp->data, vp->da, src_p, len, false);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+		return 0;
 	}
-	vp->vp_length = len;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
 
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
-
-	*src_p = NULL;
+	return ret;
 }
 
 /** Print data into an "string" data type.
