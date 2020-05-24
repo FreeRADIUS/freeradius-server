@@ -642,7 +642,8 @@ void		fr_value_box_increment(fr_value_box_t *vb);
  */
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
-				      char const *src, ssize_t src_len, char quote, bool tainted);
+				      char const *src, ssize_t src_len, char quote, bool tainted)
+				      CC_HINT(nonnull(2,3,5));
 
 /*
  *	Lists

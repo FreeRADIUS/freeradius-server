@@ -4125,8 +4125,6 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if (!fr_cond_assert(*dst_type != FR_TYPE_INVALID)) return -1;
 
-	if (!in) return -1;
-
 	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
 	/*
