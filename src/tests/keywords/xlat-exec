@@ -1,0 +1,21 @@
+update control {   
+	&Tmp-String-0 = "foo"
+}
+
+update control {   
+	&Tmp-String-1 := `/bin/echo hello 1234:%{control:Tmp-String-0} world`
+}
+
+if (&control:Tmp-String-1 != "hello 1234:foo world") {
+	test_fail
+}
+
+update control {   
+	&Tmp-String-1 := `/bin/echo hello %{control:Tmp-String-0}:1234 world`
+}
+
+if (&control:Tmp-String-1 != "hello foo:1234 world") {
+	test_fail
+}
+
+success

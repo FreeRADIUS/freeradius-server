@@ -902,8 +902,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	case XLAT_CHILD:
 	{
+		fr_value_box_t	*value;
 		fr_cursor_t from;
-		fr_value_box_t *box;
 
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
@@ -911,16 +911,39 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_assert(*result != NULL);
 		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
-		box = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
-		box->vb_group = *result;
+		/*
+		 *	If the input is a series of xlat expansions,
+		 *	then the outout is a series of value boxes.
+		 *	However, the caller wants only one output box,
+		 *	so we have to stringify the result.
+		 */
+		if ((*in)->child->next) {
+			char *str;
+
+			MEM(value = fr_value_box_alloc_null(ctx));
+
+			if (*result) {
+				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
+				str = fr_value_box_list_asprint(value, *result, NULL, '\0');
+				if (!str) return XLAT_ACTION_FAIL;
+			} else {
+				str = talloc_typed_strdup(value, "");
+			}
+		
+			fr_value_box_strdup_shallow(value, NULL, str, fr_value_box_list_tainted(*result));
+			talloc_free(*result);
+			*result = value;
+		}
+
+		value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
+		value->vb_group = *result;
 		*result = NULL;
-
 		xlat_debug_log_expansion(request, *in, NULL);
-		xlat_debug_log_result(request, box);
+		xlat_debug_log_result(request, value);
 
-		fr_cursor_init(&from, &box);
+		fr_cursor_init(&from, &value);
 		fr_cursor_merge(out, &from);
-		fr_assert(!box);
+		fr_assert(!value);
 	}
 		break;
 
