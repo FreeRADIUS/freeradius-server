@@ -938,18 +938,15 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	string.
 	 */
 	if (slen == 1) {
-		dst->vb_strvalue = q = talloc_array(ctx, char, 2);
+		if (fr_value_box_bstr_alloc(ctx, &q, dst, NULL, 1, tainted) < 0) return -1;
 		q[0] = '.';
-		q[1] = '\0';
-		dst->datum.length = 1;
 		return after - label;
 	}
 
 	/*
 	 *	Allocate the string and set up the value_box
 	 */
-	dst->vb_strvalue = q = talloc_array(ctx, char, slen + 1);
-	dst->datum.length = slen;
+	if (fr_value_box_bstr_alloc(ctx, &q, dst, NULL, slen, tainted) < 0) return -1;
 
 	current = label;
 	p = (uint8_t *) q;
