@@ -722,7 +722,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 
 			break;
 		}
-		
+
 		/*
 		 *	0b10 and 0b10 are forbidden
 		 */
@@ -931,10 +931,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	slen = fr_dns_label_length(src, len, &after);
 	if (slen <= 0) return slen;
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->enumv = NULL;
-	dst->next = NULL;
+	fr_value_box_init(dst, FR_TYPE_STRING, NULL, tainted);
 
 	/*
 	 *	An empty label is a 0x00 byte.  Just create an empty
