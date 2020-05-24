@@ -44,13 +44,16 @@
  */
 RCSID("$Id$")
 
+#define _VALUE_PRIVATE
+#include <freeradius-devel/util/value.h>
+#undef _VALUE_PRIVATE
+
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/net.h>
 
 #include <assert.h>
