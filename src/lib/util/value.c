@@ -1365,13 +1365,23 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	switch (type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) return FR_VALUE_BOX_NET_OOM;
+		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) {
+			return FR_VALUE_BOX_NET_OOM;
+		}
 		return len;
 
 	case FR_TYPE_OCTETS:
 		if (fr_value_box_memdup(ctx, dst, enumv, src, len, tainted) < 0) return FR_VALUE_BOX_NET_OOM;
 		return len;
+	default:
+		break;
+	}
 
+	/*
+	 *	Pre-Initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, type, enumv, tainted);
+	switch (type) {
 	/*
 	 *	Already in network byte order
 	 */
@@ -1554,6 +1564,10 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	}
 		break;
 
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		break;		/* Already dealt with */
+
 	case FR_TYPE_SIZE:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
@@ -1561,11 +1575,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 		break;
 	}
-
-	dst->type = type;
-	dst->tainted = tainted;
-	dst->enumv = enumv;
-	dst->next = NULL;
 
 	return len;
 }
@@ -1611,13 +1620,13 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 		return -1;
 	}
 
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
 	/*
 	 *	Copy the raw octets into the datum of a value_box
 	 *	inverting bytesex for uint32s (if LE).
 	 */
 	memcpy(&dst->datum, src->vb_octets, fr_value_box_field_sizes[dst_type]);
-	dst->type = dst_type;
-	dst->enumv = dst_enumv;
 	fr_value_box_hton(dst, dst);
 
 	return 0;
