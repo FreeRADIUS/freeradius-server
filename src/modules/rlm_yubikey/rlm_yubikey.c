@@ -301,8 +301,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	/* May be a concatenation, check the last 32 bytes are modhex */
 	if (inst->split) {
-		char *remainder;
-
 		/*
 		 *	Insert a new request attribute just containing the OTP
 		 *	portion.
@@ -314,9 +312,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Replace the existing string buffer for the password
 		 *	attribute with one just containing the password portion.
 		 */
-		MEM(remainder = talloc_array(password, char, password_len + 1));
-		strlcpy(remainder, passcode, password_len + 1);
-		fr_pair_value_strsteal(password, remainder);
+		MEM(fr_pair_value_bstr_realloc(password, NULL, password_len) == 0);
 
 		RINDENT();
 		if (RDEBUG_ENABLED3) {
