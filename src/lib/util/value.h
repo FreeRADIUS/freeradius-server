@@ -314,20 +314,27 @@ static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t 
  *
  * The value should be set later with one of the fr_value_box_* functions.
  *
- * @param[in] box	to initialise.
+ * @param[in] vb	to initialise.
  * @param[in] type	to set.
  * @param[in] enumv	Enumeration values.
  * @param[in] tainted	Whether data will come from an untrusted source.
  */
-static inline void fr_value_box_init(fr_value_box_t *box, fr_type_t type,
-				     fr_dict_attr_t const *enumv, bool tainted)
+static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, fr_type_t type,
+							    fr_dict_attr_t const *enumv, bool tainted)
 {
-	box->type = type;
-	box->enumv = enumv;
-	box->tainted = tainted;
-	box->next = NULL;
-
-	memset(&box->datum, 0, sizeof(box->datum));
+	/*
+	 *	An inventive way of defeating const on the type
+	 *      field so that we don't have the overhead of
+	 *	making these proper functions.
+	 *
+	 *	Hopefully the compiler is smart enough to optimise
+	 *	this away.
+	 */
+	memcpy(vb, &(fr_value_box_t){
+		.type = type,
+		.enumv = enumv,
+		.tainted = tainted
+	}, sizeof(*vb));
 }
 
 /** Allocate a value box of a specific type
@@ -343,17 +350,17 @@ static inline void fr_value_box_init(fr_value_box_t *box, fr_type_t type,
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type,
-						 fr_dict_attr_t const *enumv, bool tainted)
+static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type,
+									fr_dict_attr_t const *enumv, bool tainted)
 {
-	fr_value_box_t *value;
+	fr_value_box_t *vb;
 
-	value = talloc_zero(ctx, fr_value_box_t);
-	if (unlikely(!value)) return NULL;
+	vb = talloc(ctx, fr_value_box_t);
+	if (unlikely(!vb)) return NULL;
 
-	fr_value_box_init(value, type, enumv, tainted);
+	fr_value_box_init(vb, type, enumv, tainted);
 
-	return value;
+	return vb;
 }
 
 /** Allocate a value box for later use with a value assignment function
@@ -363,16 +370,9 @@ static inline fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
+static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 {
-	fr_value_box_t *value;
-
-	value = talloc_zero(ctx, fr_value_box_t);
-	if (unlikely(!value)) return NULL;
-
-	value->type = FR_TYPE_INVALID;
-
-	return value;
+	return fr_value_box_alloc(ctx, FR_TYPE_INVALID, NULL, false);
 }
 
 /** Box an ethernet value (6 bytes, network byte order)
@@ -383,8 +383,8 @@ static inline fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
  * @param[in] tainted	Whether data will come from an untrusted source.
  * @return 0 (always successful).
  */
-static inline int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					     uint8_t const src[6], bool tainted)
+static inline CC_HINT(always_inline) int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+								    uint8_t const src[static 6], bool tainted)
 {
 	fr_value_box_init(dst, FR_TYPE_ETHERNET, enumv, tainted);
 	memcpy(dst->vb_ether, src, sizeof(dst->vb_ether));
