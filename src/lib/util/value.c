@@ -288,7 +288,7 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-/** Clear/free any existing value
+/** Clear/free any existing value and metadata
  *
  * @note Do not use on uninitialised memory.
  *
@@ -299,8 +299,7 @@ inline void fr_value_box_clear(fr_value_box_t *data)
 	switch (data->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		TALLOC_FREE(data->datum.ptr);
-		data->datum.length = 0;
+		talloc_free(data->datum.ptr);
 		break;
 
 	case FR_TYPE_STRUCTURAL:
@@ -315,6 +314,34 @@ inline void fr_value_box_clear(fr_value_box_t *data)
 	}
 
 	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
+}
+
+/** Clear/free any existing value
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+inline void fr_value_box_clear_value(fr_value_box_t *data)
+{
+	switch (data->type) {
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		talloc_free(data->datum.ptr);
+		break;
+
+	case FR_TYPE_STRUCTURAL:
+		fr_assert_fail(NULL);
+		return;
+
+	case FR_TYPE_INVALID:
+		return;
+
+	default:
+		break;
+	}
+
+	memset(&data->datum, 0, sizeof(data->datum));
 }
 
 /** Copy flags and type data from one value box to another

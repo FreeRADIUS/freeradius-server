@@ -538,6 +538,8 @@ _Generic((_var), \
  */
 void		fr_value_box_clear(fr_value_box_t *data);
 
+void		fr_value_box_clear_value(fr_value_box_t *data);
+
 /*
  *	Comparison
  */
