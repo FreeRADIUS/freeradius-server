@@ -625,7 +625,7 @@ int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t co
 int		fr_value_box_memalloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				      size_t len, bool tainted);
 
-int		fr_value_box_append_mem(TALLOC_CTX *ctx, fr_value_box_t *dst,
+int		fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				       uint8_t const *src, size_t len, bool tainted);
 int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   uint8_t *src, bool tainted);
