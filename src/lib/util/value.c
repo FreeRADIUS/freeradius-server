@@ -308,12 +308,10 @@ inline void fr_value_box_clear(fr_value_box_t *data)
 		return;
 
 	default:
-		memset(&data->datum, 0, dict_attr_sizes[data->type][1]);
 		break;
 	}
 
-	data->tainted = false;
-	data->type = FR_TYPE_INVALID;
+	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
 }
 
 /** Copy flags and type data from one value box to another
