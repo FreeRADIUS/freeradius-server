@@ -1744,8 +1744,6 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
-	uint8_t *bin;
-
 	if (!fr_cond_assert(dst_type == FR_TYPE_OCTETS)) return -1;
 
 	switch (src->type) {
@@ -1753,38 +1751,51 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_strvalue, src->datum.length);
-		break;
+		if (fr_value_box_memdup(ctx, dst, dst_enumv,
+					(uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted) < 0) {
+			return -1;
+		}
+		return 0;
 
 	case FR_TYPE_GROUP:
 	{
 		fr_cursor_t cursor;
 		fr_value_box_t *vb;
 
-		dst->type = FR_TYPE_OCTETS;
-		dst->vb_octets = talloc_memdup(ctx, "", 0);
-		talloc_set_type(dst->vb_octets, uint8_t);
-		dst->datum.length = 0;
+		/*
+		 *	Initialise an empty buffer we can
+		 *	append to.
+		 */
+		if (fr_value_box_memdup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		fr_cursor_init(&cursor, &src->vb_group);
-		while ((vb = fr_cursor_current(&cursor)) != NULL) {
-			fr_value_box_t *n = vb;
-
+		for (vb = fr_cursor_init(&cursor, &src->vb_group);
+		     vb;
+		     vb = fr_cursor_next(&cursor)) {
+			/*
+			 *	Attempt to cast to octets so
+			 *	we can append;
+			 */
 			if (vb->type != FR_TYPE_OCTETS) {
-				n = talloc_zero(ctx, fr_value_box_t);
-				if (!n) return -1;
+				fr_value_box_t	tmp;
+				int		ret;
 
-				if (fr_value_box_cast(n, n, FR_TYPE_OCTETS, NULL, vb) < 0) {
+				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_OCTETS, NULL, vb) < 0) return -1;
+
+				/*
+				 *	Append and continue
+				 */
+				ret = fr_value_box_mem_append_buffer(ctx, dst, tmp.vb_octets, tmp.tainted);
+				fr_value_box_clear(&tmp);
+				if (ret < 0) {
+				error:
+					fr_value_box_clear(dst);
 					return -1;
 				}
+				continue;
 			}
 
-			if (fr_value_box_mem_append(ctx, dst, n->vb_octets, n->vb_length, n->tainted) < 0) return -1;
-
-			if (n != vb) talloc_free(n);
-			fr_cursor_next(&cursor);
+			if (fr_value_box_mem_append_buffer(ctx, dst, vb->vb_octets, vb->tainted) < 0) goto error;
 		}
-
 		return 0;
 	}
 
@@ -1792,62 +1803,67 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<4 uint8s address>
 	 */
 	case FR_TYPE_IPV4_ADDR:
-	{
-		bin = talloc_memdup(ctx, (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
-				    sizeof(src->vb_ip.addr.v4.s_addr));
-	}
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
+					   sizeof(src->vb_ip.addr.v4.s_addr), src->tainted);
 
 	/*
 	 *	<1 uint8 prefix> + <4 uint8s address>
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v4.s_addr) + 1);
+	{
+		uint8_t *bin;
+
+		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
+					   sizeof(src->vb_ip.addr.v4.s_addr) + 1, src->tainted) < 0) return -1;
+
 		bin[0] = src->vb_ip.prefix;
 		memcpy(&bin[1], (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
-		break;
+	}
+		return 0;
 
 	/*
 	 *	<16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
-				    sizeof(src->vb_ip.addr.v6.s6_addr));
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
+					   sizeof(src->vb_ip.addr.v6.s6_addr), src->tainted);
 
 	/*
 	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v6.s6_addr) + 2);
+	{
+		uint8_t *bin;
+
+		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
+					   sizeof(src->vb_ip.addr.v6.s6_addr) + 2, src->tainted) < 0) return -1;
 		bin[0] = src->vb_ip.scope_id;
 		bin[1] = src->vb_ip.prefix;
 		memcpy(&bin[2], src->vb_ip.addr.v6.s6_addr, sizeof(src->vb_ip.addr.v6.s6_addr));
-		break;
+	}
+		return 0;
+
 	/*
 	 *	Get the raw binary in memory representation
 	 */
 	case FR_TYPE_NUMERIC:
-		fr_value_box_hton(dst, src);	/* Flip any uint32 representations */
-		bin = talloc_memdup(ctx, ((uint8_t const *)&dst->datum) + fr_value_box_offsets[src->type],
-				    fr_value_box_field_sizes[src->type]);
-		break;
+	{
+		fr_value_box_t tmp;
+
+		fr_value_box_hton(&tmp, src);	/* Flip any numeric representations */
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[src->type],
+					   fr_value_box_field_sizes[src->type], src->tainted);
+	}
 
 	default:
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
-		bin = talloc_memdup(ctx, ((uint8_t const *)&src->datum) + fr_value_box_offsets[src->type],
-				    fr_value_box_field_sizes[src->type]);
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   ((uint8_t const *)&src->datum) + fr_value_box_offsets[src->type],
+					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
-
-	if (!bin) return -1;
-
-	talloc_set_type(bin, uint8_t);
-	fr_value_box_memsteal(ctx, dst, dst_enumv, bin, src->tainted);
-	dst->type = FR_TYPE_OCTETS;
-	dst->enumv = dst_enumv;
-
-	return 0;
 }
 
 /** Convert any supported type to an IPv4 address
