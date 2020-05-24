@@ -2330,18 +2330,30 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					     fr_value_box_t const *src)
 {
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
-		break;
+	fr_assert(dst_type == FR_TYPE_UINT8);
 
+	switch (src->type) {
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
+		return 0;
 
 	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		return 0;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
+	switch (src->type) {
+	case FR_TYPE_BOOL:
+		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
 		break;
 
 	default:
@@ -2350,9 +2362,6 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_UINT8;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2375,6 +2384,26 @@ static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_UINT16);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		return 0;
+
+	case FR_TYPE_OCTETS:
+		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		return 0;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 	switch (src->type) {
 	case FR_TYPE_BOOL:
 		dst->vb_uint16 = (src->vb_bool == true) ? 1 : 0;
@@ -2393,24 +2422,12 @@ static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *d
 		dst->vb_uint16 = (uint8_t)src->vb_int8;
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
-
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_UINT16;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2434,6 +2451,28 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_UINT32);
+
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		return 0;
+
+	case FR_TYPE_OCTETS:
+		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		return 0;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
 	switch (src->type) {
 	case FR_TYPE_BOOL:
 		dst->vb_uint32 = (src->vb_bool == true) ? 1 : 0;
@@ -2560,24 +2599,12 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 		}
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
-
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_UINT32;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2602,6 +2629,27 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_UINT64);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
+		return 0;
+
+	case FR_TYPE_OCTETS:
+		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		return 0;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
 	switch (src->type) {
 	case FR_TYPE_BOOL:
 		dst->vb_uint64 = (src->vb_bool == true) ? 1 : 0;
@@ -2704,24 +2752,12 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 		}
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
-
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_UINT64;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
