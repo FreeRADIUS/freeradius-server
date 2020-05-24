@@ -1678,7 +1678,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 				}
 			}
 
-			if (fr_value_box_append_bstr(ctx, dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
+			if (fr_value_box_bstr_append(ctx, dst, n->vb_strvalue, n->vb_length, n->tainted) < 0) return -1;
 
 			if (n != vb) talloc_free(n);
 			fr_cursor_next(&cursor);
@@ -3593,7 +3593,7 @@ int fr_value_box_bstrnsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_append_bstr(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_bstr_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
 {
 	char *ptr, *nptr;
 	size_t nlen;
@@ -4913,7 +4913,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		 *	Append the next value
 		 */
 		if (type == FR_TYPE_STRING) {
-			if (fr_value_box_append_bstr(ctx, out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_bstr_append(ctx, out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
 		} else {
 			if (fr_value_box_append_mem(ctx, out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
 		}
