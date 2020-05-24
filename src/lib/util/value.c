@@ -3292,12 +3292,9 @@ int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 
 	if (!str) return -1;
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -3400,12 +3397,9 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -3430,12 +3424,9 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
 
 	return 0;
 }
@@ -3451,12 +3442,9 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				   char const *src, size_t len, bool tainted)
 {
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = src;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
 }
 
 /** Copy a nul terminated talloced buffer to a #fr_value_box_t
@@ -3492,12 +3480,9 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -3536,12 +3521,9 @@ int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 	}
 	talloc_set_type(str, char);
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = len - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len - 1;
 
 	return 0;
 }
@@ -3582,12 +3564,9 @@ int fr_value_box_bstrnsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 	}
 	talloc_set_type(str, char);
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = inlen;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = inlen;
 
 	return 0;
 }
@@ -3656,12 +3635,9 @@ int fr_value_box_bstr_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *s
 void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				 char const *src, bool tainted)
 {
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = src;
 	dst->datum.length = strlen(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
 }
 
 /** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
@@ -3690,12 +3666,9 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = len - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
 
 	return 0;
 }
@@ -3770,12 +3743,9 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 	}
 	talloc_set_type(bin, uint8_t);
 
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = bin;
 	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
 
 	return 0;
 }
@@ -3870,12 +3840,9 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 	src = talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
 	talloc_set_type(src, uint8_t);
 
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = src;
 	dst->datum.length = talloc_array_length(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
 }
 
 /** Assign a buffer to a box, but don't copy it
@@ -3895,12 +3862,9 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				 uint8_t *src, size_t len, bool tainted)
 {
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = src;
 	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
 }
 
 /** Assign a talloced buffer to a box, but don't copy it
@@ -3918,12 +3882,9 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 {
 	(void) talloc_get_type_abort(src, uint8_t);
 
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = talloc_array_length(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
 }
 
 /** Increment a boxed value
