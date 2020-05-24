@@ -3548,7 +3548,7 @@ int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int fr_value_box_bstrnsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			    char **src, size_t inlen, bool tainted)
 {
 	size_t	len;
