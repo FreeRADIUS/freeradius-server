@@ -288,62 +288,6 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-/** Clear/free any existing value and metadata
- *
- * @note Do not use on uninitialised memory.
- *
- * @param[in] data to clear.
- */
-inline void fr_value_box_clear(fr_value_box_t *data)
-{
-	switch (data->type) {
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-		talloc_free(data->datum.ptr);
-		break;
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return;
-
-	case FR_TYPE_INVALID:
-		return;
-
-	default:
-		break;
-	}
-
-	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
-}
-
-/** Clear/free any existing value
- *
- * @note Do not use on uninitialised memory.
- *
- * @param[in] data to clear.
- */
-inline void fr_value_box_clear_value(fr_value_box_t *data)
-{
-	switch (data->type) {
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-		talloc_free(data->datum.ptr);
-		break;
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return;
-
-	case FR_TYPE_INVALID:
-		return;
-
-	default:
-		break;
-	}
-
-	memset(&data->datum, 0, sizeof(data->datum));
-}
-
 /** Copy flags and type data from one value box to another
  *
  * @param[in] dst to copy flags to
@@ -3300,6 +3244,77 @@ int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
 	memcpy(dst, &src->vb_ip, sizeof(*dst));
 
 	return 0;
+}
+
+/** Clear/free any existing value
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+inline void fr_value_box_clear_value(fr_value_box_t *data)
+{
+	switch (data->type) {
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		talloc_free(data->datum.ptr);
+		break;
+
+	case FR_TYPE_STRUCTURAL:
+		/*
+		 *	Depth first freeing of children
+		 *
+		 *	This ensures orderly freeing, regardless
+		 *	of talloc hierarchy.
+		 */
+		switch (data->datum.children.type) {
+		case FR_VALUE_BOX_LIST_SINGLE:
+		{
+			fr_cursor_t	cursor;
+			fr_value_box_t	*vb;
+
+			for (vb = fr_cursor_init(&cursor, &data->datum.children.slist);
+			     vb;
+			     vb = fr_cursor_next(&cursor)) {
+				fr_value_box_clear_value(vb);
+				talloc_free(vb);
+			}
+		}
+			break;
+
+		case FR_VALUE_BOX_LIST_DOUBLE:
+		{
+			fr_value_box_t	*vb = NULL;
+
+			while ((vb = fr_dlist_next(&data->datum.children.dlist, vb))) {
+				fr_value_box_clear_value(vb);
+				talloc_free(vb);
+			}
+		}
+			break;
+		}
+		return;
+
+	case FR_TYPE_INVALID:
+		return;
+
+	default:
+		break;
+	}
+
+	memset(&data->datum, 0, sizeof(data->datum));
+}
+
+/** Clear/free any existing value and metadata
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+inline void fr_value_box_clear(fr_value_box_t *data)
+{
+	fr_value_box_clear_value(data);
+	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
 }
 
 /** Copy value data verbatim duplicating any buffers

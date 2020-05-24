@@ -80,7 +80,7 @@ typedef enum {
 typedef struct {
 	union {
 		fr_value_box_t	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		*dlist;			//!< Doubly linked list head.
+		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
 	};
 	fr_value_box_list_type_t type;				//!< What type of list this is.
 } fr_value_box_list_t;
@@ -533,12 +533,6 @@ _Generic((_var), \
 )(_var, _box)
 
 /** @} */
-/*
- *	Allocation - init/alloc use static functions (above)
- */
-void		fr_value_box_clear(fr_value_box_t *data);
-
-void		fr_value_box_clear_value(fr_value_box_t *data);
 
 /*
  *	Comparison
@@ -591,6 +585,10 @@ int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src);
  *
  * @{
  */
+void		fr_value_box_clear_value(fr_value_box_t *data);
+
+void		fr_value_box_clear(fr_value_box_t *data);
+
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,

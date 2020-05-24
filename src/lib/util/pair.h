@@ -79,7 +79,7 @@ typedef enum {
 typedef struct {
 	union {
 		VALUE_PAIR	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		*dlist;			//!< Doubly linked list head.
+		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
 	};
 	fr_pair_list_type_t type;				//!< What type of list this is.
 } fr_pair_list_t;
@@ -329,6 +329,7 @@ int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR *from, fr_dict_attr_t const *parent_da);
 
 /* Value manipulation */
+void		fr_pair_value_clear(VALUE_PAIR *vp);
 int		fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in);
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
 

@@ -1418,6 +1418,54 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 	return cnt;
 }
 
+/** Free/zero out value (or children) of a given VP
+ *
+ * @param[in] vp to clear value from.
+ */
+void fr_pair_value_clear(VALUE_PAIR *vp)
+{
+	switch (vp->da->type) {
+	default:
+		fr_value_box_clear_value(&vp->data);
+		return;
+
+	case FR_TYPE_STRUCTURAL:
+		/*
+		 *	Depth first freeing of children
+		 *
+		 *	This ensures orderly freeing, regardless
+		 *	of talloc hierarchy.
+		 */
+		switch (vp->children.type) {
+		case FR_PAIR_LIST_SINGLE:
+		{
+			fr_cursor_t	cursor;
+			VALUE_PAIR	*vpc;
+
+			for (vpc = fr_cursor_init(&cursor, &vp->children.slist);
+			     vpc;
+			     vpc = fr_cursor_next(&cursor)) {
+				fr_pair_value_clear(vpc);
+				talloc_free(vpc);
+			}
+		}
+			break;
+
+		case FR_PAIR_LIST_DOUBLE:
+		{
+			VALUE_PAIR	*vpc = NULL;
+
+			while ((vpc = fr_dlist_next(&vp->children.dlist, vpc))) {
+				fr_pair_value_clear(vpc);
+				talloc_free(vpc);
+			}
+		}
+			break;
+		}
+		return;
+	}
+}
+
 /** Copy the value from one pair to another
  *
  * @param[out] out	where to copy the value to.
