@@ -1691,7 +1691,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			(void)fr_value_box_memalloc(vpt, &bin, &vpt->data.literal, NULL, binlen, false);
+			(void)fr_value_box_mem_alloc(vpt, &bin, &vpt->data.literal, NULL, binlen, false);
 			len = fr_hex2bin(bin, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains non-hex char");
@@ -2455,7 +2455,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		fr_value_box_stralloc(tmp_ctx, &buff, &value, NULL, 1024, true);
+		fr_value_box_bstr_alloc(tmp_ctx, &buff, &value, NULL, 1024, true);
 		if (radius_exec_program(request, buff, 1024, NULL, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:

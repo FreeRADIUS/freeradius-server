@@ -552,7 +552,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 			fr_rand_str((uint8_t *)identity + 1, inst->ephemeral_id_length, 'a');
 			identity[talloc_array_length(identity) - 1] = '\0';
 
-			fr_value_box_strdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
+			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
 		pair_update_request(&new, attr_session_id);
 		fr_pair_value_memdup(new, (uint8_t const *)vp->vp_strvalue, vp->vp_length, vp->vp_tainted);
@@ -678,7 +678,7 @@ static rlm_rcode_t session_and_pseudonym_store(eap_aka_sim_common_conf_t *inst,
 				break;
 			}
 			identity[talloc_array_length(identity) - 1] = '\0';
-			fr_value_box_strdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
+			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
 		pair_update_request(&new, attr_eap_aka_sim_next_pseudonym);
 		fr_pair_value_copy(new, vp);
@@ -775,7 +775,7 @@ static rlm_rcode_t session_and_pseudonym_clear(eap_aka_sim_common_conf_t *inst,
 		VALUE_PAIR *vp;
 
 		MEM(pair_update_request(&vp, attr_eap_aka_sim_next_pseudonym) >= 0);
-		fr_value_box_strdup_buffer(vp, &vp->data, NULL, eap_aka_sim_session->pseudonym_sent, true);
+		fr_value_box_bstrdup_buffer(vp, &vp->data, NULL, eap_aka_sim_session->pseudonym_sent, true);
 		TALLOC_FREE(eap_aka_sim_session->pseudonym_sent);
 
 		return unlang_module_yield_to_section(request,

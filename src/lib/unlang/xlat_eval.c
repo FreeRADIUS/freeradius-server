@@ -448,7 +448,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 		if (!request->client || !request->client->shortname) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt), request->client->shortname, false) < 0) {
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), request->client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
 			return XLAT_ACTION_FAIL;
@@ -458,13 +458,13 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 		if (!request->component) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
 		goto done;
 	} else if (tmpl_da(vpt) == attr_virtual_server) {
 		if (!request->server_cs) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup_buffer(ctx, value, tmpl_da(vpt),
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt),
 					       cf_section_name2(request->server_cs), false) < 0) goto error;
 		goto done;
 	} else if (tmpl_da(vpt) == attr_module_return_code) {
@@ -1011,7 +1011,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_strdup_buffer(value, value, NULL, node->fmt, false);
+			fr_value_box_bstrdup_buffer(value, value, NULL, node->fmt, false);
 			fr_cursor_append(out, value);
 			continue;
 

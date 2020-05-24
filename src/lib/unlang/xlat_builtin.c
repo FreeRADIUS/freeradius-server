@@ -3024,7 +3024,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 		p = q + pattern_len;
 	}
 
-	if (fr_value_box_strdup_buffer_shallow(vb, vb, NULL, vb_str, (*in)->vb_strvalue) < 0) {
+	if (fr_value_box_bstrdup_buffer_shallow(vb, vb, NULL, vb_str, (*in)->vb_strvalue) < 0) {
 		RPEDEBUG("Failed creating output box");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;

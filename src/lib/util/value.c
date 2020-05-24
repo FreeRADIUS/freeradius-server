@@ -3386,6 +3386,58 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	}
 }
 
+/** Copy a nul terminated string to a #fr_value_box_t
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src 	a nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			char const *src, bool tainted)
+{
+	char const	*str;
+
+	str = talloc_typed_strdup(ctx, src);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
+		return -1;
+	}
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = talloc_array_length(str) - 1;
+
+	return 0;
+}
+
+/** Trim the length of the string buffer to match the length of the C string
+ *
+ * @param[in] ctx	to re-alloc the buffer in.
+ * @param[in,out] vb	to trim.
+ */
+int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
+{
+	size_t	len;
+	char	*str;
+	char 	*mutable;
+
+	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
+
+	len = strlen(vb->vb_strvalue);
+
+	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
+	str = talloc_realloc(ctx, mutable, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed re-allocing string buffer");
+		return -1;
+	}
+	vb->vb_length = len;
+
+	return 0;
+}
+
 /** Print a formatted string using our internal printf wrapper and assign it to a value box
  *
  * @param[in] ctx 	to allocate any new buffers in.
@@ -3442,6 +3494,21 @@ int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	return ret;
 }
 
+/** Assign a buffer containing a nul terminated string to a box, but don't copy it
+ *
+ * @param[in] dst	to assign string to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	to copy string to.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 char const *src, bool tainted)
+{
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = src;
+	dst->datum.length = strlen(src);
+}
+
 /** Copy a nul terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
@@ -3450,8 +3517,8 @@ int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
  * @param[in] enumv	Aliases for values.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-int fr_value_box_stralloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			  size_t len, bool tainted)
+int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			   size_t len, bool tainted)
 {
 	char	*str;
 
@@ -3466,58 +3533,6 @@ int fr_value_box_stralloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_d
 	dst->vb_length = talloc_array_length(str) - 1;
 
 	if (out) *out = str;
-
-	return 0;
-}
-
-/** Trim the length of the string buffer to match the length of the C string
- *
- * @param[in] ctx	to re-alloc the buffer in.
- * @param[in,out] vb	to trim.
- */
-int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
-{
-	size_t	len;
-	char	*str;
-	char 	*mutable;
-
-	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
-
-	len = strlen(vb->vb_strvalue);
-
-	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
-	str = talloc_realloc(ctx, mutable, char, len + 1);
-	if (!str) {
-		fr_strerror_printf("Failed re-allocing string buffer");
-		return -1;
-	}
-	vb->vb_length = len;
-
-	return 0;
-}
-
-/** Copy a nul terminated string to a #fr_value_box_t
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			char const *src, bool tainted)
-{
-	char const	*str;
-
-	str = talloc_typed_strdup(ctx, src);
-	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
-		return -1;
-	}
-
-	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -3549,6 +3564,113 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	return 0;
 }
 
+/** Copy a nul terminated talloced buffer to a #fr_value_box_t
+ *
+ * Copy a talloced nul terminated buffer, setting fields in the dst value box appropriately.
+ *
+ * The buffer must be \0 terminated, or an error will be returned.
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			       char const *src, bool tainted)
+{
+	size_t	len;
+
+	len = talloc_array_length(src);
+	if ((len == 1) || (src[len - 1] != '\0')) {
+		fr_strerror_printf("Input buffer not \\0 terminated");
+		return -1;
+	}
+
+	return fr_value_box_bstrndup(ctx, dst, enumv, src, len - 1, tainted);
+}
+
+/** Append a buffer to an existing fr_value_box_t
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_bstr_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+{
+	char *ptr, *nptr;
+	size_t nlen;
+
+	if (len == 0) return 0;
+
+	if (dst->type != FR_TYPE_STRING) {
+		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
+				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+		return -1;
+	}
+
+	ptr = dst->datum.ptr;
+	if (!fr_cond_assert(ptr)) return -1;
+
+	if (talloc_reference_count(ptr) > 0) {
+		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
+		return -1;
+	}
+
+	nlen = dst->vb_length + len + 1;
+	nptr = talloc_realloc(ctx, ptr, char, dst->vb_length + len + 1);
+	if (!nptr) {
+		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
+				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+		return -1;
+	}
+	talloc_set_type(nptr, char);
+	ptr = nptr;
+
+	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+
+	dst->tainted = tainted;
+	dst->datum.ptr = ptr;
+	dst->vb_length += len;
+
+	ptr[dst->vb_length] = '\0';
+
+	return 0;
+}
+
+/** Append a talloced buffer to an existing fr_value_box_t
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+{
+	(void) talloc_get_type_abort_const(src, char);
+
+	len = talloc_array_length(src);
+	if ((len == 0) || (src[len - 1] != '\0')) {
+		fr_strerror_printf("Input buffer not \\0 terminated");
+		return -1;
+	}
+
+	return fr_value_box_bstr_append(ctx, dst, src, len - 1, tainted);
+}
+
 /** Assign a string to to a #fr_value_box_t
  *
  * @param[in] dst 	to assign new buffer to.
@@ -3565,42 +3687,35 @@ void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *en
 	dst->vb_length = len;
 }
 
-/** Copy a nul terminated talloced buffer to a #fr_value_box_t
+/** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
  *
- * Copy a talloced nul terminated buffer, setting fields in the dst value box appropriately.
+ * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
  *
- * The buffer must be \0 terminated, or an error will be returned.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
+ * @param[in] ctx	to add reference from.  If NULL no reference will be added.
+ * @param[in] dst	to assign string to.
  * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] src	to copy string to.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			       char const *src, bool tainted)
+int fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				       char const *src, bool tainted)
 {
-	char	*str;
 	size_t	len;
 
+	(void) talloc_get_type_abort_const(src, char);
+
 	len = talloc_array_length(src);
-	if ((len == 1) || (src[len - 1] != '\0')) {
+	if ((len == 0) || (src[len - 1] != '\0')) {
 		fr_strerror_printf("Input buffer not \\0 terminated");
 		return -1;
 	}
 
-	str = talloc_bstrndup(ctx, src, len - 1);
-	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
-		return -1;
-	}
-
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
+	dst->datum.length = len - 1;
 
 	return 0;
 }
@@ -3689,108 +3804,6 @@ int fr_value_box_bstrnsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 	return 0;
 }
 
-/** Append a buffer to an existing fr_value_box_t
- *
- * @param[in] ctx	Where to allocate any talloc buffers required.
- * @param[in] dst	value box to append to.
- * @param[in] src	octets data to append.
- * @param[in] len	length of octets data.
- * @param[in] tainted	Whether src is tainted.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_value_box_bstr_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
-{
-	char *ptr, *nptr;
-	size_t nlen;
-
-	if (len == 0) return 0;
-
-	if (dst->type != FR_TYPE_STRING) {
-		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
-		return -1;
-	}
-
-	ptr = dst->datum.ptr;
-	if (!fr_cond_assert(ptr)) return -1;
-
-	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
-		return -1;
-	}
-
-	nlen = dst->vb_length + len + 1;
-	nptr = talloc_realloc(ctx, ptr, char, dst->vb_length + len + 1);
-	if (!nptr) {
-		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
-				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
-		return -1;
-	}
-	talloc_set_type(nptr, char);
-	ptr = nptr;
-
-	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
-
-	dst->tainted = tainted;
-	dst->datum.ptr = ptr;
-	dst->vb_length += len;
-
-	ptr[dst->vb_length] = '\0';
-
-	return 0;
-}
-
-/** Assign a buffer containing a nul terminated string to a box, but don't copy it
- *
- * @param[in] dst	to assign string to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	to copy string to.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				 char const *src, bool tainted)
-{
-	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = src;
-	dst->datum.length = strlen(src);
-}
-
-/** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
- *
- * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
- *
- * @param[in] ctx	to add reference from.  If NULL no reference will be added.
- * @param[in] dst	to assign string to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	to copy string to.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       char const *src, bool tainted)
-{
-	size_t	len;
-
-	(void) talloc_get_type_abort_const(src, char);
-
-	len = talloc_array_length(src);
-	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
-		return -1;
-	}
-
-	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
-	dst->datum.length = len - 1;
-
-	return 0;
-}
-
 /** Pre-allocate an octets buffer for filling by the caller
  *
  * @note Buffer will not be zeroed, as it's assumed the caller will be filling it.
@@ -3810,8 +3823,8 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memalloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			  size_t len, bool tainted)
+int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			   size_t len, bool tainted)
 {
 	uint8_t *bin;
 
@@ -3868,7 +3881,70 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 	return 0;
 }
 
-/** Append a buffer to an existing fr_value_box_t
+/** Copy a talloced buffer to a fr_value_box_t
+ *
+ * Copy a buffer containing binary data, setting fields in the dst value box appropriately.
+ *
+ * @param[in] ctx	to allocate any new buffers in.
+ * @param[in] dst	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	a buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			       uint8_t *src, bool tainted)
+{
+	(void) talloc_get_type_abort(src, uint8_t);
+
+	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
+}
+
+/** Assign a buffer to a box, but don't copy it
+ *
+ * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
+ *
+ * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
+ *
+ * @note Will free any exiting buffers associated with the value box.
+ *
+ * @param[in] dst 	to assign buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	a talloced buffer.
+ * @param[in] len	of buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 uint8_t *src, size_t len, bool tainted)
+{
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = src;
+	dst->datum.length = len;
+}
+
+/** Assign a talloced buffer to a box, but don't copy it
+ *
+ * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	a talloced buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				        uint8_t *src, bool tainted)
+{
+	(void) talloc_get_type_abort(src, uint8_t);
+
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
+	dst->datum.length = talloc_array_length(src);
+}
+
+/** Append data to an existing fr_value_box_t
  *
  * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[in] dst	value box to append to.
@@ -3912,32 +3988,26 @@ int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const 
 
 	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
 
-	dst->tainted = tainted;
+	dst->tainted = dst->tainted || tainted;
 	dst->datum.ptr = ptr;
 	dst->vb_length += len;
 
 	return 0;
 }
 
-/** Copy a talloced buffer to a fr_value_box_t
+/** Append a talloc buffer to an existing fr_value_box_t
  *
- * Copy a buffer containing binary data, setting fields in the dst value box appropriately.
- *
- * @param[in] ctx	to allocate any new buffers in.
- * @param[in] dst	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	a buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] tainted	Whether src is tainted.
  * @return
  *	- 0 on success.
- *	- -1 on failure.
+ * 	- -1 on failure.
  */
-int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			       uint8_t *src, bool tainted)
+int fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
 {
-	(void) talloc_get_type_abort(src, uint8_t);
-
-	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
+	return fr_value_box_mem_append(ctx, dst, src, talloc_array_length(src), tainted);
 }
 
 /** Steal a talloced buffer into a specified ctx, and assign to a #fr_value_box_t
@@ -3960,48 +4030,6 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = src;
-	dst->datum.length = talloc_array_length(src);
-}
-
-/** Assign a buffer to a box, but don't copy it
- *
- * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
- *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
- * @note Will free any exiting buffers associated with the value box.
- *
- * @param[in] dst 	to assign buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	a talloced buffer.
- * @param[in] len	of buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				 uint8_t *src, size_t len, bool tainted)
-{
-	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
-	dst->vb_octets = src;
-	dst->datum.length = len;
-}
-
-/** Assign a talloced buffer to a box, but don't copy it
- *
- * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	a talloced buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				        uint8_t *src, bool tainted)
-{
-	(void) talloc_get_type_abort(src, uint8_t);
-
-	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
-	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = talloc_array_length(src);
 }
 
