@@ -3669,15 +3669,16 @@ int fr_value_box_bstr_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *s
  *
  * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[in] dst	value box to append to.
- * @param[in] src	octets data to append.
- * @param[in] len	length of octets data.
+ * @param[in] src	string data to append.
  * @param[in] tainted	Whether src is tainted.
  * @return
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
 {
+	size_t len;
+
 	(void) talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
