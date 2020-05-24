@@ -3320,6 +3320,60 @@ int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 /** Copy a nul terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+int fr_value_box_stralloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			  size_t len, bool tainted)
+{
+	char	*str;
+
+	str = talloc_array(ctx, char, len);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
+		return -1;
+	}
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = talloc_array_length(str) - 1;
+
+	if (out) *out = str;
+
+	return 0;
+}
+
+/** Trim the length of the string buffer to match the length of the C string
+ *
+ * @param[in] ctx	to re-alloc the buffer in.
+ * @param[in,out] vb	to trim.
+ */
+int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
+{
+	size_t	len;
+	char	*str;
+	char 	*mutable;
+
+	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
+
+	len = strlen(vb->vb_strvalue);
+
+	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
+	str = talloc_realloc(ctx, mutable, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed re-allocing string buffer");
+		return -1;
+	}
+	vb->vb_length = len;
+
+	return 0;
+}
+
+/** Copy a nul terminated string to a #fr_value_box_t
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
  * @param[in] src 	a nul terminated buffer.
@@ -3632,6 +3686,46 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 	dst->datum.length = len - 1;
 	dst->enumv = enumv;
 	dst->next = NULL;
+
+	return 0;
+}
+
+/** Pre-allocate an octets buffer for filling by the caller
+ *
+ * @note Buffer will not be zeroed, as it's assumed the caller will be filling it.
+ *
+ * @param[in] ctx	to allocate any new buffers in.
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] dst	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] len	of data in the buffer. If 0, a zero length
+ *			talloc buffer will be alloced. dst->vb_octets
+ *			will *NOT* be NULL.  You should use the length
+ *			field of the box to determine if any value
+ *      		is assigned.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_memalloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			  size_t len, bool tainted)
+{
+	uint8_t *bin;
+
+	bin = talloc_array(ctx, uint8_t, len);
+	if (!bin) {
+		fr_strerror_printf("Failed allocating octets buffer");
+		return -1;
+	}
+	talloc_set_type(bin, uint8_t);
+
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = bin;
+	dst->datum.length = len;
+
+	if (out) *out = bin;
 
 	return 0;
 }

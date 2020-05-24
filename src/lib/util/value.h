@@ -593,6 +593,10 @@ int		fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 				      char const *fmt, ...)
 		CC_HINT(format (printf, 5, 6));
 
+int		fr_value_box_stralloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				      size_t len, bool tainted);
+int		fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb);
+
 int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    char const *src, bool tainted);
 int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
@@ -617,6 +621,10 @@ int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 
 int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    uint8_t const *src, size_t len, bool tainted);
+
+int		fr_value_box_memalloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				      size_t len, bool tainted);
+
 int		fr_value_box_append_mem(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				       uint8_t const *src, size_t len, bool tainted);
 int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,

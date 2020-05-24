@@ -1673,6 +1673,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		 */
 		if ((in[0] == '0') && (tolower(in[1]) == 'x')) {
 			size_t binlen, len;
+			uint8_t *bin;
 
 			/*
 			 *  Hex strings must contain even number of characters
@@ -1690,11 +1691,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			tmpl_value(vpt)->datum.ptr = talloc_array(vpt, uint8_t, binlen);
-			tmpl_value_length_set(vpt, binlen);
-			tmpl_value_type_set(vpt, FR_TYPE_OCTETS);
-
-			len = fr_hex2bin(tmpl_value(vpt)->datum.ptr, binlen, in + 2, inlen - 2);
+			(void)fr_value_box_memalloc(vpt, &bin, &vpt->data.literal, NULL, binlen, false);
+			len = fr_hex2bin(bin, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains non-hex char");
 				talloc_free(vpt);
@@ -2446,27 +2444,27 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL UNPARSED");
 
-		value.datum.length = vpt->len;
 		fr_value_box_bstrndup_shallow(&value, NULL, vpt->name, vpt->len, false);
 		to_cast = &value;
 		needs_dup = true;
 		break;
 
 	case TMPL_TYPE_EXEC:
+	{
+		char *buff;
+
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		MEM(value.vb_strvalue = talloc_array(tmp_ctx, char, 1024));
-		if (radius_exec_program(request, (char *)value.datum.ptr, 1024, NULL, request, vpt->name, NULL,
+		fr_value_box_stralloc(tmp_ctx, &buff, &value, NULL, 1024, true);
+		if (radius_exec_program(request, buff, 1024, NULL, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
 			talloc_free(tmp_ctx);
 			return slen;
 		}
-		value.datum.length = strlen(value.vb_strvalue);
-		value.type = FR_TYPE_STRING;
-		MEM(value.vb_strvalue = talloc_realloc(tmp_ctx, value.datum.ptr, char, value.datum.length + 1));	/* Trim */
-		fr_assert(value.vb_strvalue[value.datum.length] == '\0');
+		fr_value_box_strtrim(tmp_ctx, &value);
 		to_cast = &value;
+	}
 		break;
 
 	case TMPL_TYPE_XLAT_UNPARSED:
