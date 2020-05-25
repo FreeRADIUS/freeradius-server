@@ -92,10 +92,12 @@ fr_dict_autoload_t proto_dhcpv6_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_client_id;
 
 extern fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
+	{ .out = &attr_client_id, .name = "Client-Id", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
 	{ NULL }
 };
 
@@ -388,6 +390,23 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		RPEDEBUG("Failed encoding DHCPv6 reply");
 		return -1;
 	}
+
+	/*
+	 *	ACK the client ID.
+	 */
+	if (!fr_dhcpv6_option_find(buffer + 4, buffer + data_len, attr_client_id->attr)) {
+		uint8_t const *client_id;
+
+		client_id = fr_dhcpv6_option_find(request->packet->data + 4, request->packet->data + request->packet->data_len, attr_client_id->attr);
+		if (client_id) {
+			size_t len = (client_id[2] << 8) | client_id[3];
+			if ((data_len + 4 + len) <= buffer_len) {
+				memcpy(buffer + data_len, client_id, 4 + len);
+				data_len += 4 + len;
+			}
+		}
+	}
+
 
 	RHEXDUMP3(buffer, data_len, "proto_dhcpv6 encode packet");
 
