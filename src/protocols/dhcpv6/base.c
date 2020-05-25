@@ -206,7 +206,7 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 /*
  *	Return pointer to a particular option.
  */
-static uint8_t const *option_find(uint8_t const *start, uint8_t const *end, unsigned int option)
+uint8_t const *fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, unsigned int option)
 {
 	uint8_t const *p = start;
 
@@ -251,13 +251,13 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 			return false;
 		}
 
-		if (!option_find(options, end, FR_SERVER_ID)) {
+		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
 		fail_sid:
 			fr_strerror_printf("Packet does not contain a Server-Id option");
 			return false;
 		}
 
-		option = option_find(options, end, FR_CLIENT_ID);
+		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
 		if (!option) {
 		fail_cid:
 			fr_strerror_printf("Packet does not contain a Client-Id option");
@@ -285,12 +285,12 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
 		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
 
-		if (!option_find(options, end, FR_SERVER_ID)) goto fail_sid;
+		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
 		/*
 		 *	It's OK to not have a client ID in the reply if we didn't send one.
 		 */
-		option = option_find(options, end, FR_CLIENT_ID);
+		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
 		if (!option) {
 			if (!packet_ctx->duid) return true;
 			goto fail_cid;
@@ -298,9 +298,9 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		goto check_duid;
 
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
-		if (!option_find(options, end, FR_SERVER_ID)) goto fail_sid;
+		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
-		option = option_find(options, end, FR_CLIENT_ID);
+		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
 		if (!option) goto fail_cid;
 
 		/*
@@ -309,7 +309,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		if (!packet_ctx->duid) goto fail_duid;
 		if (!duid_match(option, packet_ctx)) goto fail_match;
 
-		option = option_find(options, end, FR_RECONF_MSG);
+		option = fr_dhcpv6_option_find(options, end, FR_RECONF_MSG);
 		if (!option) {
 			fr_strerror_printf("Packet does not contain a Reconf-Msg option");
 			return false;
@@ -364,13 +364,13 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 	case FR_PACKET_TYPE_VALUE_SOLICIT:
 	case FR_PACKET_TYPE_VALUE_CONFIRM:
 	case FR_PACKET_TYPE_VALUE_REBIND:
-		if (!option_find(options, end, FR_CLIENT_ID)) {
+		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) {
 		fail_cid:
 			fr_strerror_printf("Packet does not contain a Client-Id option");
 			return false;
 		}
 
-		if (!option_find(options, end, FR_SERVER_ID)) {
+		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
 		fail_sid:
 			fr_strerror_printf("Packet does not contain a Server-Id option");
 			return false;
@@ -381,9 +381,9 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 	case FR_PACKET_TYPE_VALUE_RENEW:
 	case FR_PACKET_TYPE_VALUE_DECLINE:
 	case FR_PACKET_TYPE_VALUE_RELEASE:
-		if (!option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
+		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
 
-		option = option_find(options, end, FR_SERVER_ID);
+		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
 		if (!option) goto fail_sid;
 
 		if (!duid_match(option, packet_ctx)) {
@@ -394,7 +394,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		break;
 
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
-		option = option_find(options, end, FR_SERVER_ID);
+		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
 		if (!option) goto fail_sid;
 
 		if (!duid_match(option, packet_ctx)) goto fail_match;
@@ -402,15 +402,15 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		/*
 		 *	IA options are forbidden.
 		 */
-		if (option_find(options, end, FR_IA_NA)) {
+		if (fr_dhcpv6_option_find(options, end, FR_IA_NA)) {
 			fr_strerror_printf("Packet contains an IA-NA option");
 			return false;
 		}
-		if (option_find(options, end, FR_IA_TA)) {
+		if (fr_dhcpv6_option_find(options, end, FR_IA_TA)) {
 			fr_strerror_printf("Packet contains an IA-TA option");
 			return false;
 		}
-		if (option_find(options, end, FR_IA_ADDR)) {
+		if (fr_dhcpv6_option_find(options, end, FR_IA_ADDR)) {
 			fr_strerror_printf("Packet contains an IA-Addr option");
 			return false;
 		}

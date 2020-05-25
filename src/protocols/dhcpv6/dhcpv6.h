@@ -126,6 +126,8 @@ typedef struct {
  */
 size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
 
+uint8_t const	*fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, unsigned int option);
+
 bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 			     uint32_t max_attributes);
 
