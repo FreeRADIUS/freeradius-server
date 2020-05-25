@@ -1,0 +1,131 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = IMAP Module
+#
+#  The `imap` module sends TLS requests to a remote imap server and decodes
+#  the responses. Can also perform basic auth with user's credentials.
+#
+
+imap {
+	#
+	#  tls { ... }:: Configure the tls related items that control
+	#  how FreeRADIUS connects to an IMAP server.
+	#
+	tls {
+		#
+		#  .Certificate validation options
+		#
+		#  Specifies how the certificate(s) presented by the IMAP server being contacted
+		#  are validated, and which certificates (if any) to send to the IMAP server.
+		#
+
+		#
+		#  ca_file:: PEM formatted file containing the chain to validate the IMAP server's cert
+		#
+		#  Should usually contain a concatenation of one or more intermediary CA
+		#  files, shallowest (i.e. the one that signed the IMAP server's cert) first, and
+		#  deepest (the root CA) last.
+		#
+		#  Providing a complete certificate chain here is the most common way of validating
+		#  the certificate presented by a IMAP server.
+		#
+#		ca_file	             = "${certdir}/cacert.pem"
+
+		#
+		#  ca_issuer_file:: PEM formatted file containing the CA that signed the imap server's cert
+		#
+		#  This configuration option can be used to prevent certificates passing validation that
+		#  were signed by other intermediary CAs or root CAs in the trusted certificate chain.
+		#
+#		ca_issuer_file     = "${certdir}/caissuer.pem"
+
+		#
+		#  ca_path:: A directory containing multiple root CA certs named by their hash
+		#
+#		ca_path	             = "${certdir}"
+
+		#
+		#  certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
+		#
+		#  Specifies a certificate and any intermediary CAs we should send to the HTTPS server.
+		#
+		#  This file should usually contain the client certificate file first, then any
+		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
+		#  to deepest (signed directly by the root CA).
+		#
+#		certificate_file     = /path/to/radius.pem
+
+		#
+		#  private_key_file:: PEM formatted file containing the private key for the specified certificate_file
+		#
+		#  Must be specified if certificate_file is being used.
+		#
+#		private_key_file     = /path/to/radius.key
+
+		#
+		#  private_key_password:: Password used to decrypt the private key file.
+		#
+		#  Should only be specified in the private_key_file is encrypted.
+		#
+#		private_key_password = "supersecret"
+
+		#
+		#  random_file:: Source of random data used for various cryptographic functions.
+		#
+#		random_file          = /dev/urandom
+
+		#
+		#  check_cert:: Server certificate verification requirements.
+		#
+		#  May be one of:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option | Description
+		#  | `no`   | Server certificate can be signed by any CA or be self-signed.
+		#  | `yes`  | Server certificate must be issued by one of the trusted CAs.
+		#  |===
+		#
+		#  Default is `yes`
+		#
+#		check_cert = no
+
+		#
+		#  check_cert_cn:: Server certificate CN verification requirements.
+		#
+		#  May be one of:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option | Description
+		#  | `no`   | Server certificate CN can be any value.
+		#  | `yes`  | Server certificate CN matches the host in the URI.
+		#  |===
+		#
+		#  Default is `yes`
+		#
+#		check_cert_cn = no
+
+		#
+		#  extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
+		#
+		#  Default is `no`
+		#
+#		extract_cert_attrs = no
+	}
+
+	#
+	#  imap_uri:: It will open a connection to the server specified in and send the tls
+	#  request here
+	#
+	imap_uri = "127.0.0.1:9090"
+	#
+	# timeout:: This is how long freeradius will wait for a response 
+	#
+	timeout = 5000
+}
