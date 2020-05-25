@@ -390,7 +390,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
-	if (!fr_pair_value_mem_alloc(vp, &p, total, true)) {
+	if (fr_pair_value_mem_alloc(vp, &p, total, true) != 0) {
 		talloc_free(vp);
 		return -1;
 	}
