@@ -99,7 +99,6 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_dhcpv6_udp_t, port), .dflt = "547"  },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_dhcpv6_udp_t, recv_buff) },
 
-	{ FR_CONF_OFFSET("multicast", FR_TYPE_BOOL, proto_dhcpv6_udp_t, multicast) } ,
 	{ FR_CONF_OFFSET("hop_limit", FR_TYPE_UINT32, proto_dhcpv6_udp_t, hop_limit) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_dhcpv6_udp_t, dynamic_clients) } ,
@@ -129,7 +128,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
+//	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -184,16 +183,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	from being received on a unicast address.
 	 */
 	if (address->dst_ipaddr.addr.v6.s6_addr[0] != 0xff) {
-		/*
-		 *	However as a special dispensation, if we
-		 *	intentionally disabled multicast, then we
-		 *	allow these packets.  This exception permits
-		 *	non-multicast testing.
-		 */
-		if (inst->multicast &&
-		    ((packet->code == FR_DHCPV6_SOLICIT) ||
-		     (packet->code == FR_DHCPV6_REBIND) ||
-		     (packet->code == FR_DHCPV6_CONFIRM))) {
+		if ((packet->code == FR_DHCPV6_SOLICIT) ||
+		    (packet->code == FR_DHCPV6_REBIND) ||
+		    (packet->code == FR_DHCPV6_CONFIRM)) {
 			DEBUG2("proto_dhcpv6_udp got unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
 			return 0;
 		}
@@ -218,7 +210,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-//	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
+	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -239,9 +231,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	fr_assert(track->reply_len == 0);
 
 	/*
-	 *	Swap src/dst IP/port
+	 *	Send packets to the originator, EXCEPT that we always
+	 *	originate packets from our src_ipaddr.
 	 */
-	address.src_ipaddr = track->address->dst_ipaddr;
+	address.src_ipaddr = inst->src_ipaddr;
 	address.src_port = track->address->dst_port;
 	address.dst_ipaddr = track->address->src_ipaddr;
 	address.dst_port = track->address->src_port;
@@ -337,36 +330,17 @@ static int mod_open(fr_listen_t *li)
 		goto error;
 	}
 
+	/*
+	 *	If the user specified a multicast address, then join
+	 *	that group.
+	 */
 	if (inst->multicast) {
 		struct ipv6_mreq mreq;
 
-#if 0
-		/*
-		 *	We don't do relay agents for now
-		 */
-		if (inet_pton(AF_INET6, IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS, &mreq.ipv6mr_multiaddr) <= 0) {
-			ERROR("Failed parsing %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
-			goto close_error;
-		}
-
+		mreq.ipv6mr_multiaddr = inst->ipaddr.addr.v6;
 		mreq.ipv6mr_interface = if_nametoindex(inst->interface);
 		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq)) < 0) {
-			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
-			goto close_error;
-		}
-#endif
-
-		/*
-		 *	@todo - If we're JUST a relay agent, then we
-		 *	shouldn't join the DHCP servers group,
-		 *	otherwise we will receive relay packets that
-		 *	we send.
-		 */
-		mreq.ipv6mr_multiaddr = (struct in6_addr) IN6ADDR_ALL_DHCP_SERVERS_INIT;
-		mreq.ipv6mr_interface = if_nametoindex(inst->interface);
-
-		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq)) < 0) {
-			PERROR("Failed joining multicast group %s ", IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS);
+			PERROR("Failed joining multicast group %pV ", fr_box_ipaddr(inst->ipaddr));
 			goto close_error;
 		}
 
@@ -375,11 +349,10 @@ static int mod_open(fr_listen_t *li)
 
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *) &hop_limit, sizeof(hop_limit)) < 0) {
 				ERROR("Failed to set multicast hop_limit: %s", fr_syserror(errno));
-				close(sockfd);
-				return -1;
+				goto close_error;
 			}
 		}
-	} /* end of multicast checks */
+	}
 
 	thread->sockfd = sockfd;
 
@@ -434,8 +407,22 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	Complain if no "ipaddr" is set.
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
-		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
-		return -1;
+		if (!inst->interface) {
+			cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+			return -1;
+		}
+
+		/*
+		 *	If there's a named interface, maybe we can
+		 *	find a link-local address for it.  If so, just
+		 *	use that.
+		 */
+		if (inst->interface &&
+		    (fr_interface_to_ipaddr(inst->interface, &inst->ipaddr, AF_INET6, true) < 0)) {
+			cf_log_err(cs, "No 'ipaddr' specified, and we cannot determine one for interface '%s'",
+				   inst->interface);
+				return -1;
+		}
 	}
 
 	if (inst->ipaddr.af != AF_INET6) {
@@ -444,10 +431,45 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Remember if we're a multicast socket.
+	 */
+	inst->multicast = (inst->ipaddr.addr.v6.s6_addr[0] == 0xff);
+
+	/*
 	 *	Set src_ipaddr to ipaddr if not otherwise specified
 	 */
 	if (inst->src_ipaddr.af == AF_UNSPEC) {
-		inst->src_ipaddr = inst->ipaddr;
+		if (!inst->multicast) {
+			inst->src_ipaddr = inst->ipaddr;
+
+			/*
+			 *	If the admin didn't specify an
+			 *	interface, then try to find one
+			 *	automatically.  We only do this for
+			 *	link-local addresses.
+			 */
+			if (!inst->interface) {
+				inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
+				if (!inst->interface) {
+				interface_fail:
+					cf_log_err(cs, "No 'interface' specified, and we cannot determine one for 'ipaddr = %pV'",
+						   fr_box_ipaddr(inst->ipaddr));
+					return -1;
+				}
+			}
+
+		} else {
+			/*
+			 *	Multicase addresses MUST specify an interface.
+			 */
+			if (!inst->interface) goto interface_fail;
+
+			if (fr_interface_to_ipaddr(inst->interface, &inst->src_ipaddr, AF_INET6, true) < 0) {
+				cf_log_err(cs, "No 'src_ipaddr' specified, and we cannot determine one for 'ipaddr = %pV and interface '%s'",
+				       fr_box_ipaddr(inst->ipaddr), inst->interface);
+				return -1;
+			}
+		}
 	}
 
 	/*
@@ -465,19 +487,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 4);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
-
-	/*
-	 *	If the admin didn't specify an interface, then try to
-	 *	find one automatically.
-	 */
-	if (!inst->interface) {
-		inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
-		if (!inst->interface) {
-			cf_log_err(cs, "No 'interface' specified, and we cannot determine one for 'ipaddr = %pV'",
-				   fr_box_ipaddr(inst->ipaddr));
-			return -1;
-		}
-	}
 
 	if (!inst->port) {
 		struct servent *s;
