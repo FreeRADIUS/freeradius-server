@@ -616,11 +616,21 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	check_is_dn = fr_ldap_util_is_dn(check->vp_strvalue, check->vp_length);
 	if (check_is_dn) {
-		char *norm;
+		char	*norm;
+		size_t	len;
 
-		MEM(norm = talloc_memdup(check, check->vp_strvalue, talloc_array_length(check->vp_strvalue)));
-		fr_ldap_util_normalise_dn(norm, check->vp_strvalue);
-		fr_pair_value_bstrsteal(check, norm);
+		MEM(norm = talloc_array(check, char, talloc_array_length(check->vp_strvalue)));
+		len = fr_ldap_util_normalise_dn(norm, check->vp_strvalue);
+
+		/*
+		 *	Will clear existing buffer (i.e. check->vp_strvalue)
+		 */
+		fr_pair_value_bstrdup_buffer_shallow(check, norm, check->vp_tainted);
+
+		/*
+		 *	Trim buffer to match normalised DN
+		 */
+		fr_pair_value_bstr_realloc(check, NULL, len);
 	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {

@@ -916,9 +916,9 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 		if (inst->cisco_accounting_username_bug) {
 			char *new;
 
-			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
+			MEM(new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1));	/* \0 + \0 */
 			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_bstrsteal(vp, new);        /* Also frees existing buffer */
+			fr_pair_value_bstrdup_buffer_shallow(vp, new, vp->vp_tainted);	/* Also frees existing buffer */
 		}
 	}
 

@@ -168,18 +168,15 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 	if (vp->vp_type == FR_TYPE_STRING) {
 		char *p;
 
-		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */
-		p[len + 1] = '\0';				/* Always \0 terminate */
+		MEM(fr_pair_value_bstr_alloc(vp, &p, len + 1, vp->vp_tainted) == 0);	/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_bstrsteal(vp, p);
 	} else {
 		uint8_t *p;
 
-		p = talloc_array(vp, uint8_t, len + 1);		/* Account for the ident byte */
+		MEM(fr_pair_value_mem_alloc(vp, &p, len + 1, vp->vp_tainted) == 0);	/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_memsteal(vp, p, false);
 	}
 }
 

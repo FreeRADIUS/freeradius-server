@@ -1048,24 +1048,11 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 			switch (vp->vp_type) {
 			case FR_TYPE_OCTETS:
-			{
-				uint8_t *buff;
-
-				buff = talloc_array(nvp, uint8_t, q - p);
-				memcpy(buff, p, q - p);
-				fr_pair_value_memsteal(nvp, buff, vp->data.tainted);
-			}
+				MEM(fr_pair_value_memdup(nvp, (uint8_t const *)p, q - p, vp->vp_tainted) == 0);
 				break;
 
 			case FR_TYPE_STRING:
-			{
-				char *buff;
-
-				buff = talloc_array(nvp, char, (q - p) + 1);
-				memcpy(buff, p, q - p);
-				buff[q - p] = '\0';
-				fr_pair_value_bstrsteal(nvp, (char *)buff);
-			}
+				MEM(fr_pair_value_bstrndup(nvp, p, q - p, vp->vp_tainted) == 0);
 				break;
 
 			default:

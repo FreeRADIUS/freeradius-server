@@ -995,7 +995,7 @@ ntlm_auth_err:
 			}
 		}
 
-		MEM(x = talloc_array(new_pass, char, len + 1));
+		MEM(fr_pair_value_bstr_alloc(new_pass, &x, len, true) == 0);
 
 		/*
 		 *	Second pass: convert the characters from UTF-16 to UTF-8.
@@ -1025,7 +1025,6 @@ ntlm_auth_err:
 		}
 
 		*x = '\0';
-		fr_pair_value_bstrsteal(new_pass, x);
 
 		/* Perform the xlat */
 		result_len = xlat_eval(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
