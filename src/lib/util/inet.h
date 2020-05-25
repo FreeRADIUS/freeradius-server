@@ -116,9 +116,9 @@ int	fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 int	fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 			  ssize_t inlen, int af, bool resolve, bool mask);
 
-char	*fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
+char	*fr_inet_ntop(char out[static FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
-char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
+char	*fr_inet_ntop_prefix(char out[static FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
 char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 
@@ -130,7 +130,7 @@ uint8_t	*fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str);
 int	fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name);
 
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
-char	*fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index);
+char	*fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index);
 #endif
 
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
