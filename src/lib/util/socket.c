@@ -921,10 +921,10 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 */
 		if (state == CAP_CLEAR) {
 			fr_strerror_printf_push("Binding to service port (%i) will likely fail as we lack the correct "
-						"capabilities. ");
+						"capabilities", *src_port);
 
 			fr_strerror_printf_push("Use the following command to allow this bind: "
-						"setcap cap_net_bind_service+ep <path_to_binary>", *src_port);
+						"setcap cap_net_bind_service+ep <path_to_binary>");
 			goto skip_cap;
 		}
 
