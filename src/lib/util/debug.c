@@ -307,7 +307,7 @@ int fr_get_debug_state(void)
 	 */
 	if (state == CAP_CLEAR) {
 		fr_strerror_printf("ptrace capability not set.  If debugger detection is required run as root or: "
-				   "setcap cap_sys_ptrace+ep <path_to_radiusd>");
+				   "setcap cap_sys_ptrace+ep <path_to_binary>");
 		cap_free(caps);
 		return DEBUGGER_STATE_UNKNOWN_NO_PTRACE_CAP;
 	}

@@ -924,7 +924,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 						"capabilities. "
 
 			fr_strerror_printf_push("Use the following command to allow this bind: "
-						"setcap cap_net_bind_service+ep <path_to_radiusd>", *src_port);
+						"setcap cap_net_bind_service+ep <path_to_binary>", *src_port);
 			goto skip_cap;
 		}
 
@@ -1169,7 +1169,7 @@ int fr_cap_net_raw(void)
 		fr_strerror_printf("Binding to raw interfaces will likely fail as we lack the CAP_NET_RAW "
 				   "capability");
 		fr_strerror_printf_push("Use the following command to allow this bind: "
-					"setcap cap_net_raw+ep <path_to_radiusd>");
+					"setcap cap_net_raw+ep <path_to_binary>");
 		goto skip_cap;
 	}
 
