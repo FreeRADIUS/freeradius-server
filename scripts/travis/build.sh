@@ -73,5 +73,5 @@ echo "Setting up fixtures"
 #
 #  Needed for rlm_icmp tests, and arp
 #
-sudo setcap cap_net_raw+ep ./build/bin/local/unit_test_module
-sudo setcap cap_net_raw+ep ./build/bin/local/radiusd
+sudo setcap cap_net_raw+p ./build/bin/local/unit_test_module
+sudo setcap cap_net_raw+p ./build/bin/local/radiusd
