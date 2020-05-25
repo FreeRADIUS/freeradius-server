@@ -2093,7 +2093,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	We have a NAK packet, or the request
 		 *	has timed out, and we don't respond.
 		 */
-		if (buffer_len < 20) {
+		if (buffer_len == 1) {
 			track->reply_len = 1; /* don't respond */
 			packet_expiry_timer(el, 0, track);
 			return buffer_len;
