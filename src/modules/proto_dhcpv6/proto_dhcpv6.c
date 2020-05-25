@@ -261,6 +261,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
+	request->packet->code = data[0];
 	request->packet->id = (data[1] << 16) | (data[2] << 8) | data[3];
 	request->reply->id = request->packet->id;
 
