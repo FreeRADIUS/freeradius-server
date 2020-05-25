@@ -26,11 +26,14 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_icmp (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
+
 #include <fcntl.h>
+#include <unistd.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -280,75 +283,6 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, echo);
 }
 
-/** Resolves and caches the module's thread instance for use by a specific xlat instance
- *
- * @param[in] xlat_inst			UNUSED.
- * @param[in] xlat_thread_inst		pre-allocated structure to hold pointer to module's
- *					thread instance.
- * @param[in] exp			UNUSED.
- * @param[in] uctx			Module's global instance.  Used to lookup thread
- *					specific instance.
- * @return 0.
- */
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_icmp_t		*inst = talloc_get_type_abort(uctx, rlm_icmp_t);
-	xlat_icmp_thread_inst_t	*xt = xlat_thread_inst;
-
-	xt->inst = inst;
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_icmp_thread_t);
-
-	return 0;
-}
-
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_icmp_t);
-	return 0;
-}
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	rlm_icmp_t *inst = instance;
-	xlat_t const *xlat;
-
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->name = inst->xlat_name;
-
-	xlat = xlat_async_register(inst, inst->xlat_name, xlat_icmp);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
-
-	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */
-	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));
-
-	/*
-	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
-	 */
-	(void) fr_cap_net_raw();
-
-	return 0;
-}
-
-
-/** Destroy thread data for the submodule.
- *
- */
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
-{
-	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
-
-	if (t->fd < 0) return 0;
-
-	(void) fr_event_fd_delete(el, t->fd, FR_EVENT_FILTER_IO);
-	close(t->fd);
-	t->fd = -1;
-
-	return 0;
-}
-
 static int echo_cmp(void const *one, void const *two)
 {
 	rlm_icmp_echo_t const *a = one;
@@ -457,6 +391,33 @@ static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int fl
 	t->fd = -1;
 }
 
+/** Resolves and caches the module's thread instance for use by a specific xlat instance
+ *
+ * @param[in] xlat_inst			UNUSED.
+ * @param[in] xlat_thread_inst		pre-allocated structure to hold pointer to module's
+ *					thread instance.
+ * @param[in] exp			UNUSED.
+ * @param[in] uctx			Module's global instance.  Used to lookup thread
+ *					specific instance.
+ * @return 0.
+ */
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_icmp_t		*inst = talloc_get_type_abort(uctx, rlm_icmp_t);
+	xlat_icmp_thread_inst_t	*xt = xlat_thread_inst;
+
+	xt->inst = inst;
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_icmp_thread_t);
+
+	return 0;
+}
+
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_icmp_t);
+	return 0;
+}
 
 /** Instantiate thread data for the submodule.
  *
@@ -552,6 +513,52 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 		return -1;
 	}
 	t->fd = fd;
+
+	return 0;
+}
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_icmp_t *inst = instance;
+	xlat_t const *xlat;
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = inst->xlat_name;
+
+	xlat = xlat_async_register(inst, inst->xlat_name, xlat_icmp);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
+
+	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */
+	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));
+
+#ifdef __linux__
+	/*
+	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
+	 */
+	if ((fr_cap_net_raw() < 0) && (getuid() != 0)) {
+		PERROR("Failed setting capabilities required to open ICMP socket");
+		return -1;
+	}
+#endif
+
+	return 0;
+}
+
+
+/** Destroy thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
+{
+	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
+
+	if (t->fd < 0) return 0;
+
+	(void) fr_event_fd_delete(el, t->fd, FR_EVENT_FILTER_IO);
+	close(t->fd);
+	t->fd = -1;
 
 	return 0;
 }
