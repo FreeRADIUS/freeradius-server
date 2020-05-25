@@ -654,7 +654,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t				ciphertext_len;
 
 	char				*plaintext;
-	size_t				plaintext_len;
+	size_t				plaintext_len_est, plaintext_len;
 
 	fr_value_box_t			*vb;
 
@@ -674,37 +674,22 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Decrypt the ciphertext
 	 */
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
-	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
+	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, NULL, &plaintext_len_est, ciphertext, ciphertext_len) <= 0) {
 		fr_tls_log_error(request, "Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
 	}
+	plaintext_len = plaintext_len_est;
 
-	MEM(plaintext = talloc_array(ctx, char, plaintext_len + 1));
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_bstr_alloc(vb, &plaintext, vb, NULL, plaintext_len_est, true) == 0);
 	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
 			     ciphertext, ciphertext_len) <= 0) {
 		fr_tls_log_error(request, "Failed decrypting ciphertext");
+		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
-
-	/*
-	 *	Fixup the output buffer (and ensure it's \0 terminated)
-	 */
-	{
-		char *n;
-
-		n = talloc_bstr_realloc(ctx, plaintext, plaintext_len);
-		if (unlikely(!n)) {
-			REDEBUG("Failed shrinking plaintext buffer");
-			talloc_free(plaintext);
-			return XLAT_ACTION_FAIL;
-		}
-
-		plaintext = n;
-	}
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstrsteal(vb, vb, NULL, plaintext, false);
+	MEM(fr_value_box_bstr_realloc(vb, NULL, vb, plaintext_len) == 0);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

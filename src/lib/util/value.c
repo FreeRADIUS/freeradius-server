@@ -3819,7 +3819,7 @@ void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *en
  *	- -1 on failure.
  */
 int fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       char const *src, bool tainted)
+				        char const *src, bool tainted)
 {
 	size_t	len;
 

@@ -1011,7 +1011,7 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
 	}
 
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
-	MEM(out = talloc_strdup(ctx, p));
+	MEM(out = talloc_typed_strdup(ctx, p));
 
 	/*
 	 * Free the JSON structure, it's not needed any more
