@@ -1244,3 +1244,37 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 	freeifaddrs(list);
 	return interface;
 }
+
+int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, bool link_local)
+{
+	struct ifaddrs *list = NULL;
+	struct ifaddrs *i;
+	int rcode = -1;
+
+	if (getifaddrs(&list) < 0) return -1;
+
+	for (i = list; i != NULL; i = i->ifa_next) {
+		fr_ipaddr_t my_ipaddr;
+
+		if (!i->ifa_addr || !i->ifa_name || (af != i->ifa_addr->sa_family)) continue;
+		if (strcmp(i->ifa_name, interface) != 0) continue;
+
+		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
+
+		/*
+		 *	If we ask for a link local address, then give
+		 *	it to them.
+		 */
+		if (link_local) {
+			if (af != AF_INET6) continue;
+			if (!IN6_IS_ADDR_LINKLOCAL(&my_ipaddr.addr.v6)) continue;
+		}
+
+		*ipaddr = my_ipaddr;
+		rcode = 0;
+		break;
+	}
+
+	freeifaddrs(list);
+	return rcode;
+}
