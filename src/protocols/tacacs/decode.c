@@ -58,7 +58,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 		return -1;
 	}
 
-	fr_pair_value_bstrndup(vp, p, field_len);
+	fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
 	p += field_len;
 	*remaining -= field_len;
 	fr_cursor_append(cursor, vp);

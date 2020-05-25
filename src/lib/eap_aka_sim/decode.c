@@ -751,7 +751,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 			return -1;
 		}
 
-		fr_pair_value_bstrndup(vp, p + 2, actual_len);
+		fr_pair_value_bstrndup(vp, (char const *)p + 2, actual_len, true);
 	}
 		break;
 

@@ -642,7 +642,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		request = eap_session->subrequest;	/* Set request for pair_add_request macro */
 
 		MEM(pair_add_request(&identity, attr_eap_identity) >= 0);
-		fr_pair_value_bstrndup(identity, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+		fr_pair_value_bstrdup_buffer(identity, eap_session->identity, true);
 	}
 
 	/*
@@ -918,7 +918,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 
 			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
 			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
+			fr_pair_value_bstrsteal(vp, new);        /* Also frees existing buffer */
 		}
 	}
 

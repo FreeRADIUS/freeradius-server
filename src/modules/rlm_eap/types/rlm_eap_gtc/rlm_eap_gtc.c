@@ -163,7 +163,7 @@ static rlm_rcode_t mod_process(void *instance, void *thread, REQUEST *request)
 	 *	why the heck are they using EAP-GTC?
 	 */
 	MEM(pair_update_request(&vp, attr_user_password) >= 0);
-	fr_pair_value_bstrndup(vp, eap_round->response->type.data, eap_round->response->type.length);
+	fr_pair_value_bstrndup(vp, (char const *)eap_round->response->type.data, eap_round->response->type.length, true);
 	vp->vp_tainted = true;
 
 	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->name);

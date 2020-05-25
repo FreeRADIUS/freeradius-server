@@ -470,7 +470,7 @@ static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const
 	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) return rcode;
 
 	MEM(pair_add_request(&vp, attr_module_success_message) == 0);
-	fr_pair_value_strsteal(vp, expanded);
+	fr_pair_value_bstrsteal(vp, expanded);
 
 	return rcode;
 }

@@ -669,7 +669,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
 	 *  Use rawlen to protect against overrun, and to cope with any binary data
 	 */
 	MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
-	fr_pair_value_bstrndup(vp, raw, rawlen);
+	fr_pair_value_bstrndup(vp, raw, rawlen, true);
 
 	RDEBUG2("&%pP", vp);
 

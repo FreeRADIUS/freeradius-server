@@ -787,7 +787,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
-		fr_pair_value_bstrndup(vp, val, len);
+		fr_pair_value_bstrndup(vp, val, len, true);
 		break;
 
 	case FR_TYPE_OCTETS:

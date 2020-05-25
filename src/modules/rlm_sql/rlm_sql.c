@@ -661,7 +661,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 	 *	Replace any existing SQL-User-Name with outs
 	 */
 	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
-	fr_pair_value_strsteal(vp, expanded);
+	fr_pair_value_bstrsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%pV'", &vp->data);
 
 	return 0;

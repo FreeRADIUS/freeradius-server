@@ -338,7 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 */
 	if (inst->id_len) {
 		MEM(pair_update_request(&vp, attr_yubikey_public_id) >= 0);
-		fr_pair_value_bstrndup(vp, passcode, inst->id_len);
+		fr_pair_value_bstrndup(vp, passcode, inst->id_len, true);
 	}
 
 	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;

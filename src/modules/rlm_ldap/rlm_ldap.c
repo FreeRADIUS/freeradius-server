@@ -620,7 +620,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 		MEM(norm = talloc_memdup(check, check->vp_strvalue, talloc_array_length(check->vp_strvalue)));
 		fr_ldap_util_normalise_dn(norm, check->vp_strvalue);
-		fr_pair_value_strsteal(check, norm);
+		fr_pair_value_bstrsteal(check, norm);
 	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {
@@ -1039,7 +1039,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		 *	Add Cleartext-Password attribute to the request
 		 */
 		MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
-		fr_pair_value_bstrndup(vp, password, pass_size);
+		fr_pair_value_bstrndup(vp, password, pass_size, true);
 
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("Added eDirectory password.  control:%pP", vp);

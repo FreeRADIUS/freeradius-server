@@ -1025,7 +1025,7 @@ ntlm_auth_err:
 		}
 
 		*x = '\0';
-		fr_pair_value_strsteal(new_pass, x);
+		fr_pair_value_bstrsteal(new_pass, x);
 
 		/* Perform the xlat */
 		result_len = xlat_eval(result, sizeof(result), request, inst->local_cpw, NULL, NULL);

@@ -376,7 +376,7 @@ static int identity_to_permanent_identity(REQUEST *request, VALUE_PAIR *in, eap_
 	if (!strip_hint) {
 		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
 					 &request->state, attr_eap_aka_sim_permanent_identity) >= 0);
-		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length);
+		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length, true);
 		return 0;
 	}
 
@@ -412,7 +412,7 @@ static int identity_to_permanent_identity(REQUEST *request, VALUE_PAIR *in, eap_
 	    (our_type != AKA_SIM_ID_TYPE_PERMANENT)) {
 		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
 					 &request->state, attr_eap_aka_sim_permanent_identity) >= 0);
-		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length);
+		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length, true);
 
 		RDEBUG2("%s has incorrect hint byte, expected '%c', got '%c'.  "
 			"'hint' byte not stripped",
@@ -432,7 +432,7 @@ static int identity_to_permanent_identity(REQUEST *request, VALUE_PAIR *in, eap_
 		 */
 		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
 					 &request->state, attr_eap_aka_sim_permanent_identity) >= 0);
-		fr_pair_value_bstrndup(vp, in->vp_strvalue + 1, in->vp_length - 1);
+		fr_pair_value_bstrndup(vp, in->vp_strvalue + 1, in->vp_length - 1, true);
 
 		RDEBUG2("Stripping 'hint' byte from %s", attr_eap_aka_sim_permanent_identity->name);
 		RINDENT();
@@ -2275,7 +2275,7 @@ static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
 		if (inst->network_name &&
 		    !fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_kdf_input, TAG_ANY)) {
 			MEM(pair_add_reply(&vp, attr_eap_aka_sim_kdf_input) >= 0);
-			fr_pair_value_bstrndup(vp, inst->network_name, talloc_array_length(inst->network_name) - 1);
+			fr_pair_value_bstrdup_buffer(vp, inst->network_name, false);
 		}
 	}
 		break;
@@ -4154,7 +4154,7 @@ rlm_rcode_t aka_sim_state_machine_start(void *instance, UNUSED void *thread, REQ
 	 *	attribute to make policies easier.
 	 */
 	MEM(pair_add_request(&vp, attr_eap_aka_sim_identity) >= 0);
-	fr_pair_value_bstrndup(vp, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+	fr_pair_value_bstrdup_buffer(vp, eap_session->identity, true);
 
 	/*
 	 *	Add ID hint attributes to the request to help

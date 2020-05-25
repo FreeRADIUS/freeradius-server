@@ -172,7 +172,7 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 		p[len + 1] = '\0';				/* Always \0 terminate */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_strsteal(vp, p);
+		fr_pair_value_bstrsteal(vp, p);
 	} else {
 		uint8_t *p;
 

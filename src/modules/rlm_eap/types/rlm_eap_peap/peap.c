@@ -537,7 +537,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 		t->username->vp_tainted = true;
 
-		fr_pair_value_bstrndup(t->username, data + 1, data_len - 1);
+		fr_pair_value_bstrndup(t->username, (char const *)data + 1, data_len - 1, true);
 
 		RDEBUG2("Got inner identity \"%pV\"", &t->username->data);
 		if (t->soh) {
@@ -721,7 +721,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 			fr_assert(t->username != NULL);
 			t->username->vp_tainted = true;
 
-			fr_pair_value_bstrndup(t->username, data + 1, data_len - 1);
+			fr_pair_value_bstrndup(t->username, (char const *)data + 1, data_len - 1, true);
 
 			RDEBUG2("Got tunneled identity of %pV", &t->username->data);
 		}

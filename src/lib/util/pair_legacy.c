@@ -822,7 +822,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 				break;
 
 			case FR_TYPE_STRING:
-				fr_pair_value_strsteal(found, i->vp_ptr);
+				fr_pair_value_bstrsteal(found, i->vp_ptr);
 				i->vp_strvalue = NULL;
 				found->tag = i->tag;
 				break;

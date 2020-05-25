@@ -1064,7 +1064,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				buff = talloc_array(nvp, char, (q - p) + 1);
 				memcpy(buff, p, q - p);
 				buff[q - p] = '\0';
-				fr_pair_value_strsteal(nvp, (char *)buff);
+				fr_pair_value_bstrsteal(nvp, (char *)buff);
 			}
 				break;
 

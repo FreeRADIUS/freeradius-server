@@ -1468,17 +1468,20 @@ void fr_pair_value_clear(VALUE_PAIR *vp)
 
 /** Copy the value from one pair to another
  *
- * @param[out] out	where to copy the value to.
+ * @param[out] dst	where to copy the value to.
  *			will clear assigned value.
- * @param[in] in	where to copy the value from
+ * @param[in] src	where to copy the value from
  *			Must have an assigned value.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in)
+int fr_pair_value_copy(VALUE_PAIR *dst, VALUE_PAIR *src)
 {
-	if (!fr_cond_assert(in->data.type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->data.type != FR_TYPE_INVALID)) return -1;
 
-	if (out->data.type != FR_TYPE_INVALID) fr_value_box_clear(&out->data);
-	fr_value_box_copy(out, &out->data, &in->data);
+	if (dst->data.type != FR_TYPE_INVALID) fr_value_box_clear(&dst->data);
+	fr_value_box_copy(dst, &dst->data, &src->data);
 
 	return 0;
 }
@@ -1544,6 +1547,330 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
 		vp->da = da;
 		vp->data.enumv = da;
 	}
+	vp->type = VT_DATA;
+
+	VP_VERIFY(vp);
+
+	return 0;
+}
+
+/** Copy data into an "string" data type.
+ *
+ * @note vp->da must be of type FR_TYPE_STRING.
+ *
+ * @param[in,out] vp to update
+ * @param[in] src data to copy
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_strdup(VALUE_PAIR *vp, char const *src)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, false);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Assign a buffer containing a nul terminated string to a vp, but don't copy it
+ *
+ * @param[in] vp	to assign string to.
+ * @param[in] src	to copy string from.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_strdup_shallow(VALUE_PAIR *vp, char const *src, bool tainted)
+{
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	fr_value_box_strdup_shallow(&vp->data, vp->da, src, tainted);
+
+	vp->type = VT_DATA;
+	VP_VERIFY(vp);
+
+	return 0;
+}
+
+/** Trim the length of the string buffer to match the length of the C string
+ *
+ * @param[in,out] vp	to trim.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_strtrim(VALUE_PAIR *vp)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_strtrim(vp, &vp->data);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Print data into an "string" data type.
+ *
+ * @note vp->da must be of type FR_TYPE_STRING.
+ *
+ * @param[in,out] vp to update
+ * @param[in] fmt the format string
+ */
+int fr_pair_value_asprintf(VALUE_PAIR *vp, char const *fmt, ...)
+{
+	int	ret;
+	va_list	ap;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	va_start(ap, fmt);
+	ret = fr_value_box_vasprintf(vp, &vp->data, vp->da, false, fmt, ap);
+	va_end(ap);
+
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+		return 0;
+	}
+
+	return -1;
+}
+
+/** Pre-allocate a memory buffer for a "string" type value pair
+ *
+ * @note Will clear existing values (including buffers).
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Change the length of a buffer for a "string" type value pair
+ *
+ * @param[in,out] vp	to update
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] size	of the data.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Copy data into a "string" type value pair
+ *
+ * @note unlike the original strncpy, this function does not stop
+ *	if it finds \0 bytes embedded in the string.
+ *
+ * @note vp->da must be of type FR_TYPE_STRING.
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	data to copy.
+ * @param[in] len	of data to copy.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstrndup(VALUE_PAIR *vp, char const *src, size_t len, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Copy a nul terminated talloced buffer a "string" type value pair
+ *
+ * The buffer must be \0 terminated, or an error will be returned.
+ *
+ * @param[in,out] vp 	to update.
+ * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstrdup_buffer(VALUE_PAIR *vp, char const *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	ret = fr_value_box_bstrdup_buffer(vp, &vp->data, vp->da, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Assign a string to to a "string" type value pair
+ *
+ * @param[in] vp 	to assign new buffer to.
+ * @param[in] src 	a string.
+ * @param[in] len	of src.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstrndup_shallow(VALUE_PAIR *vp, char const *src, size_t len, bool tainted)
+{
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	fr_value_box_bstrndup_shallow(&vp->data, vp->da, src, len, tainted);
+	vp->type = VT_DATA;
+	VP_VERIFY(vp);
+
+	return 0;
+}
+
+/** Assign a string to to a "string" type value pair
+ *
+ * @param[in] vp 	to assign new buffer to.
+ * @param[in] src 	a string.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_bstrdup_buffer_shallow(VALUE_PAIR *vp, char const *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	ret = fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Append bytes from a buffer to an existing "string" type value pair
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	data to copy.
+ * @param[in] len	of data to copy.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_pair_value_bstrn_append(VALUE_PAIR *vp, char const *src, size_t len, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_bstrn_append(vp, &vp->data, src, len, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Append a talloced buffer to an existing "string" type value pair
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	data to copy.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_pair_value_bstr_append_buffer(VALUE_PAIR *vp, char const *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Reparent an allocated char buffer to a VALUE_PAIR
+ *
+ * @param[in,out] vp	to update
+ * @param[in] src	buffer to steal.
+ */
+int fr_pair_value_bstrsteal(VALUE_PAIR *vp, char *src)
+{
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	fr_value_box_bstrsteal(vp, &vp->data, vp->da, src, false);
 	vp->type = VT_DATA;
 
 	VP_VERIFY(vp);
@@ -1633,6 +1960,126 @@ int fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool t
 	return ret;
 }
 
+/** Copy data from a talloced buffer into an "octets" data type.
+ *
+ * @note Will clear existing values (including buffers).
+ *
+ * @param[in,out] vp	to update
+ * @param[in] src	data to copy
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_memdup_buffer(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	ret = fr_value_box_memdup_buffer(vp, &vp->data, vp->da, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Assign a buffer to to a "octets" type value pair
+ *
+ * @param[in] vp 	to assign new buffer to.
+ * @param[in] src 	a buffer.
+ * @param[in] len	of src.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_memdup_shallow(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted)
+{
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	fr_value_box_memdup_shallow(&vp->data, vp->da, src, len, tainted);
+	vp->type = VT_DATA;
+	VP_VERIFY(vp);
+
+	return 0;
+}
+
+/** Assign a talloced buffer to to a "octets" type value pair
+ *
+ * @param[in] vp 	to assign new buffer to.
+ * @param[in] src 	a string.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_value_memdup_buffer_shallow(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
+{
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_clear(&vp->data);
+	fr_value_box_memdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
+	vp->type = VT_DATA;
+	VP_VERIFY(vp);
+
+	return 0;
+}
+
+
+/** Append bytes from a buffer to an existing "octets" type value pair
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	data to copy.
+ * @param[in] len	of data to copy.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_pair_value_mem_append(VALUE_PAIR *vp, uint8_t *src, size_t len, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	ret = fr_value_box_mem_append(vp, &vp->data, src, len, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
+/** Append a talloced buffer to an existing "octets" type value pair
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	data to copy.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_pair_value_mem_append_buffer(VALUE_PAIR *vp, uint8_t *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+
+	ret = fr_value_box_mem_append_buffer(vp, &vp->data, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
 /** Reparent an allocated octet buffer to a VALUE_PAIR
  *
  * @note Will clear existing values (including buffers).
@@ -1652,163 +2099,6 @@ int fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
 	VP_VERIFY(vp);
 
 	return 0;
-}
-
-/** Reparent an allocated char buffer to a VALUE_PAIR
- *
- * @param[in,out] vp	to update
- * @param[in] src	buffer to steal.
- */
-int fr_pair_value_strsteal(VALUE_PAIR *vp, char *src)
-{
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	fr_value_box_bstrsteal(vp, &vp->data, vp->da, src, false);
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
-
-	return 0;
-}
-
-/** Copy data into an "string" data type.
- *
- * @note vp->da must be of type FR_TYPE_STRING.
- *
- * @param[in,out] vp to update
- * @param[in] src data to copy
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_value_strdup(VALUE_PAIR *vp, char const *src)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, false);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-
-/** Pre-allocate a memory buffer for a "string" type value pair
- *
- * @note Will clear existing values (including buffers).
- *
- * @param[in,out] vp	to update
- * @param[out] out	If non-null will be filled with a pointer to the
- *			new buffer.
- * @param[in] size	of the data.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *      - 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Change the length of a buffer for a "string" type value pair
- *
- * @param[in,out] vp	to update
- * @param[out] out	If non-null will be filled with a pointer to the
- *			new buffer.
- * @param[in] size	of the data.
- * @return
- *      - 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Copy data into an "string" data type.
- *
- * @note unlike the original strncpy, this function does not stop
- *	if it finds \0 bytes embedded in the string.
- *
- * @note vp->da must be of type FR_TYPE_STRING.
- *
- * @param[in,out] vp to update.
- * @param[in] src data to copy.
- * @param[in] len of data to copy.
- * @return
- *      - 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);
-	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, false);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Print data into an "string" data type.
- *
- * @note vp->da must be of type FR_TYPE_STRING.
- *
- * @param[in,out] vp to update
- * @param[in] fmt the format string
- */
-int fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
-{
-	int	ret;
-	va_list	ap;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);
-	va_start(ap, fmt);
-	ret = fr_value_box_vasprintf(vp, &vp->data, vp->da, false, fmt, ap);
-	va_end(ap);
-
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-		return 0;
-	}
-
-	return -1;
 }
 
 /** Print the value of an attribute to a string

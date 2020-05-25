@@ -328,22 +328,75 @@ int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR *from, fr_dict_attr_t const *parent_da);
 
-/* Value manipulation */
+/** @name Pair to pair copying
+ *
+ * @{
+ */
 void		fr_pair_value_clear(VALUE_PAIR *vp);
-int		fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in);
+
+int		fr_pair_value_copy(VALUE_PAIR *dst, VALUE_PAIR *src);
+/** @} */
+
+/** @name Assign and manipulate binary-unsafe C strings
+ *
+ * @{
+ */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
 
-int		fr_pair_value_mem_alloc(VALUE_PAIR *vp, uint8_t **out, size_t size, bool tainted);
-int		fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size);
-int		fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
-int		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
-int		fr_pair_value_strsteal(VALUE_PAIR *vp, char *src);
 int		fr_pair_value_strdup(VALUE_PAIR *vp, char const *src);
 
+int		fr_pair_value_strdup_shallow(VALUE_PAIR *vp, char const *src, bool tainted);
+
+int		fr_pair_value_strtrim(VALUE_PAIR *vp);
+
+int		fr_pair_value_asprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+/** @} */
+
+/** @name Assign and manipulate binary-safe strings
+ *
+ * @{
+ */
 int		fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted);
+
 int		fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size);
-int		fr_pair_value_bstrndup(VALUE_PAIR *vp, void const *src, size_t len);
-int		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+
+int		fr_pair_value_bstrndup(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+
+int		fr_pair_value_bstrdup_buffer(VALUE_PAIR *vp, char const *src, bool tainted);
+
+int		fr_pair_value_bstrndup_shallow(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+
+int		fr_pair_value_bstrdup_buffer_shallow(VALUE_PAIR *vp, char const *src, bool tainted);
+
+int		fr_pair_value_bstrn_append(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+
+int		fr_pair_value_bstr_append_buffer(VALUE_PAIR *vp, char const *src, bool tainted);
+
+int		fr_pair_value_bstrsteal(VALUE_PAIR *vp, char *src);
+ /** @} */
+
+ /** @name Assign and manipulate octets strings
+ *
+ * @{
+ */
+int		fr_pair_value_mem_alloc(VALUE_PAIR *vp, uint8_t **out, size_t size, bool tainted);
+
+int		fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size);
+
+int		fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
+
+int		fr_pair_value_memdup_buffer(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
+
+int		fr_pair_value_memdup_shallow(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
+
+int		fr_pair_value_memdup_buffer_shallow(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
+
+int		fr_pair_value_mem_append(VALUE_PAIR *vp, uint8_t *src, size_t len, bool tainted);
+
+int		fr_pair_value_mem_append_buffer(VALUE_PAIR *vp, uint8_t *src, bool tainted);
+
+int		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
+ /** @} */
 
 /* Printing functions */
 size_t   	fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
