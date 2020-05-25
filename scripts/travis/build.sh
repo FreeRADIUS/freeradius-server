@@ -69,9 +69,3 @@ echo "Setting up fixtures"
 ./scripts/travis/mysql-setup.sh
 ./scripts/travis/ldap-setup.sh
 ./scripts/travis/redis-setup.sh
-
-#
-#  Needed for rlm_icmp tests, and arp
-#
-sudo setcap cap_net_raw+p ./build/bin/local/unit_test_module
-sudo setcap cap_net_raw+p ./build/bin/local/radiusd
