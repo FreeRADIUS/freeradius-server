@@ -3707,7 +3707,7 @@ int fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_at
 {
 	size_t	len;
 
-	(void)talloc_get_type_abort(src, char);
+	(void)talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
 	if ((len == 1) || (src[len - 1] != '\0')) {
@@ -4022,7 +4022,7 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			       uint8_t const *src, bool tainted)
 {
-	(void) talloc_get_type_abort(src, uint8_t);
+	(void) talloc_get_type_abort_const(src, uint8_t);
 
 	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
 }
@@ -4062,7 +4062,7 @@ void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				        uint8_t const *src, bool tainted)
 {
-	(void) talloc_get_type_abort(src, uint8_t);
+	(void) talloc_get_type_abort_const(src, uint8_t);
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
