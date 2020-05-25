@@ -1390,9 +1390,7 @@ int main(int argc, char **argv)
 
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
 		files->packets = "-";
-		if (!radclient_init(files, files)) {
-			fr_exit_now(1);
-		}
+		if (radclient_init(files, files) < 0) fr_exit_now(1);
 	}
 
 	/*
