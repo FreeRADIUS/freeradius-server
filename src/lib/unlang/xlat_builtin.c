@@ -1674,24 +1674,15 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	alen = FR_BASE64_DEC_LENGTH((*in)->vb_length);
 
-	MEM(decbuf = talloc_array(ctx, uint8_t, alen));
-
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, (*in)->tainted) == 0);
 	declen = fr_base64_decode(decbuf, alen, (*in)->vb_strvalue, (*in)->vb_length);
 	if (declen < 0) {
-		talloc_free(decbuf);
+		talloc_free(vb);
 		REDEBUG("Base64 string invalid");
 		return XLAT_ACTION_FAIL;
 	}
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	/*
-	 *	Should never fail as we're shrinking...
-	 */
-	if ((size_t)declen != alen) MEM(decbuf = talloc_realloc(ctx, decbuf, uint8_t, (size_t)declen));
-
-	fr_value_box_memsteal(vb, vb, NULL, decbuf, (*in)->tainted);
-
+	MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1745,10 +1736,9 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 	outlen = len / 2;
 
 	MEM(result = fr_value_box_alloc_null(ctx));
-	MEM(bin = talloc_array(result, uint8_t, outlen));
-
+	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(*in)) == 0);
 	fr_hex2bin(bin, outlen, p, end - p);
-	fr_value_box_memsteal(result, result, NULL, bin, fr_value_box_list_tainted(*in));
+
 	fr_cursor_append(out, result);
 
 finish:

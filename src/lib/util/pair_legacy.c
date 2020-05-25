@@ -817,13 +817,13 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 				break;
 
 			case FR_TYPE_OCTETS:
-				fr_pair_value_memsteal(found, i->vp_octets, i->data.tainted);
-				i->vp_octets = NULL;
+				fr_pair_value_memdup_buffer(found, i->vp_octets, i->vp_tainted);
+				fr_pair_value_clear(i);
 				break;
 
 			case FR_TYPE_STRING:
-				fr_pair_value_bstrsteal(found, i->vp_ptr);
-				i->vp_strvalue = NULL;
+				fr_pair_value_bstrdup_buffer(found, i->vp_strvalue, i->vp_tainted);
+				fr_pair_value_clear(i);
 				found->tag = i->tag;
 				break;
 			}
