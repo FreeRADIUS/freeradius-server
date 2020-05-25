@@ -278,13 +278,12 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	p = talloc_array(vp, uint8_t, EAP_HEADER_LEN + total);
+	MEM(fr_pair_value_mem_alloc(vp, &p, EAP_HEADER_LEN + total, false) == 0);
 	p[0] = FR_EAP_CODE_RESPONSE;
 	p[1] = eap_round->response->id;
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 	memcpy(p + EAP_HEADER_LEN, data, total);
-	fr_pair_value_memsteal(vp, p, false);
 
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_append(&cursor, vp);
@@ -672,8 +671,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		t->status = PEAP_STATUS_PHASE2;
 
 		MEM(vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
-
-		q = talloc_array(vp, uint8_t, len);
+		MEM(fr_pair_value_mem_alloc(vp, &q, len, false) == 0);
 		q[0] = FR_EAP_CODE_RESPONSE;
 		q[1] = eap_round->response->id;
 		q[2] = (len >> 8) & 0xff;
@@ -681,8 +679,6 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 		q[4] = FR_EAP_METHOD_IDENTITY;
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
-
-		fr_pair_value_memsteal(vp, q, false);
 		fr_pair_add(&fake->packet->vps, vp);
 	}
 		break;

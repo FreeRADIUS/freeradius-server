@@ -951,8 +951,7 @@ ntlm_auth_err:
 		 *  cleartext password as it avoids unicode hassles.
 		 */
 		MEM(pair_update_request(&new_hash, attr_ms_chap_new_nt_password) >= 0);
-		MEM(q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH));
-		fr_pair_value_memsteal(new_hash, q, false);
+		MEM(fr_pair_value_mem_alloc(new_hash, &q, NT_DIGEST_LENGTH, false) == 0);
 		fr_md4_calc(q, p, passlen);
 
 		/*
@@ -1533,9 +1532,7 @@ found_password:
 		VALUE_PAIR	*nt_password;
 
 		MEM(nt_password = fr_pair_afrom_da(request, attr_nt_password));
-		MEM(p = talloc_array(nt_password, uint8_t, NT_DIGEST_LENGTH));
-		fr_pair_value_memsteal(nt_password, p, false);
-
+		MEM(fr_pair_value_mem_alloc(nt_password, &p, NT_DIGEST_LENGTH, false) == 0);
 		ret = mschap_nt_password_hash(p, password->vp_strvalue);
 
 		if (ret < 0) {
@@ -2013,15 +2010,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	continue with the authentication.
 		 */
 		MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
-		MEM(p = talloc_array(response, uint8_t, 50));
+		MEM(fr_pair_value_mem_alloc(response, &p, 50, cpw->vp_tainted) == 0);
 
 		/* ident & flags */
 		p[0] = cpw->vp_octets[1];
 		p[1] = 0;
 		/* peer challenge and client NT response */
 		memcpy(p + 2, cpw->vp_octets + 18, 48);
-
-		fr_pair_value_memsteal(response, p, false);
 	}
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);

@@ -343,13 +343,12 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 		/*
 		 *	Manually create an EAP Identity request
 		 */
-		p = talloc_array(vp, uint8_t, 5);
+		MEM(fr_pair_value_mem_alloc(vp, &p, 5, false) == 0);
 		p[0] = FR_EAP_CODE_REQUEST;
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
 		p[4] = FR_EAP_METHOD_IDENTITY;
-		fr_pair_value_memsteal(vp, p, false);
 
 		return RLM_MODULE_HANDLED;
 	} /* end of handling EAP-Start */

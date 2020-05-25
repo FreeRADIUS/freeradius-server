@@ -454,7 +454,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 	int			ccode;
 	uint8_t			*p;
 	size_t			length;
-	char			*q;
 
 	if (!fr_cond_assert(eap_session->inst)) return 0;
 
@@ -494,11 +493,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 			fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
-			p = talloc_array(cpw, uint8_t, 68);
+			MEM(fr_pair_value_mem_alloc(cpw, &p, 68, false) == 0);
 			p[0] = 7;
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
-			fr_pair_value_memsteal(cpw, p, false);
 
 			/*
 			 * break the encoded password into VPs (3 of them)
@@ -510,13 +508,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 				if (to_copy > 243) to_copy = 243;
 
 				MEM(pair_add_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
-				p = talloc_array(nt_enc, uint8_t, 4 + to_copy);
+				MEM(fr_pair_value_mem_alloc(nt_enc, &p, 4 + to_copy, false) == 0);
 				p[0] = 6;
 				p[1] = mschap_id;
 				p[2] = 0;
 				p[3] = seq++;
 				memcpy(p + 4, eap_round->response->type.data + 4 + copied, to_copy);
-				fr_pair_value_memsteal(nt_enc, p, false);
 
 				copied += to_copy;
 			}
@@ -650,7 +647,7 @@ failure:
 	fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 	MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
-	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
+	MEM(fr_pair_value_mem_alloc(response, &p, MSCHAPV2_RESPONSE_LEN, false) == 0);
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
@@ -660,18 +657,13 @@ failure:
 	 *	the challenge sent by the client.
 	 */
 	if (data->has_peer_challenge) memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
-	fr_pair_value_memsteal(response, p, false);
 
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
 	MEM(pair_update_request(&name, attr_ms_chap_user_name) >= 0);
-	name->vp_tainted = true;
-	name->vp_length = length - 49 - 5;
-	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
-	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
-	q[name->vp_length] = '\0';
-
+	MEM(fr_pair_value_bstrndup(name, (char const *)&eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
+				   length - 49 - 5, true) == 0);
 packet_ready:
 
 #ifdef WITH_PROXY
@@ -821,9 +813,8 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		 *	Get a random challenge.
 		 */
 		MEM(auth_challenge = fr_pair_afrom_da(eap_session, attr_ms_chap_challenge));
-		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
+		MEM(fr_pair_value_mem_alloc(auth_challenge, &p, MSCHAPV2_CHALLENGE_LEN, false) == 0);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
-		fr_pair_value_memsteal(auth_challenge, p, false);
 	}
 	RDEBUG2("Issuing Challenge");
 
