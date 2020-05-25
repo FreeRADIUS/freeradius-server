@@ -536,18 +536,18 @@ static int proto_ldap_attributes_add(REQUEST *request, sync_config_t const *conf
 	VALUE_PAIR *vp;
 
 	MEM(pair_add_request(&vp, attr_ldap_sync_dn) == 0);
-	fr_pair_value_strcpy(vp, config->base_dn);
+	fr_pair_value_strdup(vp, config->base_dn);
 
 	if (config->filter) {
 		MEM(pair_update_request(&vp, attr_ldap_sync_filter) >= 0);
-		fr_pair_value_strcpy(vp, config->filter);
+		fr_pair_value_strdup(vp, config->filter);
 	}
 	if (config->attrs) {
 		char const *attrs_p;
 
 		for (attrs_p = *config->attrs; *attrs_p; attrs_p++) {
 			MEM(pair_add_request(&vp, attr_ldap_sync_attr) == 0);
-			fr_pair_value_strcpy(vp, attrs_p);
+			fr_pair_value_strdup(vp, attrs_p);
 		}
 	}
 

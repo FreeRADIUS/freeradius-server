@@ -454,7 +454,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strcpy(vp, msg);
+		fr_pair_value_strdup(vp, msg);
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",

@@ -1981,7 +1981,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	 *	New escapes: strings are in binary form.
 	 */
 	if (vp->vp_type == FR_TYPE_STRING) {
-		fr_pair_value_strcpy(vp, p);
+		fr_pair_value_strdup(vp, p);
 	} else if (fr_pair_value_from_str(vp, p, rcode, '\0', false) < 0) {
 		talloc_free(p);
 		fr_pair_list_free(&vp);

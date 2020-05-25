@@ -304,7 +304,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		fclose(fp);
 
 		MEM(pair_update_request(&vp, attr_tls_client_cert_filename) >= 0);
-		fr_pair_value_strcpy(vp, filename);
+		fr_pair_value_strdup(vp, filename);
 
 		RDEBUG2("Verifying client certificate with cmd");
 		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,

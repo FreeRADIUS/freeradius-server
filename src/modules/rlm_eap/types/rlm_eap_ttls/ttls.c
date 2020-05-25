@@ -295,7 +295,7 @@ do_value:
 		/*
 		 *	Diameter pads strings (i.e. User-Password) with trailing zeros.
 		 */
-		if (vp->vp_type == FR_TYPE_STRING) fr_pair_value_strcpy(vp, vp->vp_strvalue);
+		if (vp->vp_type == FR_TYPE_STRING) fr_pair_value_strdup(vp, vp->vp_strvalue);
 	}
 
 	/*

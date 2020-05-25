@@ -173,7 +173,7 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_stripped_user_name));
 		fr_pair_add(&req, vp);
 	}
-	fr_pair_value_strcpy(vp, rest);
+	fr_pair_value_strdup(vp, rest);
 
 	return ret;
 }

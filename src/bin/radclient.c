@@ -835,7 +835,7 @@ static int send_one_packet(rc_request_t *request)
 			VALUE_PAIR *vp;
 
 			if ((vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY)) != NULL) {
-				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
+				fr_pair_value_strdup(vp, request->password->vp_strvalue);
 
 			} else if ((vp = fr_pair_find_by_da(request->packet->vps,
 							    attr_chap_password, TAG_ANY)) != NULL) {

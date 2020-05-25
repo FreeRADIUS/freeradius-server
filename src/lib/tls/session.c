@@ -1432,7 +1432,7 @@ int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 		RDEBUG2("Adding TLS session information to request");
 		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_CIPHER_SUITE);
 		if (vp) {
-			fr_pair_value_strcpy(vp,  SSL_CIPHER_get_name(cipher));
+			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher));
 			fr_pair_add(&request->state, vp);
 			RINDENT();
 			RDEBUG2("&session-state:%pP", vp);
@@ -1448,7 +1448,7 @@ int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 
 		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_VERSION);
 		if (vp) {
-			fr_pair_value_strcpy(vp, version);
+			fr_pair_value_strdup(vp, version);
 			fr_pair_add(&request->state, vp);
 			RINDENT();
 			RDEBUG2("&session-state:TLS-Session-Version := \"%s\"", version);

@@ -734,7 +734,7 @@ packet_ready:
 			 *	FIXME: Put it into MS-CHAP-Domain?
 			 */
 			username++; /* skip the \\ */
-			fr_pair_value_strcpy(auth_challenge, username);
+			fr_pair_value_strdup(auth_challenge, username);
 		}
 
 		/*

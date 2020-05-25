@@ -197,7 +197,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	RDEBUG2("User object found at DN \"%s\"", dn);
 
 	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
-	fr_pair_value_strcpy(vp, dn);
+	fr_pair_value_strdup(vp, dn);
 	*rcode = RLM_MODULE_OK;
 
 	ldap_memfree(dn);

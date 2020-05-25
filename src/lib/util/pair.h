@@ -338,7 +338,7 @@ int		fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size);
 int		fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
 int		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
 int		fr_pair_value_strsteal(VALUE_PAIR *vp, char *src);
-int		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
+int		fr_pair_value_strdup(VALUE_PAIR *vp, char const *src);
 
 int		fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted);
 int		fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size);

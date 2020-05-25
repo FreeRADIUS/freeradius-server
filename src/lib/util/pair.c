@@ -1682,7 +1682,7 @@ int fr_pair_value_strsteal(VALUE_PAIR *vp, char *src)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
+int fr_pair_value_strdup(VALUE_PAIR *vp, char const *src)
 {
 	int ret;
 

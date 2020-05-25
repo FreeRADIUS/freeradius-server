@@ -405,7 +405,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 		VALUE_PAIR *vp;
 
 		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
-		fr_pair_value_strcpy(vp, "status check - are you alive?");
+		fr_pair_value_strdup(vp, "status check - are you alive?");
 	}
 
 	/*

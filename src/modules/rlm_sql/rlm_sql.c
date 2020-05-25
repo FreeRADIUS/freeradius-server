@@ -847,7 +847,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	do {
 	next:
 		fr_assert(entry != NULL);
-		fr_pair_value_strcpy(sql_group, entry->name);
+		fr_pair_value_strdup(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
 			fr_cursor_t	cursor;

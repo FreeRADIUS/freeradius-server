@@ -298,7 +298,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		return RLM_MODULE_NOOP;
 
 	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
-	fr_pair_value_strcpy(vp, encrypted_pass);
+	fr_pair_value_strdup(vp, encrypted_pass);
 
 	return RLM_MODULE_UPDATED;
 }

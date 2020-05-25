@@ -306,7 +306,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	portion.
 		 */
 		MEM(pair_update_request(&vp, attr_yubikey_otp) >= 0);
-		fr_pair_value_strcpy(vp, otp);
+		fr_pair_value_strdup(vp, otp);
 
 		/*
 		 *	Replace the existing string buffer for the password

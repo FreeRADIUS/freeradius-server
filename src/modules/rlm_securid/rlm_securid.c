@@ -535,7 +535,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	if (*buffer) {
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strcpy(vp, buffer);
+		fr_pair_value_strdup(vp, buffer);
 	}
 	return rcode;
 }
