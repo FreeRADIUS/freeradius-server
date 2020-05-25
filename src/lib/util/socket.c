@@ -876,12 +876,20 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	struct sockaddr_storage		salocal;
 	socklen_t			salen;
 
+	/*
+	 *	Clear the thread local error stack as we may
+	 *	push multiple errors onto the stack, and this
+	 *	is likely to be the function which returns
+	 *	the "original" error.
+	 */
+	(void)fr_strerror();
+
 	if (src_port) my_port = *src_port;
 	if (src_ipaddr) {
 		my_ipaddr = *src_ipaddr;
 	} else {
 		my_ipaddr = (fr_ipaddr_t) {
-			.af = AF_UNSPEC,
+			.af = AF_UNSPEC
 		};
 	}
 
@@ -913,7 +921,9 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 */
 		if (state == CAP_CLEAR) {
 			fr_strerror_printf_push("Binding to service port (%i) will likely fail as we lack the correct "
-						"capabilities. Use the following command to allow this bind: "
+						"capabilities. "
+
+			fr_strerror_printf_push("Use the following command to allow this bind: "
 						"setcap cap_net_bind_service+ep <path_to_radiusd>", *src_port);
 			goto skip_cap;
 		}
@@ -966,8 +976,8 @@ skip_cap:
 		 *	set it.  This allows us to get the scope from the interface name.
 		 */
 		if ((my_ipaddr.scope_id != 0) && (scope_id != my_ipaddr.scope_id)) {
-			fr_strerror_printf_push("Cannot bind to interface %s: Socket is already about to another interface",
-						interface);
+			fr_strerror_printf_push("Cannot bind to interface %s: Socket is already bound "
+						"to another interface", interface);
 			return -1;
 		}
 #endif
@@ -986,7 +996,8 @@ skip_cap:
 
 			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 			if (rcode < 0) {
-				fr_strerror_printf_push("Failed binding to interface %s: %s", interface, fr_syserror(errno));
+				fr_strerror_printf_push("Failed binding to interface %s: %s",
+							interface, fr_syserror(errno));
 				return -1;
 			} /* else it worked. */
 
@@ -1141,13 +1152,12 @@ int fr_cap_net_raw(void)
 
 	caps = cap_get_proc();
 	if (!caps) {
-		fr_strerror_printf_push("Failed getting process capabilities: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
 		goto skip_cap;
 	}
 
 	if (cap_get_flag(caps, CAP_NET_RAW, CAP_PERMITTED, &state) < 0) {
-		fr_strerror_printf_push("Failed getting CAP_NET_RAW permitted state: %s",
-					fr_syserror(errno));
+		fr_strerror_printf("Failed getting CAP_NET_RAW permitted state: %s", fr_syserror(errno));
 		goto skip_cap;
 	}
 
@@ -1156,15 +1166,15 @@ int fr_cap_net_raw(void)
 	 *	capability, so skip to just attempting the bind.
 	 */
 	if (state == CAP_CLEAR) {
-		fr_strerror_printf_push("Binding to raw interfaces will likely fail as we lack the correct "
-					"capabilities. Use the following command to allow this bind: "
+		fr_strerror_printf("Binding to raw interfaces will likely fail as we lack the CAP_NET_RAW "
+				   "capability")""
+		fr_strerror_printf_push("Use the following command to allow this bind: "
 					"setcap cap_net_raw+ep <path_to_radiusd>");
 		goto skip_cap;
 	}
 
 	if (cap_get_flag(caps, CAP_NET_RAW, CAP_EFFECTIVE, &state) < 0) {
-		fr_strerror_printf_push("Failed getting CAP_NET_RAW effective state: %s",
-					fr_syserror(errno));
+		fr_strerror_printf("Failed getting CAP_NET_RAW effective state: %s", fr_syserror(errno));
 		goto skip_cap;
 	}
 
@@ -1178,8 +1188,7 @@ int fr_cap_net_raw(void)
 		};
 
 		if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
-			fr_strerror_printf_push("Failed setting CAP_NET_RAW effective state: %s",
-						fr_syserror(errno));
+			fr_strerror_printf("Failed setting CAP_NET_RAW effective state: %s", fr_syserror(errno));
 			goto skip_cap;
 		}
 
