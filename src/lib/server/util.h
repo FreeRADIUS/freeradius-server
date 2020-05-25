@@ -46,13 +46,6 @@ int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char const *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
 
-char const	*rad_default_log_dir(void);
-char const	*rad_default_lib_dir(void);
-char const	*rad_default_raddb_dir(void);
-char const	*rad_default_run_dir(void);
-char const	*rad_default_sbin_dir(void);
-char const	*rad_default_radacct_dir(void);
-
 void		rad_mode_to_str(char out[static 10], mode_t mode);
 void		rad_mode_to_oct(char out[static 5], mode_t mode);
 int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);

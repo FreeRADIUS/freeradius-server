@@ -40,6 +40,7 @@ SOURCES		:= \
 		   pair_legacy.c \
 		   pair_tokenize.c \
 		   pair.c \
+		   paths.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \

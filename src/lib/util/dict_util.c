@@ -2676,7 +2676,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	new_ctx->dict_dir_default = talloc_strdup(new_ctx, dict_dir);
 	if (!new_ctx->dict_dir_default) goto oom;
 
-	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, NULL, false, false);
+	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
 
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",

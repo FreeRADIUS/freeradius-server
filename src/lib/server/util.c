@@ -674,66 +674,6 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	return argc;
 }
 
-/** Return the default log dir
- *
- * This is set at build time from --prefix
- * @return the value of LOGDIR
- */
-char const *rad_default_log_dir(void)
-{
-	return LOGDIR;
-}
-
-/** Return the default lib dir
- *
- * This is set at build time from --prefix
- * @return the value of LIBDIR
- */
-char const *rad_default_lib_dir(void)
-{
-	return LIBDIR;
-}
-
-/** Return the default raddb dir
- *
- * This is set at build time from --prefix
- * @return the value of RADDBDIR
- */
-char const *rad_default_raddb_dir(void)
-{
-	return RADDBDIR;
-}
-
-/** Return the default run dir
- *
- * This is set at build time from --prefix
- * @return the value of RUNDIR
- */
-char const *rad_default_run_dir(void)
-{
-	return RUNDIR;
-}
-
-/** Return the default sbin dir
- *
- * This is set at build time from --prefix
- * @return the value of SBINDIR
- */
-char const *rad_default_sbin_dir(void)
-{
-	return SBINDIR;
-}
-
-/** Return the default radacct dir
- *
- * This is set at build time from --prefix
- * @return the value of RADIR
- */
-char const *rad_default_radacct_dir(void)
-{
-	return RADIR;
-}
-
 /** Convert mode_t into humanly readable permissions flags
  *
  * @author Jonathan Leffler.

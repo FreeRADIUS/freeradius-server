@@ -2810,7 +2810,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	dl_loader = dl_loader_init(autofree, NULL, NULL, false, false);
+	dl_loader = dl_loader_init(autofree, NULL, false, false);
 	if (!dl_loader) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;

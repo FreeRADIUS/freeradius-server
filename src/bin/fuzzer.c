@@ -102,12 +102,13 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(1);
 	}
 
-	dl_loader = dl_loader_init(NULL, lib_dir, NULL, 0, false);
+	dl_loader = dl_loader_init(NULL, NULL, 0, false);
 	if (!dl_loader) {
 		fprintf(stderr, "fuzzer: Failed initializing library loader: %s\n",
 			fr_strerror());
 		fr_exit_now(1);
 	}
+	dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
 
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
 	dl = dl_by_name(dl_loader, buffer, NULL, false);
