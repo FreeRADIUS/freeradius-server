@@ -1167,7 +1167,7 @@ int fr_cap_net_raw(void)
 	 */
 	if (state == CAP_CLEAR) {
 		fr_strerror_printf("Binding to raw interfaces will likely fail as we lack the CAP_NET_RAW "
-				   "capability")""
+				   "capability");
 		fr_strerror_printf_push("Use the following command to allow this bind: "
 					"setcap cap_net_raw+ep <path_to_radiusd>");
 		goto skip_cap;
