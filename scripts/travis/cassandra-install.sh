@@ -20,7 +20,7 @@ do_exit() {
 # Libuv
 libuv_url="https://downloads.datastax.com/cpp-driver/ubuntu/${ubuntu_ver}/dependencies/libuv/v${libuv_ver}/${libuv_pkg}"
 if ! wget -q -O "${tmp_dir}/${libuv_pkg}" "${libuv_url}"; then
-	echo "ERROR: Problems to fetch ${libuv_url}"
+	echo "ERROR: Failed downloading libuv packages ${libuv_url}"
 	do_exit 1
 fi
 
@@ -29,13 +29,13 @@ for _deb in ${cassandra_pkgs}; do
 	_url="https://downloads.datastax.com/cpp-driver/ubuntu/${ubuntu_ver}/cassandra/v${cassandra_ver}/${_deb}"
 
 	if ! wget -q -O "${tmp_dir}/${_deb}" "${_url}"; then
-		echo "ERROR: Problems to fetch ${_url}"
+		echo "ERROR: Failed downloading packages ${_url}"
 		do_exit 1
 	fi
 done
 
 if ! dpkg -i ${tmp_dir}/*.deb; then
-	echo "ERROR: Problems to install ${tmp_dir}/*.deb"
+	echo "ERROR: Failed installing packages ${tmp_dir}/*.deb"
 	do_exit 1
 fi
 
