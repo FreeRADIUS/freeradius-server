@@ -1272,7 +1272,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	will no longer be in the event loop, so check
 		 *	if it's in the heap before extracting it.
 		 */
-		if (fr_dlist_entry_in_list(&ev->entry)) {
+		if (!fr_dlist_entry_in_list(&ev->entry)) {
 			int ret;
 
 			ret = fr_heap_extract(el->times, ev);
