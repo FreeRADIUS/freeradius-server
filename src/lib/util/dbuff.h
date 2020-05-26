@@ -276,6 +276,36 @@ static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 }
 #define FR_DBUFF_ADVANCE_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _inlen)
 
+/** Move back position in dbuff by N bytes without sanity checks
+ *
+ * @note Do not call this function directly.
+ */
+static inline ssize_t _fr_dbuff_rewind(fr_dbuff_t *dbuff, size_t inlen)
+{
+	dbuff->p -= inlen;
+
+	return dbuff->parent ? _fr_dbuff_rewind(dbuff->parent, inlen) : (ssize_t)inlen;
+}
+
+/** Move back position in dbuff by N bytes
+ *
+ * @param[in] dbuff	to move back.
+ * @param[in] inlen	How much to move dbuff back by.
+ * @return
+ *	- 0	not moved back.
+ *	- >0	the number of bytes the dbuff was moved back by.
+ *	- <0	the amount by which inlen exceeded the bytes used in dbuff.
+ */
+static inline ssize_t fr_dbuff_rewind(fr_dbuff_t *dbuff, size_t inlen)
+{
+	size_t usedspace = fr_dbuff_used(dbuff);
+
+	if (inlen > usedspace) return -(inlen - usedspace);
+
+	return _fr_dbuff_rewind(dbuff, inlen);
+}
+#define FR_DBUFF_REWIND_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_rewind, _dbuff, _inlen)
+
 /** Copy n bytes into dbuff
  *
  * @param[in] dbuff	to copy data to.

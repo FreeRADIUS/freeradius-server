@@ -1,6 +1,7 @@
 #include <freeradius-devel/util/acutest.h>
 
 #include "dbuff.h"
+#include <string.h>
 
 
 //#include <gperftools/profiler.h>
@@ -219,6 +220,26 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+static void test_dbuff_rewind(void)
+{
+	uint8_t		buff[8];
+	uint8_t		expected[] = {0, 1, 2, 0, 1, 2, 3, 4};
+	fr_dbuff_t	dbuff;
+
+	TEST_CASE("Check valid uses");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bytes_in(&dbuff, 0, 1, 2, 3, 4, 5);
+	TEST_CHECK(fr_dbuff_rewind(&dbuff, 3) == 3);
+	fr_dbuff_bytes_in(&dbuff, 0, 1, 2, 3, 4);
+	TEST_CHECK(memcmp(buff, expected, sizeof(expected)) == 0);
+
+
+	TEST_CASE("Confirm rewind error checking");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_rewind(&dbuff, 4) == -4);
+	fr_dbuff_bytes_in(&dbuff, 0, 1, 2, 3);
+	TEST_CHECK(fr_dbuff_rewind(&dbuff, 5) == -1);
+}
 
 TEST_LIST = {
 	/*
@@ -228,6 +249,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_rewind",			test_dbuff_rewind },
 
 	{ NULL }
 };
