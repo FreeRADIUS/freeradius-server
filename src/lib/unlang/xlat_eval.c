@@ -1745,7 +1745,8 @@ int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
 	 *	then we just want to copy the new value in unmolested.
 	 */
 	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
-		fr_pair_value_bstrsteal(vp, expanded);
+		fr_pair_value_bstrdup_buffer(vp, expanded, vp->vp_tainted);
+		talloc_free(expanded);
 		return 0;
 	}
 

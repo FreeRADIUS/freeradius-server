@@ -137,7 +137,7 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 {
 	VALUE_PAIR	*vp;
 	size_t		len;
-	uint8_t		*buff, *p;
+	uint8_t		*p;
 
 	if (!resp) {
 		REDEBUG("No OCSP response available");
@@ -150,14 +150,14 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 		return -1;
 	}
 
-	MEM(p = buff = talloc_array(request, uint8_t, len));	/* Alloc in context of request - steal later */
+	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
+	MEM(fr_pair_value_mem_alloc(vp, &p, len, true));
 	len = i2d_OCSP_RESPONSE(resp, &p);
 	if (len <= 0) {
 		REDEBUG("Failed serialising OCSP response");
+		pair_delete_request(vp);
 		return -1;
 	}
-	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
-	fr_pair_value_memsteal(vp, buff, true);
 
 	RDEBUG2("Serializing OCSP response");
 	RINDENT();

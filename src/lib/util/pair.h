@@ -277,6 +277,8 @@ int		fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, 
 
 int		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da);
 
+void		fr_pair_delete(VALUE_PAIR **list, VALUE_PAIR const *vp);
+
 /* functions for FR_TYPE_GROUP */
 fr_pair_list_t	*fr_pair_group_get_sublist(VALUE_PAIR *head);
 
@@ -371,8 +373,6 @@ int		fr_pair_value_bstrdup_buffer_shallow(VALUE_PAIR *vp, char const *src, bool 
 int		fr_pair_value_bstrn_append(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
 
 int		fr_pair_value_bstr_append_buffer(VALUE_PAIR *vp, char const *src, bool tainted);
-
-int		fr_pair_value_bstrsteal(VALUE_PAIR *vp, char *src);
  /** @} */
 
  /** @name Assign and manipulate octets strings
@@ -394,8 +394,6 @@ int		fr_pair_value_memdup_buffer_shallow(VALUE_PAIR *vp, uint8_t const *src, boo
 int		fr_pair_value_mem_append(VALUE_PAIR *vp, uint8_t *src, size_t len, bool tainted);
 
 int		fr_pair_value_mem_append_buffer(VALUE_PAIR *vp, uint8_t *src, bool tainted);
-
-int		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
  /** @} */
 
 /* Printing functions */

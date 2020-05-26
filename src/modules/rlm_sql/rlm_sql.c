@@ -652,16 +652,18 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 		return 0;
 	}
 
-	len = xlat_aeval(request, &expanded, request, sqluser, NULL, NULL);
+	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
+	len = xlat_aeval(vp, &expanded, request, sqluser, NULL, NULL);
 	if (len < 0) {
+		pair_delete_request(vp);
 		return -1;
 	}
 
 	/*
 	 *	Replace any existing SQL-User-Name with outs
 	 */
-	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
-	fr_pair_value_bstrsteal(vp, expanded);
+	fr_pair_value_bstrdup_buffer_shallow(vp, expanded, true);
+	MEM(fr_pair_value_bstr_realloc(vp, NULL, len) == 0);
 	RDEBUG2("SQL-User-Name set to '%pV'", &vp->data);
 
 	return 0;

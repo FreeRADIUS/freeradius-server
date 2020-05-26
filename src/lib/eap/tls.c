@@ -317,12 +317,14 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 		uint8_t		*session_id;
 		VALUE_PAIR	*vp;
 
-		if (eap_crypto_tls_session_id(request->parent->reply, request, tls_session->ssl,
-					      &session_id, eap_session->type,
-					      sessid_prf_label, sessid_prf_label_len) < 0) return -1;
-
 		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);
-		fr_pair_value_memsteal(vp, session_id, true);
+		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl,
+					      &session_id, eap_session->type,
+					      sessid_prf_label, sessid_prf_label_len) < 0) {
+			pair_delete_reply(vp);
+			return -1;
+		}
+		fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
 
 		RINDENT();
 		RDEBUG2("&reply:%pP", vp);

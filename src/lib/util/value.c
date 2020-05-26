@@ -3846,47 +3846,6 @@ int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char c
 	return fr_value_box_bstrn_append(ctx, dst, src, len - 1, tainted);
 }
 
-/** Steal a nul terminated talloced buffer into a specified ctx, and assign to a #fr_value_box_t
- *
- * Steal a talloced nul terminated buffer, setting fields in the dst value box appropriately.
- *
- * The buffer must be \0 terminated, or an error will be returned.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			   char *src, bool tainted)
-{
-	size_t	len;
-	char	*str;
-
-	len = talloc_array_length(src);
-	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer empty or not \\0 terminated");
-		return -1;
-	}
-
-	str = talloc_steal(ctx, src);
-	if (!str) {
-		fr_strerror_printf("Failed stealing string buffer");
-		return -1;
-	}
-	talloc_set_type(str, char);
-
-	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
-	dst->vb_strvalue = str;
-	dst->vb_length = len - 1;
-
-	return 0;
-}
-
 /** Pre-allocate an octets buffer for filling by the caller
  *
  * @note Buffer will not be zeroed, as it's assumed the caller will be filling it.
@@ -4133,29 +4092,6 @@ int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const 
 int fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
 {
 	return fr_value_box_mem_append(ctx, dst, src, talloc_array_length(src), tainted);
-}
-
-/** Steal a talloced buffer into a specified ctx, and assign to a #fr_value_box_t
- *
- * Steal a talloced buffer, setting fields in the dst value box appropriately.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			   uint8_t const *src, bool tainted)
-{
-	(void) talloc_get_type_abort_const(src, uint8_t);
-
-	src = talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
-	talloc_set_type(src, uint8_t);
-
-	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
-	dst->vb_octets = src;
-	dst->datum.length = talloc_array_length(src);
 }
 
 /** Increment a boxed value

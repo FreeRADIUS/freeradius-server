@@ -757,6 +757,26 @@ int fr_pair_delete_by_da(VALUE_PAIR **list, fr_dict_attr_t const *da)
 	return cnt;
 }
 
+/** Remove VALUE_PAIR from a list
+ *
+ * @param[in] list	of value pairs to remove VP from.
+ * @param[in] vp	to remove
+ */
+void fr_pair_delete(VALUE_PAIR **list, VALUE_PAIR const *vp)
+{
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*cvp;
+
+	for (cvp = fr_cursor_init(&cursor, list);
+	     cvp;
+	     cvp = fr_cursor_next(&cursor)) {
+		if (cvp == vp) {
+			fr_cursor_free_item(&cursor);
+			return;
+		}
+	}
+}
+
 /** Order attributes by their da, and tag
  *
  * Useful where attributes need to be aggregated, but not necessarily
@@ -1836,48 +1856,6 @@ int fr_pair_value_bstrn_append(VALUE_PAIR *vp, char const *src, size_t len, bool
 	return ret;
 }
 
-/** Append a talloced buffer to an existing "string" type value pair
- *
- * @param[in,out] vp	to update.
- * @param[in] src	data to copy.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_pair_value_bstr_append_buffer(VALUE_PAIR *vp, char const *src, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
-	if (ret == 0) {
-		vp->type = VT_DATA;
-		VP_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Reparent an allocated char buffer to a VALUE_PAIR
- *
- * @param[in,out] vp	to update
- * @param[in] src	buffer to steal.
- */
-int fr_pair_value_bstrsteal(VALUE_PAIR *vp, char *src)
-{
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
-
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	fr_value_box_bstrsteal(vp, &vp->data, vp->da, src, false);
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
-
-	return 0;
-}
-
 /** Pre-allocate a memory buffer for a "octets" type value pair
  *
  * @note Will clear existing values (including buffers).
@@ -2078,27 +2056,6 @@ int fr_pair_value_mem_append_buffer(VALUE_PAIR *vp, uint8_t *src, bool tainted)
 	}
 
 	return ret;
-}
-
-/** Reparent an allocated octet buffer to a VALUE_PAIR
- *
- * @note Will clear existing values (including buffers).
- *
- * @param[in,out] vp	to update
- * @param[in] src	buffer to steal.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-int fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
-{
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
-
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	fr_value_box_memsteal(vp, &vp->data, vp->da, src, tainted);
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
-
-	return 0;
 }
 
 /** Print the value of an attribute to a string

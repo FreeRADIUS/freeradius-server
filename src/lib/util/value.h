@@ -642,9 +642,6 @@ int		fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, f
 int		fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted);
 
 int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
-
-int		fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       char *src, bool tainted);
 /** @} */
 
 /** @name Assign and manipulate octets strings
@@ -672,10 +669,6 @@ int		fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				       uint8_t const *src, size_t len, bool tainted);
 
 int		fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted);
-
-
-void		fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				      uint8_t const *src, bool tainted);
 /** @} */
 
 void		fr_value_box_increment(fr_value_box_t *vb);
