@@ -55,6 +55,7 @@ typedef struct {
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
+	uint8_t				ethernet[6];		//!< ethernet address associated with the interface
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
@@ -128,7 +129,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-//	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
+	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -182,7 +183,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	RFC 8415 Section 18.4 forbids certain types of packets
 	 *	from being received on a unicast address.
 	 */
-	if (address->dst_ipaddr.addr.v6.s6_addr[0] != 0xff) {
+	if (!inst->multicast) {
 		if ((packet->code == FR_DHCPV6_SOLICIT) ||
 		    (packet->code == FR_DHCPV6_REBIND) ||
 		    (packet->code == FR_DHCPV6_CONFIRM)) {
@@ -479,6 +480,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
 		return -1;
 	}
+
+	/*
+	 *	Get the MAC address associated with this interface.
+	 *	It can be used to create a server ID.
+	 */
+	(void) fr_interface_to_ethernet(inst->interface, inst->ethernet);
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
