@@ -449,7 +449,7 @@ static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size
 	 *
 	 *	sequence / ack will be filled in by fr_channel_send_reply()
 	 */
-	reply->m.when = request->async->tracking.last_changed;
+	reply->m.when = now;
 	reply->reply.cpu_time = worker->tracking.running_total;
 	reply->reply.processing_time = request->async->tracking.running_total;
 	reply->reply.request_time = request->async->recv_time;
