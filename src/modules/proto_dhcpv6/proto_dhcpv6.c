@@ -407,7 +407,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		}
 	}
 
-
 	RHEXDUMP3(buffer, data_len, "proto_dhcpv6 encode packet");
 
 	request->reply->data_len = data_len;
