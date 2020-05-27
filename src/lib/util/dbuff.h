@@ -54,8 +54,9 @@ struct fr_dbuff_s {
 		uint8_t const *p_i;		//!< Immutable position pointer.
 		uint8_t *p;			//!< Mutable position pointer.
 	};
-	bool	is_const;			//!< The buffer this dbuff wraps is const.
-
+	bool		is_const;		//!< The buffer this dbuff wraps is const.
+	bool		adv_parent;		//!< Whether we advance the parent
+						///< of this dbuff.
 	fr_dbuff_t	*parent;
 };
 
@@ -66,7 +67,15 @@ struct fr_dbuff_s {
  *
  * @param[in] _dbuff	to make an ephemeral copy of.
  */
-#define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t[]){ *(_dbuff) }
+#define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t) \
+{ \
+	.start	= (_dbuff)->start, \
+	.end	= (_dbuff)->end, \
+	.p	= (_dbuff)-p, \
+	.is_const = (_dbuff)->is_const, \
+	.adv_parent = false, \
+	.parent = (_dbuff) \
+}
 
 /** Reserve N bytes in the dbuff when passing it to another function
  *
@@ -93,6 +102,7 @@ struct fr_dbuff_s {
 			(_dbuff)->p : \
 			(_dbuff)->end - (_reserve), \
 	.is_const = (_dbuff)->is_const, \
+	.adv_parent = true, \
 	.parent = (_dbuff) \
 }
 
@@ -254,7 +264,7 @@ static inline ssize_t _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 {
 	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
+	return dbuff->adv_parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 
 /** Advance position in dbuff by N bytes
@@ -295,9 +305,8 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	if (inlen > freespace) return -(inlen - freespace);
 
 	memcpy(dbuff->p, in, inlen);
-	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
+	return _fr_dbuff_advance(dbuff, inlen);
 }
 #define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
 
@@ -332,9 +341,8 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 	if (inlen > freespace) return -(inlen - freespace);
 
 	memset(dbuff->p, c, inlen);
-	dbuff->p += inlen;
 
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
+	return _fr_dbuff_advance(dbuff, inlen);
 }
 #define FR_DBUFF_MEMSET_RETURN(_dbuff, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff, _c, _inlen)
 
@@ -346,7 +354,7 @@ static inline ssize_t fr_dbuff_##_type##_in(fr_dbuff_t *dbuff, _type##_t num) \
 	if (sizeof(_type##_t) > freespace) return -(sizeof(_type##_t) - freespace); \
 	fr_net_from_##_type(dbuff->p, num); \
 	dbuff->p += sizeof(_type##_t); \
-	return dbuff->parent ? _fr_dbuff_advance(dbuff->parent, sizeof(_type##_t)) : ((ssize_t) sizeof(_type##_t)); \
+	return _fr_dbuff_advance(dbuff, sizeof(_type##_t)); \
 }
 FR_DBUFF_NUM_IN_FUNC(uint16)
 FR_DBUFF_NUM_IN_FUNC(uint32)
