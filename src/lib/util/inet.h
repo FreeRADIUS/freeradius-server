@@ -141,6 +141,7 @@ int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
 char	*fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr);
 int	fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, bool link_local);
 
+int	fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6]);
 /*
  *	Comparison
  */

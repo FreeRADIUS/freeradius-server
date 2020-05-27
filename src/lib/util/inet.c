@@ -34,6 +34,20 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+#  include <linux/if_packet.h>
+#  include <linux/if_ether.h>
+#endif
+
+#include <net/if_arp.h>
+
+/*
+ *	Apple, *BSD
+ */
+#ifndef __linux__
+#include <net/if_dl.h>
+#endif
+
 bool fr_reverse_lookups = false;		//!< IP -> hostname lookups?
 bool fr_hostname_lookups = true;		//!< hostname -> IP lookups?
 
@@ -1396,6 +1410,50 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 		}
 
 		*ipaddr = my_ipaddr;
+		rcode = 0;
+		break;
+	}
+
+	freeifaddrs(list);
+	return rcode;
+}
+
+/*
+ *	AF_PACKET on Linux
+ *	AF_LINK on BSD
+ */
+#ifndef AF_LINK
+#define AF_LINK AF_PACKET
+#endif
+
+int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
+{
+	struct ifaddrs *list = NULL;
+	struct ifaddrs *i;
+	int rcode = -1;
+
+	if (getifaddrs(&list) < 0) return -1;
+
+	for (i = list; i != NULL; i = i->ifa_next) {
+		if (!i->ifa_addr || !i->ifa_name || (i->ifa_addr->sa_family != AF_LINK)) continue;
+		if (strcmp(i->ifa_name, interface) != 0) continue;
+
+#ifdef __linux__
+		struct sockaddr_ll *ll;
+
+		ll = (struct sockaddr_ll *) i->ifa_addr;
+		if ((ll->sll_hatype != 1) || (ll->sll_halen != 6)) continue;
+
+		memcpy(ethernet, ll->sll_addr, 6);
+
+#else
+		struct sockaddr_dl *ll;
+
+		ll = (struct sockaddr_dl *) i->ifa_addr;
+		if (ll->sdl_alen != 6) continue;
+
+		memcpy(ethernet, LLADDR(ll), 6);
+#endif
 		rcode = 0;
 		break;
 	}
