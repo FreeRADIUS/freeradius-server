@@ -21,6 +21,40 @@ server dhcpv6 {
 	namespace = dhcpv6
 
 	#
+	#  all_dhcp_servers_and_relays:: Predefined multicast address
+	#  for DHCPv6 servers and relays.
+	#
+	#  This configuration item is here for convenience.  It alloss
+	#  each `listen` section below to use this definition, so that
+	#  those sections do not need to list magic numbers.
+	#
+	all_dhcp_servers_and_relays = FF02::1:2
+
+	#
+	#  interface:: Ethernet interface for DHCPv6.
+	#
+	#  DHCPv6 servers require multiple listeners, one for multicast
+	#  packets, and one for unicast packets.  Both listeners should
+	#  use the same interface.  So it is defined here once, and used
+	#  below.
+	#
+	interface = eth0
+
+	#
+	#  port:: The port where we accept packets.
+	#
+	#  DHCPv6 servers require multiple listeners, one for multicast
+	#  packets, and one for unicast packets.  Both listeners should
+	#  use the same interface.  So it is defined here once, and used
+	#  below.
+	#
+	#  The default DHCPv6 port is `547`.  We use `5470` here, so that
+	#  testing will not affect production systems.  This value should
+	#  be changed to `547` for production use.
+	#
+	port = 5470
+
+	#
 	#  ### The listen section
 	#
 	#  DHCPv6 relies on multicast packets to work.  We suggest
@@ -66,7 +100,7 @@ server dhcpv6 {
 			#  preferred.  When there is no IPv6 address
 			#  for a host name, an error will occur.
 			#
-			ipaddr = 2001:db8::
+			ipaddr = ${...all_dhcp_servers_and_relays}
 
 			#
 			#  port:: The port where we accept packets.
@@ -78,41 +112,94 @@ server dhcpv6 {
 			#   is configured below, the server may still
 			#   NAK legitimate responses from clients.
 			#
-			port = 5470
+			port = ${...port}
 
 			#
 			#  interface:: Interface where we receive packets.
 			#
-			#  Either an `interface` or a `ipaddr` MUST be
-			#  specified.  The use of multicast requires
-			#  that the server bind to a particular
-			#  interface.
-			#	
-			#  If not set, the server will try to
-			#  automatically determine the correct
-			#  interface from the `ipaddr` given above.
-#			interface = eth0
+			#  When a multicast address is used for `ipaddr` above,
+			#  and `interface` configuration MUST be given.
+			#
+			interface = ${...interface}
 
 			#
 			#  src_ipaddr:: The source IP address used for
 			#  unicast messages.
 			#
-			#  If not specified, it defaults to `ipaddr.
+			#  If a `src_ipaddr` is not specified, then
+			#  the server will try to choose one automatically:
+			#
+			#  * If `ipaddr` is unicast, then the server will use
+			#    that as `src_ipaddr`, too.
+			#
+			#  * If `ipaddr` is multicast, then the server will
+			#    look for the first "link local" address on the
+			#    `interface` defined above, and use that.
+			#
+			#  In most cases, you should not need to specify
+			#  `src_ipaddr`.
 			#
 #			src_ipaddr = ${ipaddr}
+		}
+	}
 
-			#  multicast:: Whether or not we listen on the
-			#  DHCPv6 multicast addresses.
+	#
+	#  ### The listen section
+	#
+	#  DHCPv6 relies on multicast packets to work.  We suggest
+	#  defining only one DHCPv6 "listen" per host machine.  This
+	#  suggestion is because all DHCPv6 listeners will receive all
+	#  DHCPv6 packets.
+	#
+	listen {
+		#
+		#  type:: The type of packet to accept.
+		#
+		#  Multiple types can be accepted by using multiple
+		#  lines of `type = ...`.
+		#
+		#  A listener which is using a unicast `ipaddr`
+		#  should not receive Solicit, Rebind, or Reconfirm
+		#  packets.  Those packets MUST be sent to a multicast
+		#  address.
+		#
+		type = Request
+
+		#
+		#  transport:: The transport protocol.
+		#
+		#  Only `udp` is allowed.
+		#
+		transport = udp
+
+		#
+		#  #### UDP Transport
+		#
+		#  When the `listen` section contains `transport =
+		#  udp`, it looks for a "udp" subsection.  This
+		#  subsection contains all of the configuration for
+		#  the UDP transport.
+		#
+		udp {
 			#
-			#  The actual multicast addresses used are
-			#  defined by the specifications, and are not
-			#  configurable.
+			#  ipaddr:: The IP address where we accept
+			#  packets.
 			#
-			#  DHCPv6 normally requires multicast.  However, we allow
-			#  multicast to be turned off when testing.  Multicast should
-			#  only be turned off when `port != 547`.
+			#  The address can be IPv6, or a host name.
+			#  If a host name is used, the IPv6 address is
+			#  preferred.  When there is no IPv6 address
+			#  for a host name, an error will occur.
 			#
-			multicast = no
+			#  If an `ipaddr` is not defined, then the
+			#  configuration MUST specify an `interface`.
+			#  The server will look for the first
+			#  "link local" address on that interface,
+			#  and use that as the value for `ipaddr`.
+			#
+#			ipaddr = 2001:db8::
+
+			port = ${...port}
+			interface = ${...interface}
 		}
 	}
 
