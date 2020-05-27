@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <ifaddrs.h>
 
 bool fr_reverse_lookups = false;		//!< IP -> hostname lookups?
 bool fr_hostname_lookups = true;		//!< hostname -> IP lookups?
