@@ -74,7 +74,6 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 {
 	int rcode = -1;
 	int modcode;
-	fr_value_box_t data;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
@@ -109,19 +108,21 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 	case TMPL_TYPE_XLAT_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	{
-		char *p;
+		char	*p;
+		ssize_t	slen;
 
 		if (!*vpt->name) return false;
-		rcode = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
-		if (rcode < 0) {
+
+		slen = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
+		if (slen < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
-		data.vb_strvalue = p;
-		rcode = (data.vb_strvalue && (*data.vb_strvalue != '\0'));
-		talloc_free(data.datum.ptr);
+		talloc_free(p);
+
+		if (slen == 0) return false;
 	}
-		break;
+		return true;
 
 	/*
 	 *	Can't have a bare ... (/foo/) ...
