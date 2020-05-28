@@ -72,7 +72,6 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -91,7 +90,6 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
-	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
@@ -240,44 +238,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		} else if ((vp->da == attr_packet_src_ip_address) ||
 			   (vp->da == attr_packet_src_ipv6_address)) {
 			memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
-		} else if (vp->da == attr_chap_password) {
-			int i, already_hex = 0;
-
-			/*
-			 *	If it's 17 octets, it *might* be already encoded.
-			 *	Or, it might just be a 17-character password (maybe UTF-8)
-			 *	Check it for non-printable characters.  The odds of ALL
-			 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
-			 *	or 1/(2^51), which is pretty much zero.
-			 */
-			if (vp->vp_length == 17) {
-				for (i = 0; i < 17; i++) {
-					if (vp->vp_octets[i] < 32) {
-						already_hex = 1;
-						break;
-					}
-				}
-			}
-
-			/*
-			 *	Allow the user to specify ASCII or hex CHAP-Password
-			 */
-			if (!already_hex) {
-				uint8_t *p;
-				size_t len, len2;
-
-				len = len2 = vp->vp_length;
-				if (len2 < 17) len2 = 17;
-
-				p = talloc_zero_array(vp, uint8_t, len2);
-
-				memcpy(p, vp->vp_strvalue, len);
-
-				fr_radius_encode_chap_password(p, request->packet, fr_rand() & 0xff,
-							       vp->vp_strvalue, vp->vp_length);
-				vp->vp_octets = p;
-				vp->vp_length = 17;
-			}
 		}
 	} /* loop over the VP's we read in */
 
