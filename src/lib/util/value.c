@@ -3175,9 +3175,9 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	 *	box after the cast has been completed,
 	 *	freeing any old buffers.
 	 */
-	fr_value_box_copy_shallow(ctx, &tmp, vb, false);
+	fr_value_box_copy_shallow(NULL, &tmp, vb);
 
-	if (fr_value_box_cast(vb, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
+	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
 
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
 
@@ -3387,20 +3387,17 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to copy value to.
  * @param[in] src	to copy value from.
- * @param[in] incr_ref	Increment the reference count on the src buffer.
- *			Only do this if you KNOW the src box/buffer was allocated by
- *			this thread and will only ever be used by this thread.
  */
-void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src, bool incr_ref)
+void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	switch (src->type) {
 	default:
-		fr_value_box_copy(ctx, dst, src);
+		fr_value_box_copy(NULL, dst, src);
 		break;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		dst->datum.ptr = ctx && incr_ref ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
+		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}

@@ -346,6 +346,14 @@ static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, 
 	}, sizeof(*vb));
 }
 
+/** Initialise an empty/null box that will be filled later
+ *
+ */
+static inline CC_HINT(always_inline) void fr_value_box_init_null(fr_value_box_t *vb)
+{
+	fr_value_box_init(vb, FR_TYPE_INVALID, NULL, false);
+}
+
 /** Allocate a value box of a specific type
  *
  * Allocates memory for the box, and sets the length of the value
@@ -594,7 +602,7 @@ void		fr_value_box_clear(fr_value_box_t *data);
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					  const fr_value_box_t *src, bool incr_ref);
+					  const fr_value_box_t *src);
 
 int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
 /** @} */
