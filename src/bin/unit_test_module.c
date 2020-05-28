@@ -59,6 +59,8 @@ char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_protocol;
 
+#define PROTOCOL_NAME unit_test_module_dict[1].proto
+
 extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
@@ -151,9 +153,9 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
 	 */
-	request->dict = fr_dict_by_protocol_name("radius");
+	request->dict = fr_dict_by_protocol_name(PROTOCOL_NAME);
 	if (!request->dict) {
-		ERROR("RADIUS dictionary failed to load");
+		ERROR("%s dictionary failed to load", PROTOCOL_NAME);
 		talloc_free(request);
 		return NULL;
 	}
@@ -685,7 +687,7 @@ int main(int argc, char *argv[])
 				fr_exit_now(EXIT_FAILURE);
 
 			case 'p':
-				unit_test_module_dict[0].proto = optarg;
+				PROTOCOL_NAME = optarg;
 				break;
 
 			case 'r':
@@ -836,7 +838,7 @@ int main(int argc, char *argv[])
 		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
 		cf_section_add(config->root_cs, server);
 
-		namespace = cf_pair_alloc(server, "namespace", "radius",
+		namespace = cf_pair_alloc(server, "namespace", PROTOCOL_NAME,
 					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(server, namespace);
 
