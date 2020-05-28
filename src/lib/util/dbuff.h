@@ -91,7 +91,6 @@ struct fr_dbuff_s {
 	.parent = (_dbuff) \
 }
 
-
 /** Reserve N bytes in the dbuff when passing it to another function
  *
  @code{.c}
@@ -306,11 +305,11 @@ do { \
  *
  * @note Do not call this function directly.
  */
-static inline ssize_t _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
+static inline ssize_t CC_HINT(nonnull) _fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 {
 	dbuff->p += inlen;
 
-	return dbuff->adv_parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
+	return dbuff->adv_parent && dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 
 /** Advance position in dbuff by N bytes
