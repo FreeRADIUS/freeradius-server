@@ -105,8 +105,8 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBU
 {
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	out->vb_strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
-	out->datum.length = talloc_array_length(out->vb_strvalue) - 1;
+	fr_value_box_asprintf(ctx, out, NULL, false, "FreeRADIUS %s", radiusd_version_short);
+
 	return 0;
 }
 
@@ -237,15 +237,11 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 			      NDEBUG_UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
 	RADCLIENT *client = snmp_ctx;
-	size_t len;
 
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	len = talloc_array_length(client->longname) - 1;
-
-	out->vb_strvalue = talloc_bstrndup(ctx, client->longname, len);
-	out->datum.length = len;
+	fr_value_box_bstrdup_buffer(ctx, out, NULL, client->longname, false);
 
 	return 0;
 }
