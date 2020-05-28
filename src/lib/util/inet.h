@@ -36,6 +36,25 @@ RCSIDH(inet_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Struct to represent an ethernet address
+ *
+ * This is needed to represent ethernet addresses correctly in
+ * _Generic macros.
+ */
+typedef struct {
+	uint8_t		addr[6];		//!< Ethernet address.
+} fr_ethernet_t;
+
+/** Struct to represent an interface id
+ *
+ * This is needed to represent an interface id correctly in
+ * _Generic macros.
+ */
+typedef struct {
+	uint8_t		addr[8];		//!< Interface ID.
+} fr_ifid_t;
+
 /** IPv4/6 prefix
  *
  * Abstraction around the standard in_addr/in6_addr structures to

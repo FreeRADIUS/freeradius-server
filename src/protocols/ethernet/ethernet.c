@@ -58,8 +58,8 @@ static ssize_t fr_ethernet_decode(void *proto_ctx, uint8_t const *data, size_t d
 		return 0;
 	}
 
-	memcpy(ether_ctx->dst_addr, ether_hdr->dst_addr, sizeof(ether_ctx->dst_addr));
-	memcpy(ether_ctx->src_addr, ether_hdr->src_addr, sizeof(ether_ctx->src_addr));
+	memcpy(ether_ctx->dst_addr.addr, ether_hdr->dst_addr, sizeof(ether_ctx->dst_addr));
+	memcpy(ether_ctx->src_addr.addr, ether_hdr->src_addr, sizeof(ether_ctx->src_addr));
 	ether_type = ntohs(ether_hdr->ether_type);
 
 	p -= sizeof(ether_hdr->ether_type);	/* reverse */
@@ -161,8 +161,8 @@ static ssize_t fr_ethernet_encode(void *proto_ctx, uint8_t *data, size_t data_le
 		return data - p;
 	}
 
-	memcpy(ether_hdr->dst_addr, ether_ctx->dst_addr, sizeof(ether_hdr->dst_addr));
-	memcpy(ether_hdr->src_addr, ether_ctx->src_addr, sizeof(ether_hdr->src_addr));
+	memcpy(ether_hdr->dst_addr, ether_ctx->dst_addr.addr, sizeof(ether_hdr->dst_addr));
+	memcpy(ether_hdr->src_addr, ether_ctx->src_addr.addr, sizeof(ether_hdr->src_addr));
 
 	/*
 	 *	Encode the SVLAN, CVLAN and ether type.
@@ -242,9 +242,9 @@ static void fr_ethernet_invert(void *proto_ctx)
 	/*
 	 *	VLANs stay the same, we just need to swap the mac addresses
 	 */
-	memcpy(tmp_addr, ether_ctx->dst_addr, sizeof(tmp_addr));
-	memcpy(ether_ctx->dst_addr, ether_ctx->src_addr, sizeof(ether_ctx->dst_addr));
-	memcpy(ether_ctx->src_addr, tmp_addr, sizeof(ether_ctx->src_addr));
+	memcpy(tmp_addr, ether_ctx->dst_addr.addr, sizeof(tmp_addr));
+	memcpy(&ether_ctx->dst_addr, &ether_ctx->src_addr, sizeof(ether_ctx->dst_addr));
+	memcpy(ether_ctx->src_addr.addr, tmp_addr, sizeof(ether_ctx->src_addr));
 }
 
 /** Retrieve an option value from the proto_ctx
@@ -301,10 +301,10 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			return 0;
 
 		case PROTO_OPT_L2_SRC_ADDRESS:
-			return fr_value_box_ethernet_addr(out, NULL, ether_ctx->src_addr, true);
+			return fr_value_box_ethernet_addr(out, NULL, &ether_ctx->src_addr, true);
 
 		case PROTO_OPT_L2_DST_ADDRESS:
-			return fr_value_box_ethernet_addr(out, NULL, ether_ctx->dst_addr, true);
+			return fr_value_box_ethernet_addr(out, NULL, &ether_ctx->dst_addr, true);
 
 		case PROTO_OPT_L2_NEXT_PROTOCOL:
 			return fr_value_box_shallow(out, ether_ctx->ether_type, true);
@@ -379,10 +379,10 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 			return 0;
 
 		case PROTO_OPT_L2_SRC_ADDRESS:
-			return fr_value_unbox_ethernet_addr(ether_ctx->src_addr, in);
+			return fr_value_unbox_ethernet_addr(&ether_ctx->src_addr, in);
 
 		case PROTO_OPT_L2_DST_ADDRESS:
-			return fr_value_unbox_ethernet_addr(ether_ctx->dst_addr, in);
+			return fr_value_unbox_ethernet_addr(&ether_ctx->dst_addr, in);
 
 		case PROTO_OPT_L2_NEXT_PROTOCOL:
 			return fr_value_unbox_shallow(&ether_ctx->ether_type, in);
