@@ -91,6 +91,10 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ NULL }
 };
 
+static fr_dict_enum_t const *access_request;
+static fr_dict_enum_t const *access_accept;
+static fr_dict_enum_t const *access_reject;
+
 /*
  *	Static functions.
  */
@@ -198,7 +202,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Set the defaults for IPs, etc.
 	 */
-	request->packet->code = FR_CODE_ACCESS_REQUEST;
+	request->packet->code = access_request->value->vb_uint32;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.prefix = 32;
@@ -259,7 +263,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	FIXME: set IPs, etc.
 	 */
-	request->packet->code = FR_CODE_ACCESS_REQUEST;
+	request->packet->code = access_request->value->vb_uint32;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.prefix = 32;
@@ -465,10 +469,10 @@ static void process(REQUEST *request)
 	 *	Simulate an authorize section
 	 */
 	fr_assert(request->server_cs != NULL);
-	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
+	unlang = cf_section_find(request->server_cs, "recv", access_request->name);
 	if (!unlang) {
-		REDEBUG("Failed to find 'recv Access-Request' section");
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		REDEBUG("Failed to find 'recv %s' section", access_request->name);
+		request->reply->code = access_reject->value->vb_uint32;
 		goto send_reply;
 	}
 
@@ -476,11 +480,11 @@ static void process(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = access_accept->value->vb_uint32;
 		break;
 
 	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = access_reject->value->vb_uint32;
 		goto send_reply;
 	}
 
@@ -492,11 +496,11 @@ static void process(REQUEST *request)
 
 	switch (vp->vp_int32) {
 	case FR_AUTH_TYPE_VALUE_ACCEPT:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = access_accept->value->vb_uint32;
 		goto send_reply;
 
 	case FR_AUTH_TYPE_VALUE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = access_reject->value->vb_uint32;
 		goto send_reply;
 
 	default:
@@ -508,7 +512,7 @@ static void process(REQUEST *request)
 	talloc_free(auth_type);
 	if (!unlang) {
 		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = access_reject->value->vb_uint32;
 		goto send_reply;
 	}
 
@@ -516,11 +520,11 @@ static void process(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = access_accept->value->vb_uint32;
 		break;
 
 	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = access_reject->value->vb_uint32;
 		break;
 	}
 
@@ -536,7 +540,7 @@ send_reply:
 		break;
 
 	case RLM_MODULE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = access_reject->value->vb_uint32;
 		break;
 	}
 }
@@ -787,6 +791,13 @@ int main(int argc, char *argv[])
 	if (log_global_init(&default_log, false) < 0) {
 		EXIT_WITH_FAILURE;
 	}
+
+	/*
+	 *	@todo - generalize these names for different protocols.
+	 */
+	access_request = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(FR_CODE_ACCESS_REQUEST));
+	access_accept = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(FR_CODE_ACCESS_ACCEPT));
+	access_reject = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(FR_CODE_ACCESS_REJECT));
 
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
 		EXIT_WITH_FAILURE;
