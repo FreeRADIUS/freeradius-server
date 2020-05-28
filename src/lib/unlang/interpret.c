@@ -119,29 +119,38 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 {
 	unlang_t const	*instruction = frame->instruction;
 	unlang_op_t	*op;
+	char const	*name;
 
 	op = &unlang_ops[instruction->type];
+	name = op->frame_state_name ? op->frame_state_name : __location__;
 
 	frame->interpret = op->interpret;
 	frame->signal = op->signal;
 
-	/*
-	 *	The frame needs to track state.  Do so here.
-	 */
-	if (op->frame_state_size) {
-		char const *name = op->frame_state_name ? op->frame_state_name : __location__;
-
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
-		if (op->frame_state_pool_size) {
-			MEM(frame->state = _talloc_zero_pooled_object(stack,
-								      op->frame_state_size, name,
-								      op->frame_state_pool_objects,
-								      op->frame_state_pool_size));
-		}
+	/*
+	 *	Pooled object
+	 */
+	if (op->frame_state_pool_size && op->frame_state_size) {
+		MEM(frame->state = _talloc_zero_pooled_object(stack,
+							      op->frame_state_size, name,
+							      op->frame_state_pool_objects,
+							      op->frame_state_pool_size));
+	} else
 #endif
-		else {
-			MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
-		}
+	/*
+	 *	Pool
+	 */
+	if (op->frame_state_pool_size && !op->frame_state_size) {
+		MEM(frame->state = talloc_pool(stack,
+					       op->frame_state_pool_size +
+					       ((20 + 68 + 15) * op->frame_state_pool_objects))); /* from samba talloc.c */
+		talloc_set_name_const(frame->state, name);
+	/*
+	 *	Object
+	 */
+	} else if (op->frame_state_size) {
+		MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
 	}
 }
 
