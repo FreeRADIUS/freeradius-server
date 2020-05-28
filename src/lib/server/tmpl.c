@@ -2057,7 +2057,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	VALUE_PAIR		*vp = NULL;
 
-	fr_type_t		src_type = FR_TYPE_STRING;
+	fr_type_t		src_type;
 
 	ssize_t			slen = -1;	/* quiet compiler */
 
@@ -2066,14 +2066,11 @@ ssize_t _tmpl_to_type(void *out,
 	fr_assert(!tmpl_is_list(vpt));
 	fr_assert(!buff || (bufflen >= 2));
 
-	memset(&value_to_cast, 0, sizeof(value_to_cast));
-	memset(&value_from_cast, 0, sizeof(value_from_cast));
-
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL UNPARSED");
-		value_to_cast.vb_strvalue = vpt->name;
-		value_to_cast.datum.length = vpt->len;
+		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, vpt->name, vpt->len, false);
+		src_type = FR_TYPE_STRING;
 		break;
 
 	case TMPL_TYPE_EXEC:
@@ -2086,12 +2083,15 @@ ssize_t _tmpl_to_type(void *out,
 
 		if (radius_exec_program(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) return -1;
-		value_to_cast.vb_strvalue = (char *)buff;
-		value_to_cast.datum.length = strlen((char *)buff);
+		fr_value_box_strdup_shallow(&value_to_cast, NULL, (char *)buff, true);
+		src_type = FR_TYPE_STRING;
 	}
 		break;
 
 	case TMPL_TYPE_XLAT_UNPARSED:
+	{
+		size_t len;
+
 		RDEBUG4("EXPAND TMPL XLAT");
 		if (!buff) {
 			fr_strerror_printf("Missing expansion buffer for XLAT");
@@ -2107,12 +2107,17 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		value_to_cast.datum.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
-		value_to_cast.vb_strvalue = (char *)buff;
+		len = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
+		src_type = FR_TYPE_STRING;
+	}
 		break;
 
 	case TMPL_TYPE_XLAT:
-		RDEBUG4("EXPAND TMPL XLAT STRUCT");
+	{
+		size_t len;
+
+		RDEBUG4("EXPAND TMPL XLAT PARSED");
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 		if (!buff) {
 			fr_strerror_printf("Missing expansion buffer for XLAT_STRUCT");
@@ -2130,9 +2135,10 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		value_to_cast.datum.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
-		value_to_cast.vb_strvalue = (char *)buff;
-
+		len = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
+		src_type = FR_TYPE_STRING;
+	}
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -2202,16 +2208,17 @@ ssize_t _tmpl_to_type(void *out,
 				fr_strerror_printf("Missing expansion buffer for octet->string cast");
 				return -1;
 			}
-			if (bufflen <= to_cast->datum.length) {
+			if (bufflen <= to_cast->vb_length) {
 				fr_strerror_printf("Expansion buffer too small.  "
 						   "Have %zu bytes, need %zu bytes", bufflen,
-						   to_cast->datum.length + 1);
+						   to_cast->vb_length + 1);
 				return -1;
 			}
-			memcpy(buff, to_cast->vb_octets, to_cast->datum.length);
-			buff[to_cast->datum.length] = '\0';
-			value_from_cast.vb_strvalue = (char *)buff;
-			value_from_cast.datum.length = to_cast->datum.length;
+			memcpy(buff, to_cast->vb_octets, to_cast->vb_length);
+			buff[to_cast->vb_length] = '\0';
+
+			fr_value_box_bstrndup_shallow(&value_from_cast, NULL,
+						      (char *)buff, to_cast->vb_length, true);
 			break;
 
 		/*
@@ -2263,15 +2270,17 @@ ssize_t _tmpl_to_type(void *out,
 				talloc_free(ctx);
 				return -1;
 			}
-			if (from_cast->datum.length >= bufflen) {
+			if (from_cast->vb_length >= bufflen) {
 				fr_strerror_printf("Expansion buffer too small.  "
 						   "Have %zu bytes, need %zu bytes", bufflen,
-						   from_cast->datum.length + 1);
+						   from_cast->vb_length + 1);
 				goto error;
 			}
-			memcpy(buff, from_cast->vb_strvalue, from_cast->datum.length);
-			buff[from_cast->datum.length] = '\0';
-			value_from_cast.vb_strvalue = (char *)buff;
+			memcpy(buff, from_cast->vb_strvalue, from_cast->vb_length);
+			buff[from_cast->vb_length] = '\0';
+
+			fr_value_box_bstrndup_shallow(&value_from_cast, NULL,
+						      (char *)buff, from_cast->vb_length, from_cast->tainted);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -2279,13 +2288,14 @@ ssize_t _tmpl_to_type(void *out,
 				fr_strerror_printf("Missing expansion buffer to store cast output");
 				goto error;
 			}
-			if (from_cast->datum.length > bufflen) {
+			if (from_cast->vb_length > bufflen) {
 				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->datum.length);
+						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->vb_length);
 				goto error;
 			}
-			memcpy(buff, from_cast->vb_octets, from_cast->datum.length);
-			value_from_cast.vb_octets = buff;
+			memcpy(buff, from_cast->vb_octets, from_cast->vb_length);
+			fr_value_box_memdup_shallow(&value_from_cast, NULL,
+						    buff, from_cast->vb_length, from_cast->tainted);
 			break;
 
 		default:
@@ -2301,7 +2311,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	memcpy(out, ((uint8_t const *) from_cast) + fr_value_box_offsets[dst_type], fr_value_box_field_sizes[dst_type]);
 
-	return from_cast->datum.length;
+	return from_cast->vb_length;
 }
 
 /** Expand a template to a string, allocing a new buffer to hold the string
