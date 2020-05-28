@@ -231,7 +231,7 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 *	Groups are special.
 	 */
 	if (n->da->type == FR_TYPE_GROUP) {
-		if (fr_pair_list_copy(n, (VALUE_PAIR **) &n->vp_ptr, vp->vp_ptr) < 0) {
+		if (fr_pair_list_copy(n, &n->vp_group, vp->vp_ptr) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
