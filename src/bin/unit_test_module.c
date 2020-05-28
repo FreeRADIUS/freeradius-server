@@ -29,11 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/state.h>
-
-#include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/radius/radius.h>
-
 #include <freeradius-devel/util/rand.h>
 
 #include <freeradius-devel/tls/base.h>
@@ -62,12 +57,12 @@ static bool filedone = false;
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_protocol;
 
 extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_protocol, .proto = "radius" }, /* hacked in-place with '-p protocol' */
 	{ NULL }
 };
 
@@ -89,8 +84,8 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
 
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -192,7 +187,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, dict_radius, &request->packet->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->packet->vps, fp, &filedone) < 0) {
 		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
@@ -689,6 +684,10 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Unknown option '%s'\n", optarg);
 				fr_exit_now(EXIT_FAILURE);
 
+			case 'p':
+				unit_test_module_dict[0].proto = optarg;
+				break;
+
 			case 'r':
 				receipt_file = optarg;
 				break;
@@ -946,7 +945,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request, dict_radius, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request, dict_protocol, &filter_vps, fp, &filedone) < 0) {
 			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
@@ -1087,6 +1086,9 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -i <file>          File containing request attributes.\n");
 	fprintf(output, "  -m                 On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n <name>          Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -o <file>          Output file for the reply.\n");
+	fprintf(output, "  -p <radius|...>    Define which protocol namespace is used to read the file\n");
+	fprintf(output, "                     Use radius, dhcpv4, or dhcpv6\n");
 	fprintf(output, "  -X                 Turn on full debugging.\n");
 	fprintf(output, "  -x                 Turn on additional debugging. (-xx gives more debugging).\n");
 	fprintf(output, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
