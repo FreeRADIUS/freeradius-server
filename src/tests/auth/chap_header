@@ -5,3 +5,10 @@ update control {
 	&Cleartext-Password -= 'hello'
 	&Password-With-Header := 'oracle01'
 }
+
+#
+#  Set CHAP-Password
+#
+update request {
+	&CHAP-Password := "%{chap_password:%{request:CHAP-Password}}"
+}

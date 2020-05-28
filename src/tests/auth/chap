@@ -1,3 +1,10 @@
 #
 #  Password is already set in radiusd.conf
 #
+
+#
+#  Set CHAP-Password
+#
+update request {
+	&CHAP-Password := "%{chap_password:%{request:CHAP-Password}}"
+}
