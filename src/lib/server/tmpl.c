@@ -1851,9 +1851,6 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
  * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNPARSED to a #TMPL_TYPE_DATA of a
  *  specified #fr_type_t.
  *
- * #tmpl_cast_in_place_str does the same as #tmpl_cast_in_place, but will always convert to
- * #fr_type_t #FR_TYPE_STRING.
- *
  * #tmpl_cast_to_vp does the same as #tmpl_cast_in_place, but outputs a #VALUE_PAIR.
  *
  * #tmpl_define_unknown_attr converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
@@ -1913,82 +1910,6 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 	TMPL_VERIFY(vpt);
 
-	return 0;
-}
-
-/** Convert #vp_tmpl_t of type #TMPL_TYPE_UNPARSED to #TMPL_TYPE_DATA of type #FR_TYPE_STRING
- *
- * @note Conversion is done in place.
- *
- * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_UNPARSED.
- */
-void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
-{
-	fr_assert(vpt != NULL);
-	fr_assert(tmpl_is_unparsed(vpt));
-
-	vpt->type = TMPL_TYPE_DATA;
-
-	fr_value_box_strdup(vpt, &vpt->data.literal, NULL, vpt->name, false);
-}
-
-/** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
- *
- * @note Like #tmpl_expand, but produces a #VALUE_PAIR.
- *
- * @param out Where to write pointer to the new #VALUE_PAIR.
- * @param request The current #REQUEST.
- * @param vpt to cast. Must be one of the following types:
- *	- #TMPL_TYPE_UNPARSED
- *	- #TMPL_TYPE_EXEC
- *	- #TMPL_TYPE_XLAT_UNPARSED
- *	- #TMPL_TYPE_XLAT
- *	- #TMPL_TYPE_ATTR
- *	- #TMPL_TYPE_DATA
- * @param cast type of #VALUE_PAIR to create.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-		    vp_tmpl_t const *vpt, fr_dict_attr_t const *cast)
-{
-	int		rcode;
-	VALUE_PAIR	*vp;
-	char		*p;
-
-	TMPL_VERIFY(vpt);
-
-	*out = NULL;
-
-	MEM(vp = fr_pair_afrom_da(request, cast));
-	if (tmpl_is_data(vpt)) {
-		VP_VERIFY(vp);
-		fr_assert(vp->vp_type == tmpl_value_type(vpt));
-
-		fr_value_box_copy(vp, &vp->data, tmpl_value(vpt));
-		*out = vp;
-		return 0;
-	}
-
-	rcode = tmpl_aexpand(vp, &p, request, vpt, NULL, NULL);
-	if (rcode < 0) {
-		fr_pair_list_free(&vp);
-		return rcode;
-	}
-
-	/*
-	 *	New escapes: strings are in binary form.
-	 */
-	if (vp->vp_type == FR_TYPE_STRING) {
-		fr_pair_value_strdup(vp, p);
-	} else if (fr_pair_value_from_str(vp, p, rcode, '\0', false) < 0) {
-		talloc_free(p);
-		fr_pair_list_free(&vp);
-		return -1;
-	}
-
-	*out = vp;
 	return 0;
 }
 

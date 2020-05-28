@@ -656,11 +656,6 @@ ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, siz
 
 int			tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
-void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
-
-int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-					vp_tmpl_t const *vpt, fr_dict_attr_t const *cast);
-
 size_t			tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt);
 
 size_t			tmpl_snprint(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt);
