@@ -827,33 +827,6 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Setup dummy virtual server
-	 */
-	{
-		CONF_SECTION	*server;
-		CONF_PAIR	*namespace;
-		fr_dict_t	*ns_dict;
-		fr_dict_t	**dict_p;
-
-		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
-		cf_section_add(config->root_cs, server);
-
-		namespace = cf_pair_alloc(server, "namespace", PROTOCOL_NAME,
-					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(server, namespace);
-
-		if (fr_dict_protocol_afrom_file(&ns_dict, cf_pair_value(namespace), NULL) < 0) {
-			cf_log_perr(server, "Failed initialising namespace \"%s\"", cf_pair_value(namespace));
-			return -1;
-		}
-
-		dict_p = talloc_zero(NULL, fr_dict_t *);
-		*dict_p = ns_dict;
-
-		cf_data_add(server, dict_p, "dictionary", true);
-	}
-
-	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
 	if (unlang_init() < 0) return -1;
