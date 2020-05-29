@@ -71,7 +71,7 @@ struct fr_dbuff_s {
 { \
 	.start	= (_dbuff)->start, \
 	.end	= (_dbuff)->end, \
-	.p	= (_dbuff)-p, \
+	.p	= (_dbuff)->p, \
 	.is_const = (_dbuff)->is_const, \
 	.adv_parent = false, \
 	.parent = (_dbuff) \
