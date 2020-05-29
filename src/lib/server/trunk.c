@@ -683,9 +683,8 @@ do { \
 	int _ret; \
 	if ((fr_heap_num_elements((_tconn)->pub.trunk->active) == 1)) break; \
 	if (!fr_cond_assert((_tconn)->pub.state == FR_TRUNK_CONN_ACTIVE)) break; \
-	if (!fr_cond_assert((_tconn)->heap_id >= 0)) break; \
 	_ret = fr_heap_extract((_tconn)->pub.trunk->active, (_tconn)); \
-	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) break; \
+	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) break; \	/* Will also error out if heap_id is bad - no need for assert */
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
