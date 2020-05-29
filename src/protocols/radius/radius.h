@@ -112,6 +112,10 @@ ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *ori
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps) CC_HINT(nonnull(1,2,5,7));
 
+uint32_t	fr_radius_client_reply_ok(uint32_t code);
+
+uint32_t	fr_radius_client_reply_fail(uint32_t code);
+
 int		fr_radius_init(void);
 
 void		fr_radius_free(void);
