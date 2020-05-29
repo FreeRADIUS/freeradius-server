@@ -833,6 +833,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 		switch (updates[i].op) {
 		default:
 		case FR_EVENT_OP_SUSPEND:
+			fr_assert(ef->armour == 0); /* can't suspect protected FDs */
 			memcpy((uint8_t *)&ef->stored + updates[i].offset,
 			       (uint8_t *)&ef->active + updates[i].offset, sizeof(fr_event_fd_cb_t));
 			memset((uint8_t *)&ef->active + updates[i].offset, 0, sizeof(fr_event_fd_cb_t));
@@ -988,6 +989,8 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 		 *	consistent state.
 		 */
 		memcpy(&active, &ef->active, sizeof(ef->active));
+
+		fr_assert((ef->armour == 0) || ef->active.io.read);
 
 		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
 		if (count < 0) {
@@ -1754,6 +1757,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		ts_wake = &ts_when;
 	} else {
 		ts_wake = NULL;
+		fr_assert(rbtree_num_elements(el->fds) > 0); /* otherwise kqueue waits forever */
 	}
 
 	/*
