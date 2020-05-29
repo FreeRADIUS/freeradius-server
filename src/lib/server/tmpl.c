@@ -2057,7 +2057,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	VALUE_PAIR		*vp = NULL;
 
-	fr_type_t		src_type;
+	fr_type_t		src_type = FR_TYPE_INVALID;
 
 	ssize_t			slen = -1;	/* quiet compiler */
 
