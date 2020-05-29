@@ -1256,62 +1256,59 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	return true;
 }
 
-/** Get the "ok" packet type code
+/** Get the "ok / fail" packet type code
+ *
+ *  This function is only used by unit_test_module.
+ *  When it runs "unlang", it needs set a reply packet
+ *  type.  This packet type depends both on the request
+ *  packet type, and on whether unlang returned ok / fail.
  *
  * @param code 	request packet type
+ * @param ok 	true for "ok", false for "fail"
  * @return the code used to indicate an "ok" or "ack" packet.
  *
  */
-uint32_t fr_radius_client_reply_ok(uint32_t code)
+uint32_t fr_radius_client_reply(uint32_t code, bool ok)
 {
-	switch (code) {
-	case FR_CODE_ACCESS_REQUEST:
-		return FR_CODE_ACCESS_ACCEPT;
+	if (ok) {
+		switch (code) {
+		case FR_CODE_ACCESS_REQUEST:
+			return FR_CODE_ACCESS_ACCEPT;
 
-	case FR_CODE_ACCOUNTING_REQUEST:
-		return FR_CODE_ACCOUNTING_RESPONSE;
+		case FR_CODE_ACCOUNTING_REQUEST:
+			return FR_CODE_ACCOUNTING_RESPONSE;
 
-	case FR_CODE_COA_REQUEST:
-		return FR_CODE_COA_ACK;
+		case FR_CODE_COA_REQUEST:
+			return FR_CODE_COA_ACK;
 
-	case FR_CODE_DISCONNECT_REQUEST:
-		return FR_CODE_DISCONNECT_ACK;
+		case FR_CODE_DISCONNECT_REQUEST:
+			return FR_CODE_DISCONNECT_ACK;
 
-	default:
-		break;
+		default:
+			break;
+		}
+	} else {
+		switch (code) {
+		case FR_CODE_ACCESS_REQUEST:
+			return FR_CODE_ACCESS_REJECT;
+
+		case FR_CODE_ACCOUNTING_REQUEST:
+			return FR_CODE_ACCOUNTING_RESPONSE;
+
+		case FR_CODE_COA_REQUEST:
+			return FR_CODE_COA_NAK;
+
+		case FR_CODE_DISCONNECT_REQUEST:
+			return FR_CODE_DISCONNECT_NAK;
+
+		default:
+			break;
+		}
 	}
 
 	return 0;
 }
 
-
-/** Get the "fail" packet type code
- *
- * @param code 	request packet type
- * @return the code used to indicate a "fail" or "nak" packet.
- *
- */
-uint32_t fr_radius_client_reply_fail(uint32_t code)
-{
-	switch (code) {
-	case FR_CODE_ACCESS_REQUEST:
-		return FR_CODE_ACCESS_REJECT;
-
-	case FR_CODE_ACCOUNTING_REQUEST:
-		return FR_CODE_ACCOUNTING_RESPONSE;
-
-	case FR_CODE_COA_REQUEST:
-		return FR_CODE_COA_NAK;
-
-	case FR_CODE_DISCONNECT_REQUEST:
-		return FR_CODE_DISCONNECT_NAK;
-
-	default:
-		break;
-	}
-
-	return 0;
-}
 
 extern fr_dict_protocol_t libfreeradius_radius_dict_protocol;
 fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
