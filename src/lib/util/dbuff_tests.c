@@ -1,7 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 
 #include "dbuff.h"
-#include <string.h>
 
 
 //#include <gperftools/profiler.h>
@@ -220,6 +219,26 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+static void test_dbuff_no_advance(void)
+{
+	uint8_t 	in[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+	fr_dbuff_t	dbuff;
+	fr_dbuff_t	no_advance_dbuff;
+	size_t		init_remaining;
+
+	TEST_CASE("Confirm no-advance dbuff operations don't affect ancestors' position");
+	fr_dbuff_init(&dbuff, in, sizeof(in));
+
+	no_advance_dbuff = FR_DBUFF_NO_ADVANCE(&dbuff);
+	init_remaining = fr_dbuff_remaining(&dbuff);
+	fr_dbuff_bytes_in(&no_advance_dbuff, 0x11, 0x12, 0x13);
+	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
+	fr_dbuff_advance(&no_advance_dbuff, 2);
+	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
+	fr_dbuff_end(&no_advance_dbuff);
+	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
+}
+
 static void test_dbuff_move(void)
 {
 	uint8_t			buff1[26], buff2[26], buff3[10];
@@ -377,6 +396,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_no_advance",		test_dbuff_no_advance },
 	{ "fr_dbuff_move",				test_dbuff_move },
 	{ "fr_dbuff_talloc_extend",			test_dbuff_talloc_extend },
 	{ "fr_dbuff_talloc_extend_multi_level",		test_dbuff_talloc_extend_multi_level },
