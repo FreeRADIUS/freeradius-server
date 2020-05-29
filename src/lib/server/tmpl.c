@@ -2051,7 +2051,7 @@ ssize_t _tmpl_to_type(void *out,
 		      fr_type_t dst_type)
 {
 	fr_value_box_t		value_to_cast;
-	fr_value_box_t		value_from_cast;
+	fr_value_box_t		value_from_cast = { .type = FR_TYPE_INVALID };
 	fr_value_box_t const	*to_cast = &value_to_cast;
 	fr_value_box_t const	*from_cast = &value_from_cast;
 
