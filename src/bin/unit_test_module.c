@@ -91,9 +91,12 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ NULL }
 };
 
+
+typedef uint32_t (*fr_client_get_reply_t)(uint32_t code, bool ok);
+
 static uint32_t access_request;
-static uint32_t access_accept;
-static uint32_t access_reject;
+
+static fr_client_get_reply_t get_reply;
 
 /*
  *	Static functions.
@@ -242,6 +245,14 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		}
 	} /* loop over the VP's we read in */
 
+	/*
+	 *	"0" is uniformly the "bad packet" type.
+	 */
+	if (!request->packet->code) {
+		fr_strerror_printf("No 'Packet-Type' was found in the request list.  Cannot send unknown packet");
+		return NULL;
+	}
+
 	if (fr_debug_lvl) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
@@ -259,21 +270,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 		}
 	}
-
-	/*
-	 *	FIXME: set IPs, etc.
-	 */
-	request->packet->code = access_request;
-
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.prefix = 32;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->src_port = 18120;
-
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.prefix = 32;
-	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->dst_port = 1812;
 
 	/*
 	 *	Build the reply template from the request.
@@ -476,7 +472,7 @@ static void process(REQUEST *request)
 	unlang = cf_section_find(request->server_cs, "recv", dv->name);
 	if (!unlang) {
 		REDEBUG("Failed to find 'recv %s' section", dv->name);
-		request->reply->code = access_reject;
+		request->reply->code = get_reply(request->packet->code, false);
 		goto send_reply;
 	}
 
@@ -484,52 +480,54 @@ static void process(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOOP:
-		request->reply->code = access_accept;
+		request->reply->code = get_reply(request->packet->code, true);
 		break;
 
 	default:
-		request->reply->code = access_reject;
+		request->reply->code = get_reply(request->packet->code, false);
 		goto send_reply;
 	}
 
 	/*
-	 *	Simulate an authenticate section
+	 *	Simulate an authenticate section, but only for RADIUS.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
-	if (!vp) return;
+	if (strcmp(PROTOCOL_NAME, "radius") == 0) {
+		vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
+		if (!vp) goto send_reply;
 
-	switch (vp->vp_int32) {
-	case FR_AUTH_TYPE_VALUE_ACCEPT:
-		request->reply->code = access_accept;
-		goto send_reply;
+		switch (vp->vp_int32) {
+		case FR_AUTH_TYPE_VALUE_ACCEPT:
+			request->reply->code = get_reply(request->packet->code, true);
+			goto send_reply;
 
-	case FR_AUTH_TYPE_VALUE_REJECT:
-		request->reply->code = access_reject;
-		goto send_reply;
+		case FR_AUTH_TYPE_VALUE_REJECT:
+			request->reply->code = get_reply(request->packet->code, false);
+			goto send_reply;
 
-	default:
-		break;
-	}
+		default:
+			break;
+		}
 
-	auth_type = fr_pair_value_asprint(vp, vp, '\0');
-	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
-	talloc_free(auth_type);
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
-		request->reply->code = access_reject;
-		goto send_reply;
-	}
+		auth_type = fr_pair_value_asprint(vp, vp, '\0');
+		unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
+		talloc_free(auth_type);
+		if (!unlang) {
+			REDEBUG("Failed to find 'authenticate %pV' section", &vp->data);
+			request->reply->code = get_reply(request->packet->code, false);
+			goto send_reply;
+		}
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = access_accept;
-		break;
+		switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_NOOP:
+			request->reply->code = get_reply(request->packet->code, true);
+			break;
 
-	default:
-		request->reply->code = access_reject;
-		break;
+		default:
+			request->reply->code = get_reply(request->packet->code, false);
+			break;
+		}
 	}
 
 send_reply:
@@ -544,7 +542,7 @@ send_reply:
 		break;
 
 	case RLM_MODULE_REJECT:
-		request->reply->code = access_reject;
+		request->reply->code = get_reply(request->packet->code, false);
 		break;
 	}
 }
@@ -594,6 +592,9 @@ int main(int argc, char *argv[])
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
+	dl_loader_t		*dl_loader;
+	dl_t			*dl;
+	char			buffer[64];
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -796,12 +797,24 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	/*
-	 *	@todo - generalize these names for different protocols.
-	 */
-	access_request = FR_CODE_ACCESS_REQUEST;
-	access_accept = FR_CODE_ACCESS_ACCEPT;
-	access_reject = FR_CODE_ACCESS_REJECT;
+	if (strcmp(PROTOCOL_NAME, "radius") == 0) {
+		access_request = FR_CODE_ACCESS_REQUEST;
+	} else {
+		access_request = 0;
+	}
+
+	dl_loader = dl_loader_from_module_loader(dl_modules);
+	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", PROTOCOL_NAME);
+	dl = dl_by_name(dl_loader, buffer, NULL, false);
+
+	if (dl) {
+		snprintf(buffer, sizeof(buffer), "fr_%s_client_reply", PROTOCOL_NAME);
+		get_reply = dlsym(dl->handle, buffer);
+		if (!get_reply) {
+			ERROR("Failed resolving function to verify client replies");
+			EXIT_WITH_FAILURE;
+		}
+	}
 
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
 		EXIT_WITH_FAILURE;
