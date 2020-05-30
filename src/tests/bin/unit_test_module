@@ -3,3 +3,16 @@
 . src/tests/bin/lib.sh
 
 do_test $TESTBIN/unit_test_module -h
+
+do_test $TESTBIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
+User-Name = bob
+
+Packet-Type = Access-Accept
+EOF
+
+do_test $TESTBIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
+Packet-Type = CoA-Request,
+User-Name = bob
+
+Packet-Type = CoA-ACK
+EOF
