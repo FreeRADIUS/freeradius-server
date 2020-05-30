@@ -1,47 +1,82 @@
-#  Configuration for DHCP to use SQL IP Pools.
+#  Configuration for DHCP for the SQL based IP Pools module (rlm_sqlippool).
 #
 #  See raddb/mods-available/sqlippool for common configuration explanation
 #
 #  See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
 #  the RADIUS based "sqlippool" module to be used for DHCP.
 #
-#  See raddb/mods-config/sql/ippool/ for the schemas.
-#
 #  See raddb/sites-available/dhcp for instructions on how to configure
 #  the DHCP server.
+#
+#  The database schemas are available at:
+#
+#       raddb/sql/ippool-dhcp/<DB>/schema.sql
 #
 #  $Id$
 
 sqlippool dhcp_sqlippool {
+	# SQL instance to use (from mods-available/sql)
+	#
+	#  If you have multiple sql instances, such as "sql sql1 {...}",
+	#  use the *instance* name here: sql1.
 	sql_module_instance = "sql"
 
-	ippool_table = "radippool"
+	#  This is duplicative of info available in the SQL module, but
+	#  we have to list it here as we do not yet support nested
+	#  reference expansions.
+	dialect = "mysql"
 
 	# Name of the check item attribute to be used as a key in the SQL queries
 	pool_name = "Pool-Name"
 
+	# SQL table to use for ippool range and lease info
+	ippool_table = "radippool"
+
+	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
 	lease_duration = 7200
+
+	#
+	# Timeout between each consecutive 'allocate_clear' queries (default: 1s)
+	# This will avoid having too many deadlock issues, especially on MySQL backend.
+	#
+	allocate_clear_timeout = 1
+
+	#  Assign the IP address, even if the Framed-IP-Address attribute
+	#  already exists in the reply.
+	#
+#	allow_duplicates = no
 
 	# Client's MAC address is mapped to Calling-Station-Id in policy.conf
 	pool_key = "%{Calling-Station-Id}"
 
-	# For now, it works with MySQL.
-	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
+	################################################################
+	#
+	#  WARNING: MySQL (MyISAM) has certain limitations that means it can
+	#           hand out the same IP address to 2 different users.
+	#
+	#           We suggest using an SQL DB with proper transaction
+	#           support, such as PostgreSQL, or using MySQL
+	#	     with InnoDB.
+	#
+	################################################################
 
-	# It may also work with sqlite - this is very experimental.
-	# Comment out the above line and add the following include.
-	# To use sqlite you need to add '%' to safe_characters in
-	# raddb/mods-config/sql/main/sqlite/queries.conf.
-	# $INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
+	#  These messages are added to the "control" items, as
+	#  Module-Success-Message.  They are not logged anywhere else,
+	#  unlike previous versions.  If you want to have them logged
+	#  to a file, see the "linelog" module, and create an entry
+	#  which writes Module-Success-Message message.
+	#
+	messages {
+		exists = "DHCP: Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_exists = "DHCP: Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "DHCP: Allocated IP: %{reply:${..attribute_name}} from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_success = "DHCP: Allocated IP: %{reply:Framed-IP-Address} from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		clear = "DHCP: Released IP ${..attribute_name} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
-	sqlippool_log_clear = "DHCP: Released IP %{Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+		failed = "DHCP: IP Allocation FAILED from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		nopool = "DHCP: No ${..pool_name} defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	}
 
-	sqlippool_log_nopool = "DHCP: No ${..pool_name} defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
+	$INCLUDE ${modconfdir}/sql/ippool-dhcp/${dialect}/queries.conf
 }
