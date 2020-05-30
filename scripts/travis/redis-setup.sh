@@ -28,8 +28,8 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
 fi
 
 # Fix hardcoded paths in the test script
-sed -ie "s#../../src/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
-sed -ie "s#../../src/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
+sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
+sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
 # Again, not needed by travis, but useful for local testing
 if [ -z "$1" ]; then
