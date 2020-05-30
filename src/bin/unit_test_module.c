@@ -648,7 +648,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:r:xX")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:p:r:xX")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
