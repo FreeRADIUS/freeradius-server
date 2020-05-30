@@ -154,6 +154,7 @@ ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *origina
 int		fr_dhcpv4_global_init(void);
 void		fr_dhcpv4_global_free(void);
 void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
+uint32_t	fr_dhcpv4_client_reply(uint32_t code, bool ok);
 
 /*
  *	decode.c
