@@ -188,8 +188,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->server_cs = virtual_server_find(PROTOCOL_NAME);
-	if (!request->server_cs) request->server_cs = virtual_server_find("default");
+	request->server_cs = virtual_server_find("default");
 	fr_assert(request->server_cs != NULL);
 
 	request->config = main_config;
@@ -305,13 +304,15 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
 	fr_cursor_t cursor;
+	fr_dict_enum_t *dv;
 
 	if (!packet) {
 		fprintf(fp, "\n");
 		return;
 	}
 
-	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
+	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
+	if (dv) fprintf(fp, "%s\n", dv->name);
 
 	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
@@ -585,6 +586,7 @@ int main(int argc, char *argv[])
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
 	fr_dict_t		*dict = NULL;
+	fr_dict_t const		*dict_check;
 	char const 		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree;
@@ -844,8 +846,7 @@ int main(int argc, char *argv[])
 		char const	*ip_str = "127.0.0.1";
 
 		if (fr_inet_pton(&ip, ip_str, strlen(ip_str), AF_UNSPEC, false, true) < 0) {
-			ret = EXIT_FAILURE;
-			goto cleanup;
+			EXIT_WITH_FAILURE;
 		}
 
 		client = client_find(NULL, &ip, IPPROTO_IP);
@@ -861,6 +862,20 @@ int main(int argc, char *argv[])
 	if (unlang_init() < 0) return -1;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+
+	if (!virtual_server_find("default")) {
+		ERROR("Cannot find virtual server 'default'");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
+	 *	Do some sanity checking.
+	 */
+	dict_check = virtual_server_namespace("default");
+	if (!dict_check || (dict_check != dict_protocol)) {
+		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *	Create a dummy event list
