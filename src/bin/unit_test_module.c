@@ -188,7 +188,8 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->server_cs = virtual_server_find("default");
+	request->server_cs = virtual_server_find(PROTOCOL_NAME);
+	if (!request->server_cs) request->server_cs = virtual_server_find("default");
 	fr_assert(request->server_cs != NULL);
 
 	request->config = main_config;
