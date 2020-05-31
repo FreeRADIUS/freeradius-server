@@ -275,7 +275,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
  *
  * @return true if the underlying VALUE_PAIR is DHCPv4 encodable, false otherwise
  */
-bool is_dhcpv4_encodable(void *item, UNUSED void * uctx)
+bool fr_dhcpv4_is_encodable(void *item, UNUSED void * uctx)
 {
 	VALUE_PAIR *vp = item;
 
