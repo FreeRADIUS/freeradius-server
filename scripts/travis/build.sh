@@ -65,7 +65,14 @@ fi
 #  Setup fixtures for the 'script' phase
 #
 echo "Setting up fixtures"
-./scripts/travis/postgresql-setup.sh
-./scripts/travis/mysql-setup.sh
-./scripts/travis/ldap-setup.sh
-./scripts/travis/redis-setup.sh
+
+for i in \
+    postgresql-setup.sh \
+    mysql-setup.sh \
+    ldap-setup.sh \
+    redis-setup.sh; do
+    script="./scripts/travis/$i"
+
+    echo "Calling $i"
+    $script
+done
