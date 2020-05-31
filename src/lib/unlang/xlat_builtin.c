@@ -346,7 +346,6 @@ int xlat_register(void *mod_inst, char const *name,
 xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func)
 {
 	xlat_t	*c;
-	bool	is_new = false;
 
 	if (!xlat_root) xlat_init();
 
@@ -365,20 +364,25 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 			return NULL;
 		}
 
-		if (!c->async_safe) {
+		if ((c->type != XLAT_FUNC_ASYNC) || c->async_safe) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
 
+		if (c->func.async != func) {
+			ERROR("%s: Cannot change callback function for %s", __FUNCTION__, name);
+			return NULL;
+		}
+
+		return c;
+	}
+
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	} else {
-		c = talloc_zero(ctx, xlat_t);
-		c->name = talloc_typed_strdup(c, name);
-		talloc_set_destructor(c, _xlat_func_talloc_free);
-		is_new = true;
-	}
+	c = talloc_zero(ctx, xlat_t);
+	c->name = talloc_typed_strdup(c, name);
+	talloc_set_destructor(c, _xlat_func_talloc_free);
 
 	c->func.async = func;
 	c->type = XLAT_FUNC_ASYNC;
@@ -386,7 +390,7 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
-	if (is_new && !rbtree_insert(xlat_root, c)) {
+	if (!rbtree_insert(xlat_root, c)) {
 		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
 		talloc_free(c);
 		return NULL;
