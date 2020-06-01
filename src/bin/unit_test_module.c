@@ -596,7 +596,7 @@ int main(int argc, char *argv[])
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
 	dl_loader_t		*dl_loader = NULL;
-	dl_t			*dl;
+	dl_t			*dl = NULL;
 	char			buffer[64];
 
 	/*
@@ -1079,7 +1079,7 @@ cleanup:
 	 */
 	fr_dict_free(&dict);
 
-	dl_free(dl);
+	if (dl) dl_free(dl);
 	talloc_free(dl_loader);
 
 	if (dl_modules) talloc_free(dl_modules);
