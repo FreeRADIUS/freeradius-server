@@ -1194,6 +1194,12 @@ int fr_cap_net_raw(void)
 
 		rcode = 0;
 		cap_net_raw = true;
+	/*
+	 *	It's already in the effective set
+	 */
+	} else if (state == CAP_SET) {
+		rcode = 0;
+		cap_net_raw = true;
 	}
 
 skip_cap:
