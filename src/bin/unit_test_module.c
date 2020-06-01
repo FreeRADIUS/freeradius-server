@@ -1079,6 +1079,7 @@ cleanup:
 	 */
 	fr_dict_free(&dict);
 
+	dl_free(dl);
 	talloc_free(dl_loader);
 
 	if (dl_modules) talloc_free(dl_modules);
