@@ -1,10 +1,6 @@
 #
 # PRE: update
 #
-update {
-	&control:Cleartext-Password := 'hello'
-}
-
 update request {
 	&Tmp-String-1 := 'foo'
 	&Tmp-String-1 += 'bar'

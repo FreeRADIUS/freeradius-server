@@ -1,9 +1,6 @@
 #
 #  PRE: update update-remove-any if redundant
 #
-update control {
-	&Cleartext-Password := 'hello'
-}
 
 #
 # Exec with script output to attribute
@@ -78,4 +75,5 @@ if (&Tmp-String-0) {
 	test_fail
 }
 
+accept
 success

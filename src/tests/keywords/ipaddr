@@ -1,9 +1,6 @@
 #
 #  PRE: update if
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
 
 update request {
 	# Dotted Quad

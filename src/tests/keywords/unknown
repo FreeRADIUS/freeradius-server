@@ -1,10 +1,6 @@
 #
 #  PRE: wimax
 #
-update control {
-	&Cleartext-Password := 'hello'
-}
-
 update request {
 	&FreeRADIUS-Proxied-To  := 127.0.0.2
 }

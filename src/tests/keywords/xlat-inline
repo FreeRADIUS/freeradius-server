@@ -1,9 +1,6 @@
 #
 # PRE: update
 #
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 # Set debug to something high, recording the old level
 update request {

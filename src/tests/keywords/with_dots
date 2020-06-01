@@ -10,8 +10,4 @@
 #
 with.dots
 
-update control {
-       &Cleartext-Password := 'hello'
-}
-
 success

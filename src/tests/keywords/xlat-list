@@ -1,7 +1,7 @@
 #
 # PRE: update
 #
-update control {
+update {
 	&control !* ANY
 }
 
@@ -45,9 +45,5 @@ if (&Tmp-Integer-0 != 2) {
 	test_fail
 }
 
-# Boilerplate junk
-update {
-	&control:Cleartext-Password := 'hello'
-}
-
+accept
 success

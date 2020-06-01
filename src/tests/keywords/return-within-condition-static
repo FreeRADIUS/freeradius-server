@@ -2,6 +2,7 @@
 #  PRE: update if return
 #
 if ("no" == no) {
+	accept
 	success
 	return
 }

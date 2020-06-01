@@ -1,9 +1,6 @@
 #
 #  PRE: update if
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
 
 update control {
 	&Tmp-Cast-IPv4Prefix := 198.51.100.255/16

@@ -2,7 +2,6 @@
 #  PRE: update if redundant
 #
 update {
-	&control:Cleartext-Password	:= 'hello'
 	&request:NAS-IP-Address		:= 127.0.0.1
 	&request:Tmp-Integer-0		:= 2130706433
 }

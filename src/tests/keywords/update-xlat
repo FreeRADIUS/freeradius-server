@@ -3,10 +3,6 @@
 #
 #  Form attribute references with xlats
 #
-update {
-	&control:Cleartext-Password := 'hello'
-}
-
 
 update request {
 	&Tmp-String-0 := 'Tmp-String-1'

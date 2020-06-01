@@ -4,10 +4,6 @@
 #  Test the map xlat
 #
 update {
-	&control:Cleartext-Password := 'hello'
-}
-
-update {
 	&Tmp-String-0 := '&control:Tmp-String-0 := \'testing123\''
 	&Tmp-String-1 := "request:Alc-MSAP-Interface = 'UNICAST_7360OLT3'"
 	&Tmp-String-1 += "request:Alc-MSAP-Interface += 'UNICAST_7360OLT4'"

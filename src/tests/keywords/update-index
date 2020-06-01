@@ -1,12 +1,6 @@
 #
 # PRE: update update-remove-index
 #
-#  A more generic "update" mechanism
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
-
 update {
 	&control:Reply-Message += 'a'
 	&control:Reply-Message += 'b'

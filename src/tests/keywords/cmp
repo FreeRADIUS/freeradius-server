@@ -1,10 +1,6 @@
 #
 #  PRE: update
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
-
 update request {
        &Called-Station-Id  := "This is a test"
        &Calling-Station-Id := "This is a test"

@@ -1,11 +1,5 @@
 #
 # PRE: update if
-#
-#  Remove all attributes in a list
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 #
 #  Regression test for 0x prefix. xlat expanded

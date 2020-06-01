@@ -3,9 +3,6 @@
 #
 #  Update using a bareword containing a hex string
 #
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 update {
 	&Tmp-String-0 := 0x626f62

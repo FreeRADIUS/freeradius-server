@@ -1,11 +1,6 @@
 #
 # PRE: update update-remove-value update-remove-index update-tag
 #
-#  Remove all attributes in a list
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 update {
 	&request:Tunnel-Server-Endpoint += '192.0.1.1'

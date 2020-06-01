@@ -13,7 +13,7 @@
  	#Nine comment (tabs and spaces, are you crazy?!)
 
 update {					#}'{ Opening block with extra special chars {} '"
-       &control:Cleartext-Password := 'hello'	# This should update the password so the test passes
+       &control:User-Name := 'whatever'		# do some random stuff
 }						#{'} Closing block with extra special chars {} '"
 
 update { &request:Tmp-String-0 := 'candy' }	# Comment after unicorn block

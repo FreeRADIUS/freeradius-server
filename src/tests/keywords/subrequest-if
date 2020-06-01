@@ -11,7 +11,7 @@ subrequest Access-Request {
 	}
 
 	update parent.control {
-		&Cleartext-Password := 'hello'
+		&User-Name := 'bob'
 	}
 
 	success

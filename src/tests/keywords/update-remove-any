@@ -1,12 +1,6 @@
 #
 # PRE: update
 #
-#  Remove all attributes in a list
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
-
 update {
 	&request:Tmp-String-0 := 'foobarbaz'
 	&request:Tmp-Integer-0 := 123456789

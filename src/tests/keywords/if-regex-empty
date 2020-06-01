@@ -1,9 +1,6 @@
 #
 # PRE: update if if-regex-match
 #
-update {
-       &control:Cleartext-Password := 'hello'
-}
 
 if (&control:Cleartext-Password !~ /hell(o)(.*)/) {
 	test_fail

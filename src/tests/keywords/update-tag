@@ -1,11 +1,6 @@
 #
 # PRE: update
 #
-#  Remove all attributes in a list
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 update request {
 	&Tunnel-Server-Endpoint:0 := '192.0.1.1'	# Should not be tagged

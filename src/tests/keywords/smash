@@ -3,6 +3,6 @@
 #
 #  This gives the game away.
 #
-update { &control:Cleartext-Password := 'hello', &request:Reply-Message := "foo" }
+update { &control:User-Name := 'bob', &request:Reply-Message := "foo" }
 
 success

@@ -2,8 +2,6 @@
 #  PRE: update if xlat-attr-index
 #
 update request {
-        &control:Cleartext-Password := 'hello'
-
 	&Tmp-String-0 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
 	&Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
 	&Tmp-String-2 := '™¥¤'
