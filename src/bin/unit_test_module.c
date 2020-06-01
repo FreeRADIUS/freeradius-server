@@ -806,17 +806,25 @@ int main(int argc, char *argv[])
 		access_request = 0;
 	}
 
-	dl_loader = dl_loader_from_module_loader(dl_modules);
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", PROTOCOL_NAME);
-	dl = dl_by_name(dl_loader, buffer, NULL, false);
 
-	if (dl) {
-		snprintf(buffer, sizeof(buffer), "fr_%s_client_reply", PROTOCOL_NAME);
-		get_reply = dlsym(dl->handle, buffer);
-		if (!get_reply) {
-			ERROR("Failed resolving function to verify client replies");
-			EXIT_WITH_FAILURE;
-		}
+	dl_loader = dl_loader_init(autofree, NULL, false, false);
+	if (!dl_loader) {
+		ERROR("Failed to load library %s", buffer);
+		EXIT_WITH_FAILURE;
+	}
+
+	dl = dl_by_name(dl_loader, buffer, NULL, false);
+	if (!dl) {
+		ERROR("Failed to load library %s", buffer);
+		EXIT_WITH_FAILURE;
+	}
+
+	snprintf(buffer, sizeof(buffer), "fr_%s_client_reply", PROTOCOL_NAME);
+	get_reply = dlsym(dl->handle, buffer);
+	if (!get_reply) {
+		ERROR("Failed resolving function to verify client replies");
+		EXIT_WITH_FAILURE;
 	}
 
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
