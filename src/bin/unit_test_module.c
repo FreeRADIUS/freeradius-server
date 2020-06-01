@@ -595,7 +595,7 @@ int main(int argc, char *argv[])
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
-	dl_loader_t		*dl_loader;
+	dl_loader_t		*dl_loader = NULL;
 	dl_t			*dl;
 	char			buffer[64];
 
@@ -1078,6 +1078,8 @@ cleanup:
 	 *	Free our explicitly loaded internal dictionary
 	 */
 	fr_dict_free(&dict);
+
+	talloc_free(dl_loader);
 
 	if (dl_modules) talloc_free(dl_modules);
 
