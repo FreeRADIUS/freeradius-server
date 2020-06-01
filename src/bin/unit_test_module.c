@@ -92,11 +92,7 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 };
 
 
-typedef uint32_t (*fr_client_get_reply_t)(uint32_t code, bool ok);
-
 static uint32_t access_request;
-
-static fr_client_get_reply_t get_reply;
 
 /*
  *	Static functions.
@@ -457,96 +453,69 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 	return RLM_MODULE_FAIL;
 }
 
-static void process(REQUEST *request)
+static void request_run(fr_event_list_t *el, REQUEST *request)
 {
-	CONF_SECTION		*unlang;
-	VALUE_PAIR		*vp;
-	char			*auth_type;
-	fr_dict_enum_t const	*dv = NULL;
+	rlm_rcode_t rcode;
+	module_method_t process;
+	void *inst;
+	fr_dict_enum_t *dv;
+	fr_heap_t *backlog;
 
-	/*
-	 *	Simulate an authorize section
-	 */
-	fr_assert(request->server_cs != NULL);
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
 
-	unlang = cf_section_find(request->server_cs, "recv", dv->name);
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv %s' section", dv->name);
-		request->reply->code = get_reply(request->packet->code, false);
-		goto send_reply;
+	if (virtual_server_get_process_by_name(request->server_cs, dv->name, &process, &inst) < 0) {
+		REDEBUG("Cannot run virtual server '%s' - %s", cf_section_name2(request->server_cs), fr_strerror());
+		return;
 	}
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = get_reply(request->packet->code, true);
-		break;
+	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, REQUEST, runnable_id));
+	request->backlog = backlog;
+	request->el = el;
 
-	default:
-		request->reply->code = get_reply(request->packet->code, false);
-		goto send_reply;
+	rcode = process(inst, NULL, request);
+	if (rcode != RLM_MODULE_YIELD) goto done;
+
+	while (true) {
+		bool wait_for_event;
+		int num_events;
+
+		wait_for_event = (fr_heap_num_elements(backlog) == 0);
+		num_events = fr_event_corral(el, fr_time(), wait_for_event);
+		if (num_events < 0) {
+			PERROR("Failed retrieving events");
+			break;
+		}
+
+		/*
+		 *	Service outstanding events.
+		 */
+		if (num_events > 0) fr_event_service(el);
+
+		/*
+		 *	The request is not runnable.  Wait for events.
+		 *
+		 *	Note that we do NOT run any child requests.
+		 */
+		if (request->runnable_id < 0) continue;
+
+		/*
+		 *	We do NOT run any child requests.
+		 */
+		(void) fr_heap_extract(backlog, request);
+
+		rcode = process(inst, NULL, request);
+		if (rcode != RLM_MODULE_YIELD) break;
+
+		wait_for_event = true;
 	}
 
+done:
 	/*
-	 *	Simulate an authenticate section, but only for RADIUS.
+	 *	We do NOT run detached child requests.  We just ignore
+	 *	them.
 	 */
-	if (strcmp(PROTOCOL_NAME, "radius") == 0) {
-		vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
-		if (!vp) goto send_reply;
-
-		switch (vp->vp_int32) {
-		case FR_AUTH_TYPE_VALUE_ACCEPT:
-			request->reply->code = get_reply(request->packet->code, true);
-			goto send_reply;
-
-		case FR_AUTH_TYPE_VALUE_REJECT:
-			request->reply->code = get_reply(request->packet->code, false);
-			goto send_reply;
-
-		default:
-			break;
-		}
-
-		auth_type = fr_pair_value_asprint(vp, vp, '\0');
-		unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
-		talloc_free(auth_type);
-		if (!unlang) {
-			REDEBUG("Failed to find 'authenticate %pV' section", &vp->data);
-			request->reply->code = get_reply(request->packet->code, false);
-			goto send_reply;
-		}
-
-		switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_NOOP:
-			request->reply->code = get_reply(request->packet->code, true);
-			break;
-
-		default:
-			request->reply->code = get_reply(request->packet->code, false);
-			break;
-		}
-	}
-
-send_reply:
-	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-	if (!dv) return;
-
-	unlang = cf_section_find(request->server_cs, "send", dv->name);
-	if (!unlang) return;
-
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, false)) {
-	default:
-		break;
-
-	case RLM_MODULE_REJECT:
-		request->reply->code = get_reply(request->packet->code, false);
-		break;
-	}
+	talloc_free(backlog);
 }
 
 static REQUEST *request_clone(REQUEST *old)
@@ -595,9 +564,6 @@ int main(int argc, char *argv[])
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
-	dl_loader_t		*dl_loader = NULL;
-	dl_t			*dl = NULL;
-	char			buffer[64];
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -803,28 +769,10 @@ int main(int argc, char *argv[])
 	if (strcmp(PROTOCOL_NAME, "radius") == 0) {
 		access_request = FR_CODE_ACCESS_REQUEST;
 	} else {
+		/*
+		 *	The caller MUST specify a Packet-Type.
+		 */
 		access_request = 0;
-	}
-
-	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", PROTOCOL_NAME);
-
-	dl_loader = dl_loader_init(autofree, NULL, false, false);
-	if (!dl_loader) {
-		ERROR("Failed to load library %s", buffer);
-		EXIT_WITH_FAILURE;
-	}
-
-	dl = dl_by_name(dl_loader, buffer, NULL, false);
-	if (!dl) {
-		ERROR("Failed to load library %s", buffer);
-		EXIT_WITH_FAILURE;
-	}
-
-	snprintf(buffer, sizeof(buffer), "fr_%s_client_reply", PROTOCOL_NAME);
-	get_reply = dlsym(dl->handle, buffer);
-	if (!get_reply) {
-		ERROR("Failed resolving function to verify client replies");
-		EXIT_WITH_FAILURE;
 	}
 
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
@@ -992,7 +940,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		process(request);
+		request_run(el, request);
 	} else {
 		int i;
 		REQUEST *old = request_clone(request);
@@ -1000,7 +948,7 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < count; i++) {
 			request = request_clone(old);
-			process(request);
+			request_run(el, request);
 			talloc_free(request);
 		}
 	}
@@ -1078,9 +1026,6 @@ cleanup:
 	 *	Free our explicitly loaded internal dictionary
 	 */
 	fr_dict_free(&dict);
-
-	if (dl) dl_free(dl);
-	talloc_free(dl_loader);
 
 	if (dl_modules) talloc_free(dl_modules);
 
