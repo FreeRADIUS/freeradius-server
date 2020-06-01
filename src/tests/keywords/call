@@ -1,0 +1,25 @@
+#
+#  PRE: update
+#
+call second {
+	#
+	#  Copy our reply to the parents reply.
+	#
+	update {
+		&parent.reply: += &reply:
+	}
+}
+
+if (!&reply:Reply-Message) {
+	test_fail
+}
+
+if (&reply:Reply-Message != "call second") {
+	test_fail
+}
+
+update reply {
+	&Reply-Message !* ANY
+}
+
+success
