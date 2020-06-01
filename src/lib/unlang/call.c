@@ -177,7 +177,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	 *	Tell the child how to run.
 	 */
 	child->server_cs = g->server_cs;
-	child->async->process = *process_p;
+	child->async->process = process_p;
 	child->async->process_inst = process_inst;
 
 	/*
