@@ -3087,6 +3087,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
+	unlang_t		*c;
 	unlang_group_t		*g;
 	fr_token_t		type;
 	char const     		*server;
@@ -3131,7 +3132,13 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	g->server_cs = server_cs;
 
-	return compile_children(g, parent, unlang_ctx);
+	c = compile_children(g, parent, unlang_ctx);
+	if (!c) return NULL;
+
+	c->name = "call";
+	c->debug_name = talloc_typed_asprintf(c, "call %s", cf_section_name2(cs));
+
+	return c;
 }
 
 
