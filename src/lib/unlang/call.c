@@ -161,20 +161,11 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	process_p = (module_method_t *) cf_data_value(cf_data_find(g->server_cs, module_method_t, type_enum->name));
-	if (!process_p) {
-		REDEBUG("No such packet type '%s' in server '%s'",
-			type_enum->name, cf_section_name2(g->server_cs));
+	if (virtual_server_get_process_by_name(g->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
+		REDEBUG("Cannot call virtual server '%s' - %s", server, fr_strerror());
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-
-	/*
-	 *	We MUST use _cd_data_find() so that we don't try to
-	 *	find the "value" with talloc type "CF_IDENT_ANY".
-	 */
-	process_inst = cf_data_value(_cf_data_find(cf_section_to_item(g->server_cs), CF_IDENT_ANY, type_enum->name));
-	/* can be NULL */
 
 	child = unlang_io_subrequest_alloc(request, dict, UNLANG_NORMAL_CHILD);
 	if (!child) {

@@ -1488,3 +1488,19 @@ virtual_server_method_t *virtual_server_section_methods(char const *name1, char 
 	return entry->methods;
 }
 
+int virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t **method_p, void **ctx)
+{
+	*method_p = (module_method_t *) cf_data_value(cf_data_find(server, module_method_t, type));
+	if (!method_p) {
+		fr_strerror_printf("No processing section found for '%s'", type);
+		return -1;
+	}
+
+	/*
+	 *	We MUST use _cd_data_find() so that we don't try to
+	 *	find the "value" with talloc type "CF_IDENT_ANY".
+	 */
+	*ctx = cf_data_value(_cf_data_find(cf_section_to_item(server), CF_IDENT_ANY, type));
+
+	return 0;
+}
