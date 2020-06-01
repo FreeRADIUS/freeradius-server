@@ -877,7 +877,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	rlm_rcode_t	rcode;
 	char const	*caller;
 	REQUEST		*sub_request = NULL;
-	bool		wait_for_events;
+	bool		wait_for_event;
 	int		iterations = 0;
 
 
@@ -902,7 +902,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	request->backlog = backlog;
 
 	rcode = unlang_interpret_section(request, cs, action);
-	wait_for_events = (rcode == RLM_MODULE_YIELD);
+	wait_for_event = (rcode == RLM_MODULE_YIELD);
 
 	while (true) {
 		rlm_rcode_t sub_rcode;
@@ -913,8 +913,8 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
-		DEBUG3("Gathering events - %s", wait_for_events ? "will wait" : "Will not wait");
-		num_events = fr_event_corral(request->el, fr_time(), wait_for_events);
+		DEBUG3("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
+		num_events = fr_event_corral(request->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
 			rcode = RLM_MODULE_FAIL;
@@ -929,7 +929,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	events to run, AND there are no more requests
 		 *	to run.  We can exit the loop.
 		 */
-		if (!wait_for_events && (num_events == 0) &&
+		if (!wait_for_event && (num_events == 0) &&
 		    (fr_heap_num_elements(backlog) == 0)) {
 			break;
 		}
@@ -957,7 +957,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 */
 		sub_request = fr_heap_pop(backlog);
 		if (!sub_request) {
-			wait_for_events = (num_events > 0);
+			wait_for_event = (num_events > 0);
 			continue;
 		}
 
@@ -971,7 +971,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		RDEBUG4("<<< interpreter (iteration %i) - %s", iterations,
 			fr_table_str_by_value(mod_rcode_table, sub_rcode, "<INVALID>"));
 		if (sub_rcode == RLM_MODULE_YIELD) {
-			wait_for_events = true;
+			wait_for_event = true;
 			continue;
 		}
 
@@ -980,7 +980,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		 *	non-blocking check for more events in the next
 		 *	loop.
 		 */
-		wait_for_events = false;
+		wait_for_event = false;
 		if (sub_request == request) {
 			rcode = sub_rcode;
 		} else {
