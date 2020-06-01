@@ -3,7 +3,7 @@ SOURCES := unit_test_module.c
 
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-radius.a libfreeradius-io.a libfreeradius-util.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io.a libfreeradius-util.a
 
 # Flags needed when linking main executables that link against LuaJIT
 ifneq (,$(findstring darwin,$(TARGET_SYSTEM)))
