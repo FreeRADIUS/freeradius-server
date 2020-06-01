@@ -1436,12 +1436,6 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		talloc_free(ev);
 
 		/*
-		 *	Print this error here, so that the caller gets
-		 *	the error from kevent(), and not waitpid().
-		 */
-		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
-
-		/*
 		 *	If the child exited before kevent() was
 		 *	called, we need to get its status via
 		 *	waitpid().
@@ -1451,6 +1445,12 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 			wait_fn(el, pid, status, uctx);
 			return 0;
 		}
+
+		/*
+		 *	Print this error here, so that the caller gets
+		 *	the error from kevent(), and not waitpid().
+		 */
+		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
 
 		return -1;
 	}
