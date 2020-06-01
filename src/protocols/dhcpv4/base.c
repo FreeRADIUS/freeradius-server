@@ -654,53 +654,6 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	}
 }
 
-/** Get the "ok / fail" packet type code
- *
- *  This function is only used by unit_test_module.
- *  When it runs "unlang", it needs set a reply packet
- *  type.  This packet type depends both on the request
- *  packet type, and on whether unlang returned ok / fail.
- *
- * @param code 	request packet type
- * @param ok 	true for "ok", false for "fail"
- * @return the code used to indicate an "ok" or "ack" packet.
- *
- */
-uint32_t fr_dhcpv4_client_reply(uint32_t code, bool ok)
-{
-	if (ok) {
-		switch (code) {
-		case FR_DHCP_DISCOVER:
-			return FR_DHCP_OFFER;
-
-		case FR_DHCP_REQUEST:
-			return FR_DHCP_ACK;
-
-		case FR_DHCP_RELEASE:
-			return FR_DHCP_ACK;
-
-		default:
-			break;
-		}
-	} else {
-		switch (code) {
-		case FR_DHCP_DISCOVER:
-			return FR_DHCP_NAK;
-
-		case FR_DHCP_REQUEST:
-			return FR_DHCP_NAK;
-
-		case FR_DHCP_RELEASE:
-			return FR_DHCP_NAK;
-
-		default:
-			break;
-		}
-	}
-
-	return 0;
-}
-
 static fr_table_num_ordered_t const subtype_table[] = {
 	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
 	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
