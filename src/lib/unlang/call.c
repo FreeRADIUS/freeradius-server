@@ -97,7 +97,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	fr_dict_attr_t const		*attr_packet_type;
 	fr_dict_enum_t const		*type_enum;
 
-	module_method_t			*process_p;
+	module_method_t			process_p;
 	void				*process_inst;
 
 	g = unlang_generic_to_group(instruction);
