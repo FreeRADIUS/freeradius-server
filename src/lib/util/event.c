@@ -1757,7 +1757,6 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		ts_wake = &ts_when;
 	} else {
 		ts_wake = NULL;
-		fr_assert(rbtree_num_elements(el->fds) > 0); /* otherwise kqueue waits forever */
 	}
 
 	/*
