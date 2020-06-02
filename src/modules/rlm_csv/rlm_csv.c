@@ -201,6 +201,8 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
+				talloc_free(e);
+				return NULL;
 			}
 			continue;
 		}
