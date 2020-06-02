@@ -15,7 +15,7 @@
 #
 #  The CSV map can be used in a `map` section, as in the following example.
 #
-#    map csv "%{User-Name}" {
+#    map csv &User-Name {
 #		Attribute-Name := field1
 #		Attribute-Name := field2
 #		...
@@ -25,9 +25,6 @@
 #  as a string, and is used as the value of the "key".  The key is
 #  then looked up in the cached CSV file.  The fields are then mapped
 #  to the attributes on the left side of the map.
-#
-#  NOTE: All key lookups are done as string comparisons.  All data in
-#  the CSV files are treated as strings.
 #
 #  ## Configuration Settings
 #
@@ -75,21 +72,21 @@ csv {
 	#
 	#  It can be any one of the field names defined above.
 	#
-	#  The CSV rows are normally placed into a hash table, indexed
-	#  by this field.  A hash table allows for fast lookups, no
-	#  matter the size of the CSV file.
+	#  The CSV rows are normally placed into a binary tree,
+	#  indexed by this field.  A binary tree allows for fast
+	#  lookups, no matter the size of the CSV file.
 	#
-	#  If the `data_type` of the index field is `ipaddr` or
-	#  `ipv6addr`, then the CSV rows are placed into a prefix
-	#  trie, indexed by this field.  The prefix trie allows for
-	#  faast prefix lookups.
+	#  When looking up entries in the binary tree, the key must match
+	#  the `index_field` exactly.
 	#
-	#  When looking up entries in a hash table, the key must match
-	#  the `index_field` exactly.  When looking up entries in a
-	#  prefix trie, the closest enclosing prefix is matched.  This
-	#  prefix match allows you to place `192.0.2/24` as an index
-	#  field in the file, and then lookups of `192.0.2.1` will
-	#  return that row.
+	#  If `data_type` is an IP address type, then the CSV rows are
+	#  placed into a prefix trie, indexed by this field.  The
+	#  prefix trie allows for fast prefix lookups.
+	#
+	#  When looking up entries in a prefix trie, the closest
+	#  enclosing prefix is matched.  This prefix match allows you
+	#  to place `192.0.2/24` as an index field in the file, and
+	#  then lookups of `192.0.2.1` will return that row.
 	#
 	index_field = "apple"
 
@@ -98,6 +95,18 @@ csv {
 	#
 	#  This data type MUST be one of the data types known to FreeRADIUS.
 	#  e.g. "string", "ipaddr", etc.
+	#
+	#  When the `data_type` is one of: `ipaddr`, `ipv4prefix`,
+	#  `ipv6addr`, or `ipv6prefix`, then the rows are stored in a
+	#  prefix trie.
+	#
+	#  For all other values of `data_type`, the rows are stored in
+	#  a binary tree.
+	#
+	#  Note that the individual fields of the CSV file do not have
+	#  data types.  They are stored internally as strings, and are
+	#  parsed to the final data type only when the `csv` module
+	#  is run, either in-place, or as a `map`.
 	#
 	data_type = string
 
@@ -111,7 +120,7 @@ csv {
 	key = &User-Name
 
 	#
-	#  ### Mapping of CSV fields to RADIUS dictionary attributes.
+	#  ### Mapping of CSV fields to attributes.
 	#
 	#  WARNING: Although this format is almost identical to the `unlang`
 	#  update section format, it does *NOT* mean that you can use other
@@ -150,20 +159,23 @@ csv {
 	#
 	#  The module also exports a `map` expansion, via the syntax:
 	#
-	#	map cvs key { ... }
+	#	map cvs <key> { ... }
 	#
 	#  Where `csv` is the name of the module, and `key` is an expansion
 	#  as given the the key` field above.  For example, the map could
 	#  look like this:
 	#
 	#	map csv &User-Name {
-	#		&reply:Reply-Message := 'three'
-	#		&reply:Filter-Id := 'four'
+	#		&reply:Reply-Message := 'orange'
+	#		&reply:Filter-Id := 'pear'
 	#	}
 	#
 	#  This map does the same operations as the key / update
 	#  fields given above.  The benefit here is that the key can
 	#  be dynamically changed, depending on the needs of the
 	#  current section.
+	#
+	#  If the key is not found in the CSV file, then the `map`
+	#  does nothing.
 	#
 }

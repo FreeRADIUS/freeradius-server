@@ -407,8 +407,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	@todo - also define data types for each field.  And do
-	 *	type-specific comparisons.
+	 *	IP addresses go into tries.  Everything else into binary tries.
 	 */
 	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX) ||
 	    (inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
@@ -619,6 +618,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+	/*
+	 *	@todo - delay reading the CSV file until the "update"
+	 *	section has been parsed.  That way we know the data
+	 *	types of each field.  This change allows us to
+	 *	generate errors at startup, and not at run time.
+	 */
 	if (map_afrom_cs(inst, &inst->map, cs,
 			 &parse_rules, &parse_rules, csv_map_verify, inst,
 			 CSV_MAX_ATTRMAP) < 0) {
