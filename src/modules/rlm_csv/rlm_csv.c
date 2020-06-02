@@ -58,6 +58,7 @@ typedef struct {
 
 	char const     	**field_names;
 	int		*field_offsets; /* field X from the file maps to array entry Y here */
+	fr_type_t	*field_types;
 	rbtree_t	*tree;
 	fr_trie_t	*trie;
 
@@ -211,6 +212,23 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 *	This field is unused.  Ignore it.
 		 */
 		if (inst->field_offsets[i] < 0) continue;
+
+		/*
+		 *	Try to parse fields as data types if the data type is defined.
+		 */
+		if (inst->field_types[i] != FR_TYPE_INVALID) {
+			fr_value_box_t box;
+			fr_type_t type = inst->field_types[i];
+
+			if (fr_value_box_from_str(e, &box, &type, NULL, p, -1, 0, false) < 0) {
+				cf_log_err(conf, "Failed parsing field '%s' in file %s line %d - %s", inst->field_names[i],
+					   inst->filename, lineno, fr_strerror());
+				talloc_free(e);
+				return NULL;
+			}
+
+			fr_value_box_clear(&box);
+		}
 
 		MEM(e->data[inst->field_offsets[i]] = talloc_typed_strdup(e, p));
 	}
@@ -469,9 +487,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	MEM(inst->field_names = talloc_zero_array(inst, const char *, inst->num_fields));
 	MEM(inst->field_offsets = talloc_array(inst, int, inst->num_fields));
+	MEM(inst->field_types = talloc_array(inst, fr_type_t, inst->num_fields));
 
 	for (i = 0; i < inst->num_fields; i++) {
 		inst->field_offsets[i] = -1; /* unused */
+		inst->field_types[i] = FR_TYPE_INVALID;
 	}
 
 	/*
@@ -561,6 +581,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			   inst->index_field_name);
 		return -1;
 	}
+
+	/*
+	 *	Set the data type of the index field.
+	 */
+	inst->field_types[inst->index_field] = inst->data_type;
 
 	/*
 	 *	Read the rest of the file.
