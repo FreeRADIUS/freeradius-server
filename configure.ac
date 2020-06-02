@@ -353,6 +353,23 @@ AC_ARG_ENABLE(llvm-address-sanitizer,
 )
 
 dnl #
+dnl #  Enable -fsanitize=leak and link in the leak sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(llvm-leak-sanitizer,
+[AS_HELP_STRING([--enable-llvm-leak-sanitizer],
+                [build with support for LLVM's leak sanitizer (if building with clang).])],
+[ case "$enableval" in
+  no)
+    llvm_leak_sanitizer=no
+    ;;
+  *)
+    llvm_leak_sanitizer=yes
+  esac ]
+)
+
+
+dnl #
 dnl #  Enable the -fsanitize=undefined and link in the address sanitizer
 dnl #  libraries.
 dnl #
@@ -1735,6 +1752,12 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
+  dnl #  Can't use mutliple -fsanitize flags, so we need to combine
+  dnl #  the values into one.
+  dnl #
+  fsanitizeflags=
+
+  dnl #
   dnl #  If running with clang, add in ASAN
   dnl #
   if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
@@ -1743,7 +1766,7 @@ if test "x$developer" = "xyes"; then
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
     dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
     dnl #
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+    devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
@@ -1752,7 +1775,19 @@ if test "x$developer" = "xyes"; then
 
     AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
 
-    devldflags="$devldflags -fsanitize=address"
+    devldflags="$devldflags"
+
+    fsanitizeflags="$fsanitizeflags,address"
+  fi
+
+  dnl #
+  dnl #  If running with clang, add in LSAN
+  dnl #
+  if test "x$llvm_leak_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=leak	- Build with lsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,leak"
   fi
 
   dnl #
@@ -1765,6 +1800,13 @@ if test "x$developer" = "xyes"; then
     dnl #
     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "xyes"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
   dnl #

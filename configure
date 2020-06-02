@@ -747,6 +747,7 @@ enable_largefile
 enable_strict_dependencies
 enable_werror
 enable_llvm_address_sanitizer
+enable_llvm_leak_sanitizer
 enable_llvm_undefined_behaviour_sanitizer
 enable_openssl_version_check
 enable_reproducible_builds
@@ -1430,6 +1431,9 @@ Optional Features:
   --enable-werror         causes the build to fail if any warnings are generated.
   --enable-llvm-address-sanitizer
                           build with support for LLVM's address sanitizer (if
+                          building with clang).
+  --enable-llvm-leak-sanitizer
+                          build with support for LLVM's leak sanitizer (if
                           building with clang).
   --enable-llvm-undefined-behaviour-sanitizer
                           build with support for LLVM's undefined behaviour
@@ -5792,6 +5796,20 @@ if test "${enable_llvm_address_sanitizer+set}" = set; then :
   esac
 
 fi
+
+
+# Check whether --enable-llvm-leak-sanitizer was given.
+if test "${enable_llvm_leak_sanitizer+set}" = set; then :
+  enableval=$enable_llvm_leak_sanitizer;  case "$enableval" in
+  no)
+    llvm_leak_sanitizer=no
+    ;;
+  *)
+    llvm_leak_sanitizer=yes
+  esac
+
+fi
+
 
 
 # Check whether --enable-llvm-undefined-behaviour-sanitizer was given.
@@ -13351,8 +13369,10 @@ $as_echo "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
     devcflags="$devcflags -Wimplicit-fallthrough"
   fi
 
+          fsanitizeflags=
+
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                        devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+                        devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
@@ -13418,12 +13438,25 @@ fi
 done
 
 
-    devldflags="$devldflags -fsanitize=address"
+    devldflags="$devldflags"
+
+    fsanitizeflags="$fsanitizeflags,address"
+  fi
+
+        if test "x$llvm_leak_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,leak"
   fi
 
         if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
                     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "xyes"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
         devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
