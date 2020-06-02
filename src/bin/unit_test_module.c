@@ -506,8 +506,6 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 
 		rcode = process(inst, NULL, request);
 		if (rcode != RLM_MODULE_YIELD) break;
-
-		wait_for_event = true;
 	}
 
 done:
