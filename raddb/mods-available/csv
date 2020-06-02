@@ -64,7 +64,7 @@ csv {
 	#
 	#  e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
 	#  =====
-	fields = "apple,,orange,pear"
+	fields = "name,size,color,count"
 
 	#
 	#  index_field:: The name of the field which is used to index the
@@ -88,7 +88,7 @@ csv {
 	#  to place `192.0.2/24` as an index field in the file, and
 	#  then lookups of `192.0.2.1` will return that row.
 	#
-	index_field = "apple"
+	index_field = "name"
 
 	#
 	#  data_type:: The data type of the index_field.
@@ -152,8 +152,8 @@ csv {
 	#  update { ... }::
 	#
 	update reply {
-	       &Reply-Message := 'orange'
-	       &Filter-Id := 'pear'
+	       &Reply-Message := 'color'
+	       &Tmp-Integer-0 := 'count'
 	}
 
 	#
@@ -166,8 +166,8 @@ csv {
 	#  look like this:
 	#
 	#	map csv &User-Name {
-	#		&reply:Reply-Message := 'orange'
-	#		&reply:Filter-Id := 'pear'
+	#		&reply:Reply-Message := 'color'
+	#		&Tmp-Integer-0 := 'count'
 	#	}
 	#
 	#  This map does the same operations as the key / update

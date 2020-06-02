@@ -265,7 +265,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 }
 
 
-static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
+static int fieldname2offset(rlm_csv_t *inst, char const *field_name, int *array_offset)
 {
 	int i;
 
@@ -277,6 +277,7 @@ static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
 	 */
 	for (i = 0; i < inst->num_fields; i++) {
 		if (strcmp(field_name, inst->field_names[i]) == 0) {
+			if (array_offset) *array_offset = i;
 			return inst->field_offsets[i];
 		}
 	}
@@ -292,14 +293,19 @@ static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
 static int csv_map_verify(vp_map_t *map, void *instance)
 {
 	rlm_csv_t *inst = instance;
+	int offset;
+	fr_type_t type = FR_TYPE_INVALID;
 
 	/*
 	 *	Destinations where we can put the VALUE_PAIRs we
 	 *	create using CSV values.
 	 */
 	switch (map->lhs->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
+		type = tmpl_da(map->lhs)->type;
+		break;
+
+	case TMPL_TYPE_LIST:
 		break;
 
 	case TMPL_TYPE_ATTR_UNPARSED:
@@ -318,10 +324,29 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	 */
 	switch (map->rhs->type) {
 	case TMPL_TYPE_UNPARSED:
-		if (fieldname2offset(inst, map->rhs->name) < 0) {
+		offset = -1;
+		if (fieldname2offset(inst, map->rhs->name, &offset) < 0) {
 			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
 			return -1;
 		}
+
+		if ((type == FR_TYPE_INVALID) || (offset < 0)) break;
+
+		/*
+		 *	Try to set the data type of the field.  But if
+		 *	they map the same field to two different data
+		 *	types, that's an error.
+		 */
+		if (inst->field_types[offset] == FR_TYPE_INVALID) {
+			inst->field_types[offset] = type;
+			break;
+		}
+
+		if (inst->field_types[offset] != type) {
+			cf_log_err(map->ci, "Field '%s' maps to two different data types, making it impossible to parse it.", map->rhs->name);
+			return -1;
+		}
+
 		break;
 
 	case TMPL_TYPE_ATTR_UNPARSED:
@@ -405,7 +430,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char *q;
 	char *fields;
 	FILE *fp;
-	int lineno;
 	char buffer[8192];
 
 	inst->name = cf_section_name2(conf);
@@ -437,14 +461,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Read the file line by line.
+	 *	Read just the header.
 	 */
 	fp = fopen(inst->filename, "r");
 	if (!fp) {
 		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
-	lineno = 1;
 
 	/*
 	 *	If there is a header in the file, then read that first.
@@ -468,7 +491,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	header from the file.
 		 */
 		inst->fields = talloc_strdup(inst, buffer);
-		lineno++;
 	}
 
 	/*
@@ -587,25 +609,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	inst->field_types[inst->index_field] = inst->data_type;
 
-	/*
-	 *	Read the rest of the file.
-	 */
-	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		rlm_csv_entry_t *e;
-
-		e = file2csv(conf, inst, lineno, buffer);
-		if (!e) {
-			fclose(fp);
-			return -1;
-		}
-
-		lineno++;
-	}
-
 	fclose(fp);
 
 	/*
-	 *	And register the map function.
+	 *	And register the `map csv <key> { ... }` function.
 	 */
 	map_proc_register(inst, inst->name, mod_map_proc, csv_maps_verify, 0);
 
@@ -627,35 +634,79 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_csv_t *inst = instance;
 	CONF_SECTION *cs;
+	int lineno;
+	FILE *fp;
 	vp_tmpl_rules_t	parse_rules = {
 		.allow_foreign = true	/* Because we don't know where we'll be called */
 	};
+	char buffer[8192];
 
+	/*
+	 *	"update" without "key" is invalid, as we can't run the
+	 *	module.
+	 *
+	 *	"key" without "update" means we just ignore the key.
+	 */
 	cs = cf_section_find(conf, "update", CF_IDENT_ANY);
-	if (!cs) {
-		if (inst->key) {
-			cf_log_warn(conf, "Ignoring 'key', as no 'update' section has been defined.");
+	if (cs) {
+		if (!inst->key) {
+			cf_log_err(conf, "There is no 'key' defined for the 'update' section");
+			return -1;
 		}
 
-		return 0;
-	}
-
-	if (!inst->key) {
-		cf_log_err(conf, "There is no 'key' defined for the 'update' section");
-		return -1;
+		/*
+		 *	Parse the "update" section.  This parsing includes
+		 *	setting inst->field_types[], base on the attribute
+		 *	mappings.
+		 */
+		if (map_afrom_cs(inst, &inst->map, cs,
+				 &parse_rules, &parse_rules, csv_map_verify, inst,
+				 CSV_MAX_ATTRMAP) < 0) {
+			return -1;
+		}
+	} else if (inst->key) {
+		cf_log_warn(conf, "Ignoring 'key', as no 'update' section has been defined.");
 	}
 
 	/*
-	 *	@todo - delay reading the CSV file until the "update"
-	 *	section has been parsed.  That way we know the data
-	 *	types of each field.  This change allows us to
-	 *	generate errors at startup, and not at run time.
+	 *	Re-open the file and read it all.
 	 */
-	if (map_afrom_cs(inst, &inst->map, cs,
-			 &parse_rules, &parse_rules, csv_map_verify, inst,
-			 CSV_MAX_ATTRMAP) < 0) {
+	fp = fopen(inst->filename, "r");
+	if (!fp) {
+		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
+	lineno = 1;
+
+	/*
+	 *	If there is a header in the file, then read that first.
+	 *	This time we just ignore it.
+	 */
+	if (inst->header) {
+		char *p = fgets(buffer, sizeof(buffer), fp);
+		if (!p) {
+			cf_log_err(conf, "Error reading filename %s: Unexpected EOF", inst->filename);
+			fclose(fp);
+			return -1;
+		}
+		lineno++;
+	}
+
+	/*
+	 *	Read the rest of the file.
+	 */
+	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+		rlm_csv_entry_t *e;
+
+		e = file2csv(conf, inst, lineno, buffer);
+		if (!e) {
+			fclose(fp);
+			return -1;
+		}
+
+		lineno++;
+	}
+	fclose(fp);
 
 	return 0;
 }
@@ -774,7 +825,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t *inst, REQUEST *request,
 			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
 		}
 
-		field = fieldname2offset(inst, field_name);
+		field = fieldname2offset(inst, field_name, NULL);
 
 		if (field_name != map->rhs->name) talloc_free(field_name);
 

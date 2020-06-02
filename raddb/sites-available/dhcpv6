@@ -38,7 +38,7 @@ server dhcpv6 {
 	#  use the same interface.  So it is defined here once, and used
 	#  below.
 	#
-	interface = eth0
+	interface = en0
 
 	#
 	#  port:: The port where we accept packets.
@@ -52,7 +52,7 @@ server dhcpv6 {
 	#  testing will not affect production systems.  This value should
 	#  be changed to `547` for production use.
 	#
-	port = 5470
+	port = 547
 
 	#
 	#  ### The listen section
@@ -164,6 +164,7 @@ server dhcpv6 {
 		#  address.
 		#
 		type = Request
+		type = Information-Request
 
 		#
 		#  transport:: The transport protocol.
@@ -211,10 +212,33 @@ recv Solicit {
 }
 
 #
+#  Send an Advertise message
+#
+send Advertise {
+	#
+	#  All replies MUST include a Server-ID option
+	#
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
+}
+
+#
 #  Receive a Solicit message
 #
 recv Request {
 	ok
+}
+
+send Offer {
+	#
+	#  All replies MUST include a Server-ID option
+	#
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
 }
 
 #
@@ -223,5 +247,19 @@ recv Request {
 #  See dictionary/dhcpv6/dictionary.freeradius.internal for a list of
 #  packet type names.
 #
+
+recv Information-Request {
+	ok
+}
+
+send Reply {
+	#
+	#  All replies MUST include a Server-ID option
+	#
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
+}
 
 }
