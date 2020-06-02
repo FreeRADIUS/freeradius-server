@@ -509,14 +509,13 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		if (rcode != RLM_MODULE_YIELD) break;
 	}
 
+done:
 	/*
 	 *	Parallel-detach creates detached, but runnable
 	 *	children.  We don't want to run them, so we just clean
 	 *	them up here.
 	 */
 	while ((child = fr_heap_pop(backlog)) != NULL) talloc_free(child);
-
-done:
 
 	/*
 	 *	We do NOT run detached child requests.  We just ignore
