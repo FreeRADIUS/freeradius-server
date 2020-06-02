@@ -398,7 +398,6 @@ static inline ssize_t fr_dbuff_##_type##_in(fr_dbuff_t *dbuff, _type##_t num) \
 	fr_assert(!dbuff->is_const); \
 	if (sizeof(_type##_t) > freespace) return -(sizeof(_type##_t) - freespace); \
 	fr_net_from_##_type(dbuff->p, num); \
-	dbuff->p += sizeof(_type##_t); \
 	return _fr_dbuff_advance(dbuff, sizeof(_type##_t)); \
 }
 FR_DBUFF_NUM_IN_FUNC(uint16)
