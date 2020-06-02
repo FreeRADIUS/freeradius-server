@@ -460,6 +460,7 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 	void *inst;
 	fr_dict_enum_t *dv;
 	fr_heap_t *backlog;
+	REQUEST *child;
 
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
@@ -508,7 +509,15 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		if (rcode != RLM_MODULE_YIELD) break;
 	}
 
+	/*
+	 *	Parallel-detach creates detached, but runnable
+	 *	children.  We don't want to run them, so we just clean
+	 *	them up here.
+	 */
+	while ((child = fr_heap_pop(backlog)) != NULL) talloc_free(child);
+
 done:
+
 	/*
 	 *	We do NOT run detached child requests.  We just ignore
 	 *	them.
