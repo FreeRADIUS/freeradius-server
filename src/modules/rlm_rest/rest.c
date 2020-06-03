@@ -1687,89 +1687,6 @@ error:
 	return -1;
 }
 
-/** Callback to receive debugging data from libcurl
- *
- * @note Should only be set on a handle if RDEBUG_ENABLED3 is true.
- *
- * @param[in] candle	Curl handle the debugging data pertains to.
- * @param[in] type	The type of debugging data we received.
- * @param[in] data	Buffer containing debug data (not \0 terminated).  Despite the
- *			type being char *, this can be binary data depending on the
- *			curl_infotype.
- * @param[in] len	The length of the data in the buffer.
- * @param[in] uctx	The current request.
- * @return
- *	- 0 (we always indicate success)
- */
-static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
-{
-	REQUEST		*request = talloc_get_type_abort(uctx, REQUEST);
-	char const	*p = data, *q, *end = p + len;
-	char const	*verb;
-
-	switch (type) {
-	case CURLINFO_TEXT:
-		/*
-		 *	Curl debug output has trailing newlines, and could conceivably
-		 *	span multiple lines.  Take care of both cases.
-		 */
-		while (p < end) {
-			q = memchr(p, '\n', end - p);
-			if (!q) q = end;
-
-			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
-			p = q + 1;
-		}
-
-		break;
-
-	case CURLINFO_HEADER_IN:
-		verb = "received";
-	print_header:
-		while (p < end) {
-			q = memchr(p, '\n', end - p);
-			q = q ? q + 1 : end;
-
-			if (RDEBUG_ENABLED4) {
-				RHEXDUMP4((uint8_t const *)p, q - p,
-					 "%s header: %pV",
-					 verb, fr_box_strvalue_len(p, q - p));
-			} else {
-				RDEBUG3("%s header: %pV",
-					verb, fr_box_strvalue_len(p, q - p));
-			}
-			p = q;
-		}
-		break;
-
-	case CURLINFO_HEADER_OUT:
-		verb = "sending";
-		goto print_header;
-
-	case CURLINFO_DATA_IN:
-		RHEXDUMP4((uint8_t const *)data, len, "received data[length %zu]", len);
-		break;
-
-	case CURLINFO_DATA_OUT:
-		RHEXDUMP4((uint8_t const *)data, len, "sending data[length %zu]", len);
-		break;
-
-	case CURLINFO_SSL_DATA_OUT:
-		RHEXDUMP4((uint8_t const *)data, len, "sending ssl-data[length %zu]", len);
-		break;
-
-	case CURLINFO_SSL_DATA_IN:
-		RHEXDUMP4((uint8_t const *)data, len, "received ssl-data[length %zu]", len);
-		break;
-
-	default:
-		RHEXDUMP3((uint8_t const *)data, len, "libcurl - debug data (unknown type %i)", (int)type);
-		break;
-	}
-
-	return 0;
-}
-
 /** Configures request curlopts.
  *
  * Configures libcurl handle setting various curlopts for things like local
@@ -1823,15 +1740,6 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	fr_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
-
-	/*
-	 *	Set the debugging function if needed
-	 */
-	if (RDEBUG_ENABLED3) {
-		FR_CURL_SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
-		FR_CURL_SET_OPTION(CURLOPT_DEBUGDATA, request);
-		FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
-	}
 
 	/*
 	 *	Control which HTTP version we're going to use
