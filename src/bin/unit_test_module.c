@@ -54,7 +54,7 @@ do { \
  */
 static bool filedone = false;
 
-char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
+char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unit_test_module");
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_protocol;
@@ -68,7 +68,6 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -79,7 +78,6 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
-	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
@@ -801,21 +799,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy client on 127.0.0.1
+	 *	Create a dummy client on 127.0.0.1, if one doesn't already exist.
 	 */
-	{
-		fr_ipaddr_t	ip;
-		char const	*ip_str = "127.0.0.1";
-
-		if (fr_inet_pton(&ip, ip_str, strlen(ip_str), AF_UNSPEC, false, true) < 0) {
-			EXIT_WITH_FAILURE;
-		}
-
-		client = client_find(NULL, &ip, IPPROTO_IP);
-		if (!client) {
-			client = client_alloc(NULL, ip_str, "test");
-			client_add(NULL, client);
-		}
+	client = client_find(NULL, &(fr_ipaddr_t) { .af = AF_INET, .prefix = 32, .addr.v4.s_addr = htonl(INADDR_LOOPBACK) },
+			     IPPROTO_IP);
+	if (!client) {
+		client = client_alloc(NULL, "127.0.0.1", "test");
+		client_add(NULL, client);
 	}
 
 	/*
@@ -896,7 +886,6 @@ int main(int argc, char *argv[])
 		fr_perror("Failed reading input");
 		EXIT_WITH_FAILURE;
 	}
-	request->el = el;
 
 	/*
 	 *	No filter file, OR there's no more input, OR we're
@@ -974,14 +963,17 @@ int main(int argc, char *argv[])
 	if (output_file) fclose(fp);
 
 	/*
-	 *	Update the list with the response type.
+	 *	Update the list with the response type, so that it can
+	 *	be matched in filters.
 	 */
-	MEM(pair_add_reply(&vp, attr_packet_type) >= 0);
-	vp->vp_uint32 = request->reply->code;
-	{
+	if (filter_vps) {
 		VALUE_PAIR const *failed[2];
 
-		if (filter_vps && !fr_pair_validate(failed, filter_vps, request->reply->vps)) {
+		MEM(pair_add_reply(&vp, attr_packet_type) >= 0);
+		vp->vp_uint32 = request->reply->code;
+
+
+		if (!fr_pair_validate(failed, filter_vps, request->reply->vps)) {
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : input_file, filter_file);
