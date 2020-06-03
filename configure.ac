@@ -1803,7 +1803,7 @@ if test "x$developer" = "xyes"; then
     fsanitizeflags="$fsanitizeflags,undefined"
   fi
 
-  if test "x$fsanitizeflags" != "xyes"; then
+  if test "x$fsanitizeflags" != "x"; then
     fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
     devcflags="-fsanitize=$fsanitizeflags $devcflags"
     devldflags="-fsanitize=$fsanitizeflags $devldflags"
