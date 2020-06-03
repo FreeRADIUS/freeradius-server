@@ -1777,7 +1777,7 @@ if test "x$developer" = "xyes"; then
 
     devldflags="$devldflags"
 
-    fsanitizeflags="$fsanitizeflags,address"
+    fsanitizeflags="address,$fsanitizeflags"
   fi
 
   dnl #
@@ -1787,7 +1787,7 @@ if test "x$developer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=leak	- Build with lsan support
     dnl #
-    fsanitizeflags="$fsanitizeflags,leak"
+    fsanitizeflags="leak,$fsanitizeflags"
   fi
 
   dnl #
@@ -1800,7 +1800,7 @@ if test "x$developer" = "xyes"; then
     dnl #
     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
-    fsanitizeflags="$fsanitizeflags,undefined"
+    fsanitizeflags="undefined,$fsanitizeflags"
   fi
 
   if test "x$fsanitizeflags" != "xyes"; then

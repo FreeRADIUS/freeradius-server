@@ -13440,17 +13440,17 @@ done
 
     devldflags="$devldflags"
 
-    fsanitizeflags="$fsanitizeflags,address"
+    fsanitizeflags="address,$fsanitizeflags"
   fi
 
         if test "x$llvm_leak_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                fsanitizeflags="$fsanitizeflags,leak"
+                fsanitizeflags="leak,$fsanitizeflags"
   fi
 
         if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
                     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
-    fsanitizeflags="$fsanitizeflags,undefined"
+    fsanitizeflags="undefined,$fsanitizeflags"
   fi
 
   if test "x$fsanitizeflags" != "xyes"; then
