@@ -95,7 +95,7 @@ else
 #  build process.
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-$(shell touch "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip")
+$(shell mkdir -p "$(BUILD_DIR)/tests/eapol_test/" && touch "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip")
 endif
 
 $(TEST):
