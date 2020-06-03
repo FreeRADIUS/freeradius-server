@@ -126,4 +126,11 @@ void server_free(void)
 	 *	Free information associated with the virtual servers.
 	 */
 	virtual_servers_free();
+
+	/*
+	 *	Now we're sure no more triggers can fire, free the
+	 * 	trigger tree.
+	 */
+	trigger_exec_free();
+
 }

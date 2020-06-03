@@ -1051,12 +1051,6 @@ cleanup:
 	talloc_free(global_ctx);
 
 	/*
-	 *  Now we're sure no more triggers can fire, free the
-	 *  trigger tree
-	 */
-	trigger_exec_free();
-
-	/*
 	 *  Anything not cleaned up by the above is allocated in
 	 *  the NULL top level context, and is likely leaked memory.
 	 */
