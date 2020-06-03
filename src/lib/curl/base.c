@@ -32,8 +32,7 @@
 static uint32_t instance_count = 0;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
 
-extern fr_dict_autoload_t rlm_imap_dict[];
-fr_dict_autoload_t rlm_imap_dict[] = {
+static fr_dict_autoload_t curl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
@@ -76,9 +75,15 @@ int fr_curl_init(void)
 	if (fr_openssl_init() < 0) return -1;
 #endif
 
+	if (fr_dict_autoload(curl_dict) < 0) {
+		PERROR("Failed loading dictionaries for curl");
+		return -1;
+	}
+
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
 		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
+		fr_dict_autofree(curl_dict);
 		return -1;
 	}
 
@@ -98,6 +103,8 @@ int fr_curl_init(void)
 void fr_curl_free(void)
 {
 	if (--instance_count > 0) return;
+
+	fr_dict_autofree(curl_dict);
 
 #ifdef WITH_TLS
 	fr_openssl_free();
