@@ -3,12 +3,6 @@
 #
 
 #
-#	Test name
-#
-TEST  := test.radsniff
-FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
-
-#
 #	.pcap file to be injested.
 #
 #	It was generated with:
@@ -16,12 +10,27 @@ FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 #
 #	TZ=UTC tcpdump -i lo0 -c100 -w radius-auth+acct+coa-100pkts.pcap "port 1812 or port 1813 or port 3799"
 #
+#	NOTE: The src/tests/radsniff/radius-auth+acct+coa-100pkts.pcap.gz will be fetched during "git pull"
+#	if the system has the "git lfs" installed properly. if not, it will be ignored.
+#
 PCAP_IN := $(BUILD_DIR)/tests/radsniff/radius-auth+acct+coa-100pkts.pcap
+
+ifeq "$(GIT_HAS_LFS)" "no"
+test.radsniff:
+	$(Q)echo "WARNING: Can't execute 'test.radsniff' without 'git lfs' installed. ignoring."
+else
+
+#
+#	Test name
+#
+TEST  := test.radsniff
+FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 
 $(eval $(call TEST_BOOTSTRAP))
 
 #
 #	Uncompress the input .pcap file
+#
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
@@ -72,4 +81,4 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		exit 1;                                                                                       \
 	fi
 	$(Q)touch $@
-
+endif
