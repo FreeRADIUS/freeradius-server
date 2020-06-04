@@ -197,13 +197,13 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].direction = TO_RESPONDER;
 	ch->end[TO_REQUESTOR].direction = TO_REQUESTOR;
 
-	ch->end[TO_RESPONDER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_RESPONDER].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_RESPONDER].aq) {
 		talloc_free(ch);
 		goto nomem;
 	}
 
-	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_REQUESTOR].aq) {
 		talloc_free(ch);
 		goto nomem;

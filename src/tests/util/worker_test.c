@@ -543,7 +543,7 @@ int main(int argc, char *argv[])
 	kq_master = kqueue();
 	fr_assert(kq_master >= 0);
 
-	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
+	aq_master = fr_atomic_queue_alloc(autofree, max_control_plane);
 	fr_assert(aq_master != NULL);
 
 	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);

@@ -236,7 +236,7 @@ static void master_process(TALLOC_CTX *ctx)
 	kq_master = kqueue();
 	fr_assert(kq_master >= 0);
 
-	aq_master = fr_atomic_queue_create(ctx, max_control_plane);
+	aq_master = fr_atomic_queue_alloc(ctx, max_control_plane);
 	fr_assert(aq_master != NULL);
 
 	control_master = fr_control_create(ctx, kq_master, aq_master, 1024);

@@ -54,7 +54,7 @@ struct fr_atomic_queue_s {
  *     - NULL on error.
  *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
  */
-fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, size_t size)
+fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
 {
 	size_t			i;
 	int64_t			seq;

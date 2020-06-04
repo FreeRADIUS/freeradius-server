@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 	kq = kqueue();
 	fr_assert(kq >= 0);
 
-	aq = fr_atomic_queue_create(autofree, aq_size);
+	aq = fr_atomic_queue_alloc(autofree, aq_size);
 	fr_assert(aq != NULL);
 
 	control = fr_control_create(autofree, kq, aq, 1024);

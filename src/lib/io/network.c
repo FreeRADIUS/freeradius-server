@@ -1583,7 +1583,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	nr->signal_pipe[0] = -1;
 	nr->signal_pipe[1] = -1;
 
-	nr->aq_control = fr_atomic_queue_create(nr, 1024);
+	nr->aq_control = fr_atomic_queue_alloc(nr, 1024);
 	if (!nr->aq_control) {
 		talloc_free(nr);
 		return NULL;
