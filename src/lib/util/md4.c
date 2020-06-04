@@ -415,6 +415,14 @@ static void fr_md4_local_update(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inl
 	uint32_t		count;
 	fr_md4_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md4_ctx_local_t);
 
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length md4 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!in) in = (uint8_t[]){ 0x00 };
+
 	/* Bytes already stored in ctx_local->buffer */
 	count = (uint32_t)((ctx_local->count[0] >> 3) & 0x3f);
 

@@ -454,6 +454,14 @@ static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inl
 
 	size_t have, need;
 
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length md5 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!in) in = (uint8_t[]){ 0x00 };
+
 	/* Check how many bytes we already have and how many more we need. */
 	have = (size_t)((ctx_local->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
 	need = MD5_BLOCK_LENGTH - have;
@@ -484,7 +492,7 @@ static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inl
 	}
 
 	/* Handle any remaining bytes of data. */
-	if (inlen != 0) memcpy(ctx_local->buffer + have, in, inlen);
+	memcpy(ctx_local->buffer + have, in, inlen);
 }
 
 /** @copydoc fr_md5_final

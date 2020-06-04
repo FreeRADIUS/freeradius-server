@@ -103,7 +103,7 @@ void fr_sha1_init(fr_sha1_ctx* context)
 }
 
 /* Run your data through this. */
-void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len)
+void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *in, size_t len)
 {
 	unsigned int i, j;
 
@@ -113,7 +113,7 @@ void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len)
 	 *	ubsan doesn't like arithmetic on
 	 *	NULL pointers.
 	 */
-	if (!data) data = (uint8_t[]){ 0x00 };
+	if (!in) in = (uint8_t[]){ 0x00 };
 
 	j = (context->count[0] >> 3) & 63;
 	if ((context->count[0] += len << 3) < (len << 3)) {
@@ -122,16 +122,16 @@ void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len)
 
 	context->count[1] += (len >> 29);
 	if ((j + len) > 63) {
-		memcpy(&context->buffer[j], data, (i = 64-j));
+		memcpy(&context->buffer[j], in, (i = 64-j));
 		fr_sha1_transform(context->state, context->buffer);
 		for ( ; i + 63 < len; i += 64) {
-			fr_sha1_transform(context->state, &data[i]);
+			fr_sha1_transform(context->state, &in[i]);
 		}
 		j = 0;
 	} else {
 		i = 0;
 	}
-	memcpy(&context->buffer[j], &data[i], len - i);
+	memcpy(&context->buffer[j], &in[i], len - i);
 }
 
 
