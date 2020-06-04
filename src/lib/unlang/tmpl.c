@@ -51,7 +51,10 @@ static void unlang_tmpl_exec_cleanup(REQUEST *request)
 		state->fd = -1;
 	}
 
-	if (state->pid) fr_exec_waitpid(state->pid);
+	if (state->pid) {
+		fr_exec_waitpid(state->pid);
+		state->pid = 0;
+	}
 
 	if (state->ev) fr_event_timer_delete(&state->ev);
 }
@@ -82,7 +85,7 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	 *	ignore future signals.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		if (state->pid >= 0) kill(state->pid, SIGKILL);
+		if (state->pid > 0) kill(state->pid, SIGKILL);
 		state->failed = true;
 
 		unlang_tmpl_exec_cleanup(request);
@@ -145,7 +148,12 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, v
 	};
 }
 
-
+#ifndef __linux__
+/*
+ *	libkqueue does not implement waiting for PIDs.
+ *
+ *	So this function is unused.
+ */
 static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
 {
 	REQUEST				*request = uctx;
@@ -163,7 +171,7 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 
 	unlang_interpret_resumable(request);
 }
-
+#endif
 
 static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
@@ -213,6 +221,17 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 		state->failed = true;
 
 	close_pipe:
+#ifdef __linux__
+		/*
+		 *	libkqueue does not implement waiting for PIDs.
+		 *
+		 *	We just mark the request as resumable, and
+		 *	hope that we beat the race condition in
+		 *	waipid().
+		 */
+		unlang_interpret_resumable(request);
+#endif
+
 		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
 		close(state->fd);
 		state->fd = -1;
@@ -281,6 +300,23 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
+
+#ifdef __linux__
+	/*
+	 *	libkqueue does not implement waiting for PIDs.
+	 *
+	 *	Try to get the PID, hoping that it exited.  If we
+	 *	can't get the PID, call it a failure and clean up the
+	 *	PID at some point later in time.
+	 */
+	fr_assert(state->pid > 0);
+
+	if (waitpid(state->pid, &state->status, WNOHANG) == 0) {
+		unlang_tmpl_exec_cleanup(request);
+		state->failed = true;
+	}
+	state->pid = 0;
+#endif
 
 	/*
 	 *	The exec failed for some internal reason.  We don't
@@ -385,12 +421,20 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	state->pid = pid;
 	state->status = -1;	/* default to program didn't work */
 
+#ifndef __linux__
+	/*
+	 *	libkqueue does not implement waiting for PIDs.
+	 *
+	 *	So we don't ask it to wait for the PID, but instead
+	 *	try to beat the race condition ourselves.
+	 */
 	if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
 			      unlang_tmpl_exec_waitpid, request) < 0) {
 		RPEDEBUG("Failed adding watcher for child process");
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
+#endif
 
 	/*
 	 *	Kill the child process after a period of time.
