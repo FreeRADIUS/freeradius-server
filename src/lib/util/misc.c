@@ -1029,7 +1029,7 @@ bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
  */
 uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
 {
-	uint64_t res;
+	uint64_t res = 0;
 
 	lhs %= mod;
 
