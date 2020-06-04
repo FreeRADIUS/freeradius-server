@@ -998,6 +998,8 @@ int fr_size_from_str(size_t *out, char const *str)
 
 /** Multiply, checking for overflow
  *
+ * Multiplication will only occur if it would not overflow.
+ *
  * @param[out] result	of multiplication.
  * @param[in] lhs	First operand.
  * @param[in] rhs	Second operand.
@@ -1008,9 +1010,37 @@ int fr_size_from_str(size_t *out, char const *str)
  */
 bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
 {
-        *result = lhs * rhs;
+	if (rhs > 0 && (UINT64_MAX / rhs) < lhs) return true;
 
-        return rhs > 0 && (UINT64_MAX / rhs) < lhs;
+        *result = lhs * rhs;	/* ubsan would flag this */
+
+        return false;
+}
+
+/** Multiply with modulo wrap
+ *
+ * Avoids multiplication overflow.
+ *
+ * @param[in] lhs	First operand.
+ * @param[in] rhs	Second operand.
+ * @param[in] mod	Modulo.
+ * @return
+ *	- Result.
+ */
+uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
+{
+	uint64_t res;
+
+	lhs %= mod;
+
+	while (rhs > 0) {
+		if (rhs & 0x01) res = (res + lhs) % mod;
+
+		lhs = (lhs * 2) % mod;
+		rhs /= 2;
+	}
+
+	return res % mod;
 }
 
 /** Compares two pointers
