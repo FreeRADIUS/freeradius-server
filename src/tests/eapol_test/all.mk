@@ -99,5 +99,5 @@ $(shell mkdir -p "$(BUILD_DIR)/tests/eapol_test/" && touch "$(BUILD_DIR)/tests/e
 endif
 
 $(TEST):
-	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
+	@echo "eapol_test build previously failed, skipping... retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 endif
