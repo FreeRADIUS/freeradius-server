@@ -513,7 +513,12 @@ static inline ssize_t encode_array(uint8_t *out, size_t outlen,
 		/*
 		 *	Populate the length field
 		 */
-		if (len_field) *len_field = htons((uint16_t) slen);
+		if (len_field) {
+			uint16_t len_value = htons((uint16_t) slen);
+
+			/* Needed to satisfy 2 byte alignment (ubsan) */
+			memcpy(len_field, &len_value, sizeof(len_value));
+		}
 
 		vp = fr_cursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
