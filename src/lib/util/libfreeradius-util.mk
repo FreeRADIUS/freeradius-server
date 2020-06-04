@@ -27,6 +27,7 @@ SOURCES		:= \
 		   heap.c \
 		   hmac_md5.c \
 		   hmac_sha1.c \
+		   hw.c \
 		   inet.c \
 		   isaac.c \
 		   log.c \
