@@ -1012,9 +1012,9 @@ bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
 {
 	if (rhs > 0 && (UINT64_MAX / rhs) < lhs) return true;
 
-        *result = lhs * rhs;	/* ubsan would flag this */
+	*result = lhs * rhs;	/* ubsan would flag this */
 
-        return false;
+	return false;
 }
 
 /** Multiply with modulo wrap
