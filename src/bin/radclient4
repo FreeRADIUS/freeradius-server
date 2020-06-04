@@ -1,0 +1,124 @@
+#! /bin/sh
+#
+# radclient4	Emulate the old radclient
+#
+# Version:	$Id$
+#
+
+usage() {
+cat <<EOF
+Usage: radclient4 [options] server[:port] <command> <secret>
+  <command>              One of auth, acct, status, coa, disconnect or auto.
+  -4                     Use IPv4 address of server
+  -6                     Use IPv6 address of server.
+  -d <raddb>             Set user dictionary directory.
+  -D <dictdir>           Set main dictionary directory.
+  -f <file>              Read packets from file, not stdin.
+  -h                     Print usage help information.
+  -x                     Debugging mode.
+EOF
+exit 1
+}
+
+OPTIONS=
+
+# Quick pass to check options
+if [ $# -lt 3 ]
+then
+	usage
+fi
+
+RADCLIENT_CAST=
+
+# Parse new command-line options
+while [ `echo "$1" | cut -c 1` = "-" ]
+do
+   case "$1" in
+	-4)
+		RADCLIENT_CAST="<ipv4addr>"
+		shift
+		;;
+	-6)
+		RADCLIENT_CAST="<ipv6addr>"
+		shift
+		;;
+	-d)
+		OPTIONS="$OPTIONS -d $2"
+		shift;shift
+		;;
+	-D)
+		OPTIONS="$OPTIONS -D $2"
+		shift;shift
+		;;
+	-f)
+		OPTIONS="$OPTIONS -i $2"
+		shift;shift
+		;;
+	-x)
+		OPTIONS="$OPTIONS -x"
+		shift
+		;;
+
+	*)
+		usage
+		;;
+  esac
+done
+
+# Check that there are enough options left over.
+if [ $# -lt 3 ]
+then
+	usage
+fi
+
+#
+#  Parse packet type
+#
+PACKET_TYPE=
+case "$2" in
+	acct)
+		RADCLIENT_PACKET_TYPE="Access-Request"
+		RADCLIENT_PORT=1813
+		;;
+	auth)
+		RADCLIENT_PACKET_TYPE="Access-Request"
+		RADCLIENT_PORT=1812
+		;;
+	auto)
+		;;
+	coa)
+		RADCLIENT_PACKET_TYPE="Access-Request"
+		RADCLIENT_PORT=3799
+		;;
+	disconnect)
+		RADCLIENT_PACKET_TYPE="Access-Request"
+		RADCLIENT_PORT=3799
+		;;
+	status)
+		RADCLIENT_PACKET_TYPE="Access-Request"
+		RADCLIENT_PORT=1812
+		;;
+	*)
+		usage
+		;;
+esac
+
+#
+#  Parse server name AFTER packet type, which lets the above
+#  code set the default port, but also lets the caller override
+#  it with "server:port"
+#
+#  @todo - send the actual packet type to unit_test_module
+#
+#  @todo - parse the "server:port" stuff, too.  Much easier to do in C than in shell :(
+#
+RADCLIENT_SERVER="$RADCLIENT_CAST$1"
+RADCLIENT_SECRET=$3
+
+#
+#  These environment variables are used to fill in the configuration
+#  options in radclient.conf
+#
+export RADCLIENT_SERVER RADCLIENT_PORT RADCLIENT_SECRET
+
+exec unit_test_module $(OPTIONS) -n radclient
