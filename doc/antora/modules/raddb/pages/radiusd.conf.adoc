@@ -660,7 +660,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /usr/local
+prefix = /tmp/freeradius/install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var

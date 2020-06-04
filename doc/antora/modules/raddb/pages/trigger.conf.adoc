@@ -99,14 +99,14 @@ The entries below should not be edited.  For example, the double colons
   *must* immediately follow the `${snmptrap}` reference.  Adding a space
 before the double colons  will break all SNMP traps.
 
-However... the traps are just programs which are run when
-particular events occur.  If you want to replace a trap with
-another program, you can.  Just edit the definitions below, so that
-they run a program of your choice.
+The triggers just programs which are run when particular events
+occur.  If you want to replace an SNMP trap with another program,
+you can.  Just edit the definitions below, so that they run a
+program of your choice.
 
 For example, you can leverage the "start/stop" triggers to run a
-program when the server starts, or when it stops.  But that will
-prevent the start/stop SNMP traps from working, of course.
+program when the server starts, or when it stops.  However, only
+one program will be executed per trigger.
 
 
 ### Server core triggers
@@ -129,76 +129,12 @@ This will trigger only once per 60 seconds.
 
 
 
-#### Client events
-
-For events related to clients:
-
-
-add:: A new dynamic client has been added
-
-
-
-NOTE: There is no event for when dynamic clients
-expire.
-
-
-#### Signal events
-
-Events related to signals received:
-
-
-hup:: When a HUP signal has been received.
-
-
-
-term:: When a TERM signal has been received.
-
-
-
-#### Thread pool events
-
-Events related to the thread pool:
-
-
-start:: A new thread has been started.
-
-
-
-stop:: An existing thread has been stopped.
-
-
-
-unresponsive:: An existing thread is unresponsive.
-
-
-
-max_threads:: the "max_threads" limit has
-been reached.
-
-
-
 ### Module triggers
 
 Triggers for specific modules.  These are *not* in the module
 configuration because they are global to all instances of the
 module.  You can have module-specific triggers, by placing a
 "trigger" subsection in the module configuration.
-
-
-#### rlm_files: The files module
-
-
-args:: Define common arguments to use below:
-
-
-
-hup:: The module has been HUP'd via `radmin`.
-
-
-
-NOTE: "hup" can be used for every module
-which can be HUP'd via radmin
-
 
 
 #### rlm_ldap: The LDAP module
@@ -218,10 +154,6 @@ open:: A new connection to the directory has been opened.
 
 
 close:: A connection to the directory has been closed.
-
-
-
-hup:: The module has been HUP'd via `radmin`.
 
 
 
@@ -249,10 +181,6 @@ close:: A connection to the database has been closed.
 
 
 fail:: Failed to open a new connection to the database.
-
-
-
-hup:: The module has been HUP'd via `radmin`.
 
 
 
@@ -297,30 +225,12 @@ trigger {
 		start = "${snmptrap}::serverStart"
 		stop = "${snmptrap}::serverStop"
 		max_requests = "${snmptrap}::serverMaxRequests"
-		client {
-			add = "/path/to/file %{Packet-Src-IP-Address}"
-		}
-		signal {
-			hup = "${snmptrap}::signalHup"
-			term = "${snmptrap}::signalTerm"
-		}
-		thread {
-			start = "${snmptrap}::threadStart"
-			stop = "${snmptrap}::threadStop"
-			unresponsive = "${snmptrap}::threadUnresponsive"
-			max_threads = "${snmptrap}::threadMaxThreads"
-		}
 	}
 	modules {
-		files {
-			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
-			hup = "${snmptrap}::serverModuleHup ${args}"
-		}
 		ldap {
 			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
 			open = "${snmptrap}::serverModuleConnectionUp ${args}"
 			close = "${snmptrap}::serverModuleConnectionDown ${args}"
-			hup = "${snmptrap}::serverModuleHup ${args}"
 			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
 			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
 		}
@@ -329,7 +239,6 @@ trigger {
 			open = "${snmptrap}::serverModuleConnectionUp ${args}"
 			close = "${snmptrap}::serverModuleConnectionDown ${args}"
 			fail = "${snmptrap}::serverModuleConnectionFail ${args}"
-			hup = "${snmptrap}::serverModuleHup ${args}"
 			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
 			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
 		}

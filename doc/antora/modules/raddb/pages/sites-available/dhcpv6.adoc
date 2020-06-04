@@ -1,0 +1,265 @@
+
+
+
+
+
+= The DHCPv6 Virtual Server
+
+
+## The Virtual Server
+
+
+namespace:: Needs to be "dhcpv6" for DHCPv6 dunctionality.
+
+
+
+all_dhcp_servers_and_relays:: Predefined multicast address
+for DHCPv6 servers and relays.
+
+This configuration item is here for convenience.  It alloss
+each `listen` section below to use this definition, so that
+those sections do not need to list magic numbers.
+
+
+
+interface:: Ethernet interface for DHCPv6.
+
+DHCPv6 servers require multiple listeners, one for multicast
+packets, and one for unicast packets.  Both listeners should
+use the same interface.  So it is defined here once, and used
+below.
+
+
+
+port:: The port where we accept packets.
+
+DHCPv6 servers require multiple listeners, one for multicast
+packets, and one for unicast packets.  Both listeners should
+use the same interface.  So it is defined here once, and used
+below.
+
+The default DHCPv6 port is `547`.  We use `5470` here, so that
+testing will not affect production systems.  This value should
+be changed to `547` for production use.
+
+
+
+### The listen section
+
+DHCPv6 relies on multicast packets to work.  We suggest
+defining only one DHCPv6 "listen" per host machine.  This
+suggestion is because all DHCPv6 listeners will receive all
+DHCPv6 packets.
+
+
+type:: The type of packet to accept.
+
+Multiple types can be accepted by using multiple
+lines of `type = ...`.
+
+All DHCPv6 request types are supported.  Relaying
+is not supported.
+
+
+
+transport:: The transport protocol.
+
+Only `udp` is allowed.
+
+
+
+#### UDP Transport
+
+When the `listen` section contains `transport =
+udp`, it looks for a "udp" subsection.  This
+subsection contains all of the configuration for
+the UDP transport.
+
+
+ipaddr:: The IP address where we accept
+packets.
+
+The address can be IPv6, or a host name.
+If a host name is used, the IPv6 address is
+preferred.  When there is no IPv6 address
+for a host name, an error will occur.
+
+
+
+port:: The port where we accept packets.
+
+ The port should be 547 for a production
+ network. We do NOT suggest setting it to
+ 547 on a production network unless you
+ know what you are doing. Even if nothing
+ is configured below, the server may still
+ NAK legitimate responses from clients.
+
+
+
+interface:: Interface where we receive packets.
+
+When a multicast address is used for `ipaddr` above,
+and `interface` configuration MUST be given.
+
+
+
+src_ipaddr:: The source IP address used for
+unicast messages.
+
+If a `src_ipaddr` is not specified, then
+the server will try to choose one automatically:
+
+  * If `ipaddr` is unicast, then the server will use
+  that as `src_ipaddr`, too.
+
+  * If `ipaddr` is multicast, then the server will
+  look for the first "link local" address on the
+  `interface` defined above, and use that.
+
+In most cases, you should not need to specify
+`src_ipaddr`.
+
+
+
+### The listen section
+
+DHCPv6 relies on multicast packets to work.  We suggest
+defining only one DHCPv6 "listen" per host machine.  This
+suggestion is because all DHCPv6 listeners will receive all
+DHCPv6 packets.
+
+
+type:: The type of packet to accept.
+
+Multiple types can be accepted by using multiple
+lines of `type = ...`.
+
+A listener which is using a unicast `ipaddr`
+should not receive Solicit, Rebind, or Reconfirm
+packets.  Those packets MUST be sent to a multicast
+address.
+
+
+
+transport:: The transport protocol.
+
+Only `udp` is allowed.
+
+
+
+#### UDP Transport
+
+When the `listen` section contains `transport =
+udp`, it looks for a "udp" subsection.  This
+subsection contains all of the configuration for
+the UDP transport.
+
+
+ipaddr:: The IP address where we accept
+packets.
+
+The address can be IPv6, or a host name.
+If a host name is used, the IPv6 address is
+preferred.  When there is no IPv6 address
+for a host name, an error will occur.
+
+If an `ipaddr` is not defined, then the
+configuration MUST specify an `interface`.
+The server will look for the first
+"link local" address on that interface,
+and use that as the value for `ipaddr`.
+
+
+
+
+Receive a Solicit message
+
+
+
+Send an Advertise message
+
+
+All replies MUST include a Server-ID option
+
+
+
+Receive a Solicit message
+
+
+
+All replies MUST include a Server-ID option
+
+
+
+We also support recv / send for all normal DHCPv6 packet types.
+
+See dictionary/dhcpv6/dictionary.freeradius.internal for a list of
+packet type names.
+
+
+
+
+All replies MUST include a Server-ID option
+
+
+
+== Default Configuration
+
+```
+#	This is a virtual server that handles DHCPv6.
+server dhcpv6 {
+	namespace = dhcpv6
+	all_dhcp_servers_and_relays = FF02::1:2
+	interface = en0
+	port = 547
+	listen {
+		type = Solicit
+		type = Request
+		transport = udp
+		udp {
+			ipaddr = ${...all_dhcp_servers_and_relays}
+			port = ${...port}
+			interface = ${...interface}
+#			src_ipaddr = ${ipaddr}
+		}
+	}
+	listen {
+		type = Request
+		type = Information-Request
+		transport = udp
+		udp {
+#			ipaddr = 2001:db8::
+			port = ${...port}
+			interface = ${...interface}
+		}
+	}
+recv Solicit {
+	ok
+}
+send Advertise {
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
+}
+recv Request {
+	ok
+}
+send Offer {
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
+}
+recv Information-Request {
+	ok
+}
+send Reply {
+	update reply {
+		&Server-ID-DUID = Server-ID-DUID-UUID
+		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+	}
+}
+}
+```

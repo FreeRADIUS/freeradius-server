@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #  This virtual server provides an example of how to dynamically amend the
@@ -121,14 +121,14 @@ recv Status-Server {
 	#
 	if ("%{sql:SELECT pg_is_in_recovery()}" != "f") {
 
-		# Fail the db_online module, if it isn't already
+		#  Fail the db_online module, if it isn't already
 		if ("%{db_online:}" != "fail") {
 			%{db_online:fail}
 		}
 
 	} else {
 
-		# Set the db_online module status to alive, if it isn't already
+		#  Set the db_online module status to alive, if it isn't already
 		if ("%{db_online:}" != "alive") {
 			%{db_online:alive}
 		}

@@ -33,6 +33,10 @@ that particular interface.
 
 
 
+src_ipaddr: Source address for ICMP messages.
+
+
+
 timeout:: How long to wait for the reply.
 
 Default is `1` seconds, which should be plenty for nearly
@@ -44,6 +48,16 @@ lower value.  Doing so will improve network stability and
 responsiveness.
 
 
+
+## Ping for IPv4
+
+Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
+
+
+
+## A version for ICMPv6
+
+
 == Default Configuration
 
 ```
@@ -51,6 +65,15 @@ responsiveness.
 #	`%{icmp:%{NAS-IP-Address}}`
 icmp {
 #	interface = eth0
+	src_ipaddr = *
 	timeout = 1s
+}
+icmp ping {
+	timeout = 1s
+	src_ipaddr = *
+}
+icmp ping6 {
+	timeout = 1s
+	src_ipaddr = ::
 }
 ```

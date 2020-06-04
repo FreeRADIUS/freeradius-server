@@ -69,7 +69,7 @@ icmp ping {
 }
 
 #
-# ## A version for ICMPv6
+#  ## A version for ICMPv6
 #
 icmp ping6 {
 	timeout = 1s

@@ -59,6 +59,7 @@ The password is retrieved via the ``getpwent()`` and ``getspwent()`` system call
 | xref:mods-available/detail.adoc[detail]	| Writes attributes from a request list to a flat file in 'detail' format.
 | xref:mods-available/dhcpv4.adoc[dhcpv4]	| Implements DHCPv4 (Dynamic Host Configuration Protocol for IPv4) client and relay.
 | xref:mods-available/files.adoc[files]	| Implements a traditional Livingston-style users file.
+| xref:mods-available/icmp.adoc[icmp]	| Sends an ICMP "echo request" message to a particular IP address.
 | xref:mods-available/linelog.adoc[linelog]	| Creates log entries from attributes, string expansions, or static strings, and writes them to a variety of backends,
 including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/logtee.adoc[logtee]	| Tee's request logging at runtime, sending it to additional log destinations.
