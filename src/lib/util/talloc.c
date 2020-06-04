@@ -364,11 +364,11 @@ char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 {
 	char	*p;
-	size_t	len = talloc_array_length(in);
+	size_t	inlen = talloc_array_length(in);
 
-	if (len == 0) len = 1;
+	if (inlen == 0) inlen = 1;
 
-	p = talloc_array(ctx, char, len);
+	p = talloc_array(ctx, char, inlen);
 	if (!p) return NULL;
 
 	/*
@@ -376,8 +376,8 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 	 *
 	 * But ubsan still flags this, grrr.
 	 */
-	if (inlen > 0) memcpy(p, in, len - 1);
-	p[len] = '\0';
+	if (inlen > 0) memcpy(p, in, inlen - 1);
+	p[inlen] = '\0';
 
 	return p;
 }
