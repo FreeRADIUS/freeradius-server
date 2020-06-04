@@ -41,13 +41,13 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	$(Q)echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+	$(Q)if ! $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
+		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		exit 1;                                                     \
 	fi
 #
@@ -64,7 +64,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
+		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
@@ -75,7 +75,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TESTBIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
+		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \

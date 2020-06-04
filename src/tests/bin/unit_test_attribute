@@ -3,11 +3,11 @@
 . src/tests/bin/lib.sh
 
 # help?
-do_test $TESTBIN/unit_test_attribute -h
+do_test $TEST_BIN/unit_test_attribute -h
 
 # execution?
 _t=./build/tests/bin/unit_test_attribute.tmp
 touch $_t
 cb_do_test="rm -fv $_t"
 
-do_test $TESTBIN/unit_test_attribute -D ${DICT_DIR} -Mx $_t
+do_test $TEST_BIN/unit_test_attribute -D ${DICT_DIR} -Mx $_t

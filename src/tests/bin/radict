@@ -2,5 +2,5 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/radict -h
-do_test $TESTBIN/radict -D $DICT_DIR User-Name
+do_test $TEST_BIN/radict -h
+do_test $TEST_BIN/radict -D $DICT_DIR User-Name

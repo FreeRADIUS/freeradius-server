@@ -62,11 +62,11 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 #
 #  And the actual script to run each test.
 #
-$(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
+$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r "$@" $<; then \
-		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r \"$@\" $<"; \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r "$@" $<; then \
+		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi

@@ -2,4 +2,4 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/rbmonkey -h
+do_test $TEST_BIN/rbmonkey -h

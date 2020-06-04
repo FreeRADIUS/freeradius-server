@@ -10,13 +10,13 @@ TRIE_FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(BUILD_DIR)/tests/trie:
 	${Q}mkdir -p $@
 
-$(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TESTBINDIR)/trie | $(BUILD_DIR)/tests/trie
+$(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tests/trie
 	@echo TRIE-TEST $(notdir $@)
-	@$(TESTBIN)/trie $^ > $@
+	@$(TEST_BIN)/trie $^ > $@
 
-$(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TESTBINDIR)/nopc | $(BUILD_DIR)/tests/trie
+$(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TEST_BIN_DIR)/nopc | $(BUILD_DIR)/tests/trie
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@$(TESTBIN)/nopc $^ > $@
+	@$(TEST_BIN)/nopc $^ > $@
 
 #
 #  Get all of the unit test output files

@@ -2,5 +2,5 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/atomic_queue_test -h
-do_test $TESTBIN/atomic_queue_test -s 40480
+do_test $TEST_BIN/atomic_queue_test -h
+do_test $TEST_BIN/atomic_queue_test -s 40480

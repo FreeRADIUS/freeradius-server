@@ -30,7 +30,7 @@ $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
 #
 #	Run the radsniff commands
 #
-$(OUTPUT)/%.txt: $(DIR)/%.txt $(TESTBINDIR)/radsniff $(PCAP_IN)
+$(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	$(eval TARGET   := $(notdir $@))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
@@ -41,10 +41,10 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TESTBINDIR)/radsniff $(PCAP_IN)
 #
 # 	We need that 'TZ=UTC ...' to libpcap pass the same timestamp in anywhere.
 #
-	$(Q)if ! TZ='UTC' $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
+	$(Q)if ! TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
-		echo "RADSNIFF: TZ='UTC' $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \
+		echo "RADSNIFF: TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \
 		rm -f $@;										      \
 		exit 1;                                                                                       \
 	fi
@@ -52,7 +52,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TESTBINDIR)/radsniff $(PCAP_IN)
 		grep -v "^#" $(EXPECTED) > $(FOUND).result || true;                                           \
 		if ! cmp $(FOUND) $(FOUND).result; then                                                       \
 			echo "RADSNIFF FAILED $@";                                                                \
-			echo "RADSNIFF: $(TESTBIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \
+			echo "RADSNIFF: $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \
 			echo "ERROR: File $(FOUND).result is not the same as $(EXPECTED)";                        \
 			echo "If you did some update on the radsniff code, please be sure to update the unit tests."; \
 			echo "e.g: $(EXPECTED)";                                                                      \

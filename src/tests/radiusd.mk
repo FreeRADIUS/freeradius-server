@@ -6,7 +6,6 @@
 #
 #  DIR       = src/tests/$target
 #  BUILD_DIR = build/
-#  BIN_PATH  = $(BUILD_DIR)/bin/local
 #
 #  - Defined by the target
 #
@@ -39,7 +38,7 @@
 include Make.inc
 
 define RADIUSD_SERVICE
-$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(BIN_PATH)/radiusd)
+$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(TEST_BIN)/radiusd)
 
 #
 #  Kill it.  We don't care if it failed or not.  However, we do care
@@ -96,6 +95,7 @@ ${2}/radiusd.pid: ${2}
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
+		tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
 		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
 	fi
 
@@ -107,7 +107,7 @@ $(TEST).radiusd_start: ${2}/radiusd.pid
 #  the output files depend on the radiusd binary.
 #
 ifneq "$(FILES.$(TEST))" ""
-$(foreach x, $(FILES.$(TEST)), $(eval $x: $(TESTBINDIR)/radiusd $(TESTBINDIR)/$(CLIENT) $(top_srcdir)/src/tests/$(subst test.,,$(TEST))/config/${1}.conf))
+$(foreach x, $(FILES.$(TEST)), $(eval $x: $(TEST_BIN_DIR)/radiusd $(TEST_BIN_DIR)/$(CLIENT) $(top_srcdir)/src/tests/$(subst test.,,$(TEST))/config/${1}.conf))
 endif
 
 endef

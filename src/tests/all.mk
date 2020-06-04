@@ -21,11 +21,11 @@ raddb/test.conf:
 # Don't molest STDERR as this may be used to receive output from a debugger.
 $(BUILD_DIR)/tests/radiusd-c:
 	@printf "radiusd -C... "
-	${Q}if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	${Q}if ! ${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
-		echo "${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
+		echo "${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
 		exit 1; \
 	fi
 	${Q}rm -f raddb/test.conf

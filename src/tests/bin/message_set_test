@@ -2,5 +2,5 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/message_set_test -h
-do_test $TESTBIN/message_set_test -s caipirinha -tx
+do_test $TEST_BIN/message_set_test -h
+do_test $TEST_BIN/message_set_test -s caipirinha -tx

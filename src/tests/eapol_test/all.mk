@@ -17,7 +17,7 @@ TEST_PATH := ${top_srcdir}/src/tests/eapol_test
 CONFIG_PATH := $(TEST_PATH)/config
 RADIUS_LOG := $(OUTPUT)/radiusd.log
 GDB_LOG := $(OUTPUT)/gdb.log
-BIN_PATH := $(BUILD_DIR)/bin/local
+TEST_BIN := $(BUILD_DIR)/bin/local
 
 #
 #   We use the stock raddb modules to help detect typos and other issues

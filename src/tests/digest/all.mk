@@ -35,13 +35,13 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		cp -f $< $@.request;					\
 		echo "Test-Name = \"$(TARGET)\"" >> $@.request;		\
 		echo "Test-Number = \"$${_num}\"" >> $@.request;	\
-		if ! $(TESTBIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
+		if ! $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
 			echo "FAILED";					\
 			cat $@.out;					\
 			rm -f $(BUILD_DIR)/tests/test.digest;           \
 			$(MAKE) --no-print-directory test.digest.radiusd_kill; \
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
-			echo "RADCLIENT: $(TESTBIN)/radclient -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
+			echo "RADCLIENT: $(TEST_BIN)/radclient -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
 			exit 1;						\
 		fi;							\
 		touch $@;						\

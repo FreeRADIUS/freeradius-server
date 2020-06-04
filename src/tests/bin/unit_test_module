@@ -2,22 +2,22 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/unit_test_module -h
+do_test $TEST_BIN/unit_test_module -h
 
-do_test $TESTBIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
+do_test $TEST_BIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
 User-Name = bob
 
 Packet-Type = Access-Accept
 EOF
 
-do_test $TESTBIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
+do_test $TEST_BIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - <<EOF
 Packet-Type = CoA-Request,
 User-Name = bob
 
 Packet-Type = CoA-ACK
 EOF
 
-do_test $TESTBIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - -n dhcpv4 -p dhcpv4 <<EOF
+do_test $TEST_BIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - -n dhcpv4 -p dhcpv4 <<EOF
 Packet-Type = DHCP-Discover,
 DHCP-Hardware-Type = Ethernet
 DHCP-Hardware-Address-Length = 6
