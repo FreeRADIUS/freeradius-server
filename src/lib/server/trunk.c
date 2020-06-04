@@ -2084,6 +2084,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 	treq->pub.preq = NULL;
 	treq->pub.rctx = NULL;
+	treq->bound_to_conn = false;
 	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
 	treq->last_freed = fr_time();
 
@@ -2185,13 +2186,14 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
 						trunk->conf.req_pool_headers, trunk->conf.req_pool_size));
 		talloc_set_destructor(treq, _trunk_request_free);
-		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
-		treq->pub.trunk = trunk;
-		treq->pub.tconn = NULL;
-		treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
-		treq->pub.preq = NULL;
-		treq->pub.rctx = NULL;
-		treq->last_freed = 0;
+
+		*treq = (fr_trunk_request_t){
+			.pub = {
+				.state = FR_TRUNK_REQUEST_STATE_INIT,
+				.trunk = trunk
+			},
+			.cancel_reason = FR_TRUNK_CANCEL_REASON_NONE
+		};
 		trunk->pub.req_alloc_new++;
 #ifndef NDEBUG
 		fr_dlist_init(&treq->log, fr_trunk_request_state_log_t, entry);
