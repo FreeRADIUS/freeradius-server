@@ -34,14 +34,15 @@ extern "C" {
  * Represents a single tmpl
  */
 typedef struct {
-	fr_value_box_t			**out;		//!< where the expansion is stored
-
 	TALLOC_CTX			*ctx;		//!< for allocating value boxes
+	fr_value_box_t			**out;		//!< where the expansion is stored
 	fr_value_box_t			*box;		//!< where the expansion is stored
 
 	void				*rctx;		//!< for resume
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler
 	fr_unlang_tmpl_signal_t		signal;		//!< signal handler
+
+	bool				failed;		//!< due to exec timeout or buffer overflow
 
 	pid_t				pid;		//!< child PID
 	int				fd;		//!< for reading from the child

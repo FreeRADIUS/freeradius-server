@@ -82,8 +82,9 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	 *	ignore future signals.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		if (state->buffer) unlang_tmpl_exec_cleanup(request);
+		unlang_tmpl_exec_cleanup(request);
 		state->signal = NULL;
+		state->failed = true;
 	}
 }
 
@@ -152,10 +153,12 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 								       unlang_frame_state_tmpl_t);
 
 	state->status = status;
+	state->pid = 0;
 
-	fr_assert(state->pid == 0);
 	fr_assert(state->fd < 0);
-	fr_assert(state->ev == NULL);
+
+	if (state->ev) fr_event_timer_delete(&state->ev);
+
 	unlang_interpret_resumable(request);
 }
 
@@ -186,37 +189,31 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 	p += data_len;
 
 	/*
-	 *	Done reading, close the pipe.
+	 *	Done reading, close the pipe.  We still wait for the
+	 *	caller to exit, so that we can get it's exit code.
 	 */
-	if ((data_len == 0) || (p >= end)) {
-		pid_t pid = state->pid;
+	if (data_len == 0) goto close_pipe;
 
-		/*
-		 *	Ran out of buffer space.  Kill the process.
-		 */
-		if (p >= end) kill(state->pid, SIGKILL);
+	/*
+	 *	Ran out of buffer space.  Kill the process and discard
+	 *	all output.  We destroy the output so that we don't
+	 *	return truncated data to the caller.  We also destroy
+	 *	the timer which waits for the exit code.  We no longer
+	 *	care about it.
+	 */
+	if (p >= end) {
+		fr_assert(state->ev != NULL);
+		fr_event_timer_delete(&state->ev);
+		state->ptr = state->buffer;
 
-		/*
-		 *	This event will stick around until the process exits.
-		 *
-		 *	On the other hand, if the process has ALREADY
-		 *	exited, then the callback function will be
-		 *	called immediately.
-		 */
-		state->pid = 0;
+		REDEBUG("Too much output from program - killing it and failing the request");
+		kill(state->pid, SIGKILL);
+		state->failed = true;
 
-		/*
-		 *	Clean up the FD, reader, and timeouts.
-		 */
-		unlang_tmpl_exec_cleanup(request);
-
-		if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
-				      unlang_tmpl_exec_waitpid, request) < 0) {
-			RPEDEBUG("Failed adding watcher for child process");
-			unlang_interpret_resumable(request);
-			return;
-		}
-
+	close_pipe:
+		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
+		close(state->fd);
+		state->fd = -1;
 		return;
 	}
 
@@ -227,8 +224,17 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	REQUEST				*request = uctx;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
+								       unlang_frame_state_tmpl_t);
 
-	REDEBUG("Timeout running program - kill it and failing the request");
+	fr_assert(state->pid > 0);
+
+	REDEBUG("Timeout running program - killing it and failing the request");
+	kill(state->pid, SIGKILL);
+	state->failed = true;
+
 	unlang_tmpl_exec_cleanup(request);
 	unlang_interpret_resumable(request);
 }
@@ -274,6 +280,16 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
+	/*
+	 *	The exec failed for some internal reason.  We don't
+	 *	care about output, and we don't care about the programs exit status.
+	 */
+	if (state->failed) {
+		TALLOC_FREE(state->box);
+		goto resume;
+	}
+
+	fr_assert(state->pid == 0);
 	if (state->status_p) *state->status_p = state->status;
 
 	if (state->status != 0) {
@@ -366,6 +382,13 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 
 	state->pid = pid;
 	state->status = -1;	/* default to program didn't work */
+
+	if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
+			      unlang_tmpl_exec_waitpid, request) < 0) {
+		RPEDEBUG("Failed adding watcher for child process");
+		unlang_tmpl_exec_cleanup(request);
+		goto fail;
+	}
 
 	/*
 	 *	Kill the child process after a period of time.
