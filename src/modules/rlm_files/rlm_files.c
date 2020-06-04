@@ -359,9 +359,10 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			found = true;
 
 			/* ctx may be reply */
-			MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
-
-			radius_pairmove(request, &reply->vps, reply_tmp, true);
+			if (pl->reply) {
+				MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
+				radius_pairmove(request, &reply->vps, reply_tmp, true);
+			}
 			fr_pair_list_move(&request->control, &check_tmp);
 
 			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
