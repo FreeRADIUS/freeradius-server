@@ -373,8 +373,10 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 
 	/*
 	 * C99 (7.21.1/2) - Length zero results in noop
+	 *
+	 * But ubsan still flags this, grrr.
 	 */
-	memcpy(p, in, len - 1);
+	if (inlen > 0) memcpy(p, in, len - 1);
 	p[len] = '\0';
 
 	return p;
@@ -396,8 +398,10 @@ char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 
 	/*
 	 * C99 (7.21.1/2) - Length zero results in noop
+	 *
+	 * But ubsan still flags this, grrr.
 	 */
-	memcpy(p, in, inlen);
+	if (inlen > 0) memcpy(p, in, inlen);
 	p[inlen] = '\0';
 
 	return p;
