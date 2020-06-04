@@ -316,10 +316,12 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	fr_assert(state->pid > 0);
 
 	if (waitpid(state->pid, &state->status, WNOHANG) == 0) {
-		unlang_tmpl_exec_cleanup(request);
 		state->failed = true;
+	} else {
+		state->pid = 0;
 	}
-	state->pid = 0;
+
+	unlang_tmpl_exec_cleanup(request);
 #endif
 
 	/*
