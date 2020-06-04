@@ -6,6 +6,11 @@ PORT := 12340
 SECRET := testing123
 
 #
+#	We need the 'git-lfs' installed to fetch some binary files.
+#
+GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
+
+#
 #  To work around OpenSSL issues with travis.
 #
 raddb/test.conf:
@@ -51,6 +56,7 @@ test: \
 		test.modules	\
 		test.radiusd-c	\
 		test.radclient	\
+		test.radsniff	\
 		test.auth	\
 		test.digest	\
 		test.radmin	\
