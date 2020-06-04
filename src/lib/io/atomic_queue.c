@@ -265,6 +265,16 @@ size_t fr_atomic_queue_size(fr_atomic_queue_t *aq)
 	return aq->size;
 }
 
+#ifdef WITH_VERIFY_PTR
+/** Check the talloc chunk is still valid
+ *
+ */
+void fr_atomic_queue_verify(fr_atomic_queue_t *aq)
+{
+	(void)talloc_get_type_abort(aq->chunk, fr_atomic_queue_t);
+}
+#endif
+
 #ifndef NDEBUG
 
 #if 0

@@ -1340,7 +1340,7 @@ static void worker_verify(fr_worker_t *worker)
 	int i;
 
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-	(void) talloc_get_type_abort(worker->aq_control, fr_atomic_queue_t);
+	fr_atomic_queue_verify(worker->aq_control);
 
 	fr_assert(worker->control != NULL);
 	(void) talloc_get_type_abort(worker->control, fr_control_t);
