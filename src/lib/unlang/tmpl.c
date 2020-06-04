@@ -82,9 +82,11 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
 	 *	ignore future signals.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
+		if (state->pid >= 0) kill(state->pid, SIGKILL);
+		state->failed = true;
+
 		unlang_tmpl_exec_cleanup(request);
 		state->signal = NULL;
-		state->failed = true;
 	}
 }
 
