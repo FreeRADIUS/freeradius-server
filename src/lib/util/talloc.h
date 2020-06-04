@@ -94,6 +94,7 @@ fr_talloc_destructor_t *talloc_add_destructor(TALLOC_CTX *chunk, fr_talloc_free_
 void		talloc_disarm_destructor(fr_talloc_destructor_t *d);
 
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
+TALLOC_CTX	*talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment, size_t size);
 
 /*
  *	Add variant that zeroes out newly allocated memory
