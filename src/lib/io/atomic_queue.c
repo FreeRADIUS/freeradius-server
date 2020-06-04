@@ -31,22 +31,43 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/atomic_queue.h>
+#include <freeradius-devel/util/talloc.h>
 
-typedef struct {
-	alignas(128) void		*data;
-	atomic_int64_t			seq;
+#define CACHE_LINE_SIZE	64
+
+/** Entry in the queue
+ *
+ * @note This structure is cache line aligned for modern AMD/Intel CPUs.
+ * This is to avoid contention when the producer and consumer are executing
+ * on different CPU cores.
+ */
+typedef struct CC_HINT(packed, aligned(CACHE_LINE_SIZE)) {
+	void						*data;
+	atomic_int64_t					seq;
 } fr_atomic_queue_entry_t;
 
+/** Structure to hold the atomic queue
+ *
+ */
 struct fr_atomic_queue_s {
-	alignas(128) atomic_int64_t	head;
-	atomic_int64_t			tail;
+	alignas(CACHE_LINE_SIZE) atomic_int64_t		head;		//!< Head, aligned bytes to ensure
+									///< it's in a different cache line to tail
+									///< to reduce memory contention.
+	atomic_int64_t					tail;
 
-	size_t				size;
+	size_t						size;
 
-	fr_atomic_queue_entry_t		entry[1];
+	void						*chunk;		//!< To pass to free. The non-aligned address.
+
+	alignas(CACHE_LINE_SIZE) fr_atomic_queue_entry_t entry[0];	//!< The entry array, also aligned
+									///< to ensure it's not in the same cache
+									///< line as tail and size.
 };
 
 /** Create fixed-size atomic queue
+ *
+ * @note the queue must be freed explicitly by the ctx being freed, or by using
+ * the #fr_atomic_queue_free function.
  *
  * @param[in] ctx	The talloc ctx to allocate the queue in.
  * @param[in] size	The number of entries in the queue.
@@ -59,7 +80,7 @@ fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
 	size_t			i;
 	int64_t			seq;
 	fr_atomic_queue_t	*aq;
-	static char const	*queue_talloc_type = "fr_atomic_queue_t";
+	TALLOC_CTX		*chunk;
 
 	if (size == 0) return NULL;
 
@@ -70,10 +91,12 @@ fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
 	 *	Since we're allocating a blob, we should also set the
 	 *	name of the data, too.
 	 */
-	aq = talloc_size(ctx, sizeof(*aq) + (size - 1) * sizeof(aq->entry[0]));
-	if (!aq) return NULL;
+	chunk = talloc_aligned_array(ctx, (void **)&aq, CACHE_LINE_SIZE,
+				     sizeof(*aq) + (size) * sizeof(aq->entry[0]));
+	if (!chunk) return NULL;
+	aq->chunk = chunk;
 
-	talloc_set_name_const(aq, queue_talloc_type);
+	talloc_set_name_const(chunk, "fr_atomic_queue_t");
 
 	/*
 	 *	Initialize the array.  Data is NULL, and indexes are
@@ -99,6 +122,18 @@ fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
 	return aq;
 }
 
+/** Free an atomic queue if it's not freed by ctx
+ *
+ * This function is needed because the atomic queue memory
+ * must be cache line aligned.
+ */
+void fr_atomic_queue_free(fr_atomic_queue_t **aq)
+{
+	if (!*aq) return;
+
+	talloc_free((*aq)->chunk);
+	*aq = NULL;
+}
 
 /** Push a pointer into the atomic queue
  *
