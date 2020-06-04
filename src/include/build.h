@@ -139,11 +139,11 @@ extern "C" {
  *	compiler.
  */
 #ifdef __GNUC__
-#  define CC_HINT(_x)	__attribute__ ((_x))
+#  define CC_HINT(...)	__attribute__ ((__VA_ARGS__))
 #  define likely(_x)	__builtin_expect((_x), 1)
 #  define unlikely(_x)	__builtin_expect((_x), 0)
 #else
-#  define CC_HINT(_x)
+#  define CC_HINT(...)
 #  define likely(_x)	_x
 #  define unlikely(_x)	_x
 #endif
