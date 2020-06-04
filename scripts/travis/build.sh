@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-enable_llvm_address_sanitizer=""
-
 #
 #  If this Travis matrix element does not require the build, we still need to run
 #  configure to make sure any autoconf generated files (tls-h et al) are still
@@ -17,10 +15,10 @@ fi
 #  Enable address sanitizer for the clang builds
 #
 if $CC -v 2>&1 | grep clang > /dev/null; then
-    echo "Enabling address sanitizer"
-    enable_address_sanitizer="--enable-llvm-address-sanitizer"
+    echo "Enabling llvm sanitizers"
+    enable_llvm_sanitizers="--enable-llvm-address-sanitizer --enable-llvm-leak-sanitizer --enable-llvm-undefined-behaviour-sanitizer"
 else
-    enable_address_sanitizer=""
+    enable_llvm_sanitizers=""
 fi
 
 #
@@ -32,7 +30,7 @@ fi
 echo "Performing full configuration"
 CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --enable-werror \
-    $enable_address_sanitizer \
+    $enable_llvm_sanitizers \
     --prefix=$HOME/freeradius \
     --with-shared-libs=$LIBS_SHARED \
     --with-threads=$LIBS_OPTIONAL \
