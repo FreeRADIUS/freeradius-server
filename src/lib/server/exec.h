@@ -33,8 +33,6 @@ extern "C" {
 
 #define EXEC_TIMEOUT		10	//!< Default wait time for exec calls (in seconds).
 
-extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
-
 #ifdef __cplusplus
 }
 #endif

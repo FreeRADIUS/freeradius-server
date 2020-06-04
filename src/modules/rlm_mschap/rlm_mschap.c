@@ -851,7 +851,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		buf[len] = 0;
 		RDEBUG2("ntlm_auth said: %s", buf);
 
-		child_pid = rad_waitpid(pid, &status);
+		child_pid = waitpid(pid, &status, 0);
 		if (child_pid == 0) {
 			REDEBUG("Timeout waiting for child");
 			return -1;

@@ -54,13 +54,6 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-static pid_t waitpid_wrapper(pid_t pid, int *status)
-{
-	return waitpid(pid, status, 0);
-}
-
-pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
-
 typedef struct {
 	fr_dlist_t	entry;
 	pid_t		pid;
@@ -441,7 +434,7 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 			/*
 			 *	Clean up the child entry.
 			 */
-			rad_waitpid(pid, &status);
+			waitpid(pid, &status, 0);
 			return -1;
 		}
 		if (rcode < 0) {
@@ -623,12 +616,8 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 		strlcpy(out, answer, outlen);
 	}
 
-	/*
-	 *	Call rad_waitpid (should map to waitpid on non-threaded
-	 *	or single-server systems).
-	 */
 wait:
-	child_pid = rad_waitpid(pid, &status);
+	child_pid = waitpid(pid, &status, 0);
 	if (child_pid == 0) {
 		RERROR("Timeout waiting for child");
 
