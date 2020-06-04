@@ -1427,7 +1427,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	ev->line = line;
 #endif
 
-	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, ev);
+	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT | NOTE_EXITSTATUS, 0, ev);
 
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		pid_t child;
