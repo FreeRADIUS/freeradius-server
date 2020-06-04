@@ -32,6 +32,10 @@ RCSID("$Id$")
 #include "tmpl_priv.h"
 #include <signal.h>
 
+#ifdef __linux__
+#include <sys/wait.h>
+#endif
+
 /*
  *	Clean up everything except the waitpid handler.
  *
