@@ -38,6 +38,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <sys/wait.h>
 #include <ctype.h>
 
 #include "rlm_mschap.h"
