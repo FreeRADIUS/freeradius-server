@@ -349,7 +349,10 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	break_point_clear(frame);
 	return_point_clear(frame);
 	yielded_clear(frame);
-	if (frame->state) TALLOC_FREE(frame->state);
+	if (frame->state) {
+		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
+		TALLOC_FREE(frame->state);
+	}
 }
 
 /** Advance to the next sibling instruction
