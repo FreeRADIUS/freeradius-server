@@ -46,7 +46,9 @@ size_t fr_hw_cache_line_size(void)
 
 	file = fopen("/sys/devices/system/cpu/cpu0/cache/index0/coherency_cache_line_size", "r");
 	if (file) {
-		fscanf(file, "%d", &cache_line_size);
+		if (fscanf(file, "%d", &cache_line_size) != 1) {
+			cache_line_size = CACHE_LINE_DEFAULT;
+		}
 		fclose(file);
 	}
 
