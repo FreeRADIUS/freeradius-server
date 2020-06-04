@@ -135,6 +135,7 @@ static struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefi
 static struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 {
 	uint64_t const *p = (uint64_t const *) ipaddr;
+	uint64_t addr;					/* Needed for alignment */
 	uint64_t ret[2], *o = ret;
 
 	if (prefix > 128) prefix = 128;
@@ -144,14 +145,17 @@ static struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t pr
 
 	if (prefix >= 64) {
 		prefix -= 64;
-		*o++ = 0xffffffffffffffffULL & *p++;	/* lhs portion masked */
+		memcpy(&addr, p, sizeof(addr));		/* Needed for aligned access (ubsan) */
+		*o++ = 0xffffffffffffffffULL & addr;	/* lhs portion masked */
+		p++;
 	} else {
 		ret[1] = 0;				/* rhs portion zeroed */
 	}
 
 	/* Max left shift is 63 else we get overflow */
 	if (prefix > 0) {
-		*o = htonll(~((uint64_t)(0x0000000000000001ULL << (64 - prefix)) - 1)) & *p;
+		memcpy(&addr, p, sizeof(addr));		/* Needed for aligned access (ubsan) */
+		*o = htonll(~((uint64_t)(0x0000000000000001ULL << (64 - prefix)) - 1)) & addr;
 	} else {
 		*o = 0;
 	}
