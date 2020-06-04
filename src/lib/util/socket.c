@@ -251,9 +251,16 @@ bool fr_socket_is_valid_proto(int proto)
 
 #ifdef HAVE_SYS_UN_H
 #  include <sys/un.h>
-#  ifndef SUN_LEN
-#    define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#  endif
+/*
+ *  The linux headers define the macro as:
+ *
+ * # define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
+ *                      + strlen ((ptr)->sun_path))
+ *
+ * Which trips UBSAN, because it sees an operation on a NULL pointer.
+ */
+#  undef SUN_LEN
+#  define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
 
 /** Open a Unix socket
  *
