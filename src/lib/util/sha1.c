@@ -107,6 +107,14 @@ void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len)
 {
 	unsigned int i, j;
 
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length sha1 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!data) data = (uint8_t[]){ 0x00 };
+
 	j = (context->count[0] >> 3) & 63;
 	if ((context->count[0] += len << 3) < (len << 3)) {
 		context->count[1]++;
