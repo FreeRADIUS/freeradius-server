@@ -886,7 +886,14 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	check capabilities.  If we're root, we already have
 	 *	equivalent capabilities so we don't need to check.
 	 */
-	if (src_port && (*src_port < 1024) && (fr_cap_set(CAP_NET_BIND_SERVICE) < 0) && (geteuid() != 0)) return -1;
+	{
+		uid_t	uid = geteuid();
+
+		if (src_port && (*src_port < 1024) && (fr_cap_set(CAP_NET_BIND_SERVICE) < 0) && (uid != 0)) {
+			fr_strerror_printf_push("Alternatively execute the proces as user 0 (root), currently %u", uid);
+			return -1;
+		}
+	}
 #endif
 
 	/*
