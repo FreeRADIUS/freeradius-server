@@ -31,17 +31,11 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/fopencookie.h>
+#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/trie.h>
 #include <netdb.h>
 
 #include "proto_control.h"
-
-#ifdef HAVE_SYS_UN_H
-#include <sys/un.h>
-#ifndef SUN_LEN
-#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#endif
-#endif
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>

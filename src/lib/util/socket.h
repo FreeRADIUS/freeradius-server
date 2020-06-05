@@ -41,6 +41,20 @@ extern "C" {
 #include <string.h>
 #include <sys/time.h>
 
+#ifdef HAVE_SYS_UN_H
+#  include <sys/un.h>
+/*
+ *  The linux headers define the macro as:
+ *
+ * # define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
+ *                      + strlen ((ptr)->sun_path))
+ *
+ * Which trips UBSAN, because it sees an operation on a NULL pointer.
+ */
+#  undef SUN_LEN
+#  define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#endif
+
 bool		fr_socket_is_valid_proto(int proto);
 int		fr_socket_client_unix(char const *path, bool async);
 int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr,
