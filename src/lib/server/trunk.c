@@ -2081,12 +2081,13 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *      Otherwise return the trunk request back
 	 *	to the init state.
 	 */
-	treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
-	treq->pub.preq = NULL;
-	treq->pub.rctx = NULL;
-	treq->bound_to_conn = false;
-	treq->cancel_reason = FR_TRUNK_CANCEL_REASON_NONE;
-	treq->last_freed = fr_time();
+	*treq = (fr_trunk_request_t){
+		.pub = {
+			.state = FR_TRUNK_REQUEST_STATE_INIT,
+		},
+		.cancel_reason = FR_TRUNK_CANCEL_REASON_NONE,
+		.last_freed = fr_time()
+	};
 
 	/*
 	 *	Ensure anything parented off the treq
