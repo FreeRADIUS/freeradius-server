@@ -26,10 +26,10 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_icmp (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/cap.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <fcntl.h>
@@ -534,13 +534,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));
 
 #ifdef __linux__
+#  ifndef HAVE_CAPABILITY_H
+	if ((getuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
+#  else
 	/*
 	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
 	 */
-	if ((fr_cap_net_raw() < 0) && (getuid() != 0)) {
+	if ((fr_cap_set(CAP_NET_RAW) < 0) && (getuid() != 0)) {
 		PERROR("Failed setting capabilities required to open ICMP socket");
 		return -1;
 	}
+#  endif
 #endif
 
 	return 0;

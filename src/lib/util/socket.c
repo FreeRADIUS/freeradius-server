@@ -31,6 +31,7 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/cap.h>
 
 #include <fcntl.h>
 #include <netdb.h>
@@ -42,15 +43,6 @@
 #endif
 
 #include <ifaddrs.h>
-
-/*
- *	This is used during binding ports less than 1024
- *	which is a privilege that processes don't
- *	automatically acquire even when being run as root.
- */
-#ifdef HAVE_CAPABILITY_H
-#  include <sys/capability.h>
-#endif
 
 /** Resolve a named service to a port
  *
@@ -894,60 +886,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	check capabilities.  If we're root, we already have
 	 *	equivalent capabilities so we don't need to check.
 	 */
-	if (src_port && (*src_port < 1024) && (geteuid() != 0)) {
-		cap_t			caps;
-		cap_flag_value_t	state;
-
-		caps = cap_get_proc();
-		if (!caps) {
-			fr_strerror_printf_push("Failed getting process capabilities: %s", fr_syserror(errno));
-			goto skip_cap;
-		}
-
-		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_PERMITTED, &state) < 0) {
-			fr_strerror_printf_push("Failed getting CAP_NET_BIND_SERVICE permitted state: %s",
-						fr_syserror(errno));
-			goto skip_cap;
-		}
-
-		/*
-		 *	We're not permitted to set the CAP_NET_BIND_SERVICE
-		 *	capability, so skip to just attempting the bind.
-		 */
-		if (state == CAP_CLEAR) {
-			fr_strerror_printf_push("Binding to service port (%i) will likely fail as we lack the correct "
-						"capabilities", *src_port);
-
-			fr_strerror_printf_push("Use the following command to allow this bind: "
-						"setcap cap_net_bind_service+ep <path_to_binary>");
-			goto skip_cap;
-		}
-
-		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_EFFECTIVE, &state) < 0) {
-			fr_strerror_printf_push("Failed getting CAP_NET_BIND_SERVICE effective state: %s",
-						fr_syserror(errno));
-			goto skip_cap;
-		}
-
-		/*
-		 *	Permitted bit is high effective bit is low, see
-		 *	if we can fix that.
-		 */
-		if (state == CAP_CLEAR) {
-			cap_value_t const to_set[] = {
-				CAP_NET_BIND_SERVICE
-			};
-
-			if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
-				fr_strerror_printf_push("Failed setting CAP_NET_BIND_SERVICE effective state: %s",
-							fr_syserror(errno));
-				goto skip_cap;
-			}
-		}
-
-skip_cap:
-		if (caps) cap_free(caps);
-	}
+	if (src_port && (*src_port < 1024) && (fr_cap_set(CAP_NET_BIND_SERVICE) < 0) && (geteuid() != 0)) return -1;
 #endif
 
 	/*
@@ -1112,94 +1051,3 @@ done:
 #endif
 	return 0;
 }
-
-#ifndef HAVE_CAPABILITY_H
-int fr_cap_net_raw(void)
-{
-	if (geteuid() == 0) return 0;
-
-	fr_strerror_printf("CAP_NET_RAW is unsupported on this platform");
-	return -1;
-}
-#else
-static bool cap_net_raw = false;
-
-/** Set CAP_NET_RAW if possible.
- *
- * @note that a negative return from this function should NOT always
- * be interpreted as an error.  The server MAY already be running as
- * root, OR the system may not support CAP_NET_RAW.  It is almost
- * always better to use a negative return value to print a warning
- * message as to why CAP_NET_RAW was not set.
- *
- *
- * @return
- *	- <0 on "cannot set it"
- *	- 0 on "can set it"
- */
-int fr_cap_net_raw(void)
-{
-	int			rcode = -1;
-	cap_t			caps;
-	cap_flag_value_t	state;
-
-	if (cap_net_raw || (geteuid() == 0)) return 0;
-
-	caps = cap_get_proc();
-	if (!caps) {
-		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
-		goto skip_cap;
-	}
-
-	if (cap_get_flag(caps, CAP_NET_RAW, CAP_PERMITTED, &state) < 0) {
-		fr_strerror_printf("Failed getting CAP_NET_RAW permitted state: %s", fr_syserror(errno));
-		goto skip_cap;
-	}
-
-	/*
-	 *	We're not permitted to set the CAP_NET_RAW
-	 *	capability, so skip to just attempting the bind.
-	 */
-	if (state == CAP_CLEAR) {
-		fr_strerror_printf("Binding to raw interfaces will likely fail as we lack the CAP_NET_RAW "
-				   "capability");
-		fr_strerror_printf_push("Use the following command to allow this bind: "
-					"setcap cap_net_raw+ep <path_to_binary>");
-		goto skip_cap;
-	}
-
-	if (cap_get_flag(caps, CAP_NET_RAW, CAP_EFFECTIVE, &state) < 0) {
-		fr_strerror_printf("Failed getting CAP_NET_RAW effective state: %s", fr_syserror(errno));
-		goto skip_cap;
-	}
-
-	/*
-	 *	Permitted bit is high effective bit is low, see
-	 *	if we can fix that.
-	 */
-	if (state == CAP_CLEAR) {
-		cap_value_t const to_set[] = {
-			CAP_NET_RAW
-		};
-
-		if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
-			fr_strerror_printf("Failed setting CAP_NET_RAW effective state: %s", fr_syserror(errno));
-			goto skip_cap;
-		}
-
-		rcode = 0;
-		cap_net_raw = true;
-	/*
-	 *	It's already in the effective set
-	 */
-	} else if (state == CAP_SET) {
-		rcode = 0;
-		cap_net_raw = true;
-	}
-
-skip_cap:
-	if (caps) cap_free(caps);
-
-	return rcode;
-}
-#endif	/* HAVE_CAPABILITY_H */

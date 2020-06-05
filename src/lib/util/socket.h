@@ -66,7 +66,6 @@ int		fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout);
 int		fr_socket_server_udp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 int		fr_socket_server_tcp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 int		fr_socket_bind(int sockfd, fr_ipaddr_t const *ipaddr, uint16_t *port, char const *interface);
-int		fr_cap_net_raw(void);
 
 #ifdef __cplusplus
 }
