@@ -2682,13 +2682,14 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	if (!treq) return RLM_MODULE_FAIL;
 
 	MEM(r = talloc_zero(request, udp_result_t));
-	MEM(u = talloc_zero(treq, udp_request_t));
+	MEM(u = talloc(treq, udp_request_t));
 
-	u->rr = NULL;
-	u->code = request->packet->code;
-	u->synchronous = inst->parent->synchronous;
-	u->priority = request->async->priority;	  /* cached for speed */
-	u->recv_time = request->async->recv_time; /* cached for speed */
+	*u = (udp_request_t){
+		.code = request->packet->code,
+		.synchronous = inst->parent->synchronous,
+		.priority = request->async->priority,
+		.recv_time = request->async->recv_time
+	};
 
 	r->rcode = RLM_MODULE_FAIL;
 
