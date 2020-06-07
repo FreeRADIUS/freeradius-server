@@ -581,7 +581,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
 		     		    fr_table_str_by_value(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, EV_DELETE, 0, 0);
-			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
+			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, ef);
 		}
 	}
 
