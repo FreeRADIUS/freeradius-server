@@ -480,6 +480,8 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		int num_events;
 
 		wait_for_event = (fr_heap_num_elements(backlog) == 0);
+
+	corral:
 		num_events = fr_event_corral(el, fr_time(), wait_for_event);
 		if (num_events < 0) {
 			PERROR("Failed retrieving events");
@@ -495,11 +497,17 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		 *	The request is not runnable.  Wait for events.
 		 *
 		 *	Note that we do NOT run any child requests.
+		 *	There may be child requests in the backlog,
+		 *	but we just ignore them.
 		 */
-		if (request->runnable_id < 0) continue;
+		if (request->runnable_id < 0) {
+			wait_for_events = true;
+			goto corral;
+		}
 
 		/*
-		 *	We do NOT run any child requests.
+		 *	Run the parent request in preference to any
+		 *	child requests.
 		 */
 		(void) fr_heap_extract(backlog, request);
 
