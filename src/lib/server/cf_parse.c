@@ -377,8 +377,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		break;
 
 	case FR_TYPE_COMBO_IP_ADDR:
-		ipaddr = out;
-
 		/*
 		 *	Allow casting to <ipv4addr> or <ipv6addr>, so that we
 		 *	don't need endless configuration options to do similar things.
