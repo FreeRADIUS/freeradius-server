@@ -23,3 +23,23 @@ dhcp_sqlippool.post-auth {
 	}
 }
 
+
+#  Assign compatibility data to request for sqlippool for DHCP Release
+dhcp_sqlippool_release {
+
+
+	#  Do some minor hacks to the request so that it looks
+	#  like a RADIUS Accounting Stop request to the SQL IP Pool module.
+	update request {
+		&User-Name = "DHCP-%{DHCP-Client-Hardware-Address}"
+		&Calling-Station-Id = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+		&NAS-IP-Address = "%{%{DHCP-Gateway-IP-Address}:-127.0.0.1}"
+		&Framed-IP-Address = "%{DHCP-Client-IP-Address}"
+		&Acct-Status-Type = Stop
+	}
+
+	#  Call the actual module in accounting context
+	dhcp_sqlippool.accounting
+
+}
+
