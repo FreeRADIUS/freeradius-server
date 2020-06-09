@@ -13,7 +13,6 @@ CREATE TABLE radippool (
   pool_key              varchar(30) NOT NULL default '',
   PRIMARY KEY (id),
   KEY radippool_poolname_expire (pool_name, expiry_time),
-  KEY callingstationid (callingstationid),
   KEY framedipaddress (framedipaddress),
   KEY radippool_nasip_poolkey_ipaddress (nasipaddress, pool_key, framedipaddress)
 ) ENGINE=InnoDB;
