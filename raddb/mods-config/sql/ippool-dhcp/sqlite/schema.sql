@@ -1,18 +1,18 @@
+--
+-- Table structure for table 'radippool'
+--
 CREATE TABLE radippool (
-	id                      int PRIMARY KEY,
-	pool_name               varchar(30) NOT NULL,
-	framedipaddress         varchar(30) NOT NULL,
-	nasipaddress            varchar(30) NOT NULL DEFAULT '',
-	pool_key                varchar(64) NOT NULL DEFAULT '',
-	calledstationid         varchar(64),
-	callingstationid        varchar(64) NOT NULL DEFAULT '',
-	expiry_time             timestamp DEFAULT NULL,
-	username                varchar(100)
+  id                    int(11) PRIMARY KEY,
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL default '',
+  nasipaddress          varchar(15) NOT NULL default '',
+  calledstationid       VARCHAR(30) NOT NULL,
+  callingstationid      VARCHAR(30) NOT NULL,
+  expiry_time           DATETIME NULL default NULL,
+  username              varchar(64) NOT NULL default '',
+  pool_key              varchar(30) NOT NULL
 );
- 
--- Example of how to put IPs in the pool
--- INSERT INTO radippool (id, pool_name, framedipaddress) VALUES (1, 'local', '192.168.5.10');
--- INSERT INTO radippool (id, pool_name, framedipaddress) VALUES (2, 'local', '192.168.5.11');
--- INSERT INTO radippool (id, pool_name, framedipaddress) VALUES (3, 'local', '192.168.5.12');
--- INSERT INTO radippool (id, pool_name, framedipaddress) VALUES (4, 'local', '192.168.5.13');
 
+CREATE INDEX radippool_poolname_expire ON radippool(pool_name, expiry_time);
+CREATE INDEX radippool_framedipaddress ON radippool(framedipaddress);
+CREATE INDEX radippool_nasip_poolkey_ipaddress ON radippool(nasipaddress, pool_key, framedipaddress);
