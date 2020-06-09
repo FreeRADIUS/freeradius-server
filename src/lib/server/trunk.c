@@ -2084,6 +2084,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	*treq = (fr_trunk_request_t){
 		.pub = {
 			.state = FR_TRUNK_REQUEST_STATE_INIT,
+			.trunk = treq->trunk,
 		},
 		.cancel_reason = FR_TRUNK_CANCEL_REASON_NONE,
 		.last_freed = fr_time()
