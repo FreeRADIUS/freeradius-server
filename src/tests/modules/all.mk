@@ -45,3 +45,8 @@ $(foreach x,$(TEST_SUBBUILT),$(eval $x.test: rlm_$(subst /,_,$x).la))
 #
 SUBMAKEFILES := $(addsuffix /all.mk,$(TEST_BUILT) $(subst _,/,$(TEST_SUBBUILT))) test.mk
 
+#
+#  Create the certs directory
+#
+$(DIR)/certs: $(top_srcdir)/raddb/certs
+	@ln -s $< $@
