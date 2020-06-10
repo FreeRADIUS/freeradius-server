@@ -775,7 +775,7 @@ char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 
 	value = vp_aprints_value(ctx, vp, quote);
 
-	if (vp->da->flags.has_tag) {
+	if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
 		if (quote && (vp->da->type == PW_TYPE_STRING)) {
 			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
 		} else {
