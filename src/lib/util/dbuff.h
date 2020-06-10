@@ -54,6 +54,7 @@ struct fr_dbuff_s {
 		uint8_t const *p_i;		//!< Immutable position pointer.
 		uint8_t *p;			//!< Mutable position pointer.
 	};
+	uint8_t		bit_offset;		//!< Offset within a byte; always in [0, 8)
 	bool		is_const;		//!< The buffer this dbuff wraps is const.
 	bool		adv_parent;		//!< Whether we advance the parent
 						///< of this dbuff.
@@ -72,6 +73,7 @@ struct fr_dbuff_s {
 	.start	= (_dbuff)->start, \
 	.end	= (_dbuff)->end, \
 	.p	= (_dbuff)->p, \
+	.bit_offset = (_dbuff)->bit_offset, \
 	.is_const = (_dbuff)->is_const, \
 	.adv_parent = false, \
 	.parent = (_dbuff) \
@@ -86,6 +88,7 @@ struct fr_dbuff_s {
 	.p	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
 			(_dbuff)->p : \
 			(_dbuff)->end - (_reserve), \
+	.bit_offset = (_dbuff)->bit_offset, \
 	.is_const = (_dbuff)->is_const, \
 	.adv_parent = _adv_parent, \
 	.parent = (_dbuff) \
@@ -178,6 +181,7 @@ static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t
 
 	out->p_i = out->start_i = start;
 	out->end_i = end;
+	out->bit_offset = 0;
 	out->is_const = is_const;
 	out->parent = NULL;
 }
@@ -236,6 +240,7 @@ _fr_dbuff_init(_out, \
  */
 static inline uint8_t *fr_dbuff_start(fr_dbuff_t *dbuff)
 {
+	dbuff->bit_offset = 0;
 	return dbuff->p = dbuff->start;
 }
 
@@ -244,6 +249,7 @@ static inline uint8_t *fr_dbuff_start(fr_dbuff_t *dbuff)
  */
 static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
 {
+	dbuff->bit_offset = 0;
 	return dbuff->p = dbuff->end;
 }
 /** @} */
@@ -256,7 +262,7 @@ static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
  */
 static inline size_t fr_dbuff_remaining(fr_dbuff_t const *dbuff)
 {
-	return dbuff->end - dbuff->p;
+	return dbuff->end - dbuff->p - (dbuff->bit_offset != 0);
 }
 
 /** Return a negative offset indicating how much additional space we would have required for fulfil #_need
@@ -275,7 +281,7 @@ do { \
  */
 static inline size_t fr_dbuff_used(fr_dbuff_t const *dbuff)
 {
-	return dbuff->p - dbuff->start;
+	return dbuff->p - dbuff->start + (dbuff->bit_offset != 0);
 }
 
 /** How many bytes in the buffer total
@@ -311,6 +317,20 @@ static inline ssize_t CC_HINT(nonnull) _fr_dbuff_advance(fr_dbuff_t *dbuff, size
 	return dbuff->adv_parent && dbuff->parent ? _fr_dbuff_advance(dbuff->parent, inlen) : (ssize_t)inlen;
 }
 
+/** Advance position in dbuff past byte partially filled with bits
+ *
+ * @note Do not call this function directly.
+ *
+ * @param[in] dbuff	to advance
+ */
+static inline void _fr_dbuff_bit_flush(fr_dbuff_t *dbuff)
+{
+	if (dbuff->bit_offset != 0) {
+		dbuff->bit_offset = 0;
+		_fr_dbuff_advance(dbuff, 1);
+	}
+}
+
 /** Advance position in dbuff by N bytes
  *
  * @param[in] dbuff	to advance.
@@ -324,6 +344,7 @@ static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 {
 	size_t freespace = fr_dbuff_remaining(dbuff);
 
+	_fr_dbuff_bit_flush(dbuff);
 	if (inlen > freespace) return -(inlen - freespace);
 
 	return _fr_dbuff_advance(dbuff, inlen);
@@ -346,6 +367,7 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 
 	fr_assert(!dbuff->is_const);
 
+	_fr_dbuff_bit_flush(dbuff);
 	if (inlen > freespace) return -(inlen - freespace);
 
 	memcpy(dbuff->p, in, inlen);
@@ -382,6 +404,7 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 
 	fr_assert(!dbuff->is_const);
 
+	_fr_dbuff_bit_flush(dbuff);
 	if (inlen > freespace) return -(inlen - freespace);
 
 	memset(dbuff->p, c, inlen);
@@ -393,8 +416,10 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 #define FR_DBUFF_NUM_IN_FUNC(_type) \
 static inline ssize_t fr_dbuff_##_type##_in(fr_dbuff_t *dbuff, _type##_t num) \
 { \
-	size_t	freespace = fr_dbuff_remaining(dbuff); \
+	size_t	freespace; \
 	fr_assert(!dbuff->is_const); \
+	_fr_dbuff_bit_flush(dbuff); \
+	freespace = fr_dbuff_remaining(dbuff); \
 	if (sizeof(_type##_t) > freespace) return -(sizeof(_type##_t) - freespace); \
 	fr_net_from_##_type(dbuff->p, num); \
 	return _fr_dbuff_advance(dbuff, sizeof(_type##_t)); \
@@ -491,7 +516,56 @@ static inline ssize_t fr_dbuff_uint64v_in(fr_dbuff_t *dbuff, uint64_t num)
 
 	return fr_dbuff_memcpy_in(dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
+
+/**Copies bits into a buffer in wire format (big endian)
+ * @note 0 is a success return; adjacent bit fields may fit in one byte.
+ *
+ * @param [in] dbuff	to copy data to
+ * @param [in] num	data to write, all in the least significant num_bits bits
+ * @param [in] num_bits	number of bits to copy
+ * @return
+ * 	>=0	the number of bytes added to the buffer
+ * 	-8	num_bits > 56 (which may cause adjacent bits in a non-filled byte plus
+ * 		the data to write to not fit in a uint64_t)
+ * 	<0	the number of bytes required
+ */
+static inline ssize_t fr_dbuff_bits_in(fr_dbuff_t *dbuff, uint64_t num, unsigned int num_bits)
+{
+	unsigned int	num_avail_bits, num_needed_bytes;
+	uint64_t	used_bits = dbuff->p[0] & (-256 >> dbuff->bit_offset);
+	uint8_t		new_bit_offset;
+
+	num_avail_bits = (8 - dbuff->bit_offset) & 7;
+	if (num_avail_bits >= num_bits) {
+		num_needed_bytes = 0;
+	} else {
+		num_needed_bytes = ROUND_UP_DIV(num_bits - num_avail_bits, 8);
+	}
+
+	if (num_bits > 56) return -8;
+	FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, num_needed_bytes);
+
+	new_bit_offset = (dbuff->bit_offset + num_bits) % 8;
+
+	/* Confine num to the specified number of bits */
+	num &= (((uint64_t) 1) << num_bits) - 1;
+
+	/*  Shove num up towards the most significant end, leaving dbuff->bit_offset bits at the top for used_bits. */
+	num <<= (64 - (dbuff->bit_offset + num_bits));
+	num |= (used_bits << 56);
+
+	num = htonll(num);
+
+	memcpy(dbuff->p, &num, num_needed_bytes + (dbuff->bit_offset != 0));
+	_fr_dbuff_advance(dbuff, num_needed_bytes + (dbuff->bit_offset != 0) - (new_bit_offset != 0));
+	dbuff->bit_offset = new_bit_offset;
+
+	return num_needed_bytes;
+}
+
+#define FR_DBUFF_BITS_IN_RETURN(_dbuff, _num, _num_bits) FR_DBUFF_RETURN(fr_dbuff_bits_in, _dbuff, _num, _num_bits)
 /** @} */
+
 
 #ifdef __cplusplus
 }

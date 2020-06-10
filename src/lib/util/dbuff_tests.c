@@ -1,6 +1,7 @@
 #include <freeradius-devel/util/acutest.h>
 
 #include "dbuff.h"
+#include <stdio.h>
 
 
 //#include <gperftools/profiler.h>
@@ -219,6 +220,70 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+/** Test fr_dbuff_bits_in()
+ */
+static void test_dbuff_bits_in(void)
+{
+	uint8_t		buff[sizeof(uint64_t)];
+	fr_dbuff_t	dbuff;
+
+	TEST_CASE("Test values that fit in a byte");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_bits_in(&dbuff, 3, 2) == 1);
+	TEST_CHECK(fr_dbuff_bits_in(&dbuff, 5, 3) == 0);
+	TEST_CHECK(buff[0] == 0xe8);
+	fr_dbuff_bits_in(&dbuff, 3, 3);
+	TEST_CHECK(buff[0] == 0xeb);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 1);
+
+	TEST_CASE("Test byte boundary crossing");
+	fr_dbuff_bits_in(&dbuff, 3, 2);
+	TEST_CHECK(buff[0] == 0xeb && buff[1] == 0xc0);
+	fr_dbuff_bits_in(&dbuff, 0x7f, 7);
+	TEST_CHECK(buff[0] == 0xeb && buff[1] == 0xff && buff[2] == 0x80);
+
+	TEST_CASE("Confirm that only num_bits bits of value go into the dbuff");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 1, 2);
+	fr_dbuff_bits_in(&dbuff, 0x1ff, 3);
+	TEST_CHECK(buff[0] == 0x78);
+
+	TEST_CASE("Test mixed bits and non-bits");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 5, 3);
+	fr_dbuff_bytes_in(&dbuff, 0x3f, 0x4f);
+	TEST_CHECK(buff[0] == 0xa0 && buff[1] == 0x3f && buff[2] == 0x4f);
+	fr_dbuff_bits_in(&dbuff, 0xffff, 16);
+	TEST_CHECK(buff[0] == 0xa0 && buff[1] == 0x3f && buff[2] == 0x4f && buff[3] == 0xff && buff[4] == 0xff);
+
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 0x3f2, 10);
+	fr_dbuff_in(&dbuff, (uint32_t) 0x12345678);
+	TEST_CHECK(buff[0] == 0xfc && buff[1] == 0x80 && buff[2] == 0x12 && buff[3] == 0x34 && buff[4] == 0x56 &&
+		   buff[5] == 0x78);
+
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 0x8, 4);
+	fr_dbuff_memset(&dbuff, 0x3f, 2);
+	TEST_CHECK(buff[0] == 0x80 && buff[1] == 0x3f && buff[2] == 0x3f);
+
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 0x8, 4);
+	fr_dbuff_uint64v_in(&dbuff, 0x123456789a);
+	TEST_CHECK(buff[0] == 0x80 && buff[1] == 0x12 && buff[2] == 0x34 && buff[3] == 0x56 && buff[4] == 0x78 &&
+		   buff[5] == 0x9a);
+
+	TEST_CASE("Confirm fr_dbuff_bits_in won't walk off the edge");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_bits_in(&dbuff, 63, 39);
+	TEST_CHECK(fr_dbuff_bits_in(&dbuff, 127, 39) == -2);
+}
 
 TEST_LIST = {
 	/*
@@ -228,6 +293,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_bits_in",				test_dbuff_bits_in },
 
 	{ NULL }
 };
