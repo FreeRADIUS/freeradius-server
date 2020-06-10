@@ -856,6 +856,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	Extract the TLS packet from the buffer.
 	 */
 	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
+		REDEBUG("Failed extracting TLS packet from EAP-Message");
 		status = FR_TLS_FAIL;
 		goto done;
 	}

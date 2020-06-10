@@ -195,7 +195,7 @@ The <list> can be one of "request", "reply", "proxy-request",
 of Version 3, the <list> can be omitted, in which case "request" is
 assumed.
 
-The "control" list is the list of attributes maintainted internally by
+The "control" list is the list of attributes maintained internally by
 the server that controls how the server processes the request.  Any
 attribute that does not go in a packet on the network will generally
 be placed in the "control" list.
@@ -397,7 +397,7 @@ Evaluates to true if 'foo' is a non-empty string (single quotes, double
 quotes, or back-quoted).  Also evaluates to true if 'foo' is a
 non-zero number.  Note that the language is poorly typed, so the
 string "0000" can be interpreted as a numerical zero.  This issue can
-be avoided by comparings strings to an empty string, rather than by
+be avoided by comparing strings to an empty string, rather than by
 evaluating the string by itself.
 
 If the word 'foo' is not a quoted string, then it can be taken as a
@@ -854,7 +854,7 @@ failover tracking that nothing was done in the current section.
 .IP ok
 Instructs the server that the request was processed properly.  This
 keyword can be used to over-ride earlier failures, if the local
-administrator determines that the faiures are not catastrophic.
+administrator determines that the failures are not catastrophic.
 .IP reject
 Causes the request to be immediately rejected
 .SH MODULE RETURN CODES

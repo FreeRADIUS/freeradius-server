@@ -697,7 +697,10 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
-	if (ssn->invalid_hb_used) return 0;
+	if (ssn->invalid_hb_used) {
+		REDEBUG("OpenSSL Heartbeat attack detected.  Closing connection");
+		return 0;
+	}
 
 	if (ssn->dirty_in.used > 0) {
 		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);

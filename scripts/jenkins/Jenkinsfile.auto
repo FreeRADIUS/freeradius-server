@@ -1,5 +1,17 @@
-def platforms = ["ubuntu14", "ubuntu16", "ubuntu18", "centos6", "centos7", "centos8", "debian8", "debian9", "debian10"]
+def platforms = [
+	"ubuntu14",
+	"ubuntu16",
+	"ubuntu18",
+	"ubuntu20",
+	"centos6",
+	"centos7",
+	"centos8",
+	"debian8",
+	"debian9",
+	"debian10"]
+
 def server_dir = "freeradius-server"
+
 def artifacts = 'build-number, **/*.changes, **/*.buildinfo, **/*.deb, **/*.rpm'
 
 /*

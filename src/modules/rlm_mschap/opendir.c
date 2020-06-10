@@ -138,16 +138,14 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						pUserLocation = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
+						pUserLocation = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						pUserLocation[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
 					}
 				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						*outUserName = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
+						*outUserName = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						*outUserName[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
 					}
 				}
 
