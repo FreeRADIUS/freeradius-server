@@ -91,6 +91,11 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 		fi \
 	fi
 
-
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
+
+#
+#  Create the certs directory
+#
+$(DIR)/certs: $(top_srcdir)/raddb/certs
+	@ln -s $< $@
