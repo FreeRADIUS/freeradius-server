@@ -189,11 +189,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "ttls keying material";
-
-	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
@@ -272,6 +267,24 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		do_keys:
 			/*
+			 *	Set the label based on the TLS version negotiated in the handshake.
+			 */
+			switch (tls_session->info.version) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			case TLS1_3_VERSION:
+				tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
+				break;
+#endif
+			case TLS1_2_VERSION:
+			case TLS1_1_VERSION:
+			case TLS1_VERSION:
+				tls_session->label = "ttls keying material";
+				break;
+			default:
+				break;
+			}
+
+			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
 			ret = eaptls_success(handler, 0);
@@ -342,8 +355,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		ret = eaptls_success(handler, 0);
-		goto done;
+		goto do_keys;
 
 		/*
 		 *	No response packet, MUST be proxying it.

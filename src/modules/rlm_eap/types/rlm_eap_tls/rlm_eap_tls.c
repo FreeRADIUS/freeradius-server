@@ -100,11 +100,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "client EAP encryption";
-
-	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
@@ -193,6 +188,24 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 
 			talloc_free(fake);
 			/* success */
+		}
+
+		/*
+		 * Set the label based on the TLS version negotiated in the handshake.
+		 */
+		switch (tls_session->info.version) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		case TLS1_3_VERSION:
+			tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
+			break;
+#endif
+		case TLS1_2_VERSION:
+		case TLS1_1_VERSION:
+		case TLS1_VERSION:
+			tls_session->label = "client EAP encryption";
+			break;
+		default:
+			break;
 		}
 
 		/*

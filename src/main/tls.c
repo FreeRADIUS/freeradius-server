@@ -858,10 +858,10 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 		record_minus(&ssn->clean_in, NULL, written);
 
 		/* Get the dirty data from Bio to send it */
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
-			       sizeof(ssn->dirty_out.data));
+		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data + ssn->dirty_out.used,
+			       sizeof(ssn->dirty_out.data) - ssn->dirty_out.used);
 		if (err > 0) {
-			ssn->dirty_out.used = err;
+			ssn->dirty_out.used += err;
 		} else {
 			if (!tls_error_io_log(request, ssn, err,
 					      "Failed in " STRINGIFY(__FUNCTION__) " (SSL_write)")) {
@@ -3092,6 +3092,13 @@ post_ca:
 	ctx_options |= SSL_OP_NO_SSLv3;
 
 	/*
+	 *	EAP (hopefully) does not have middlebox deployments
+	 */
+#ifdef SSL_OP_ENABLE_MIDDLEBOX_COMPAT
+	ctx_options &= ~SSL_OP_ENABLE_MIDDLEBOX_COMPAT;
+#endif
+
+	/*
 	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
 	 *
 	 *	This version already defines macros for TLS1_2_VERSION and
@@ -3119,9 +3126,9 @@ post_ca:
 			 *	Pick the maximum one we know about.
 			 */
 #ifdef TLS1_4_VERSION
-			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
+			max_version = TLS1_3_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
 #elif defined(TLS1_3_VERSION)
-			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.3 are NOT finished */
+			max_version = TLS1_3_VERSION;
 #elif defined(TLS1_2_VERSION)
 			max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
@@ -3293,6 +3300,10 @@ post_ca:
 	}
 
 	SSL_CTX_set_options(ctx, ctx_options);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && OPENSSL_VERSION_NUMBER < 0x10101000L
+	SSL_CTX_set_max_early_data(ctx, 0);
+#endif
 
 	/*
 	 *	TODO: Set the RSA & DH
