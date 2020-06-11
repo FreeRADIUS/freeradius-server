@@ -14,7 +14,7 @@ FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(wildcard $(DIR)/*/*unlang)))
 #  Remove things which are known to fail on travis.
 #
 ifeq "$(TRAVIS)" "1"
-MODULES_SKIP := $(filter icmp,$(FILES))
+FILES_SKIP := $(filter icmp/%,$(FILES))
 endif
 
 #
@@ -23,11 +23,11 @@ endif
 define MODULE_FILTER
 ifneq "$(findstring rlm_${1}.la,$(ALL_TGTS))" "rlm_${1}.la"
   # the library isn't built, skip the module.
-  MODULES_SKIP += ${2}
+  FILES_SKIP += ${2}
 
 else ifeq "$(wildcard src/tests/modules/${1}/all.mk)" ""
   # there's no "all.mk" file, skip the module
-  MODULES_SKIP += ${2}
+  FILES_SKIP += ${2}
 
 else
   # the output file depends on the library, too.
@@ -41,7 +41,7 @@ else
       $(eval $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER := $(TEST_SERVER))
     else
       # the module requires a test server, but we don't have one.  Skip it.
-      MODULES_SKIP += ${2}
+      FILES_SKIP += ${2}
     endif
   endif
 endif
@@ -51,7 +51,7 @@ endef
 #  Ensure that "rlm_foo.a" is built when we run a module from directory "foo"
 #
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
-FILES := $(filter-out $(MODULES_SKIP),$(FILES))
+FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
