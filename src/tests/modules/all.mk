@@ -8,7 +8,7 @@ TEST := test.modules
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(wildcard $(DIR)/*/*unlang)))
+FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(call FIND_FILES_SUFFIX,$(DIR),*.unlang)))
 
 #
 #  Remove things which are known to fail on travis.
