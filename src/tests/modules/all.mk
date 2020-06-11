@@ -51,10 +51,8 @@ endef
 #  Ensure that "rlm_foo.a" is built when we run a module from directory "foo"
 #
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
-$(info $(MODULES_SKIP))
 FILES := $(filter-out $(MODULES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
-
 
 #
 #  Files in the output dir depend on the unit tests
