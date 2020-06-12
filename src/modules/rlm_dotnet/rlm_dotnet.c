@@ -206,17 +206,14 @@ typedef struct dotnet_vp_collection {
 	dotnet_vp_t* vps;
 } dotnet_vp_collection_t;
 
-static void mod_radlog(int status, char const* msg)
-{
+static void mod_radlog(int status, char const* msg) {
 	radlog(status, "%s", msg);
 }
 
-static int bind_dotnet(rlm_dotnet_t *inst)
-{
+static int bind_dotnet(rlm_dotnet_t *inst) {
 	// Do dlopen
 	inst->dylib = dlopen(inst->clr_library, RTLD_NOW | RTLD_GLOBAL);
-	if (!inst->dylib)
-	{
+	if (!inst->dylib) {
 		ERROR("%s", dlerror());
 		return 1;
 	}
@@ -233,11 +230,9 @@ static int bind_dotnet(rlm_dotnet_t *inst)
 	return 0;
 }
 
-static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_definition, char const *function_name)
-{
+static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_definition, char const *function_name) {
 	int rc = 0;
-	if (function_definition->function_name)
-	{
+	if (function_definition->function_name) {
 		DEBUG("binding %s to %s %s %s", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name);
 		rc = inst->coreclr_create_delegate(
 			inst->hostHandle,
@@ -247,57 +242,37 @@ static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_defin
 			function_definition->function_name,
 			(void**) &function_definition->function
 			);
-		if (rc)
-		{
-			ERROR("Failure binding %s to %s %s %s, coreclr_create_delegate returned 0x%08X", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name, rc);
-		}
-		else
-		{
-			DEBUG("Bound it! Function is %p", function_definition->function);
-		}
-		
+		if (rc) ERROR("Failure binding %s to %s %s %s, coreclr_create_delegate returned 0x%08X", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name, rc);
+		else DEBUG("Bound it! Function is %p", function_definition->function);
 	}
 
 	return rc;
 }
 
 // https://stackoverflow.com/questions/744766/how-to-compare-ends-of-strings-in-c
-static int string_ends_with(char const *str, char const *suffix)
-{
-	if (!str || !suffix)
-		return 0;
+static int string_ends_with(char const *str, char const *suffix) {
+	if (!str || !suffix) return 0;
 	size_t lenstr = strlen(str);
 	size_t lensuffix = strlen(suffix);
-	if (lensuffix >  lenstr)
-		return 0;
+	if (lensuffix >  lenstr) return 0;
 	return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
 
-static char* build_tpa_list(const char* directory)
-{
+static char* build_tpa_list(const char* directory) {
 	DIR* dir = opendir(directory);
 	struct dirent* entry;
 	char* tpa_list = NULL;
 
-	if (dir == NULL)
-	{
-		// errno is set, perror might be useful
-		return NULL;
-	}
+	// If NULL, errno is set, perror might be useful
+	if (dir == NULL) return NULL;
 
-	while ((entry = readdir(dir)) != NULL)
-	{
+	while ((entry = readdir(dir)) != NULL) {
 		// Check if the file has the right extension
-		if (!string_ends_with(entry->d_name, ".dll"))
-		{
-			continue;
-		}
+		if (!string_ends_with(entry->d_name, ".dll")) continue;
 
 		// Append the assembly to the list
-		if (tpa_list != NULL)
-		{
-			tpa_list = talloc_strdup_append(tpa_list, PATH_DELIMITER);
-		}
+		if (tpa_list != NULL) tpa_list = talloc_strdup_append(tpa_list, PATH_DELIMITER);
+
 		tpa_list = talloc_strdup_append(tpa_list, directory);
 		tpa_list = talloc_strdup_append(tpa_list, FS_SEPARATOR);
 		tpa_list = talloc_strdup_append(tpa_list, entry->d_name);
@@ -310,8 +285,7 @@ static char* build_tpa_list(const char* directory)
 
 static char* append_one_tpa(char* tpa, const char* new_tpa)
 {
-	if (new_tpa != NULL)
-	{
+	if (new_tpa != NULL) {
 		tpa = talloc_strdup_append(tpa, PATH_DELIMITER);
 		tpa = talloc_strdup_append(tpa, new_tpa);
 	}
@@ -330,14 +304,12 @@ static char* append_one_tpa(char* tpa, const char* new_tpa)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
-{
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
 	rlm_dotnet_t	*inst = instance;
 	char* tpa;
 
 	DEBUG("mod_instantiate");
-	if (bind_dotnet(inst))
-	{
+	if (bind_dotnet(inst)) {
 		ERROR("Failed to load .NET core");
 		return RLM_MODULE_FAIL;
 	}
@@ -362,8 +334,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 		);
 
 	// Check hr for failure
-	if (hr == 0)
-	{
+	if (hr == 0) {
 		// Bind up all of our C# methods
 #define A(x) bind_one_method(inst, &inst->x, #x);
 		A(instantiate)
@@ -382,14 +353,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 		A(detach)
 
 #undef A
-	}
-	else
-	{
-		ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
-	}
+	} else ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
 
-	if (inst->instantiate.function)
-	{
+	if (inst->instantiate.function) {
 		instantiate_function_t instantiate_function = inst->instantiate.function;
 		instantiate_function(sizeof(radiusd_constants) / sizeof(radiusd_constants[0]), radiusd_constants, mod_radlog);
 	}
@@ -420,9 +386,7 @@ static void make_vp(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp
 	if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
 		snprintf(namebuf, sizeof(namebuf), "%s:%d", vp->da->name, vp->tag);
 		name = namebuf;
-	} else {
-		name = vp->da->name;
-	}
+	} else name = vp->da->name;
 	final_vp->name = talloc_strdup(ctx, name);
 
 	final_vp->value_type = vp->da->type;
@@ -450,32 +414,22 @@ static void make_vp(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp
 #undef A
 }
 
-static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **vps)
-{
+static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **vps) {
 	dotnet_vp_collection_t* collection = talloc(ctx, dotnet_vp_collection_t);
 	vp_cursor_t cursor;
 	VALUE_PAIR* vp;
 	size_t counter = 0;
 
 	collection->count = 0;
-	for (vp = fr_cursor_init(&cursor, vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-			 ++collection->count;
-		 }
+	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) ++collection->count;
 
 	collection->vps = talloc_array(collection, dotnet_vp_t, collection->count);
-	for (vp = fr_cursor_init(&cursor, vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-			 make_vp(collection, vp, &collection->vps[counter++]);
-		 }
+	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) make_vp(collection, vp, &collection->vps[counter++]);
 
 	return collection;
 }
 
-static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname)
-{
+static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname) {
 	rlm_rcode_t (*function)(size_t count, dotnet_vp_t* vps) = pFunc;
 
 	dotnet_vp_collection_t* collection = make_vp_collection(request->packet, &request->packet->vps);
