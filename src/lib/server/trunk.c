@@ -2077,20 +2077,6 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	}
 
 	/*
-	 *
-	 *      Otherwise return the trunk request back
-	 *	to the init state.
-	 */
-	*treq = (fr_trunk_request_t){
-		.pub = {
-			.state = FR_TRUNK_REQUEST_STATE_INIT,
-			.trunk = treq->pub.trunk,
-		},
-		.cancel_reason = FR_TRUNK_CANCEL_REASON_NONE,
-		.last_freed = fr_time()
-	};
-
-	/*
 	 *	Ensure anything parented off the treq
 	 *	is freed.
 	 */
@@ -2105,6 +2091,22 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	fr_assert_msg(fr_dlist_num_elements(&treq->log) == 0,
 		      "Should have 0 remaining log entries, have %zu", fr_dlist_num_elements(&treq->log));
 #endif
+
+	/*
+	 *
+	 *  Return the trunk request back to the init state.
+	 */
+	*treq = (fr_trunk_request_t){
+		.pub = {
+			.state = FR_TRUNK_REQUEST_STATE_INIT,
+			.trunk = treq->pub.trunk,
+		},
+		.cancel_reason = FR_TRUNK_CANCEL_REASON_NONE,
+		.last_freed = fr_time(),
+#ifndef NDEBUG
+		.log = treq->log        /* Keep the list head, to save reinitialisation */
+#endif
+	};
 
 	/*
 	 *	Insert at the head, so that we can free
