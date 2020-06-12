@@ -210,7 +210,7 @@ static void mod_radlog(int status, char const* msg) {
 	radlog(status, "%s", msg);
 }
 
-static int bind_dotnet(rlm_dotnet_t *inst) {
+static int dotnet_bind(rlm_dotnet_t *inst) {
 	// Do dlopen
 	inst->dylib = dlopen(inst->clr_library, RTLD_NOW | RTLD_GLOBAL);
 	if (!inst->dylib) {
@@ -230,7 +230,7 @@ static int bind_dotnet(rlm_dotnet_t *inst) {
 	return 0;
 }
 
-static int bind_one_method(rlm_dotnet_t *inst, dotnet_func_def_t *function_definition, char const *function_name) {
+static int one_method_bind(rlm_dotnet_t *inst, dotnet_func_def_t *function_definition, char const *function_name) {
 	int rc = 0;
 	if (function_definition->function_name) {
 		DEBUG("binding %s to %s %s %s", function_name, function_definition->assembly_name, function_definition->class_name, function_definition->function_name);
@@ -258,7 +258,7 @@ static int string_ends_with(char const *str, char const *suffix) {
 	return strncmp(str + lenstr - lensuffix, suffix, lensuffix) == 0;
 }
 
-static char* build_tpa_list(const char* directory) {
+static char* tpa_list_build(const char* directory) {
 	DIR* dir = opendir(directory);
 	struct dirent* entry;
 	char* tpa_list = NULL;
@@ -283,7 +283,7 @@ static char* build_tpa_list(const char* directory) {
 	return tpa_list;
 }
 
-static char* append_one_tpa(char* tpa, const char* new_tpa)
+static char* one_tpa_append(char* tpa, const char* new_tpa)
 {
 	if (new_tpa != NULL) {
 		tpa = talloc_strdup_append(tpa, PATH_DELIMITER);
@@ -309,13 +309,13 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
 	char* tpa;
 
 	DEBUG("mod_instantiate");
-	if (bind_dotnet(inst)) {
+	if (dotnet_bind(inst)) {
 		ERROR("Failed to load .NET core");
 		return -1;
 	}
 
-	tpa = build_tpa_list(inst->clr_root);
-	tpa = append_one_tpa(tpa, inst->assembly_path);
+	tpa = tpa_list_build(inst->clr_root);
+	tpa = one_tpa_append(tpa, inst->assembly_path);
 	const char* propertyKeys[] = {
 		"TRUSTED_PLATFORM_ASSEMBLIES"
 	};
@@ -336,7 +336,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
 	// Check hr for failure
 	if (hr == 0) {
 		// Bind up all of our C# methods
-#define A(x) bind_one_method(inst, &inst->x, #x);
+#define A(x) one_method_bind(inst, &inst->x, #x);
 		A(instantiate)
 		A(authorize)
 		A(authenticate)
@@ -376,7 +376,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static void make_vp(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp)
+static void vp_make(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp)
 {
 	char namebuf[256];
 	char const* name;
@@ -417,7 +417,7 @@ static void make_vp(TALLOC_CTX* ctx, VALUE_PAIR const *vp, dotnet_vp_t* final_vp
 #undef A
 }
 
-static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **vps) {
+static dotnet_vp_collection_t* vp_collection_make(TALLOC_CTX* ctx, VALUE_PAIR **vps) {
 	dotnet_vp_collection_t* collection = talloc(ctx, dotnet_vp_collection_t);
 	vp_cursor_t cursor;
 	VALUE_PAIR* vp;
@@ -427,15 +427,15 @@ static dotnet_vp_collection_t* make_vp_collection(TALLOC_CTX* ctx, VALUE_PAIR **
 	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) ++collection->count;
 
 	collection->vps = talloc_array(collection, dotnet_vp_t, collection->count);
-	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) make_vp(collection, vp, &collection->vps[counter++]);
+	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) vp_make(collection, vp, &collection->vps[counter++]);
 
 	return collection;
 }
 
-static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname) {
+static rlm_rcode_t dotnet_do(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *pFunc,UNUSED char const *funcname) {
 	rlm_rcode_t (*function)(size_t count, dotnet_vp_t* vps) = pFunc;
 
-	dotnet_vp_collection_t* collection = make_vp_collection(request->packet, &request->packet->vps);
+	dotnet_vp_collection_t* collection = vp_collection_make(request->packet, &request->packet->vps);
 	// Just call it and party
 
 	return function(collection->count, collection->vps);
@@ -443,7 +443,7 @@ static rlm_rcode_t do_dotnet(UNUSED rlm_dotnet_t *inst, REQUEST *request, void *
 
 #define MOD_FUNC(x) \
 static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
-	return do_dotnet((rlm_dotnet_t *) instance, request, ((rlm_dotnet_t *)instance)->x.function, #x);\
+	return dotnet_do((rlm_dotnet_t *) instance, request, ((rlm_dotnet_t *)instance)->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)
