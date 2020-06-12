@@ -311,7 +311,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
 	DEBUG("mod_instantiate");
 	if (bind_dotnet(inst)) {
 		ERROR("Failed to load .NET core");
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	tpa = build_tpa_list(inst->clr_root);
@@ -324,7 +324,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
     };
 
 	int hr = inst->coreclr_initialize(
-		"/Users/blakeramsdell/Source/OpenSource/freeradius-server",
+		"/",	// TODO: What is "exePath" used for? Painful to find.
 		"FreeRadius",
 		sizeof(propertyKeys) / sizeof(char*),
 		propertyKeys,
@@ -353,7 +353,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance) {
 		A(detach)
 
 #undef A
-	} else ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
+	} else {
+		ERROR("Failed coreclr_initialize hr = 0x%08X", hr);
+		return -1;
+	}
 
 	if (inst->instantiate.function) {
 		instantiate_function_t instantiate_function = inst->instantiate.function;
