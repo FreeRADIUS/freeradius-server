@@ -294,10 +294,9 @@ static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the dbuff
  *
  */
-#define FR_DBUFF_RETURN(_func, _dbuff, ...) \
+#define FR_DBUFF_RETURN(_func, ...) \
 do { \
-	ssize_t _slen; \
-	_slen = _func(_dbuff, ## __VA_ARGS__ ); \
+	ssize_t _slen = _func(## __VA_ARGS__ ); \
 	if (_slen < 0) return _slen; \
 } while (0)
 
