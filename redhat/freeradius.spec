@@ -265,9 +265,9 @@ Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 %{!?el8:Requires: python}
-%{?el8:Requires: python2}
+%{?el8:Requires: python3}
 %{!?el8:BuildRequires: python-devel}
-%{?el8:BuildRequires: python2-devel}
+%{?el8:BuildRequires: python3-devel}
 
 %description python
 This plugin provides Python support for the FreeRADIUS server project.
