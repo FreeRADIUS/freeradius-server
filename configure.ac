@@ -1774,9 +1774,6 @@ if test "x$developer" = "xyes"; then
     fi
 
     AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
-
-    devldflags="$devldflags"
-
     fsanitizeflags="$fsanitizeflags,address"
   fi
 
