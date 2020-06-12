@@ -8,6 +8,7 @@ With Homebrew on OS X:
 
 <https://github.com/dotnet/samples/tree/master/core/hosting/HostWithCoreClrHost>
 <https://github.com/dotnet/docs/blob/master/docs/core/tutorials/netcore-hosting.md>
+<https://wiki.freeradius.org/contributing/Modules3>
 
 `sudo make install` put everything in /usr/local as expected
 
