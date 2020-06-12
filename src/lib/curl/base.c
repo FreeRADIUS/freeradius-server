@@ -200,7 +200,7 @@ int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
 			fr_cursor_append(&cursor, vp);
 		}
 		/*
-		 *	Add a copy of the cert_vps to session state.
+		 *	Add a copy of the cert_vps to the request list.
 		 *
 		 *	Both PVS studio and Coverity detect the condition
 		 *	below as logically dead code unless we explicitly
@@ -209,7 +209,7 @@ int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
 		 *	tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_cursor_current(&cursor);
+		cert_vps = fr_cursor_head(&cursor);
 		if (cert_vps) {
 			/*
 			 *	Print out all the pairs we have so far
