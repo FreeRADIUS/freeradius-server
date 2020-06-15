@@ -9,6 +9,7 @@
 #	$Id$
 #
 # https://infoproducts.alcatel-lucent.com/cgi-bin/dbaccessfilename.cgi/9304720101_V1_7750%20SR-OS%20RADIUS%20ATTRIBUT.pdf
+# https://documentation.nokia.com/html/0_add-h-f/93-0088-HTML/7750_SR_OS_Radius_Attributes_Reference_Guide/SROS_RADIUS_Attrib.html
 #
 ##############################################################################
 
@@ -511,6 +512,13 @@ ATTRIBUTE	Alc-Portal-Url				177	string
 
 # names longer than the allowed maximum are treated as host setup failures
 ATTRIBUTE	Alc-SLAAC-IPv6-Pool			181	string
+
+ATTRIBUTE	Alc-ToServer-Dhcp6-Options	191	octets
+ATTRIBUTE	Alc-ToClient-Dhcp6-Options	192	octets
+ATTRIBUTE	Alc-v6-Preferred-Lifetime	200	integer
+ATTRIBUTE	Alc-v6-Valid-Lifetime		201	integer
+ATTRIBUTE	Alc-Dhcp6-Renew-Time		202	integer
+ATTRIBUTE	Alc-Dhcp6-Rebind-Time		203	integer
 
 # The VLAN is transparently taken from the UE's Ethernet layer and can be reflected
 # in both authentication and accounting
