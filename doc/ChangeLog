@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* Update dictionary.bskyb.  Fixes #3339.
+	* Update alcatel.sr. #3495
 	* Abfab-tls updates from Alejandro Perez.
 	* Allow CoA and Disconnect messages over TLS sockets.
 	  Fixes #3356.
