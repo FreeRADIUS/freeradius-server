@@ -72,7 +72,7 @@ ATTRIBUTE	WiMAX-VCSN-IP-Service-Capabilities	1.6	byte
 ATTRIBUTE	WiMAX-Authorized-IP-Services		1.7	byte
 ATTRIBUTE	WiMAX-Authorized-Anchor-Locations	1.8	byte
 ATTRIBUTE	WiMAX-ASN-Ethernet-Service-Capabilities	1.9	byte
-ATTRIBUTE	WiMAX-VCSN-Ethernet-Service-Capabilities 	1.10	byte
+ATTRIBUTE	WiMAX-VCSN-Ethernet-Service-Capabilities 1.10	byte
 ATTRIBUTE	WiMAX-Authorized-Ethernet-Services	1.11	byte
 
 # This is really a bitmap
@@ -90,19 +90,19 @@ VALUE	WiMAX-Hotlining-Capabilities	IP-Redirection		8
 VALUE	WiMAX-Idle-Mode-Notification-Cap Not-Supported		0
 VALUE	WiMAX-Idle-Mode-Notification-Cap Supported		1
 
-VALUE	WiMAX-ASN-IP-Service-Capabilities	DHCP-Relay	1
-VALUE	WiMAX-ASN-IP-Service-Capabilities	DHCP-Proxy	2
-VALUE	WiMAX-ASN-IP-Service-Capabilities	FA	4
-VALUE	WiMAX-ASN-IP-Service-Capabilities	PMIP-Client 8
+VALUE	WiMAX-ASN-IP-Service-Capabilities DHCP-Relay		1
+VALUE	WiMAX-ASN-IP-Service-Capabilities DHCP-Proxy		2
+VALUE	WiMAX-ASN-IP-Service-Capabilities FA			4
+VALUE	WiMAX-ASN-IP-Service-Capabilities PMIP-Client		8
 
-VALUE	WiMAX-ASN-Ethernet-Service-Capabilities 	eAFF-IPv4-Transport	1
-VALUE	WiMAX-ASN-Ethernet-Service-Capabilities 	eAFF-IPv6-Transport	2
-VALUE	WiMAX-ASN-Ethernet-Service-Capabilities 	eFA		4
+VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eAFF-IPv4-Transport 1
+VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eAFF-IPv6-Transport 2
+VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eFA		4
 
-VALUE 	WiMAX-VCSN-Ethernet-Service-Capabilities 	eCFF-IPv4-Transport	1
-VALUE 	WiMAX-VCSN-Ethernet-Service-Capabilities 	eCFF-IPv6-Transport	2
-VALUE 	WiMAX-VCSN-Ethernet-Service-Capabilities 	eHAv4	4
-VALUE 	WiMAX-VCSN-Ethernet-Service-Capabilities 	eHAv6	8
+VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eCFF-IPv4-Transport 1
+VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eCFF-IPv6-Transport 2
+VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eHAv4		4
+VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eHAv6		8
 
 ATTRIBUTE	WiMAX-Device-Authentication-Indicator	2	byte
 ATTRIBUTE	WiMAX-GMT-Timezone-offset		3	signed

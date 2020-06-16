@@ -127,6 +127,10 @@ export DESTDIR := $(R)
 DICTIONARIES := $(wildcard share/dictionary*)
 install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
 
+.PHONY: dictionary.format
+dictionary.format: $(DICTIONARIES)
+	@./share/format.pl $(DICTIONARIES)
+
 $(R)$(dictdir)/%: share/%
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -m 644 $< $@
