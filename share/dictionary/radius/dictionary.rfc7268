@@ -31,7 +31,7 @@ ATTRIBUTE	WLAN-HESSID				181	string
 
 # Defined in Section 8.4.1.34 of the above IEEE document.
 ATTRIBUTE	WLAN-Venue-Info				182	struct
-MEMBER		WLAN-Venue-Reserved				uint16  # MUST be zero
+MEMBER		WLAN-Venue-Reserved				octets[2]  # MUST be zero
 MEMBER		WLAN-Venue-Group				uint8
 MEMBER		WLAN-Venue-Type					uint8
 
