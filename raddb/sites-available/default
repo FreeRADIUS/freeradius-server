@@ -881,6 +881,15 @@ post-auth {
 #		attr_filter.access_challenge.post-auth
 	}
 
+	#
+	#  If the client sends EAP-Key-Name in the request,
+	#  then echo the real value back in the reply.
+	#
+	if (EAP-Key-Name && &reply:EAP-Session-Id) {
+		update reply {
+			EAP-Key-Name := &reply:EAP-Session-Id
+		}
+	}
 }
 
 #
