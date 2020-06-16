@@ -2276,7 +2276,7 @@ static int dict_from_file(fr_dict_t *dict,
 	rcode = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
 	if (rcode < 0) {
-		// free up the various fixups
+		talloc_free(ctx.fixup_pool);
 		return rcode;
 	}
 
