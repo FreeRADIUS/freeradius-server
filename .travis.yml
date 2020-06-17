@@ -122,6 +122,7 @@ before_install:
 - git lfs install
 # Add IPv6 interfaces: https://github.com/travis-ci/travis-ci/issues/8361
 - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+- sudo sysctl -w kernel.yama.ptrace_scope=0
 - sudo ./scripts/travis/cassandra-install.sh
 - rvm --install --default --binary use 2.4
 - gem install asciidoctor
