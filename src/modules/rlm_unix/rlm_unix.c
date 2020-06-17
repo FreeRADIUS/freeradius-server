@@ -21,7 +21,7 @@
  *
  * authentication: Unix user authentication
  * accounting:     Functions to write radwtmp file.
- * Also contains handler for "Group".
+ * Also contains handler for "Unix-Group".
  *
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Jeff Carneal (jeff@apex.net)
@@ -86,8 +86,6 @@ static fr_dict_attr_t const *attr_acct_delay_time;
 extern fr_dict_attr_autoload_t rlm_unix_dict_attr[];
 fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_group, .name = "Group", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_group_name, .name = "Group-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_login_ip_host, .name = "Login-IP-Host", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
@@ -101,7 +99,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 };
 
 /*
- *	The Group = handler.
+ *	The Unix-Group = handler.
  */
 static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *req_vp,
 		    VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
@@ -162,18 +160,23 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_unix_t		*inst = instance;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
 
-	/* FIXME - delay these until a group file has been read so we know
-	 * groupcmp can actually do something */
-	paircmp_register(attr_group, attr_user_name, false, groupcmp, inst);
+		if (paircmp_register_by_name("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
+			PERROR("Failed registering Unix-Group");
+			return -1;
+		}
+	} else {
+		int rcode;
+		char *unix_group = talloc_asprintf(inst, "%-Unix-Group", inst->name);
 
-	/* Compat */
-	paircmp_register(attr_group_name, attr_user_name, true, groupcmp, inst);
-
-	if (paircmp_register_by_name("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
-		PERROR("Failed registering Unix-Group");
-		return -1;
+		if (paircmp_register_by_name(unix_group, attr_user_name, false, groupcmp, inst) < 0) {
+			PERROR("Failed registering %s", unix_group);
+			talloc_free(unix_group);
+			return -1;
+		}
+		talloc_free(unix_group);
 	}
 
 	return 0;

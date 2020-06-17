@@ -682,6 +682,11 @@ deprecated in 3.0.16.
 Instead, use `attribute-name`. See `mods-available/sqlippool` for
 more information.
 
+=== rlm_unix
+
+The `unix` module no longer supports `Group` or `Group-Name`.  Please
+use `Unix-Group` instead.
+
 == Deleted Modules
 
 The following modules have been deleted

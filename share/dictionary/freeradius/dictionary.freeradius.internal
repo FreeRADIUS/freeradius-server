@@ -102,7 +102,7 @@ ATTRIBUTE	Packet-Original-Timestamp		56	date
 #	Range:	100-200
 #		Module Control attributes
 #
-ATTRIBUTE	Group-Name				100	string
+## 100 was Group-Name
 ATTRIBUTE	Huntgroup-Name				101	string
 ATTRIBUTE	Simultaneous-Use			102	integer
 ATTRIBUTE	Strip-User-Name				103	integer
@@ -127,7 +127,7 @@ ATTRIBUTE	Menu					1002	string
 ATTRIBUTE	Termination-Menu			1003	string
 ATTRIBUTE	Prefix					1004	string
 ATTRIBUTE	Suffix					1005	string
-ATTRIBUTE	Group					1006	string
+# Was Group
 ATTRIBUTE	Connect-Rate				1007	integer
 ATTRIBUTE	Add-Prefix				1008	string
 ATTRIBUTE	Add-Suffix				1009	string
