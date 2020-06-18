@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/dns.h>
+#include <freeradius-devel/util/dbuff.h>
 
 /** Compare two labels in a case-insensitive fashion.
  *
@@ -482,6 +483,9 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	return false;
 }
 
+static inline bool islabelchar(uint8_t c) {
+	return c == '-' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+}
 
 /** Encode a single value box of type string, serializing its contents to a dns label
  *
@@ -489,39 +493,22 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
  * of the buffer.  This API is necessary in order to allow DNS label
  * compression.
  *
- * @param[out] need	if not NULL, how many bytes are required to serialize
- *			the remainder of the boxed data.
- *			Note: Only variable length types will be partially
- *			encoded. Fixed length types will not be partially encoded.
- * @param[out] buf	Buffer where labels are stored
- * @param[in] buf_len	The length of the output buffer
- * @param[out] where	Where to write this label
+ * @param[out] dbuff	Buffer where labels are stored
  * @param[in] compression Whether or not to do DNS label compression.
  * @param[in] value	to encode.
  * @return
- *	- 0 no bytes were written, see need value to determine
- *	- >0 the number of bytes written to "where", NOT "buf + where + outlen"
+ *	- >0 the number of bytes written
  *	- <0 on error.
  */
-ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, uint8_t *where, bool compression,
-				    fr_value_box_t const *value)
+ssize_t fr_dns_label_from_value_box(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value)
 {
-	uint8_t *label;
-	uint8_t *end = buf + buf_len;
 	uint8_t const *q, *strend;
-	uint8_t *data;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	int namelen = 0;
+	int label_len;
 
-	if (!buf || !buf_len || !where || !value) {
+	if (!value) {
 		fr_strerror_printf("Invalid input");
-		return -1;
-	}
-
-	/*
-	 *	Don't allow stupidities
-	 */
-	if (!((where >= buf) && (where < (buf + buf_len)))) {
-		fr_strerror_printf("Label is outside of buffer");
 		return -1;
 	}
 
@@ -541,34 +528,15 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	/*
 	 *	'.' or empty string is special, and is encoded as a
 	 *	plain zero byte.
-	 *
-	 *	Since "where < end", we can always write 1 byte to it.
 	 */
 	if ((value->vb_length == 0) ||
 	    ((value->vb_length == 1) && (value->vb_strvalue[0] == '.'))) {
-		*where = 0x00;
+		FR_DBUFF_BYTES_IN_RETURN(dbuff, 0);
 		return 1;
-	}
-
-	/*
-	 *	For now, just encode the value as-is.  We do
-	 *	compression as a second step.
-	 *
-	 *	We need a minimum length of string + beginning length
-	 *	+ trailing zero.  Intermediate '.' are converted to
-	 *	length bytes.
-	 */
-	if ((where + value->vb_length + 2) > end) {
-	need_more:
-		if (need) *need = value->vb_length + 2;
-		return 0;
 	}
 
 	q = (uint8_t const *) value->vb_strvalue;
 	strend = q + value->vb_length;
-	label = where;
-	*label = 0;
-	data = label + 1;
 
 	/*
 	 *	@todo - encode into a local buffer, and then try to
@@ -576,86 +544,72 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	the output buffer can be a little bit smaller.
 	 */
 	while (q < strend) {
-		/*
-		 *	Just for pairanoia
-		 */
-		if (data >= end) goto need_more;
+		fr_dbuff_marker_t	label;
 
-		/*
-		 *	'.' is a label delimiter.
-		 *
-		 *	'..' is disallowed.  '.' at the start of a
-		 *	string is disallowed.
-		 */
-		if (*q == '.') {
-			if (*label == 0) {
+		/* Label setup */
+		fr_dbuff_marker(&label, &work_dbuff);
+		label_len = 0;
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+
+		/* Accumulate label characters. */
+		while (q < strend && islabelchar(*q)) {
+			/*
+			 *	Label lengths can be 1..63
+			 */
+			if (label_len >= 63) {
+				fr_strerror_printf("Label is larger than 63 characters");
+				return -1;
+			}
+			/*
+			 *	Name lengths can be 1..255
+			 */
+			if (namelen >= 255) {
+				fr_strerror_printf("Name is larger than 255 characters");
+				return -1;
+			}
+			FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, *q);
+			label_len++;
+			namelen++;
+			q++;
+		}
+
+		if (q < strend) {
+			/* The only permissible character after a label is '.' */
+			if (*q != '.') {
+				fr_strerror_printf("Invalid character %02x in label", *q);
+				return -1;
+			}
+			if (label_len == 0) {
 				fr_strerror_printf("Empty labels are invalid");
 				return -1;
 			}
-
-			/*
-			 *	'.' at the end of a non-zero label is
-			 *	allowed.
-			 */
-			if ((q + 1) == strend) break;
-
-			/*
-			 *	Start a new label.
-			 */
-			label = data;
-			*label = 0;
-			data = label + 1;
-
 			q++;
-			continue;
 		}
 
-		/*
-		 *	Label lengths can be 1..63
-		 */
-		if (*label >= 63) {
-			fr_strerror_printf("Label is larger than 63 characters");
-			return -1;
-		}
-
-		/*
-		 *	Name lengths can be 1..255
-		 */
-		if (namelen >= 255) {
-			fr_strerror_printf("Name is larger than 255 characters");
-			return -1;
-		}
-
-		/*
-		 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
-		 */
-		if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
-		      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
-			fr_strerror_printf("Invalid character %02x in label", *q);
-			return -1;
-		}
-
-		*(data++) = *(q++);
-		(*label)++;
-		namelen++;
+		*fr_dbuff_marker_current(&label) = label_len;
 	}
 
-	*(data++) = 0;		/* end of label */
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);		/* end of label */
 
 	/*
 	 *	Only one label, don't compress it.  Or, the label is
 	 *	already compressed.
 	 */
-	if (!compression || (buf == where) || ((data - where) <= 2)) goto done;
+	if (!compression || fr_dbuff_used(dbuff) == 0 || fr_dbuff_used(&work_dbuff) <= 2) goto done;
 
 	/*
 	 *	Compress it, AND tell us where the new end buffer is located.
 	 */
-	(void) dns_label_compress(buf, where, NULL, where, &data);
+	{
+		uint8_t	*new_end = fr_dbuff_current(&work_dbuff);
+		uint8_t	*where = fr_dbuff_start(&work_dbuff);
+
+		dns_label_compress(fr_dbuff_start(dbuff), where, NULL, where, &new_end);
+		fr_dbuff_set(&work_dbuff, new_end);
+	}
 
 done:
-	if (need) *need = 0;
-	return data - where;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Get the *uncompressed* length of a DNS label in a network buffer.

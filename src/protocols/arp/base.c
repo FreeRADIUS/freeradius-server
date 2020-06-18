@@ -171,14 +171,14 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 		fr_strerror_printf("No ARP attributes in the attribute list");
 		return -1;
 	}
-	     
+
 	fr_proto_da_stack_build(&da_stack, attr_arp_packet);
 	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	slen = fr_struct_to_network(packet, packet_len, &da_stack, 0, &cursor, NULL, NULL);
+	slen = fr_struct_to_network(&FR_DBUFF_TMP(packet, packet_len), &da_stack, 0, &cursor, NULL, NULL);
 	if (slen <= 0) return slen;
 
 	if (slen != FR_ARP_PACKET_SIZE) return slen;

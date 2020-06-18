@@ -41,11 +41,7 @@
 
 static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx);
 
-static ssize_t encode_value_dbuff(fr_dbuff_t *dbuff,
-				  fr_da_stack_t *da_stack, unsigned int depth,
-				  fr_cursor_t *cursor, void *encoder_ctx);
-
-static ssize_t encode_value(uint8_t *out, size_t outlen,
+static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx);
 
@@ -76,10 +72,8 @@ static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size
 {
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN);
-
-	fr_dbuff_in(&work_dbuff, option);
-	fr_dbuff_in(&work_dbuff, (uint16_t) data_len);
+	FR_DBUFF_IN_RETURN(&work_dbuff, option);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) data_len);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -89,6 +83,7 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 			     fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t	len;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -104,31 +99,18 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	len = fr_struct_to_network(dbuff->p, fr_dbuff_remaining(dbuff), da_stack, depth, cursor, encoder_ctx, encode_value);
+	len = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value);
 	if (len <= 0) return len;
-	fr_dbuff_advance(dbuff, len);
 
-	return len;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_value_dbuff(fr_dbuff_t *dbuff,
-				  fr_da_stack_t *da_stack, unsigned int depth,
-				  fr_cursor_t *cursor, void *encoder_ctx)
-{
-	ssize_t	slen;
-
-	slen = encode_value(dbuff->p, fr_dbuff_remaining(dbuff), da_stack, depth, cursor, encoder_ctx);
-	if (slen < 0) return slen;
-	fr_dbuff_advance(dbuff, slen);
-	return slen;
-}
-
-static ssize_t encode_value(uint8_t *out, size_t outlen,
+static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
@@ -139,7 +121,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = encode_struct(&FR_DBUFF_TMP(out, outlen), da_stack, depth, cursor, encoder_ctx);
+		slen = encode_struct(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
 
 		/*
@@ -152,7 +134,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return slen;
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	/*
@@ -204,7 +186,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if (!da->flags.extra &&
 		    ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
 		     (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
-			slen = fr_dns_label_from_value_box(NULL, p, outlen, p, false, &vp->data);
+			fr_dbuff_marker_t	p;
+
+			fr_dbuff_marker(&p, &work_dbuff);
+			slen = fr_dns_label_from_value_box(&work_dbuff, false, &vp->data);
 
 			/*
 			 *	@todo - check for free space, etc.
@@ -218,11 +203,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			 *	zero.
 			 */
 			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) &&
-			    (*(p + p[0] + 1) == 0)) {
-				slen--;
+			    (*(fr_dbuff_marker_current(&p) + fr_dbuff_marker_current(&p)[0] + 1) == 0)) {
+				fr_dbuff_set_to_start(&work_dbuff);
+				fr_dbuff_advance(&work_dbuff, slen - 1);
 			}
-
-			p += slen;
 			break;
 		}
 		FALL_THROUGH;
@@ -233,15 +217,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *	we encode only the allowed data.
 		 */
 		slen = fr_dhcpv6_option_len(vp);
-		CHECK_FREESPACE(outlen, slen);
 
 		if (vp->vp_length < (size_t)slen) {
-			memcpy(p, vp->vp_ptr, vp->vp_length);
-			memset(p + vp->vp_length, 0, slen - vp->vp_length);
+			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), vp->vp_length);
+			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, slen - vp->vp_length);
 		} else {
-			memcpy(p, vp->vp_ptr, slen);
+			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), (size_t) slen);
 		}
-		p += slen;
 		break;
 
 	/*
@@ -259,10 +241,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		CHECK_FREESPACE(outlen, sizeof(vp->vp_ipv6addr));
-
-		memcpy(out, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
-		p += sizeof(vp->vp_ipv6addr);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
 
 	/*
@@ -281,14 +260,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 	{
-		uint8_t	prefix_len;
+		size_t	prefix_len;
 
 		prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
-		CHECK_FREESPACE(outlen, prefix_len + 1);
 
-		*p++ = vp->vp_ip.prefix;
-		memcpy(p, &vp->vp_ipv6addr, prefix_len);	/* Only copy the minimum address bytes required */
-		p += prefix_len;
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, prefix_len);	/* Only copy the minimum address bytes required */
 	}
 		break;
 
@@ -299,14 +276,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		uint8_t prefix_len;
+		size_t prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
 
-		prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
-		CHECK_FREESPACE(outlen, prefix_len + 1);
-
-		*p++ = vp->vp_ip.prefix;
-		memcpy(p, &vp->vp_ipv4addr, prefix_len);	/* Only copy the minimum address bytes required */
-		p += prefix_len;
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, prefix_len);	/* Only copy the minimum address bytes required */
 	}
 		break;
 
@@ -364,10 +337,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_TIME_DELTA:
-		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
-		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
+		slen = fr_value_box_to_network_dbuff(&work_dbuff, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
-		p += slen;
 		break;
 
 	/*
@@ -381,19 +352,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_DATE:
 	{
-		uint32_t adj_date;
 		uint64_t date = fr_time_to_sec(vp->vp_date);
 
-		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 		if (date < DHCPV6_DATE_OFFSET) {	/* 30 years */
-			memset(p, 0, sizeof(uint32_t));
-			p += sizeof(uint32_t);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) 0);
 			break;
 		}
 
-		adj_date = htonl(date - DHCPV6_DATE_OFFSET);
-		memcpy(p, &adj_date, sizeof(adj_date));
-		p += sizeof(adj_date);
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)(date - DHCPV6_DATE_OFFSET));
 	}
 		break;
 
@@ -411,13 +377,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 			while (fr_cursor_current(&child_cursor) != NULL) {
 				child = fr_cursor_current(&child_cursor);
-				slen = fr_dhcpv6_encode_option(p, end - p, &child_cursor, encoder_ctx);
+				slen = encode_option(&work_dbuff, &child_cursor, encoder_ctx);
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
 				if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 				if (slen == 0) break;
-
-				p += slen;
 			}
 		}
 	}
@@ -448,7 +412,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	vp = fr_cursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-	return p - out;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static inline ssize_t encode_array(fr_dbuff_t *dbuff,
@@ -470,7 +434,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 	 *	length headers.
 	 */
 	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
-		while (fr_dbuff_remaining(&work_dbuff) > 0) {
+		for (;;) {
 			vp = fr_cursor_current(cursor);
 
 			/*
@@ -479,11 +443,9 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 			 *
 			 *	https://tools.ietf.org/html/rfc8415#section-10
 			 */
-			slen = fr_dns_label_from_value_box(NULL, work_dbuff.p, fr_dbuff_remaining(&work_dbuff),
-							   work_dbuff.p, false, &vp->data);
+			slen = fr_dns_label_from_value_box(&work_dbuff, false, &vp->data);
 			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
-			fr_dbuff_advance(&work_dbuff, slen);
 			vp = fr_cursor_next(cursor);
 			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 		}
@@ -491,7 +453,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
-	while (fr_dbuff_remaining(&work_dbuff) > 0) {
+	for (;;) {
 		bool		len_field = false;
 		fr_dbuff_t	element_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
 
@@ -505,12 +467,11 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 		 */
 		if (!da->flags.length) {
-			FR_DBUFF_CHECK_REMAINING_RETURN(&element_dbuff, sizeof(uint16_t) + element_len);
 			len_field = true;
-			fr_dbuff_advance(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
+			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
 		}
 
-		slen = encode_value_dbuff(&element_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_FATAL_ERROR;
 
@@ -521,7 +482,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 */
 		if (da->flags.length) {
 			if ((size_t)slen < element_len) {
-				fr_dbuff_memset(&element_dbuff, 0, element_len - slen);
+				FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
 				slen = element_len;
 			} else if ((size_t)slen > element_len){
 				slen = element_len;
@@ -532,7 +493,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *	Populate the length field
 		 */
 		if (len_field) fr_dbuff_in(&work_dbuff, (uint16_t) slen);
-		fr_dbuff_advance(&work_dbuff, slen);
+		fr_dbuff_set(&work_dbuff, &element_dbuff);
 
 
 		vp = fr_cursor_current(cursor);
@@ -550,10 +511,13 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
+#ifndef NDEBUG
+	fr_dbuff_marker_t	start;
 
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN);
+	fr_dbuff_marker(&start, &work_dbuff);
+#endif
 
-	while (fr_dbuff_remaining(&work_dbuff) > OPT_HDR_LEN) {
+	for (;;) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
 		/*
@@ -581,7 +545,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	}
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done TLV body");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), fr_dbuff_used(&work_dbuff), "Done TLV body");
 #endif
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -600,7 +564,12 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
+	ssize_t		len;
+#ifndef NDEBUG
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
+#endif
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -615,7 +584,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	if (da->flags.array) {
 		len = encode_array(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value_dbuff(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		len = encode_value(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 	}
 	if (len < 0) return len;
 
@@ -625,7 +594,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done RFC header");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), fr_dbuff_used(&work_dbuff), "Done RFC header");
 #endif
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -639,6 +608,11 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
+#ifndef NDEBUG
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
+#endif
 
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -669,7 +643,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done TLV header");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), fr_dbuff_used(&work_dbuff), "Done TLV header");
 #endif
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -698,6 +672,11 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
 	ssize_t			len;
+#ifndef NDEBUG
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
+#endif
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -709,12 +688,6 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-
-	/*
-	 *	Check if we have enough for an option header plus the
-	 *	enterprise-number.
-	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN + sizeof(uint32_t));
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -731,8 +704,8 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Copy in the 32bit PEN (Private Enterprise Number)
 	 */
-	fr_dbuff_advance(&work_dbuff, OPT_HDR_LEN);
-	fr_dbuff_in(&work_dbuff, dv->attr);
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, OPT_HDR_LEN);
+	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
 
 	/*
 	 *	https://tools.ietf.org/html/rfc8415#section-21.17 says:
@@ -770,7 +743,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	encode_option_hdr(&hdr_dbuff, da->attr, fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN);
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), fr_dbuff_used(&work_dbuff), "Done VSIO header");
 #endif
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -799,8 +772,10 @@ static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * enco
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, OPT_HDR_LEN + UINT16_MAX);
 	ssize_t			len;
-#ifndef NDEBUG
-	uint8_t			*start = dbuff->p;
+	#ifndef NDEBUG
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
 #endif
 
 	vp = fr_cursor_current(cursor);
@@ -817,29 +792,25 @@ static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * enco
 	FR_PROTO_STACK_PRINT(&da_stack, depth);
 
 	/*
-	 *	Trim output buffer size for sanity
-	 */
-
-	/*
-	 *	Deal with nested options
+	 *	Deal with nested options, trimming output buffer size for sanity.
 	 */
 	switch (da_stack.da[depth]->type) {
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, OPT_HDR_LEN + UINT16_MAX), &da_stack, depth, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_VSA:
-		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_vsio_hdr(&FR_DBUFF_MAX(&work_dbuff, OPT_HDR_LEN + UINT16_MAX), &da_stack, depth, cursor, encoder_ctx);
 		break;
 
 	default:
-		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, OPT_HDR_LEN + UINT16_MAX), &da_stack, depth, cursor, encoder_ctx);
 		break;
 	}
 	if (len < 0) return len;
 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
-	FR_PROTO_HEX_DUMP(start, fr_dbuff_used(&work_dbuff), NULL);
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), fr_dbuff_used(&work_dbuff), NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

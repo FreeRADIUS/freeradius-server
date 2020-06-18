@@ -27,7 +27,7 @@ RCSIDH(dns_h, "$Id$")
 extern "C" {
 #endif
 
-ssize_t		fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buflen, uint8_t *where, bool compression, fr_value_box_t const *value);
+ssize_t		fr_dns_label_from_value_box(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value);
 
 ssize_t		fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **p_label);
 

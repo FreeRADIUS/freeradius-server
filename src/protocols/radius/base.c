@@ -240,33 +240,34 @@ size_t fr_radius_attr_len(VALUE_PAIR const *vp)
  * We put them into MD5 in the reverse order from that used when
  * encrypting passwords to RADIUS.
  */
-ssize_t fr_radius_ascend_secret(uint8_t *out, size_t outlen, uint8_t const *in, size_t inlen,
+ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 				char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t	*md5_ctx;
 	int		i;
 	uint8_t		buff[RADIUS_AUTH_VECTOR_LENGTH];
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	start;
 
-	if (outlen < RADIUS_AUTH_VECTOR_LENGTH) return -(outlen - RADIUS_AUTH_VECTOR_LENGTH);
+	fr_dbuff_marker(&start, &work_dbuff);
 
-	/*
-	 *	Probably shouldn't happen, but deal with it gracefully if it does
-	 */
-	if (inlen < RADIUS_AUTH_VECTOR_LENGTH) {
-		memset(buff, 0, sizeof(buff));
-		memcpy(buff, in, inlen);
-		in = buff;
-	}
+	if (inlen > RADIUS_AUTH_VECTOR_LENGTH) inlen = RADIUS_AUTH_VECTOR_LENGTH;
+
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, RADIUS_AUTH_VECTOR_LENGTH);
+
+	fr_dbuff_set_to_start(&work_dbuff);
+	fr_dbuff_memcpy_in(&work_dbuff, in, inlen);
+	if (inlen < RADIUS_AUTH_VECTOR_LENGTH) fr_dbuff_memset(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH - inlen);
 
 	md5_ctx = fr_md5_ctx_alloc(true);
 	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	fr_md5_final(out, md5_ctx);
+	fr_md5_final(buff, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++ ) out[i] ^= in[i];
+	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) fr_dbuff_marker_current(&start)[i] ^= buff[i];
 
-	return RADIUS_AUTH_VECTOR_LENGTH;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Basic validation of RADIUS packet header

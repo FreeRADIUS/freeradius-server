@@ -23,8 +23,12 @@
  */
 RCSID("$Id$")
 
+#include <stdio.h>
+
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/proto.h>
+
+static int put_bits(fr_dbuff_t *dbuff, uint8_t *p, int offset, uint8_t num_bits, uint64_t data);
 
 VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
@@ -356,70 +360,54 @@ done:
 	return data_len;
 }
 
-static const uint8_t start_bit_mask[8] = {
-	0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe
-};
-
 /** Put bits into an output buffer
  *
- * @param p	where the bits go
- * @param end	end of the output buffer
- * @param start_bit start bit in the output buffer where the data goes, 0..7
- * @param num_bits  number of bits to write to the output
- * @param data	data to write, all in the lower "num_bits" of the uint64_t variable
+ * @param dbuff		where the bytes go
+ * @param p		where leftover bits go
+ * @param start_bit	start bit in the output buffer where the data goes, 0..7
+ * @param num_bits 	number of bits to write to the output, 0..55
+ * @param data		data to write, all in the lower "num_bits" of the uint64_t variable
+ * @return
+ * 	>= 0	the next value to pass in for start_bit
+ * 	<  0	no space or invalid start_bit or num_bits parameter
  */
-static int put_bits(uint8_t *p, uint8_t const *end, int start_bit, int num_bits, uint64_t data)
+static int put_bits(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t num_bits, uint64_t data)
 {
-	uint8_t old;
+	uint64_t	used_bits;
 
-	/*
-	 *	Jump to the start byte
-	 */
-	if (start_bit > 7) {
-		p += start_bit >> 3;
-		start_bit &= 0x07;
-	}
+	if (start_bit < 0 || start_bit > 7) return -1;
+	if (num_bits < 1 || num_bits > 56) return -1;
 
-	if ((p + ((start_bit + num_bits) >> 3)) > end) return -1;
+	/* Get bits buffered in *p */
+	used_bits = *p & (-256 >> start_bit);
 
-	if (num_bits > 56) return -1;
+	/* Mask out all but the least significant num_bits bits of data */
+	data &= (((uint64_t) 1) << num_bits) - 1;
 
-	/*
-	 *	Too much data? Mask it off.
-	 */
-	if (data > ((uint64_t) 1) << num_bits) {
-		data &= (((uint64_t) 1) << num_bits) - 1;
-	}
-
-	/*
-	 *	Grab the old byte.  Shift the data so that it's start
-	 *	bit is where we want, then convert the data to nework
-	 *	byte order.
-	 *
-	 *	Copy over old as many bytes as we need, and then "or"
-	 *	in the original data.
-	 */
-	old = p[0] & start_bit_mask[start_bit];
-
+	/* Move it towards the most significant end and put used_bits at the top */
 	data <<= (64 - (start_bit + num_bits));
-	data = htonll(data);
-	memcpy(p, &data, (start_bit + num_bits + 7) >> 3); /* only copy as much as necessary */
-	p[0] |= old;
+	data |= used_bits << 56;
 
-	return 0;
+	data = htonll(data);
+
+	start_bit += num_bits;
+	if (start_bit > 7) FR_DBUFF_MEMCPY_IN_RETURN(dbuff, (uint8_t const *) &data, (size_t)(start_bit / 8));
+
+	*p = ((uint8_t *) &data)[start_bit / 8];
+	return start_bit % 8;
 }
 
-
-ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
+ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_cursor_t *cursor, void *encoder_ctx,
 			     fr_encode_value_t encode_value)
 {
-	ssize_t			len;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	int			offset = 0;
 	unsigned int		child_num = 1;
-	unsigned int		offset = 0;
 	bool			do_length = false;
-	uint8_t			*p = out;
+	uint8_t			bit_buffer = 0;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da, *parent;
 
@@ -454,16 +442,11 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	 *	Some structs are prefixed by a 16-bit length.
 	 */
 	if (da_is_length_field(parent)) {
-		if (outlen < 2) return 0;
-
-		out[0] = 0;
-		out[1] = 0;
-		p += 2;
-		outlen -= 2;
+		FR_DBUFF_ADVANCE_RETURN(dbuff, 2);
 		do_length = true;
 	}
 
-	while (outlen) {
+	for (;;) {
 		fr_dict_attr_t const *child;
 
 		/*
@@ -485,8 +468,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			break;
 		}
 
-		if (!da_is_bit_field(child)) offset = 0;
-
 		/*
 		 *	Skipped a VP, or left one off at the end, fill the struct with zeros.
 		 */
@@ -495,17 +476,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			 *	Zero out the bit field.
 			 */
 			if (da_is_bit_field(child)) {
-				if (offset == 0) *p = 0;
-
-				(void) put_bits(p, p + outlen, offset, child->flags.length, 0);
-
-				offset += child->flags.length;
-				if (offset >= 8) {
-					p += (offset >> 3);
-					outlen -= (offset >> 3);
-					offset &= 0x07;
-				}
-
+				offset = put_bits(&work_dbuff, &bit_buffer, offset, child->flags.length, 0);
+				if (offset < 0) return offset;
 				child_num++;
 				continue;
 			}
@@ -517,15 +489,7 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			/*
 			 *	Zero out the unused field.
 			 */
-			if (child->flags.length > outlen) {
-				len = outlen;
-			} else {
-				len = child->flags.length;
-			}
-
-			memset(p, 0, len);
-			p += len;
-			outlen -= len;
+			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, child->flags.length);
 			child_num++;
 			continue;
 		}
@@ -540,8 +504,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 */
 		if (da_is_bit_field(child)) {
 			uint64_t value;
-
-			if (offset == 0) *p = 0;
 
 			switch (child->type) {
 				case FR_TYPE_BOOL:
@@ -569,14 +531,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 					return -1;
 			}
 
-			(void) put_bits(p, p + outlen, offset, child->flags.length, value);
-
-			offset += child->flags.length;
-			if (offset >= 8) {
-				p += (offset >> 3);
-				outlen -= (offset >> 3);
-				offset &= 0x07;
-			}
+			offset = put_bits(&work_dbuff, &bit_buffer, offset, child->flags.length, value);
+			if (offset < 0) return offset;
 
 			do {
 				vp = fr_cursor_next(cursor);
@@ -584,17 +540,23 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			} while (vp != NULL);
 			goto next;
 
-		} else if (encode_value) {
-			ssize_t slen;
+		}
 
+		/* Not a bit field; insist that no buffered bits remain. */
+		if (offset != 0) {
+		leftover_bits:
+			fr_strerror_printf("leftover bits");
+			return -1;
+		}
 
+		if (encode_value) {
+			ssize_t	len;
 			/*
 			 *	Call the protocol encoder for non-bit fields.
 			 */
 			fr_proto_da_stack_build(da_stack, child);
-			slen = encode_value(p, outlen, da_stack, depth + 1, cursor, encoder_ctx);
-			if (slen < 0) return slen;
-			len = slen;
+			len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			if (len < 0) return len;
 			vp = fr_cursor_current(cursor);
 
 		} else {
@@ -606,22 +568,19 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
 				size_t mylen = vp->da->flags.length;
 
-				if (mylen > outlen) mylen = outlen;
-
 				if (vp->vp_length < mylen) {
-					memcpy(p, vp->vp_ptr, vp->vp_length);
-					memset(p + vp->vp_length, 0, mylen - vp->vp_length);
+					FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr),
+								  vp->vp_length);
+					FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, mylen - vp->vp_length);
 				} else {
-					memcpy(p, vp->vp_ptr, mylen);
+					FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), mylen);
 				}
-				len = mylen;
 
 			} else {
 				/*
 				 *	Determine the nested type and call the appropriate encoder
 				 */
-				len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
-				if (len <= 0) return -1;
+				if (fr_value_box_to_network_dbuff(&work_dbuff, &vp->data) <= 0) return -1;
 			}
 
 			do {
@@ -634,30 +593,29 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			key_da = child;
 		}
 
-		p += len;
-		outlen -= len;				/* Subtract from the buffer we have available */
 	next:
 		child_num++;
 	}
 
-	if (!vp || !outlen) return p - out;
+	/* Check for leftover bits */
+	if (offset != 0) goto leftover_bits;
 
 	/*
 	 *	Check for keyed data to encode.
 	 */
-	if (key_da) {
+	if (vp && key_da) {
 		/*
-		 *	If our parent is a struct, AND it's parent is
+		 *	If our parent is a struct, AND its parent is
 		 *	the key_da, then we have a keyed struct for
 		 *	the child.  Go encode it.
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
+			ssize_t	len;
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
-			len = fr_struct_to_network(p, outlen, da_stack, depth + 2, /* note + 2 !!! */
+			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encoder_ctx, encode_value);
 			if (len < 0) return len;
-			p += len;
 			goto done;
 		}
 
@@ -666,10 +624,8 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 		 */
 		if ((vp->da->parent == key_da) &&
 		    (vp->da->type != FR_TYPE_TLV)) {
-			len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
-			if (len <= 0) return -1;
+			if (fr_value_box_to_network_dbuff(&work_dbuff, &vp->data) <= 0) return -1;
 			(void) fr_cursor_next(cursor);
-			p += len;
 			goto done;
 		}
 
@@ -680,12 +636,10 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 done:
 	if (do_length) {
-		len = (p - (out + 2));
+		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
 		if (len > 65535) return -1;
-
-		out[0] = (len >> 8) & 0xff;
-		out[1] = len & 0xff;
+		fr_dbuff_uint16_in(&hdr_dbuff, len);
 	}
 
-	return p - out;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }

@@ -1470,16 +1470,15 @@ static size_t command_dictionary_dump(command_result_t *result, command_file_ctx
 static size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc,
 				       char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	size_t		need;
 	ssize_t		ret;
 	char		*p, *next;
-	uint8_t		*enc_p;
+	fr_dbuff_t	dbuff;
 
 	p = in;
 	next = strchr(p, ',');
 	if (next) *next = 0;
 
-	enc_p = cc->buffer_start;
+	fr_dbuff_init(&dbuff, cc->buffer_start, cc->buffer_end);
 
 	while (p) {
 		fr_type_t type = FR_TYPE_STRING;
@@ -1492,15 +1491,10 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 			RETURN_OK_WITH_ERROR();
 		}
 
-		ret = fr_dns_label_from_value_box(&need,
-						  cc->buffer_start, cc->buffer_end - cc->buffer_start, enc_p, true, box);
+		ret = fr_dns_label_from_value_box(&dbuff, true, box);
 		talloc_free(box);
 
 		if (ret < 0) RETURN_OK_WITH_ERROR();
-
-		if (ret == 0) RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "need=%zd", need));
-
-		enc_p += ret;
 
 		/*
 		 *	Go to the next input string
@@ -1512,7 +1506,7 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 		if (next) *next = 0;
 	}
 
-	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, enc_p - cc->buffer_start));
+	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, fr_dbuff_used(&dbuff)));
 }
 
 static size_t command_decode_dns_label(command_result_t *result, command_file_ctx_t *cc,
