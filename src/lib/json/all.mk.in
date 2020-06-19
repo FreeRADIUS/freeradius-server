@@ -5,5 +5,5 @@ TARGET		:= $(TARGETNAME).a
 endif
 
 SOURCES		:= json_missing.c json.c jpath.c
-SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+SRC_CFLAGS	+= @mod_cflags@
+TGT_LDLIBS	+= @mod_ldflags@
