@@ -1,0 +1,9 @@
+imap.authenticate
+if (reject) {
+    update control {
+        &Auth-Type := Accept
+    }
+}
+else {
+    reject
+}

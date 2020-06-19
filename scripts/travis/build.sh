@@ -66,6 +66,7 @@ echo "Setting up fixtures"
 
 for i in \
     postgresql-setup.sh \
+    imap-setup.sh \
     mysql-setup.sh \
     ldap-setup.sh \
     redis-setup.sh; do
