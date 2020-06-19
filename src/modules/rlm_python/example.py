@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Python module example file
 # Miguel A.L. Paraz <mparaz@mparaz.com>
