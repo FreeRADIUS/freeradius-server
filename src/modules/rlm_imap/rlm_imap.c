@@ -146,9 +146,6 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 	rlm_imap_thread_t       	*t = thread;
 	fr_curl_io_request_t    	*randle;
     
-	fr_time_delta_t        		timeout = inst->timeout;
-	char const			*imap_uri = inst->imap_uri;
-
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
 	error:
@@ -162,10 +159,12 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
+
 	if (!password) {
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
+
 	if (password->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
 		return RLM_MODULE_INVALID;
@@ -175,10 +174,10 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 	FR_CURL_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
 	
 	FR_CURL_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
-	FR_CURL_SET_OPTION(CURLOPT_URL, imap_uri);
+	FR_CURL_SET_OPTION(CURLOPT_URL, inst->imap_uri);
     
-	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, timeout);
-	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, timeout);
+	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
+	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 
 	FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
