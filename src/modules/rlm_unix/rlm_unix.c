@@ -169,7 +169,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 	} else {
 		int rcode;
-		char *unix_group = talloc_asprintf(inst, "%-Unix-Group", inst->name);
+		char *unix_group = talloc_asprintf(inst, "%s-Unix-Group", inst->name);
 
 		if (paircmp_register_by_name(unix_group, attr_user_name, false, groupcmp, inst) < 0) {
 			PERROR("Failed registering %s", unix_group);
