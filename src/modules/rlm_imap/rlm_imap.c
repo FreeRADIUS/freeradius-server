@@ -64,7 +64,7 @@ typedef struct {
 typedef struct {
 	rlm_imap_t const    		*inst;        //!< Instance of rlm_imap.
 	fr_curl_handle_t    		*mhandle;    //!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
-}rlm_imap_thread_t;
+} rlm_imap_thread_t;
 
 typedef struct {
 	rlm_imap_t const    		*instance;    //!< This instance of rlm_imap.
