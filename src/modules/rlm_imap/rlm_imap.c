@@ -66,11 +66,6 @@ typedef struct {
 	fr_curl_handle_t    		*mhandle;    //!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
 } rlm_imap_thread_t;
 
-typedef struct {
-	rlm_imap_t const    		*instance;    //!< This instance of rlm_imap.
-	REQUEST           		*request;    //!< Current request.
-} rlm_imap_request_t;
-
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("imap_uri", FR_TYPE_STRING, rlm_imap_t, imap_uri) },
 	{ FR_CONF_OFFSET("timeout",FR_TYPE_TIME_DELTA, rlm_imap_t, timeout) },
