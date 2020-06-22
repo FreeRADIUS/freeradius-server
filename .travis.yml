@@ -58,6 +58,9 @@ addons:
     - debhelper
     - devscripts
     - dh-make
+    - dovecot-core
+    - dovecot-dev
+    - dovecot-imapd
     - doxygen
     - fakeroot
     - firebird-dev

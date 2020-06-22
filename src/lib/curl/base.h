@@ -77,6 +77,7 @@ typedef struct {
 	char const		*ca_issuer_file;
 	char const		*ca_path;
 	char const		*random_file;
+	long			*require_cert;
 	bool			check_cert;
 	bool			check_cert_cn;
 	bool			extract_cert_attrs;

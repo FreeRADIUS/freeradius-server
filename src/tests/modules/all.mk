@@ -12,9 +12,12 @@ FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(call FIND_FILES_SUFFIX,$(DIR),*.u
 
 #
 #  Remove things which are known to fail on travis.
+#  Or which are known to have long runtimes 
 #
 ifeq "$(TRAVIS)" "1"
-FILES_SKIP := $(filter icmp/%,$(FILES))
+  FILES_SKIP := $(filter icmp/%,$(FILES))
+else ifneq "$(RUN_SLOW_TESTS)" "1"
+  FILES_SKIP += $(filter imap/auth_bad%,$(FILES))
 endif
 
 #
