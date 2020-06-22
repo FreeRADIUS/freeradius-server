@@ -41,7 +41,7 @@ fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 	{"allow",     	CURLUSESSL_TRY          },
 	{"demand",     	CURLUSESSL_ALL          },
 	{"never", 	CURLUSESSL_NONE         },
-	};
+};
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
 
