@@ -92,12 +92,12 @@ ssl = no
 base_dir = ${RUNDIR}
 
 service imap-login {
-        process_min_avail = 16
-        user = ${USER} 
-        chroot =
-        inet_listener imap {
-                port = 1430
-        }
+	process_min_avail = 16
+	user = ${USER} 
+	chroot =
+	inet_listener imap {
+		port = 1430
+	}
 } \
 " >> "${CONF}"
 
@@ -109,15 +109,15 @@ instance_name = "fr_tls_dovecot"
 base_dir = ${TLSRUNDIR}
 
 service imap-login {
-        process_min_avail = 16
-        user = ${USER}
-        chroot =
-        inet_listener imap {
-                port = 1431
-        }
+	process_min_avail = 16
+	user = ${USER}
+	chroot =
+	inet_listener imap {
+		port = 1431
+	}
 	inet_listener imaps {
-                port = 1432
-        }
+		port = 1432
+	}
 } 
 # TLS specific configurations
 ssl = required
@@ -152,7 +152,7 @@ info_log_path = ${LOGINFOPATH} \
 echo  "
 passdb {
 	driver = passwd-file
-    	args = ${PASSPATH}
+	args = ${PASSPATH}
 }" >> "${CONFPATH}"
 
 # Add the mail directory to the config
@@ -169,8 +169,8 @@ default_login_user = ${USER} \
 #Configure the user mailbox privileges
 echo "
 userdb {
-        driver = static
-        args = uid=${USER} gid=${USER}
+	driver = static
+	args = uid=${USER} gid=${USER}
 } \
 " >> "${CONFPATH}"
 
