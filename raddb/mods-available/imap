@@ -7,7 +7,7 @@
 #
 #  = IMAP Module
 #
-#  The `IMAP` module validates a users name and password against an IMAP server.
+#  The `imap` module validates a users name and password against an IMAP server.
 #  It should be called from an `authenticate` section.
 #
 #  The module can optionally perform a tls handshake, enabled with require_cert
@@ -158,10 +158,30 @@ imap {
 	}
 
 	#
-	#  imap_uri:: It will open a connection to the server specified in and send the tls
-	#  request here
+	#  uri:: URI which will be used for connecting to the IMAP server.
 	#
-	imap_uri = "imap://127.0.0.1:1430/"
+	#  The `imap` module uses Curl (https://curl.haxx.se/libcurl/) to implement
+	#  the underlying mail protocols.  The URI should be in the form of:
+	#
+	#  `SCHEME://IP:PORT/`
+	#
+
+	#	`SCHEME` can be one of the protocols supported by Curl.
+	#	i.e. ftp, ftps, gopher, http, https, imap, imaps, ldap, ldaps,
+	#	     pop3, pop3s, rtsp, scp, sftp, smb, smbs, smtp, smtps.
+	#	If no `SCHEME` is given, it defaults to `imap`.
+	#
+	#	`IP` is the IP address of the server.  It can be an IPv4 address,
+	#	IPv6 address, hostname, etc.
+	#
+	#	`PORT` is optional, and will normally be chosen to be correct
+	#	for the given `SCHEME`.
+	#
+	#  For more information, see the CURL documentation at
+	#
+	#	https://ec.haxx.se/cmdline/cmdline-urls
+	#
+	uri = "imap://192.0.20.1/"
 
 	#
 	#  timeout:: How long the module will wait before giving up on the response

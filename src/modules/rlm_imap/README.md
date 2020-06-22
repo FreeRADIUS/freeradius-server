@@ -5,4 +5,4 @@
 </dl>
 
 ## Summary
-This module authenticates users against an IMAP server
+Allows users to be authenticated against an IMAP server.

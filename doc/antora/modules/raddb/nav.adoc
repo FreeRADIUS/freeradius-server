@@ -34,6 +34,7 @@
 *** xref:mods-available/files.adoc[Files Module]
 *** xref:mods-available/idn.adoc[IDN Module]
 *** xref:mods-available/isc_dhcp.adoc[ISC DHCP Module]
+*** xref:mods-available/imap.adoc[IMAP Module]
 *** xref:mods-available/json.adoc[JSON Module]
 *** xref:mods-available/krb5.adoc[Kerberos Module]
 *** xref:mods-available/ldap.adoc[LDAP (Lightweight Directory Access Protocol) Module]

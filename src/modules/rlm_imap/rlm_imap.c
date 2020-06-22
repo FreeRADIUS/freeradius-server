@@ -47,21 +47,21 @@ fr_dict_attr_autoload_t rlm_imap_dict_attr[] = {
 };
 
 typedef struct {
-	char const			*imap_uri;	//!< URL of imap server
+	char const			*uri;		//!< URI of imap server
 	fr_time_delta_t 		timeout;	//!< Timeout for connection and server response
 	fr_curl_tls_t			tls;
 } rlm_imap_t;
 
 typedef struct {
-	rlm_imap_t const    		*inst;        //!< Instance of rlm_imap.
-	fr_curl_handle_t    		*mhandle;    //!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
+	rlm_imap_t const    		*inst;		//!< Instance of rlm_imap.
+	fr_curl_handle_t    		*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
 } rlm_imap_thread_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("imap_uri", FR_TYPE_STRING, rlm_imap_t, imap_uri) },
+	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, rlm_imap_t, uri) },
 	{ FR_CONF_OFFSET("timeout",FR_TYPE_TIME_DELTA, rlm_imap_t, timeout) },
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_imap_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
 	CONF_PARSER_TERMINATOR
@@ -148,7 +148,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 	FR_CURL_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
 	
 	FR_CURL_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
-	FR_CURL_SET_OPTION(CURLOPT_URL, inst->imap_uri);
+	FR_CURL_SET_OPTION(CURLOPT_URL, inst->uri);
     
 	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));

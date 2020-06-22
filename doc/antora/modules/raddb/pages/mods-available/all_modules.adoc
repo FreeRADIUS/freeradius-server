@@ -7,6 +7,7 @@
 | xref:mods-available/digest.adoc[digest]	| The digest module performs HTTP digest authentication, usually for a SIP server. See draft-sterman-aaa-sip-00.txt for
 details. The module does not support RFC 5090.
 | xref:mods-available/eap.adoc[eap]	| Implements the base protocol for EAP (Extensible Authentication Protocol).
+| xref:mods-available/imap.adoc[imap]	| Allows users to be authenticated against an IMAP server.
 | xref:mods-available/krb5.adoc[krb5]	| Implements kerberos authentication, using the result of decrypting the TGT as an indication that the provided
 password was correct.
 | xref:mods-available/ldap.adoc[ldap]	| Allows LDAP directory entries to be retrieved, modified, inserted and deleted.
