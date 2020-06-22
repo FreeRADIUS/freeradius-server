@@ -138,6 +138,7 @@ int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *con
 	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->check_cert == true) ? 1L : 0L);
 	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->check_cert_cn == true) ? 2L : 0L);
 	if (conf->extract_cert_attrs) FR_CURL_SET_OPTION(CURLOPT_CERTINFO, 1L);
+
 	return 0;
 error:
 	return -1;
