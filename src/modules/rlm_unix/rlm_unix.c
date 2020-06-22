@@ -71,8 +71,6 @@ fr_dict_autoload_t rlm_unix_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_group;
-static fr_dict_attr_t const *attr_group_name;
 static fr_dict_attr_t const *attr_crypt_password;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_login_ip_host;
@@ -168,7 +166,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			return -1;
 		}
 	} else {
-		int rcode;
 		char *unix_group = talloc_asprintf(inst, "%s-Unix-Group", inst->name);
 
 		if (paircmp_register_by_name(unix_group, attr_user_name, false, groupcmp, inst) < 0) {
