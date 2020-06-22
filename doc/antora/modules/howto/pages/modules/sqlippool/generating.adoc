@@ -1,0 +1,202 @@
+= Populating the SQL IP pools
+
+The `scripts/sql/generate_pool_addresses.pl` file is a helper script
+for populating IP pools with address entries.
+
+The script generates output which is useful for populating an IP pool
+for use with FreeRADIUS (and possibly other purposes). The pool may be
+implemented as an SQL IP Pool (the `sqlippool` module) or any other
+backing store that has one entry per IP address.
+
+This script output a list of address to add, retain and remove in order to
+align a pool to a specification. It is likely that you will want to
+process the output to generate the actual commands (e.g. SQL statements)
+that make changes to the datastore. For example:
+
+[source,shell]
+----
+generate_pool_addresses.pl ... | align_sql_pools.pl postgresql
+----
+
+== Use with a single address range
+
+For basic use, arguments can be provided to this script that denote the ends
+of a single IP (v4 or v6) address range together with the pool_name.
+
+Optionally the number of IPs to sparsely populate the range with can be
+provided. If the range is wider than a /16 then the population of the range
+is capped at 65536 IPs, unless otherwise specified.
+
+In the case that a sparse range is defined, a file containing pre-existing
+IP entries can be provided. The range will be populated with entries from
+this file that fall within the range, prior to the remainder of the range
+being populated with random address in the range.
+
+[source,shell]
+----
+generate_pool_addresses.pl <pool_name> <range_start> <range_end> \
+          [ <capacity> [ <existing_ips_file> ] ]
+----
+
+NOTE: Sparse ranges are populated using a deterministic, pseudo-random
+function. This allows pools to be trivially extended without having to
+supply the existing contents using a file. If you require
+less-predictable randomness or a different random sequence then remove
+or modify the line calling srand(), below.
+
+
+### Use with multiple pools and address ranges
+
+For more complex us, the script allows a set of pool definitions to be
+provided in a YAML file which describes a set of one or more pools, each
+containing a set of one or more ranges. The first argument in this case is
+always "yaml":
+
+[source,shell]
+----
+generate_pool_addresses.pl yaml <pool_defs_yaml_file> [ <existing_ips_file> ]
+----
+
+The format for the YAML file is demonstrated by the following example:
+
+----
+pool_with_a_single_contiguous_range:
+  - start:    192.0.2.3
+    end:      192.0.2.250
+
+pool_with_a_single_sparse_range:
+  - start:    10.10.10.0
+    end:      10.10.20.255
+    capacity: 200
+
+pool_with_multiple_ranges:
+  - start:    10.10.10.1
+    end:      10.10.10.253
+  - start:    10.10.100.0
+    end:      10.10.199.255
+    capacity: 1000
+
+v6_pool_with_contiguous_range:
+  - start:    '2001:db8:1:2:3:4:5:10'
+    end:      '2001:db8:1:2:3:4:5:7f'
+
+v6_pool_with_sparse_range:
+  - start:    '2001:db8:1:2::'
+    end:      '2001:db8:1:2:ffff:ffff:ffff:ffff'
+    capacity: 200
+----
+
+As with the basic use case, a file containing pre-existing IP entries can be
+provided with which any sparse ranges will be populated ahead of any random
+addresses.
+
+=== Output
+
+The script returns line-based output beginning with `+`, `=` or `-`, and
+includes the pool_name and an IP address.
+
+
+`+ pool_name 192.0.2.10`::
+
+  A new address to be added to the corresponding range in the pool.
+
+`pool_name 192.0.2.20`::
+
+  A pre-existing address that is to be retained in the pool. (Only if a
+  pre-existing pool entries file is given.)
+
+`pool_name 192.0.2.30`::
+
+  A pre-existing address that is to be removed from the corresponding
+  range in the pool. (Only if a pre-existing pool entries file is given.)
+
+`# main_pool: 192.0.10.3 - 192.0.12.250 (500)`::
+
+  Lines beginning with "#" are comments
+
+.Example of creating a fully populated IP range.
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 192.0.2.3 192.0.2.249
+
+Will create a pool from a full populated IPv4 range, i.e. all IPs in the
+range available for allocation).
+=============================================
+
+
+.Example of creating a sparsely populated pool.
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 10.66.0.0 10.66.255.255 10000
+----
+
+Will create a pool from a sparsely populated IPv4 range for a `/16`
+network (maximum of 65.536 addresses), populating the range with 10,000
+addreses. The effective size of the pool can be increased in future by
+increasing the capacity of the range with:
+=============================================
+
+
+.Example of extending a previously populated pool.
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 10.66.0.0 10.66.255.255 20000
+----
+
+This command will generate the same initial set of 10,000 addresses as
+the previous example but will create 20,000 addresses overall, unless
+the random seed has been changed since the initial run.
+=============================================
+
+
+.Example of creating an IPv6 pool
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 2001:db8:1:2:: \
+  2001:db8:1:2:ffff:ffff:ffff:ffff
+----
+
+Will create a pool from the IPv6 range `2001:db8:1:2::/64`, initially
+populating the range with 65536 (by default) addresses.
+=============================================
+
+
+.Example of extending a previously populated IPv6 pool.
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 2001:db8:1:2:: \
+  2001:db8:1:2:ffff:ffff:ffff:ffff \
+  10000 existing_ips.txt
+----
+
+Will create a pool using the same range as the previous example, but
+this time the range will be populated with 10,000 addresses.  The range
+will be populated using lines extracted from the `existing_ips.txt` file
+that represent IPs which fall within range.
+=============================================
+
+
+.Example of creating pools from a YAML file.
+=============================================
+
+[source,shell]
+----
+generate_pool_addresses.pl yaml pool_defs.yml existing_ips.txt
+----
+
+Will create one of more pools using the definitions found in the
+`pool_defs.yml` YAML file. The pools will contain one or more ranges with
+each of the ranges first being populated with entries from the
+`existing_ips.txt` file that fall within the range, before being filled
+with random addresses to the defined capacity.
+=============================================

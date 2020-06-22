@@ -46,7 +46,7 @@ One downside is that there is no method to perform actions at a
 particular time.  We suggust using "cron" for periodic cleanups,
 analysis, etc.
 
-xAnother downside is that FreeRADIUS does not "know" the state of a
+Another downside is that FreeRADIUS does not "know" the state of a
 particular IP address.  The `sqlippool` module simply runs SQL
 queries, which either return an IP address, or return "failed to
 allocate IP".  Since the entire state of the pool is in the SQL
@@ -452,6 +452,11 @@ Framed-IPv6-Prefix RADIUS attribute then you can put the IPv6 prefixes into the
 
 Populate the pool either manually using a text editor or database tool, or via a script.
 
+See xref:modules/sqlippool/generating.adoc[Generating IPs for the
+pools] for instructions on how to create lists of IPs for a pool.  And
+then xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
+
+
 .Example shell command for populating the `radacct` table
 =============================================
  for i in `seq 10 250`; do
@@ -482,7 +487,6 @@ either wait for the existing session to expire (or terminate it manually. e.g.
 CoA/Disconnect) or reintroduce the IP address with a future expiry date beyond
 which any existing session will have closed (or at least beyond the accounting
 interval).
-
 
 === 7. Enable a pool user
 

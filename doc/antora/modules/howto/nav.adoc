@@ -45,6 +45,8 @@
 
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]
 *** xref:modules/sqlippool/index.adoc[SQL-IP-Pool]
+**** xref:modules/sqlippool/generating.adoc[Generating IPs]
+**** xref:modules/sqlippool/inserting.adoc[Inserting IPs into SQL]
 ** xref:protocols/index.adoc[Protocols]
 ** Vendors
 *** xref:vendors/ascend.adoc[Ascend]
