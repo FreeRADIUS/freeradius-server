@@ -44,7 +44,6 @@ fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 };
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
-
 CONF_PARSER fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_curl_tls_t, ca_file) },
 	{ FR_CONF_OFFSET("ca_issuer_file", FR_TYPE_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
