@@ -126,6 +126,7 @@ void fr_curl_free(void)
 int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *conf)
 {
 	REQUEST *request = randle->request;
+
 	if (conf->certificate_file) FR_CURL_SET_OPTION(CURLOPT_SSLCERT, conf->certificate_file);
 	if (conf->private_key_file) FR_CURL_SET_OPTION(CURLOPT_SSLKEY, conf->private_key_file);
 	if (conf->private_key_password) FR_CURL_SET_OPTION(CURLOPT_KEYPASSWD, conf->private_key_password);
