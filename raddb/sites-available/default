@@ -637,7 +637,11 @@ accounting {
 #	radutmp
 #	sradutmp
 
+	#
 	#  Return an address to the IP Pool when we see a stop record.
+	#
+	#  Ensure that &control:Pool-Name is set to determine which
+	#  pool of IPs are used.
 #	sqlippool
 
 	#
@@ -727,8 +731,12 @@ post-auth {
 		&reply: += &session-state:
 	}
 
+	#
 	#  Refresh leases when we see a start or alive. Return an address to
 	#  the IP Pool when we see a stop record.
+	#
+	#  Ensure that &control:Pool-Name is set to determine which
+	#  pool of IPs are used.
 #	sqlippool
 
 
