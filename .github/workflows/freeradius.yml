@@ -1,0 +1,187 @@
+name: GitHub Actions CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
+  LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
+  KQUEUE_DEBUG: yes
+  M_PERTURB: "0x42"
+  PANIC_ACTION: "db -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  SQL_MYSQL_TEST_SERVER: 127.0.0.1
+  SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
+  LDAP_TEST_SERVER: 127.0.0.1
+  LDAP_TEST_SERVER_PORT: 3890
+# REDIS_TEST_SERVER: 127.0.0.1
+  REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
+  ANALYZE_C_DUMP: 1
+  FR_GLOBAL_POOL: 4M
+  GH_ACTIONS: 1
+
+jobs:
+  ci:
+
+    services:
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-16.04
+          - ubuntu-18.04
+          - ubuntu-20.04
+        env:
+          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
+          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
+          - { CC: gcc, DO_BUILD: no }
+          - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
+          - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
+          - { CC: clang, DO_BUILD: no }
+
+    env: ${{ matrix.env }}
+
+    name: "${{ matrix.os}} ${{ matrix.env.CC }} ${{ toJson(matrix.env) }}"
+
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Checkout LFS objects
+      run: git lfs checkout
+
+    - uses: actions/setup-ruby@v1
+
+    - name: Install asciidoctor and pandoc
+      run: |
+        gem install asciidoctor
+        wget -q -O /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-1-amd64.deb
+        sudo dpkg -i /tmp/pandoc.deb
+
+    - name: Configure LLVM 7 repositories for 16.04
+      if: ${{ matrix.os == 'ubuntu-16.04' }}
+      run: |
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
+        sudo apt-get update
+
+    - name: Configure LLVM 10 repositories for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' }}
+      run: |
+        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
+        sudo apt-get update
+
+    - name: Configure LLVM 10 repositories for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' }}
+      run: |
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
+        sudo apt-get update
+
+    - name: Install fixture (redis)
+      run: |
+        sudo apt-get install -y --no-install-recommends redis-server redis-tools
+        sudo systemctl start redis-server
+
+    - name: Install fixture (slapd)
+      run: |
+        sudo apt-get install -y --no-install-recommends slapd ldap-utils apparmor-utils
+        sudo systemctl stop slapd
+        sudo aa-complain /usr/sbin/slapd
+
+    - name: Install fixture (dovecot imapd)
+      run: |
+        sudo apt-get install -y --no-install-recommends dovecot-imapd
+        sudo systemctl stop dovecot
+        sudo aa-complain /usr/sbin/dovecot
+
+    - name: Install cassandra driver (not yet available on 20.04)
+      if: ${{ matrix.os != 'ubuntu-20.04' }}
+      run: sudo ./scripts/travis/cassandra-install.sh
+
+    - name: Install common build dependencies
+      run: |
+        sudo apt-get install -y --no-install-recommends libjson-perl autoconf build-essential debhelper devscripts dh-make dovecot-dev doxygen fakeroot firebird-dev freetds-dev \
+          graphviz ldap-utils libcollectdclient-dev libcap-dev libcurl4-openssl-dev libgdbm-dev libhiredis-dev libidn11-dev libiodbc2-dev libiodbc2 libkrb5-dev \
+          libkqueue-dev libldap2-dev libluajit-5.1-dev libmemcached-dev libmysqlclient-dev libnl-genl-3-dev libpam0g-dev libpcap-dev libpcre3-dev libperl-dev libpq-dev libpython-all-dev \
+          libreadline-dev libsnmp-dev libssl-dev libtalloc-dev libunbound-dev libwbclient-dev libykclient-dev libyubikey-dev lintian luajit lynx \
+          pbuilder python-dev quilt libgoogle-perftools-dev
+
+    - name: Install JSON build deps for 16.04
+      if: ${{ matrix.os == 'ubuntu-16.04' }}
+      run: sudo apt-get install -y --no-install-recommends libjson0 libjson0-dev
+
+    - name: Install JSON build deps for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' }}
+      run: sudo apt-get install -y --no-install-recommends libjson-c3 libjson-c-dev
+
+    - name: Install compiler toolchain for 16.04
+      if: ${{ matrix.os == 'ubuntu-16.04' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-7 gccgo-7 gdb clang-7 llvm-7
+        if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --set gcc /usr/bin/gcc-7; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-7 60 && sudo update-alternatives --set clang /usr/bin/clang-7; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-7 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-7; fi
+
+    - name: Install compiler toolchain for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
+        if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10; fi
+
+    - name: Install compiler toolchain for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
+        if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10; fi
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        asciidoctor --version
+        pandoc --version
+        doxygen --version
+
+    - name: Build
+      run: |
+        export PATH=$(echo "$PATH" | sed -e 's#:/home/linuxbrew/[^:]\+##g')
+        ./scripts/travis/build.sh
+        mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e "CREATE USER radius@'%' IDENTIFIED BY 'radpass'"
+        mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e "GRANT ALL on radius.* TO radius@'%'"
+
+    - name: Test
+      run: |
+        if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+          make travis-test;
+        elif [ "${DO_BUILD}" = 'no' ]; then
+          sudo npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
+          make doxygen;
+        fi
