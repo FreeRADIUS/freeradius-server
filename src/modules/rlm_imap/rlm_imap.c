@@ -81,10 +81,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(void *instance, UNUS
 	long				curl_out_valid;
 
 	tls = &inst->tls;
-	
+
 	curl_out_valid = curl_easy_getinfo(randle->candle, CURLINFO_SSL_VERIFYRESULT, &curl_out);
 	if (curl_out_valid == CURLE_OK){
-		RDEBUG2("server certificate %s verified\n", curl_out? "was":"not");
+		RDEBUG2("server certificate %s verified", curl_out ? "was" : "not");
 	} else {
 		RDEBUG2("server certificate result not found");
 	}
@@ -116,19 +116,19 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 	VALUE_PAIR const 		*username;
 	VALUE_PAIR const 		*password;
 	rlm_imap_t			*inst = instance;
-	
+
 	rlm_imap_thread_t       	*t = thread;
 	fr_curl_io_request_t    	*randle;
-    
+
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
 	error:
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
-	
+
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
@@ -143,22 +143,21 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *
 		RDEBUG2("\"User-Password\" must not be empty");
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	FR_CURL_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
 	FR_CURL_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
-	
+
 	FR_CURL_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
 	FR_CURL_SET_OPTION(CURLOPT_URL, inst->uri);
-    
 	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 
 	FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
 	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) return RLM_MODULE_INVALID;
-    
+
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) return RLM_MODULE_INVALID;
-    
+
 	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
 }
 
@@ -188,7 +187,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	fr_curl_handle_t    		*mhandle;
 
 	t->inst = instance;
-   
+
 	mhandle = fr_curl_io_init(t, el, false);
 	if (!mhandle) return -1;
 
@@ -203,7 +202,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
     rlm_imap_thread_t    *t = thread;
 
-    talloc_free(t->mhandle);    /* Ensure this is shutdown before the pool */
+    talloc_free(t->mhandle);
     return 0;
 }
 
@@ -228,7 +227,7 @@ module_t rlm_imap = {
 	.unload             	= mod_unload,
 	.thread_instantiate 	= mod_thread_instantiate,
 	.thread_detach      	= mod_thread_detach,
-    
+
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 	},
