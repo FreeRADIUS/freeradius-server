@@ -65,8 +65,8 @@ addons:
     - fakeroot
     - firebird-dev
     - freetds-dev
-    - gcc-7
-    - gccgo-7
+    - gcc-10
+    - gccgo-10
     - gdb
     - graphviz
     - ldap-utils
@@ -130,7 +130,7 @@ before_install:
 - rvm --install --default --binary use 2.4
 - gem install asciidoctor
 - wget -q -O /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-1-amd64.deb && sudo dpkg -i /tmp/pandoc.deb
-- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 9999 && sudo update-alternatives --config gcc; fi
+- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 9999 && sudo update-alternatives --config gcc; fi
 - if [ "${CC}" == 'clang' ]; then sudo rm -rf /usr/local/clang-*; fi
 - if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 9999 && sudo update-alternatives --config clang; fi
 - if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 9999 && sudo update-alternatives --config llvm-symbolizer; fi
