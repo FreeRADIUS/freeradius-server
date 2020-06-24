@@ -388,7 +388,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlcounter_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlcounter_t);
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;
 	VALUE_PAIR		*limit;
 	VALUE_PAIR		*reply_item;

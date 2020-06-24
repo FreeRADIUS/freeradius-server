@@ -201,7 +201,7 @@ fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
  *
  */
 static int sqlippool_expand(char * out, int outlen, char const * fmt,
-			    rlm_sqlippool_t *data, char * param, int param_len)
+			    rlm_sqlippool_t const *data, char * param, int param_len)
 {
 	char *q;
 	char const *p;
@@ -283,7 +283,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
  *	- < 0 on error.
  */
 static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t *data, REQUEST *request,
+			     rlm_sqlippool_t const *data, REQUEST *request,
 			     char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
@@ -460,7 +460,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const *str, int rcode)
+static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char const *str, int rcode)
 {
 	char		*expanded = NULL;
 	VALUE_PAIR	*vp;
@@ -483,7 +483,7 @@ static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlippool_t	const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
 	int			allocation_len;
 	VALUE_PAIR		*vp;
@@ -622,7 +622,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 }
 
 static int mod_accounting_start(rlm_sql_handle_t **handle,
-				rlm_sqlippool_t *inst, REQUEST *request)
+				rlm_sqlippool_t const *inst, REQUEST *request)
 {
 	DO(start_begin);
 	DO(start_update);
@@ -632,7 +632,7 @@ static int mod_accounting_start(rlm_sql_handle_t **handle,
 }
 
 static int mod_accounting_alive(rlm_sql_handle_t **handle,
-				rlm_sqlippool_t *inst, REQUEST *request)
+				rlm_sqlippool_t const *inst, REQUEST *request)
 {
 	DO(alive_begin);
 	DO(alive_update);
@@ -641,7 +641,7 @@ static int mod_accounting_alive(rlm_sql_handle_t **handle,
 }
 
 static int mod_accounting_stop(rlm_sql_handle_t **handle,
-			       rlm_sqlippool_t *inst, REQUEST *request)
+			       rlm_sqlippool_t const *inst, REQUEST *request)
 {
 	DO(stop_begin);
 	DO(stop_clear);
@@ -651,7 +651,7 @@ static int mod_accounting_stop(rlm_sql_handle_t **handle,
 }
 
 static int mod_accounting_on(rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t *inst, REQUEST *request)
+			     rlm_sqlippool_t const *inst, REQUEST *request)
 {
 	DO(on_begin);
 	DO(on_clear);
@@ -661,7 +661,7 @@ static int mod_accounting_on(rlm_sql_handle_t **handle,
 }
 
 static int mod_accounting_off(rlm_sql_handle_t **handle,
-			      rlm_sqlippool_t *inst, REQUEST *request)
+			      rlm_sqlippool_t const *inst, REQUEST *request)
 {
 	DO(off_begin);
 	DO(off_clear);
