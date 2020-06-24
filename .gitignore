@@ -23,6 +23,7 @@
 *.orig
 *.dSYM
 *.patch
+*.sock
 .pc
 
 # Editor projects
