@@ -41,6 +41,9 @@ sqlippool dhcp_sqlippool {
 	#
 	allocate_clear_timeout = 1
 
+	#  The attribute in which the IP address is returned in the reply
+	attribute_name = "DHCP-Your-IP-Address"
+
 	#  Assign the IP address, even if the Framed-IP-Address attribute
 	#  already exists in the reply.
 	#
