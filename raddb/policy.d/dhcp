@@ -32,13 +32,6 @@ dhcp_sqlippool.post-auth {
 	#  Call the actual module
 	dhcp_sqlippool
 
-	#  Convert Framed-IP-Address to DHCP, but only if we
-	#  actually allocated an address.
-	if (ok) {
-		update reply {
-			&DHCP-Your-IP-Address = "%{reply:Framed-IP-Address}"
-		}
-	}
 }
 
 
