@@ -1368,9 +1368,9 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
+	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
 	VALUE_PAIR		*challenge = NULL;
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
@@ -1917,9 +1917,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
  *	MS-CHAP-Error for MS-CHAP or MS-CHAP v2
  *	If MS-CHAP2 succeeds we MUST return MS-CHAP2-Success
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_mschap_t const	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
+	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
 	VALUE_PAIR		*challenge = NULL;
 	VALUE_PAIR		*response = NULL;
 	VALUE_PAIR		*cpw = NULL;
@@ -1982,7 +1982,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	input attribute, and we're calling out to an
 	 *	external password store.
 	 */
-	if (nt_password_find(&ephemeral, &nt_password, instance, request) < 0) return RLM_MODULE_FAIL;
+	if (nt_password_find(&ephemeral, &nt_password, mctx->instance, request) < 0) return RLM_MODULE_FAIL;
 
 	/*
 	 *	Check to see if this is a change password request, and process
@@ -1992,7 +1992,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	if (cpw) {
 		uint8_t		*p;
 
-		rcode = mschap_process_cpw_request(instance, request, cpw, nt_password);
+		rcode = mschap_process_cpw_request(mctx->instance, request, cpw, nt_password);
 		if (rcode != RLM_MODULE_OK) goto finish;
 
 		/*

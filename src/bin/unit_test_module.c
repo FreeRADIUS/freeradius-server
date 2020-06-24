@@ -473,7 +473,7 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 	request->backlog = backlog;
 	request->el = el;
 
-	rcode = process(inst, NULL, request);
+	rcode = process(&(module_ctx_t){ .instance = inst }, request);
 	if (rcode != RLM_MODULE_YIELD) goto done;
 
 	while (true) {
@@ -512,7 +512,7 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		 */
 		(void) fr_heap_extract(backlog, request);
 
-		rcode = process(inst, NULL, request);
+		rcode = process(&(module_ctx_t){ .instance = inst }, request);
 		if (rcode != RLM_MODULE_YIELD) break;
 	}
 

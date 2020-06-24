@@ -30,17 +30,11 @@
  *
  * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
- *
- * @param[in] instance	of rlm_rest.
- * @param[in] thread	Thread specific module instance.
- * @param[in] request	being cancelled.
- * @param[in] rctx	fr_curl_io_request_t currently used by the request.
- * @param[in] action	What happened.
  */
-void rest_io_module_action(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action)
+void rest_io_module_action(module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
-	rlm_rest_thread_t	*t = thread;
+	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	CURLMcode		ret;
 
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -54,7 +48,7 @@ void rest_io_module_action(void *instance, void *thread, REQUEST *request, void 
 	}
 	t->mhandle->transfers--;
 
-	rest_request_cleanup(instance, randle);
+	rest_request_cleanup(mctx->instance, randle);
 	fr_pool_connection_release(t->pool, request, randle);
 }
 
@@ -62,12 +56,6 @@ void rest_io_module_action(void *instance, void *thread, REQUEST *request, void 
  *
  * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
- *
- * @param[in] request	being cancelled.
- * @param[in] instance	of rlm_rest.
- * @param[in] thread	Thread specific module instance.
- * @param[in] rctx	fr_curl_io_request_t currently used by the request.
- * @param[in] action	What happened.
  */
 void rest_io_xlat_signal(REQUEST *request, UNUSED void *instance, void *thread, void *rctx, fr_state_signal_t action)
 {
@@ -78,5 +66,5 @@ void rest_io_xlat_signal(REQUEST *request, UNUSED void *instance, void *thread, 
 	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
 	fr_curl_io_request_t		*randle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 
-	rest_io_module_action(mod_inst, t, request, randle, action);
+	rest_io_module_action(&(module_ctx_t){ .instance = mod_inst, .thread = t }, request, randle, action);
 }

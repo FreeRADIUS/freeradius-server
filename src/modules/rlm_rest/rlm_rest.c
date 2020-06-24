@@ -426,10 +426,10 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
 }
 
-static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
 
@@ -502,7 +502,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	}
 
 finish:
-	rest_request_cleanup(instance, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
@@ -515,10 +515,10 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->authorize;
 
 	void				*handle;
@@ -529,9 +529,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, thread, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
@@ -540,10 +540,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authenticate_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
 
@@ -616,7 +616,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	}
 
 finish:
-	rest_request_cleanup(instance, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
@@ -626,10 +626,10 @@ finish:
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle;
 
@@ -677,10 +677,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, thread, section,
+	ret = rlm_rest_perform(inst, t, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
@@ -689,10 +689,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_accounting_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = rctx;
 
@@ -733,7 +733,7 @@ static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *
 	}
 
 finish:
-	rest_request_cleanup(instance, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
@@ -743,10 +743,10 @@ finish:
 /*
  *	Send accounting info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->accounting;
 
 	void				*handle;
@@ -757,9 +757,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
@@ -768,10 +768,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_post_auth_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = rctx;
 
@@ -822,10 +822,10 @@ finish:
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->post_auth;
 
 	void				*handle;
@@ -836,9 +836,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 
 		fr_pool_connection_release(t->pool, request, handle);
 

@@ -261,9 +261,9 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	RINFO("RINFO message");
 	RDEBUG("RDEBUG message");
@@ -294,9 +294,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
@@ -307,9 +307,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
@@ -319,9 +319,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thr
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
@@ -332,7 +332,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }

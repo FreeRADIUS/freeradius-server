@@ -151,9 +151,9 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_logintime_t const	*inst = talloc_get_type_abort_const(instance, rlm_logintime_t);
+	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
 	VALUE_PAIR		*ends, *vp;
 	int32_t			left;
 

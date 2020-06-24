@@ -205,7 +205,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		      char const *fmt, va_list ap, void *uctx)
 		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
-static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
 
 /** Connection errored
  *
@@ -516,28 +516,27 @@ finish:
 
 /** Add our logging destination to the linked list of logging destinations (if it doesn't already exist)
  *
- * @param[in] instance	of rlm_logtee.
- * @param[in] thread	Thread specific data.
+ * @param[in] mctx	Module calling ctx.
  * @param[in] request	request to add our log destination to.
  * @return
  *	- #RLM_MODULE_NOOP	if log destination already exists.
  *	- #RLM_MODULE_OK	if we added a new destination.
  */
-static rlm_rcode_t mod_insert_logtee(UNUSED void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, REQUEST *request)
 {
 	fr_cursor_t	cursor;
 	log_dst_t	*dst;
 	bool		exists = false;
 
 	for (dst = fr_cursor_init(&cursor, &request->log.dst); dst; dst = fr_cursor_next(&cursor)) {
-		if (dst->uctx == thread) exists = true;
+		if (dst->uctx == mctx->thread) exists = true;
 	}
 
 	if (exists) return RLM_MODULE_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
-	dst->uctx = thread;
+	dst->uctx = mctx->thread;
 
 	fr_cursor_append(&cursor, dst);
 

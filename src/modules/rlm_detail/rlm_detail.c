@@ -463,42 +463,42 @@ skip_group:
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->packet, true);
+	return detail_do(mctx->instance, request, request->packet, true);
 }
 
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->packet, false);
+	return detail_do(mctx->instance, request, request->packet, false);
 }
 
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->reply, false);
+	return detail_do(mctx->instance, request, request->reply, false);
 }
 
 #ifdef WITH_COA
 /*
  *	Incoming CoA - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->packet, false);
+	return detail_do(mctx->instance, request, request->packet, false);
 }
 
 /*
  *	Outgoing CoA - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->reply, false);
+	return detail_do(mctx->instance, request, request->reply, false);
 }
 #endif
 
@@ -506,16 +506,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, UNUSED void *th
  *	Outgoing Access-Request to home server - write the detail files.
  */
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(module_ctx_t const *mctx, REQUEST *request)
 {
-	return detail_do(instance, request, request->proxy->packet, false);
+	return detail_do(mctx->instance, request, request->proxy->packet, false);
 }
 
 
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 {
 	/*
 	 *	No reply: we must be doing Post-Proxy-Type = Fail.
@@ -527,14 +527,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, void *thread,
 	if (!request->proxy->reply) {
 		rlm_rcode_t rcode;
 
-		rcode = mod_accounting(instance, thread, request);
+		rcode = mod_accounting(mctx, request);
 		if (rcode == RLM_MODULE_OK) {
 			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 		}
 		return rcode;
 	}
 
-	return detail_do(instance, request, request->proxy->reply, false);
+	return detail_do(mctx->instance, request, request->proxy->reply, false);
 }
 #endif
 

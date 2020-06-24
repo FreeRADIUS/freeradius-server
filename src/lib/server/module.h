@@ -29,34 +29,15 @@ RCSIDH(modules_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct module_s module_t;
-typedef struct module_method_names_s module_method_names_t;
-typedef struct module_instance_s module_instance_t;
-typedef struct module_thread_instance_s  module_thread_instance_t;
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/event.h>
 
-#ifdef __cplusplus
-}
-#endif
-
-#include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/components.h>
-#include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/exfile.h>
-#include <freeradius-devel/server/pool.h>
-#include <freeradius-devel/server/rcode.h>
-
-#include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/features.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/** Mappings between section names, and control attributes
- *
- * Defined in module.c.
- */
-extern const char *section_type_value[MOD_COUNT];
+typedef struct module_s				module_t;
+typedef struct module_method_names_s		module_method_names_t;
+typedef struct module_instance_s		module_instance_t;
+typedef struct module_thread_instance_s		module_thread_instance_t;
+typedef struct module_ctx_s			module_ctx_t;
 
 #define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
@@ -69,14 +50,12 @@ extern const char *section_type_value[MOD_COUNT];
  * Is called when the module is listed in a particular section of a virtual
  * server, and the request has reached the module call.
  *
- * @param[in] instance		data, specific to an instantiated module.
- *				Pre-allocated, and populated during the
- *				bootstrap and instantiate calls.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		Holds global instance data, thread instance
+ *				data and call specific instance data.
  * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*module_method_t)(void *instance, void *thread, REQUEST *request);
+typedef rlm_rcode_t (*module_method_t)(module_ctx_t const *mctx, REQUEST *request);
 
 /** Module instantiation callback
  *
@@ -138,13 +117,36 @@ typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 		size_t				thread_inst_size;	\
 	}
 
+#ifdef __cplusplus
+}
+#endif
+
+#include <freeradius-devel/server/components.h>
+#include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/pool.h>
+#include <freeradius-devel/server/rcode.h>
+
+#include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/features.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** Mappings between section names, and control attributes
+ *
+ * Defined in module.c.
+ */
+extern const char *section_type_value[MOD_COUNT];
+
 /** Common fields for submodules
  *
  * This should either be the first field in the structure exported from
  * the submodule or the submodule should export an identical set of fields
  * in the same order, preferably using the macros above.
  */
-struct rad_submodule_s {
+struct submodule_s {
 	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
 	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
@@ -161,20 +163,19 @@ struct module_method_names_s {
 
 #define MODULE_NAME_TERMINATOR { .name1 = NULL }
 
-
 /** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
  */
 struct module_s {
-	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
+	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
 
-	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
-	module_method_names_t const	*method_names;		//!< named methods
-	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t*
+	module_method_t	methods[MOD_COUNT];		//!< Pointers to the various section callbacks.
+	module_method_names_t const	*method_names;	//!< named methods
+	fr_dict_t const	 **dict;			//!< pointer to local fr_dict_t*
 };
 
 /** Per instance data
@@ -233,6 +234,14 @@ typedef struct {
 	char const			*name;		//!< String identifier for state.
 	module_method_t			func;		//!< State function.
 } module_state_func_table_t;
+
+/** Temporary structure to hold arguments for module calls
+ *
+ */
+struct module_ctx_s {
+	void		*instance;				//!< Global instance data for the module.
+	void		*thread;				//!< Thread specific instance data.
+};
 
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *

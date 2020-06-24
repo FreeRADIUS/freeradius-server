@@ -453,18 +453,17 @@ static int mod_detach(void *instance)
  * Checks there is a password available so we can authenticate
  * against winbind and, if so, sets Auth-Type to ourself.
  *
- * @param[in] instance	Module instance.
- * @param[in] thread	Thread specific data.
+ * @param[in] mctx	Module instance data.
  * @param[in] request	The current request.
  *
  * @return
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_winbind_t const *inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
-	VALUE_PAIR *vp;
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
+	VALUE_PAIR		*vp;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	if (!vp) {
@@ -480,16 +479,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 /** Authenticate the user via libwbclient and winbind
  *
- * @param[in] instance	Module instance
- * @param[in] thread	Thread specific data.
+ * @param[in] mctx	Module instance data.
  * @param[in] request	The current request
  *
  * @return One of the RLM_MODULE_* values
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_winbind_t const *inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
-	VALUE_PAIR *username, *password;
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
+	VALUE_PAIR		*username, *password;
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);

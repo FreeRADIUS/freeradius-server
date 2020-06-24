@@ -56,7 +56,7 @@ static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
 	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

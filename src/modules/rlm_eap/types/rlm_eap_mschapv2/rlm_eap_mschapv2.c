@@ -259,7 +259,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request);
 
 #ifdef WITH_PROXY
 /*
@@ -342,7 +342,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 #endif
 
 
-static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
+static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *inst,
 				   eap_session_t *eap_session, rlm_rcode_t rcode)
 {
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
@@ -422,11 +422,11 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process_auth_type(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rcode_t		rcode;
-	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_mschapv2_t);
+	rlm_rcode_t			rcode;
+	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	rcode = unlang_interpret(request);
 
@@ -434,26 +434,26 @@ static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, RE
 
 	if (rcode == RLM_MODULE_YIELD) return rcode;
 
-	return mschap_finalize(request, inst, eap_session, rcode);}
+	return mschap_finalize(request, inst, eap_session, rcode);
+}
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	REQUEST			*parent = request->parent;
+	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_mschapv2_t);
+	REQUEST				*parent = request->parent;
+	eap_session_t			*eap_session = eap_session_get(parent);
+	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
+	eap_round_t			*eap_round = eap_session->this_round;
+	VALUE_PAIR			*auth_challenge, *response, *name;
 
-	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(parent);
-	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*auth_challenge, *response, *name;
-
-	CONF_SECTION		*unlang;
-	rlm_rcode_t		rcode;
-	int			ccode;
-	uint8_t			*p;
-	size_t			length;
+	CONF_SECTION			*unlang;
+	rlm_rcode_t			rcode;
+	int				ccode;
+	uint8_t				*p;
+	size_t				length;
 
 	if (!fr_cond_assert(eap_session->inst)) return 0;
 
@@ -689,7 +689,7 @@ packet_ready:
 		 */
 		tunnel = talloc_zero(request, eap_tunnel_data_t);
 
-		tunnel->tls_session = instance;
+		tunnel->tls_session = mctx->instance;
 		tunnel->callback = mschap_postproxy;
 
 		/*
@@ -764,7 +764,7 @@ packet_ready:
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
 	REQUEST			*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
@@ -776,7 +776,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	int			i;
 	bool			created_auth_challenge;
 
-	if (!fr_cond_assert(instance)) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(mctx->instance)) return RLM_MODULE_FAIL;
 
 	/*
 	 *	We're looking for attributes that should come
@@ -843,7 +843,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eap_mschapv2_compose(instance, request, eap_session, auth_challenge);
+	eap_mschapv2_compose(mctx->instance, request, eap_session, auth_challenge);
 	if (created_auth_challenge) TALLOC_FREE(auth_challenge);
 
 #ifdef WITH_PROXY

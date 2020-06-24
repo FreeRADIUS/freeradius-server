@@ -176,26 +176,26 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	struct radutmp	ut, u;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
-	int		status = -1;
-	int		protocol = -1;
-	time_t		t;
-	int		fd = -1;
-	bool		port_seen = false;
-	int		off;
-	rlm_radutmp_t	*inst = instance;
-	char		ip_name[INET_ADDRSTRLEN]; /* 255.255.255.255 */
-	char const	*nas;
-	NAS_PORT	*cache;
-	int		r;
+	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->instance, rlm_radutmp_t);
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	struct radutmp		ut, u;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	int			status = -1;
+	int			protocol = -1;
+	time_t			t;
+	int			fd = -1;
+	bool			port_seen = false;
+	int			off;
+	char			ip_name[INET_ADDRSTRLEN]; /* 255.255.255.255 */
+	char const		*nas;
+	NAS_PORT		*cache;
+	int			r;
 
-	char		*filename = NULL;
-	char		*expanded = NULL;
+	char			*filename = NULL;
+	char			*expanded = NULL;
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 not supported!");

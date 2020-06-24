@@ -42,14 +42,13 @@ extern "C" {
  * @note The callback is automatically removed on unlang_interpret_resumable(), i.e. if an event
  *	on a registered FD occurs before the timeout event fires.
  *
- * @param[in] instance		the module instance.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		calling context for the module.
+ *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] rctx		a local context for the callback.
  * @param[in] request		the request.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_module_timeout_t)(void *instance, void *thread, REQUEST *request, void *rctx,
-					   fr_time_t fired);
+typedef	void (*fr_unlang_module_timeout_t)(module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_time_t fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -58,25 +57,25 @@ typedef	void (*fr_unlang_module_timeout_t)(void *instance, void *thread, REQUEST
  *
  * @note The callback is automatically removed on unlang_interpret_resumable(), so
  *
- * @param[in] instance		the module instance.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		calling context for the module.
+ *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the current request.
  * @param[in] rctx		a local context for the callback.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_module_fd_event_t)(void *instance, void *thread, REQUEST *request, void *rctx, int fd);
+typedef void (*fr_unlang_module_fd_event_t)(module_ctx_t const *mctx, REQUEST *request, void *rctx, int fd);
 
 /** A callback for when the request is resumed.
  *
  * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
  *
- * @param[in] instance		The module instance.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		calling context for the module.
+ *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the current request.
  * @param[in] rctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_module_resume_t)(void *instance, void *thread, REQUEST *request, void *rctx);
+typedef rlm_rcode_t (*fr_unlang_module_resume_t)(module_ctx_t const *mctx,  REQUEST *request, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -85,13 +84,13 @@ typedef rlm_rcode_t (*fr_unlang_module_resume_t)(void *instance, void *thread, R
  *
  * @note The callback is automatically removed on unlang_interpret_resumable().
  *
- * @param[in] instance		The module instance.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		calling context for the module.
+ *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] rctx		Resume ctx for the callback.
  * @param[in] request		The current request.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_module_signal_t)(void *instance, void *thread, REQUEST *request,
+typedef void (*fr_unlang_module_signal_t)(module_ctx_t const *mctx, REQUEST *request,
 					  void *rctx, fr_state_signal_t action);
 
 int		unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,

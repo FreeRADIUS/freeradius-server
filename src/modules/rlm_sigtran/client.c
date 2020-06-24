@@ -270,7 +270,7 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-static void sigtran_client_signal(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request,
+static void sigtran_client_signal(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request,
 				  void *rctx, fr_state_signal_t action)
 {
 	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
@@ -284,7 +284,7 @@ static void sigtran_client_signal(UNUSED void *instance, UNUSED void *thread, UN
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static rlm_rcode_t sigtran_client_map_resume(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t sigtran_client_map_resume(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;

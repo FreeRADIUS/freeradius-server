@@ -244,16 +244,15 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_yubikey_t const *inst = talloc_get_type_abort_const(instance, rlm_yubikey_t);
-
-	char const	*passcode;
-	size_t		len;
-	VALUE_PAIR	*vp, *password;
-	char const	*otp;
-	size_t		password_len;
-	int		ret;
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	char const		*passcode;
+	size_t			len;
+	VALUE_PAIR		*vp, *password;
+	char const		*otp;
+	size_t			password_len;
+	int			ret;
 
 	/*
 	 *	Can't do yubikey auth if there's no password.
@@ -350,14 +349,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-	rlm_yubikey_t const *inst = talloc_get_type_abort_const(instance, rlm_yubikey_t);
-	char const *passcode = NULL;
-	VALUE_PAIR const *vp;
-	size_t len;
-	int ret;
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	char const		*passcode = NULL;
+	VALUE_PAIR const	*vp;
+	size_t			len;
+	int			ret;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_yubikey_otp, TAG_ANY);
 	if (!vp) {

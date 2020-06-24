@@ -306,7 +306,7 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
@@ -382,19 +382,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_opendirectory_t	*inst = instance;
-	struct passwd		*userdata = NULL;
-	int			ismember = 0;
-	RADCLIENT		*rad_client = NULL;
-	uuid_t			uuid;
-	uuid_t			guid_sacl;
-	uuid_t			guid_nasgroup;
-	int			err;
-	char			host_ipaddr[128] = {0};
-	gid_t			gid;
-	VALUE_PAIR		*username;
+	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_opendirectory_t);
+	struct passwd			*userdata = NULL;
+	int				ismember = 0;
+	RADCLIENT			*rad_client = NULL;
+	uuid_t				uuid;
+	uuid_t				guid_sacl;
+	uuid_t				guid_nasgroup;
+	int				err;
+	char				host_ipaddr[128] = {0};
+	gid_t				gid;
+	VALUE_PAIR			*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE

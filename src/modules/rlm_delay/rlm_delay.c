@@ -51,14 +51,8 @@ static const CONF_PARSER module_config[] = {
 /** Called when the timeout has expired
  *
  * Marks the request as resumable, and prints the delayed delay time.
- *
- * @param[in] instance		This instance of the delay module.
- * @param[in] thread		Thread specific module instance.
- * @param[in] request		The current request.
- * @param[in] rctx		Scheduled end of the delay.
- * @param[in] fired		When request processing was resumed.
  */
-static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx, fr_time_t fired)
+static void _delay_done(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_time_t fired)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -123,7 +117,7 @@ static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -136,7 +130,7 @@ static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, 
 	return RLM_MODULE_OK;
 }
 
-static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx,
+static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx,
 			     fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -146,9 +140,9 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 	(void) unlang_module_timeout_delete(request, rctx);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_delay_t const	*inst = talloc_get_type_abort_const(instance, rlm_delay_t);
+	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_delay_t);
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 

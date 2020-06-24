@@ -68,7 +68,7 @@ fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_session_init(void *instance, void *thread, REQUEST *request);
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request);
 
 /** Translate a string auth_type into an enumeration value
  *
@@ -98,7 +98,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  REQUEST *request)
 {
 	rlm_rcode_t	rcode;
 
@@ -123,16 +123,16 @@ static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, UNUSED void *thr
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rcode_t	rcode;
+	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
+	rlm_rcode_t		rcode;
 
-	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
-	eap_session_t	*eap_session = eap_session_get(request->parent);
-	eap_round_t	*eap_round = eap_session->this_round;
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+	eap_round_t		*eap_round = eap_session->this_round;
 
-	VALUE_PAIR	*vp;
-	CONF_SECTION	*unlang;
+	VALUE_PAIR		*vp;
+	CONF_SECTION		*unlang;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -185,20 +185,20 @@ static rlm_rcode_t mod_process(void *instance, void *thread, REQUEST *request)
 
 	eap_session->process = mod_process_auth_type;
 
-	return eap_session->process(inst, thread, request);
+	return eap_session->process(mctx, request);
 }
 
 
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	char		challenge_str[1024];
 	int		length;
 	eap_round_t	*eap_round = eap_session->this_round;
-	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
+	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
 
 	if (xlat_eval(challenge_str, sizeof(challenge_str), request, inst->challenge, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;

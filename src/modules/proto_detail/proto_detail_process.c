@@ -47,12 +47,12 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
+	proto_detail_process_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_detail_process_t);
 	VALUE_PAIR			*vp;
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
-	proto_detail_process_t const	*inst = instance;
 
 	REQUEST_VERIFY(request);
 

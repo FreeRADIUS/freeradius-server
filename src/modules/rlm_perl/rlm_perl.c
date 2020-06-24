@@ -843,15 +843,15 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 static int do_perl(void *instance, REQUEST *request, char const *function_name)
 {
 
-	rlm_perl_t	*inst = instance;
-	VALUE_PAIR	*vp;
-	int		exitstatus=0, count;
-	STRLEN		n_a;
+	rlm_perl_t		*inst = instance;
+	VALUE_PAIR		*vp;
+	int			exitstatus=0, count;
+	STRLEN			n_a;
 
-	HV		*rad_reply_hv;
-	HV		*rad_config_hv;
-	HV		*rad_request_hv;
-	HV		*rad_state_hv;
+	HV			*rad_reply_hv;
+	HV			*rad_config_hv;
+	HV			*rad_request_hv;
+	HV			*rad_state_hv;
 
 	/*
 	 *	Radius has told us to call this function, but none
@@ -954,11 +954,12 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	return exitstatus;
 }
 
-#define RLM_PERL_FUNC(_x) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, UNUSED void *thread, REQUEST *request) \
-	{								\
-		return do_perl(instance, request,			\
-			       ((rlm_perl_t const *)instance)->func_##_x); \
-	}
+#define RLM_PERL_FUNC(_x) \
+static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, REQUEST *request) \
+{ \
+	rlm_perl_t *inst = talloc_get_type_abort(mctx->instance, rlm_perl_t); \
+	return do_perl(inst, request, inst->func_##_x); \
+}
 
 RLM_PERL_FUNC(authorize)
 RLM_PERL_FUNC(authenticate)
@@ -974,10 +975,11 @@ RLM_PERL_FUNC(preacct)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR	*pair;
-	int 		acct_status_type = 0;
+	rlm_perl_t	 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_perl_t);
+	VALUE_PAIR		*pair;
+	int 			acct_status_type = 0;
 
 	pair = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (pair != NULL) {
@@ -989,26 +991,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 	switch (acct_status_type) {
 	case FR_STATUS_START:
-		if (((rlm_perl_t const *)instance)->func_start_accounting) {
-			return do_perl(instance, request,
-				       ((rlm_perl_t const *)instance)->func_start_accounting);
+		if (inst->func_start_accounting) {
+			return do_perl(inst, request, inst->func_start_accounting);
 		} else {
-			return do_perl(instance, request,
-				       ((rlm_perl_t const *)instance)->func_accounting);
+			return do_perl(inst, request, inst->func_accounting);
 		}
 
 	case FR_STATUS_STOP:
-		if (((rlm_perl_t const *)instance)->func_stop_accounting) {
-			return do_perl(instance, request,
-				       ((rlm_perl_t const *)instance)->func_stop_accounting);
+		if (inst->func_stop_accounting) {
+			return do_perl(inst, request, inst->func_stop_accounting);
 		} else {
-			return do_perl(instance, request,
-				       ((rlm_perl_t const *)instance)->func_accounting);
+			return do_perl(inst, request, inst->func_accounting);
 		}
 
 	default:
-		return do_perl(instance, request,
-			       ((rlm_perl_t const *)instance)->func_accounting);
+		return do_perl(inst, request, inst->func_accounting);
 	}
 }
 

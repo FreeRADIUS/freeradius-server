@@ -255,9 +255,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /** Resume a request after xlat expansion.
  *
  */
-static rlm_rcode_t mod_exec_nowait_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	rlm_exec_t const	*inst = talloc_get_type_abort_const(instance, rlm_exec_t);
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
 	VALUE_PAIR		*env_pairs = NULL;
 
@@ -289,11 +289,11 @@ typedef struct {
 } rlm_exec_ctx_t;
 
 
-static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	int			status;
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
-	rlm_exec_t const       	*inst = talloc_get_type_abort_const(instance, rlm_exec_t);
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 
 	RDEBUG("EXEC GOT -- %pV", m->box);
 
@@ -333,9 +333,9 @@ static rlm_rcode_t mod_exec_wait_resume(void *instance, UNUSED void *thread, REQ
 /*
  *  Dispatch an async exec method
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_exec_t const       	*inst = talloc_get_type_abort_const(instance, rlm_exec_t);
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	rlm_exec_ctx_t		*m;
 	VALUE_PAIR		*env_pairs = NULL;
 	TALLOC_CTX		*ctx;

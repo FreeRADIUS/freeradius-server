@@ -33,7 +33,7 @@ RCSID("$Id$")
  *
  * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
  */
-rlm_rcode_t unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 

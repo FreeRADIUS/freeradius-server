@@ -129,14 +129,14 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	eap_tls_status_t	status;
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_ttls_t);
 
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
+	eap_tls_status_t	status;
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	ttls_tunnel_t		*tunnel = NULL;
 	static char 		keying_prf_label[] = "ttls keying material";
@@ -262,9 +262,9 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_ttls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 
 	eap_tls_session_t	*eap_tls_session;

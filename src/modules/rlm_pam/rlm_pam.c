@@ -211,13 +211,14 @@ static int do_pam(REQUEST *request, char const *username, char const *passwd, ch
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	int		ret;
-	VALUE_PAIR	*pair;
-	rlm_pam_t const	*data = instance;
-	char const *pam_auth_string = data->pam_auth_name;
-	VALUE_PAIR *username, *password;
+	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->instance, rlm_pam_t);
+	int			ret;
+	VALUE_PAIR		*pair;
+
+	char const		*pam_auth_string = data->pam_auth_name;
+	VALUE_PAIR		*username, *password;
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);

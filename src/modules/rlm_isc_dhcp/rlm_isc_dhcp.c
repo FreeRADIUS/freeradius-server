@@ -147,7 +147,7 @@ typedef struct {
 
 
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
-typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *info);
+typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t const *inst, REQUEST *request, rlm_isc_dhcp_info_t *info);
 
 typedef enum rlm_isc_dhcp_type_t {
 	ISC_INVALID = 0,		//!< we recognize it, but don't implement it
@@ -1748,7 +1748,7 @@ static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
 /** Apply fixed IPs
  *
  */
-static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
+static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 {
 	int rcode;
 	rlm_isc_dhcp_info_t *host, *info;
@@ -1805,7 +1805,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
 /** Apply all rules *except* fixed IP
  *
  */
-static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
+static int apply(rlm_isc_dhcp_t const *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
 {
 	int rcode, child_rcode;
 	rlm_isc_dhcp_info_t *info;
@@ -2227,11 +2227,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	int rcode;
-	rlm_isc_dhcp_t *inst = instance;
+	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_isc_dhcp_t);
+	int			rcode;
 
 	rcode = apply_fixed_ip(inst, request);
 	if (rcode < 0) return RLM_MODULE_FAIL;
@@ -2242,11 +2241,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	return RLM_MODULE_OK;
 }
 
-
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	int rcode;
-	rlm_isc_dhcp_t *inst = instance;
+	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_isc_dhcp_t);
+	int			rcode;
 
 	rcode = apply(inst, request, inst->head);
 	if (rcode < 0) return RLM_MODULE_FAIL;

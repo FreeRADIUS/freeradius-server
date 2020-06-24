@@ -193,10 +193,10 @@ typedef struct {
 	bool		expanded;
 } fr_trigger_t;
 
-static rlm_rcode_t trigger_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t trigger_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	fr_trigger_t *ctx = instance;
-	rlm_rcode_t rcode;
+	fr_trigger_t	*ctx = talloc_get_type_abort_const(mctx->instance, fr_trigger_t);
+	rlm_rcode_t	rcode;
 
 	if (!ctx->expanded) {
 		RDEBUG("Running trigger %s", ctx->name);

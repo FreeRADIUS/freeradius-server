@@ -397,9 +397,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
@@ -412,27 +412,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,

@@ -896,7 +896,7 @@ redo:
 	/*
 	 *	Everything else, run the request.
 	 */
-	final = request->async->process(request->async->process_inst, NULL, request);
+	final = request->async->process(&(module_ctx_t){ .instance = request->async->process_inst }, request);
 
 	/*
 	 *	Figure out what to do next.

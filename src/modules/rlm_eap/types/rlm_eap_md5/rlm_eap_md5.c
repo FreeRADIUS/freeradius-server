@@ -47,7 +47,7 @@ fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	MD5_PACKET		*packet;
@@ -110,7 +110,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	MD5_PACKET	*reply;

@@ -142,12 +142,12 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
 #ifdef WITH_DHCP
 	int			rcode;
 	VALUE_PAIR		*vp;
-	rlm_soh_t const		*inst = talloc_get_type_abort_const(instance, rlm_soh_t);
+	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_soh_t);
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
@@ -206,7 +206,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int rv;

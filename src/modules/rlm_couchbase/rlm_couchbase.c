@@ -93,14 +93,13 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  * document is found it will be parsed and the containing value pairs will be
  * injected into the request.
  *
- * @param instance	The module instance.
- * @param thread	specific data.
+ * @param mctx		module calling context.
  * @param request	The authorization request.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);		/* our module instance */
+	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);		/* our module instance */
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
 	char			buffer[MAX_KEY_SIZE];
 	char const		*dockey;			/* our document key */
@@ -231,14 +230,13 @@ finish:
  * will be merged with the currently existing data.  When conflicts arrise the new attribute
  * value will replace or be added to the existing value.
  *
- * @param instance	The module instance.
- * @param thread	specific data.
+ * @param mctx		module calling context.
  * @param request	The accounting request object.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_couchbase_t const *inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);       /* our module instance */
+	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
 	VALUE_PAIR *vp;                         /* radius value pair linked list */

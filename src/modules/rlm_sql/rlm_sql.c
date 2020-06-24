@@ -1176,12 +1176,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
 	VALUE_PAIR		*check_tmp = NULL;
@@ -1594,10 +1593,9 @@ finish:
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->accounting.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->accounting);
@@ -1611,10 +1609,9 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->postauth);

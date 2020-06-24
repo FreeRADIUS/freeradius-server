@@ -104,8 +104,8 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
 
 /** Wrapper around dl_instance which loads submodules based on type = foo pairs
  *
@@ -232,10 +232,11 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 /** Process NAK data from EAP peer
  *
  */
-static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
+static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
 				  eap_type_t type,
 				  eap_type_data_t *nak)
 {
+	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	unsigned int i;
 	VALUE_PAIR *vp;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
@@ -334,13 +335,12 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 
 /** Cancel a call to a submodule
  *
+ * @param[in] mctx	module calling ctx.
  * @param[in] request	The current request.
- * @param[in] instance	UNUSED.
- * @param[in] thread	UNUSED.
  * @param[in] rctx	the eap_session_t
  * @param[in] action	to perform.
  */
-static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx,
+static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx,
 				    fr_state_signal_t action)
 {
 	eap_session_t	*eap_session;
@@ -365,8 +365,7 @@ static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, 
 /** Process the result of calling a submodule
  *
  * @param[in] request	The current request.
- * @param[in] instance	of the rlm_eap module.
- * @param[in] thread	UNUSED.
+ * @param[in] mctx	module calling ctx.
  * @param[in] eap_session the EAP session
  * @param[in] result	the input result from the submodule
  * @return
@@ -375,7 +374,7 @@ static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, 
  *	- RLM_MODULE_HANDLED	if we're done with this round.
  *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED module_ctx_t const *mctx,
 					   eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_rcode_t	rcode;
@@ -465,16 +464,15 @@ finish:
 /** Call mod_authenticate_result asynchronously from the unlang interpreter
  *
  * @param[in] request	The current request.
- * @param[in] instance	of rlm_eap.
- * @param[in] thread	UNUSED.
+ * @param[in] mctx	module calling ctx.
  * @param[in] rctx	the eap_session_t.
  * @return The result of this round of authentication.
  */
-static rlm_rcode_t mod_authenticate_result_async(void *instance, void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
-	return mod_authenticate_result(request, instance, thread, eap_session, eap_session->submodule_rcode);
+	return mod_authenticate_result(request, mctx, eap_session, eap_session->submodule_rcode);
 }
 
 /** Select the correct callback based on a response
@@ -484,16 +482,16 @@ static rlm_rcode_t mod_authenticate_result_async(void *instance, void *thread, R
  *
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
  *
- * @param[in] inst		Configuration data for this instance of rlm_eap.
- * @param[in] thread		UNUSED.
+ * @param[in] mctx		module calling ctx.
  * @param[in] eap_session	State data that persists over multiple rounds of EAP.
  * @return
  *	- RLM_MODULE_INVALID	destroy the EAP session as its invalid.
  *	- RLM_MODULE_YIELD	Yield control back to the interpreter so it can
  *				call the submodule.
  */
-static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_session_t *eap_session)
+static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *eap_session)
 {
+	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
 	REQUEST				*request = eap_session->request;
 
@@ -577,7 +575,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		 *	the memory it alloced.
 		 */
 		TALLOC_FREE(eap_session->opaque);
-		next = eap_process_nak(inst, eap_session->request, eap_session->type, type);
+		next = eap_process_nak(mctx, eap_session->request, eap_session->type, type);
 		if (!next) return RLM_MODULE_REJECT;
 
 		/*
@@ -666,9 +664,9 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 						 eap_session);
 }
 
-static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	rlm_rcode_t		rcode;
@@ -695,7 +693,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	 *	retrieve the existing eap_session from the request
 	 *	data.
 	 */
-	eap_session = eap_session_continue(instance, &eap_packet, request);
+	eap_session = eap_session_continue(inst, &eap_packet, request);
 	if (!eap_session) return RLM_MODULE_INVALID;	/* Don't emit error here, it will mask the real issue */
 
 	/*
@@ -703,7 +701,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	rcode = eap_method_select(inst, thread, eap_session);
+	rcode = eap_method_select(mctx, eap_session);
 	switch (rcode) {
  	/*
  	 *	Leave the session thawed, next state
@@ -738,9 +736,9 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initialization.
  */
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	int			status;
 
 #ifdef WITH_PROXY
@@ -785,16 +783,16 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 {
-	size_t		i;
-	size_t		len;
-	ssize_t		ret;
-	char		*p;
-	VALUE_PAIR	*vp;
-	eap_session_t	*eap_session;
-	fr_cursor_t	cursor;
-	rlm_eap_t const	*inst = talloc_get_type_abort_const(instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance->mctx, rlm_eap_t);
+	size_t			i;
+	size_t			len;
+	ssize_t			ret;
+	char			*p;
+	VALUE_PAIR		*vp;
+	eap_session_t		*eap_session;
+	fr_cursor_t		cursor;
 
 	/*
 	 *	If there was a eap_session associated with this request,
@@ -886,9 +884,9 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 }
 #endif
 
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	VALUE_PAIR		*vp;
 	eap_session_t		*eap_session;
 	VALUE_PAIR		*username;

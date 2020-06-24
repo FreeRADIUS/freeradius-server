@@ -271,7 +271,7 @@ static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	size_t length;
 	char const *value;

@@ -237,7 +237,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 /** Allocate the FAST per-session data
  *
  */
-static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
+static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t const *inst)
 {
 	eap_fast_tunnel_t *t = talloc_zero(ctx, eap_fast_tunnel_t);
 
@@ -451,14 +451,14 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_tls_status_t	status;
 
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	We need FAST data associated with the session, so
@@ -563,12 +563,12 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t 	*eap_tls_session;
-	fr_tls_session_t		*tls_session;
+	fr_tls_session_t	*tls_session;
 
 	VALUE_PAIR		*vp;
 	bool			client_cert;

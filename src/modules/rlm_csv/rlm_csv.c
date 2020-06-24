@@ -265,7 +265,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 }
 
 
-static int fieldname2offset(rlm_csv_t *inst, char const *field_name, int *array_offset)
+static int fieldname2offset(rlm_csv_t const *inst, char const *field_name, int *array_offset)
 {
 	int i;
 
@@ -779,7 +779,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t mod_map_apply(rlm_csv_t *inst, REQUEST *request,
+static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
 				fr_value_box_t const *key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
@@ -887,9 +887,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_csv_t *inst = instance;
+	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_csv_t);
 	rlm_rcode_t rcode;
 	ssize_t slen;
 	fr_value_box_t *key;

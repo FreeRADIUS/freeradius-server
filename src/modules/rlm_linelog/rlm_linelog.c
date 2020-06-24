@@ -116,7 +116,7 @@ typedef struct {
 	linelog_net_t		udp;			//!< UDP server.
 
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
-} linelog_instance_t;
+} rlm_linelog_t;
 
 typedef struct {
 	int			sockfd;			//!< File descriptor associated with socket
@@ -124,21 +124,21 @@ typedef struct {
 
 
 static const CONF_PARSER file_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, linelog_instance_t, file.permissions), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, linelog_instance_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, linelog_instance_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_linelog_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_linelog_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_linelog_t, file.group_str) },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, rlm_linelog_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER syslog_config[] = {
-	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, linelog_instance_t, syslog.severity), .dflt = "info" },
+	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, rlm_linelog_t, syslog.facility) },
+	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, rlm_linelog_t, syslog.severity), .dflt = "info" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER unix_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, linelog_instance_t, unix_sock.path) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -157,11 +157,11 @@ static const CONF_PARSER tcp_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, linelog_instance_t, log_dst_str) },
+	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_linelog_t, log_dst_str) },
 
-	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, linelog_instance_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, linelog_instance_t, log_src) },
-	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, linelog_instance_t, log_ref) },
+	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_linelog_t, delimiter), .dflt = "\n" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, rlm_linelog_t, log_src) },
+	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, rlm_linelog_t, log_ref) },
 
 	/*
 	 *	Log destinations
@@ -169,18 +169,18 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("file", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
 	{ FR_CONF_POINTER("syslog", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) syslog_config },
 	{ FR_CONF_POINTER("unix", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
-	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, linelog_instance_t, tcp), .subcs= (void const *) tcp_config },
-	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, linelog_instance_t, udp), .subcs = (void const *) udp_config },
+	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, rlm_linelog_t, tcp), .subcs= (void const *) tcp_config },
+	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, rlm_linelog_t, udp), .subcs = (void const *) udp_config },
 
 	/*
 	 *	Deprecated config items
 	 */
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32 | FR_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, file.group_str) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, rlm_linelog_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32 | FR_TYPE_DEPRECATED, rlm_linelog_t, file.permissions) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, file.group_str) },
 
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("syslog_severity", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.severity) },
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, syslog.facility) },
+	{ FR_CONF_OFFSET("syslog_severity", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, syslog.severity) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -195,7 +195,7 @@ static int _mod_conn_free(linelog_conn_t *conn)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	linelog_instance_t const	*inst = instance;
+	rlm_linelog_t const	*inst = instance;
 	linelog_conn_t			*conn;
 	int				sockfd = -1;
 
@@ -271,7 +271,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 
 static int mod_detach(void *instance)
 {
-	linelog_instance_t *inst = instance;
+	rlm_linelog_t *inst = instance;
 
 	fr_pool_free(inst->pool);
 
@@ -284,7 +284,7 @@ static int mod_detach(void *instance)
  */
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	linelog_instance_t	*inst = instance;
+	rlm_linelog_t	*inst = instance;
 	char			prefix[100];
 
 	/*
@@ -439,32 +439,30 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
  *
  * Write a log message to syslog or a flat file.
  *
- * @param[in] instance	of rlm_linelog.
- * @param[in] thread	Thread specific data.
+ * @param[in] mctx	module calling context.
  * @param[in] request	The current request.
  * @return
  *	- #RLM_MODULE_NOOP if no message to log.
  *	- #RLM_MODULE_FAIL if we failed writing the message.
  *	- #RLM_MODULE_OK on success.
  */
-static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQUEST *request)
 {
-	linelog_conn_t		*conn;
-	fr_time_delta_t		timeout = 0;
-	char			buff[4096];
+	rlm_linelog_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
+	linelog_conn_t			*conn;
+	fr_time_delta_t			timeout = 0;
+	char				buff[4096];
 
-	char			*p = buff;
-	linelog_instance_t	*inst = instance;
-	char const		*value;
-	vp_tmpl_t		empty, *vpt = NULL, *vpt_p = NULL;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	ssize_t			slen;
+	char				*p = buff;
+	char const			*value;
+	vp_tmpl_t			empty, *vpt = NULL, *vpt_p = NULL;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	ssize_t				slen;
 
-	struct iovec		vector_s[2];
-	struct iovec		*vector = NULL, *vector_p;
-	size_t			vector_len;
-	bool			with_delim;
+	struct iovec			vector_s[2];
+	struct iovec			*vector = NULL, *vector_p;
+	size_t				vector_len;
+	bool				with_delim;
 
 	buff[0] = '.';	/* force to be in current section (by default) */
 	buff[1] = '\0';
@@ -785,7 +783,7 @@ extern module_t rlm_linelog;
 module_t rlm_linelog = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "linelog",
-	.inst_size	= sizeof(linelog_instance_t),
+	.inst_size	= sizeof(rlm_linelog_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

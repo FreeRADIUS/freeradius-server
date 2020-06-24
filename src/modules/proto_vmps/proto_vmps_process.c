@@ -48,7 +48,7 @@ fr_dict_attr_autoload_t proto_vmps_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;

@@ -268,9 +268,9 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	talloc_free(msg);
 }
 
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	proto_radius_auth_t const	*inst = instance;
+	proto_radius_auth_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_radius_auth_t);
 	VALUE_PAIR			*vp, *auth_type;
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;

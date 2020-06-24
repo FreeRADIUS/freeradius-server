@@ -70,7 +70,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_read(mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
+	ev->fd_read(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
 }
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -113,7 +113,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->timeout(mutable_inst, ev->thread, ev->request, mutable_ctx, now);
+	ev->timeout(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, now);
 	talloc_free(ev);
 }
 
@@ -207,7 +207,7 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_write(mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
+	ev->fd_write(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
 }
 
 /** Call the callback registered for an I/O error event
@@ -230,7 +230,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_error( mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
+	ev->fd_error(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
 }
 
 
@@ -545,8 +545,10 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 		 */
 		request->rcode = frame->result = default_rcode;
 
-		return resume(sp->module_instance->dl_inst->data,
-			      module_thread(sp->module_instance)->data, request, rctx);
+		return resume(&(module_ctx_t){
+				.instance = sp->module_instance->dl_inst->data,
+				.thread = module_thread(sp->module_instance)->data
+			      }, request, rctx);
 	}
 
 	/*
@@ -592,16 +594,12 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*sp = unlang_generic_to_module(frame->instruction);
-	char const 			*caller;
 
 	if (!state->signal) return;
 
-	caller = request->module;
 	request->module = sp->module_instance->name;
-	state->signal(sp->module_instance->dl_inst->data, state->thread->data, request,
-		   state->rctx, action);
-	request->module = caller;
-
+	state->signal(&(module_ctx_t) { .instance = sp->module_instance->dl_inst->data, .thread = state->thread->data},
+		      request, state->rctx, action);
 	/*
 	 *	One fewer caller for this module.  Since this module
 	 *	has been cancelled, decrement the active callers and
@@ -652,8 +650,10 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	request->module = sp->module_instance->name;
 
 	safe_lock(sp->module_instance);
-	rcode = request->rcode = state->resume(sp->module_instance->dl_inst->data,
-					       state->thread->data, request, state->rctx);
+	rcode = request->rcode = state->resume(&(module_ctx_t){
+							.instance = sp->module_instance->dl_inst->data,
+					       		.thread = state->thread->data
+					       }, request, state->rctx);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 
@@ -799,7 +799,10 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
 	caller = request->module;
 	request->module = sp->module_instance->name;
 	safe_lock(sp->module_instance);	/* Noop unless instance->mutex set */
-	rcode = sp->method(sp->module_instance->dl_inst->data, state->thread->data, request);
+	rcode = sp->method(&(module_ctx_t){
+				.instance = sp->module_instance->dl_inst->data,
+				.thread = state->thread->data
+			   }, request);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 

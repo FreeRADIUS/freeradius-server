@@ -467,10 +467,10 @@ DIAG_ON(class-varargs)
 }
 
 
-#define RLM_MRUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(void *instance, UNUSED void *thread, REQUEST *request) \
+#define RLM_MRUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(module_ctx_t const *mctx, REQUEST *request) \
 	{ \
 		return do_mruby(request,	\
-			       (rlm_mruby_t const *)instance, \
+			       (rlm_mruby_t const *)mctx->instance, \
 			       #foo); \
 	}
 

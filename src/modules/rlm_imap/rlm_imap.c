@@ -72,10 +72,10 @@ static const CONF_PARSER module_config[] = {
  *	It checks if the response was CURLE_OK
  *	If it wasn't we returns REJECT, if it was we returns OK
 */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	fr_curl_io_request_t     	*randle   = rctx;
-	rlm_imap_t			*inst 	= instance;
+	rlm_imap_t			*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
+	fr_curl_io_request_t     	*randle = rctx;
 	fr_curl_tls_t			*tls;
 	long 				curl_out;
 	long				curl_out_valid;
@@ -111,14 +111,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(void *instance, UNUS
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR const 		*username;
-	VALUE_PAIR const 		*password;
-	rlm_imap_t			*inst = instance;
+	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
+	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
-	rlm_imap_thread_t       	*t = thread;
-	fr_curl_io_request_t    	*randle;
+	VALUE_PAIR const 	*username;
+	VALUE_PAIR const 	*password;
+	fr_curl_io_request_t    *randle;
 
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){

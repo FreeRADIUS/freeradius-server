@@ -2588,7 +2588,7 @@ static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED voi
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static rlm_rcode_t mod_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *rctx)
+static rlm_rcode_t mod_resume(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request, void *rctx)
 {
 	udp_result_t	*r = talloc_get_type_abort(rctx, udp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
@@ -2598,10 +2598,10 @@ static rlm_rcode_t mod_resume(UNUSED void *instance, UNUSED void *thread, UNUSED
 	return rcode;
 }
 
-static void mod_signal(UNUSED void *instance, void *thread, UNUSED REQUEST *request,
+static void mod_signal(module_ctx_t const *mctx, UNUSED REQUEST *request,
 		       void *rctx, fr_state_signal_t action)
 {
-	udp_thread_t		*t = talloc_get_type_abort(thread, udp_thread_t);
+	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 
 	/*

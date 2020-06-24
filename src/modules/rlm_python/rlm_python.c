@@ -657,9 +657,11 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, void *thread, REQUEST *request) { \
-	return do_python((rlm_python_t const *) instance, (rlm_python_thread_t *)thread, \
-			 request, ((rlm_python_t const *)instance)->x.function, #x);\
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(module_ctx_t const *mctx, REQUEST *request) \
+{ \
+	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_python_t); \
+	rlm_python_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_python_thread_t); \
+	return do_python(inst, thread, request, inst->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)

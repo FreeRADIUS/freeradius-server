@@ -59,11 +59,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) \
+static rlm_rcode_t mod_##_s(module_ctx_t const *mctx, REQUEST *request) \
 {\
-	rlm_lua_t const *inst = talloc_get_type_abort_const(instance, rlm_lua_t);\
+	rlm_lua_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);\
 	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
-	return fr_lua_run(inst, thread, request, inst->func_##_s);\
+	return fr_lua_run(mctx, request, inst->func_##_s);\
 }
 
 DO_LUA(authorize)
@@ -120,8 +120,12 @@ static int mod_detach(void *instance)
 	 *	May be NULL if fr_lua_init failed
 	 */
 	if (inst->interpreter) {
-		if (inst->func_detach) ret = fr_lua_run(inst,
-							&(rlm_lua_thread_t){ .interpreter = inst->interpreter },
+		if (inst->func_detach) ret = fr_lua_run(&(module_ctx_t){
+								.instance = inst,
+								.thread = &(rlm_lua_thread_t){
+									.interpreter = inst->interpreter
+								}
+							},
 							NULL, inst->func_detach);
 
 		lua_close(inst->interpreter);
@@ -146,8 +150,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
 
-	if (inst->func_instantiate) return fr_lua_run(inst,
-						      &(rlm_lua_thread_t){ .interpreter = inst->interpreter },
+	if (inst->func_instantiate) return fr_lua_run(&(module_ctx_t){
+								.instance = inst,
+								.thread = &(rlm_lua_thread_t){
+									.interpreter = inst->interpreter
+								}
+						      },
 						      NULL, inst->func_instantiate);
 
 	return 0;

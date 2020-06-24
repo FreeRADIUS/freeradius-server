@@ -737,10 +737,12 @@ static void _lua_fr_request_register(lua_State *L, REQUEST *request)
 	lua_setfield(L, -2, "request");
 }
 
-int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
+int fr_lua_run(module_ctx_t const *mctx, REQUEST *request, char const *funcname)
 {
-	lua_State	*L = thread->interpreter;
-	int		ret = RLM_MODULE_OK;
+	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);
+	rlm_lua_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
+	lua_State		*L = thread->interpreter;
+	int			ret = RLM_MODULE_OK;
 
 	fr_lua_util_set_inst(inst);
 	fr_lua_util_set_request(request);

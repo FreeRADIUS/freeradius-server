@@ -198,9 +198,9 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sigtran_t const	*inst = talloc_get_type_abort_const(instance, rlm_sigtran_t);
+	rlm_sigtran_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sigtran_t);
 
 	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
 }

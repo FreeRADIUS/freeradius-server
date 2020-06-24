@@ -142,14 +142,14 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	return inst->rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(module_ctx_t const *mctx, REQUEST *request)
 {
-	return sometimes_return(instance, request, request->packet, request->reply);
+	return sometimes_return(mctx->instance, request, request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(module_ctx_t const *mctx, REQUEST *request)
 {
-	return sometimes_return(instance, request, request->reply, NULL);
+	return sometimes_return(mctx->instance, request, request->reply, NULL);
 }
 
 extern module_t rlm_sometimes;

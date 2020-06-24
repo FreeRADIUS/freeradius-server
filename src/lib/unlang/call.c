@@ -74,7 +74,7 @@ static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presul
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	rcode = child->async->process(child->async->process_inst, NULL, child);
+	rcode = child->async->process(&(module_ctx_t){ .instance = child->async->process_inst }, child);
 	if (rcode == RLM_MODULE_YIELD) {
 		return UNLANG_ACTION_YIELD;
 	}

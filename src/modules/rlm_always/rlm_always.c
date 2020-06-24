@@ -159,9 +159,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_always_return(module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
-	rlm_always_t *inst = instance;
+	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_always_t);
 
 	return inst->rcode;
 }

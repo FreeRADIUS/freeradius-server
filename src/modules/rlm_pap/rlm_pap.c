@@ -119,9 +119,9 @@ static fr_dict_attr_t const **pap_allowed_passwords;
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(instance, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
 	VALUE_PAIR		*password;
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
@@ -835,9 +835,9 @@ static const pap_auth_func_t auth_func_table[] = {
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(instance, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
 	VALUE_PAIR		*known_good;
 	VALUE_PAIR		*password;
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;

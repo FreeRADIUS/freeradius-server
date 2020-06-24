@@ -481,14 +481,14 @@ static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlippool_t *inst = instance;
-	char allocation[FR_MAX_STRING_LEN];
-	int allocation_len;
-	VALUE_PAIR *vp;
-	rlm_sql_handle_t *handle;
-	time_t now;
+	rlm_sqlippool_t		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
+	char			allocation[FR_MAX_STRING_LEN];
+	int			allocation_len;
+	VALUE_PAIR		*vp;
+	rlm_sql_handle_t	*handle;
+	time_t			now;
 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
@@ -675,14 +675,13 @@ static int mod_accounting_off(rlm_sql_handle_t **handle,
  *	If we find one and we have allocated an IP to this nas/port
  *	combination, then deallocate it.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_sqlippool_t		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
 	int			rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*vp;
 
 	int			acct_status_type;
-
-	rlm_sqlippool_t		*inst = (rlm_sqlippool_t *) instance;
 	rlm_sql_handle_t	*handle;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);

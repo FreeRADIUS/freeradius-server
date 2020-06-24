@@ -285,7 +285,7 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
  *	  continue when a future request is received.
  *	- NULL on error.
  */
-eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packet_p, REQUEST *request)
+eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap_packet_p, REQUEST *request)
 {
 	eap_session_t		*eap_session = NULL;
 	eap_packet_raw_t	*eap_packet;

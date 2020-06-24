@@ -322,9 +322,9 @@ error:
 	return RLM_MODULE_FAIL;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, UNUSED void *thread, REQUEST *request) \
+#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, REQUEST *request) \
 	{ \
-		return attr_filter_common(instance, request, request->_y); \
+		return attr_filter_common(mctx->instance, request, request->_y); \
 	}
 
 RLM_AF_FUNC(authorize, packet)

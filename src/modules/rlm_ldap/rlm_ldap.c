@@ -715,14 +715,13 @@ finish:
 	return 0;
 }
 
-static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
 	fr_ldap_rcode_t		status;
 	char const		*dn;
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
-	fr_ldap_connection_t		*conn;
+	fr_ldap_connection_t	*conn;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
@@ -931,13 +930,12 @@ free_result:
 	return rcode;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	int			ldap_errno;
 	int			i;
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	struct berval		**values;
 	fr_ldap_connection_t	*conn;
 	LDAPMessage		*result, *entry;
@@ -1399,24 +1397,20 @@ error:
 	return rcode;
 }
 
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 
 	if (inst->accounting) return user_modify(inst, request, inst->accounting);
 
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 
-	if (inst->postauth) {
-		return user_modify(inst, request, inst->postauth);
-	}
+	if (inst->postauth) return user_modify(inst, request, inst->postauth);
 
 	return RLM_MODULE_NOOP;
 }

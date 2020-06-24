@@ -55,7 +55,7 @@ fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 

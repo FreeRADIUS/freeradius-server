@@ -328,5 +328,5 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
 /*
  *	Async IO helpers
  */
-void rest_io_module_action(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action);
+void rest_io_module_action(module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_state_signal_t action);
 void rest_io_xlat_signal(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);

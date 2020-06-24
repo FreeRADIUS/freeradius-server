@@ -71,7 +71,7 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request);
 
 static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap_session)
 {
@@ -189,14 +189,14 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request,
 	return RLM_MODULE_YIELD;
 }
 
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_tls_status_t	status;
 
-	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	status = eap_tls_process(request, eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
@@ -252,9 +252,9 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
 

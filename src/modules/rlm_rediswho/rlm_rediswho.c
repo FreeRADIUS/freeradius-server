@@ -196,9 +196,9 @@ static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(instance, rlm_rediswho_t);
+	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_rediswho_t);
 	rlm_rcode_t		rcode;
 	VALUE_PAIR		*vp;
 	fr_dict_enum_t		*dv;

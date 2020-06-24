@@ -184,7 +184,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	char const	*name;
 	char const	*encrypted_pass;
@@ -336,8 +336,9 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
+	rlm_unix_t	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
 	VALUE_PAIR	*vp;
 	fr_cursor_t	cursor;
 	FILE		*fp;
@@ -354,7 +355,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 #endif
 	uint32_t	nas_port = 0;
 	bool		port_seen = true;
-	rlm_unix_t *inst = (rlm_unix_t *) instance;
+
 
 	/*
 	 *	No radwtmp.  Don't do anything.

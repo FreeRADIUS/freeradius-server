@@ -44,30 +44,30 @@ RCSID("$Id$")
  * Examples of these are the sub-state machines that deal with clearing
  * pseudonyms and reauthentication data.
  */
-typedef rlm_rcode_t(*aka_sim_state_enter_t)(eap_aka_sim_common_conf_t *inst,
+typedef rlm_rcode_t(*aka_sim_state_enter_t)(module_ctx_t const *mctx,
 					    REQUEST *request, eap_session_t *eap_session);
 
-static rlm_rcode_t common_eap_failure(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t common_failure_notification(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t common_eap_success(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t common_success_notification(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t common_reauthentication(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t aka_challenge(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t sim_challenge(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t aka_identity(void *instance, void *thread, REQUEST *request);
-static rlm_rcode_t sim_start(void *instance, void *thread, REQUEST *request);
+static rlm_rcode_t common_eap_failure(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t common_failure_notification(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t common_eap_success(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t common_success_notification(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t common_reauthentication(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t aka_challenge(module_ctx_t const *mctxd, REQUEST *request);
+static rlm_rcode_t sim_challenge(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t aka_identity(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t sim_start(module_ctx_t const *mctx, REQUEST *request);
 
-static rlm_rcode_t common_failure_notification_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_failure_notification_enter(module_ctx_t const *mctx,
 						     REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_challenge_enter(module_ctx_t const *mctx,
 				       REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t sim_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_challenge_enter(module_ctx_t const *mctx,
 				       REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t common_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_challenge_enter(module_ctx_t const *mctx,
 					  REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t aka_identity_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t sim_start_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request, eap_session_t *eap_session);
-static rlm_rcode_t common_identity_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_identity_enter(module_ctx_t const *mctx, REQUEST *request, eap_session_t *eap_session);
+static rlm_rcode_t sim_start_enter(module_ctx_t const *mctx, REQUEST *request, eap_session_t *eap_session);
+static rlm_rcode_t common_identity_enter(module_ctx_t const *mctx,
 				         REQUEST *request, eap_session_t *eap_session);
 
 static module_state_func_table_t const aka_sim_stable_table[] = {
@@ -87,13 +87,12 @@ static module_state_func_table_t const aka_sim_stable_table[] = {
 
 /** Cancel a call to a submodule
  *
- * @param[in] instance	UNUSED.
- * @param[in] thread	UNUSED.
+ * @param[in] mctx	UNUSED.
  * @param[in] request	The current request.
  * @param[in] rctx	the eap_session_t
  * @param[in] action	to perform.
  */
-static void mod_signal(UNUSED void *instance, UNUSED void *thread, REQUEST *request, UNUSED void *rctx,
+static void mod_signal(UNUSED module_ctx_t const *mctx, REQUEST *request, UNUSED void *rctx,
 		       fr_state_signal_t action)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
@@ -467,7 +466,7 @@ static inline bool after_authentication(eap_aka_sim_session_t *eap_aka_sim_sessi
 /** Resume after 'store session { ... }'
  *
  */
-static rlm_rcode_t session_store_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t session_store_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	aka_sim_state_enter_t	state_enter = (aka_sim_state_enter_t)rctx;
 
@@ -485,15 +484,15 @@ static rlm_rcode_t session_store_resume(void *instance, UNUSED void *thread, REQ
 
 	pair_delete_request(attr_eap_aka_sim_next_reauth_id);
 
-	return state_enter(instance, request, eap_session_get(request->parent));
+	return state_enter(mctx, request, eap_session_get(request->parent));
 }
 
 /** Resume after 'store pseudonym { ... }'
  *
  */
-static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t pseudonym_store_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -613,7 +612,7 @@ static rlm_rcode_t pseudonym_store_resume(void *instance, UNUSED void *thread, R
 	}
 
 done:
-	return state_enter(inst, request, eap_session_get(request->parent));
+	return state_enter(mctx, request, eap_session_get(request->parent));
 }
 
 /** Implements a set of states for storing pseudonym and fastauth identities
@@ -623,7 +622,7 @@ done:
  *
  * Call the appropriate sections to persist those values.
  *
- * @param[in] inst		of rlm_eap_aka.
+ * @param[in] mctx		Module calling ctx.
  * @param[in] request		the current request.
  * @param[in] eap_session	the EAP session
  * @param[in] state_enter	state entry function for the
@@ -631,10 +630,11 @@ done:
  *				state.
  * @return RLM_MODULE_HANDLED.
  */
-static rlm_rcode_t session_and_pseudonym_store(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t session_and_pseudonym_store(module_ctx_t const *mctx,
 					       REQUEST *request, eap_session_t *eap_session,
 					       aka_sim_state_enter_t state_enter)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
 	VALUE_PAIR		*vp;
@@ -654,9 +654,7 @@ static rlm_rcode_t session_and_pseudonym_store(eap_aka_sim_common_conf_t *inst,
 				RWDEBUG("Found empty Pseudonym-Id, and told not to generate one.  "
 					"Skipping store pseudonym { ... } section");
 
-				return pseudonym_store_resume(inst,
-							      module_thread_by_data(inst),
-							      request, (void *)state_enter);
+				return pseudonym_store_resume(mctx, request, (void *)state_enter);
 			}
 
 			MEM(identity = talloc_array(vp, char, inst->ephemeral_id_length + 2));
@@ -694,27 +692,27 @@ static rlm_rcode_t session_and_pseudonym_store(eap_aka_sim_common_conf_t *inst,
 						      (void *)state_enter);
 	}
 
-	return pseudonym_store_resume(inst, module_thread_by_data(inst), request, (void *)state_enter);
+	return pseudonym_store_resume(mctx, request, (void *)state_enter);
 }
 
 /** Resume after 'clear session { ... }'
  *
  */
-static rlm_rcode_t session_clear_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t session_clear_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	aka_sim_state_enter_t	state_enter = (aka_sim_state_enter_t)rctx;
 
 	pair_delete_request(attr_session_id);
 
-	return state_enter(instance, request, eap_session_get(request->parent));
+	return state_enter(mctx, request, eap_session_get(request->parent));
 }
 
 /** Resume after 'clear pseudonym { ... }'
  *
  */
-static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static rlm_rcode_t pseudonym_clear_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -744,7 +742,7 @@ static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, R
 						      rctx);
 	}
 
-	return state_enter(inst, request, eap_session_get(request->parent));
+	return state_enter(mctx, request, eap_session_get(request->parent));
 }
 
 /** Implements a set of states for clearing out pseudonym and fastauth identities
@@ -753,7 +751,7 @@ static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, R
  * any identities that were provided during those rounds, as the supplicant
  * will have discarded them.
  *
- * @param[in] inst		of rlm_eap_aka.
+ * @param[in] mctx		module calling ctx.
  * @param[in] request		the current request.
  * @param[in] eap_session	the current EAP session
  * @param[in] state_enter	state entry function for the
@@ -761,10 +759,11 @@ static rlm_rcode_t pseudonym_clear_resume(void *instance, UNUSED void *thread, R
  *				state.
  * @return RLM_MODULE_HANDLED.
  */
-static rlm_rcode_t session_and_pseudonym_clear(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t session_and_pseudonym_clear(module_ctx_t const *mctx,
 					       REQUEST *request, eap_session_t *eap_session,
 					       aka_sim_state_enter_t state_enter)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
 
@@ -786,7 +785,7 @@ static rlm_rcode_t session_and_pseudonym_clear(eap_aka_sim_common_conf_t *inst,
 						      (void *)state_enter);
 	}
 
-	return pseudonym_clear_resume(inst, module_thread_by_data(inst), request, (void *)state_enter);
+	return pseudonym_clear_resume(mctx, request, (void *)state_enter);
 }
 
 /** Encode EAP-SIM/AKA['] attributes
@@ -908,7 +907,7 @@ static rlm_rcode_t common_eap_failure_send(REQUEST *request, eap_session_t *eap_
 /** Send a EAP-Request/(AKA|SIM)-Notification (Failure) message to the supplicant
  *
  */
-static rlm_rcode_t common_failure_notification_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_failure_notification_send(module_ctx_t const *mctx,
 						    REQUEST *request, eap_session_t *eap_session)
 {
 	VALUE_PAIR		*vp, *notification_vp;
@@ -1003,7 +1002,7 @@ static rlm_rcode_t common_failure_notification_send(eap_aka_sim_common_conf_t *i
 	 *	Encode the packet
 	 */
 	if (common_encode(request, eap_session, FR_SUBTYPE_VALUE_AKA_SIM_NOTIFICATION, NULL, 0) < 0) {
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -1038,7 +1037,7 @@ static rlm_rcode_t common_eap_success_send(REQUEST *request, eap_session_t *eap_
 /** Send a EAP-Request/(AKA|SIM)-Notification (Success) message to the supplicant
  *
  */
-static rlm_rcode_t common_success_notification_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_success_notification_send(module_ctx_t const *mctx,
 						    REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
@@ -1091,7 +1090,7 @@ static rlm_rcode_t common_success_notification_send(eap_aka_sim_common_conf_t *i
 	 *	Encode the packet
 	 */
 	if (common_encode(request, eap_session, FR_SUBTYPE_VALUE_AKA_SIM_NOTIFICATION, NULL, 0) < 0) {
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -1100,7 +1099,7 @@ static rlm_rcode_t common_success_notification_send(eap_aka_sim_common_conf_t *i
 /** Called after 'store session { ... }' and 'store pseudonym { ... }'
  *
  */
-static rlm_rcode_t common_reauthentication_request_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_reauthentication_request_send(module_ctx_t const *mctx,
 							REQUEST *request, eap_session_t *eap_session)
 {
 	/*
@@ -1108,7 +1107,7 @@ static rlm_rcode_t common_reauthentication_request_send(eap_aka_sim_common_conf_
 	 *	by the encoder.
 	 */
 	if (common_encode(request, eap_session, FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION, NULL, 0) < 0) {
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -1117,7 +1116,7 @@ static rlm_rcode_t common_reauthentication_request_send(eap_aka_sim_common_conf_
 /** Send a EAP-Request/(AKA|SIM)-Reauthenticate message to the supplicant
  *
  */
-static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_conf_t *inst, REQUEST *request,
+static rlm_rcode_t common_reauthentication_request_compose(module_ctx_t const *mctx, REQUEST *request,
 							   eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1167,7 +1166,7 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 					"requesting additional Identity");
 				fr_pair_list_free(&request->reply->vps);
 				eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
-				return common_identity_enter(inst, request, eap_session);
+				return common_identity_enter(mctx, request, eap_session);
 
 			case AKA_SIM_FULLAUTH_ID_REQ:
 			case AKA_SIM_PERMANENT_ID_REQ:
@@ -1175,7 +1174,7 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 					"but received, or were told we received (by policy), "
 					"a fastauth ID.  Cannot continue");
 			failure:
-				return common_failure_notification_enter(inst, request, eap_session);
+				return common_failure_notification_enter(mctx, request, eap_session);
 			}
 		}
 		if (fr_aka_sim_crypto_kdf_0_reauth(&eap_aka_sim_session->keys) < 0) goto request_new_id;
@@ -1284,13 +1283,13 @@ static rlm_rcode_t common_reauthentication_request_compose(eap_aka_sim_common_co
 	 */
 	eap_aka_sim_session->allow_encrypted = true;
 
-	return session_and_pseudonym_store(inst, request, eap_session, common_reauthentication_request_send);
+	return session_and_pseudonym_store(mctx, request, eap_session, common_reauthentication_request_send);
 }
 
 /** Called after 'store session { ... }' and 'store pseudonym { ... }'
  *
  */
-static rlm_rcode_t aka_challenge_request_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_challenge_request_send(module_ctx_t const *mctx,
 					      REQUEST *request, eap_session_t *eap_session)
 {
 	/*
@@ -1298,7 +1297,7 @@ static rlm_rcode_t aka_challenge_request_send(eap_aka_sim_common_conf_t *inst,
 	 *	by the encoder.
 	 */
 	if (common_encode(request, eap_session, FR_SUBTYPE_VALUE_AKA_CHALLENGE, NULL, 0) < 0) {
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -1307,7 +1306,7 @@ static rlm_rcode_t aka_challenge_request_send(eap_aka_sim_common_conf_t *inst,
 /** Send a EAP-Request/AKA-Challenge message to the supplicant
  *
  */
-static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 						 REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
@@ -1347,7 +1346,7 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 		} else {
 			REDEBUG("No network name available, can't set AT_KDF_INPUT");
 		failure:
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
 		/*
@@ -1482,13 +1481,13 @@ static rlm_rcode_t aka_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 	 */
 	eap_aka_sim_session->allow_encrypted = true;
 
-	return session_and_pseudonym_store(inst, request, eap_session, aka_challenge_request_send);
+	return session_and_pseudonym_store(mctx, request, eap_session, aka_challenge_request_send);
 }
 
 /** Called after 'store session { ... }' and 'store pseudonym { ... }'
  *
  */
-static rlm_rcode_t sim_challenge_request_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_challenge_request_send(module_ctx_t const *mctx,
 					      REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1500,7 +1499,7 @@ static rlm_rcode_t sim_challenge_request_send(eap_aka_sim_common_conf_t *inst,
 	 */
 	if (common_encode(request, eap_session, FR_SUBTYPE_VALUE_SIM_CHALLENGE,
 			  eap_aka_sim_session->keys.gsm.nonce_mt, sizeof(eap_aka_sim_session->keys.gsm.nonce_mt)) < 0) {
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -1509,7 +1508,7 @@ static rlm_rcode_t sim_challenge_request_send(eap_aka_sim_common_conf_t *inst,
 /** Send a EAP-Request/SIM-Challenge message to the supplicant
  *
  */
-static rlm_rcode_t sim_challenge_request_compose(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_challenge_request_compose(module_ctx_t const *mctx,
 						 REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1584,7 +1583,7 @@ static rlm_rcode_t sim_challenge_request_compose(eap_aka_sim_common_conf_t *inst
 	 */
 	eap_aka_sim_session->allow_encrypted = true;
 
-	return session_and_pseudonym_store(inst, request, eap_session, sim_challenge_request_send);
+	return session_and_pseudonym_store(mctx, request, eap_session, sim_challenge_request_send);
 }
 
 /** Send a EAP-Request/AKA-Identity message to the supplicant
@@ -1606,14 +1605,14 @@ static rlm_rcode_t sim_challenge_request_compose(eap_aka_sim_common_conf_t *inst
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
- * @param[in] inst		of rlm_eap_aka.
+ * @param[in] mctx		module calling ctx.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
  * @return
  *	- RLM_MODULE_HANDLED on success.
  *	- anything else on failure.
  */
-static rlm_rcode_t aka_identity_request_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_identity_request_send(module_ctx_t const *mctx,
 					     REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1639,7 +1638,7 @@ static rlm_rcode_t aka_identity_request_send(eap_aka_sim_common_conf_t *inst,
 	 */
 	if (identity_req_pairs_add(request, eap_aka_sim_session) < 0) {
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	eap_aka_sim_session->last_id_req = eap_aka_sim_session->id_req;	/* Record what we last requested */
 
@@ -1687,14 +1686,14 @@ static rlm_rcode_t aka_identity_request_send(eap_aka_sim_common_conf_t *inst,
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
- * @param[in] inst		of rlm_eap_aka.
+ * @param[in] mctx		module calling context.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
  * @return
  *	- RLM_MODULE_HANDLED on success.
  *	- anything else on failure.
  */
-static rlm_rcode_t sim_start_request_send(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_start_request_send(module_ctx_t const *mctx,
 					  REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1754,7 +1753,7 @@ static rlm_rcode_t sim_start_request_send(eap_aka_sim_common_conf_t *inst,
 	 */
 	if (identity_req_pairs_add(request, eap_aka_sim_session) < 0) {
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	eap_aka_sim_session->last_id_req = eap_aka_sim_session->id_req;	/* Record what we last requested */
 
@@ -1789,7 +1788,7 @@ static inline void state_transition(REQUEST *request, eap_session_t *eap_session
 /** Resume after 'send EAP-Failure { ... }'
  *
  */
-static rlm_rcode_t common_eap_failure_enter_resume(UNUSED void *instance, UNUSED void *thread,
+static rlm_rcode_t common_eap_failure_enter_resume(UNUSED module_ctx_t const *mctx,
 						   REQUEST *request, UNUSED void *rctx)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
@@ -1802,8 +1801,9 @@ static rlm_rcode_t common_eap_failure_enter_resume(UNUSED void *instance, UNUSED
 /** Enter EAP-FAILURE state
  *
  */
-static rlm_rcode_t common_eap_failure_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request, eap_session_t *eap_session)
+static rlm_rcode_t common_eap_failure_enter(module_ctx_t const *mctx, REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t *eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
 
 	/*
@@ -1816,7 +1816,7 @@ static rlm_rcode_t common_eap_failure_enter(eap_aka_sim_common_conf_t *inst, REQ
 	 *	we sent are now invalid.
 	 */
 	if (eap_aka_sim_session->pseudonym_sent || eap_aka_sim_session->fastauth_sent) {
-		return session_and_pseudonym_clear(inst,
+		return session_and_pseudonym_clear(mctx,
 						   request, eap_session, common_eap_failure_enter); /* come back when we're done */
 	}
 
@@ -1834,10 +1834,9 @@ static rlm_rcode_t common_eap_failure_enter(eap_aka_sim_common_conf_t *inst, REQ
  *
  * Ignores return code from send Failure-Notification { ... } section.
  */
-static rlm_rcode_t common_failure_notification_enter_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_failure_notification_enter_resume(module_ctx_t const *mctx,
 							    REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 
 	section_rcode_ignored(request);
@@ -1851,15 +1850,16 @@ static rlm_rcode_t common_failure_notification_enter_resume(void *instance, UNUS
 	 *	If there's an issue composing the failure
 	 *      message just send an EAP-Failure instead.
 	 */
-	return common_failure_notification_send(inst, request, eap_session);
+	return common_failure_notification_send(mctx, request, eap_session);
 }
 
 /** Enter the FAILURE-NOTIFICATION state
  *
  */
-static rlm_rcode_t common_failure_notification_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_failure_notification_enter(module_ctx_t const *mctx,
 						     REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
 
 	/*
@@ -1867,7 +1867,7 @@ static rlm_rcode_t common_failure_notification_enter(eap_aka_sim_common_conf_t *
 	 *	we sent are now invalid.
 	 */
 	if (eap_aka_sim_session->pseudonym_sent || eap_aka_sim_session->fastauth_sent) {
-		return session_and_pseudonym_clear(inst, request, eap_session,
+		return session_and_pseudonym_clear(mctx, request, eap_session,
 						   common_failure_notification_enter); /* come back when we're done */
 	}
 
@@ -1878,7 +1878,7 @@ static rlm_rcode_t common_failure_notification_enter(eap_aka_sim_common_conf_t *
 	 *	garbage from the supplicant.
 	 */
 	if (eap_session->process == common_failure_notification) {
-		return common_eap_failure_enter(inst, request, eap_session);
+		return common_eap_failure_enter(mctx, request, eap_session);
 	}
 
 	/*
@@ -1897,10 +1897,9 @@ static rlm_rcode_t common_failure_notification_enter(eap_aka_sim_common_conf_t *
 /** Resume after 'send EAP-Success { ... }'
  *
  */
-static rlm_rcode_t common_eap_success_enter_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_eap_success_enter_resume(module_ctx_t const *mctx,
 						  REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1936,7 +1935,7 @@ static rlm_rcode_t common_eap_success_enter_resume(void *instance, UNUSED void *
 	 *	the end of authentication.
 	 */
 	} else {
-		section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+		section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 	}
 
 	return common_eap_success_send(request, eap_session);
@@ -1945,9 +1944,10 @@ static rlm_rcode_t common_eap_success_enter_resume(void *instance, UNUSED void *
 /** Enter EAP-SUCCESS state
  *
  */
-static rlm_rcode_t common_eap_success_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request,
+static rlm_rcode_t common_eap_success_enter(module_ctx_t const *mctx, REQUEST *request,
 					    eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	state_transition(request, eap_session, common_eap_success);
 
 	return unlang_module_yield_to_section(request,
@@ -1961,25 +1961,25 @@ static rlm_rcode_t common_eap_success_enter(eap_aka_sim_common_conf_t *inst, REQ
 /** Resume after 'send Success-Notification { ... }'
  *
  */
-static rlm_rcode_t common_success_notification_enter_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_success_notification_enter_resume(module_ctx_t const *mctx,
 							       REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return common_success_notification_send(inst, request, eap_session);
+	return common_success_notification_send(mctx, request, eap_session);
 }
 
 /** Enter the SUCCESS-NOTIFICATION state
  *
  */
-static rlm_rcode_t common_success_notification_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_success_notification_enter(module_ctx_t const *mctx,
 							REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	state_transition(request, eap_session, common_success_notification);
 
 	return unlang_module_yield_to_section(request,
@@ -1993,10 +1993,9 @@ static rlm_rcode_t common_success_notification_enter(eap_aka_sim_common_conf_t *
 /** Resume after 'send Reauthentication-Request { ... }'
  *
  */
-static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_reauthentication_send_resume(module_ctx_t const *mctx,
 				 		       REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
@@ -2021,7 +2020,7 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 			fr_pair_list_free(&request->reply->vps);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 
-			return common_identity_enter(inst, request, eap_session);
+			return common_identity_enter(mctx, request, eap_session);
 
 		case AKA_SIM_FULLAUTH_ID_REQ:
 		case AKA_SIM_PERMANENT_ID_REQ:
@@ -2029,7 +2028,7 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 			REDEBUG("Last requested Full-Auth-Id or Permanent-Identity, "
 				"but received a Fast-Auth-Id.  Cannot continue");
 		failure:
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 		break;
 
@@ -2047,17 +2046,17 @@ static rlm_rcode_t common_reauthentication_send_resume(void *instance, UNUSED vo
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		return common_reauthentication_request_compose(inst, request, eap_session);
+		return common_reauthentication_request_compose(mctx, request, eap_session);
 	}
 }
 
 /** Resume after 'load session { ... }'
  *
  */
-static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t session_load_resume(module_ctx_t const *mctx,
 				       REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2089,13 +2088,13 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
 			fr_pair_list_free(&request->reply->vps);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
-			return common_identity_enter(inst, request, eap_session);
+			return common_identity_enter(mctx, request, eap_session);
 
 		case AKA_SIM_FULLAUTH_ID_REQ:
 		case AKA_SIM_PERMANENT_ID_REQ:
 			REDEBUG("Last requested Full-Auth-Id or Permanent-Identity, "
 				"but received a Fast-Auth-Id.  Cannot continue");
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 
 		}
 		break;
@@ -2106,7 +2105,7 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_DISALLOW:
 	reject:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 
 	/*
 	 *	Everything OK
@@ -2128,10 +2127,10 @@ static rlm_rcode_t session_load_resume(void *instance, UNUSED void *thread,
 /** Resume after 'load pseudonym { ... }'
  *
  */
-static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t pseudonym_load_resume(module_ctx_t const *mctx,
 					 REQUEST *request, void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2145,7 +2144,7 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 	 */
 	if (!inst->actions.load_pseudonym) {
 	next_state:
-		return state_enter(inst, request, eap_session);
+		return state_enter(mctx, request, eap_session);
 	}
 
 	switch (request->rcode) {
@@ -2163,12 +2162,12 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
 			fr_pair_list_free(&request->reply->vps);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
-			return common_identity_enter(inst, request, eap_session);
+			return common_identity_enter(mctx, request, eap_session);
 
 		case AKA_SIM_PERMANENT_ID_REQ:
 			REDEBUG("Last requested a Permanent-Identity, but received a Pseudonym.  Cannot continue");
 		failure:
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 		break;
 
@@ -2193,9 +2192,10 @@ static rlm_rcode_t pseudonym_load_resume(void *instance, UNUSED void *thread,
 /** Enter the REAUTHENTICATION state
  *
  */
-static rlm_rcode_t common_reauthentication_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_reauthentication_enter(module_ctx_t const *mctx,
 						 REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	VALUE_PAIR		*vp = NULL;
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2221,24 +2221,24 @@ static rlm_rcode_t common_reauthentication_enter(eap_aka_sim_common_conf_t *inst
 /** Resume after 'send Challenge-Request { ... }'
  *
  */
-static rlm_rcode_t aka_challenge_enter_resume(void *instance, UNUSED void *thread, REQUEST *request, UNUSED void *rctx)
+static rlm_rcode_t aka_challenge_enter_resume(module_ctx_t const *mctx, REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return aka_challenge_request_compose(inst, request, eap_session);
+	return aka_challenge_request_compose(mctx, request, eap_session);
 }
 
 /** Enter the AKA-CHALLENGE state
  *
  */
-static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_challenge_enter(module_ctx_t const *mctx,
 				       REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
 	VALUE_PAIR		*vp;
 
@@ -2248,7 +2248,7 @@ static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
 	 *	that failed.
 	 */
 	if (eap_aka_sim_session->pseudonym_sent || eap_aka_sim_session->fastauth_sent) {
-		return session_and_pseudonym_clear(inst, request, eap_session, aka_challenge_enter);	/* come back when we're done */
+		return session_and_pseudonym_clear(mctx, request, eap_session, aka_challenge_enter);	/* come back when we're done */
 	}
 
 	state_transition(request, eap_session, aka_challenge);
@@ -2313,24 +2313,24 @@ static rlm_rcode_t aka_challenge_enter(eap_aka_sim_common_conf_t *inst,
 /** Resume after 'send Challenge-Request { ... }'
  *
  */
-static rlm_rcode_t sim_challenge_enter_resume(void *instance, UNUSED void *thread, REQUEST *request, UNUSED void *rctx)
+static rlm_rcode_t sim_challenge_enter_resume(module_ctx_t const *mctx, REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return sim_challenge_request_compose(inst, request, eap_session);
+	return sim_challenge_request_compose(mctx, request, eap_session);
 }
 
 /** Enter the SIM-CHALLENGE state
  *
  */
-static rlm_rcode_t sim_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_challenge_enter(module_ctx_t const *mctx,
 				       REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
 	VALUE_PAIR			*vp;
@@ -2341,7 +2341,7 @@ static rlm_rcode_t sim_challenge_enter(eap_aka_sim_common_conf_t *inst,
 	 *	that failed.
 	 */
 	if (eap_aka_sim_session->pseudonym_sent || eap_aka_sim_session->fastauth_sent) {
-		return session_and_pseudonym_clear(inst, request, eap_session, sim_challenge_enter);	/* come back when we're done */
+		return session_and_pseudonym_clear(mctx, request, eap_session, sim_challenge_enter);	/* come back when we're done */
 	}
 
 	state_transition(request, eap_session, sim_challenge);
@@ -2368,16 +2368,16 @@ static rlm_rcode_t sim_challenge_enter(eap_aka_sim_common_conf_t *inst,
  * Called by functions which are common to both the EAP-SIM and EAP-AKA state machines
  * to enter the correct challenge state.
  */
-static rlm_rcode_t common_challenge_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_challenge_enter(module_ctx_t const *mctx,
 				          REQUEST *request, eap_session_t *eap_session)
 {
 	switch (eap_session->type) {
 	case FR_EAP_METHOD_SIM:
-		return sim_challenge_enter(inst, request, eap_session);
+		return sim_challenge_enter(mctx, request, eap_session);
 
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_AKA_PRIME:
-		return aka_challenge_enter(inst, request, eap_session);
+		return aka_challenge_enter(mctx, request, eap_session);
 
 	default:
 		break;
@@ -2390,24 +2390,25 @@ static rlm_rcode_t common_challenge_enter(eap_aka_sim_common_conf_t *inst,
 /** Resume after 'send Identity-Request { ... }'
  *
  */
-static rlm_rcode_t aka_identity_enter_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t aka_identity_enter_resume(module_ctx_t const *mctx,
 						   REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return aka_identity_request_send(inst, request, eap_session);
+	return aka_identity_request_send(mctx, request, eap_session);
 }
 
 /** Enter the AKA-IDENTITY state
  *
  */
-static rlm_rcode_t aka_identity_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request, eap_session_t *eap_session)
+static rlm_rcode_t aka_identity_enter(module_ctx_t const *mctx, REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
+
 	state_transition(request, eap_session, aka_identity);
 
 	/*
@@ -2428,24 +2429,25 @@ static rlm_rcode_t aka_identity_enter(eap_aka_sim_common_conf_t *inst, REQUEST *
 /** Resume after 'send Start { ... }'
  *
  */
-static rlm_rcode_t sim_start_enter_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t sim_start_enter_resume(module_ctx_t const *mctx,
 					  REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return sim_start_request_send(inst, request, eap_session);
+	return sim_start_request_send(mctx, request, eap_session);
 }
 
 /** Enter the SIM-START state
  *
  */
-static rlm_rcode_t sim_start_enter(eap_aka_sim_common_conf_t *inst, REQUEST *request, eap_session_t *eap_session)
+static rlm_rcode_t sim_start_enter(module_ctx_t const *mctx, REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
+
 	state_transition(request, eap_session, sim_start);
 
 	return unlang_module_yield_to_section(request,
@@ -2463,16 +2465,16 @@ static rlm_rcode_t sim_start_enter(eap_aka_sim_common_conf_t *inst, REQUEST *req
  * Called by functions which are common to both the EAP-SIM and EAP-AKA state machines
  * to enter the correct Identity-Request state.
  */
-static rlm_rcode_t common_identity_enter(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t common_identity_enter(module_ctx_t const *mctx,
 				         REQUEST *request, eap_session_t *eap_session)
 {
 	switch (eap_session->type) {
 	case FR_EAP_METHOD_SIM:
-		return sim_start_enter(inst, request, eap_session);
+		return sim_start_enter(mctx, request, eap_session);
 
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_AKA_PRIME:
-		return aka_identity_enter(inst, request, eap_session);
+		return aka_identity_enter(mctx, request, eap_session);
 
 	default:
 		break;
@@ -2485,7 +2487,7 @@ static rlm_rcode_t common_identity_enter(eap_aka_sim_common_conf_t *inst,
 /** Process a EAP-Response/(AKA|SIM)-Reauthentication message - The response to our EAP-Request/(AKA|SIM)-Reauthentication message
  *
  */
-static rlm_rcode_t common_reauthentication_response_process(eap_aka_sim_common_conf_t *inst, REQUEST *request,
+static rlm_rcode_t common_reauthentication_response_process(module_ctx_t const *mctx, REQUEST *request,
 							    eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2500,7 +2502,7 @@ static rlm_rcode_t common_reauthentication_response_process(eap_aka_sim_common_c
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
 		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
@@ -2573,7 +2575,7 @@ static rlm_rcode_t common_reauthentication_response_process(eap_aka_sim_common_c
 		fr_aka_sim_vector_umts_reauth_clear(&eap_aka_sim_session->keys);
 		eap_aka_sim_session->allow_encrypted = false;
 
-	 	return aka_challenge_enter(inst, request, eap_session);
+	 	return aka_challenge_enter(mctx, request, eap_session);
 	}
 
 	/*
@@ -2588,7 +2590,7 @@ static rlm_rcode_t common_reauthentication_response_process(eap_aka_sim_common_c
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
-			return common_success_notification_enter(inst, request, eap_session);
+			return common_success_notification_enter(mctx, request, eap_session);
 		}
 	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind, TAG_ANY)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
@@ -2596,14 +2598,14 @@ static rlm_rcode_t common_reauthentication_response_process(eap_aka_sim_common_c
 
 	eap_aka_sim_session->reauthentication_success = true;
 
-	return common_eap_success_enter(inst, request, eap_session);
+	return common_eap_success_enter(mctx, request, eap_session);
 }
 
 /** Process a EAP-Response/AKA-Challenge message - The response to our EAP-Request/AKA-Challenge message
  *
  * Verify that MAC, and RES match what we expect.
  */
-static rlm_rcode_t aka_challenge_response_process(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_challenge_response_process(module_ctx_t const *mctx,
 						  REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2618,7 +2620,7 @@ static rlm_rcode_t aka_challenge_response_process(eap_aka_sim_common_conf_t *ins
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
 		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
@@ -2716,20 +2718,20 @@ static rlm_rcode_t aka_challenge_response_process(eap_aka_sim_common_conf_t *ins
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
-			return common_success_notification_enter(inst, request, eap_session);
+			return common_success_notification_enter(mctx, request, eap_session);
 		}
 	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind, TAG_ANY)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
-	return common_eap_success_enter(inst, request, eap_session);
+	return common_eap_success_enter(mctx, request, eap_session);
 }
 
 /** Process a EAP-Response/SIM-Challenge message - The response to our EAP-Request/SIM-Challenge message
  *
  * Verify that MAC, and RES match what we expect.
  */
-static rlm_rcode_t sim_challenge_response_process(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_challenge_response_process(module_ctx_t const *mctx,
 						  REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2753,7 +2755,7 @@ static rlm_rcode_t sim_challenge_response_process(eap_aka_sim_common_conf_t *ins
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
 		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
@@ -2794,13 +2796,13 @@ static rlm_rcode_t sim_challenge_response_process(eap_aka_sim_common_conf_t *ins
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
-			return common_success_notification_enter(inst, request, eap_session);
+			return common_success_notification_enter(mctx, request, eap_session);
 		}
 	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind, TAG_ANY)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
-	return common_eap_success_enter(inst, request, eap_session);
+	return common_eap_success_enter(mctx, request, eap_session);
 }
 
 /** Process a EAP-Response/AKA-Identity message i.e. an EAP-AKA Identity-Response
@@ -2813,9 +2815,10 @@ static rlm_rcode_t sim_challenge_response_process(eap_aka_sim_common_conf_t *ins
  *   - Pseudonym - Call 'load pseudonym { ... }'
  *   - Permanent - Enter the CHALLENGE state.
  */
-static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t aka_identity_response_process(module_ctx_t const *mctx,
 						 REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
 	bool			user_set_id_req;
@@ -2829,7 +2832,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 						       eap_session->this_round->response) < 0) {
 			RPEDEBUG("Failed updating checkcode");
 		failure:
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 	}
 
@@ -2865,7 +2868,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"),
 				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
 		}
-		return aka_identity_enter(inst, request, eap_session);
+		return aka_identity_enter(mctx, request, eap_session);
 	}
 
 	/*
@@ -2875,7 +2878,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 	identity_type = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_identity_type, TAG_ANY);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
-		return common_reauthentication_enter(inst, request, eap_session);
+		return common_reauthentication_enter(mctx, request, eap_session);
 
 	/*
 	 *	It's a pseudonym, which now needs resolving.
@@ -2893,7 +2896,7 @@ static rlm_rcode_t aka_identity_response_process(eap_aka_sim_common_conf_t *inst
 		break;
 	}
 
-	return aka_challenge_enter(inst, request, eap_session);
+	return aka_challenge_enter(mctx, request, eap_session);
 }
 
 /** Helper function to check for the presence and length of AT_SELECTED_VERSION and copy its value into the keys structure
@@ -2992,9 +2995,10 @@ static int sim_start_nonce_mt_check(REQUEST *request, VALUE_PAIR *from_peer,
  *   - Pseudonym - Verify selected version and AT_NONCE_MT, then call 'load pseudonym { ... }'
  *   - Permanent - Verify selected version and AT_NONCE_MT, then enter the CHALLENGE state.
  */
-static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
+static rlm_rcode_t sim_start_response_process(module_ctx_t const *mctx,
 					      REQUEST *request, eap_session_t *eap_session)
 {
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
 	bool			user_set_id_req;
@@ -3028,13 +3032,13 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 			case AKA_SIM_PERMANENT_ID_REQ:
 				REDEBUG("Peer sent no usable identities");
 			failure:
-				return common_failure_notification_enter(inst, request, eap_session);
+				return common_failure_notification_enter(mctx, request, eap_session);
 			}
 			RDEBUG2("Previous section returned (%s), requesting next most permissive identity (%s)",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"),
 				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
 		}
-		return sim_start_enter(inst, request, eap_session);
+		return sim_start_enter(mctx, request, eap_session);
 	}
 
 	/*
@@ -3053,7 +3057,7 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 		 */
 		if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_nonce_mt, TAG_ANY)) {
 			REDEBUG("AT_NONCE_MT is not allowed in EAP-Response/SIM-Reauthentication messages");
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
 		/*
@@ -3065,10 +3069,10 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 		 */
 		if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_selected_version, TAG_ANY)) {
 			REDEBUG("AT_SELECTED_VERSION is not allowed in EAP-Response/SIM-Reauthentication messages");
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
-		return common_reauthentication_enter(inst, request, eap_session);
+		return common_reauthentication_enter(mctx, request, eap_session);
 
 	/*
 	 *	It's a pseudonym, which now needs resolving.
@@ -3101,17 +3105,16 @@ static rlm_rcode_t sim_start_response_process(eap_aka_sim_common_conf_t *inst,
 		break;
 	}
 
-	return sim_challenge_enter(inst, request, eap_session);
+	return sim_challenge_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Failure-Notification-Ack { ... }'
  *
  * - Enter the EAP-FAILURE state.
  */
-static rlm_rcode_t common_failure_notification_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_failure_notification_recv_resume(module_ctx_t const *mctx,
 							   REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	section_rcode_ignored(request);
@@ -3119,17 +3122,16 @@ static rlm_rcode_t common_failure_notification_recv_resume(void *instance, UNUSE
 	/*
 	 *	Case 2 where we're allowed to send an EAP-Failure
 	 */
-	return common_eap_failure_enter(inst, request, eap_session);
+	return common_eap_failure_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Success-Notification-Ack { ... }'
  *
  * - Enter the EAP-SUCCESS state.
  */
-static rlm_rcode_t common_success_notification_ack_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_success_notification_ack_recv_resume(module_ctx_t const *mctx,
 							       REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	section_rcode_ignored(request);
@@ -3139,7 +3141,7 @@ static rlm_rcode_t common_success_notification_ack_recv_resume(void *instance, U
 	 *	next packet after we send our success notification
 	 *	and always send a success.
 	 */
-	return common_eap_success_enter(inst, request, eap_session);
+	return common_eap_success_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Challenge-Response { ... }'
@@ -3147,17 +3149,16 @@ static rlm_rcode_t common_success_notification_ack_recv_resume(void *instance, U
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the AKA-Challenge message.
  */
-static rlm_rcode_t aka_challenge_response_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t aka_challenge_response_recv_resume(module_ctx_t const *mctx,
 						      REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return aka_challenge_response_process(inst, request, eap_session);
+	return aka_challenge_response_process(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Challenge-Response { ... }'
@@ -3165,17 +3166,16 @@ static rlm_rcode_t aka_challenge_response_recv_resume(void *instance, UNUSED voi
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the SIM-Challenge message.
  */
-static rlm_rcode_t sim_challenge_response_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t sim_challenge_response_recv_resume(module_ctx_t const *mctx,
 						      REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return sim_challenge_response_process(inst, request, eap_session);
+	return sim_challenge_response_process(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Identity-Response { ... }' or 'recv AKA-Identity { ... }'
@@ -3183,17 +3183,16 @@ static rlm_rcode_t sim_challenge_response_recv_resume(void *instance, UNUSED voi
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the AKA-Identity message, mainly the AT_IDENTITY value.
  */
-static rlm_rcode_t aka_identity_response_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t aka_identity_response_recv_resume(module_ctx_t const *mctx,
 						     REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return aka_identity_response_process(inst, request, eap_session);
+	return aka_identity_response_process(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Identity-Response { ... }' or 'recv SIM-Start { ... }'
@@ -3201,27 +3200,25 @@ static rlm_rcode_t aka_identity_response_recv_resume(void *instance, UNUSED void
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the SIM-Start message, mainly the AT_IDENTITY value.
  */
-static rlm_rcode_t sim_start_response_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t sim_start_response_recv_resume(module_ctx_t const *mctx,
 						  REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     	     eap_aka_sim_session_t);
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return sim_start_response_process(inst, request, eap_session);
+	return sim_start_response_process(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Authentication-Reject { ... }'
  *
  * - Enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t aka_authentication_reject_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t aka_authentication_reject_recv_resume(module_ctx_t const *mctx,
 							 REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	section_rcode_ignored(request);
@@ -3229,7 +3226,7 @@ static rlm_rcode_t aka_authentication_reject_recv_resume(void *instance, UNUSED 
 	/*
 	 *	Case 2 where we're allowed to send an EAP-Failure
 	 */
-	return common_eap_failure_enter(inst, request, eap_session);
+	return common_eap_failure_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Synchronization-Failure { ... }'
@@ -3242,16 +3239,16 @@ static rlm_rcode_t aka_authentication_reject_recv_resume(void *instance, UNUSED 
  *   then enter the FAILURE-NOTIFICATION state.
  * - ...or enter the AKA-CHALLENGE state.
  */
-static rlm_rcode_t aka_synchronization_failure_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t aka_synchronization_failure_recv_resume(module_ctx_t const *mctx,
 							   REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
 	VALUE_PAIR			*vp;
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
 	/*
 	 *	If there's no section to handle this, then no resynchronisation
@@ -3263,7 +3260,7 @@ static rlm_rcode_t aka_synchronization_failure_recv_resume(void *instance, UNUSE
 	 */
 	if (!inst->actions.aka.recv_syncronization_failure || eap_aka_sim_session->prev_recv_sync_failure) {
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	/*
@@ -3284,22 +3281,21 @@ static rlm_rcode_t aka_synchronization_failure_recv_resume(void *instance, UNUSE
 	 *	EAP-Response/AKA-Synchronization-Failure (Section 9.6), and the
 	 *	server proceeds with a new EAP-Request/AKA-Challenge."
 	 */
-	return aka_challenge_enter(inst, request, eap_session);
+	return aka_challenge_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Client-Error { ... }'
  *
  * - Enter the EAP-FAILURE state.
  */
-static rlm_rcode_t common_client_error_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_client_error_recv_resume(module_ctx_t const *mctx,
 						   REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	section_rcode_ignored(request);
 
-	return common_eap_failure_enter(inst, request, eap_session);
+	return common_eap_failure_enter(mctx, request, eap_session);
 }
 
 /** Resume after 'recv Reauthentication-Response { ... }'
@@ -3309,16 +3305,15 @@ static rlm_rcode_t common_client_error_recv_resume(void *instance, UNUSED void *
  * - ...or call the EAP-Request/Reauthentication-Response function to act on the
  *   contents of the response.
  */
-static rlm_rcode_t common_reauthentication_response_recv_resume(void *instance, UNUSED void *thread,
+static rlm_rcode_t common_reauthentication_response_recv_resume(module_ctx_t const *mctx,
 								REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t		*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
 	eap_session_t				*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t			*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 											     eap_aka_sim_session_t);
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
-	return common_reauthentication_response_process(inst, request, eap_session);
+	return common_reauthentication_response_process(mctx, request, eap_session);
 }
 
 /** Decode the peer's response
@@ -3326,7 +3321,7 @@ static rlm_rcode_t common_reauthentication_response_recv_resume(void *instance, 
  * This is called by the state_* functions to decode the peer's response.
  */
 static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
-				 eap_aka_sim_common_conf_t *inst, REQUEST *request)
+				 module_ctx_t const *mctx, REQUEST *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3357,7 +3352,7 @@ static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
 	if (ret < 0) {
 		RPEDEBUG2("Failed decoding attributes");
 	failure:
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 	/* vps is the data from the client */
 	aka_vps = fr_cursor_next(&cursor);
@@ -3384,7 +3379,7 @@ static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
  * termination state.  Could equally be a NULL pointer, but then on a logic error
  * we'd get a SEGV instead of a more friendly assert/failure rcode.
  */
-static rlm_rcode_t common_eap_failure(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t common_eap_failure(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
 	fr_assert(0);	/* Should never actually be called */
 	return RLM_MODULE_FAIL;
@@ -3396,16 +3391,16 @@ static rlm_rcode_t common_eap_failure(UNUSED void *instance, UNUSED void *thread
  *   - EAP-Response/SIM-Client-Error - Call 'recv Failure-Notification-Ack { ... }'
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t common_failure_notification(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t common_failure_notification(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t			rcode;
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	VALUE_PAIR			*subtype_vp = NULL;
 	VALUE_PAIR			*vps;
 
-	rcode = common_decode(&subtype_vp, &vps, inst, request);
+	rcode = common_decode(&subtype_vp, &vps, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3423,7 +3418,7 @@ static rlm_rcode_t common_failure_notification(void *instance, UNUSED void *thre
 
 	default:
 		RWDEBUG("Failure-Notification not ACKed correctly, sending EAP-Failure anyway");
-		return common_eap_failure_enter(inst, request, eap_session);
+		return common_eap_failure_enter(mctx, request, eap_session);
 	}
 }
 
@@ -3433,7 +3428,7 @@ static rlm_rcode_t common_failure_notification(void *instance, UNUSED void *thre
  * termination state.  Could equally be a NULL pointer, but then on a logic error
  * we'd get a SEGV instead of a more friendly assert/failure rcode.
  */
-static rlm_rcode_t common_eap_success(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t common_eap_success(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request)
 {
 	fr_assert(0);
 	return RLM_MODULE_FAIL;
@@ -3443,9 +3438,9 @@ static rlm_rcode_t common_eap_success(UNUSED void *instance, UNUSED void *thread
  *
  * - Call 'recv Success-Notification-Ack { ... }'
  */
-static rlm_rcode_t common_success_notification(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t common_success_notification(module_ctx_t const *mctx, REQUEST *request)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 
 	return unlang_module_yield_to_section(request,
 					      inst->actions.recv_success_notification_ack,
@@ -3464,10 +3459,10 @@ static rlm_rcode_t common_success_notification(void *instance, UNUSED void *thre
  *     send a EAP-Request/(SIM|AKA)-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t common_reauthentication(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t common_reauthentication(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t			rcode;
-	eap_aka_sim_common_conf_t 	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t 	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
@@ -3475,7 +3470,7 @@ static rlm_rcode_t common_reauthentication(void *instance, UNUSED void *thread, 
 	VALUE_PAIR			*subtype_vp = NULL;
 	VALUE_PAIR			*from_peer;
 
-	rcode = common_decode(&subtype_vp, &from_peer, inst, request);
+	rcode = common_decode(&subtype_vp, &from_peer, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3522,7 +3517,7 @@ static rlm_rcode_t common_reauthentication(void *instance, UNUSED void *thread, 
 	default:
 		REDEBUG("Unexpected subtype %pV", &subtype_vp->data);
 		eap_aka_sim_session->allow_encrypted = false;
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 }
 
@@ -3537,10 +3532,10 @@ static rlm_rcode_t common_reauthentication(void *instance, UNUSED void *thread, 
  *     send a EAP-Request/AKA-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t aka_challenge(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t		rcode;
-	eap_aka_sim_common_conf_t		*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
 
@@ -3548,7 +3543,7 @@ static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *r
 	VALUE_PAIR		*vp;
 	VALUE_PAIR		*from_peer;
 
-	rcode = common_decode(&subtype_vp, &from_peer, inst, request);
+	rcode = common_decode(&subtype_vp, &from_peer, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3586,7 +3581,7 @@ static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *r
 		if (!vp) {
 			REDEBUG("EAP-Response/AKA-Synchronisation-Failure missing AT_AUTS");
 		failure:
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
 		switch (fr_aka_sim_umts_resync_from_attrs(&new_sqn,
@@ -3658,10 +3653,10 @@ static rlm_rcode_t aka_challenge(void *instance, UNUSED void *thread, REQUEST *r
  *     send a EAP-Request/SIM-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t sim_challenge(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t sim_challenge(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t		rcode;
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -3669,7 +3664,7 @@ static rlm_rcode_t sim_challenge(void *instance, UNUSED void *thread, REQUEST *r
 	VALUE_PAIR		*subtype_vp = NULL;
 	VALUE_PAIR		*from_peer;
 
-	rcode = common_decode(&subtype_vp, &from_peer, inst, request);
+	rcode = common_decode(&subtype_vp, &from_peer, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3708,7 +3703,7 @@ static rlm_rcode_t sim_challenge(void *instance, UNUSED void *thread, REQUEST *r
 
 		eap_aka_sim_session->allow_encrypted = false;
 
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 }
 
@@ -3725,17 +3720,17 @@ static rlm_rcode_t sim_challenge(void *instance, UNUSED void *thread, REQUEST *r
  *     send a EAP-Request/SIM-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t aka_identity(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t aka_identity(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t			rcode;
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
 	VALUE_PAIR			*subtype_vp = NULL;
 	VALUE_PAIR			*from_peer;
 
-	rcode = common_decode(&subtype_vp, &from_peer, inst, request);
+	rcode = common_decode(&subtype_vp, &from_peer, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3762,7 +3757,7 @@ static rlm_rcode_t aka_identity(void *instance, UNUSED void *thread, REQUEST *re
 			 *  AT_IDENTITY is defined in Section 4.1.
 			 */
 			REDEBUG("EAP-Response/Identity does not contain AT_IDENTITY");
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
 		/*
@@ -3815,7 +3810,7 @@ static rlm_rcode_t aka_identity(void *instance, UNUSED void *thread, REQUEST *re
 		 *	send an EAP-Failure in this case.
 		 */
 		REDEBUG("Unexpected subtype %pV", &subtype_vp->data);
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 }
 
@@ -3832,10 +3827,10 @@ static rlm_rcode_t aka_identity(void *instance, UNUSED void *thread, REQUEST *re
  *     send a EAP-Request/SIM-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
  */
-static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t sim_start(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_rcode_t			rcode;
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
@@ -3843,7 +3838,7 @@ static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *reque
 	VALUE_PAIR			*subtype_vp = NULL;
 	VALUE_PAIR			*from_peer;
 
-	rcode = common_decode(&subtype_vp, &from_peer, inst, request);
+	rcode = common_decode(&subtype_vp, &from_peer, mctx, request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 #ifdef __clang_analyzer__
@@ -3867,7 +3862,7 @@ static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *reque
 			 *  AT_IDENTITY is defined in Section 4.1.
 			 */
 			REDEBUG("EAP-Response/SIM/Start does not contain AT_IDENTITY");
-			return common_failure_notification_enter(inst, request, eap_session);
+			return common_failure_notification_enter(mctx, request, eap_session);
 		}
 
 		/*
@@ -3920,7 +3915,7 @@ static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *reque
 		 *	send an EAP-Failure in this case.
 		 */
 		REDEBUG("Unexpected subtype %pV", &subtype_vp->data);
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 }
 
@@ -3934,9 +3929,9 @@ static rlm_rcode_t sim_start(void *instance, UNUSED void *thread, REQUEST *reque
  *   - If identity is a fastauth identity, enter the REAUTHENTICATE state.
  *   - If identity is a permanent identity, enter the CHALLENGE state.
  */
-static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *thread, REQUEST *request, UNUSED void *rctx)
+static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST *request, UNUSED void *rctx)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
@@ -3944,7 +3939,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 	fr_aka_sim_method_hint_t	running, hinted;
 	VALUE_PAIR			*from_peer = request->packet->vps;
 
-	section_rcode_process(inst, request, eap_session, eap_aka_sim_session);
+	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
 	/*
 	 *	Ignore attempts to change the EAP-Type
@@ -4064,7 +4059,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 	 *	can 'decorate' the identity in the identity
 	 *	response.
 	 */
-	if (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ) return common_identity_enter(inst, request, eap_session);
+	if (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ) return common_identity_enter(mctx, request, eap_session);
 
 	/*
 	 *	If the identity looks like a fast re-auth id
@@ -4073,7 +4068,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 	identity_type = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_identity_type, TAG_ANY);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
-		return common_reauthentication_enter(inst, request, eap_session);
+		return common_reauthentication_enter(mctx, request, eap_session);
 
 	/*
 	 *	It's a pseudonym, which now needs resolving.
@@ -4095,7 +4090,7 @@ static rlm_rcode_t common_eap_identity_resume(void *instance, UNUSED void *threa
 		break;
 	}
 
-	return common_challenge_enter(inst, request, eap_session);
+	return common_challenge_enter(mctx, request, eap_session);
 }
 
 /** Zero out the eap_aka_sim_session when we free it to clear knowledge of secret keys
@@ -4114,9 +4109,9 @@ static int _eap_aka_sim_session_free(eap_aka_sim_session_t *eap_aka_sim_session)
  * - Process the incoming EAP-Identity-Response
  * - Start EAP-SIM/EAP-AKA/EAP-AKA' state machine optionally calling 'recv Identity-Response { ... }'
  */
-rlm_rcode_t aka_sim_state_machine_start(void *instance, UNUSED void *thread, REQUEST *request)
+rlm_rcode_t aka_sim_state_machine_start(module_ctx_t const *mctx, REQUEST *request)
 {
-	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_common_conf_t);
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session;
 	VALUE_PAIR			*vp;
@@ -4141,7 +4136,7 @@ rlm_rcode_t aka_sim_state_machine_start(void *instance, UNUSED void *thread, REQ
 	 */
 	if (!eap_session->identity) {
 		REDEBUG("All SIM or AKA exchanges must begin with a EAP-Response/Identity message");
-		return common_failure_notification_enter(inst, request, eap_session);
+		return common_failure_notification_enter(mctx, request, eap_session);
 	}
 
 	/*
