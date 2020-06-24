@@ -740,7 +740,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
  */
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_eap_t const		*inst = instance;
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance, rlm_eap_t);
 	int			status;
 
 #ifdef WITH_PROXY
@@ -794,7 +794,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	VALUE_PAIR	*vp;
 	eap_session_t	*eap_session;
 	fr_cursor_t	cursor;
-	rlm_eap_t const	*inst = instance;
+	rlm_eap_t const	*inst = talloc_get_type_abort_const(instance, rlm_eap_t);
 
 	/*
 	 *	If there was a eap_session associated with this request,

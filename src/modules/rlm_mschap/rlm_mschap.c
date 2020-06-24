@@ -654,7 +654,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext **wb_ctx;
-	rlm_mschap_t const	*inst = instance;
+	rlm_mschap_t const	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
 
 	wb_ctx = talloc_zero(ctx, struct wbcContext *);
 	*wb_ctx = wbcCtxCreate();
@@ -1370,7 +1370,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t const 	*inst = instance;
+	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
 	VALUE_PAIR		*challenge = NULL;
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
@@ -1919,7 +1919,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t const	*inst = instance;
+	rlm_mschap_t const	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
 	VALUE_PAIR		*challenge = NULL;
 	VALUE_PAIR		*response = NULL;
 	VALUE_PAIR		*cpw = NULL;

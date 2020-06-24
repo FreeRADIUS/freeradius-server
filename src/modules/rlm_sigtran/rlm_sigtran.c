@@ -200,7 +200,7 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
 {
-	rlm_sigtran_t const	*inst = instance;
+	rlm_sigtran_t const	*inst = talloc_get_type_abort_const(instance, rlm_sigtran_t);
 
 	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
 }

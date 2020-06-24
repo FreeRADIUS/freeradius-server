@@ -463,7 +463,7 @@ static int mod_detach(void *instance)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_winbind_t const *inst = instance;
+	rlm_winbind_t const *inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
 	VALUE_PAIR *vp;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
@@ -488,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_winbind_t const *inst = instance;
+	rlm_winbind_t const *inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
 	VALUE_PAIR *username, *password;
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);

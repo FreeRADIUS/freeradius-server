@@ -162,7 +162,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, void *thread, RE
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_wimax_t const	*inst = instance;
+	rlm_wimax_t const	*inst = talloc_get_type_abort_const(instance, rlm_wimax_t);
 	VALUE_PAIR		*msk, *emsk, *vp;
 	VALUE_PAIR		*mn_nai, *ip, *fa_rk;
 	HMAC_CTX		*hmac;

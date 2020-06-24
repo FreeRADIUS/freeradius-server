@@ -72,7 +72,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	uint32_t		hash;
-	rlm_sometimes_t const	*inst = instance;
+	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);
 	VALUE_PAIR		*vp;
 	float			value;
 

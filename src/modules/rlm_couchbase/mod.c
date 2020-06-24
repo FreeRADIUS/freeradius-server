@@ -155,7 +155,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_couchbase_t const *inst = instance;           /* module instance pointer */
+	rlm_couchbase_t const *inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
 	cookie_t *cookie = NULL;                          /* couchbase cookie */
 	lcb_t cb_inst;                                    /* couchbase connection instance */

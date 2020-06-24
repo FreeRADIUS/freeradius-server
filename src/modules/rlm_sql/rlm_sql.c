@@ -1181,7 +1181,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	rlm_sql_t const		*inst = instance;
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
 	VALUE_PAIR		*check_tmp = NULL;
@@ -1597,7 +1597,7 @@ finish:
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = instance;
+	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 
 	if (inst->config->accounting.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->accounting);

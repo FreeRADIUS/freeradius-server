@@ -246,7 +246,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_yubikey_t const *inst = instance;
+	rlm_yubikey_t const *inst = talloc_get_type_abort_const(instance, rlm_yubikey_t);
 
 	char const	*passcode;
 	size_t		len;
@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-	rlm_yubikey_t const *inst = instance;
+	rlm_yubikey_t const *inst = talloc_get_type_abort_const(instance, rlm_yubikey_t);
 	char const *passcode = NULL;
 	VALUE_PAIR const *vp;
 	size_t len;

@@ -393,7 +393,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	char		*endptr;
 #endif
 
-	rlm_detail_t const *inst = instance;
+	rlm_detail_t const *inst = talloc_get_type_abort_const(instance, rlm_detail_t);
 
 	/*
 	 *	Generate the path for the detail file.  Use the same

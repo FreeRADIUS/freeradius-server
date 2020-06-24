@@ -265,7 +265,7 @@ static int _mod_conn_free(fr_curl_io_request_t *randle)
  */
 void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	rlm_rest_t const	*inst = instance;
+	rlm_rest_t const	*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 
 	fr_curl_io_request_t	*randle = NULL;
 	rlm_rest_curl_context_t	*curl_ctx = NULL;

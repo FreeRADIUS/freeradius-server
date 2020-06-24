@@ -112,7 +112,7 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  */
 void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	rlm_krb5_t const *inst = instance;
+	rlm_krb5_t const *inst = talloc_get_type_abort_const(instance, rlm_krb5_t);
 	rlm_krb5_handle_t *conn;
 	krb5_error_code ret;
 

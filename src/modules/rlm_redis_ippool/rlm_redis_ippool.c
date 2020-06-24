@@ -1257,7 +1257,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(instance, rlm_redis_ippool_t);
 	VALUE_PAIR			*vp;
 
 	/*
@@ -1295,7 +1295,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(instance, rlm_redis_ippool_t);
 	VALUE_PAIR			*vp;
 
 	/*
@@ -1309,7 +1309,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(instance, rlm_redis_ippool_t);
 	VALUE_PAIR			*vp;
 	ippool_action_t			action = POOL_ACTION_ALLOCATE;
 

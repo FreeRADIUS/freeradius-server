@@ -593,7 +593,7 @@ free_urldesc:
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rlm_ldap_t const	*inst = instance;
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
 
 	bool			found = false;
@@ -721,7 +721,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	rlm_rcode_t		rcode;
 	fr_ldap_rcode_t		status;
 	char const		*dn;
-	rlm_ldap_t const	*inst = instance;
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	fr_ldap_connection_t		*conn;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
@@ -937,7 +937,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	int			ldap_errno;
 	int			i;
-	rlm_ldap_t const	*inst = instance;
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	struct berval		**values;
 	fr_ldap_connection_t	*conn;
 	LDAPMessage		*result, *entry;
@@ -1402,7 +1402,7 @@ error:
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_ldap_t const *inst = instance;
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 
 	if (inst->accounting) return user_modify(inst, request, inst->accounting);
 
@@ -1412,7 +1412,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_ldap_t const *inst = instance;
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 
 	if (inst->postauth) {
 		return user_modify(inst, request, inst->postauth);

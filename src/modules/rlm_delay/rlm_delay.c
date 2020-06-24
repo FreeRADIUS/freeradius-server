@@ -148,7 +148,7 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_delay_t const	*inst = instance;
+	rlm_delay_t const	*inst = talloc_get_type_abort_const(instance, rlm_delay_t);
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 

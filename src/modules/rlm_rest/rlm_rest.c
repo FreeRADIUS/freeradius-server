@@ -428,7 +428,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 
 static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
@@ -517,7 +517,7 @@ finish:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->authorize;
 
@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 
 static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
@@ -628,7 +628,7 @@ finish:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle;
@@ -691,7 +691,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 
 static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = rctx;
@@ -745,7 +745,7 @@ finish:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->accounting;
 
@@ -770,7 +770,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 
 static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = rctx;
@@ -824,7 +824,7 @@ finish:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
 {
-	rlm_rest_t const		*inst = instance;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->post_auth;
 

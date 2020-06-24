@@ -153,7 +153,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_logintime_t const	*inst = instance;
+	rlm_logintime_t const	*inst = talloc_get_type_abort_const(instance, rlm_logintime_t);
 	VALUE_PAIR		*ends, *vp;
 	int32_t			left;
 

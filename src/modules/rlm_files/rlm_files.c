@@ -399,7 +399,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
 
 	return file_common(inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
@@ -414,7 +414,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
 
 	return file_common(inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
@@ -423,7 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thr
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
 
 	return file_common(inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
@@ -432,7 +432,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(instance, rlm_files_t);
 
 	return file_common(inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,

@@ -535,7 +535,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t const	*inst = instance;
+	rlm_cache_t const	*inst = talloc_get_type_abort_const(instance, rlm_cache_t);
 
 	rlm_cache_handle_t	*handle;
 

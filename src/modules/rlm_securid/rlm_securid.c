@@ -468,7 +468,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int		rcode;
-	rlm_securid_t	const *inst = instance;
+	rlm_securid_t const *inst = talloc_get_type_abort_const(instance, rlm_securid_t);
 	char		 buffer[FR_MAX_STRING_LEN]="";
 	VALUE_PAIR	*username, *password;
 	VALUE_PAIR	*vp;

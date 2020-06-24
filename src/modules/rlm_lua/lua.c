@@ -879,7 +879,7 @@ static void fr_lua_rcode_register(lua_State *L, char const *name)
  */
 int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 {
-	rlm_lua_t const		*inst = instance;
+	rlm_lua_t const		*inst = talloc_get_type_abort_const(instance, rlm_lua_t);
 	lua_State		*L;
 
 	fr_lua_util_set_inst(inst);

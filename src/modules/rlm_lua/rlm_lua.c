@@ -61,7 +61,7 @@ static const CONF_PARSER module_config[] = {
 #define DO_LUA(_s)\
 static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) \
 {\
-	rlm_lua_t const *inst = instance;\
+	rlm_lua_t const *inst = talloc_get_type_abort_const(instance, rlm_lua_t);\
 	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
 	return fr_lua_run(inst, thread, request, inst->func_##_s);\
 }

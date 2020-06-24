@@ -100,7 +100,7 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  */
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t const	*inst = instance;		/* our module instance */
+	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);		/* our module instance */
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
 	char			buffer[MAX_KEY_SIZE];
 	char const		*dockey;			/* our document key */
@@ -238,7 +238,7 @@ finish:
  */
 static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t const *inst = instance;       /* our module instance */
+	rlm_couchbase_t const *inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
 	VALUE_PAIR *vp;                         /* radius value pair linked list */

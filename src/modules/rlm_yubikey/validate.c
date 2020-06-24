@@ -39,7 +39,7 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	rlm_yubikey_t const *inst = instance;
+	rlm_yubikey_t const *inst = talloc_get_type_abort_const(instance, rlm_yubikey_t);
 	ykclient_rc status;
 	ykclient_handle_t *yandle, **marker;
 
