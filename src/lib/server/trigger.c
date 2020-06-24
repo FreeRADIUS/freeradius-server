@@ -195,7 +195,7 @@ typedef struct {
 
 static rlm_rcode_t trigger_process(module_ctx_t const *mctx, REQUEST *request)
 {
-	fr_trigger_t	*ctx = talloc_get_type_abort_const(mctx->instance, fr_trigger_t);
+	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
 	rlm_rcode_t	rcode;
 
 	if (!ctx->expanded) {
