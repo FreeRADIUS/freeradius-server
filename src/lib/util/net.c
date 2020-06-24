@@ -177,8 +177,9 @@ uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *ds
 
 	for (sum = 0; nwords > 0; nwords--) {
 	        uint16_t word;
-	        memcpy(&word, p++, sizeof(word)); /* Can't use a uint16_t * as GCC flags this for unaligned access */
+	        memcpy(&word, p, sizeof(word)); /* Can't use a uint16_t * as GCC flags this for unaligned access */
 	        sum += word;
+		p += 2;
 	}
 	sum = (sum >> 16) + (sum & 0xffff);
 	sum += (sum >> 16);
