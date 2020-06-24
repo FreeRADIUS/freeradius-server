@@ -977,7 +977,7 @@ RLM_PERL_FUNC(preacct)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_perl_t	 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_perl_t);
+	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
 	VALUE_PAIR		*pair;
 	int 			acct_status_type = 0;
 

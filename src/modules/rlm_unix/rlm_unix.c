@@ -338,23 +338,23 @@ static char *uue(void *in)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_unix_t	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
-	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor;
-	FILE		*fp;
-	struct utmp	ut;
-	time_t		t;
-	char		buf[64];
-	char const	*s;
-	int		delay = 0;
-	int		status = -1;
-	int		nas_address = 0;
-	int		framed_address = 0;
+	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
+	VALUE_PAIR		*vp;
+	fr_cursor_t		cursor;
+	FILE			*fp;
+	struct utmp		ut;
+	time_t			t;
+	char			buf[64];
+	char const		*s;
+	int			delay = 0;
+	int			status = -1;
+	int			nas_address = 0;
+	int			framed_address = 0;
 #ifdef USER_PROCESS
-	int		protocol = -1;
+	int			protocol = -1;
 #endif
-	uint32_t	nas_port = 0;
-	bool		port_seen = true;
+	uint32_t		nas_port = 0;
+	bool			port_seen = true;
 
 
 	/*

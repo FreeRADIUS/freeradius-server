@@ -483,7 +483,7 @@ static int do_logging(UNUSED rlm_sqlippool_t *inst, REQUEST *request, char const
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlippool_t		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
+	rlm_sqlippool_t	const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
 	int			allocation_len;
 	VALUE_PAIR		*vp;
@@ -677,7 +677,7 @@ static int mod_accounting_off(rlm_sql_handle_t **handle,
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlippool_t		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
+	rlm_sqlippool_t	const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
 	int			rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*vp;
 
