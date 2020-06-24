@@ -52,8 +52,8 @@ CONF_PARSER fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_curl_tls_t, private_key_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_curl_tls_t, private_key_password) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, fr_curl_tls_t, random_file) },
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_VOID, fr_curl_tls_t, require_cert), 
-       	.func = cf_table_parse_int32, .uctx = &(cf_table_parse_ctx_t){ .table = fr_curl_sslcode_table, .len = &fr_curl_sslcode_table_len }, 
+	{ FR_CONF_OFFSET("require_cert", FR_TYPE_VOID, fr_curl_tls_t, require_cert),
+       	.func = cf_table_parse_int32, .uctx = &(cf_table_parse_ctx_t){ .table = fr_curl_sslcode_table, .len = &fr_curl_sslcode_table_len },
 	.dflt = "allow" },
 	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, fr_curl_tls_t, check_cert), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, fr_curl_tls_t, check_cert_cn), .dflt = "yes" },
@@ -126,18 +126,18 @@ int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *con
 {
 	REQUEST *request = randle->request;
 
-	if (conf->certificate_file) FR_CURL_SET_OPTION(CURLOPT_SSLCERT, conf->certificate_file);
-	if (conf->private_key_file) FR_CURL_SET_OPTION(CURLOPT_SSLKEY, conf->private_key_file);
-	if (conf->private_key_password) FR_CURL_SET_OPTION(CURLOPT_KEYPASSWD, conf->private_key_password);
-	if (conf->ca_file) FR_CURL_SET_OPTION(CURLOPT_CAINFO, conf->ca_file);
-	if (conf->ca_issuer_file) FR_CURL_SET_OPTION(CURLOPT_ISSUERCERT, conf->ca_issuer_file);
-	if (conf->ca_path) FR_CURL_SET_OPTION(CURLOPT_CAPATH, conf->ca_path);
-	if (conf->random_file) FR_CURL_SET_OPTION(CURLOPT_RANDOM_FILE, conf->random_file);
-	FR_CURL_SET_OPTION(CURLOPT_USE_SSL, conf->require_cert);
+	if (conf->certificate_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSLCERT, conf->certificate_file);
+	if (conf->private_key_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSLKEY, conf->private_key_file);
+	if (conf->private_key_password) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_KEYPASSWD, conf->private_key_password);
+	if (conf->ca_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_CAINFO, conf->ca_file);
+	if (conf->ca_issuer_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_ISSUERCERT, conf->ca_issuer_file);
+	if (conf->ca_path) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_CAPATH, conf->ca_path);
+	if (conf->random_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_RANDOM_FILE, conf->random_file);
+	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_USE_SSL, conf->require_cert);
 
-	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->check_cert == true) ? 1L : 0L);
-	FR_CURL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->check_cert_cn == true) ? 2L : 0L);
-	if (conf->extract_cert_attrs) FR_CURL_SET_OPTION(CURLOPT_CERTINFO, 1L);
+	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->check_cert == true) ? 1L : 0L);
+	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->check_cert_cn == true) ? 2L : 0L);
+	if (conf->extract_cert_attrs) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_CERTINFO, 1L);
 
 	return 0;
 error:

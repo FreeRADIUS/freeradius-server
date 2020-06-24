@@ -42,10 +42,33 @@ do {\
 	if ((_ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
 		char const *_option;\
 		_option = STRINGIFY(_x);\
+		ERROR("Failed setting curl option %s: %s (%i)", _option, curl_easy_strerror(_ret), _ret);\
+		goto error;\
+	}\
+} while (0)
+
+#define FR_CURL_ROPTIONAL_SET_OPTION(_x, _y)\
+do {\
+	int _ret;\
+	if ((_ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
+		char const *_option;\
+		_option = STRINGIFY(_x);\
 		ROPTIONAL(RERROR, ERROR, "Failed setting curl option %s: %s (%i)", _option, curl_easy_strerror(_ret), _ret);\
 		goto error;\
 	}\
 } while (0)
+
+#define FR_CURL_REQUEST_SET_OPTION(_x, _y)\
+do {\
+	int _ret;\
+	if ((_ret = curl_easy_setopt(randle->candle, _x, _y)) != CURLE_OK) {\
+		char const *_option;\
+		_option = STRINGIFY(_x);\
+		RERROR("Failed setting curl option %s: %s (%i)", _option, curl_easy_strerror(_ret), _ret);\
+		goto error;\
+	}\
+} while (0)
+
 
 /** Uctx data for timer and I/O functions
  *

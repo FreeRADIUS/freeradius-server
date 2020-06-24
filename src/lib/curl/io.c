@@ -466,9 +466,9 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_c
 	 *	IO request's progress.
 	 */
 	if (RDEBUG_ENABLED3) {
-		FR_CURL_SET_OPTION(CURLOPT_DEBUGFUNCTION, curl_debug_log);
-		FR_CURL_SET_OPTION(CURLOPT_DEBUGDATA, request);
-		FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEBUGFUNCTION, curl_debug_log);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEBUGDATA, request);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 	}
 
 	/*
