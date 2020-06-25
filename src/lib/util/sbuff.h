@@ -35,6 +35,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <talloc.h>
 
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 struct fr_sbuff_ptr_s {
@@ -460,15 +461,25 @@ size_t fr_sbuff_skip_whitespace(fr_sbuff_t *sbuff);
 /** @name Copy data out of an sbuff
  * @{
  */
-ssize_t fr_sbuff_strncpy_exact(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
+size_t	fr_sbuff_talloc_bstrncpy_out_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
 
-size_t fr_sbuff_strncpy(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
+size_t	fr_sbuff_talloc_bstrncpy_out(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
 
-size_t fr_sbuff_strncpy_allowed(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t max_len,
-				bool const allowed_chars[static UINT8_MAX + 1]);
+size_t	fr_sbuff_talloc_bstrncpy_out_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+					     bool const allowed_chars[static UINT8_MAX + 1]);
 
-size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
-			      bool const until[static UINT8_MAX + 1]);
+size_t	fr_sbuff_talloc_bstrncpy_out_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+					   bool const until[static UINT8_MAX + 1]);
+
+ssize_t	fr_sbuff_bstrncpy_out_exact(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
+
+size_t	fr_sbuff_bstrncpy_out(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
+
+size_t	fr_sbuff_bstrncpy_out_allowed(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
+				      bool const allowed_chars[static UINT8_MAX + 1]);
+
+size_t	fr_sbuff_bstrncpy_out_until(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
+				    bool const until[static UINT8_MAX + 1]);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
