@@ -131,6 +131,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		fr_pair_add(&request->packet->vps, vp);
 	}
 
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup CHAP authentication",
+		     inst->name, inst->name);
+		return RLM_MODULE_NOOP;
+	}
+
 	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
@@ -248,12 +254,22 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", attr_auth_type->name);
-		return -1;
-	}
+	return 0;
+}
+
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	rlm_chap_t		*inst = instance;
+
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	fr_assert(inst->auth_type);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  CHAP authentication will likely not work",
+		     inst->name);
+	}
 
 	return 0;
 }
@@ -287,6 +303,7 @@ module_t rlm_chap = {
 	.onload		= mod_load,
 	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

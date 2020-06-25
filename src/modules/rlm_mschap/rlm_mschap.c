@@ -1383,6 +1383,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		return RLM_MODULE_NOOP;
 	}
 
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup MS-CHAP authentication",
+		     inst->name, inst->name);
+		return RLM_MODULE_NOOP;
+	}
+
 	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
@@ -2113,6 +2119,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_mschap_t		*inst = instance;
 
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  MS-CHAP authentication will likely not work",
+		     inst->name);
+	}
+
 	/*
 	 *	Set auth method
 	 */
@@ -2183,13 +2195,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->name = name;
-
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", attr_auth_type->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	fr_assert(inst->auth_type);
 
 	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 

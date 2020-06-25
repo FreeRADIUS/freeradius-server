@@ -750,6 +750,12 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 		return RLM_MODULE_NOOP;
 #endif
 
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
+		     inst->name, inst->name);
+		return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	For EAP_START, send Access-Challenge with EAP Identity
 	 *	request.  even when we have to proxy this request
@@ -976,6 +982,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	size_t		i;
 
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  EAP authentication will likely not work",
+		     inst->name);
+	}
+
 	/*
 	 *	Create our own random pool.
 	 */
@@ -992,14 +1004,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	size_t		i, j, loaded, count = 0;
 
 	inst->name = cf_section_name2(cs);
-	if (!inst->name) inst->name = "eap";
-
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", inst->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	fr_assert(inst->name);
+	if (!inst->name) inst->name = cf_section_name1(cs);
 
 	/*
 	 *	Load and bootstrap the submodules now

@@ -335,12 +335,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", inst->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
 	} else if (cf_section_name2(conf)) {
@@ -383,6 +377,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!inst->wb_pool) {
 		cf_log_err(conf, "Unable to initialise winbind connection pool");
 		return -1;
+	}
+
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  Winbind authentication will likely not work",
+		     inst->name);
 	}
 
 	/*
@@ -468,6 +468,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	if (!vp) {
 		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
+		return RLM_MODULE_NOOP;
+	}
+
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
+		     inst->name, inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
