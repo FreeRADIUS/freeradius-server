@@ -462,7 +462,7 @@ static int mod_detach(void *instance)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	VALUE_PAIR		*vp;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
@@ -492,7 +492,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort_const(instance, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	VALUE_PAIR		*username, *password;
 
 	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
