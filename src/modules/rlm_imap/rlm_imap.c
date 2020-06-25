@@ -76,7 +76,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
 {
 	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
 	fr_curl_io_request_t     	*randle = rctx;
-	fr_curl_tls_t			*tls;
+	fr_curl_tls_t const		*tls;
 	long 				curl_out;
 	long				curl_out_valid;
 
