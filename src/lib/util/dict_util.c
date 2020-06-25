@@ -1841,7 +1841,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 		/*
 		 *	Next thing SHOULD be a '.'
 		 */
-		if (fr_sbuff_next_char(&our_name) != '.') {
+		if (fr_sbuff_next(&our_name) != '.') {
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			return 0;
 		}

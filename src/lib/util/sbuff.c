@@ -270,20 +270,21 @@ size_t fr_sbuff_strncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t l
  *	- >0 the number of bytes copied.
  */
 #define PARSE_INT_DEF(_name, _type, _min, _max) \
-size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
+size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[sizeof(STRINGIFY(_min)) + 1]; \
 	char		*end; \
 	size_t		len; \
 	long long	num; \
-	len = fr_sbuff_strncpy(buff, sizeof(buff), &FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_min))); \
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
+	len = fr_sbuff_strncpy(buff, sizeof(buff), &our_in, sizeof(STRINGIFY(_min))); \
 	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 	num = strtoll(buff, &end, 10); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX)))  { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX)) || (no_trailing && fr_sbuff_is_digit(&our_in)))  { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
 		*out = (_type)(_max); \
 	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
@@ -293,7 +294,7 @@ size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_advance(in, end - buff); \
+	fr_sbuff_set(in, &our_in); \
 	return end - buff; \
 }
 
@@ -309,27 +310,28 @@ PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX)
  * @param[in] _max	value.
  */
 #define PARSE_UINT_DEF(_name, _type, _max) \
-size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in) \
+size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[sizeof(STRINGIFY(_max)) + 1]; \
 	char			*end; \
 	size_t			len; \
 	unsigned long long	num; \
-	len = fr_sbuff_strncpy(buff, sizeof(buff), &FR_SBUFF_NO_ADVANCE(in), sizeof(STRINGIFY(_max))); \
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
+	len = fr_sbuff_strncpy(buff, sizeof(buff), &our_in, sizeof(STRINGIFY(_max))); \
 	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 	num = strtoull(buff, &end, 10); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX))) { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX)) || (no_trailing && fr_sbuff_is_digit(&our_in))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
 		*out = (_type)(_max); \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_advance(in, end - buff); \
+	fr_sbuff_set(in, &our_in); \
 	return end - buff; \
 }
 
