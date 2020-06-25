@@ -1,23 +1,22 @@
 TEST	:= test.bin
 
-FILES	:= \
-	atomic_queue_test 	\
-	dhcpclient		\
-	message_set_test	\
-	radclient		\
-	radict 			\
-	radmin			\
-	radsniff 		\
-	radsnmp 		\
-	radwho 			\
-	rbmonkey 		\
-	ring_buffer_test 	\
-	rlm_redis_ippool_tool 	\
-	smbencrypt 		\
-	unit_test_attribute 	\
-	unit_test_map 		\
-	unit_test_module
-
+#FILES	:= \
+#	atomic_queue_test 	\
+#	dhcpclient		\
+#	message_set_test	\
+#	radclient		\
+#	radict 			\
+#	radmin			\
+#	radsniff 		\
+#	radsnmp 		\
+#	radwho 			\
+#	rbmonkey 		\
+#	ring_buffer_test 	\
+#	rlm_redis_ippool_tool 	\
+#	smbencrypt 		\
+#	unit_test_attribute 	\
+#	unit_test_map 		\
+#	unit_test_module
 
 $(eval $(call TEST_BOOTSTRAP))
 
