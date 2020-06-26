@@ -178,7 +178,7 @@ static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
 	return sbuff->end - sbuff->start;
 }
 
-/** How many free bytes remain in the buffer (calculated from ptrer)
+/** How many free bytes remain in the buffer (calculated from marker)
  *
  */
 static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
@@ -186,7 +186,7 @@ static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff
 	return sbuff->end - *(m->ptr);
 }
 
-/** How many bytes we've used in the buffer (calculated from ptrer)
+/** How many bytes we've used in the buffer (calculated from marker)
  *
  */
 static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
@@ -203,6 +203,21 @@ static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_mark
 /** @name Sbuff position manipulation
  * @{
  */
+
+static inline char *fr_sbuff_start(fr_sbuff_t *sbuff)
+{
+	return sbuff->start;
+}
+
+static inline char *fr_sbuff_current(fr_sbuff_t *sbuff)
+{
+	return sbuff->p;
+}
+
+static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
+{
+	return sbuff->end;
+}
 
 /** Update the position of p in a list of sbuffs
  *
@@ -267,10 +282,10 @@ _fr_sbuff_set(_dst, \
 #define fr_sbuff_table_value_by_longest_prefix(_match_len, _out, _table, _sbuff, _def) \
 do { \
 	size_t		_match_len_tmp; \
-	fr_sbuff_t	_sbuff_tmp = FR_SBUFF_COPY(_sbuff); \
-	*(_out) = fr_table_value_by_longest_prefix(&_match_len_tmp, _table, &_sbuff_tmp, \
-						   fr_sbuff_available(&_sbuff_tmp), _def); \
-	(void) fr_sbuff_advance(_match_len); \
+	*(_out) = fr_table_value_by_longest_prefix(&_match_len_tmp, _table, \
+						   fr_sbuff_current(_sbuff), fr_sbuff_remaining(_sbuff), \
+						   _def); \
+	(void) fr_sbuff_advance(_sbuff, _match_len_tmp); /* can't fail */ \
 	if (_match_len) *(_match_len) = _match_len_tmp; \
 } while (0)
 
@@ -361,22 +376,6 @@ static inline bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 	fr_sbuff_advance(sbuff, 1);
 
 	return true;
-}
-
-/** Return true if the current char matches, and advance
- *
- */
-static inline bool fr_sbuff_next_char(fr_sbuff_t *sbuff, char c)
-{
-	bool ret;
-
-	if (sbuff->p >= sbuff->end) return false;
-
-	ret = *sbuff->p == c;
-
-	fr_sbuff_advance(sbuff, 1);
-
-	return ret;
 }
 
 static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
