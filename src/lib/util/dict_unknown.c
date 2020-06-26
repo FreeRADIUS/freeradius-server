@@ -361,8 +361,8 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
-				       fr_dict_attr_t const *parent, unsigned long num)
+int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
+				   fr_dict_attr_t const *parent, unsigned long num)
 {
 	fr_dict_attr_t		*da;
 	fr_dict_attr_flags_t	flags = {
@@ -490,7 +490,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				case FR_TYPE_TLV:
 				case FR_TYPE_EXTENDED:
 				is_root:
-					if (dict_unknown_attr_afrom_num(n, &our_da, our_parent, num) < 0) {
+					if (fr_dict_unknown_attr_afrom_num(n, &our_da, our_parent, num) < 0) {
 						goto error;
 					}
 					da = our_da;
