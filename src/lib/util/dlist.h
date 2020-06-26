@@ -392,6 +392,30 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	return (void *) (((uint8_t *) prev) - list_head->offset);
 }
 
+/** Remove the head item in a list
+ *
+ * @param[in] list_head to remove head item from.
+ * @return
+ *	- The item removed.
+ *	- NULL if not items in dlist.
+ */
+static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_head(fr_dlist_head_t *list_head)
+{
+	return fr_dlist_remove(list_head, fr_dlist_head(list_head));
+}
+
+/** Remove the tail item in a list
+ *
+ * @param[in] list_head to remove tail item from.
+ * @return
+ *	- The item removed.
+ *	- NULL if not items in dlist.
+ */
+static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_tail(fr_dlist_head_t *list_head)
+{
+	return fr_dlist_remove(list_head, fr_dlist_tail(list_head));
+}
+
 /** Check all items in the list are valid
  *
  * Checks item talloc headers and types to ensure they're consistent
@@ -449,6 +473,24 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 
 	fr_dlist_entry_init(src);
 	list_src->num_elements = 0;
+}
+
+/** Free the first item in the list
+ *
+ * @param[in] list_head		to free head item in.
+ */
+static inline void fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
+{
+	talloc_free(fr_dlist_pop_head(list_head));
+}
+
+/** Free the last item in the list
+ *
+ * @param[in] list_head		to free tail item in.
+ */
+static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
+{
+	talloc_free(fr_dlist_pop_head(list_head));
 }
 
 /** Free all items in a doubly linked list (with talloc)
