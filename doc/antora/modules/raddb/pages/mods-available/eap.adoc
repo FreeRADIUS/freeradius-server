@@ -178,7 +178,8 @@ May be one of `PEM`, `DER` or `ASN1` (ASN1 is an alias for `DER`).
 
 
 
-certificate_file::
+certificate_file:: File which contains the certificate presented
+by the EAP module to the client.
 
 If PEM is being used the `certificate_file` specified below
 should contain the server certificates, and any intermediary CAs
@@ -204,7 +205,7 @@ root CAs, instead of putting them in
 
 
 
-ca_file::
+ca_file::  File which contains the root CA.
 
 Load an additional intermediary CA or Root CA for consideration in
 chain compilation.  Multiple "ca_file" config items may be used
@@ -223,7 +224,7 @@ will have no effect.
 
 
 
-private_key_file::
+private_key_file:: File which contains the private key.
 
 If the Private key & Certificate are located in the same file,
 then `private_key_file` & `certificate_file` must contain the
@@ -231,7 +232,7 @@ same file name.
 
 
 
-verify_mode::
+verify_mode:: How we verify the certificate chain.
 
 During startup we attempt to precompile the certificate chain
 from server certificate to Root CA.  This configuration item specifies
@@ -261,9 +262,9 @@ will be used.
 
 
 
-include_root_ca::
+include_root_ca:: Whether or not the root CA is included in the
+certificate chain.
 
-Omit the Root CA from the compiled certificate chain.
 The Root CA should already be known/trusted by the client so it is
 usually not needed unless the client is particularly poorly behaved.
 
