@@ -17,7 +17,7 @@
 
 /** A generic data buffer structure for encoding and decoding
  *
- * Because doing manual length checks is error prone and a waste of everyone's time.
+ * Because doing manual length checks is error prone and a waste of everyones time.
  *
  * @file src/lib/util/dbuff.h
  *

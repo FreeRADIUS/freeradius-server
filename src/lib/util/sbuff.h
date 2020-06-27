@@ -17,7 +17,7 @@
 
 /** A generic string buffer structure for string printing and parsing
  *
- * Because doing manual length checks is error prone and a waste of everyone's time.
+ * Because doing manual length checks is error prone and a waste of everyones time.
  *
  * @file src/lib/util/sbuff.h
  *
