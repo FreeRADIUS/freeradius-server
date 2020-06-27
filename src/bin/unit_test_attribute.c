@@ -1183,6 +1183,13 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 		RETURN_OK_WITH_ERROR();
 	}
 
+	if (fr_debug_lvl > DEBUG_ENABLED3) {
+		if (cond->type == COND_TYPE_MAP) {
+			if (cond->data.map->lhs) tmpl_attr_debug(cond->data.map->lhs);
+			if (cond->data.map->rhs) tmpl_attr_debug(cond->data.map->rhs);
+		}
+	}
+
 	in += dec_len;
 	if (*in != '\0') {
 		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);

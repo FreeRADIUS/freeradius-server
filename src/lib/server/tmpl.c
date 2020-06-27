@@ -641,16 +641,29 @@ void tmpl_attr_debug(vp_tmpl_t const *vpt)
 	unsigned int		i = 0;
 	char			buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
 
-	INFO("%s (%p)", vpt->name, vpt);
+	switch (vpt->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_ATTR_UNPARSED:
+	case TMPL_TYPE_LIST:
+		break;
+
+	default:
+		INFO("%s can't print tmpls of type %s", __FUNCTION__,
+		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+		return;
+	}
+
+	INFO("vp_tmpl_t %s %s (%p)", fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"), vpt->name, vpt);
 	INFO("request references:");
 
 	/*
 	 *	Print all the request references
 	 */
-	while ((ar = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
+	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
 		INFO("\t[%u] %s", i, fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
 		i++;
 	}
+	i = 0;
 
 	INFO("attribute references:");
 	/*
