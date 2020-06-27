@@ -147,9 +147,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
 
-#ifdef CURLOPT_DEFAULT_PROTOCOL
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
-#endif
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
