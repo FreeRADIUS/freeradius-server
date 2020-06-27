@@ -27,6 +27,8 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/syserror.h>
 
+#define CURL_NO_OLDIES 1
+
 #include <curl/curl.h>
 #include <talloc.h>
 

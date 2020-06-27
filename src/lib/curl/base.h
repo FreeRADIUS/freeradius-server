@@ -29,6 +29,8 @@ RCSIDH(curl_h, "$Id$")
 extern "C" {
 #endif
 
+#define CURL_NO_OLDIES 1
+
 #include <curl/curl.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/event.h>

@@ -18,7 +18,7 @@ if test x$with_[]modname != xno; then
 	dnl # Check for curl
 	dnl ############################################################
 
-	LIBCURL_CHECK_CONFIG([], [7.19.1])
+	LIBCURL_CHECK_CONFIG([], [7.45.0])
 
 	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
 		fail="$fail libcurl >= 7.19.2"

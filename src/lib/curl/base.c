@@ -26,8 +26,18 @@
 #include <freeradius-devel/tls/base.h>
 #endif
 
+#define CURL_NO_OLDIES 1
+
 #include <curl/curl.h>
 #include <talloc.h>
+
+/*
+ *	We have to use this as curl uses lots of enums
+ */
+#ifndef CURL_AT_LEAST_VERSION
+#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | z)
+#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
 
 static uint32_t instance_count = 0;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/

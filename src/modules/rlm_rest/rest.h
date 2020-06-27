@@ -32,14 +32,6 @@ RCSIDH(rest_h, "$Id$")
 
 #define CURL_NO_OLDIES 1
 
-/*
- *	We have to use this as curl uses lots of enums
- */
-#ifndef CURL_AT_LEAST_VERSION
-#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | z)
-#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
-#endif
-
 #include <curl/curl.h>
 
 /*
