@@ -470,9 +470,19 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	if ((type == TMPL_TYPE_REGEX_UNPARSED) || (type == TMPL_TYPE_REGEX)) return NULL;
 #endif
 
-	vpt = talloc_zero(ctx, vp_tmpl_t);
-	if (!vpt) return NULL;
+	/*
+	 *	Allocate enough memory to hold at least
+	 *      one attribute reference and one request
+	 *	reference.
+	 */
+	MEM(vpt = talloc_zero_pooled_object(ctx, vp_tmpl_t, 2, sizeof(vp_tmpl_request_t) + sizeof(vp_tmpl_attr_t)));
 	vpt->type = type;
+
+	/*
+	 *	Can't use compound literal for init
+	 *	because we can't set the type field
+	 *	in the embedded value box.
+	 */
 	if (name) {
 		vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : (size_t)len);
 		vpt->len = talloc_array_length(vpt->name) - 1;
