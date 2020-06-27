@@ -637,10 +637,25 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 void tmpl_attr_debug(vp_tmpl_t const *vpt)
 {
 	vp_tmpl_attr_t		*ar = NULL;
+	vp_tmpl_request_t	*rr = NULL;
 	unsigned int		i = 0;
 	char			buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
 
 	INFO("%s (%p)", vpt->name, vpt);
+	INFO("request references:");
+
+	/*
+	 *	Print all the request references
+	 */
+	while ((ar = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
+		INFO("\t[%u] %s", i, fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
+		i++;
+	}
+
+	INFO("attribute references:");
+	/*
+	 *	Print all the attribute references
+	 */
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
 		snprintf(buffer, sizeof(buffer), "%i", ar->num);
 
