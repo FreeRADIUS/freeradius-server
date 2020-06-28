@@ -45,11 +45,9 @@ static fr_table_num_sorted_t const http_negotiation_table[] = {
 #if CURL_AT_LEAST_VERSION(7,49,0)
 	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
 #endif
-#if CURL_AT_LEAST_VERSION(7,33,0)
 	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
 								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
 								///< server. (Added in 7.33.0)
-#endif
 #if CURL_AT_LEAST_VERSION(7,47,0)
 	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
 								///< libcurl will fall back to HTTP 1.1 if HTTP 2

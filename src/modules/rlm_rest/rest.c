@@ -1774,10 +1774,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
 	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
 	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
-
-#ifdef CURLOPT_PROTOCOLS
 	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
-#endif
 
 	/*
 	 *	FreeRADIUS custom headers
@@ -1905,12 +1902,10 @@ do {\
 			SET_AUTH_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 			SET_AUTH_OPTION(CURLOPT_USERNAME, username);
 			SET_AUTH_OPTION(CURLOPT_PASSWORD, password);
-#if CURL_AT_LEAST_VERSION(7,21,4)
 		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
-#endif
 		}
 	}
 
