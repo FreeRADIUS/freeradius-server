@@ -37,6 +37,9 @@ extern "C" {
 /*
  *	Allow public and private versions of the same structures
  */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
 #ifndef _TRUNK_PRIVATE
 typedef struct fr_trunk_request_pub_s fr_trunk_request_t;
 typedef struct fr_trunk_connection_pub_s fr_trunk_connection_t;

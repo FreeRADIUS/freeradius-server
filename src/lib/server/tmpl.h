@@ -180,6 +180,9 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 /*
  *	Allow public and private versions of the same structures
  */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
 #ifndef _TMPL_PRIVATE
 #  define _CONST const
 #else

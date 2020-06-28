@@ -33,6 +33,9 @@ extern "C" {
 
 #include <talloc.h>
 
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
 #ifndef _CONNECTION_PRIVATE
 typedef struct fr_connection_pub_s fr_connection_t; /* We use the private version of the fr_connection_t */
 #  define _CONST const
