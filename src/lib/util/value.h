@@ -55,6 +55,9 @@ extern "C" {
 /*
  *	Allow public and private versions of the same structures
  */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
 #ifndef _VALUE_PRIVATE
 #  define _CONST const
 #else
