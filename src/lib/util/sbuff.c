@@ -28,10 +28,19 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
+
+fr_table_num_ordered_t const sbuff_parse_error_table[] = {
+	{ "ok",			FR_SBUFF_PARSE_OK				},
+	{ "token not found",	FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
+	{ "integer overflow",	FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW		},
+	{ "integer underflow",	FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW		},
+};
+size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
 /** Wind position to first instance of specified multibyte utf8 char
  *
@@ -90,7 +99,7 @@ size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
 
 	if (len < 0) len = strlen(needle);
 
-	found = memmem(in->p, in->end - in->p, needle, len );
+	found = memmem(in->p, in->end - in->p, needle, len);
 	if (!found) return 0;
 
 	return (size_t)fr_sbuff_advance(in, found - p);
@@ -401,77 +410,92 @@ size_t fr_sbuff_bstrncpy_out_until(char *out, size_t outlen, fr_sbuff_t *in, siz
  * @param[in] _type	Output type.
  * @param[in] _min	value.
  * @param[in] _max	value.
+ * @param[in] _max_char	Maximum digits that can be used to represent an integer.
+ *			Can't use stringify because of width modifiers like 'u'
+ *			used in <stdint.h>.
  * @return
  *	- 0 no bytes copied.  Examine err.
  *	- >0 the number of bytes copied.
  */
-#define PARSE_INT_DEF(_name, _type, _min, _max) \
+#define PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
 size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char		buff[sizeof(STRINGIFY(_min)) + 1]; \
+	char		buff[_max_char + 1]; \
 	char		*end; \
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, sizeof(STRINGIFY(_min))); \
-	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
+	if ((len == 0) && err) { \
+		*err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		return 0; \
+	} \
 	num = strtoll(buff, &end, 10); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX)) || (no_trailing && fr_sbuff_is_digit(&our_in)))  { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX)) || (no_trailing && isdigit(*(in->p + (end - buff)))))  { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
 		*out = (_type)(_max); \
+		return 0; \
 	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW; \
 		*out = (_type)(_min); \
+		return 0; \
 	} else { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} \
 	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 	return end - buff; \
 }
 
-PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX)
-PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX)
-PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX)
-PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX)
+PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 2)
+PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6)
+PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11)
+PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
 
 /** Used to define a number parsing functions for singed integers
  *
  * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
  * @param[in] _max	value.
+ * @param[in] _max_char	Maximum digits that can be used to represent an integer.
+ *			Can't use stringify because of width modifiers like 'u'
+ *			used in <stdint.h>.
  */
-#define PARSE_UINT_DEF(_name, _type, _max) \
+#define PARSE_UINT_DEF(_name, _type, _max, _max_char) \
 size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char			buff[sizeof(STRINGIFY(_max)) + 1]; \
+	char			buff[_max_char + 1]; \
 	char			*end; \
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, sizeof(STRINGIFY(_max))); \
-	if ((len == 0) && err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
+	if ((len == 0) && err) { \
+		*err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		return 0; \
+	} \
 	num = strtoull(buff, &end, 10); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX)) || (no_trailing && fr_sbuff_is_digit(&our_in))) { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX)) || (no_trailing && isdigit(*(in->p + (end - buff))))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
 		*out = (_type)(_max); \
+		return 0; \
 	} else { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} \
 	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 	return end - buff; \
 }
 
-PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX)
-PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX)
-PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX)
-PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX)
+PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 1)
+PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
+PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
+PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)

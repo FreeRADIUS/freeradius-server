@@ -34,8 +34,11 @@ extern "C" {
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/types.h>
 #include <talloc.h>
+
+#include <freeradius-devel/util/table.h>
 
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 struct fr_sbuff_ptr_s {
@@ -77,6 +80,9 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW	= -2,		//!< Integer type would overflow.
 	FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW	= -3		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
+
+extern fr_table_num_ordered_t const sbuff_parse_error_table[];
+extern size_t sbuff_parse_error_table_len;
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -374,6 +380,28 @@ static inline bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 	if (*sbuff->p == c) return false;
 
 	fr_sbuff_advance(sbuff, 1);
+
+	return true;
+}
+
+/** Return true and advance past the end of the needle if needle occurs next in the sbuff
+ *
+ * @param[in] sbuff	to search in.
+ * @param[in] needle	to search for.
+ * @param[in] len	of needle. If SIZE_MAX strlen is used
+ *			to determine length of the needle.
+ */
+static inline bool fr_sbuff_next_if_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+{
+	char const *found;
+
+	if (len == SIZE_MAX) len = strlen(needle);
+	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	found = memmem(sbuff->p, len, needle, len);	/* sbuff len and needle len ensures match must be next */
+	if (!found) return false;
+
+	fr_sbuff_advance(sbuff, len);
 
 	return true;
 }
