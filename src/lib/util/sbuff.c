@@ -430,7 +430,7 @@ size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_set(in, &our_in); \
+	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 	return end - buff; \
 }
 
@@ -467,7 +467,7 @@ size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_set(in, &our_in); \
+	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 	return end - buff; \
 }
 
