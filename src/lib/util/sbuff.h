@@ -378,6 +378,12 @@ static inline bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 	return true;
 }
 
+static inline bool fr_sbuff_is_allowed(fr_sbuff_t *sbuff, bool const allowed_chars[static UINT8_MAX + 1])
+{
+	if (sbuff->p >= sbuff->end) return false;
+	return allowed_chars[(uint8_t)*sbuff->p];
+}
+
 static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
 {
 	if (sbuff->p >= sbuff->end) return false;
