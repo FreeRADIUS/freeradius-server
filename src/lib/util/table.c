@@ -255,7 +255,7 @@ TABLE_TYPE_STR_LEN_FUNC(table_sorted_value_by_substr, fr_table_ptr_sorted_t cons
  *      - NULL if no matching entries.
  */
 static void const *table_ordered_value_by_substr(void const *table, size_t table_len, size_t element_size,
-						       char const *name, ssize_t name_len)
+						 char const *name, ssize_t name_len)
 {
 	size_t		i;
 
@@ -364,6 +364,8 @@ static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
 			start = mid + 1;
 		}
 	}
+
+	if (!found && match_len) *match_len = 0;
 
 	return found;
 }
