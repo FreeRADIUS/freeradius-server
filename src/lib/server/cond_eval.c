@@ -42,6 +42,33 @@ RCSID("$Id$")
 #  define EVAL_DEBUG(...)
 #endif
 
+/** Map keywords to #pair_list_t values
+ */
+static fr_table_num_sorted_t const cond_type_table[] = {
+	{ "child",	COND_TYPE_CHILD			},
+	{ "exists",	COND_TYPE_EXISTS		},
+	{ "false",	COND_TYPE_FALSE			},
+	{ "invalid",	COND_TYPE_INVALID		},
+	{ "map",	COND_TYPE_MAP			},
+	{ "true",	COND_TYPE_TRUE			},
+};
+static size_t cond_type_table_len = NUM_ELEMENTS(cond_type_table);
+
+static fr_table_num_sorted_t const cond_op_table[] = {
+	{ "none",	COND_NONE			},
+	{ "&&",		COND_AND			},
+	{ "||",		COND_OR				},
+};
+static size_t cond_op_table_len = NUM_ELEMENTS(cond_op_table);
+
+static fr_table_num_sorted_t const cond_pass2_table[] = {
+	{ "none",	PASS2_FIXUP_NONE		},
+	{ "attr",	PASS2_FIXUP_ATTR		},
+	{ "type",	PASS2_FIXUP_TYPE		},
+	{ "paircompre",	PASS2_PAIRCOMPARE		},
+};
+static size_t cond_pass2_table_len = NUM_ELEMENTS(cond_pass2_table);
+
 static bool all_digits(char const *string)
 {
 	char const *p = string;
@@ -55,6 +82,41 @@ static bool all_digits(char const *string)
 	while (isdigit((int) *p)) p++;
 
 	return (*p == '\0');
+}
+
+/** Debug function to dump a cond structure
+ *
+ */
+void cond_debug(fr_cond_t const *cond)
+{
+	fr_cond_t const *next;
+
+	for (next = cond; next; next = next->next) {
+		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, cond->type, "<INVALID>"), cond);
+		INFO("\tnegate : %s", cond->negate ? "true" : "false");
+		INFO("\tcast   : %s", cond->cast ? fr_table_str_by_value(fr_value_box_type_table,
+									 cond->cast->type, "<INVALID>") : "nonde");
+		INFO("\top     : %s", fr_table_str_by_value(cond_op_table, cond->next_op, "<INVALID>"));
+		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, cond->pass2_fixup, "<INVALID>"));
+
+		switch (cond->type) {
+		case COND_TYPE_MAP:
+			tmpl_attr_debug(cond->data.map->lhs);
+			tmpl_attr_debug(cond->data.map->rhs);
+			break;
+
+		case COND_TYPE_EXISTS:
+			tmpl_attr_debug(cond->data.vpt);
+			break;
+
+		case COND_TYPE_CHILD:
+			cond_debug(cond->next);
+			break;
+
+		default:
+			break;
+		}
+	}
 }
 
 /** Evaluate a template
