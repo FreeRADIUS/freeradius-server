@@ -21,7 +21,7 @@ if test x$with_[]modname != xno; then
 	LIBCURL_CHECK_CONFIG([], [7.45.0])
 
 	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
-		fail="$fail libcurl >= 7.19.2"
+		fail="$fail libcurl >= 7.45.0"
 	elif test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else
