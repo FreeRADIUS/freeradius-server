@@ -409,6 +409,12 @@ static void const *table_ordered_value_by_longest_prefix(size_t *match_len,
 		for (j = 0; (j < (size_t)name_len) && (name[j] == (ELEM_NAME(offset))[j]); j++);
 
 		/*
+		 *	If we didn't get to the end of the
+		 *	table string, then continue.
+		 */
+		if ((ELEM_NAME(offset))[j] != '\0') continue;
+
+		/*
 		 *	Exact match
 		 */
 		if (j == (size_t)name_len) {
