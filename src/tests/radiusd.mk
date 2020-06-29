@@ -57,9 +57,10 @@ $(TEST).radiusd_kill: | ${2}
 		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
 		    exit 0; \
 		fi; \
-		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+		if ! kill -9 `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 			exit 1; \
 		fi; \
+		rm -f ${2}/radiusd.pid; \
 		exit 0; \
 	fi
 
@@ -82,6 +83,7 @@ $(TEST).radiusd_stop: | ${2}
 		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 			exit 1; \
 		fi; \
+		rm -f ${2}/radiusd.pid; \
 		exit 0; \
 	fi
 
