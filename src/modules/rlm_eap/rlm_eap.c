@@ -402,7 +402,6 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED module_ctx_t
 	 */
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_DISALLOW:
-		fr_assert(eap_session->this_round->request->code == FR_EAP_CODE_FAILURE);
 		eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 		break;
 
