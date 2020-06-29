@@ -720,6 +720,15 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	if (!fr_cond_assert(fr_dlist_num_elements(&sc->workers) > 0)) return -1;
 
 	/*
+	 *	Signal each network thread to exit.
+	 */
+	for (sn = fr_dlist_head(&sc->networks);
+	     sn != NULL;
+	     sn = fr_dlist_next(&sc->networks, sn)) {
+		fr_network_exit(sn->nr);
+	}
+
+	/*
 	 *	If the network threads are running, tell them to exit,
 	 *	and wait for them to do so.  Once they have exited, we
 	 *	know that this thread can use the network channels to
