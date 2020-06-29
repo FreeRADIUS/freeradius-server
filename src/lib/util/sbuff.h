@@ -406,6 +406,35 @@ static inline bool fr_sbuff_next_if_str(fr_sbuff_t *sbuff, char const *needle, s
 	return true;
 }
 
+/** Return true and advance past the end of the needle if needle occurs next in the sbuff
+ *
+ * This function is similar to fr_sbuff_next_if_str but is case insensitive.
+ *
+ * @param[in] sbuff	to search in.
+ * @param[in] needle	to search for.
+ * @param[in] len	of needle. If SIZE_MAX strlen is used
+ *			to determine length of the needle.
+ */
+static inline bool fr_sbuff_next_if_strncase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+{
+	char const *p, *n_p;
+	char const *end;
+
+	if (len == SIZE_MAX) len = strlen(needle);
+	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	p = sbuff->p;
+	end = p + len;
+
+	for (p = sbuff->p, n_p = needle; p < end; p++, n_p++) {
+		if (tolower(*p) != tolower(*n_p)) return false;
+	}
+
+	fr_sbuff_advance(sbuff, len);
+
+	return true;
+}
+
 static inline bool fr_sbuff_is_allowed(fr_sbuff_t *sbuff, bool const allowed_chars[static UINT8_MAX + 1])
 {
 	if (sbuff->p >= sbuff->end) return false;
