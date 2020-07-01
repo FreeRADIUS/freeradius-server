@@ -3209,8 +3209,8 @@ _ACEOF
 	      fi
 
 	      # RTSP, IMAP, POP3 and SMTP were added in
-	      # 7.20.0 (0x071400 == 463872)
-	      if test $_libcurl_version -ge 463872; then
+	      # 7.24.0 (0x071800 == 464896)
+	      if test $_libcurl_version -ge 464896; then
 		 _libcurl_protocols="$_libcurl_protocols RTSP IMAP POP3 SMTP"
 	      fi
 	   fi
@@ -3295,6 +3295,10 @@ mod_cflags="$LIBCURL_CPPFLAGS"
 
 
 
+
+
+unset ac_cv_env_LIBS_set
+unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -4570,5 +4574,6 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
 

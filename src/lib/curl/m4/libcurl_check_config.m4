@@ -213,7 +213,7 @@ if (x) ;
 
 	      # RTSP, IMAP, POP3 and SMTP were added in
 	      # 7.24.0 (0x071800 == 464896)
-	      if test $_libcurl_version -ge 464896 then
+	      if test $_libcurl_version -ge 464896; then
 		 _libcurl_protocols="$_libcurl_protocols RTSP IMAP POP3 SMTP"
 	      fi
 	   fi
