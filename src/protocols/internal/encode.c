@@ -87,7 +87,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	/*
 	 *	Only leaf attributes can be tainted
 	 */
-	case FR_TYPE_VALUES:
+	case FR_TYPE_VALUE:
 		if (vp->vp_tainted) enc_field[0] |= FR_INTERNAL_FLAG_TAINTED;
 		break;
 
@@ -129,7 +129,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	value_field = dbuff->p;
 
 	switch (da->type) {
-	case FR_TYPE_VALUES:
+	case FR_TYPE_VALUE:
 	{
 		size_t need = 0;
 

@@ -965,7 +965,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_STRUCT:
-	case FR_TYPE_VALUES:
+	case FR_TYPE_VALUE:
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,

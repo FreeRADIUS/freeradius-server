@@ -178,7 +178,7 @@ typedef enum {
 /** Types which do represent concrete values
  *
  */
-#define FR_TYPE_VALUES \
+#define FR_TYPE_VALUE \
 	FR_TYPE_NUMERIC: \
 	case FR_TYPE_STRING: \
 	case FR_TYPE_OCTETS: \
