@@ -162,14 +162,15 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	vp->da = n;
 
 	/*
-	 *	No value.  Nothing more to do.
+	 *	No value, but ensure that we still set up vp->data properly.
 	 */
-	if (!value) return vp;
+	if (!value) {
+		value = "";
 
-	/*
-	 *	Unknown attributes MUST be of type 'octets'
-	 */
-	if (strncasecmp(value, "0x", 2) != 0) {
+	} else if (strncasecmp(value, "0x", 2) != 0) {
+		/*
+		 *	Unknown attributes MUST be of type 'octets'
+		 */
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
 		talloc_free(vp);
