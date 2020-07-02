@@ -219,6 +219,36 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+static void test_dbuff_no_advance_start(void)
+{
+	uint8_t		buff[sizeof(uint64_t)];
+	fr_dbuff_t	dbuff;
+	fr_dbuff_t	dbuff_no_advance;
+
+	TEST_CASE("Confirm that FR_DBUFF_NO_ADVANCE(dbuff) doesn't include already-written dbuff bytes");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_in(&dbuff, (int32_t) 1024);
+	dbuff_no_advance = FR_DBUFF_NO_ADVANCE(&dbuff);
+	TEST_CHECK(dbuff_no_advance.start == dbuff.p && dbuff_no_advance.p == dbuff.p);
+	fr_dbuff_in(&dbuff, (int32_t) 32768);
+	dbuff_no_advance = FR_DBUFF_NO_ADVANCE(&dbuff);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff_no_advance) == 0);
+
+	TEST_CASE("Check FR_DBUFF_RESERVE_NO_ADVANCE() when reserved area is unwritten");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_in(&dbuff, (int32_t) 12345);
+	dbuff_no_advance = FR_DBUFF_RESERVE_NO_ADVANCE(&dbuff, 3);
+	TEST_CHECK(dbuff_no_advance.start == dbuff.p && dbuff_no_advance.p == dbuff.p);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff_no_advance) == 1);
+
+	TEST_CASE("Check FR_DBUFF_RESERVE_NO_ADVANCE() when reserving already-written bytes");
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_in(&dbuff, (int32_t) 12345);
+	dbuff_no_advance = FR_DBUFF_RESERVE_NO_ADVANCE(&dbuff, 6);
+	TEST_CHECK(dbuff_no_advance.start == dbuff.start + 2 && dbuff_no_advance.end == dbuff_no_advance.start);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff_no_advance) == 0);
+}
+
 
 TEST_LIST = {
 	/*
@@ -228,6 +258,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_no_advance_start",		test_dbuff_no_advance_start },
 
 	{ NULL }
 };
