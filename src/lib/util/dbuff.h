@@ -69,7 +69,7 @@ struct fr_dbuff_s {
  */
 #define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t) \
 { \
-	.start	= (_dbuff)->start, \
+	.start	= (_dbuff)->p, \
 	.end	= (_dbuff)->end, \
 	.p	= (_dbuff)->p, \
 	.is_const = (_dbuff)->is_const, \
@@ -79,13 +79,11 @@ struct fr_dbuff_s {
 
 #define _FR_DBUFF_RESERVE(_dbuff, _reserve, _adv_parent) \
 (fr_dbuff_t){ \
-	.start	= (_dbuff)->start, \
-	.end	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->start) ? \
+	.start	= (_dbuff)->p, \
+	.end	= ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
 			(_dbuff)->end - (_reserve) : \
-			(_dbuff)->start, \
-	.p	= ((size_t)(_dbuff) > (_reserve)) && ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
-			(_dbuff)->p : \
-			(_dbuff)->end - (_reserve), \
+			(_dbuff)->p, \
+	.p	= (_dbuff)->p, \
 	.is_const = (_dbuff)->is_const, \
 	.adv_parent = _adv_parent, \
 	.parent = (_dbuff) \
