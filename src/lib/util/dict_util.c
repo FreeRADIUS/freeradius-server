@@ -1816,8 +1816,6 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 	*out = NULL;
 
-	fr_sbuff_trim_start(&our_name);	/* So we can figure out the amount we advanced */
-
 	INTERNAL_IF_NULL(dict_def, -1);
 
 	/*

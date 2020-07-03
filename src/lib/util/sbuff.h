@@ -104,7 +104,7 @@ do { \
  */
 #define FR_SBUFF_NO_ADVANCE(_sbuff) \
 (fr_sbuff_t){ \
-	.start	= (_sbuff)->start, \
+	.start	= (_sbuff)->p, \
 	.end	= (_sbuff)->end, \
 	.p	= (_sbuff)->p, \
 	.is_const = (_sbuff)->is_const, \
@@ -119,7 +119,7 @@ do { \
  */
 #define FR_SBUFF_COPY(_sbuff) \
 (fr_sbuff_t){ \
-	.start	= (_sbuff)->start, \
+	.start	= (_sbuff)->p, \
 	.end	= (_sbuff)->end, \
 	.p	= (_sbuff)->p, \
 	.is_const = (_sbuff)->is_const, \
