@@ -29,8 +29,6 @@
 -- allocate_commit = ""
 --
 
-CREATE INDEX radippool_poolname_username_callingstationid ON radippool(pool_name,username,callingstationid);
-
 CREATE OR REPLACE FUNCTION fr_allocate_previous_or_new_framedipaddress (
 	v_pool_name VARCHAR(64),
 	v_username VARCHAR(64),
@@ -52,8 +50,7 @@ BEGIN
 	FROM radippool
 	WHERE pool_name = v_pool_name
 		AND expiry_time > NOW()
-		AND username = v_username
-		AND callingstationid = v_callingstationid
+		AND pool_key = v_pool_key
 	LIMIT 1
 	FOR UPDATE SKIP LOCKED;
 
@@ -67,8 +64,7 @@ BEGIN
 	-- SELECT framedipaddress INTO r_address
 	-- FROM radippool
 	-- WHERE pool_name = v_pool_name
-	--	 AND username = v_username
-	--	 AND callingstationid = v_callingstationid
+	--	 AND pool_key = v_pool_key
 	-- LIMIT 1
 	-- FOR UPDATE SKIP LOCKED;
 

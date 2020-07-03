@@ -19,4 +19,4 @@ CREATE TABLE radippool (
 
 CREATE INDEX radippool_poolname_expire ON radippool USING btree (pool_name, expiry_time);
 CREATE INDEX radippool_framedipaddress ON radippool USING btree (framedipaddress);
-CREATE INDEX radippool_nasip_poolkey_ipaddress ON radippool USING btree (nasipaddress, pool_key, framedipaddress);
+CREATE INDEX radippool_poolname_poolkey_ipaddress ON radippool USING btree (pool_name, pool_key, framedipaddress);
