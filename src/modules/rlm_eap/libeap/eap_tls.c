@@ -793,15 +793,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	dirty_out.used <=0 and if the SSL
 	 *	handshake is finished.
 	 */
-
-	if (tls_session->is_init_finished) {
-		/*
-		 *	Init is finished.  The rest is
-		 *	application data.
-		 */
-		tls_session->info.content_type = application_data;
-		return FR_TLS_SUCCESS;
-	}
+	if (tls_session->is_init_finished) return FR_TLS_SUCCESS;
 
 	/*
 	 *	Who knows what happened...
