@@ -3092,6 +3092,11 @@ post_ca:
 	ctx_options |= SSL_OP_NO_SSLv3;
 
 	/*
+	 *	If set then dummy Change Cipher Spec (CCS) messages are sent in
+	 *	TLSv1.3. This has the effect of making TLSv1.3 look more like TLSv1.2
+	 *	so that middleboxes that do not understand TLSv1.3 will not drop
+	 *	the connection. This isn't needed for EAP-TLS, so we disable it.
+	 *
 	 *	EAP (hopefully) does not have middlebox deployments
 	 */
 #ifdef SSL_OP_ENABLE_MIDDLEBOX_COMPAT
