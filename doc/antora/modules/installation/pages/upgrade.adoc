@@ -78,14 +78,14 @@ protocol was implemented (mostly) in the RADIUS state machine. In v4,
 each protocol is completely independent, and RADIUS is no longer welded
 into the server core.
 
-Each example virtual server in the `mods-enabled/` directory contains
+Each example virtual server in the `sites-enabled/` directory contains
 a `namespace` parameter.
 
 === Listen Sections
 
 The `listen` sections have changed. There is now a `type` entry,
-which lists the packet types (e.g. `Access-Request`) instead of
-`auth`. To accept multiple kinds of packets, just list `type`
+which lists the packet types (e.g._`Access-Request` instead of
+`auth`). To accept multiple kinds of packets, just list `type`
 multiple times:
 
 ```
@@ -150,7 +150,7 @@ for examples.
 The server also supports dynamic clients. See
 `sites-available/dynamic_clients` for a worked example. There are many
 changes from v3. First, there is no need to have a `client` definition
-that contains a network. Instead, there is a `network` section which
+which contains a network. Instead, there is a `network` section which
 has a number of `allow` and `deny` rules. Second, dynamic clients
 can be defined on a per-connection basis. Finally, the
 `sites-available/dynamic_clients` virtual server has full access to
@@ -158,7 +158,7 @@ the entire RADIUS packet.
 
 The result of these changes is that it is now possible to have multiple
 clients behind a NAT gateway, and to have different shared secrets for
-each client. e.g. by keying off of the `NAS-Identifier` attribute.
+each client. e.g._by keying off of the `NAS-Identifier` attribute.
 
 The dynamic client functionality behaves the same for all protocols
 supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
@@ -360,22 +360,28 @@ The functionality has been replaced with the `fork` keyword.
 
 The `struct` data type is now supported. See `man dictionary`.
 
-There are many more sanity checks and helpful messages for people who
-create new dictionaries.
+Bit fields are now support via a data type such as `bit[3]`.  Not that
+bit fields are _only_ supported inside of a `struct` definition.
+
+The dictionary parser includes many more sanity checks and helpful
+messages for people who create new dictionaries.
+
+Dictionaries are now split up by protocol.  e.g._`share/freeradius/radius/dictionary...`
 
 == Attribute references
 
 In previous versions of the user attributes could be referred to by
 their name only e.g. `if (User-Name == 'foo')`.
 
-To allow for more thorough error checking, the requirement to prefix
-attribute references with `&` is now strictly enforced.
+To allow for more thorough error checking, it is not required to
+prefix attribute references with `&`.  Using bare names will result in
+an error, and a suggestion to use `&`.
 
 Common places which will need to be checked and corrected are the left
-and right hand side of `update {}` sections, and conditions.
+and right hand side of `update {}` sections, along with `if` conditions.
 
 The v3 server has warned about using non prefixed attribute references
-for some time. If users have paid attention to those warnings, few
+for some time. If users have addressed those warnings, few
 modifications will be required.
 
 Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
@@ -510,10 +516,11 @@ call to a cache module instance. Both default to `yes`.
 === rlm_eap
 
 All certificate attributes are available in the `&session-state:`
-list, immediately after they’re parsed from their ASN1 form.
+list, immediately after they are parsed from their ASN1 form.
 
-The certificates are no longer added to the `&request:` list. You are
-advised to update any references during the upgrade to 4.0:
+The certificates are no longer added to the `&request:` list. Instead,
+they are added to the `session-state` list.  You are advised to update
+any references during the upgrade to 4.0:
 
 ```
 s/TLS-Cert-/session-state:TLS-Cert-/
@@ -528,8 +535,8 @@ it.
 The in-memory SSL cache was removed. Changes in OpenSSL and FreeRADIUS
 made it difficult to continue using the OpenSSL implementation of a
 cache. See `raddb/sites-available/tls-cache` for a better replacement.
-The OpenSSL cache can now be placed on disk, in memory, in memcache, or
-in a redis cache. The result is higher performance, and is more
+The OpenSSL cache can now be placed on disk, in memory, in memcache,
+or in a redis cache. The result is both higher performance, and more
 configurable.
 
 The `use_tunneled_reply` and `copy_request_to_tunnel` configuration
@@ -684,8 +691,8 @@ more information.
 
 === rlm_unix
 
-The `unix` module no longer supports `Group` or `Group-Name`.  Please
-use `Unix-Group` instead.
+The `unix` module uses `Unix-Group` instead of `Group` or
+`Group-Name`.  Please rename those references.
 
 == Deleted Modules
 
