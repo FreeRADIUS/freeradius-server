@@ -14,6 +14,9 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
 	  using "show home_server list all".
+	* Support TLS 1.3 in TLS-based EAP methods.
+	* The default configuration now replies with EAP-Key-Name, if it
+	  is available, and was requested.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
