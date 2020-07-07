@@ -232,7 +232,6 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
 
 	PRF(s->session->master_key, s->session->master_key_length,
 	    seed, sizeof(seed), out, buf, sizeof(out));
