@@ -170,6 +170,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 *	have EAP without the TLS types.
 		 */
 		switch (method) {
+		case PW_EAP_FAST:
 		case PW_EAP_TLS:
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
