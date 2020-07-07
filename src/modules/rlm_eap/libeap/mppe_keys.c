@@ -245,7 +245,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name.
  */
-void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint8_t const *context, size_t context_size)
+void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 {
 	VALUE_PAIR *vp;
 	uint8_t *buff, *p;
@@ -256,18 +256,20 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint8_t const *context, s
 	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
 	buff = p = talloc_array(vp, uint8_t, vp->vp_length);
 
-	*p++ = context[0] & 0xff;
+	*p++ = header & 0xff;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	if (SSL_export_keying_material(s, p, 2 * SSL3_RANDOM_SIZE,
-				       FR_TLS_EXPORTER_METHOD_ID, sizeof(FR_TLS_EXPORTER_METHOD_ID)-1,
-				       context, context_size, context != NULL) != 1) {
-		ERROR("Failed generating keying material");
-		return;
+	{
+		uint8_t const context[] = { header };
+
+		if (SSL_export_keying_material(s, p, 2 * SSL3_RANDOM_SIZE,
+					       FR_TLS_EXPORTER_METHOD_ID, sizeof(FR_TLS_EXPORTER_METHOD_ID)-1,
+					       context, 1, 1) != 1) {
+			ERROR("Failed generating keying material");
+			return;
+		}
 	}
 #else
-	(void) context_size;
-
 	SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 	SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);

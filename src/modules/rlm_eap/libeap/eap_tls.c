@@ -142,10 +142,6 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	EAPTLS_PACKET	reply;
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
-	uint8_t const *context = NULL;
-	size_t context_size = 0;
-	uint8_t const context_tls13[] = { handler->type };
-	size_t context_tls13_size = sizeof(context_tls13);
 
 	handler->finished = true;
 	reply.code = FR_TLS_SUCCESS;
@@ -165,11 +161,17 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	 *	Automatically generate MPPE keying material.
 	 */
 	if (tls_session->label) {
+		uint8_t const *context = NULL;
+		size_t context_size = 0;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		uint8_t const context_tls13[] = { handler->type };
+#endif
+
 		switch (tls_session->info.version) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		case TLS1_3_VERSION:
 			context = context_tls13;
-			context_size = context_tls13_size;
+			context_size = sizeof(context_tls13);
 			break;
 #endif
 		case TLS1_2_VERSION:
@@ -191,8 +193,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
-	rad_assert(context_tls13[0] == handler->type);	/* expected by eaptls_gen_eap_key */
-	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl, context_tls13, context_tls13_size);
+	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl, handler->type);
 
 	return 1;
 }
