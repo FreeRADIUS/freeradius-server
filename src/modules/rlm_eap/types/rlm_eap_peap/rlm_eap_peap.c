@@ -200,11 +200,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "client EAP encryption";
-
-	/*
 	 *	As it is a poorly designed protocol, PEAP uses
 	 *	bits in the TLS header to indicate PEAP
 	 *	version numbers.  For now, we only support
@@ -372,6 +367,25 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (peap->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
+
+		/*
+		 *	Set the label based on the TLS version negotiated in the handshake.
+		 */
+		switch (tls_session->info.version) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		case TLS1_3_VERSION:
+			tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
+			break;
+#endif
+		case TLS1_2_VERSION:
+		case TLS1_1_VERSION:
+		case TLS1_VERSION:
+			tls_session->label = "client EAP encryption";
+			break;
+		default:
+			break;
+		}
+
 
 		/*
 		 *	Success: Automatically return MPPE keys.

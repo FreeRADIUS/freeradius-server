@@ -150,38 +150,50 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
+void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, UNUSED size_t context_size)
 {
 	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
 	uint8_t *p;
-	size_t prf_size;
+	size_t len;
 
-	prf_size = strlen(prf_label);
+	len = strlen(label);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	if (SSL_export_keying_material(s, out, sizeof(out), prf_label, prf_size, NULL, 0, 0) != 1) {
+	if (SSL_export_keying_material(s, out, sizeof(out), label, len, context, context_size, context != NULL) != 1) {
 		ERROR("Failed generating keying material");
 		return;
 	}
 #else
 	{
-		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
+		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE) + (context ? 2 + context_size : 0)];
 		uint8_t buf[4 * EAPTLS_MPPE_KEY_LEN];
 
 		p = seed;
 
-		memcpy(p, prf_label, prf_size);
-		p += prf_size;
+		memcpy(p, label, len);
+		p += len;
 
 		memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 		p += SSL3_RANDOM_SIZE;
-		prf_size += SSL3_RANDOM_SIZE;
+		len += SSL3_RANDOM_SIZE;
 
 		memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
-		prf_size += SSL3_RANDOM_SIZE;
+		p += SSL3_RANDOM_SIZE;
+		len += SSL3_RANDOM_SIZE;
+
+		if (context) {
+			/* cloned and reversed FR_PUT_LE16 */
+			p[0] = ((uint16_t) (context_size)) >> 8;
+			p[1] = ((uint16_t) (context_size)) & 0xff;
+			p += 2;
+			len += 2;
+			memcpy(p, context, context_size);
+			p += context_size;
+			len += context_size;
+		}
 
 		PRF(s->session->master_key, s->session->master_key_length,
-		    seed, prf_size, out, buf, sizeof(out));
+		    seed, len, out, buf, sizeof(out));
 	}
 #endif
 
@@ -195,7 +207,7 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 }
 
 
-#define FR_TLS_PRF_CHALLENGE	"ttls challenge"
+#define FR_TLS_PRF_CHALLENGE		"ttls challenge"
 
 /*
  *	Generate the TTLS challenge
@@ -206,9 +218,10 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	SSL_export_keying_material(s, buffer, size, FR_TLS_PRF_CHALLENGE,
-				   sizeof(FR_TLS_PRF_CHALLENGE) - 1, NULL, 0, 0);
-
+	if (SSL_export_keying_material(s, buffer, size, FR_TLS_PRF_CHALLENGE,
+				       sizeof(FR_TLS_PRF_CHALLENGE)-1, NULL, 0, 0) != 1) {
+		ERROR("Failed generating keying material");
+	}
 #else
 	uint8_t out[32], buf[32];
 	uint8_t seed[sizeof(FR_TLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
@@ -226,11 +239,13 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 #endif
 }
 
+#define FR_TLS_EXPORTER_METHOD_ID	"EXPORTER_EAP_TLS_Method-Id"
+
 /*
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name.
  */
-void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
+void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 {
 	VALUE_PAIR *vp;
 	uint8_t *buff, *p;
@@ -243,9 +258,22 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
 
 	*p++ = header & 0xff;
 
-	SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{
+		uint8_t const context[] = { header };
+
+		if (SSL_export_keying_material(s, p, 2 * SSL3_RANDOM_SIZE,
+					       FR_TLS_EXPORTER_METHOD_ID, sizeof(FR_TLS_EXPORTER_METHOD_ID)-1,
+					       context, 1, 1) != 1) {
+			ERROR("Failed generating keying material");
+			return;
+		}
+	}
+#else
+	SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
-	SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
+	SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
+#endif
 
 	vp->vp_octets = buff;
 	fr_pair_add(&packet->vps, vp);
