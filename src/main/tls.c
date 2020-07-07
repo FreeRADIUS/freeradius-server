@@ -3301,6 +3301,16 @@ post_ca:
 
 	SSL_CTX_set_options(ctx, ctx_options);
 
+	/*
+	 *	TLS 1.3 introduces the concept of early data (also known as zero
+	 *	round trip data or 0-RTT data). Early data allows a client to send
+	 *	data to a server in the first round trip of a connection, without
+	 *	waiting for the TLS handshake to complete if the client has spoken
+	 *	to the same server recently. This doesn't work for EAP, so we
+	 *	disable early data.
+	 *
+	 *	OpenSSL 1.1.1 and later set this as the default
+	 */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && OPENSSL_VERSION_NUMBER < 0x10101000L
 	SSL_CTX_set_max_early_data(ctx, 0);
 #endif
