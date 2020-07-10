@@ -494,13 +494,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
 	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
-		RDEBUG2("Framed-IP-Address already exists");
+		RDEBUG2("%s already exists", inst->framed_ip_address->name);
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
-		RDEBUG2("No Pool-Name defined");
+		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
