@@ -163,12 +163,12 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	if (tls_session->label) {
 		uint8_t const *context = NULL;
 		size_t context_size = 0;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef TLS1_3_VERSION
 		uint8_t const context_tls13[] = { handler->type };
 #endif
 
 		switch (tls_session->info.version) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
 			context = context_tls13;
 			context_size = sizeof(context_tls13);
@@ -750,9 +750,17 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		return FR_TLS_FAIL;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	/* draft-ietf-emu-eap-tls13-10 section 2.5 */
-	if (tls_session->is_init_finished && tls_session->info.version == TLS1_3_VERSION && handler->type == PW_EAP_TLS) {
+#ifdef TLS1_3_VERSION
+	/*
+	 *	draft-ietf-emu-eap-tls13-10 section 2.5
+	 *
+	 *	We need to signal the other end that TLS negotiation
+	 *	is done.  We can't send a zero-length application data
+	 *	message, so we send application data which is one byte
+	 *	of zero.
+	 */
+	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION) &&
+	    (handler->type == PW_EAP_TLS)) {
 		RDEBUG("TLS send Commitment Message");
 		tls_session->record_plus(&tls_session->clean_in, "\0", 1);
 		tls_handshake_send(request, tls_session);

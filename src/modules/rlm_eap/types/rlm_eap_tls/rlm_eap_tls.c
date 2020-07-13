@@ -194,10 +194,12 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		 * Set the label based on the TLS version negotiated in the handshake.
 		 */
 		switch (tls_session->info.version) {
+#ifdef TLS1_3_VERSION
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		case TLS1_3_VERSION:
 			tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
 			break;
+#endif
 #endif
 		case TLS1_2_VERSION:
 		case TLS1_1_VERSION:
