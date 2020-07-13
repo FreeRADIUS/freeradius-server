@@ -1055,7 +1055,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			len = value->datum.length;
 		}
 
-		if (value->datum.length > 0) fr_dbuff_memcpy_in(dbuff, value->datum.ptr, len);
+		if (value->datum.length > 0) fr_dbuff_memcpy_in(dbuff, (uint8_t const *)value->datum.ptr, len);
 
 		return len;
 	}
