@@ -267,22 +267,11 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		do_keys:
 			/*
-			 *	Set the label based on the TLS version negotiated in the handshake.
+			 *	Set the label to a fixed string.  For TLS 1.3,
+			 *	the label is the same for all TLS-based EAP
+			 *	methods.
 			 */
-			switch (tls_session->info.version) {
-#ifdef TLS1_3_VERSION
-			case TLS1_3_VERSION:
-				tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
-				break;
-#endif
-			case TLS1_2_VERSION:
-			case TLS1_1_VERSION:
-			case TLS1_VERSION:
-				tls_session->label = "ttls keying material";
-				break;
-			default:
-				break;
-			}
+			tls_session->label = "ttls keying material";
 
 			/*
 			 *	Success: Automatically return MPPE keys.
