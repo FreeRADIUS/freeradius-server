@@ -328,7 +328,32 @@ static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t inlen)
 }
 #define FR_DBUFF_ADVANCE_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _inlen)
 
-/** Copy n bytes into dbuff
+/** Copy at most inlen bytes into the dbuff
+ *
+ * Use this variant when writing data to a streaming buffer where
+ * partial writes will be tracked.
+ *
+ * @param[in] dbuff	to copy data to.
+ * @param[in] in	Data to copy to dbuff.
+ * @param[in] inlen	How much data we need to copy.
+ * @return
+ *	- 0	no data copied.
+ *	- >0	the number of bytes copied to the dbuff.
+ */
+static inline size_t fr_dbuff_memcpy_in_partial(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen)
+{
+	size_t freespace = fr_dbuff_remaining(dbuff);
+
+	fr_assert(!dbuff->is_const);
+
+	if (inlen > freespace) inlen = freespace;
+
+	memcpy(dbuff->p, in, inlen);
+
+	return _fr_dbuff_advance(dbuff, inlen);
+}
+
+/** Copy exactly n bytes into dbuff
  *
  * @param[in] dbuff	to copy data to.
  * @param[in] in	Data to copy to dbuff.
@@ -351,6 +376,16 @@ static inline ssize_t fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, s
 	return _fr_dbuff_advance(dbuff, inlen);
 }
 #define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
+
+/** Copy a partial byte sequence into a dbuff
+ *
+ * @copybrief fr_dbuff_memcpy_in_partial
+ *
+ * @param[in] _dbuff	to copy byte sequence into.
+ * @param[in] ...	bytes to copy.
+ */
+#define fr_dbuff_bytes_in_partial(_dbuff, ...) \
+	fr_dbuff_memcpy_in_partial(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** Copy a byte sequence into a dbuff
  *
