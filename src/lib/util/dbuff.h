@@ -346,7 +346,7 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(fr_dbuff_t *out, fr_dbuff_t cons
 	size_t outlen;
 	fr_dbuff_t *in_m;
 
-	if (inlen == SIZE_MAX) inlen = fr_dbuff_remaining(in);
+	if (inlen > fr_dbuff_remaining(in)) inlen = fr_dbuff_remaining(in);
 	outlen = fr_dbuff_remaining(out);
 
 	/*
@@ -362,14 +362,21 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(fr_dbuff_t *out, fr_dbuff_t cons
 	return _fr_dbuff_advance(in_m, inlen);
 }
 
-/** Copy at inlen bytes into the dbuff
+/** Copy inlen bytes into the dbuff
  *
  * If _in is a dbuff, it will be advanced by the number of bytes
  * written to _out.
  *
+ * If _in is a dbuff and _inlen is greater than the
+ * number of bytes available in _in, then the copy operation will
+ * be truncated, so that we don't read off the end of the buffer.
+ *
  * @param[in] _out	to copy data to.
  * @param[in] _in	Data to copy to dbuff.
  * @param[in] _inlen	How much data we need to copy.
+ *			If _in is a char * or dbuff * and SIZE_MAX
+ *			is passed, then _inlen will be substituted
+ *			for the length of the buffer.
  * @return
  *	- 0	no data copied.
  *	- >0	the number of bytes copied to the dbuff.
@@ -415,7 +422,7 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(fr_dbuff_t *out, fr_dbuff
 	size_t outlen;
 	fr_dbuff_t *in_m;
 
-	if (inlen == SIZE_MAX) inlen = fr_dbuff_remaining(in);
+	if (inlen > fr_dbuff_remaining(in)) inlen = fr_dbuff_remaining(in);
 	outlen = fr_dbuff_remaining(out);
 
 	if (inlen > outlen) inlen = outlen;
@@ -434,9 +441,16 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(fr_dbuff_t *out, fr_dbuff
  * If _in is a dbuff, it will be advanced by the number of bytes
  * written to _out.
  *
+ * If _in is a dbuff and _inlen is greater than the
+ * number of bytes available in _in, then the copy operation will
+ * be truncated, so that we don't read off the end of the buffer.
+ *
  * @param[in] _out	to copy data to.
  * @param[in] _in	Data to copy to dbuff.
  * @param[in] _inlen	How much data we need to copy.
+ *			If _in is a char * or dbuff * and SIZE_MAX
+ *			is passed, then _inlen will be substituted
+ *			for the length of the buffer.
  * @return
  *	- 0	no data copied.
  *	- >0	the number of bytes copied to the dbuff.
