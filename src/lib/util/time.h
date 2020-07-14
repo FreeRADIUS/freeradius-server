@@ -32,6 +32,7 @@ RCSIDH(time_h, "$Id$")
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <sys/time.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -200,6 +201,9 @@ fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
+
+size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt);
+size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt);
 
 void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));

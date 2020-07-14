@@ -26,10 +26,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/time.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -307,7 +308,6 @@ int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 	return -1;
 }
 
-
 /** Create fr_time_delta_t from a string
  *
  * @param[out] out	Where to write fr_time_delta_t
@@ -499,6 +499,54 @@ done:
 	*out = delta;
 
 	return 0;
+}
+
+/** Copy a time string (local timezone) to an sbuff
+ *
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
+ */
+size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+{
+	struct tm	tm;
+	time_t		utime = fr_time_to_unix_time(time);
+	size_t		len;
+
+	localtime_r(&utime, &tm);
+
+	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	if (len == 0) return 0;
+
+	return fr_sbuff_advance(out, len);
+}
+
+/** Copy a time string (UTC) to an sbuff
+ *
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
+ */
+size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+{
+	struct tm	tm;
+	time_t		utime = fr_time_to_unix_time(time);
+	size_t		len;
+
+	gmtime_r(&utime, &tm);
+
+	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	if (len == 0) return 0;
+
+	return fr_sbuff_advance(out, len);
 }
 
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
