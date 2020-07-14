@@ -500,6 +500,7 @@ done:
 	return 0;
 }
 
+DIAG_OFF(format-nonliteral)
 /** Copy a time string (local timezone) to an sbuff
  *
  * @param[in] out	Where to write the formatted time string.
@@ -547,6 +548,7 @@ size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 
 	return fr_sbuff_advance(out, len);
 }
+DIAG_ON(format-nonliteral)
 
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
 {
