@@ -205,7 +205,6 @@ fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
 	return when + atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
-
 /** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
  *
  */
