@@ -1648,7 +1648,7 @@ static void request_running(REQUEST *request, int action)
 			if (request_proxy(request) < 0) {
 				if (request->home_server && request->home_server->server) goto req_finished;
 
-				if (request->home_pool &&
+				if (request->home_pool && request->home_server &&
 				    (request->home_server->state >= HOME_STATE_IS_DEAD)) {
 					VALUE_PAIR *vp;
 					REALM *realm = NULL;
