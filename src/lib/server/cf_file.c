@@ -100,7 +100,9 @@ typedef struct {
 
 #ifdef HAVE_DIRENT_H
 		struct {
-			DIR		*dir;		//!< Or we're reading a directory
+			char		**namelist;	//!< list of names we're processing
+			uint32_t	num_files;	//!< number of files in the array
+			uint32_t	current_file;	//!< current file we are processing
 			char		*directory;	//!< directory name we're reading
 		};
 #endif
@@ -868,6 +870,14 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	return 0;
 }
 
+static int filename_cmp(void const *one, void const *two)
+{
+	char const *a = one;
+	char const *b = two;
+
+	return strcmp(a, b);
+}
+
 
 static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required, bool relative)
 {
@@ -1011,9 +1021,11 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 *	careful!
 	 */
 	{
+		char		*directory;
+		rbtree_t	*tree;
 		DIR		*dir;
-		struct stat stat_buf;
-		char *directory;
+		struct dirent	*dp;
+		struct stat	stat_buf;
 
 		/*
 		 *	We need to keep a copy of parent while the
@@ -1063,11 +1075,65 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		memset(frame, 0, sizeof(*frame));
 
 		frame->type = CF_STACK_DIR;
-		frame->dir = dir;
 		frame->directory = directory;
 		frame->parent = parent;
 		frame->current = parent;
 		frame->from_dir = true;
+
+		MEM(tree = rbtree_talloc_alloc(parent, filename_cmp, char, NULL, RBTREE_FLAG_NONE));
+
+		/*
+		 *	Read the whole directory before loading any
+		 *	individual file.  We stat() files to ensure
+		 *	that they're readable.  We ignore
+		 *	subdirectories and files with odd filenames.
+		 */
+		while ((dp = readdir(dir)) != NULL) {
+			char const *p;
+
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+
+			snprintf(stack->buff[1], stack->bufsize, "%s%s",
+				 frame->directory, dp->d_name);
+
+			if (stat(stack->buff[1], &stat_buf) != 0) {
+				ERROR("%s[%d]: Failed checking file %s: %s",
+				      (frame - 1)->filename, (frame - 1)->lineno,
+				      stack->buff[1], fr_syserror(errno));
+				continue;
+			}
+
+			if (S_ISDIR(stat_buf.st_mode)) {
+				WARN("%s[%d]: Ignoring directory %s",
+				     (frame - 1)->filename, (frame - 1)->lineno,
+				     stack->buff[1]);
+				continue;
+			}
+
+			p = talloc_typed_strdup(directory, stack->buff[1]);
+			rbtree_insert(tree, p);
+		}
+		closedir(dir);
+
+		/*
+		 *	Flatten it to a sorted array.
+		 */
+		frame->num_files = rbtree_flatten(directory, (void ***) &frame->namelist, tree, RBTREE_IN_ORDER);
+		frame->current_file = 0;
+		talloc_free(tree);
 
 		/*
 		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
@@ -1770,44 +1836,10 @@ added_pair:
 static int frame_readdir(cf_stack_t *stack)
 {
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
-	struct dirent	*dp;
-	struct stat stat_buf;
 	CONF_SECTION *parent = frame->current;
 
-	while ((dp = readdir(frame->dir)) != NULL) {
-		char const *p;
-
-		if (dp->d_name[0] == '.') continue;
-
-		/*
-		 *	Check for valid characters
-		 */
-		for (p = dp->d_name; *p != '\0'; p++) {
-			if (isalpha((int)*p) ||
-			    isdigit((int)*p) ||
-			    (*p == '-') ||
-			    (*p == '_') ||
-			    (*p == '.')) continue;
-			break;
-		}
-		if (*p != '\0') continue;
-
-		snprintf(stack->buff[1], stack->bufsize, "%s%s",
-			 frame->directory, dp->d_name);
-
-		if (stat(stack->buff[1], &stat_buf) != 0) {
-			ERROR("%s[%d]: Failed checking file %s: %s",
-			      (frame - 1)->filename, (frame - 1)->lineno,
-			      stack->buff[1], fr_syserror(errno));
-			continue;
-		}
-
-		if (S_ISDIR(stat_buf.st_mode)) {
-			WARN("%s[%d]: Ignoring directory %s",
-			     (frame - 1)->filename, (frame - 1)->lineno,
-			     stack->buff[1]);
-			continue;
-		}
+	if (frame->current_file < frame->num_files) {
+		char const *filename = frame->namelist[frame->current_file++];
 
 		/*
 		 *	Push the next filename onto the stack.
@@ -1820,7 +1852,7 @@ static int frame_readdir(cf_stack_t *stack)
 		frame->fp = NULL;
 		frame->parent = parent;
 		frame->current = parent;
-		frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
+		frame->filename = filename;
 		frame->lineno = 0;
 		frame->from_dir = true;
 		frame->special = NULL; /* can't do includes inside of update / map */
@@ -1831,8 +1863,6 @@ static int frame_readdir(cf_stack_t *stack)
 	 *	Done reading the directory entry.  Close it, and go
 	 *	back up a stack frame.
 	 */
-	closedir(frame->dir);
-	frame->dir = NULL;
 	talloc_free(frame->directory);
 	stack->depth--;
 	return 1;
@@ -2136,8 +2166,6 @@ static void cf_stack_cleanup(cf_stack_t *stack)
 
 #ifdef HAVE_DIRENT_H
 		case CF_STACK_DIR:
-			closedir(frame->dir);
-			frame->dir = NULL;
 			talloc_free(frame->directory);
 			break;
 #endif
