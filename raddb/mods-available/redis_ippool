@@ -121,6 +121,22 @@ redis_ippool {
 	copy_on_update = yes
 
 	#
+	#  paths to Lua scripts that are uploaded and interacted with in Redis; to creates a
+	#  kind of defacto schema in which how data is laid out
+	#
+	#  `lua_preamble` is special in that is is prepended to all the other scripts to
+	#  provide library functions and constant definitions.
+	#
+	#lua_preamble = ${modconfdir}/redis_ippool/preamble.lua
+	#lua_add = ${modconfdir}/redis_ippool/add.lua
+	#lua_alloc = ${modconfdir}/redis_ippool/alloc.lua
+	#lua_delete = ${modconfdir}/redis_ippool/delete.lua
+	#lua_release = ${modconfdir}/redis_ippool/release.lua
+	#lua_show = ${modconfdir}/redis_ippool/show.lua
+	#lua_stats = ${modconfdir}/redis_ippool/stats.lua
+	#lua_update = ${modconfdir}/redis_ippool/update.lua
+
+	#
 	#  redis { ... }:: Redis connection settings.
 	#
 	#  Identical to all other Redis based modules.

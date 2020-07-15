@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file cluster.h
+ * @file redis_ippool.h
  * @brief Common functions for interacting with Redis cluster via Hiredis
  *
  * @author Arran Cudbard-Bell
@@ -27,23 +27,13 @@
  */
 RCSIDH(redis_ippool_h, "$Id$")
 
-/*
- *	Can't stringify enum macros *sigh*
- */
-#define _IPPOOL_RCODE_SUCCESS		0
-#define _IPPOOL_RCODE_NOT_FOUND		-1
-#define _IPPOOL_RCODE_EXPIRED		-2
-#define _IPPOOL_RCODE_DEVICE_MISMATCH	-3
-#define _IPPOOL_RCODE_POOL_EMPTY	-4
-#define _IPPOOL_RCODE_FAIL		-5
-
 typedef enum {
-	IPPOOL_RCODE_SUCCESS = _IPPOOL_RCODE_SUCCESS,
-	IPPOOL_RCODE_NOT_FOUND = _IPPOOL_RCODE_NOT_FOUND,
-	IPPOOL_RCODE_EXPIRED = _IPPOOL_RCODE_EXPIRED,
-	IPPOOL_RCODE_DEVICE_MISMATCH = _IPPOOL_RCODE_DEVICE_MISMATCH,
-	IPPOOL_RCODE_POOL_EMPTY = _IPPOOL_RCODE_POOL_EMPTY,
-	IPPOOL_RCODE_FAIL = _IPPOOL_RCODE_FAIL
+	IPPOOL_RCODE_SUCCESS = 0,
+	IPPOOL_RCODE_NOT_FOUND = -1,
+	IPPOOL_RCODE_EXPIRED = -2,
+	IPPOOL_RCODE_DEVICE_MISMATCH = -3,
+	IPPOOL_RCODE_POOL_EMPTY = -4,
+	IPPOOL_RCODE_FAIL = -5
 } ippool_rcode_t;
 
 typedef enum {

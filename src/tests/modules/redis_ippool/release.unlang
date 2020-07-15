@@ -11,7 +11,7 @@ update control {
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 %{control:Tmp-String-0}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
 #
@@ -49,9 +49,9 @@ if (updated) {
 }
 
 #
-#  Verify the association with the device has been removed
+#  Verify the association with the device will expire (hangs around for sticky IP reasons)
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" > '10') {
 	test_pass
 } else {
 	test_fail

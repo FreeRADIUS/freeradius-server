@@ -37,16 +37,17 @@ do
 done
 shift $(expr $OPTIND - 1)
 
+[ $# -gt 0 ] || usage 1
+
 DIR="$1"
 
-[ -z "$DIR" ] && usage 1
 [ ! -d "$DIR" ] && echo "Directory '$DIR' does not exist" && exit 1
 
 #
 #  Work out which OS to base our image on from the dir name
 #
 DIR=$(echo "$DIR" | sed -e 's/\/$//')
-OSNAME=$(echo "$DIR" | sed -e 's/^build-//')
+OSNAME=$(basename "$DIR" | sed -e 's/^build-//')
 
 #
 #  Build dependency image with compiler and all source ready to go

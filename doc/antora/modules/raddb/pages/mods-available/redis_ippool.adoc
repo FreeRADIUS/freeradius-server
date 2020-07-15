@@ -1,7 +1,3 @@
-
-
-
-
 = Redis IP Pool Module
 
 The `redis_ippool` module implements a fast and scalable IP
@@ -15,7 +11,7 @@ the Redis cluster.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 Al configuration items at this level (below the `redis` block)
 are polymorphic, meaning `xlats`, attribute references, literal values
@@ -144,3 +140,28 @@ redis_ippool {
 	}
 }
 ```
+
+== Schema
+
+Described is the use of a Redis KV store for IP pool management.  Its use becomes appropriate only when load reaches a point where decoupling the live 'current' pool usage state with the historical usage is necessary.  Understanding this is relevent only if you wish to change the contents of `raddb/mods-config/redis/ippool/`.
+
+Keys in Redis are of the form `link:https://redis.io/topics/cluster-tutorial#redis-cluster-data-sharding[{POOLNAME}:TYPE:VALUE` where `TYPE` matches the namespaces:
+
+pool (`pool`) [sorted set]:: IP addresses are added to the pool and the score is an link:https://en.wikipedia.org/wiki/Unix_time#Encoding_time_as_a_number[epoch time in seconds] that represents when the lease _expires_
+address (`ip`) [hash]:: stores value options about the IP address (`range_id`, `device` - current/last client identifier, ...); one instance of this key exists for every pool address entry
+device (`device`) [key]:: contains IP the device was last set to; this key expires 10x the lease time to support sticky IPs
+
+Note `device` has an link:https://redis.io/commands/expire[expiry time] of 10x the lease time to enable sticky IP addresses on reconnects (if the lease is still free) as well optionally providing a a recent use log datastore.
+
+An example of the key layout is (where the poolname is `local`):
+
+[source,shell]
+----
+localhost:30001> KEYS *
+1) "{local}:ip:192.0.2.0"
+2) "{local}:ip:192.0.2.1"
+3) "{local}:ip:192.0.2.100"
+4) "{local}:ip:192.0.2.10"
+5) "{local}:device:00:11:22:33:44:55"
+6) "{local}:pool"
+----

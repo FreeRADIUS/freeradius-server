@@ -13,7 +13,6 @@ TGT_PREREQS	:= libfreeradius-lua.a
 
 install: $(R)$(modconfdir)/lua/example.lua
 
-$(R)$(modconfdir)/lua/example.lua: src/modules/rlm_lua/example.lua | $(R)$(modconfdir)/lua
+$(R)$(modconfdir)/%: raddb/mods-config/mods-config/%
 	@$(ECHO) INSTALL $(notdir $<)
-	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/lua
-
+	@$(INSTALL) -m 755 $< $(@D)

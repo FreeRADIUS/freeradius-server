@@ -11,7 +11,7 @@ update control {
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 %{control:Tmp-String-0}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
 #
@@ -36,13 +36,13 @@ if (&reply:Framed-IP-Address == 192.168.0.1) {
 #  Release the IP address
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -r 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -r 192.168.0.1/32 %{control:Tmp-String-0}:30001 %{control:Pool-Name}`
 }
 
 #
-#  Verify the association with the device has been removed
+#  Verify the association with the device will expire (hangs around for sticky IP reasons)
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" > '10') {
 	test_pass
 } else {
 	test_fail
@@ -69,8 +69,8 @@ if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} range}" 
 	test_fail
 }
 
-# Check the ZSCORE
-if ("%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'}" == 0) {
+# Check the ZSCORE is less than now (ie. expired)
+if ("%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'}" < "%c") {
 	test_pass
 } else {
 	test_fail

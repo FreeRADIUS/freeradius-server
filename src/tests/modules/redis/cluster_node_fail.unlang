@@ -4,9 +4,11 @@
 $INCLUDE cluster_reset.inc
 
 #  Hashes to Redis cluster node master 1
-if ("%{redis:SET b 'boom'}" == 'OK') {
-	test_pass
-} else {
+if ("%{redis:SET b 'boom'}" != 'OK') {
+	test_fail
+}
+
+if ("%{redis:GET b}" != 'boom') {
 	test_fail
 }
 
@@ -18,35 +20,35 @@ update request {
 #  Cause one of the redis cluster nodes to SEGV
 if ("%{redis:@%{redis_node:b 0} DEBUG SEGFAULT}" != '') {
 	test_fail
-} else {
-	test_pass
 }
 
 #  Forcefully failover the slave for that node
 if ("%{redis:@%{redis_node:b 1} CLUSTER FAILOVER TAKEOVER}" != 'OK') {
 	test_fail
-} else {
-	test_pass
 }
 
-if ("%{redis:GET b}" == 'boom') {
-	test_pass
-} else {
+#  FR debounces remapping if been done in the past 1s
+update request {
+	&Tmp-String-0 := `/bin/sleep 1.1`
+}
+
+if ("%{redis:GET b}" != 'boom') {
 	test_fail
 }
 
-#  Kill that one too
-if ("%{redis:@%{redis_node:b 1} DEBUG SEGFAULT}" != '') {
+#  Kill that one too (promoted to master so has id 0)
+if ("%{redis:@%{redis_node:b 0} DEBUG SEGFAULT}" != '') {
 	test_fail
-} else {
-	test_pass
+}
+
+#  FR debounces remapping if been done in the past 1s
+update request {
+	&Tmp-String-0 := `/bin/sleep 1.1`
 }
 
 # No alternatives...
-if ("%{redis:GET b}" != 'boom') {
-	test_pass
-} else {
+if ("%{redis:GET b}" == 'boom') {
 	test_fail
 }
 
-
+test_pass
