@@ -514,7 +514,7 @@ DIAG_OFF(format-nonliteral)
 size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 {
 	struct tm	tm;
-	time_t		utime = fr_time_to_unix_time(time);
+	time_t		utime = fr_time_to_sec(time);
 	size_t		len;
 
 	localtime_r(&utime, &tm);
@@ -538,7 +538,7 @@ size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 {
 	struct tm	tm;
-	time_t		utime = fr_time_to_unix_time(time);
+	time_t		utime = fr_time_to_sec(time);
 	size_t		len;
 
 	gmtime_r(&utime, &tm);
