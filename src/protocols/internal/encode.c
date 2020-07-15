@@ -57,31 +57,24 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	uint8_t				*enc_field, *len_field, *value_field, *value_end;
-	fr_dict_attr_t const		*da = da_stack->da[depth];
-	VALUE_PAIR			*vp = fr_cursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	uint8_t			*enc_field, *value_field;
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	VALUE_PAIR		*vp = fr_cursor_current(cursor);
 
-	uint8_t				flen;
-	ssize_t				slen = 0;
+	uint8_t			flen;
+	ssize_t			slen;
 
-	uint8_t				buff[sizeof(uint64_t)];
+	uint8_t			buff[sizeof(uint64_t)];
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	enc_field = dbuff->p;
+	enc_field = work_dbuff.p;
 
 	/*
 	 *	Zero out first encoding byte
 	 */
-	fr_dbuff_memset(dbuff, 0, 1);
-
-	/*
-	 *	Ensure we have at least enough space
-	 *	for the encode byte, two full width
-	 *	type and length fields, and one byte
-	 *	of data.
-	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);
 
 	switch (da->type) {
 	/*
@@ -99,48 +92,52 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Need to use the second encoding byte
 	 */
 	if (da->flags.is_unknown) {
-		fr_dbuff_memset(dbuff, 0, 1);
-		FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);	/* Check we still have room */
-
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
 		enc_field[0] |= FR_INTERNAL_FLAG_EXTENDED;
-		enc_field[1] |= FR_INTERNAL_FLAG_INTERNAL;
 	}
+
+	/*
+	 * Ensure we have at least enough more room for full-width type
+	 * and length fields and at least one byte of data.
+	 */
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, 2 * sizeof(uint64_t) + 1);
 
 	/*
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_dbuff_uint64v_in(dbuff, da->attr);
+	flen = fr_dbuff_uint64v_in(&work_dbuff, da->attr);
 	enc_field[0] |= ((flen - 1) << 5);
 
 	/*
-	 *	Mark where the length field will be, and
-	 *	advance the pointer by one.
+	 *	Leave one byte in hopes that the length will fit
+	 *	and remember where the encoded data starts.
 	 *
 	 *	We assume most lengths will fit in one
-	 *	byte, but we lie to functions deeper in the
-	 *	stack about how much space there is left.
+	 *	byte, but we limit space available to
+	 *	functions deeper in the stack to make sure
+	 *	the length field will fit.
 	 *
 	 *	We've already done the checks for encoding
 	 *	two fields of the maximum size above.
 	 */
-	len_field = dbuff->p;
-	fr_dbuff_advance(dbuff, 1);
-	value_field = dbuff->p;
+	fr_dbuff_advance(&work_dbuff, 1);
+	value_field = work_dbuff.p;
 
 	switch (da->type) {
 	case FR_TYPE_VALUE:
 	{
 		size_t need = 0;
 
-		slen = fr_value_box_to_network_dbuff(&need, &FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), &vp->data);
+		slen = fr_value_box_to_network_dbuff(&need,
+						     &FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), &vp->data);
 		if (slen < 0) switch (slen) {
 		case FR_VALUE_BOX_NET_ERROR:
 		default:
 			return PAIR_ENCODE_FATAL_ERROR;
 
 		case FR_VALUE_BOX_NET_OOM:
-			return (enc_field - dbuff->p) - need;
+			return (enc_field - work_dbuff.p) - need;
 		}
 		FR_PROTO_HEX_DUMP(value_field, slen, "value %s",
 				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
@@ -164,7 +161,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -204,7 +201,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		/*
 		 *	Still encoding intermediary TLVs...
 		 */
-		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -219,14 +216,14 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t children;
+		fr_cursor_t	children;
 
 		for (vp = fr_cursor_talloc_init(&children, &vp->children.slist, VALUE_PAIR);
 		     vp;
 		     vp = fr_cursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
 
-			slen = fr_internal_encode_pair_dbuff(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
+			slen = fr_internal_encode_pair_dbuff(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1),
 							     &children, encoder_ctx);
 			if (slen < 0) return slen;
 		}
@@ -247,28 +244,24 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Already did length checks at the start of
 	 *	the function.
 	 */
-	{
-		value_end = dbuff->p;
-		flen = fr_net_from_uint64v(buff, value_end - value_field);
+	slen = work_dbuff.p - value_field;
+	flen = fr_net_from_uint64v(buff, slen);
 
-		/*
-		 *	Ugh, it's a long one, need to memmove the
-		 *	data, good job we lied to all the encoding
-		 *      functions earlier, so we *must* have enough
-		 *	buffer space.
-		 */
-		if (flen > 1) {
-			fr_dbuff_advance(dbuff, flen - 1);
-			memmove(len_field + flen, value_field, value_end - value_field);
-			value_end += flen - 1;
-		}
-		memcpy(len_field, buff, flen);
-		enc_field[0] |= ((flen - 1) << 2);
+	/*
+	 *	Ugh, it's a long one, need to memmove the
+	 *	data. We know we have the space, because we kept
+	 *	functions deeper in the stack from using it.
+	 */
+	if (flen > 1) {
+		fr_dbuff_advance(&work_dbuff, flen - 1);
+		memmove(value_field + flen - 1, value_field, slen);
 	}
+	memcpy(value_field - 1, buff, flen);
+	enc_field[0] |= ((flen - 1) << 2);
 
-	FR_PROTO_HEX_DUMP(enc_field, (value_field + (flen - 1)) - enc_field, "header");
+	FR_PROTO_HEX_DUMP(enc_field, fr_dbuff_used(&work_dbuff) - slen, "header");
 
-	return value_end - enc_field;
+	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
 }
 
 /** Encode a data structure into an internal attribute
