@@ -108,7 +108,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 			fr_strerror());
 		fr_exit_now(1);
 	}
-	dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
+	dl_search_path_prepend(dl_loader, lib_dir);
 
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
 	dl = dl_by_name(dl_loader, buffer, NULL, false);
