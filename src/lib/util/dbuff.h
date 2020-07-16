@@ -387,8 +387,8 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(fr_dbuff_t *out, fr_dbuff_t cons
 	_Generic((_in), \
 		 uint8_t *		: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), _inlen), \
 		 uint8_t const *	: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), _inlen), \
-		 char *			: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), _inlen == SIZE_MAX ? strlen((char const *)(_in)) : _inlen), \
-		 char const *		: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), _inlen == SIZE_MAX ? strlen((char const *)(_in)) : _inlen), \
+		 char *			: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), (size_t)(_inlen) == SIZE_MAX ? strlen((char const *)(_in)) : (_inlen)), \
+		 char const *		: _fr_dbuff_memcpy_in(_out, (uint8_t const *)(_in), (size_t)(_inlen) == SIZE_MAX ? strlen((char const *)(_in)) : (_inlen)), \
 		 fr_dbuff_t *		: _fr_dbuff_memcpy_in_dbuff(_out, (fr_dbuff_t const *)(_in), _inlen) \
 	)
 
