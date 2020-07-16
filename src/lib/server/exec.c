@@ -631,7 +631,6 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 		 */
 		strlcpy(out, answer, outlen);
 	}
-
 wait:
 	child_pid = waitpid(pid, &status, 0);
 	if (child_pid == 0) {

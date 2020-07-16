@@ -285,20 +285,6 @@ static void unlang_tmpl_exec_timeout(
 
 	fr_assert(state->exec.pid > 0);
 
-#ifdef __linux__
-	int status;
-
-	/*
-	 *	libkqueue on Linux isn't quite there yet.  Maybe the
-	 *	program has exited, and we haven't noticed.  In which
-	 *	case, do a graceful cleanup.
-	 */
-	if (waitpid(state->exec.pid, &status, WNOHANG) == state->exec.pid) {
-		unlang_tmpl_exec_waitpid(el, state->exec.pid, status, request);
-		return;
-	}
-#endif
-
 	if (state->exec.stdout_fd < 0) {
 		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
 	} else {
