@@ -228,7 +228,7 @@ static int is_quadratic_residue(BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr,
 	check = const_time_select_int(mask, -1, 1);
 
 	if ((ret = legendre(res, p, bnctx)) == -2) {
-		ret = -1;       /* just say no it's not */
+		ret = -1;	/* just say no it's not */
 		goto fail;
 	}
 	mask = const_time_eq(ret, check);
@@ -256,8 +256,8 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	HMAC_CTX *ctx = NULL;
 	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
 	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
-        int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
-        unsigned int skip;
+	int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
+	unsigned int skip;
 
 	ctx = HMAC_CTX_new();
 	if (ctx == NULL) {
@@ -307,7 +307,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	    ((qr = consttime_BN()) == NULL) ||
 	    ((qnr = consttime_BN()) == NULL) ||
 	    ((x_candidate = consttime_BN()) == NULL) ||
-            ((y_sqrd = consttime_BN()) == NULL)) {
+	    ((y_sqrd = consttime_BN()) == NULL)) {
 		DEBUG("unable to create bignums");
 		goto fail;
 	}
@@ -362,8 +362,8 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 
 		/*
 		 * compute counter-mode password value and stretch to prime
-		 *    pwd-seed = H(token | peer-id | server-id | password |
-		 *		   counter)
+		 *	pwd-seed = H(token | peer-id | server-id | password |
+		 *		     counter)
 		 */
 		HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(),NULL);
 		HMAC_Update(ctx, (uint8_t *)token, sizeof(*token));
@@ -375,7 +375,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
-                            strlen("EAP-pwd Hunting And Pecking"), prfbuf, primebitlen);
+			    strlen("EAP-pwd Hunting And Pecking"), prfbuf, primebitlen);
 
 		/*
 		 * eap_pwd_kdf() returns a string of bits 0..primebitlen but
@@ -449,7 +449,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
 	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
-	                                     x_candidate, save_is_odd, NULL)) {
+						     x_candidate, save_is_odd, NULL)) {
 		goto fail;
 	}
 
