@@ -44,7 +44,7 @@ static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
 {
 	unsigned int mdlen = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac_ctx, digest, &mdlen);
-	HMAC_CTX_reset(hmac_ctx);
+//	HMAC_CTX_reset(hmac_ctx);
 }
 
 /* a counter-based KDF based on NIST SP800-108 */
@@ -78,7 +78,7 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
-		HMAC_CTX_reset(hmac_ctx);
+//		HMAC_CTX_reset(hmac_ctx);
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
