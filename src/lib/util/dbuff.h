@@ -189,15 +189,19 @@ static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t
  */
 #define fr_dbuff_init(_out, _start, _len_or_end) \
 _fr_dbuff_init(_out, \
-	       _start, \
+	       (uint8_t const *)(_start), \
 	       _Generic((_len_or_end), \
 			size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
 			uint8_t *	: (uint8_t const *)(_len_or_end), \
-			uint8_t const *	: (uint8_t const *)(_len_or_end) \
+			uint8_t const *	: (uint8_t const *)(_len_or_end), \
+			char *		: (uint8_t const *)(_len_or_end), \
+			char const *	: (uint8_t const *)(_len_or_end) \
 	       ), \
 	       _Generic((_start), \
 			uint8_t *	: false, \
-			uint8_t const *	: true \
+			uint8_t const *	: true, \
+			char *		: false, \
+			char const *	: true \
 	       ))
 
 /** Creates a compound literal to pass into functions which accept a dbuff
@@ -212,16 +216,20 @@ _fr_dbuff_init(_out, \
  */
 #define FR_DBUFF_TMP(_start, _len_or_end) \
 (fr_dbuff_t){ \
-	.start_i	= _start, \
+	.start_i	= (uint8_t const *)(_start), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
 				uint8_t *	: (uint8_t const *)(_len_or_end), \
-				uint8_t const *	: (uint8_t const *)(_len_or_end) \
+				uint8_t const *	: (uint8_t const *)(_len_or_end), \
+				char *		: (uint8_t const *)(_len_or_end), \
+				char const *	: (uint8_t const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
 	.is_const	= _Generic((_start), \
 				uint8_t *	: false, \
-				uint8_t const *	: true \
+				uint8_t const *	: true, \
+				char *		: false, \
+				char const *	: true \
 	       		) \
 }
 /** @} */
