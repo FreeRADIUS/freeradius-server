@@ -46,85 +46,6 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
-/** Wind position to first instance of specified multibyte utf8 char
- *
- * Only use this function if the search char could be multibyte,
- * as there's a large performance penalty.
- *
- * @param[in,out] in		Sbuff to search in.
- * @param[in] chr		to search for.
- * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the multi-byte chr was found.
- */
-size_t fr_sbuff_strchr_utf8(fr_sbuff_t *in, char *chr)
-{
-	char const *found;
-	char const *p = in->p_i;
-
-	found = fr_utf8_strchr(NULL, p, in->end - in->p, chr);
-	if (!found) return 0;
-
-	return (size_t)fr_sbuff_advance(in, found - p);
-}
-
-/** Wind position to first instance of specified char
- *
- * @param[in,out] in		Sbuff to search in.
- * @param[in] c			to search for.
- * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the char was found.
- */
-size_t fr_sbuff_strchr(fr_sbuff_t *in, char c)
-{
-	char const *found;
-	char const *p = in->p_i;
-
-	found = memchr(in->p, c, in->end - in->p);
-	if (!found) return 0;
-
-	return (size_t)fr_sbuff_advance(in, found - p);
-}
-
-/** Wind position to the first instance of the specified needle
- *
- * @param[in,out] in		sbuff to search in.
- * @param[in] needle		to search for.
- * @param[in] len		Length of the needle.  -1 to use strlen.
- * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the needle was found.
- */
-size_t fr_sbuff_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
-{
-	char const *found;
-	char const *p = in->p;
-
-	if (len < 0) len = strlen(needle);
-
-	found = memmem(in->p, in->end - in->p, needle, len);
-	if (!found) return 0;
-
-	return (size_t)fr_sbuff_advance(in, found - p);
-}
-
-/** Wind position to the first non-whitespace character
- *
- * @param[in] in		sbuff to search in.
- * @return
- *	- 0, first character is not a whitespace character.
- *	- >0 how many whitespace characters we skipped.
- */
-size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in)
-{
-	char const *p = in->p;
-
-	while ((in->p < in->end) && isspace(*(in->p))) in->p++;
-
-	return (size_t)fr_sbuff_advance(in, in->p - p);
-}
-
 /** Copy n bytes from the sbuff to a talloced buffer
  *
  * Will fail if output buffer is too small, or insufficient data is available in sbuff.
@@ -137,7 +58,7 @@ size_t fr_sbuff_skip_whitespace(fr_sbuff_t *in)
  *      - 0 if insufficient bytes are available in the sbuff.
  *	- >0 the number of bytes copied to out.
  */
-size_t fr_sbuff_talloc_bstrncpy_out_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+size_t fr_sbuff_out_talloc_bstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 {
 	if (len == SIZE_MAX) len = in->end - in->p;
 	if ((in->p + len) > in->end) return 0;	/* Copying off the end of sbuff */
@@ -162,7 +83,7 @@ size_t fr_sbuff_talloc_bstrncpy_out_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_talloc_bstrncpy_out(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+size_t fr_sbuff_out_talloc_bstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 {
 	if (len > fr_sbuff_remaining(in)) len = fr_sbuff_remaining(in);
 	if (len == 0) {
@@ -193,7 +114,7 @@ size_t fr_sbuff_talloc_bstrncpy_out(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in,
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_talloc_bstrncpy_out_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_talloc_bstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 					    bool const allowed_chars[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
@@ -234,7 +155,7 @@ size_t fr_sbuff_talloc_bstrncpy_out_allowed(TALLOC_CTX *ctx, char **out, fr_sbuf
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_talloc_bstrncpy_out_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_talloc_bstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 					  bool const until[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
@@ -273,7 +194,7 @@ size_t fr_sbuff_talloc_bstrncpy_out_until(TALLOC_CTX *ctx, char **out, fr_sbuff_
  *	- <0 the number of additional bytes we'd need in the output buffer as a negative value.
  *	- >0 the number of bytes copied to out.
  */
-ssize_t fr_sbuff_bstrncpy_out_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
+ssize_t fr_sbuff_out_bstrncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
 {
 	if (len == SIZE_MAX) len = in->end - in->p;
 	if (unlikely(outlen == 0)) return -(len + 1);
@@ -310,7 +231,7 @@ do { \
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_bstrncpy_out(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
+size_t fr_sbuff_out_bstrncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
 {
 	if (unlikely(outlen == 0)) return 0;
 
@@ -341,7 +262,7 @@ size_t fr_sbuff_bstrncpy_out(char *out, size_t outlen, fr_sbuff_t *in, size_t le
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_bstrncpy_out_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_bstrncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
 				     bool const allowed_chars[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
@@ -382,7 +303,7 @@ size_t fr_sbuff_bstrncpy_out_allowed(char *out, size_t outlen, fr_sbuff_t *in, s
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_bstrncpy_out_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_bstrncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
 				   bool const until[static UINT8_MAX + 1])
 {
 	char const	*p = in->p;
@@ -429,7 +350,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(buff, sizeof(buff), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -474,14 +395,14 @@ PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
  *			used in <stdint.h>.
  */
 #define PARSE_UINT_DEF(_name, _type, _max, _max_char) \
-size_t fr_sbuff_in_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 1]; \
 	char			*end; \
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(buff, sizeof(buff), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -518,89 +439,46 @@ static bool float_chars[UINT8_MAX + 1] = {
 	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
 };
 
-/** Attempt to parse a float
+/** Used to define a number parsing functions for floats
  *
- * @param[out] err		If non null, will be filled with any parse errors.
- * @param[out] out		Where to write the resulting float.
- * @param[in] in		Sbuff to parse float from.
- * @param[in] no_trailing	Emit a parse error if there are trailing characters
- *				after the float parsed.
- * @return
- *	- >0 the number of bytes copied into the sbuff.
- *	- 0 a parse error occurred.
+ * @param[in] _name	Function suffix.
+ * @param[in] _type	Output type.
+ * @param[in] _func	Parsing function to use.
+ * @param[in] _max_char	Maximum digits that can be used to represent an integer.
+ *			Can't use stringify because of width modifiers like 'u'
+ *			used in <stdint.h>.
  */
-size_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *in, bool no_trailing)
-{
-	char		buffer[100];	/* Should be sufficient */
-	char		*end;
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
-	size_t		len;
-	float		res;
-
-	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars);
-	if (len == sizeof(buffer)) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		return 0;
-	} else if (len == 0) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
-		return 0;
-	}
-
-	res = strtof(buffer, &end);
-	if (errno == ERANGE) {
-		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW;
-		return 0;
-	}
-	if (no_trailing && (*end != '\0')) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		*out = res;
-		return 0;
-	}
-
-	return fr_sbuff_advance(in, end - buffer);
+#define PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
+size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+{ \
+	char		buffer[_max_char + 1]; \
+	char		*end; \
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
+	size_t		len; \
+	_type		res; \
+	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars); \
+	if (len == sizeof(buffer)) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		return 0; \
+	} else if (len == 0) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		return 0; \
+	} \
+	res = _func(buffer, &end); \
+	if (errno == ERANGE) { \
+		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		return 0; \
+	} \
+	if (no_trailing && (*end != '\0')) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		*out = res; \
+		return 0; \
+	} \
+	return fr_sbuff_advance(in, end - buffer); \
 }
 
-/** Attempt to parse a double
- *
- * @param[out] err		If non null, will be filled with any parse errors.
- * @param[out] out		Where to write the resulting float.
- * @param[in] in		Sbuff to parse float from.
- * @param[in] no_trailing	Emit a parse error if there are trailing characters
- *				after the float parsed.
- * @return
- *	- >0 the number of bytes copied into the sbuff.
- *	- 0 a parse error occurred.
- */
-size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *in, bool no_trailing)
-{
-	char		buffer[100];	/* Should be sufficient */
-	char		*end;
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
-	size_t		len;
-	float		res;
-
-	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars);
-	if (len == sizeof(buffer)) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		return 0;
-	} else if (len == 0) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
-		return 0;
-	}
-
-	res = strtof(buffer, &end);
-	if (errno == ERANGE) {
-		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW;
-		return 0;
-	}
-	if (no_trailing && (*end != '\0')) {
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		*out = res;
-		return 0;
-	}
-
-	return fr_sbuff_advance(in, end - buffer);
-}
+PARSE_FLOAT_DEF(float32, float, strtof, 100);
+PARSE_FLOAT_DEF(float64, double, strtod, 100);
 
 /** Copy bytes into the sbuff up to the first \0
  *
@@ -776,4 +654,160 @@ ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote
 	if (unlikely(!in)) return 0;
 
 	return fr_sbuff_in_snprint(sbuff, in, talloc_array_length(in) - 1, quote);
+}
+
+/** Return true and advance past the end of the needle if needle occurs next in the sbuff
+ *
+ * @param[in] sbuff	to search in.
+ * @param[in] needle	to search for.
+ * @param[in] len	of needle. If SIZE_MAX strlen is used
+ *			to determine length of the needle.
+ */
+bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+{
+	char const *found;
+
+	if (len == SIZE_MAX) len = strlen(needle);
+	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	found = memmem(sbuff->p, len, needle, len);	/* sbuff len and needle len ensures match must be next */
+	if (!found) return false;
+
+	fr_sbuff_advance(sbuff, len);
+
+	return true;
+}
+
+/** Return true and advance past the end of the needle if needle occurs next in the sbuff
+ *
+ * This function is similar to fr_sbuff_adv_past_str but is case insensitive.
+ *
+ * @param[in] sbuff	to search in.
+ * @param[in] needle	to search for.
+ * @param[in] len	of needle. If SIZE_MAX strlen is used
+ *			to determine length of the needle.
+ */
+bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+{
+	char const *p, *n_p;
+	char const *end;
+
+	if (len == SIZE_MAX) len = strlen(needle);
+	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	p = sbuff->p;
+	end = p + len;
+
+	for (p = sbuff->p, n_p = needle; p < end; p++, n_p++) {
+		if (tolower(*p) != tolower(*n_p)) return false;
+	}
+
+	fr_sbuff_advance(sbuff, len);
+
+	return true;
+}
+
+/** Wind position to the first non-whitespace character
+ *
+ * @param[in] in		sbuff to search in.
+ * @return
+ *	- 0, first character is not a whitespace character.
+ *	- >0 how many whitespace characters we skipped.
+ */
+size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *in)
+{
+	char const *p = in->p;
+
+	while ((in->p < in->end) && isspace(*(in->p))) in->p++;
+
+	return (size_t)fr_sbuff_advance(in, in->p - p);
+}
+
+/** Wind position to first instance of specified multibyte utf8 char
+ *
+ * Only use this function if the search char could be multibyte,
+ * as there's a large performance penalty.
+ *
+ * @param[in,out] in		Sbuff to search in.
+ * @param[in] chr		to search for.
+ * @return
+ *	- 0, no instances found.
+ *	- >0 the offset at which the first occurrence of the multi-byte chr was found.
+ */
+size_t fr_sbuff_adv_to_strchr_utf8(fr_sbuff_t *in, char *chr)
+{
+	char const *found;
+	char const *p = in->p_i;
+
+	found = fr_utf8_strchr(NULL, p, in->end - in->p, chr);
+	if (!found) return 0;
+
+	return (size_t)fr_sbuff_advance(in, found - p);
+}
+
+/** Wind position to first instance of specified char
+ *
+ * @param[in,out] in		Sbuff to search in.
+ * @param[in] c			to search for.
+ * @return
+ *	- 0, no instances found.
+ *	- >0 the offset at which the first occurrence of the char was found.
+ */
+size_t fr_sbuff_adv_to_strchr(fr_sbuff_t *in, char c)
+{
+	char const *found;
+	char const *p = in->p_i;
+
+	found = memchr(in->p, c, in->end - in->p);
+	if (!found) return 0;
+
+	return (size_t)fr_sbuff_advance(in, found - p);
+}
+
+/** Wind position to the first instance of the specified needle
+ *
+ * @param[in,out] in		sbuff to search in.
+ * @param[in] needle		to search for.
+ * @param[in] len		Length of the needle.  -1 to use strlen.
+ * @return
+ *	- 0, no instances found.
+ *	- >0 the offset at which the first occurrence of the needle was found.
+ */
+size_t fr_sbuff_adv_to_strstr(fr_sbuff_t *in, char const *needle, ssize_t len)
+{
+	char const *found;
+	char const *p = in->p;
+
+	if (len < 0) len = strlen(needle);
+
+	found = memmem(in->p, in->end - in->p, needle, len);
+	if (!found) return 0;
+
+	return (size_t)fr_sbuff_advance(in, found - p);
+}
+
+/** Return true if the current char matches, and if it does, advance
+ *
+ */
+bool fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c)
+{
+	if (sbuff->p >= sbuff->end) return false;
+	if (*sbuff->p != c) return false;
+
+	fr_sbuff_advance(sbuff, 1);
+
+	return true;
+}
+
+/** Return true and advance if the next char does not match
+ *
+ */
+bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
+{
+	if (sbuff->p >= sbuff->end) return false;
+	if (*sbuff->p == c) return false;
+
+	fr_sbuff_advance(sbuff, 1);
+
+	return true;
 }

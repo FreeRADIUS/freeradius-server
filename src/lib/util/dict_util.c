@@ -1334,7 +1334,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer),
+	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer),
 					    &our_name, SIZE_MAX,
 					    fr_dict_attr_allowed_chars);
 	if (len == 0) {
@@ -1733,7 +1733,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 
 	INTERNAL_IF_NULL(dict, 0);
 
-	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer),
+	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer),
 				       &our_name, SIZE_MAX,
 				       fr_dict_attr_allowed_chars);
 	if (len == 0) {
@@ -1936,7 +1936,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
 	fr_sbuff_t		our_name;
 
-	fr_sbuff_parse_init(&our_name, name, strlen(name));
+	fr_sbuff_out_init(&our_name, name, strlen(name));
 
 	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, &our_name, fallback);
 	if (slen <= 0) return err;
