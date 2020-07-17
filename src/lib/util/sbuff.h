@@ -77,8 +77,9 @@ typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
 	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token
 								///< matching the output type.
-	FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW	= -2,		//!< Integer type would overflow.
-	FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW	= -3		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_TRAILING		= -2,		//!< Trailing characters found.
+	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -3,		//!< Integer type would overflow.
+	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -4		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
 
 extern fr_table_num_ordered_t const sbuff_parse_error_table[];
@@ -204,6 +205,17 @@ static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_mark
  *
  */
 #define FR_SBUFF_ERROR_RETURN(_sbuff) return -(fr_sbuff_used(_sbuff))
+
+/** Check if _len bytes are available in the sbuff, and if not return the number of bytes we'd need
+ *
+ */
+#define FR_SBUFF_CHECK_REMAINING_RETURN(_sbuff, _len) \
+do { \
+	if ((_len) > fr_sbuff_remaining(_sbuff)) { \
+		return -((_len) - fr_sbuff_remaining(_sbuff));	\
+	}\
+} while (0)
+
 /** @} */
 
 /** @name Sbuff position manipulation
@@ -406,6 +418,21 @@ static inline bool fr_sbuff_next_if_str(fr_sbuff_t *sbuff, char const *needle, s
 	return true;
 }
 
+bool	fr_sbuff_adv_if_str(fr_sbuff_t *sbuff, char const *needle, size_t len);
+
+#define fr_sbuff_adv_if_str_literal(_sbuff, _needle) fr_sbuff_adv_if_str(_sbuff, _needle, sizeof(_needle) - 1)
+
+bool	fr_sbuff_adv_if_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len);
+
+#define fr_sbuff_adv_if_strcase_literal(_sbuff, _needle) fr_sbuff_adv_if_strcase(_sbuff, _needle, sizeof(_needle) - 1)
+
+size_t	fr_sbuff_adv_if_whitespace(fr_sbuff_t *sbuff);
+
+size_t	fr_sbuff_adv_strstr(fr_sbuff_t *sbuff, char const *needle, ssize_t len);
+
+#define fr_sbuff_adv_strstr_literal(_sbuff, _needle) fr_sbuff_adv_strstr(_sbuff, _needle, sizeof(_needle) - 1)
+/** @} */
+
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
  * This function is similar to fr_sbuff_next_if_str but is case insensitive.
@@ -439,6 +466,12 @@ static inline bool fr_sbuff_is_allowed(fr_sbuff_t *sbuff, bool const allowed_cha
 {
 	if (sbuff->p >= sbuff->end) return false;
 	return allowed_chars[(uint8_t)*sbuff->p];
+}
+
+static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
+{
+	if (sbuff->p >= sbuff->end) return false;
+	return *sbuff->p == c;
 }
 
 static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
@@ -550,21 +583,25 @@ size_t	fr_sbuff_bstrncpy_out_until(char *out, size_t outlen, fr_sbuff_t *sbuff, 
  * so that if the output variable type changes, the parse rules are automatically changed.
  * @{
  */
-size_t fr_sbuff_parse_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_parse_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+size_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+
+size_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *sbuff, bool no_trailing);
+
+size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 /** Parse a value based on the output type
  *
@@ -576,14 +613,16 @@ size_t fr_sbuff_parse_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuf
  */
 #define fr_sbuff_parse(_err, _out, _in) \
 	_Generic((_out), \
-		 int8_t *	: fr_sbuff_parse_int8(_err, (int8_t *)_out, _in, true), \
-		 int16_t *	: fr_sbuff_parse_int16(_err, (int16_t *)_out, _in, true), \
-		 int32_t *	: fr_sbuff_parse_int32(_err, (int32_t *)_out, _in, true), \
-		 int64_t *	: fr_sbuff_parse_int64(_err, (int64_t *)_out, _in, true), \
-		 uint8_t *	: fr_sbuff_parse_uint8(_err, (uint8_t *)_out, _in, true), \
-		 uint16_t *	: fr_sbuff_parse_uint16(_err, (uint16_t *)_out, _in, true), \
-		 uint32_t *	: fr_sbuff_parse_uint32(_err, (uint32_t *)_out, _in, true), \
-		 uint64_t *	: fr_sbuff_parse_uint64(_err, (uint64_t *)_out, _in, true) \
+		 int8_t *	: fr_sbuff_out_int8(_err, (int8_t *)_out, _in, true), \
+		 int16_t *	: fr_sbuff_out_int16(_err, (int16_t *)_out, _in, true), \
+		 int32_t *	: fr_sbuff_out_int32(_err, (int32_t *)_out, _in, true), \
+		 int64_t *	: fr_sbuff_out_int64(_err, (int64_t *)_out, _in, true), \
+		 uint8_t *	: fr_sbuff_out_uint8(_err, (uint8_t *)_out, _in, true), \
+		 uint16_t *	: fr_sbuff_out_uint16(_err, (uint16_t *)_out, _in, true), \
+		 uint32_t *	: fr_sbuff_out_uint32(_err, (uint32_t *)_out, _in, true), \
+		 uint64_t *	: fr_sbuff_out_uint64(_err, (uint64_t *)_out, _in, true), \
+		 float *	: fr_sbuff_out_float32(_err, (float *)_out, _in, true), \
+		 double *	: fr_sbuff_out_float64(_err, (double *)_out, _in, true), \
 	)
 /** @} */
 
@@ -658,6 +697,40 @@ static inline void _fr_sbuff_print_init(fr_sbuff_t *out, char *start, char *end,
 	out->is_const = false;
 	out->is_extendable = extendable;
 }
+
+size_t		fr_sbuff_in_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *in, bool no_trailing);
+
+size_t		fr_sbuff_in_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *in, bool no_trailing);
+
+ssize_t		fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
+
+ssize_t		fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len);
+
+ssize_t		fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str);
+
+ssize_t		fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap);
+
+ssize_t		fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...);
+
+ssize_t		fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, char quote);
+
+ssize_t		fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote);
 
 #ifdef __cplusplus
 }

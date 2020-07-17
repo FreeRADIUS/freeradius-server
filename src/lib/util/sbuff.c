@@ -22,14 +22,18 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+
+_Thread_local char *sbuff_scratch;
 
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
@@ -37,8 +41,8 @@ static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be
 fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 	{ "ok",			FR_SBUFF_PARSE_OK				},
 	{ "token not found",	FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
-	{ "integer overflow",	FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW		},
-	{ "integer underflow",	FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW		},
+	{ "integer overflow",	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
+	{ "integer underflow",	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
@@ -418,7 +422,7 @@ size_t fr_sbuff_bstrncpy_out_until(char *out, size_t outlen, fr_sbuff_t *in, siz
  *	- >0 the number of bytes copied.
  */
 #define PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
-size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1]; \
 	char		*end; \
@@ -426,21 +430,25 @@ size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
 	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
-	if ((len == 0) && err) { \
-		*err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+	if (len == 0) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
 	num = strtoll(buff, &end, 10); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX)) || (no_trailing && isdigit(*(in->p + (end - buff)))))  { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX))) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		*out = (_type)(_max); \
+		return 0; \
+	} else if (no_trailing && (*end != '\0')) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		*out = (_type)(_max); \
 		return 0; \
 	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_UNDERFLOW; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return 0; \
 	} else { \
@@ -466,7 +474,7 @@ PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
  *			used in <stdint.h>.
  */
 #define PARSE_UINT_DEF(_name, _type, _max, _max_char) \
-size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
+size_t fr_sbuff_in_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 1]; \
 	char			*end; \
@@ -474,17 +482,21 @@ size_t fr_sbuff_parse_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
 	len = fr_sbuff_bstrncpy_out(buff, sizeof(buff), &our_in, _max_char); \
-	if ((len == 0) && err) { \
-		*err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+	if (len == 0) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
 	num = strtoull(buff, &end, 10); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX)) || (no_trailing && isdigit(*(in->p + (end - buff))))) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_INTEGER_OVERFLOW; \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX))) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		*out = (_type)(_max); \
+		return 0; \
+	} else if (no_trailing && (*end != '\0')) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		*out = (_type)(_max); \
 		return 0; \
 	} else { \
@@ -499,3 +511,269 @@ PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 1)
 PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
 PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
 PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
+
+static bool float_chars[UINT8_MAX + 1] = {
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
+};
+
+/** Attempt to parse a float
+ *
+ * @param[out] err		If non null, will be filled with any parse errors.
+ * @param[out] out		Where to write the resulting float.
+ * @param[in] in		Sbuff to parse float from.
+ * @param[in] no_trailing	Emit a parse error if there are trailing characters
+ *				after the float parsed.
+ * @return
+ *	- >0 the number of bytes copied into the sbuff.
+ *	- 0 a parse error occurred.
+ */
+size_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *in, bool no_trailing)
+{
+	char		buffer[100];	/* Should be sufficient */
+	char		*end;
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		len;
+	float		res;
+
+	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars);
+	if (len == sizeof(buffer)) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		return 0;
+	} else if (len == 0) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
+		return 0;
+	}
+
+	res = strtof(buffer, &end);
+	if (errno == ERANGE) {
+		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW;
+		return 0;
+	}
+	if (no_trailing && (*end != '\0')) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		*out = res;
+		return 0;
+	}
+
+	return fr_sbuff_advance(in, end - buffer);
+}
+
+/** Attempt to parse a double
+ *
+ * @param[out] err		If non null, will be filled with any parse errors.
+ * @param[out] out		Where to write the resulting float.
+ * @param[in] in		Sbuff to parse float from.
+ * @param[in] no_trailing	Emit a parse error if there are trailing characters
+ *				after the float parsed.
+ * @return
+ *	- >0 the number of bytes copied into the sbuff.
+ *	- 0 a parse error occurred.
+ */
+size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *in, bool no_trailing)
+{
+	char		buffer[100];	/* Should be sufficient */
+	char		*end;
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		len;
+	float		res;
+
+	len = fr_sbuff_bstrncpy_out_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars);
+	if (len == sizeof(buffer)) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		return 0;
+	} else if (len == 0) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
+		return 0;
+	}
+
+	res = strtof(buffer, &end);
+	if (errno == ERANGE) {
+		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW;
+		return 0;
+	}
+	if (no_trailing && (*end != '\0')) {
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+		*out = res;
+		return 0;
+	}
+
+	return fr_sbuff_advance(in, end - buffer);
+}
+
+/** Copy bytes into the sbuff up to the first \0
+ *
+ * @param[in] sbuff	to copy into.
+ * @param[in] str	to copy into buffer.
+ * @return
+ *	- >= 0 the number of bytes copied into the sbuff.
+ *	- <0 the number of bytes required to complete the copy operation.
+ */
+ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
+{
+	size_t len = strlen(str);
+
+	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+
+	strlcpy(sbuff->p, str, len + 1);
+
+	return fr_sbuff_advance(sbuff, len);
+}
+
+/** Copy bytes into the sbuff up to the first \0
+ *
+ * @param[in] sbuff	to copy into.
+ * @param[in] str	to copy into buffer.
+ * @param[in] len	number of bytes to copy.
+ * @return
+ *	- >= 0 the number of bytes copied into the sbuff.
+ *	- <0 the number of bytes required to complete the copy operation.
+ */
+ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
+{
+	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+
+	memcpy(sbuff->p, str, len);
+	sbuff->p[len] = '\0';
+
+	return fr_sbuff_advance(sbuff, len);
+}
+
+/** Copy bytes into the sbuff up to the first \0
+ *
+ * @param[in] sbuff	to copy into.
+ * @param[in] str	talloced buffer to copy into sbuff.
+ * @return
+ *	- >= 0 the number of bytes copied into the sbuff.
+ *	- <0 the number of bytes required to complete the copy operation.
+ */
+ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
+{
+	size_t len = talloc_array_length(str) - 1;
+
+	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+
+	memcpy(sbuff->p, str, len);
+	sbuff->p[len] = '\0';
+
+	return fr_sbuff_advance(sbuff, len);
+}
+
+/** Free the scratch buffer used for printf
+ *
+ */
+static void _sbuff_scratch_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
+{
+	TALLOC_CTX	*scratch;
+
+	scratch = sbuff_scratch;
+	if (!scratch) {
+		scratch = talloc_pool(NULL, 4096);
+		if (unlikely(!scratch)) {
+			fr_strerror_printf("Out of Memory");
+			return -1;
+		}
+		fr_thread_local_set_destructor(sbuff_scratch, _sbuff_scratch_free, scratch);
+	}
+
+	*out = scratch;
+
+	return 0;
+}
+
+/** Print using a fmt string to an sbuff
+ *
+ * @param[in] sbuff	to print into.
+ * @param[in] fmt	string.
+ * @param[in] ap	arguments for format string.
+ * @return
+ *	- >= 0 the number of bytes printed into the sbuff.
+ *	- <0 the number of bytes required to complete the print operation.
+ */
+ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
+{
+	TALLOC_CTX	*scratch;
+	va_list		ap_p;
+	char		*tmp;
+	ssize_t		slen;
+
+	if (sbuff_scratch_init(&scratch) < 0) return 0;
+
+	va_copy(ap_p, ap);
+	tmp = fr_vasprintf(scratch, fmt, ap_p);
+	va_end(ap_p);
+	if (!tmp) return 0;
+
+	slen = fr_sbuff_in_bstrcpy_buffer(sbuff, tmp);
+	talloc_free(tmp);	/* Free the temporary buffer */
+
+	return slen;
+}
+
+/** Print using a fmt string to an sbuff
+ *
+ * @param[in] sbuff	to print into.
+ * @param[in] fmt	string.
+ * @param[in] ...	arguments for format string.
+ * @return
+ *	- >= 0 the number of bytes printed into the sbuff.
+ *	- <0 the number of bytes required to complete the print operation.
+ */
+ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
+{
+	va_list		ap;
+	ssize_t		slen;
+
+	va_start(ap, fmt);
+	slen = fr_sbuff_in_vsprintf(sbuff, fmt, ap);
+	va_end(ap);
+
+	return slen;
+}
+
+/** Print an escaped string to an sbuff
+ *
+ * @param[in] sbuff	to print into.
+ * @param[in] in	to escape.
+ * @param[in] inlen	of string to escape.
+ * @param[in] quote	Which quoting character to escape.  Also controls
+ *			which characters are escaped.
+ * @return
+ *	- >= 0 the number of bytes printed into the sbuff.
+ *	- <0 the number of bytes required to complete the print operation.
+ */
+ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, char quote)
+{
+	size_t		len;
+
+	len = fr_snprint_len(in, inlen, quote);
+	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+
+	len = fr_snprint(fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff) + 1, in, inlen, quote);
+	fr_sbuff_advance(sbuff, len);
+
+	return len;
+}
+
+/** Print an escaped string to an sbuff taking a talloced buffer as input
+ *
+ * @param[in] sbuff	to print into.
+ * @param[in] in	to escape.
+ * @param[in] quote	Which quoting character to escape.  Also controls
+ *			which characters are escaped.
+ * @return
+ *	- >= 0 the number of bytes printed into the sbuff.
+ *	- <0 the number of bytes required to complete the print operation.
+ */
+ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote)
+{
+	if (unlikely(!in)) return 0;
+
+	return fr_sbuff_in_snprint(sbuff, in, talloc_array_length(in) - 1, quote);
+}
