@@ -7,7 +7,7 @@
 #
 #  Once the fuzzer is build, run it via:
 #
-#  ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -max_len=256 /path/to/corpus/directory/ -D ./share/dictionary/
+#  ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -max_len=256 -D ./share/dictionary/ path/to/corpus/directory/
 #
 
 #
