@@ -104,7 +104,7 @@ extern struct in6_addr fr_inet_link_local6;
 
 /** Like FR_IPADDR_STRLEN but with space for a prefix
  */
-#define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 3)
+#define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 4)
 
 extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
