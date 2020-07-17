@@ -27,6 +27,8 @@ ATTRIBUTE	Ruckus-Accept-Enhancement-Reason	12	integer
 ATTRIBUTE	Ruckus-Sta-Inner-Id			13	string
 ATTRIBUTE	Ruckus-BSSID				14	octets
 
+ATTRIBUTE	Ruckus-FlexAuth-AVP			20	string
+
 ATTRIBUTE	Ruckus-WSG-User				10	string
 
 ATTRIBUTE	Ruckus-Triplets				101	octets
