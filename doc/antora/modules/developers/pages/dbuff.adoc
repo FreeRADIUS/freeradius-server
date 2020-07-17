@@ -1,0 +1,92 @@
+= About Dbuffs
+
+This is a description of dbuffs and how they are/will be used in encoding and decoding functions. It's an overview, at best accurate as of the time of writing; of course, the source file, src/lib/util/dbuff.h, determines how things actually behave.
+
+== Motivation
+
+The various protocols FreeRADIUS deals with are, possibly aside from internal, described by RFCs which are effectively grammars for a language whose sentences are valid messages in that protocol. The functions in `src/<protocol>/decode.c` are recursive descent parsers for those grammars, each representing a nonterminal in the grammar, and in `src/<protocol>/encode.c` are similar functions to generate sentences of that language from internal data.
+
+Decode functions share a buffer that contains an incoming message. Each function reads a leading portion of the buffer corresponding to the nonterminal the function represents and leaves the rest for other functions to read.
+
+Encode functions share a buffer that will contain a message being generated, each function writing data that corresponds to the nonterminal the function represents and leaving the rest of the buffer for other functions to write.
+
+As things stand (at the time of writing), the functions are passed, among other things, a pointer to the buffer and the length of the buffer (or sometimes how much of the buffer the caller is willing to let the callee use). When all goes well, they return the number of bytes they used so the caller can appropriately adjust the pointer and length (adding to the former and subtracting from the latter).
+
+It works, but there are multiple problems
+* For encoders the buffer cannot be extended, which means the length of the buffer must be determined prior to calling the encoder.
+* It's very easy to miss a length check, and either read or write past the end of the buffer, both being security issues C is famous for.
+* It leads to a significant amount of boilerplate code.
+
+== Enter The Dbuff
+
+Thus the dbuff, fr_dbuff_t in the source. It's a structure that contains, among other things:
+
+* A pointer to the start of the buffer, or to a portion thereof.
+* A pointer to the next byte available for reading (decode) or writing (encode).
+* A pointer just past the last available byte in the (portion of the) buffer.
+* A pointer to the dbuff's immediate parent, such that all dbuffs operating on the same buffer are members of a singly linked list.
+
+Encoding and decoding functions pass pointers to dbuffs, which let the called function's actions modify the pointer to the next byte available so the caller doesn't have to.
+
+Here are the things one can do with a dbuff:
+
+* Initialize it, using a `uint8_t` buffer, and either an end pointer or length.  The initializer also makes use of the C11 `_Generic` keyword to determine if the buffer is const, and marks the dbuff up as either `const` (no writing allowed) or non-const.
+* Create a "child" dbuff, optionally subject to certain constraints (such as maximum length).
+* For encoding - write data to the next available byte or bytes, for decoding - read data from the next available byte or bytes.
+* Explicitly move pointer (2) (either ahead by a number of bytes, to the start, or to the end).
+* Ask how much of the dbuff's portion of the buffer is remaining or has been used.
+	
+When encoding, data can either be one or more bytes or a signed or unsigned 8, 16, 32, or 64 bit integer, there's also a memset function for initialising uninitialised areas of the buffer. Because encoding is for output to a network, integral values written are in network order. 
+
+When decoding, data can either be copied to an intermediary buffer, or written out to signed or unsigned 8, 16, 32 or 64 bit integer variables.
+
+For both encoding and decoding the type of data written to or read from the dbuff is determined by the C type of the value or variable.  For example calling `fr_dbuff_in(&dbuff, (uint32_t)1)` will result in a 4 byte (32bit) unsigned integer being written to the buffer in big-endian byte order.
+
+Operations on a dbuff will fail if there's insufficient space in the dbuff to read or write the specified data.  No operations on a dbuff will allow reading or writing outside of the buffer.
+
+== Children and limits
+
+A child dbuff operates on a portion of the buffer, starting where the parent left off. The creator can control two things about the child:
+
+* The space available to the child. There are two ways to specify this: 
+** Give the child no more than a specified number of bytes (`FR_DBUFF_MAX()`).
+** Insist that the child only be given enough bytes that the parent has a certain number (`FR_DBUFF_RESERVE()`).
+* whether the child's advances propagate up to its ancestors (`FR_DBUFF_NO_ADVANCE()` gives a child dbuff whose advances don't propagate, and `FR_DBUFF_RESERVE_NO_ADVANCE()` lets you reserve and prevent propagation).
+
+[IMPORTANT] 
+==== 
+`FR_DBUFF_MAX()` can't fail; it's like an ad promising "up to one million dollars!" where "up to" includes zero. `FR_DBUFF_RESERVE()`, though, can fail in a sense, because you're promising the parent at least a certain number of bytes. Underneath they're both C compound literals, so it's not clear how to indicate an error.
+====
+ 
+`FR_DBUFF_MAX()` typically shows up when a caller limits a callee to what will fit in a TLV in some context. `FR_DBUFF_NO_ADVANCE()` came into existence to let an encoding function write a header and then take it back if it proved useless, but it can also be used to let one fill in a header when a length is finally known, and this schema has become a convention:
+[source,c]
+----
+ssize_t encode_foo(fr_dbuff_t *dbuff, ...)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	
+	/* encode, operating on work_dbuff, returning on error */
+	
+	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+}
+----
+
+== Error handling
+
+First, we should describe what encode functions return.
+
+The various encode functions always return a positive value to indicate "I succeeded and while doing so used up this many bytes of the buffer". In some cases, a zero return (no bytes consumed) is valid, in others not. Returning n, n < 0, usually means "I failed, but if only the buffer were |n| bytes longer, it could have worked"... but there are exceptions. Some error returns have the value INT64_MIN + k for some small integer k, to avoid confusion with a "need more space" error return.
+
+dbuff operations that might fail follow the "positive means I succeeded and used this many bytes of buffer, negative means I failed for lack of buffer space" convention. If fr_dbuff_foo() is such an operation, there's a macro `FR_DBUFF_FOO_RETURN()`, defined so that one can write
+[source,c]
+----
+FR_DBUFF_FOO_RETURN(dbuff, ...);
+----
+
+instead of
+[source,c]
+----
+f ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
+----	
+	
+letting one return an error to the caller without cluttering the code.
