@@ -49,6 +49,8 @@ ATTRIBUTE	Juniper-Local-Interface			47	string
 ATTRIBUTE	Juniper-Switching-Filter		48	string
 ATTRIBUTE	Juniper-VoIP-Vlan			49	string
 
+ATTRIBUTE	Juniper-AV-Pair			52	string
+
 VALUE	Juniper-CTPView-APP-Group	Net_View		1
 VALUE	Juniper-CTPView-APP-Group	Net_Admin		2
 VALUE	Juniper-CTPView-APP-Group	Global_Admin		3
