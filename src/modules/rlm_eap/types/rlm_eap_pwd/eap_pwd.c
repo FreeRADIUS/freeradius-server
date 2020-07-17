@@ -54,21 +54,21 @@ static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
 
 /* a counter-based KDF based on NIST SP800-108 */
 static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
-			int label_len, uint8_t *retult, int retult_bit_len)
+			int label_len, uint8_t *result, int result_bit_len)
 {
 	HMAC_CTX	*hmac_ctx;
 	uint8_t		digest[SHA256_DIGEST_LENGTH];
 	uint16_t	i, ctr, L;
-	int		retult_byte_len, len = 0;
+	int		result_byte_len, len = 0;
 	unsigned int	mdlen = SHA256_DIGEST_LENGTH;
 	uint8_t		mask = 0xff;
 
 	MEM(hmac_ctx = HMAC_CTX_new());
-	retult_byte_len = (retult_bit_len + 7) / 8;
+	result_byte_len = (result_bit_len + 7) / 8;
 
 	ctr = 0;
-	L = htons(retult_bit_len);
-	while (len < retult_byte_len) {
+	L = htons(result_bit_len);
+	while (len < result_byte_len) {
 		ctr++; i = htons(ctr);
 
 		HMAC_Init_ex(hmac_ctx, key, keylen, EVP_sha256(), NULL);
@@ -77,19 +77,19 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 		HMAC_Update(hmac_ctx, (uint8_t const *)label, label_len);
 		HMAC_Update(hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
 		HMAC_Final(hmac_ctx, digest, &mdlen);
-		if ((len + (int) mdlen) > retult_byte_len) {
-			memcpy(retult + len, digest, retult_byte_len - len);
+		if ((len + (int) mdlen) > result_byte_len) {
+			memcpy(result + len, digest, result_byte_len - len);
 		} else {
-			memcpy(retult + len, digest, mdlen);
+			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
 		HMAC_CTX_reset(hmac_ctx);
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
-	if (retult_bit_len % 8) {
-		mask <<= (8 - (retult_bit_len % 8));
-		retult[retult_byte_len - 1] &= mask;
+	if (result_bit_len % 8) {
+		mask <<= (8 - (result_bit_len % 8));
+		result[result_byte_len - 1] &= mask;
 	}
 
 	HMAC_CTX_free(hmac_ctx);
