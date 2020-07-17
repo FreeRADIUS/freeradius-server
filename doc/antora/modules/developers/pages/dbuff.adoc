@@ -1,0 +1,86 @@
+= About Dbuffs
+
+This is a description of dbuffs and how they are/will be used in encoding and decoding functions. It's an overview, at best accurate as of the time of writing; of course, the source file, src/lib/util/dbuff.h, determines how things actually behave.
+
+== Motivation
+
+The various protocols FreeRADIUS deals with are, possibly aside from internal, described by RFCs which are effectively grammars for a language whose sentences are valid messages in that protocol. The functions in src/<protocol>/decode.c are recursive descent parsers for those grammars, each representing a nonterminal in the grammar, and in src/<protocol>/encode.c are similar functions to generate sentences of that language from internal data.
+
+Decode functions share a buffer that contains an incoming message. Each function reads a leading portion of the buffer corresponding to the nonterminal the function represents and leaves the rest for other functions to read.
+
+Encode functions share a buffer that will contain a message being generated, each function writing data that corresponds to the nonterminal the function represents and leaving the rest of the buffer for other functions to write.
+
+As things stand (or stood, or perhaps will have stood at the time of writing), the functions are passed, among other things, a pointer to the buffer and the length of the buffer (or sometimes how much of the buffer the caller is willing to let the callee use). When all goes well, they return the number of bytes they used so the caller can appropriately adjust the pointer and length (adding to the former and subtracting from the latter).
+
+It works, but it makes for a fair amount of boilerplate.
+
+== Enter The Dbuff
+
+Thus the dbuff, fr_dbuff_t in the source. It's a structure that contains, among other things,
+. a pointer to the start of the buffer, or to a portion thereof
+. a pointer to the next byte available for reading (decode) or writing (encode)
+. a pointer just past the last available byte in the (portion of the) buffer 
+
+Encoding and decoding functions pass pointers to dbuffs, which let the called function's actions modify the pointer to the next byte available so the caller doesn't have to.
+
+Here are the things one can do with a dbuff:
+
+*  initialize it, given a buffer (the initializer notices whether the pointer to the buffer points to a const-qualified type, and marks the dbuff so that attempts to modify data in the buffer fail. Of course dbuffs for encoding shouldn't be so marked.)
+* create a "child" dbuff, optionally subject to certain constraints
+* write data to the next available byte or bytes (for decoding there will be corresponding read operations)
+* explicitly move pointer (2) (either ahead by a number of bytes, to the start, or to the end)
+* ask how much of the dbuff's portion of the buffer is remaining or has been used
+	
+Data written can either be one or more bytes or a signed or unsigned 16, 32, or 64 bit integer, and for writing there's a dbuff version of memset(). Because encoding is for output to a network, integral values written are in network order. (For decoding, they'll be read in network order and converted to host format.)
+
+Writes and pointer moves can fail due to lack of space.
+
+A child dbuff operates on a portion of the buffer, starting where the parent left off. The creator can control two things about the child:
+
+* the space available to the child. There are two ways to specify this: give the child no more than a specified number of bytes (FR_DBUFF_MAX()), or insist that the child only be given enough bytes that the parent has a certain number (FR_DBUFF_RESERVE()). (One issue: FR_DBUFF_MAX() can't fail; it's like an ad promising "up to one million dollars!" where "up to" includes zero. FR_DBUFF_RESERVE(), though, can fail in a sense, because you're promising the parent at least a certain number of bytes. Underneath they're both C compound literals, so it's not clear how to indicate an error.)
+* whether the child's advances propagate up to its ancestors (FR_DBUFF_NOADVANCE() gives a child dbuff whose advances don't propagate, and FR_DBUFF_RESERVE_NOADVANCE() lets you reserve and prevent propagation)
+
+FR_DBUFF_MAX() typically shows up when a caller limits a callee to what will fit in a TLV in some context. FR_DBUFF_NO_ADVANCE() came into existence to let an encoding function write a header and then take it back if it proved useless, but it can also be used to let one fill in a header when a length is finally known, and this schema has become a convention:
+[source,c]
+----
+ssize_t encode_foo(fr_dbuff_t *dbuff, ...)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	
+	/* encode, operating on work_dbuff, returning on error */
+	
+	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+}
+----
+
+== Error handling
+
+First, we should describe what encode functions return.
+
+The various encode functions always return a positive value to indicate "I succeeded and while doing so used up this many bytes of the buffer". In some cases, a zero return (no bytes consumed) is valid, in others not. Returning n, n < 0, usually means "I failed, but if only the buffer were |n| bytes longer, it could have worked"... but there are exceptions. Some error returns have the value INT64_MIN + k for some small integer k, probably to avoid confusion with a "need more space" error return. Other functions return 0 for out of space and values like -1 or -2 for other errors.
+
+dbuff operations that might fail follow the "positive means I succeeded and used this many bytes of buffer, negative means I failed for lack of buffer space" convention. If fr_dbuff_foo() is such an operation, there's a macro FR_DBUFF_FOO_RETURN(), defined so that one can write
+[source,c]
+----
+	FR_DBUFF_FOO_RETURN(dbuff, ...);
+----
+
+instead of
+[source,c]
+----
+	if ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
+----	
+	
+letting one return an error to the caller without cluttering the code.
+
+Here the opinion starts...
+
+Called functions modify the passed dbuff to show what they've used, so they don't need to return a value indicating what they've used, save that at the time of writing, the very top level--the functions called from outside the encode.c and decode.c files and functions visible via test points--still expect that. 
+
+I would therefore suggest that once the callers of the visible encoding/decoding functions (including test points) are all using dbuffs, the error return convention be changed to the following, which could be used consistently across encoding and decoding functions and dbuff operations:
+
+* return zero on success	
+* return a positive value n to indicate "if only I had n more bytes in the buffer".
+* return a negative value for other errors (generic out of space, etc.)
+
+That would also get us out of the business of negating the number of bytes the called function needed.
