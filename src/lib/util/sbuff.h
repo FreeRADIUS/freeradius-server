@@ -42,8 +42,8 @@ extern "C" {
 
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 struct fr_sbuff_ptr_s {
-	char			**ptr;				//!< Position we're tracking.
-	fr_sbuff_marker_t	*next;				//!< Next m in the list.
+	char			**ptr;			//!< Position we're tracking.
+	fr_sbuff_marker_t	*next;			//!< Next m in the list.
 };
 
 typedef struct fr_sbuff_s fr_sbuff_t;
@@ -63,14 +63,14 @@ struct fr_sbuff_s {
 		char *p;					//!< Mutable position pointer.
 	};
 
-	uint8_t			is_const:1;			//!< Can't be modified.
-	uint8_t			is_extendable:1;		//!< Dynamically allocated talloc buffer.
-	uint8_t			adv_parent:1;			//!< If true, advance the parent.
+	uint8_t			is_const:1;		//!< Can't be modified.
+	uint8_t			is_extendable:1;	//!< Dynamically allocated talloc buffer.
+	uint8_t			adv_parent:1;		//!< If true, advance the parent.
 
-	fr_sbuff_t		*parent;			//!< sbuff this sbuff was copied from.
+	fr_sbuff_t		*parent;		//!< sbuff this sbuff was copied from.
 
-	fr_sbuff_marker_t	*m;				//!< Pointers to update if the underlying
-								///< buffer changes.
+	fr_sbuff_marker_t	*m;			//!< Pointers to update if the underlying
+							///< buffer changes.
 };
 
 typedef enum {
