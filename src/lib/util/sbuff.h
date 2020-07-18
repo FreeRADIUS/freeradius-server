@@ -108,13 +108,13 @@ do { \
  */
 #define FR_SBUFF_NO_ADVANCE(_sbuff) \
 (fr_sbuff_t){ \
-	.start	= (_sbuff)->p, \
-	.end	= (_sbuff)->end, \
-	.p	= (_sbuff)->p, \
-	.is_const = (_sbuff)->is_const, \
-	.is_extendable = (_sbuff)->is_extendable, \
-	.adv_parent = 0, \
-	.parent = (_sbuff) \
+	.start		= (_sbuff)->p, \
+	.end		= (_sbuff)->end, \
+	.p		= (_sbuff)->p, \
+	.is_const	= (_sbuff)->is_const, \
+	.is_extendable	= (_sbuff)->is_extendable, \
+	.adv_parent	= 0, \
+	.parent		= (_sbuff) \
 }
 
 /** Copy all fields in an sbuff except ptrers
@@ -123,13 +123,13 @@ do { \
  */
 #define FR_SBUFF_COPY(_sbuff) \
 (fr_sbuff_t){ \
-	.start	= (_sbuff)->p, \
-	.end	= (_sbuff)->end, \
-	.p	= (_sbuff)->p, \
-	.is_const = (_sbuff)->is_const, \
-	.is_extendable = (_sbuff)->is_extendable, \
-	.adv_parent = (_sbuff)->adv_parent, \
-	.parent = (_sbuff) \
+	.start		= (_sbuff)->p, \
+	.end		= (_sbuff)->end, \
+	.p		= (_sbuff)->p, \
+	.is_const	= (_sbuff)->is_const, \
+	.is_extendable	= (_sbuff)->is_extendable, \
+	.adv_parent	= (_sbuff)->adv_parent, \
+	.parent		= (_sbuff) \
 }
 
 /** Creates a compound literal to pass into functions which accept a sbuff

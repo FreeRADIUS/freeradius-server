@@ -69,7 +69,6 @@ struct fr_dbuff_s {
 						///< of this dbuff.
 	fr_dbuff_t		*parent;
 
-
 	fr_dbuff_marker_t	*m;		//!< Pointers to update if the underlying
 						///< buffer changes.
 };
@@ -83,24 +82,24 @@ struct fr_dbuff_s {
  */
 #define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t) \
 { \
-	.start	= (_dbuff)->p, \
-	.end	= (_dbuff)->end, \
-	.p	= (_dbuff)->p, \
-	.is_const = (_dbuff)->is_const, \
-	.adv_parent = false, \
-	.parent = (_dbuff) \
+	.start		= (_dbuff)->p, \
+	.end		= (_dbuff)->end, \
+	.p		= (_dbuff)->p, \
+	.is_const 	= (_dbuff)->is_const, \
+	.adv_parent 	= false, \
+	.parent 	= (_dbuff) \
 }
 
 #define _FR_DBUFF_RESERVE(_dbuff, _reserve, _adv_parent) \
 (fr_dbuff_t){ \
-	.start	= (_dbuff)->p, \
-	.end	= ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
-			(_dbuff)->end - (_reserve) : \
-			(_dbuff)->p, \
-	.p	= (_dbuff)->p, \
-	.is_const = (_dbuff)->is_const, \
-	.adv_parent = _adv_parent, \
-	.parent = (_dbuff) \
+	.start		= (_dbuff)->p, \
+	.end		= ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
+				(_dbuff)->end - (_reserve) : \
+				(_dbuff)->p, \
+	.p		= (_dbuff)->p, \
+	.is_const	= (_dbuff)->is_const, \
+	.adv_parent	= _adv_parent, \
+	.parent		= (_dbuff) \
 }
 
 /** Reserve N bytes in the dbuff when passing it to another function
