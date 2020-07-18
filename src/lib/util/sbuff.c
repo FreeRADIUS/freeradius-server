@@ -342,7 +342,7 @@ size_t fr_sbuff_out_bstrncpy_until(char *out, size_t outlen, fr_sbuff_t *in, siz
  *	- 0 no bytes copied.  Examine err.
  *	- >0 the number of bytes copied.
  */
-#define PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
+#define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1]; \
@@ -380,10 +380,10 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	return end - buff; \
 }
 
-PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 2)
-PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6)
-PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11)
-PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
+SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 2)
+SBUFF_PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6)
+SBUFF_PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11)
+SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
 
 /** Used to define a number parsing functions for singed integers
  *
@@ -394,7 +394,7 @@ PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
  */
-#define PARSE_UINT_DEF(_name, _type, _max, _max_char) \
+#define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 1]; \
@@ -428,10 +428,10 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	return end - buff; \
 }
 
-PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 1)
-PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
-PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
-PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
+SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 1)
+SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
+SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
+SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
 
 static bool float_chars[UINT8_MAX + 1] = {
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
@@ -448,7 +448,7 @@ static bool float_chars[UINT8_MAX + 1] = {
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
  */
-#define PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
+#define SBUFF_PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buffer[_max_char + 1]; \
@@ -477,8 +477,8 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	return fr_sbuff_advance(in, end - buffer); \
 }
 
-PARSE_FLOAT_DEF(float32, float, strtof, 100);
-PARSE_FLOAT_DEF(float64, double, strtod, 100);
+SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
+SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100);
 
 /** Copy bytes into the sbuff up to the first \0
  *

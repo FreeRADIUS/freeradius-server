@@ -1231,7 +1231,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_UINT32_IN_RETURN(&work_dbuff, da->attr);	/* Copy in the 32bit vendor ID */
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)da->attr);	/* Copy in the 32bit vendor ID */
 
 	len = encode_vendor_attr_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 6), da_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;

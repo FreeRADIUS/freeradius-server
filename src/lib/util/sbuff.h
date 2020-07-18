@@ -204,6 +204,222 @@ do { \
 
 /** @} */
 
+/** @name Accessors
+ *
+ * Caching the values of these pointers or the pointer values from the sbuff
+ * directly is strongly discouraged as they can become invalidated during
+ * stream parsing or when printing to an auto-expanding buffer.
+ *
+ * These functions should only be used to pass sbuff pointers into 3rd party
+ * APIs.
+ */
+static inline char *fr_sbuff_start(fr_sbuff_t *sbuff)
+{
+	return sbuff->start;
+}
+
+static inline char *fr_sbuff_current(fr_sbuff_t *sbuff)
+{
+	return sbuff->p;
+}
+
+static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
+{
+	return sbuff->end;
+}
+/** @} */
+
+/** @name Position modification (recursive)
+ *
+ * Change the current position of pointers in the sbuff and their children.
+ * @{
+ */
+
+/** Update the position of p in a list of sbuffs
+ *
+ * @note Do not call directly.
+ */
+static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
+{
+	sbuff->p_i = p;
+	if (sbuff->adv_parent && sbuff->parent) _fr_sbuff_set_recurse(sbuff->parent, p);
+}
+
+/** Advance position in sbuff by N bytes
+ *
+ * @param[in] sbuff	to advance.
+ * @param[in] n		How much to advance sbuff by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
+{
+	size_t freespace = fr_sbuff_remaining(sbuff);
+	if (n > freespace) return -(n - freespace);
+	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
+	return n;
+}
+#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
+
+/** Set a new position for 'p' in an sbuff
+ *
+ * @param[out] sbuff	sbuff to set a position in.
+ * @param[in] p		Position to set.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
+{
+	char const *c;
+
+	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p < sbuff->start)) return 0;
+
+	c = sbuff->p;
+	_fr_sbuff_set_recurse(sbuff, p);
+
+	return p - c;
+}
+
+/** Set the position in a sbuff using another sbuff, a char pointer, or a length
+ *
+ * @param[out] _dst	sbuff to advance.
+ * @param[in] _src	An sbuff, char pointer, or length value to advance
+ *			_dst by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+#define fr_sbuff_set(_dst, _src) \
+_fr_sbuff_set(_dst, \
+	      _Generic(_src, \
+			fr_sbuff_t *	: (_src)->p, \
+			char const *	: (_src), \
+			char *		: (_src), \
+			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
+	      ))
+
+
+/** Reset the current position of the sbuff to the start of the string
+ *
+ */
+static inline void fr_sbuff_set_to_start(fr_sbuff_t *sbuff)
+{
+	_fr_sbuff_set_recurse(sbuff, sbuff->start);
+}
+
+/** Reset the current position of the sbuff to the end of the string
+ *
+ */
+static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
+{
+	_fr_sbuff_set_recurse(sbuff, sbuff->end);
+}
+/** @} */
+
+/** @name Add a marker to an sbuff
+ *
+ * Markers are used to indicate an area of the code is working at a particular
+ * point in a string buffer.
+ *
+ * If the sbuff is performing stream parsing, then markers are used to update
+ * any pointers to the buffer, as the data in the buffer is shifted to make
+ * room for new data from the stream.
+ *
+ * If the sbuff is being used to create strings, then the markers are updated
+ * if the buffer is re-allocated.
+ * @{
+ */
+/** Adds a new pointer to the beginning of the list of pointers to update
+ *
+ */
+static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+{
+	m->next = sbuff->m;	/* Link into the head */
+	sbuff->m = m;
+
+	m->p = sbuff->p;	/* Set the current position in the sbuff */
+
+	return sbuff->p;
+}
+
+/** Trims the linked list backed to the specified pointer
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ */
+static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+{
+	if (unlikely(sbuff->m != m)) return;
+	sbuff->m = m->next;
+}
+
+/** Resets the position in an sbuff to specified marker
+ *
+ */
+static inline void fr_sbuff_set_to_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
+{
+	_fr_sbuff_set_recurse(sbuff, m->p);
+}
+
+/** Return the current position of the marker
+ *
+ */
+static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
+{
+	return m->p;
+}
+
+/** How many free bytes remain in the buffer (calculated from marker)
+ *
+ */
+static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+{
+	return sbuff->end - m->p;
+}
+
+/** How many bytes we've used in the buffer (calculated from marker)
+ *
+ */
+static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+{
+	return m->p - sbuff->start;
+}
+/** @} */
+
+/** @name Position modification (non-recursive)
+ *
+ * Change the current position of pointers in the sbuff
+ * @{
+ */
+
+/** Set the start pointer to the current value of p
+ *
+ */
+static inline void fr_sbuff_trim_start(fr_sbuff_t *sbuff)
+{
+	sbuff->start = sbuff->p;
+}
+
+/** Set the end pointer to the current value of p
+ *
+ */
+static inline void fr_sbuff_trim_end(fr_sbuff_t *sbuff)
+{
+	sbuff->end = sbuff->p;
+}
+
+/** @} */
+
 /** @name Copy/print data to an sbuff
  *
  * These functions are typically used for printing.
@@ -481,226 +697,6 @@ static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
 	if (sbuff->p >= sbuff->end) return false;
 	return isspace(*sbuff->p);
 }
-/** @} */
-
-/** @name Sbuff position manipulation
- * @{
- */
-
-/** @name Accessors
- *
- * Caching the values of these pointers or the pointer values from the sbuff
- * directly is strongly discouraged as they can become invalidated during
- * stream parsing or when printing to an auto-expanding buffer.
- *
- * These functions should only be used to pass sbuff pointers into 3rd party
- * APIs.
- */
-static inline char *fr_sbuff_start(fr_sbuff_t *sbuff)
-{
-	return sbuff->start;
-}
-
-static inline char *fr_sbuff_current(fr_sbuff_t *sbuff)
-{
-	return sbuff->p;
-}
-
-static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
-{
-	return sbuff->end;
-}
-/** @} */
-
-/** @name Position modification (recursive)
- *
- * Change the current position of pointers in the sbuff and their children.
- * @{
- */
-
-/** Update the position of p in a list of sbuffs
- *
- * @note Do not call directly.
- */
-static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
-{
-	sbuff->p_i = p;
-	if (sbuff->adv_parent && sbuff->parent) _fr_sbuff_set_recurse(sbuff->parent, p);
-}
-
-/** Advance position in sbuff by N bytes
- *
- * @param[in] sbuff	to advance.
- * @param[in] n		How much to advance sbuff by.
- * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
- */
-static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
-{
-	size_t freespace = fr_sbuff_remaining(sbuff);
-	if (n > freespace) return -(n - freespace);
-	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
-	return n;
-}
-#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
-
-/** Set a new position for 'p' in an sbuff
- *
- * @param[out] sbuff	sbuff to set a position in.
- * @param[in] p		Position to set.
- * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
- */
-static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
-{
-	char const *c;
-
-	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
-	if (unlikely(p < sbuff->start)) return 0;
-
-	c = sbuff->p;
-	_fr_sbuff_set_recurse(sbuff, p);
-
-	return p - c;
-}
-
-/** Set the position in a sbuff using another sbuff, a char pointer, or a length
- *
- * @param[out] _dst	sbuff to advance.
- * @param[in] _src	An sbuff, char pointer, or length value to advance
- *			_dst by.
- * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
- */
-#define fr_sbuff_set(_dst, _src) \
-_fr_sbuff_set(_dst, \
-	      _Generic(_src, \
-			fr_sbuff_t *	: (_src)->p, \
-			char const *	: (_src), \
-			char *		: (_src), \
-			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
-	      ))
-
-
-/** Reset the current position of the sbuff to the start of the string
- *
- */
-static inline void fr_sbuff_set_to_start(fr_sbuff_t *sbuff)
-{
-	_fr_sbuff_set_recurse(sbuff, sbuff->start);
-}
-
-/** Reset the current position of the sbuff to the end of the string
- *
- */
-static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
-{
-	_fr_sbuff_set_recurse(sbuff, sbuff->end);
-}
-/** @} */
-
-/** @name Add a marker to an sbuff
- *
- * Markers are used to indicate an area of the code is working at a particular
- * point in a string buffer.
- *
- * If the sbuff is performing stream parsing, then markers are used to update
- * any pointers to the buffer, as the data in the buffer is shifted to make
- * room for new data from the stream.
- *
- * If the sbuff is being used to create strings, then the markers are updated
- * if the buffer is re-allocated.
- * @{
- */
-/** Adds a new pointer to the beginning of the list of pointers to update
- *
- */
-static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
-{
-	m->next = sbuff->m;	/* Link into the head */
-	sbuff->m = m;
-
-	m->p = sbuff->p;	/* Set the current position in the sbuff */
-
-	return sbuff->p;
-}
-
-/** Trims the linked list backed to the specified pointer
- *
- * Pointers should be released in the inverse order to allocation.
- *
- * Alternatively the oldest pointer can be released, resulting in any newer pointer
- * also being removed from the list.
- *
- * @param[in] m		to release.
- */
-static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
-{
-	if (unlikely(sbuff->m != m)) return;
-	sbuff->m = m->next;
-}
-
-/** Resets the position in an sbuff to specified marker
- *
- */
-static inline void fr_sbuff_set_to_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
-{
-	_fr_sbuff_set_recurse(sbuff, m->p);
-}
-
-/** Return the current position of the marker
- *
- */
-static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
-{
-	return m->p;
-}
-
-/** How many free bytes remain in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
-{
-	return sbuff->end - m->p;
-}
-
-/** How many bytes we've used in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
-{
-	return m->p - sbuff->start;
-}
-/** @} */
-
-/** @name Position modification (non-recursive)
- *
- * Change the current position of pointers in the sbuff
- * @{
- */
-
-/** Set the start pointer to the current value of p
- *
- */
-static inline void fr_sbuff_trim_start(fr_sbuff_t *sbuff)
-{
-	sbuff->start = sbuff->p;
-}
-
-/** Set the end pointer to the current value of p
- *
- */
-static inline void fr_sbuff_trim_end(fr_sbuff_t *sbuff)
-{
-	sbuff->end = sbuff->p;
-}
-
 /** @} */
 
 #ifdef __cplusplus
