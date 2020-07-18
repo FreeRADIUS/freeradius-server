@@ -692,9 +692,11 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 
 #define fr_dbuff_in(_dbuff, _value) \
 	_Generic((_value), \
+		int8_t		: fr_dbuff_bytes_in(_dbuff, (int8_t)_value), \
 		int16_t		: fr_dbuff_int16_in(_dbuff, (int16_t)_value), \
 		int32_t		: fr_dbuff_int32_in(_dbuff, (int32_t)_value), \
 		int64_t		: fr_dbuff_int64_in(_dbuff, (int64_t)_value), \
+		uint8_t		: fr_dbuff_bytes_in(_dbuff, (uint8_t)_value), \
 		uint16_t	: fr_dbuff_uint16_in(_dbuff, (uint16_t)_value), \
 		uint32_t	: fr_dbuff_uint32_in(_dbuff, (uint32_t)_value), \
 		uint64_t	: fr_dbuff_uint64_in(_dbuff, (uint64_t)_value) \
