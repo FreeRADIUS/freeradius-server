@@ -38,9 +38,12 @@ extern "C" {
 #include <limits.h>
 #include <errno.h>
 
-typedef struct fr_dbuff_ptr_s fr_dbuff_marker_t;
-struct fr_dbuff_ptr_s {
-	char			**ptr;		//!< Position we're tracking.
+typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
+struct fr_dbuff_marker_s {
+	union {
+		uint8_t const *p_i;		//!< Immutable position pointer.
+		uint8_t *p;			//!< Mutable position pointer.
+	};
 	fr_dbuff_marker_t	*next;		//!< Next m in the list.
 };
 
@@ -316,6 +319,16 @@ do { \
 	ssize_t _slen = _func(__VA_ARGS__ ); \
 	if (_slen < 0) return _slen; \
 } while (0)
+
+/** Update the position of p in a list of dbuffs
+ *
+ * @note Do not call directly.
+ */
+static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
+{
+	dbuff->p_i = p;
+	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, p);
+}
 
 /** Advance position in dbuff by N bytes without sanity checks
  *
@@ -648,13 +661,12 @@ static inline ssize_t fr_dbuff_uint64v_in(fr_dbuff_t *dbuff, uint64_t num)
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
  */
-static inline char *fr_dbuff_marker(uint8_t **ptr, fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
+static inline uint8_t *fr_dbuff_marker(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
 {
 	m->next = dbuff->m;	/* Link into the head */
 	dbuff->m = m;
 
-	m->ptr = ptr;		/* Record which values we should be updating */
-	*ptr = dbuff->p;	/* Set the current position in the dbuff */
+	m->p = dbuff->p;	/* Set the current position in the dbuff */
 
 	return dbuff->p;
 }
@@ -670,7 +682,6 @@ static inline char *fr_dbuff_marker(uint8_t **ptr, fr_dbuff_marker_t *m, fr_dbuf
  */
 static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
 {
-	if (unlikely(dbuff->m != m)) return;
 	dbuff->m = m->next;
 }
 
@@ -679,7 +690,15 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m, fr_dbuff_t *dbu
  */
 static inline void fr_dbuff_reset_marker(fr_dbuff_t *dbuff, fr_dbuff_marker_t *m)
 {
-	_fr_dbuff_set_recurse(dbuff, *(m->ptr));
+	_fr_dbuff_set_recurse(dbuff, m->p);
+}
+
+/** Return the current position of the marker
+ *
+ */
+static inline uint8_t *fr_dbuff_marker_current(fr_dbuff_marker_t *m)
+{
+	return m->p;
 }
 
 /** How many free bytes remain in the buffer (calculated from marker)
@@ -687,7 +706,7 @@ static inline void fr_dbuff_reset_marker(fr_dbuff_t *dbuff, fr_dbuff_marker_t *m
  */
 static inline size_t fr_dbuff_marker_remaining(fr_dbuff_t const *dbuff, fr_dbuff_marker_t *m)
 {
-	return dbuff->end - *(m->ptr);
+	return dbuff->end - m->p;
 }
 
 /** How many bytes we've used in the buffer (calculated from marker)
@@ -695,7 +714,7 @@ static inline size_t fr_dbuff_marker_remaining(fr_dbuff_t const *dbuff, fr_dbuff
  */
 static inline size_t fr_dbuff_marker_used(fr_dbuff_t const *dbuff, fr_dbuff_marker_t *m)
 {
-	return *(m->ptr) - dbuff->start;
+	return m->p - dbuff->start;
 }
 /** @} */
 
