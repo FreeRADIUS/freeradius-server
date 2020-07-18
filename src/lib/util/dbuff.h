@@ -330,6 +330,47 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
 	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, p);
 }
 
+/** Set a new position for 'p' in an dbuff
+ *
+ * @param[out] dbuff	dbuff to set a position in.
+ * @param[in] p		Position to set.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the dbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
+{
+	uint8_t *c;
+
+	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
+	if (unlikely(p < dbuff->start)) return 0;
+
+	c = dbuff->p;
+	_fr_dbuff_set_recurse(dbuff, p);
+
+	return p - c;
+}
+
+/** Set the position in a dbuff using another dbuff, a char pointer, or a length
+ *
+ * @param[out] _dst	dbuff to advance.
+ * @param[in] _src	An dbuff, char pointer, or length value to advance
+ *			_dst by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the dbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+#define fr_dbuff_set(_dst, _src) \
+_fr_dbuff_set(_dst, \
+	      _Generic(_src, \
+			fr_dbuff_t *	: (_src)->p, \
+			uint8_t const *	: (_src), \
+			uint8_t *	: (_src), \
+			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
+	      ))
+
 /** Advance position in dbuff by N bytes without sanity checks
  *
  * @note Do not call this function directly.
@@ -688,7 +729,7 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m, fr_dbuff_t *dbu
 /** Resets the position in an dbuff to specified marker
  *
  */
-static inline void fr_dbuff_reset_marker(fr_dbuff_t *dbuff, fr_dbuff_marker_t *m)
+static inline void fr_dbuff_set_to_marker(fr_dbuff_t *dbuff, fr_dbuff_marker_t *m)
 {
 	_fr_dbuff_set_recurse(dbuff, m->p);
 }
