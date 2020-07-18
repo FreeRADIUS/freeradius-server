@@ -300,7 +300,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		vp = fr_cursor_current(cursor);
 	}
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
@@ -335,7 +335,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	hdr[1] += slen;
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encodes the data portion of an attribute
@@ -790,7 +790,7 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 	ptr[1] += len;
 	if (vsa_offset) ptr[vsa_offset] += len;
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an "extended" attribute
@@ -893,7 +893,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	 */
 	if (slen > (255 - hdr[1])) {
 		slen = attr_shift(&work_dbuff, hdr, 4, slen, 3, 0);
-		fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
 
@@ -907,7 +907,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	}
 #endif
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an RFC format attribute, with the "concat" flag set
@@ -966,7 +966,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	 */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an RFC format TLV.
@@ -1106,7 +1106,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 
 	FR_PROTO_HEX_DUMP(hdr, hdr_len, "header vsa");
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a WiMAX attribute
@@ -1175,7 +1175,7 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	 */
 	if (slen > (255 - hdr[1])) {
 		slen = attr_shift(&work_dbuff, hdr, hdr[1], slen, 8, 7);
-		fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
 
@@ -1184,7 +1184,7 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 
 	FR_PROTO_HEX_DUMP(hdr, 9, "header wimax");
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a Vendor-Specific attribute
@@ -1240,7 +1240,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 
 	FR_PROTO_HEX_DUMP(hdr, 6, "header vsa");
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an RFC standard attribute 1..255
@@ -1292,7 +1292,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	/*
@@ -1309,7 +1309,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encoder_ctx);
@@ -1390,7 +1390,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
 		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
-		return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	/*
@@ -1458,7 +1458,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)

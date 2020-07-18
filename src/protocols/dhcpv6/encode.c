@@ -81,7 +81,7 @@ static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size
 	fr_dbuff_in(&work_dbuff, option);
 	fr_dbuff_in(&work_dbuff, (uint16_t) data_len);
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t encode_struct(fr_dbuff_t *dbuff,
@@ -488,7 +488,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 		}
 
-		return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	while (fr_dbuff_remaining(&work_dbuff) > 0) {
@@ -539,7 +539,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 	}
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
@@ -584,7 +584,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done TLV body");
 #endif
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an RFC format TLV.
@@ -628,7 +628,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done RFC header");
 #endif
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
@@ -672,7 +672,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done TLV header");
 #endif
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 
@@ -773,7 +773,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
 #endif
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a DHCPv6 option and any sub-options.
@@ -841,7 +841,7 @@ static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * enco
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(start, fr_dbuff_used(&work_dbuff), NULL);
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static int _test_ctx_free(UNUSED fr_dhcpv6_encode_ctx_t *ctx)

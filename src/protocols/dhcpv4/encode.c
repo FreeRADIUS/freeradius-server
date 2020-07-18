@@ -95,7 +95,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Value");
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 
@@ -383,7 +383,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		vp = fr_cursor_current(cursor);
 	}
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a DHCP option and any sub-options.
@@ -444,7 +444,7 @@ static ssize_t encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static int _encode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
