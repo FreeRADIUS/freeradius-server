@@ -42,7 +42,10 @@ extern "C" {
 
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 struct fr_sbuff_ptr_s {
-	char			**ptr;			//!< Position we're tracking.
+	union {
+		char const *p_i;				//!< Immutable position pointer.
+		char *p;					//!< Mutable position pointer.
+	};
 	fr_sbuff_marker_t	*next;			//!< Next m in the list.
 };
 
@@ -393,7 +396,7 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
 /** @name Conditional advancement
  *
  * These functions are typically used for parsing when trying to locate
- * a sequence of characters in the dbuff.
+ * a sequence of characters in the sbuff.
  * @{
  */
 bool	fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len);
@@ -618,13 +621,12 @@ static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
  */
-static inline char *fr_sbuff_marker(char **ptr, fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
 {
 	m->next = sbuff->m;	/* Link into the head */
 	sbuff->m = m;
 
-	m->ptr = ptr;		/* Record which values we should be updating */
-	*ptr = sbuff->p;	/* Set the current position in the sbuff */
+	m->p = sbuff->p;	/* Set the current position in the sbuff */
 
 	return sbuff->p;
 }
@@ -647,9 +649,17 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m, fr_sbuff_t *sbu
 /** Resets the position in an sbuff to specified marker
  *
  */
-static inline void fr_sbuff_reset_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
+static inline void fr_sbuff_set_to_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
 {
-	_fr_sbuff_set_recurse(sbuff, *(m->ptr));
+	_fr_sbuff_set_recurse(sbuff, m->p);
+}
+
+/** Return the current position of the marker
+ *
+ */
+static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
+{
+	return m->p;
 }
 
 /** How many free bytes remain in the buffer (calculated from marker)
@@ -657,7 +667,7 @@ static inline void fr_sbuff_reset_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m
  */
 static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
 {
-	return sbuff->end - *(m->ptr);
+	return sbuff->end - m->p;
 }
 
 /** How many bytes we've used in the buffer (calculated from marker)
@@ -665,7 +675,7 @@ static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff
  */
 static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
 {
-	return *(m->ptr) - sbuff->start;
+	return m->p - sbuff->start;
 }
 /** @} */
 
