@@ -38,16 +38,18 @@ extern "C" {
 #include <limits.h>
 #include <errno.h>
 
+typedef struct fr_dbuff_s fr_dbuff_t;
 typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
+
 struct fr_dbuff_marker_s {
 	union {
 		uint8_t const *p_i;		//!< Immutable position pointer.
 		uint8_t *p;			//!< Mutable position pointer.
 	};
 	fr_dbuff_marker_t	*next;		//!< Next m in the list.
+	fr_dbuff_t		*parent;	//!< Owner of the marker.
 };
 
-typedef struct fr_dbuff_s fr_dbuff_t;
 struct fr_dbuff_s {
 	union {
 		uint8_t const *start_i;			//!< Immutable start pointer.
@@ -311,7 +313,6 @@ static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
 }
 /** @} */
 
-
 /** @name Position modification (recursive)
  *
  * Change the current position of pointers in the dbuff and their children.
@@ -407,25 +408,30 @@ static inline uint8_t *fr_dbuff_set_to_end(fr_dbuff_t *dbuff)
 /** @name Add a marker to an dbuff
  *
  * Markers are used to indicate an area of the code is working at a particular
- * point in a string buffer.
+ * point in a dbuff.
  *
  * If the dbuff is performing stream parsing, then markers are used to update
- * any pointers to the buffer, as the data in the buffer is shifted to make
+ * any pointers to the buffe as the data in the buffer is shifted to make
  * room for new data from the stream.
  *
- * If the dbuff is being used to create strings, then the markers are updated
- * if the buffer is re-allocated.
+ * If the dbuff is being dynamically expanded the markers are updated if the
+ * buffer is re-allocated.
  * @{
  */
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
+ * @param[out] m	to initialise.
+ * @param[in] dbuff	to associate marker with.
+ * @return The position the marker was set to.
  */
 static inline uint8_t *fr_dbuff_marker(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
 {
-	m->next = dbuff->m;	/* Link into the head */
+	*m = (fr_dbuff_marker_t){
+		.next = dbuff->m,	/* Link into the head */
+		.p = dbuff->p,		/* Set the current position in the dbuff */
+		.parent = dbuff		/* Record which dbuff this marker was associated with */
+	};
 	dbuff->m = m;
-
-	m->p = dbuff->p;	/* Set the current position in the dbuff */
 
 	return dbuff->p;
 }
@@ -439,16 +445,22 @@ static inline uint8_t *fr_dbuff_marker(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
  *
  * @param[in] m		to release.
  */
-static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
+static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 {
-	dbuff->m = m->next;
+	m->parent->m = m->next;
+
+#ifndef NDEBUF
+	memset(m, 0, sizeof(*m));	/* Use after release */
+#endif
 }
 
 /** Resets the position in an dbuff to specified marker
  *
  */
-static inline void fr_dbuff_set_to_marker(fr_dbuff_t *dbuff, fr_dbuff_marker_t *m)
+static inline void fr_dbuff_set_to_marker(fr_dbuff_marker_t *m)
 {
+	fr_dbuff_t *dbuff = m->parent;
+
 	_fr_dbuff_set_recurse(dbuff, m->p);
 }
 
@@ -463,17 +475,17 @@ static inline uint8_t *fr_dbuff_marker_current(fr_dbuff_marker_t *m)
 /** How many free bytes remain in the buffer (calculated from marker)
  *
  */
-static inline size_t fr_dbuff_marker_remaining(fr_dbuff_t const *dbuff, fr_dbuff_marker_t *m)
+static inline size_t fr_dbuff_marker_remaining(fr_dbuff_marker_t *m)
 {
-	return dbuff->end - m->p;
+	return m->parent->end - m->p;
 }
 
 /** How many bytes we've used in the buffer (calculated from marker)
  *
  */
-static inline size_t fr_dbuff_marker_used(fr_dbuff_t const *dbuff, fr_dbuff_marker_t *m)
+static inline size_t fr_dbuff_marker_used(fr_dbuff_marker_t *m)
 {
-	return m->p - dbuff->start;
+	return m->p - m->parent->start;
 }
 /** @} */
 

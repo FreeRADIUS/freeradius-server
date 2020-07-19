@@ -40,16 +40,20 @@ extern "C" {
 
 #include <freeradius-devel/util/table.h>
 
+typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
+
+typedef int(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, void *uctx);
+
 struct fr_sbuff_ptr_s {
 	union {
 		char const *p_i;				//!< Immutable position pointer.
 		char *p;					//!< Mutable position pointer.
 	};
 	fr_sbuff_marker_t	*next;			//!< Next m in the list.
+	fr_sbuff_t		*parent;		//!< Owner of the marker
 };
 
-typedef struct fr_sbuff_s fr_sbuff_t;
 struct fr_sbuff_s {
 	union {
 		char const *start_i;				//!< Immutable start pointer.
@@ -74,6 +78,8 @@ struct fr_sbuff_s {
 
 	fr_sbuff_marker_t	*m;			//!< Pointers to update if the underlying
 							///< buffer changes.
+	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
+							///< the buffer.
 };
 
 typedef enum {
@@ -337,13 +343,18 @@ static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
  */
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
+ * @param[out] m	to initialise.
+ * @param[in] sbuff	to associate marker with.
+ * @return The position the marker was set to.
  */
 static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
 {
-	m->next = sbuff->m;	/* Link into the head */
+	*m = (fr_sbuff_marker_t){
+		.next = sbuff->m,	/* Link into the head */
+		.p = sbuff->p,		/* Set the current position in the sbuff */
+		.parent = sbuff		/* Record which sbuff this marker was associated with */
+	};
 	sbuff->m = m;
-
-	m->p = sbuff->p;	/* Set the current position in the sbuff */
 
 	return sbuff->p;
 }
@@ -357,17 +368,22 @@ static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
  *
  * @param[in] m		to release.
  */
-static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
+static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
 {
-	if (unlikely(sbuff->m != m)) return;
-	sbuff->m = m->next;
+	m->parent->m = m->next;
+
+#ifndef NDEBUF
+	memset(m, 0, sizeof(*m));	/* Use after release */
+#endif
 }
 
 /** Resets the position in an sbuff to specified marker
  *
  */
-static inline void fr_sbuff_set_to_marker(fr_sbuff_t *sbuff, fr_sbuff_marker_t *m)
+static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
 {
+	fr_sbuff_t *sbuff = m->parent;
+
 	_fr_sbuff_set_recurse(sbuff, m->p);
 }
 
@@ -382,17 +398,17 @@ static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
 /** How many free bytes remain in the buffer (calculated from marker)
  *
  */
-static inline size_t fr_sbuff_marker_remaining(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+static inline size_t fr_sbuff_marker_remaining(fr_sbuff_marker_t *m)
 {
-	return sbuff->end - m->p;
+	return m->parent->end - m->p;
 }
 
 /** How many bytes we've used in the buffer (calculated from marker)
  *
  */
-static inline size_t fr_sbuff_marker_used(fr_sbuff_t const *sbuff, fr_sbuff_marker_t *m)
+static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
 {
-	return m->p - sbuff->start;
+	return m->p - m->parent->start;
 }
 /** @} */
 
