@@ -111,6 +111,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	integer to the encoding byte.
 	 */
 	flen = fr_dbuff_uint64v_in(dbuff, da->attr);
+	if (flen <= 0) return flen;
 	enc_field[0] |= ((flen - 1) << 5);
 
 	/*
