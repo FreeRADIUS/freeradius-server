@@ -534,6 +534,43 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 
+static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+		       void const *one, void const *two)
+{
+	int rcode;
+	dhcp_packet_t const *a = one;
+	dhcp_packet_t const *b = two;
+	uint8_t const *ma = &a->options[0];
+	uint8_t const *mb = &b->options[0];
+
+	/*
+	 *	The tree is ordered by XIDs, which are (hopefully)
+	 *	pseudo-randomly distributed.
+	 */
+	rcode = memcmp(&a->xid, &b->xid, sizeof(a->xid));
+	if (rcode != 0) return rcode;
+
+	rcode = (a->hlen < b->hlen) - (a->hlen > b->hlen);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Hardware addresses should also be randomly distributed.
+	 */
+	rcode = memcmp(&a->chaddr[0], &b->chaddr[0], a->hlen);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Try to order by message type.  If it's not at the
+	 *	start of the options, tell the client too bad.
+	 */
+	if ((ma[0] == attr_message_type->attr) && (ma[1] == 1) &&
+	    (mb[0] == attr_message_type->attr) && (mb[1] == 1)) {
+		return (ma[2] < mb[2]) - (ma[2] > mb[2]);
+	}
+
+	return 0;
+}
+
 static char const *mod_name(fr_listen_t *li)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
@@ -698,11 +735,13 @@ fr_app_io_t proto_dhcpv4_udp = {
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
+	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
