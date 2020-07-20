@@ -46,6 +46,109 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
+/** Update all markers and pointers in the set of sbuffs to point to new_buff
+ *
+ * This function should be used if the underlying buffer is realloced.
+ *
+ * @param[in] sbuff	to update.
+ * @param[in] new_buff	to assign to to sbuff.
+ */
+void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff)
+{
+	fr_sbuff_t		*sbuff_i;
+	char			*old_buff;	/* Current start */
+
+#define update_ptr(_old_buff, _new_buff, _field) (_field = (_new_buff) + ((_field) - (_old_buff)))
+
+	old_buff = sbuff->start;
+
+	/*
+	 *	Update pointers to point to positions
+	 *	in new buffer based on their relative
+	 *	offsets in the old buffer.
+	 */
+	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
+		fr_sbuff_marker_t	*m_i;
+
+		update_ptr(old_buff, new_buff, sbuff_i->start);
+		update_ptr(old_buff, new_buff, sbuff_i->p);
+		update_ptr(old_buff, new_buff, sbuff_i->end);
+
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(old_buff, new_buff, m_i->p);
+	}
+
+#undef update_ptr
+}
+
+/** Shift the contents of the sbuff, returning the number of bytes we managed to shift
+ *
+ * @param[in] sbuff	to shift.
+ * @param[in] shift	the contents of the buffer this many bytes
+ *			towards the start of the buffer.
+ * @return
+ *	- 0 the shift failed due to constraining pointers.
+ *	- >0 the number of bytes we managed to shift pointers
+ *	  in the sbuff.  memmove should be used to move the
+ *	  existing contents of the buffer, and fill the free
+ *	  space at the end of the buffer with additional data.
+ */
+size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
+{
+	fr_sbuff_t		*sbuff_i;
+	char			*buff;		/* Current start */
+	size_t			max_shift = shift;
+	bool			reterminate = false;
+
+#define update_ptr(_buff, _shift, _field) _field = ((_field) - (_shift)) <= (_buff) ? (_buff) : ((_field) - (_shift))
+#define update_max_shift(_buff, _max_shift, _field) if (((_buff) + (_max_shift)) > (_field)) _max_shift -= (((_buff) + (_max_shift)) - (_field))
+
+	buff = sbuff->start;
+
+	/*
+	 *	If the sbuff is already \0 terminated
+	 *	and we're not working on a const buffer
+	 *	then assume we need to re-terminate
+	 *	later.
+	 */
+	reterminate = (*sbuff->p == '\0') && !sbuff->is_const;
+
+	/*
+	 *	Determine the maximum shift amount.
+	 *	Shifts are constrained by pointers
+	 *	into the buffer.
+	 */
+	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
+		fr_sbuff_marker_t	*m_i;
+
+		update_max_shift(buff, max_shift, sbuff_i->p);
+		if (!max_shift) return 0;
+
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) {
+			update_max_shift(buff, max_shift, m_i->p);
+			if (!max_shift) return 0;
+		}
+	}
+
+	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
+		fr_sbuff_marker_t	*m_i;
+
+		/*
+		 *	Current position shifts, but stays the same
+		 *	relative to content.
+		 */
+		update_ptr(buff, max_shift, sbuff_i->p);
+
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
+	}
+
+	if (reterminate) *sbuff->p = '\0';
+
+#undef update_ptr
+#undef update_max_shift
+
+	return max_shift;
+}
+
 /** Copy n bytes from the sbuff to a talloced buffer
  *
  * Will fail if output buffer is too small, or insufficient data is available in sbuff.

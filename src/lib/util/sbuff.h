@@ -71,7 +71,6 @@ struct fr_sbuff_s {
 	};
 
 	uint8_t			is_const:1;		//!< Can't be modified.
-	uint8_t			is_extendable:1;	//!< Dynamically allocated talloc buffer.
 	uint8_t			adv_parent:1;		//!< If true, advance the parent.
 
 	fr_sbuff_t		*parent;		//!< sbuff this sbuff was copied from.
@@ -118,12 +117,12 @@ do { \
 	.end		= (_sbuff)->end, \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
-	.is_extendable	= (_sbuff)->is_extendable, \
 	.adv_parent	= 0, \
+	.extend		= (_sbuff)->extend, \
 	.parent		= (_sbuff) \
 }
 
-/** Copy all fields in an sbuff except ptrers
+/** Copy all fields in an sbuff
  *
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
@@ -133,8 +132,8 @@ do { \
 	.end		= (_sbuff)->end, \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
-	.is_extendable	= (_sbuff)->is_extendable, \
 	.adv_parent	= (_sbuff)->adv_parent, \
+	.extend		= (_sbuff)->extend, \
 	.parent		= (_sbuff) \
 }
 
@@ -240,6 +239,9 @@ static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
  * Change the current position of pointers in the sbuff and their children.
  * @{
  */
+void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff);
+
+size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
 /** Update the position of p in a list of sbuffs
  *
@@ -412,30 +414,6 @@ static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
 }
 /** @} */
 
-/** @name Position modification (non-recursive)
- *
- * Change the current position of pointers in the sbuff
- * @{
- */
-
-/** Set the start pointer to the current value of p
- *
- */
-static inline void fr_sbuff_trim_start(fr_sbuff_t *sbuff)
-{
-	sbuff->start = sbuff->p;
-}
-
-/** Set the end pointer to the current value of p
- *
- */
-static inline void fr_sbuff_trim_end(fr_sbuff_t *sbuff)
-{
-	sbuff->end = sbuff->p;
-}
-
-/** @} */
-
 /** @name Copy/print data to an sbuff
  *
  * These functions are typically used for printing.
@@ -480,14 +458,14 @@ do { \
 	(_out)->is_extendable = true; \
 } while (0)
 
-static inline void _fr_sbuff_in_init(fr_sbuff_t *out, char *start, char *end, bool extendable)
+static inline void _fr_sbuff_in_init(fr_sbuff_t *out, char *start, char *end, fr_sbuff_extend_t extend)
 {
 	if (unlikely((end - 1) < start)) end = start;	/* Could be an assert? */
 
 	out->p = out->start = start;
 	out->end = (end - 1);				/* Always leave room for \0 byte */
 	out->is_const = false;
-	out->is_extendable = extendable;
+	out->extend = extend;
 }
 
 ssize_t		fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
@@ -518,7 +496,6 @@ static inline void _fr_sbuff_out_init(fr_sbuff_t *out, char const *start, char c
 	out->p_i = out->start_i = start;
 	out->end_i = end;
 	out->is_const = is_const;
-	out->is_extendable = false;
 }
 
 /** Initialise an sbuff for binary safe string parsing
