@@ -43,7 +43,7 @@ extern "C" {
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 
-typedef int(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, void *uctx);
+typedef int(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extenison);
 
 struct fr_sbuff_ptr_s {
 	union {
@@ -79,6 +79,8 @@ struct fr_sbuff_s {
 							///< buffer changes.
 	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
 							///< the buffer.
+	size_t			shifted;		//!< How many bytes this sbuff has been
+							///< shifted since its creation.
 };
 
 typedef enum {
@@ -184,6 +186,14 @@ static inline size_t fr_sbuff_used(fr_sbuff_t const *sbuff)
 	return sbuff->p - sbuff->start;
 }
 
+/** How many bytes we've used in the buffer including shifts
+ *
+ */
+static inline size_t fr_sbuff_used_total(fr_sbuff_t const *sbuff)
+{
+	return (sbuff->p - sbuff->start) + sbuff->shifted;
+}
+
 /** How many bytes in the buffer total
  *
  */
@@ -264,8 +274,7 @@ static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
  */
 static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
 {
-	size_t freespace = fr_sbuff_remaining(sbuff);
-	if (n > freespace) return -(n - freespace);
+	if ((sbuff->p + n) > sbuff->end) return 0;
 	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
 	return n;
 }
@@ -284,7 +293,7 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 {
 	char const *c;
 
-	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p > sbuff->end)) return 0;
 	if (unlikely(p < sbuff->start)) return 0;
 
 	c = sbuff->p;
@@ -377,6 +386,42 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
 #ifndef NDEBUF
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
+}
+
+/** Change the position in the buffer a marker points to
+ *
+ * @param[in] m		marker to alter.
+ * @param[in] p		Position to set.
+ * @return
+ *	- 0 on failure (p out of range), marker position will remain unchanged.
+ *	- >0 the number of bytes the marker advanced.
+ *	- <0 the number of bytes the marker retreated.
+ */
+static inline ssize_t fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
+{
+	fr_sbuff_t 	*sbuff = m->parent;
+	char		*current = m->p;
+
+	if (unlikely(p > sbuff->end)) return 0;
+	if (unlikely(p < sbuff->start)) return 0;
+
+	m->p_i = p;
+
+	return p - current;
+}
+
+/** Change the position in the buffer a marker points to
+ *
+ * @param[in] m		marker to alter.
+ * @param[in] len	how much to advance the marker by.
+ * @return
+ *	- 0 on failure (p out of range), marker position will remain unchanged.
+ *	- >0 the number of bytes the marker advanced.
+ *	- <0 the number of bytes the marker retreated.
+ */
+static inline ssize_t fr_sbuff_marker_advance(fr_sbuff_marker_t *m, size_t len)
+{
+	return fr_sbuff_marker_set(m, m->p + len);
 }
 
 /** Resets the position in an sbuff to specified marker
@@ -536,9 +581,9 @@ do { \
 	if (_match_len) *(_match_len) = _match_len_tmp; \
 } while (0)
 
-size_t	fr_sbuff_out_talloc_bstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
-
 size_t	fr_sbuff_out_talloc_bstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
+
+size_t	fr_sbuff_out_talloc_bstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
 
 size_t	fr_sbuff_out_talloc_bstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 					     bool const allowed_chars[static UINT8_MAX + 1]);

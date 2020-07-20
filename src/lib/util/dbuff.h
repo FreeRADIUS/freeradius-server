@@ -336,15 +336,15 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
  * @param[out] dbuff	dbuff to set a position in.
  * @param[in] p		Position to set.
  * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the dbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
+ *	- 0	not advanced (p out of range).
+ *	- >0	the number of bytes the dbuff advanced by.
+ *	- <0	the number of bytes the dbuff retreated by.
  */
 static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
 {
 	uint8_t *c;
 
-	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
+	if (unlikely(p > dbuff->end)) return 0;
 	if (unlikely(p < dbuff->start)) return 0;
 
 	c = dbuff->p;
@@ -359,7 +359,7 @@ static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
  * @param[in] _src	An dbuff, char pointer, or length value to advance
  *			_dst by.
  * @return
- *	- 0	not advanced.
+ *	- 0	not advanced (_src out of range).
  *	- >0	the number of bytes the dbuff was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
@@ -383,8 +383,7 @@ _fr_dbuff_set(_dst, \
  */
 static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t n)
 {
-	size_t freespace = fr_dbuff_remaining(dbuff);
-	if (n > freespace) return -(n - freespace);
+	if ((dbuff->p + n) > dbuff->end) return 0;
 	_fr_dbuff_set_recurse(dbuff, dbuff->p + n);
 	return n;
 }
@@ -454,6 +453,42 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 #ifndef NDEBUF
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
+}
+
+/** Change the position in the buffer a marker points to
+ *
+ * @param[in] m		marker to alter.
+ * @param[in] p		Position to set.
+ * @return
+ *	- 0 on failure (p out of range), marker position will remain unchanged.
+ *	- >0 the number of bytes the marker advanced.
+ *	- <0 the number of bytes the marker retreated.
+ */
+static inline ssize_t fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p)
+{
+	fr_dbuff_t 	*dbuff = m->parent;
+	uint8_t		*current = m->p;
+
+	if (unlikely(p > dbuff->end)) return 0;
+	if (unlikely(p < dbuff->start)) return 0;
+
+	m->p_i = p;
+
+	return p - current;
+}
+
+/** Change the position in the buffer a marker points to
+ *
+ * @param[in] m		marker to alter.
+ * @param[in] len	how much to advance the marker by.
+ * @return
+ *	- 0 on failure (p out of range), marker position will remain unchanged.
+ *	- >0 the number of bytes the marker advanced.
+ *	- <0 the number of bytes the marker retreated.
+ */
+static inline ssize_t fr_dbuff_marker_advance(fr_dbuff_marker_t *m, size_t len)
+{
+	return fr_dbuff_marker_set(m, m->p + len);
 }
 
 /** Resets the position in an dbuff to specified marker
