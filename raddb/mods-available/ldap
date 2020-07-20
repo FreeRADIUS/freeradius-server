@@ -453,7 +453,7 @@ ldap {
 		#  group_attribute:: Override the normal group comparison attribute name
 		#  `(<inst>-Group` or `LDAP-Group` if using the default instance).
 		#
-		group_attribute = "${.:instance}-Group"
+		group_attribute = "${..:instance}-Group"
 	}
 
 	#
