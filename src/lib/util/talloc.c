@@ -420,13 +420,18 @@ char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 char *talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len)
 {
 	char	*n;
-	size_t	to_len;
+	size_t	to_len = 0;
 
-	to_len = talloc_array_length(to);
-	if (to[to_len - 1] == '\0') to_len--;	/* Inlen should be length of input string */
+	if (to) {
+		to_len = talloc_array_length(to);
+		if (to[to_len - 1] == '\0') to_len--;	/* Inlen should be length of input string */
+	}
 
 	n = talloc_realloc_size(ctx, to, to_len + from_len + 1);
-	if (!n) return NULL;
+	if (!n) {
+		fr_strerror_printf("Extending bstr buffer to %zu bytes failed", to_len + from_len + 1);
+		return NULL;
+	}
 
 	memcpy(n + to_len, from, from_len);
 	n[to_len + from_len] = '\0';
