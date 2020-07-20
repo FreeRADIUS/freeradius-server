@@ -462,10 +462,12 @@ static inline void _fr_sbuff_in_init(fr_sbuff_t *out, char *start, char *end, fr
 {
 	if (unlikely((end - 1) < start)) end = start;	/* Could be an assert? */
 
-	out->p = out->start = start;
-	out->end = (end - 1);				/* Always leave room for \0 byte */
-	out->is_const = false;
-	out->extend = extend;
+	*out = (fr_sbuff_t){
+		.start = start,
+		.p = start,
+		.end = (end - 1),
+		.extend = extend
+	};
 }
 
 ssize_t		fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
@@ -493,9 +495,12 @@ static inline void _fr_sbuff_out_init(fr_sbuff_t *out, char const *start, char c
 {
 	if (unlikely(end < start)) end = start;	/* Could be an assert? */
 
-	out->p_i = out->start_i = start;
-	out->end_i = end;
-	out->is_const = is_const;
+	*out = (fr_sbuff_t){
+		.start_i = start,
+		.p_i = start,
+		.end_i = end,
+		.is_const = is_const
+	};
 }
 
 /** Initialise an sbuff for binary safe string parsing

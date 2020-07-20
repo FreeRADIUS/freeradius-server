@@ -189,10 +189,12 @@ static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t
 {
 	if (unlikely(end < start)) end = start;	/* Could be an assert? */
 
-	out->p_i = out->start_i = start;
-	out->end_i = end;
-	out->is_const = is_const;
-	out->parent = NULL;
+	*out = (fr_dbuff_t){
+		.start_i = start,
+		.p_i = start,
+		.end_i = end,
+		.is_const = is_const
+	};
 }
 
 /** Initialise an dbuff for encoding or decoding
