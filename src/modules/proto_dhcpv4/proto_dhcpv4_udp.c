@@ -534,14 +534,33 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+{
+	proto_dhcpv4_track_t *track;
+	dhcp_packet_t const *dhcp = (dhcp_packet_t const *) packet;
+	uint8_t const  *option;
+
+	if (dhcp->hlen != 6) return NULL;
+
+	option = fr_dhcpv4_packet_get_option(dhcp, packet_len, attr_message_type);
+	if (!option || (option[1] == 0)) return NULL;
+
+	track = talloc_zero(ctx, proto_dhcpv4_track_t);
+	if (!track) return NULL;
+
+	memcpy(&track->xid, &dhcp->xid, sizeof(track->xid));
+	memcpy(&track->chaddr, &dhcp->chaddr, 6);
+	track->message_type = option[2];
+
+	return track;
+}
+
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
 	int rcode;
-	dhcp_packet_t const *a = one;
-	dhcp_packet_t const *b = two;
-	uint8_t const *ma = &a->options[0];
-	uint8_t const *mb = &b->options[0];
+	proto_dhcpv4_track_t const *a = one;
+	proto_dhcpv4_track_t const *b = two;
 
 	/*
 	 *	The tree is ordered by XIDs, which are (hopefully)
@@ -550,25 +569,13 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	rcode = memcmp(&a->xid, &b->xid, sizeof(a->xid));
 	if (rcode != 0) return rcode;
 
-	rcode = (a->hlen < b->hlen) - (a->hlen > b->hlen);
-	if (rcode != 0) return rcode;
-
 	/*
 	 *	Hardware addresses should also be randomly distributed.
 	 */
-	rcode = memcmp(&a->chaddr[0], &b->chaddr[0], a->hlen);
+	rcode = memcmp(&a->chaddr, &b->chaddr, sizeof(a->chaddr));
 	if (rcode != 0) return rcode;
 
-	/*
-	 *	Try to order by message type.  If it's not at the
-	 *	start of the options, tell the client too bad.
-	 */
-	if ((ma[0] == attr_message_type->attr) && (ma[1] == 1) &&
-	    (mb[0] == attr_message_type->attr) && (mb[1] == 1)) {
-		return (ma[2] < mb[2]) - (ma[2] > mb[2]);
-	}
-
-	return 0;
+	return (a->message_type < b->message_type) - (a->message_type > b->message_type);
 }
 
 static char const *mod_name(fr_listen_t *li)
@@ -741,6 +748,7 @@ fr_app_io_t proto_dhcpv4_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track			= mod_track_create,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,

@@ -301,7 +301,46 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 	fr_network_read(nr->el, s->listen->fd, 0, s);
 }
 
-/** Inject a packet for a listener
+
+/** Inject a packet for a listener to write
+ *
+ * @param nr		the network
+ * @param li		the listener where the packet is being injected
+ * @param packet	the packet to be written
+ * @param packet_len	the length of the packet
+ * @param packet_ctx	The packet context to write
+ * @param request_time	when the packet was received.
+ */
+void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len,
+			     void *packet_ctx, fr_time_t request_time)
+{
+	fr_message_t *lm;
+	fr_channel_data_t cd;
+	fr_network_socket_t *s;
+
+	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	if (!s) return;
+
+	cd = (fr_channel_data_t) {
+		.m = (fr_message_t) {
+			.status = FR_MESSAGE_USED,
+			.data_size = packet_len,
+		},
+
+		.reply.request_time = request_time,
+	};
+
+	memcpy(&cd.m.data, &packet, sizeof(packet)); /* const issues */
+	memcpy(&cd.packet_ctx, &packet_ctx, sizeof(packet_ctx)); /* const issues */
+
+	lm = fr_message_localize(s, &cd.m, sizeof(cd));
+	if (!lm) return;
+
+	(void) fr_heap_insert(s->waiting, lm);
+}
+
+
+/** Inject a packet for a listener to read
  *
  * @param nr		the network
  * @param li		the listener where the packet is being injected

@@ -43,3 +43,11 @@ typedef struct {
 	uint32_t			priorities[FR_DHCP_MAX];       	//!< priorities for individual packets
 } proto_dhcpv4_t;
 
+/*
+ *	Shorter version of the packet for deduping
+ */
+typedef struct {
+	int				message_type;
+	uint32_t			xid;
+	fr_ethernet_t			chaddr;
+} proto_dhcpv4_track_t;

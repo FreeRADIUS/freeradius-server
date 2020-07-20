@@ -380,6 +380,13 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+{
+	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
+
+	return talloc_memdup(ctx, packet, RADIUS_HEADER_LENGTH);
+}
+
 static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
@@ -539,6 +546,7 @@ fr_app_io_t proto_radius_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track_create		= mod_track_create,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,

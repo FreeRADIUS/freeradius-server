@@ -52,6 +52,9 @@ int		fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnul
 
 void		fr_network_listen_read(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
 
+void		fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len,
+					void *packet_ctx, fr_time_t request_time) CC_HINT(nonnull);
+
 int		fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
 
 fr_network_t	*fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el,

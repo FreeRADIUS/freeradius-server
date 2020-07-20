@@ -45,6 +45,8 @@ typedef struct {
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
 
+	bool				in_dedup_tree;	//!< like it says
+
 	/*
 	 *	We can't set the "process" function here, because a
 	 *	second (conflicting) packet may arrive while we're
@@ -57,7 +59,7 @@ typedef struct {
 	fr_io_client_t			*client;	//!< client handling this packet.
 
 	union {
-		uint8_t				packet[20];	//!< original request packet
+		uint8_t			*packet;	//!< really a tracking structure, not a packet
 		fr_dlist_t		entry;
 	};
 } fr_io_track_t;

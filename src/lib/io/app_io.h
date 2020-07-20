@@ -63,13 +63,8 @@ typedef struct {
 
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 
-	/*
-	 *	@todo - this should compare two sets of track
-	 *	information, not packets.  We also want a function
-	 *	that converts a packet to a tracking structure.
-	 *	Either in a buffer, or in a newly-allocated memory.
-	 */
-	fr_io_data_cmp_t		compare;	//!< compare two packets
+	fr_io_track_create_t		track;		//!< create a tracking structure
+	fr_io_track_cmp_t		compare;	//!< compare two tracking structures
 
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
 	fr_io_network_get_t		network_get;	//!< get dynamic network information

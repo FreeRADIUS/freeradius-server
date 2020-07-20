@@ -257,7 +257,20 @@ typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t *buffer, size_t buffe
  */
 typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
 
-/** Compare two packets for storing in a duplicate detection tree.
+/** Convert a raw packet to a tracking structure
+ *
+ * For passing to fr_io_track_cmp_t
+ *
+ * @param[in] ctx		The parent talloc ctx
+ * @param[in] packet		The packet being summarized
+ * @param[in] packet_len	Length of the packet being summarized
+ * @return
+ *	- NULL on error
+ *	- !NULL the packet tracking structure
+ */
+typedef void *(*fr_io_track_create_t)(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len);
+
+/** Compare two tracking structures for storing in a duplicate detection tree.
  *
  * We presume that the packets are well formed.
  *
@@ -270,20 +283,20 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  * large fanout at the top is useful.
  *
  * Note that this function should not check if the packets are
- * completely identical.  Instead, if checks whether or not the
- * packets take the same place in any dedup tree.
+ * completely identical.  Instead, it checks particular fields in the
+ * packet so that we can distinguish packets without checking the entire packet.
  *
  * @param[in] instance		the context for this function
  * @param[in] thread_instance	the thread instance for this function
  * @param[in] client		the client associated with this packet
- * @param[in] packet1		one packet
- * @param[in] packet2		a second packet
+ * @param[in] one		packet tracking structure one
+ * @param[in] two		packet tracking structure two
  * @return
  *	- <0 on packet one "smaller" than packet two
  *	- >0 on packet two "larger" than packet one
  *	- =0 on the two packets being identical
  */
-typedef int (*fr_io_data_cmp_t)(void const *instance, void *thread_instance, RADCLIENT *client, void const *packet1, void const *packet2);
+typedef int (*fr_io_track_cmp_t)(void const *instance, void *thread_instance, RADCLIENT *client, void const *one, void const *two);
 
 /**  Handle an error on the socket.
  *

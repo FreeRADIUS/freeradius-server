@@ -148,6 +148,7 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
+static void track_free(fr_io_track_t *track);
 
 /*
  *  Return negative numbers to put 'one' at the top of the heap.
@@ -814,102 +815,96 @@ static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t 
 
 static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 				      fr_io_address_t *address,
-				      uint8_t const *packet, fr_time_t recv_time, bool *is_dup)
+				      uint8_t const *packet, size_t packet_len,
+				      fr_time_t recv_time, bool *is_dup)
 {
-	fr_io_track_t my_track, *track = NULL;
-
-	my_track.address = address;
-	my_track.client = client;
+	fr_io_track_t *track, *old;
 
 	/*
-	 *	@todo - convert the packet to a tracking structure,
-	 *	and look that up instead of the packet.
+	 *	Allocate a new tracking structure.  Most of the time
+	 *	there are no duplicates, so this is fine.
 	 */
-	memcpy(my_track.packet, packet, sizeof(my_track.packet));
-
-	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
+	track = fr_dlist_head(&client->thread->track_list);
 	if (!track) {
-		track = fr_dlist_head(&client->thread->track_list);
-		if (!track) {
-			MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
-		} else {
-			fr_dlist_remove(&client->thread->track_list, track);
-			memset(track, 0, sizeof(*track));
-		}
-
-		MEM(track->address = talloc_zero(track, fr_io_address_t));
-
-		memcpy(track->address, address, sizeof(*address));
-		track->address->radclient = client->radclient;
-
-		track->client = client;
-		if (client->connection) {
-			track->address = client->connection->address;
-		}
-
-		/*
-		 *	@todo - copy my_track structure, not the packet.
-		 */
-		memcpy(track->packet, packet, sizeof(track->packet));
-		track->timestamp = recv_time;
-		track->packets = 1;
-		return track;
+		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
+	} else {
+		fr_dlist_remove(&client->thread->track_list, track);
+		memset(track, 0, sizeof(*track));
 	}
 
-	talloc_get_type_abort(track, fr_io_track_t);
+	MEM(track->address = talloc_zero(track, fr_io_address_t));
 
-	/*
-	 *	Is it exactly the same packet?
-	 *
-	 *	@todo - compare the tracking structure, not the packet
-	 */
-	if (memcmp(track->packet, my_track.packet, sizeof(my_track.packet)) == 0) {
-		/*
-		 *	Ignore duplicates while the client is
-		 *	still pending.
-		 */
-		if (client->state == PR_CLIENT_PENDING) {
-			DEBUG("Ignoring duplicate packet while client %s is still pending dynamic definition",
-			      client->radclient->shortname);
-			return NULL;
-		}
+	memcpy(track->address, address, sizeof(*address));
+	track->address->radclient = client->radclient;
 
-		*is_dup = true;
-		track->packets++;
-		return track;
+	track->client = client;
+	if (client->connection) {
+		track->address = client->connection->address;
 	}
 
-	/*
-	 *	The new packet is different from the old one.
-	 *
-	 *	@todo - copy my_track structure, not the packet.
-	 */
-	memcpy(track->packet, my_track.packet, sizeof(my_track.packet));
 	track->timestamp = recv_time;
-	track->packets++;
+	track->packets = 1;
 
-	if (track->ev) {
-		(void) talloc_const_free(track->ev);
-		track->ev = NULL;
+	/*
+	 *	We're not tracking duplicates, so just return the
+	 *	tracking entry.  This tracks src/dst IP/port, client,
+	 *	receive time, etc.
+	 */
+	if (!client->inst->app_io->track_duplicates) return track;
+
+	/*
+	 *	We are checking for duplicates, see if there is a dup
+	 *	already in the tree.
+	 */
+	track->packet = client->inst->app_io->track(client, packet, packet_len);
+	if (!track->packet) {
+		track_free(track);
+		return NULL;
 	}
 
 	/*
-	 *	We haven't yet sent a reply, this is a conflicting
-	 *	packet.
+	 *	No existing duplicate.  Return the new tracking entry.
 	 */
-	if (track->reply_len == 0) {
-		return track;
+	old = rbtree_finddata(client->table, track);
+	if (!old) goto do_insert;
+
+	/*
+	 *	The new packet has the same dedup fields as the old
+	 *	one, BUT it may be a conflicting packet.  Check for
+	 *	that via a simple memcmp().
+	 *
+	 *	It's an exact duplicate.  Drop the new one and
+	 *	use the old one.
+	 *
+	 *	If there's a cached reply, the caller will take care
+	 *	of sending it to the network layer.
+	 */
+	if (memcmp(old->packet, track->packet, talloc_array_length(old->packet)) == 0) {
+		*is_dup = true;
+		old->packets++;
+		track_free(track);
+		return old;
 	}
 
 	/*
-	 *	Free any cached replies.
+	 *	Else it's a conflicting packet.  Which is OK if we
+	 *	already have a reply.  We just delete the old entry,
+	 *	and insert the new one.
+	 *
+	 *	If there's no reply, then the old request is still
+	 *	"live".  Delete the old one from the tracking tree,
+	 *	and return the new one.
 	 */
-	if (track->reply) {
-		talloc_const_free(track->reply);
-		track->reply = NULL;
-		track->reply_len = 0;
+	if (old->reply_len > 0) {
+		track_free(old);
+
+	} else {
+		(void) rbtree_deletebydata(client->table, old);
+		old->in_dedup_tree = false;
 	}
 
+do_insert:
+	rbtree_insert(client->table, track);
 	return track;
 }
 
@@ -918,6 +913,12 @@ static void track_free(fr_io_track_t *track)
 {
 	fr_io_thread_t *thread = track->client->thread;
 
+	if (track->in_dedup_tree) {
+		fr_assert(track->client->table != NULL);
+		(void) rbtree_deletebydata(track->client->table, track);
+	}
+	track->in_dedup_tree = false;
+	
 	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
 	talloc_free_children(track);
@@ -954,14 +955,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 *	No more packets using this tracking entry,
 	 *	delete it.
 	 */
-	if (track->packets == 0) {
-		if (track->client->inst->app_io->track_duplicates) {
-			fr_assert(track->client->table != NULL);
-			(void) rbtree_deletebydata(track->client->table, track);
-		}
-
-		track_free(track);
-	}
+	if (track->packets == 0) track_free(track);
 
 	return 0;
 }
@@ -1479,10 +1473,37 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
-			track = fr_io_track_add(client, &address, buffer, recv_time, is_dup);
+			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
 			if (!track) {
 				DEBUG("Failed tracking packet from client %s - discarding it",
 				      client->radclient->shortname);
+				return 0;
+			}
+
+			/*
+			 *	If there's a cached reply, just sent that and don't do anything else.
+			 *
+			 *	@todo - this API isn't written yet.  :(
+			 */
+			if (track->reply_len) {
+				if (!track->reply) {
+					DEBUG("Ignoring retransmit from client %s", client->radclient->shortname);
+					return 0;
+				}
+
+				/*
+				 *	@todo - mark things up so that we know to keep 'track' around
+				 *	until the packet is actually written to the network.  OR, add
+				 *	a network API so that the track_free() function can remove
+				 *	the packet from the queue of packets to be retransmitted.
+				 *
+				 *	Perhaps via having fr_network_listen_write() return a pointer
+				 *	to the localized message, and then caching that in the tracking
+				 *	structure.
+				 */
+				DEBUG("Sending duplicate reply to client %s", client->radclient->shortname);
+				fr_network_listen_write(thread->nr, child, track->reply, track->reply_len,
+							track, track->timestamp);
 				return 0;
 			}
 		}
@@ -1654,8 +1675,8 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
 	/*
 	 *	Track this packet, because that's what mod_read expects.
 	 */
-	track = fr_io_track_add(connection->client, connection->address, buffer,
-				       recv_time, &is_dup);
+	track = fr_io_track_add(connection->client, connection->address,
+				buffer, buffer_len, recv_time, &is_dup);
 	if (!track) {
 		DEBUG2("Failed injecting packet to tracking table");
 		return -1;
@@ -1963,6 +1984,9 @@ reset_timer:
 }
 
 
+/*
+ *	Expire cached packets after cleanup_delay time
+ */
 static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
@@ -1970,8 +1994,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_io_instance_t const *inst = client->inst;
 
 	/*
-	 *	@todo - figure out how to do this only for SOME
-	 *	packets, not just RADIUS ones.
+	 *	Insert the timer if requested.
 	 */
 	if (el && !now && inst->cleanup_delay) {
 		if (fr_event_timer_in(client, el, &track->ev,
@@ -1989,29 +2012,15 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	timeout ones.
 	 */
 	if (now) {
-		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->app_io->name, track->packet[1]);
+		DEBUG2("TIMER - proto_%s - cleanup delay", inst->app_io->name);
 	} else {
-		DEBUG2("proto_%s - cleaning up ID %d", inst->app_io->name, track->packet[1]);
+		DEBUG2("proto_%s - cleaning up", inst->app_io->name);
 	}
 
 	/*
 	 *	Delete the tracking entry.
 	 */
-	fr_assert(track->packets > 0);
-	track->packets--;
-
-	if (track->packets == 0) {
-		if (inst->app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
-
-		track_free(track);
-	} else {
-		if (track->reply) {
-			talloc_free(track->reply);
-			track->reply = NULL;
-		}
-
-		track->reply_len = 0;
-	}
+	track_free(track);
 
 	fr_assert(client->packets > 0);
 	client->packets--;
