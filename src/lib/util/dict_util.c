@@ -840,8 +840,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	old = fr_dict_attr_by_name(dict, name);
 	if (old) {
-		if ((old->parent == parent) && (old->attr == (unsigned int) attr) && (old->type == type) &&
-		    FLAGS_EQUAL(has_tag) && FLAGS_EQUAL(array) && FLAGS_EQUAL(concat) && FLAGS_EQUAL(subtype)) {
+		if ((old->parent == parent)&& (old->type == type) &&
+		    FLAGS_EQUAL(has_tag) && FLAGS_EQUAL(array) && FLAGS_EQUAL(concat) && FLAGS_EQUAL(subtype)  &&
+		    ((old->attr == (unsigned int) attr) || ((attr < 0) && old->flags.internal))) {
 			return 0;
 		}
 

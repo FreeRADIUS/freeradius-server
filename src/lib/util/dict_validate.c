@@ -673,9 +673,22 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		static unsigned int max_attr = UINT8_MAX + 1;
 
 		if (*attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return false; /* exists, don't add it again */
-			*attr = ++max_attr;
 			flags->internal = 1;
+
+			v = fr_dict_attr_by_name(dict, name);
+			if (v) {
+				/*
+				 *	Exact duplicates are allowed.  The caller will take care of
+				 *	not inserting the duplicate attribute.
+				 */
+				if ((v->type == type) && (memcmp(&v->flags, flags, sizeof(*flags)) == 0)) {
+					return true;
+				}
+
+				fr_strerror_printf("Conflicting definition for attribute %s", name);
+				return false;
+			}
+			*attr = ++max_attr;
 
 		} else if (*attr <= 0) {
 			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
