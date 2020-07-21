@@ -869,6 +869,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	old = rbtree_finddata(client->table, track);
 	if (!old) goto do_insert;
 
+	fr_assert(old != track);
+
 	/*
 	 *	The new packet has the same dedup fields as the old
 	 *	one, BUT it may be a conflicting packet.  Check for
@@ -918,6 +920,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 do_insert:
 	rbtree_insert(client->table, track);
+	track->in_dedup_tree = true;
 	return track;
 }
 
