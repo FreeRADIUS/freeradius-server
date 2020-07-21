@@ -36,8 +36,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Alexander Scheel.
 	* Don't print invalid tags in rlm_cache, among other places.
 	  Fixes #3491
-	* Do home_server failover immediatley when an initial TCP / Radsec
+	* Do home_server failover immediately when an initial TCP / Radsec
 	  connection fails.
+	* Port EAP-PWD constant time fixes from "master" branch.  The issue
+	  was verified by Mohamed Sabt, and a patch supplied by Daniel De Almeida Braga.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
