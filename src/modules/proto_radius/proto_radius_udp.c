@@ -380,10 +380,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, UNUSED size_t packet_len)
 {
-	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
-
 	return talloc_memdup(ctx, packet, RADIUS_HEADER_LENGTH);
 }
 
