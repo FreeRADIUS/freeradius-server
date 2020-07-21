@@ -4,12 +4,17 @@
 #
 
 test_in="build/tests/radclient/auth_3.out"
-test_regex="^\(Received\|Sent\) \(Access-Accept\|Access-Request\)"
+sent=$(grep "Sent Access-Request" ${test_in} | wc -l)
+recv=$(grep "Received Access-Accept" ${test_in} | wc -l)
 
-entries=$(grep "${test_regex}" ${test_in} | wc -l)
-expected=10
+expected=5
 
-if [ $entries -ne $expected ]; then
-	echo "ERROR: We expected ${expected} entries of '${test_regex}' in '${test_in}, got ${entries}'"
+if [ $sent -ne $expected ]; then
+	echo "ERROR: We expected ${expected} 'Sent Access-Request' in '${test_in}, got ${sent}'"
+	exit 1
+fi
+
+if [ $sent -ne $expected ]; then
+	echo "ERROR: We expected ${expected} entries of 'Received Access-Accept' in '${test_in}, got ${recv}'"
 	exit 1
 fi
