@@ -10,6 +10,6 @@ entries=$(grep "${test_regex}" ${test_in} | wc -l)
 expected=10
 
 if [ $entries -ne $expected ]; then
-	echo "ERROR: We expected ${expected} entries of '${test_regex}' in '${test_in}'"
+	echo "ERROR: We expected ${expected} entries of '${test_regex}' in '${test_in}, got ${entries}'"
 	exit 1
 fi
