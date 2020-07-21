@@ -157,17 +157,17 @@ Useful range of values: 5 to 600
 
 
 
-nak_lifetime:: Time for which blocklisted
+nak_lifetime:: Time for which blocked
 clients are placed into a NAK cache.
 
 If a dynamic client is disallowed, it is
-placed onto a "NAK" blocklist for a period
-of time.  This blocklist helps to prevent
+placed onto a "NAK" list for a period
+of time.  This process helps to prevent
 DoS attacks.  When subsequent packets are
 received from that IP address, they hit the
 "NAK" cache, and are immediately discarded.
 
-After `nak_timeout` seconds, the blocklist
+After `nak_timeout` seconds, the blocked
 entry will be removed, and the IP will be
 allowed to try again to define a dynamic
 client.
@@ -1271,6 +1271,9 @@ be incorrect. There is little we can do about it.
 
 Refresh leases when we see a start or alive. Return an address to
 the IP Pool when we see a stop record.
+
+Ensure that &control:Pool-Name is set to determine which
+pool of IPs are used.
 
 
 

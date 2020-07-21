@@ -61,12 +61,17 @@ Useful range of values: 5 to 600
 
 
 
-If a dynamic client is disallowed, it is
-placed onto a "NAK" blocklist for a period
-of time.  This blocklist helps to prevent
-DoS attacks.
+nak_lifetime:: Time for which blocked
+clients are placed into a NAK cache.
 
-After "nak_timeout" seconds, the blocklist
+If a dynamic client is disallowed, it is
+placed onto a "NAK" list for a period
+of time.  This process helps to prevent
+DoS attacks.  When subsequent packets are
+received from that IP address, they hit the
+"NAK" cache, and are immediately discarded.
+
+After `nak_timeout` seconds, the blocked
 entry will be removed, and the IP will be
 allowed to try again to define a dynamic
 client.
