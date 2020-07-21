@@ -120,10 +120,12 @@ fr_dict_autoload_t proto_dhcpv6_udp_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_client_id;
 
 extern fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
+	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
 	{ NULL }
 };
 
@@ -385,6 +387,49 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+{
+	proto_dhcpv6_track_t *track;
+	uint8_t const *option;
+	size_t track_size = sizeof(*track);
+	size_t option_len = 0;
+	
+	option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
+	if (option) {
+		option_len = (option[2] << 8) | option[3];
+	}
+
+	track = (proto_dhcpv6_track_t *) talloc_zero_array(ctx, uint8_t, track_size + option_len);
+	if (!track) return NULL;
+
+	talloc_set_name_const(track, "proto_dhcpv4_track_t");
+
+	memcpy(&track->header, packet, 4); /* packet code + 24-bit transaction ID */
+	if (!option) return track;
+
+	memcpy(&track->client_id[0], option + 4, option_len);
+	track->client_id_len = option_len;
+
+	return track;
+}
+
+
+static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+		       void const *one, void const *two)
+{
+	int rcode;
+	proto_dhcpv6_track_t const *a = one;
+	proto_dhcpv6_track_t const *b = two;
+
+	rcode = memcmp(&a->header, &b->header, sizeof(a->header));
+	if (rcode != 0) return rcode;
+
+	rcode = (a->client_id_len < b->client_id_len) - (a->client_id_len > b->client_id_len);
+	if (rcode != 0) return rcode;
+
+	return memcmp(a->client_id, b->client_id, a->client_id_len);
+}
+
 
 static char const *mod_name(fr_listen_t *li)
 {
@@ -595,11 +640,14 @@ fr_app_io_t proto_dhcpv6_udp = {
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
+	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track			= mod_track_create,
+	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,

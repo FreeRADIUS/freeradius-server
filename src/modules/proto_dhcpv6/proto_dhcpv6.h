@@ -47,3 +47,12 @@ typedef struct {
  *	No one outside of proto_dhcpv6 needs this definition.
  */
 #define FR_DHCPV6_DO_NOT_RESPOND (256)
+
+/*
+ *	Shorter version of the packet for deduping
+ */
+typedef struct {
+	uint32_t			header;
+	size_t				client_id_len;
+	uint8_t				client_id[0];
+} proto_dhcpv6_track_t;
