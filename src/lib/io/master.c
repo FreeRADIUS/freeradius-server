@@ -1486,9 +1486,17 @@ have_client:
 			 *	@todo - this API isn't written yet.  :(
 			 */
 			if (track->reply_len) {
+				fr_network_t *nr;
+
 				if (!track->reply) {
 					DEBUG("Ignoring retransmit from client %s", client->radclient->shortname);
 					return 0;
+				}
+
+				if (connection) {
+					nr = connection->nr;
+				} else {
+					nr = thread->nr;
 				}
 
 				/*
@@ -1502,7 +1510,7 @@ have_client:
 				 *	structure.
 				 */
 				DEBUG("Sending duplicate reply to client %s", client->radclient->shortname);
-				fr_network_listen_write(thread->nr, child, track->reply, track->reply_len,
+				fr_network_listen_write(nr, child, track->reply, track->reply_len,
 							track, track->timestamp);
 				return 0;
 			}
