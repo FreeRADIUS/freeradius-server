@@ -57,7 +57,7 @@ user authentication.  See the instructions below for how to create the
 various certificates.  The old test certificates can be deleted by
 running the following command:
 
-$ rm -f *.pem *.der *.csr *.crt *.key *.p12 serial* index.txt*
+$ make destroycerts
 
   Then, follow the instructions below for creating real certificates.
 
@@ -108,9 +108,9 @@ $ vi server.cnf
   country, state, etc.  Be sure that the commonName field here is
   different from the commonName for the CA certificate.
 
-$ make server.pem
+$ make server
 
-  This step creates the server certificate.
+  This step creates and verifies the server certificate.
 
   If you have an existing certificate authority, and wish to create a
   certificate signing request for the server certificate, edit
@@ -128,9 +128,9 @@ $ make server.csr
 
   Client certificates are used by EAP-TLS, and optionally by EAP-TTLS
 and PEAP.  The following steps outline how to create a client
-certificate that is signed by the server certificate created above.
-You will have to have the password for the server certificate in the
-"input_password" and "output_password" fields of the server.cnf file.
+certificate that is signed by the CA certificate created above.  You
+will have to have the password for the CA certificate in the
+"input_password" and "output_password" fields of the ca.cnf file.
 
 
 $ vi client.cnf
@@ -143,7 +143,7 @@ $ vi client.cnf
   country, state, etc.  Be sure that the commonName field here is
   the User-Name that will be used for logins!
 
-$ make client.pem
+$ make client
 
   The users certificate will be in "emailAddress.pem",
   i.e. "user@example.com.pem".
@@ -187,7 +187,7 @@ with ALL operating systems.  Some common issues are:
     see them, it will stop doing EAP.  The most visible effect is
     that the client starts EAP, gets a few Access-Challenge packets,
     and then a little while later re-starts EAP.  If this happens, see
-    the FAQ, and the comments in "raddb/mods-available/eap" for how to 
+    the FAQ, and the comments in "raddb/mods-available/eap" for how to
     fix it.
 
   - Windows requires the root certificates to be on the client PC.
