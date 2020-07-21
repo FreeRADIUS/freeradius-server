@@ -333,7 +333,7 @@ do { \
 #define FR_SBUFF_EXTEND_OR_RETURN(_sbuff, _len) \
 do { \
 	if (((_sbuff)->p + (_len)) > (_sbuff)->end) { \
-		if (!sbuff->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
+		if (!_sbuff->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
 			return -(((_sbuff)->p + (_len)) - (_sbuff->end)); \
 		} \
 	} \
@@ -434,7 +434,7 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 #define fr_sbuff_set(_dst, _src) \
 _fr_sbuff_set(_dst, \
 	      _Generic(_src, \
-			fr_sbuff_t *	: (_src)->p, \
+			fr_sbuff_t *	: ((fr_sbuff_t const *)(_src))->p, \
 			char const *	: (_src), \
 			char *		: (_src), \
 			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
