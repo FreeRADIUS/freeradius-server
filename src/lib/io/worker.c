@@ -780,6 +780,7 @@ nak:
 			if (is_dup) {
 				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
 				fr_channel_null_reply(request->async->channel);
+				talloc_free(request);
 				return;
 			}
 			goto insert_new;
