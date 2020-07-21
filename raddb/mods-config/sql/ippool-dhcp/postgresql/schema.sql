@@ -13,7 +13,7 @@ CREATE TABLE radippool (
 	pool_key		VARCHAR(64) NOT NULL default 0,
 	CalledStationId		VARCHAR(64),
 	CallingStationId	text NOT NULL default ''::text,
-	expiry_time		TIMESTAMP(0) without time zone NOT NULL default 'now'::timestamp(0),
+	expiry_time		TIMESTAMP(0) without time zone NOT NULL default NOW(),
 	username		text DEFAULT ''::text
 );
 
