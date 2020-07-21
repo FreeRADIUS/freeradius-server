@@ -896,7 +896,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	 *	Start with the currently pending message, and then
 	 *	work through the priority heap.
 	 */
-	for (cd = s->pending;
+	for ((cd = s->pending) || (cd = fr_heap_pop(s->waiting));
 	     cd != NULL;
 	     cd = fr_heap_pop(s->waiting)) {
 		int rcode;
