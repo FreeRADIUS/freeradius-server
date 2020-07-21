@@ -52,11 +52,16 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
  *
  * @param[in] sbuff	to update.
  * @param[in] new_buff	to assign to to sbuff.
+ * @param[in] new_len	Length of the new buffer.
+ * @return
+ *	- 0 on success.
+ *	- <0 if pointer is out of range.
  */
-void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff)
+int fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 {
 	fr_sbuff_t		*sbuff_i;
 	char			*old_buff;	/* Current start */
+	int			ret = 0;
 
 #define update_ptr(_old_buff, _new_buff, _field) (_field = (_new_buff) + ((_field) - (_old_buff)))
 
@@ -70,13 +75,27 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff)
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
 
-		update_ptr(old_buff, new_buff, sbuff_i->start);
-		update_ptr(old_buff, new_buff, sbuff_i->p);
-		update_ptr(old_buff, new_buff, sbuff_i->end);
+		sbuff_i->buff = new_buff;
 
-		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(old_buff, new_buff, m_i->p);
+		update_ptr(old_buff, new_buff, sbuff_i->start);
+		sbuff_i->end = sbuff_i->start + new_len;
+
+		update_ptr(old_buff, new_buff, sbuff_i->p);
+		if (unlikely(sbuff_i->p > sbuff_i->end)) {
+			ret = -1;
+			sbuff_i->p = sbuff_i->end;
+		}
+
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) {
+			update_ptr(old_buff, new_buff, m_i->p);
+			if (unlikely(m_i->p > sbuff_i->end)) {
+				ret = -1;
+				sbuff_i->p = sbuff_i->end;
+			}
+		}
 	}
 
+	return ret;
 #undef update_ptr
 }
 
@@ -138,6 +157,8 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 		 */
 		update_ptr(buff, max_shift, sbuff_i->p);
 
+		sbuff_i->shifted += max_shift;
+
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
 	}
 
@@ -147,6 +168,95 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 #undef update_max_shift
 
 	return max_shift;
+}
+
+/** Reallocate the current buffer
+ *
+ * @param[in] sbuff		to be extended.
+ * @param[in] extension		How many additional bytes should be allocated
+ *				in the buffer.
+ * @return
+ *	- 0 the extension operation failed.
+ *	- >0 the number of bytes the buffer was extended by.
+ */
+size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
+{
+	fr_sbuff_uctx_talloc_t	*tctx = sbuff->uctx;
+	size_t			clen, nlen, elen = extension;
+	char			*new_buff;
+
+	clen = talloc_array_length(sbuff->buff);
+	/*
+	 *	If the current buffer size + the extension
+	 *	is less than init, extend the buffer to init.
+	 *
+	 *	This can happen if the buffer has been
+	 *	trimmed, and then additional data is added.
+	 */
+	if ((clen + elen) < tctx->init) {
+		elen = (tctx->init - clen) + 1;	/* add \0 */
+	/*
+	 *	Double the buffer size if it's more than the
+	 *	requested amount.
+	 */
+	} else if (elen < clen){
+		elen = clen - 1;		/* Don't double alloc \0 */
+	}
+
+	/*
+	 *	Check we don't exceed the maximum buffer
+	 *	length.
+	 */
+	if (tctx->max && ((clen + elen) > tctx->max)) {
+		elen = tctx->max - clen;
+		if (elen == 0) {
+			fr_strerror_printf("Failed extending buffer by %zu bytes to "
+					   "%zu bytes, max is %zu bytes",
+					   extension, clen + extension, tctx->max);
+			return 0;
+		}
+		elen += 1;			/* add \0 */
+	}
+	nlen = clen + elen;
+
+	new_buff = talloc_realloc(tctx->ctx, sbuff->buff, char, nlen);
+	if (unlikely(!new_buff)) {
+		fr_strerror_printf("Failed extending buffer by %zu bytes to %zu bytes", elen, nlen);
+		return 0;
+	}
+
+	(void)fr_sbuff_update(sbuff, new_buff, nlen - 1);	/* Shouldn't fail as we're extending */
+
+	return elen;
+}
+
+/** Trim a talloced sbuff to the minimum length required to represent the contained string
+ *
+ * @param[in] sbuff	to trim.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure - markers present pointing past the end of string data.
+ */
+int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff)
+{
+	size_t	clen, nlen;
+	char	*new_buff;
+
+	if (unlikely(!sbuff->start)) return 0;
+
+	clen = talloc_array_length(sbuff->start);
+	nlen = (sbuff->p - sbuff->start) + 1;
+
+	if (nlen < clen) {
+		new_buff = talloc_realloc(NULL, sbuff->start, char, nlen);
+		if (!new_buff) {
+			fr_strerror_printf("Failed trimming buffer from %zu to %zu", clen, nlen);
+			return -1;
+		}
+		if (fr_sbuff_update(sbuff, new_buff, nlen - 1) < 0) return -1;
+	}
+
+	return 0;
 }
 
 /** Copy n bytes from the sbuff to a talloced buffer
@@ -595,7 +705,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 {
 	size_t len = strlen(str);
 
-	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
 	strlcpy(sbuff->p, str, len + 1);
 
@@ -613,7 +723,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
  */
 ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
-	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
 	memcpy(sbuff->p, str, len);
 	sbuff->p[len] = '\0';
@@ -633,7 +743,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 {
 	size_t len = talloc_array_length(str) - 1;
 
-	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
 	memcpy(sbuff->p, str, len);
 	sbuff->p[len] = '\0';
@@ -734,7 +844,7 @@ ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, cha
 	size_t		len;
 
 	len = fr_snprint_len(in, inlen, quote);
-	FR_SBUFF_CHECK_REMAINING_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
 	len = fr_snprint(fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff) + 1, in, inlen, quote);
 	fr_sbuff_advance(sbuff, len);

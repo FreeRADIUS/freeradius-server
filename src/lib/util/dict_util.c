@@ -1937,7 +1937,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
 	fr_sbuff_t		our_name;
 
-	fr_sbuff_out_init(&our_name, name, strlen(name));
+	fr_sbuff_init(&our_name, name, strlen(name));
 
 	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, &our_name, fallback);
 	if (slen <= 0) return err;

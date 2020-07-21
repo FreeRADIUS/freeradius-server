@@ -15,7 +15,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** A generic string buffer structure for string printing and parsing
+/** A generic buffer structure for string printing and parsing strings
  *
  * Because doing manual length checks is error prone and a waste of everyones time.
  *
@@ -38,12 +38,13 @@ extern "C" {
 #include <sys/types.h>
 #include <talloc.h>
 
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
 
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 
-typedef int(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extenison);
+typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extenison);
 
 struct fr_sbuff_ptr_s {
 	union {
@@ -55,6 +56,11 @@ struct fr_sbuff_ptr_s {
 };
 
 struct fr_sbuff_s {
+	union {
+		char const *buff_i;				//!< Immutable buffer pointer.
+		char *buff;					//!< Mutable buffer pointer.
+	};
+
 	union {
 		char const *start_i;				//!< Immutable start pointer.
 		char *start;					//!< Mutable start pointer.
@@ -73,15 +79,29 @@ struct fr_sbuff_s {
 	uint8_t			is_const:1;		//!< Can't be modified.
 	uint8_t			adv_parent:1;		//!< If true, advance the parent.
 
+	size_t			shifted;		//!< How many bytes this sbuff has been
+							///< shifted since its creation.
+
+	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
+							///< the buffer.
+	void			*uctx;			//!< Extend uctx data.
+
 	fr_sbuff_t		*parent;		//!< sbuff this sbuff was copied from.
 
 	fr_sbuff_marker_t	*m;			//!< Pointers to update if the underlying
 							///< buffer changes.
-	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
-							///< the buffer.
-	size_t			shifted;		//!< How many bytes this sbuff has been
-							///< shifted since its creation.
 };
+
+/** Talloc sbuff extension structure
+ *
+ * Holds the data necessary for creating dynamically
+ * extensible buffers.
+ */
+typedef struct {
+	TALLOC_CTX		*ctx;			//!< Context to alloc new buffers in.
+	size_t			init;			//!< How much to allocate initially.
+	size_t			max;			//!< Maximum size of the buffer.
+} fr_sbuff_uctx_talloc_t;
 
 typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
@@ -115,12 +135,14 @@ do { \
  */
 #define FR_SBUFF_NO_ADVANCE(_sbuff) \
 (fr_sbuff_t){ \
+	.buff		= (_sbuff)->buff, \
 	.start		= (_sbuff)->p, \
 	.end		= (_sbuff)->end, \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
-	.adv_parent	= 0, \
+	.shifted	= (_sbuff)->shifted + ((_sbuff)->p - (_sbuff)->start), \
 	.extend		= (_sbuff)->extend, \
+	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
 }
 
@@ -130,12 +152,15 @@ do { \
  */
 #define FR_SBUFF_COPY(_sbuff) \
 (fr_sbuff_t){ \
+	.buff		= (_sbuff)->buff, \
 	.start		= (_sbuff)->p, \
 	.end		= (_sbuff)->end, \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
-	.adv_parent	= (_sbuff)->adv_parent, \
+	.adv_parent	= 1, \
+	.shifted	= (_sbuff)->shifted + ((_sbuff)->p - (_sbuff)->start), \
 	.extend		= (_sbuff)->extend, \
+	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
 }
 
@@ -151,6 +176,7 @@ do { \
  */
 #define FR_SBUFF_TMP(_start, _len_or_end) \
 (fr_sbuff_t){ \
+	.buff_i		= _start, \
 	.start_i	= _start, \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
@@ -163,6 +189,90 @@ do { \
 				char *		: false, \
 				char const *	: true \
 	       		) \
+}
+
+int	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
+
+size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
+
+size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
+
+int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff);
+
+static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const)
+{
+	if (unlikely(end < start)) end = start;	/* Could be an assert? */
+
+	*out = (fr_sbuff_t){
+		.buff_i = start,
+		.start_i = start,
+		.p_i = start,
+		.end_i = end,
+		.is_const = is_const
+	};
+}
+
+/** Initialise an sbuff around a stack allocated buffer for printing or parsing
+ *
+ * @param[out] _out		Pointer to buffer.
+ * @param[in] _start		Start of the buffer.
+ * @param[in] _len_or_end	Either an end pointer or the length
+ *				of the buffer.
+ */
+#define fr_sbuff_init(_out, _start, _len_or_end) \
+_Generic((_len_or_end), \
+	size_t		: _fr_sbuff_init(_out, _start, (char const *)(_start) + (size_t)(_len_or_end), true), \
+	char *		: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), false), \
+	char const *	: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), true) \
+)
+
+/** Initialise a special sbuff which automatically extends as additional data is written
+ *
+ * @param[in] ctx	to allocate buffer in.
+ * @param[out] sbuff	to initialise.
+ * @param[out] tctx	to initialise.  Must have a lifetime >= to the sbuff.
+ * @param[in] init	The length of the initial buffer.
+ * @param[in] max	The maximum length of the buffer.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline int fr_sbuff_init_talloc(TALLOC_CTX *ctx,
+				       fr_sbuff_t *sbuff, fr_sbuff_uctx_talloc_t *tctx,
+				       size_t init, size_t max)
+{
+	char *buff;
+
+	*tctx = (fr_sbuff_uctx_talloc_t){
+		.ctx = ctx,
+		.init = init,
+		.max = max
+	};
+
+	/*
+	 *	Allocate the initial buffer
+	 *
+	 *	We always allocate a buffer so we don't
+	 *	trigger ubsan errors by performing
+	 *	arithmetic on NULL pointers.
+	 */
+	buff = talloc_zero_array(ctx, char, init + 1);
+	if (!buff) {
+		fr_strerror_printf("Failed allocating buffer of %zu bytes", init + 1);
+		memset(sbuff, 0, sizeof(*sbuff));	/* clang scan */
+		return -1;
+	}
+
+	*sbuff = (fr_sbuff_t){
+		.buff = buff,
+		.start = buff,
+		.p = buff,
+		.end = buff + init,
+		.extend = fr_sbuff_extend_talloc,
+		.uctx = tctx
+	};
+
+	return 0;
 }
 /** @} */
 
@@ -217,6 +327,18 @@ do { \
 	}\
 } while (0)
 
+/** Check if _len bytes are available in the sbuff and extend the buffer if possible
+ *
+ */
+#define FR_SBUFF_EXTEND_OR_RETURN(_sbuff, _len) \
+do { \
+	if (((_sbuff)->p + (_len)) > (_sbuff)->end) { \
+		if (!sbuff->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
+			return -(((_sbuff)->p + (_len)) - (_sbuff->end)); \
+		} \
+	} \
+} while (0)
+
 /** @} */
 
 /** @name Accessors
@@ -249,9 +371,6 @@ static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
  * Change the current position of pointers in the sbuff and their children.
  * @{
  */
-void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff);
-
-size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
 /** Update the position of p in a list of sbuffs
  *
@@ -465,56 +584,6 @@ static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
  *
  * @{
  */
-/** Initialise an sbuff for a stack allocated buffer
- *
- * Usually used for printing to a buffer
- *
- * @param[out] _out	Pointer to sbuff to initialise.
- * @param[in] _buff	Char buffer to wrap.
- */
-#define fr_sbuff_in_init(_out, _buff)	_fr_sbuff_init(_out, _buff, sizeof(_buff), false);
-
-/** Initialise an sbuff for a talloced buffer
- *
- * Usually used for printing to a buffer of variable length
- *
- * @param[out] _out	Pointer to sbuff to initialise.
- * @param[in] _buff	Talloced char buffer to wrap.
- */
-#define fr_sbuff_in_talloc_init(_out, _buff) \
-do { \
-	_fr_sbuff_in_init(_out, _buff, talloc_array_length(_buff) - 1, true); \
-	(_out)->is_extendable = true; \
-} while (0)
-
-/** Initialise an sbuff and alloc a talloc buffer
- *
- * Usually used for printing to a buffer of variable length
- *
- * @param[out] _out	Pointer to sbuff to initialise.
- * @param[in] _ctx	Talloc ctx to allocate buffer in.
- * @param[in] _len	Length of buffer to initialise, excluding '\0'.
- */
-#define fr_sbuff_in_talloc_alloc(_out, _ctx, _len) \
-do { \
-	char *_buff; \
-	MEM(_buff = talloc_array(_ctx, char, (_len) + 1)); \
-	_fr_sbuff_in_init(_out, _buff, (_len) + 1, true); \
-	(_out)->is_extendable = true; \
-} while (0)
-
-static inline void _fr_sbuff_in_init(fr_sbuff_t *out, char *start, char *end, fr_sbuff_extend_t extend)
-{
-	if (unlikely((end - 1) < start)) end = start;	/* Could be an assert? */
-
-	*out = (fr_sbuff_t){
-		.start = start,
-		.p = start,
-		.end = (end - 1),
-		.extend = extend
-	};
-}
-
 ssize_t		fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
 
 ssize_t		fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len);
@@ -536,31 +605,6 @@ ssize_t		fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quot
  *
  * @{
  */
-static inline void _fr_sbuff_out_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const)
-{
-	if (unlikely(end < start)) end = start;	/* Could be an assert? */
-
-	*out = (fr_sbuff_t){
-		.start_i = start,
-		.p_i = start,
-		.end_i = end,
-		.is_const = is_const
-	};
-}
-
-/** Initialise an sbuff for binary safe string parsing
- *
- * @param[out] _out		Pointer to buffer to parse
- * @param[in] _start		Start of the buffer to parse.
- * @param[in] _len_or_end	Either an end pointer or the length
- *				of the buffer we're parsing.
- */
-#define fr_sbuff_out_init(_out, _start, _len_or_end) \
-_Generic((_len_or_end), \
-	size_t		: _fr_sbuff_out_init(_out, _start, (char const *)(_start) + (size_t)(_len_or_end), true), \
-	char *		: _fr_sbuff_out_init(_out, _start, (char const *)(_len_or_end), false), \
-	char const *	: _fr_sbuff_out_init(_out, _start, (char const *)(_len_or_end), true) \
-)
 
 /** Find the longest prefix in an sbuff
  *
