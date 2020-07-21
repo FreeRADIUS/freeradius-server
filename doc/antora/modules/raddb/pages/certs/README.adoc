@@ -62,7 +62,7 @@ certificates. The old test certificates can be deleted by running the
 following command:
 
 ```
-$ rm -f _.pem _.der _.csr _.crt _.key _.p12 serial* index.txt*
+$ make distclean
 ```
 
 Then, follow the instructions below for creating real certificates.
@@ -88,17 +88,24 @@ Edit the [certificate_authority] section to have the correct values for
 your country, state, etc.
 
 ```
-$ make ca.pem
+$ make ca
 ```
 
-This step creates the CA certificate.
+This step creates CA certificate using both RSA and ECC keys, in the respective
+directories.
 
 ```
-$ make ca.der
+$ make rsa/ca.der
 ```
 
-This step creates the DER format of the self-signed certificate, which
-is can be imported into Windows.
+Or:
+
+```
+$ make ecc/ca.der
+```
+
+These steps create the DER format of the self-signed certificates, which is can
+be imported into Windows.
 
 == Server Certificate
 
@@ -119,17 +126,24 @@ state, etc. Be sure that the commonName field here is different from the
 commonName for the CA certificate.
 
 ```
-$ make server.pem
+$ make server
 ```
 
-This step creates the server certificate.
+This step creates and verifies the server certificates using both RSA and ECC
+keys.
 
 If you have an existing certificate authority, and wish to create a
 certificate signing request for the server certificate, edit server.cnf
 as above, and type the following command.
 
 ```
-$ make server.csr
+$ make rsa/server.csr
+```
+
+Or:
+
+```
+$ make ecc/server.csr
 ```
 
 You will have to ensure that the certificate contains the XP extensions
@@ -139,9 +153,9 @@ needed by Microsoft clients.
 
 Client certificates are used by EAP-TLS, and optionally by EAP-TTLS and
 PEAP. The following steps outline how to create a client certificate
-that is signed by the server certificate created above. You will have to
-have the password for the server certificate in the "input_password"
-and "output_password" fields of the server.cnf file.
+that is signed by the CA certificate created above. You will have to
+have the password for the CA certificate in the "input_password" and
+"output_password" fields of the ca.cnf file.
 
 ```
 $ vi client.cnf
@@ -156,10 +170,11 @@ state, etc. Be sure that the commonName field here is the User-Name that
 will be used for logins!
 
 ```
-$ make client.pem
+$ make client
 ```
 
-The users certificate will be in `emailAddress.pem`, i.e. `user@example.com.pem`.
+The user's certificates (RSA and ECC) will be in `emailAddress.pem` and
+`emailAddress.ecc.pem`, e.g. `user@example.com.pem`.
 
 To create another client certificate, just repeat the steps for making a
 client certificate, being sure to enter a different login name for `commonName`,
