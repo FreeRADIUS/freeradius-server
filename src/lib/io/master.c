@@ -1497,9 +1497,7 @@ have_client:
 			}
 
 			/*
-			 *	If there's a cached reply, just sent that and don't do anything else.
-			 *
-			 *	@todo - this API isn't written yet.  :(
+			 *	If there's a cached reply, just send that and don't do anything else.
 			 */
 			if (track->reply_len) {
 				fr_network_t *nr;
