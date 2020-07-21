@@ -818,6 +818,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 				      uint8_t const *packet, size_t packet_len,
 				      fr_time_t recv_time, bool *is_dup)
 {
+	size_t len;
 	fr_io_track_t *track, *old;
 
 	/*
@@ -879,7 +880,19 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	If there's a cached reply, the caller will take care
 	 *	of sending it to the network layer.
 	 */
-	if (memcmp(old->packet, track->packet, talloc_array_length(old->packet)) == 0) {
+	len = talloc_array_length(old->packet);
+	if ((len == talloc_array_length(track->packet)) &&
+	    (memcmp(old->packet, track->packet, len) == 0)) {
+		/*
+		 *	Ignore duplicates while the client is
+		 *	still pending.
+		 */
+		if (client->state == PR_CLIENT_PENDING) {
+			DEBUG("Ignoring duplicate packet while client %s is still pending dynamic definition",
+			      client->radclient->shortname);
+			return NULL;
+		}
+
 		*is_dup = true;
 		old->packets++;
 		track_free(track);
