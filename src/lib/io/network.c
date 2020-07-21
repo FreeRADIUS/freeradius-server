@@ -896,9 +896,9 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	 *	Start with the currently pending message, and then
 	 *	work through the priority heap.
 	 */
-	for ((cd = s->pending) || (cd = fr_heap_pop(s->waiting));
-	     cd != NULL;
-	     cd = fr_heap_pop(s->waiting)) {
+	cd = s->pending;
+	if (!cd) cd = fr_heap_pop(s->waiting);
+	while (cd != NULL) {
 		int rcode;
 
 		fr_assert(li == cd->listen);
@@ -962,6 +962,11 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			fr_network_socket_dead(nr, s);
 			return;
 		}
+
+		/*
+		 *	Grab the net entry.
+		 */
+		cd = fr_heap_pop(s->waiting);
 	}
 
 	/*
