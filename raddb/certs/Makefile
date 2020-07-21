@@ -267,7 +267,7 @@ ecc/client.p12: ecc/client.crt
 
 ecc/client.pem: ecc/client.p12
 	openssl pkcs12 -in ecc/client.p12 -out ecc/client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	cp ecc/client.pem $(USER_NAME).pem
+	cp ecc/client.pem $(USER_NAME).ecc.pem
 
 .PHONY: ecc/client.vrfy
 ecc/client.vrfy: ecc/ca.pem ecc/client.pem
