@@ -170,17 +170,17 @@ server default {
 			idle_timeout = 60.0
 
 			#
-			#  nak_lifetime:: Time for which blacklisted
+			#  nak_lifetime:: Time for which blocklisted
 			#  clients are placed into a NAK cache.
 			#
 			#  If a dynamic client is disallowed, it is
-			#  placed onto a "NAK" blacklist for a period
-			#  of time.  This blacklist helps to prevent
+			#  placed onto a "NAK" blocklist for a period
+			#  of time.  This blocklist helps to prevent
 			#  DoS attacks.  When subsequent packets are
 			#  received from that IP address, they hit the
 			#  "NAK" cache, and are immediately discarded.
 			#
-			#  After `nak_timeout` seconds, the blacklist
+			#  After `nak_timeout` seconds, the blocklist
 			#  entry will be removed, and the IP will be
 			#  allowed to try again to define a dynamic
 			#  client.
