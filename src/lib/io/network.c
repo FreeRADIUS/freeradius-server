@@ -316,27 +316,33 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 {
 	fr_message_t *lm;
 	fr_channel_data_t cd;
-	fr_network_socket_t *s;
-
-	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
-	if (!s) return;
 
 	cd = (fr_channel_data_t) {
 		.m = (fr_message_t) {
 			.status = FR_MESSAGE_USED,
 			.data_size = packet_len,
+			.when = request_time,
 		},
 
+		.channel = {
+			.heap_id = -1,
+		},
+
+		.listen = li,
+		.priority = PRIORITY_NOW,
 		.reply.request_time = request_time,
 	};
 
 	memcpy(&cd.m.data, &packet, sizeof(packet)); /* const issues */
 	memcpy(&cd.packet_ctx, &packet_ctx, sizeof(packet_ctx)); /* const issues */
 
-	lm = fr_message_localize(s, &cd.m, sizeof(cd));
+	/*
+	 *	Localize the message and insert it into the heap of pending messages.
+	 */
+	lm = fr_message_localize(nr, &cd.m, sizeof(cd));
 	if (!lm) return;
 
-	(void) fr_heap_insert(s->waiting, lm);
+	(void) fr_heap_insert(nr->replies, lm);
 }
 
 
@@ -1277,7 +1283,6 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
 		fr_listen_t *li;
-		fr_message_t *lm;
 		fr_network_socket_t *s;
 
 		li = cd->listen;
@@ -1334,15 +1339,21 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		 *	message buffers cleaned up quickly.
 		 */
 		if (s->pending) {
-			lm = fr_message_localize(s, &cd->m, sizeof(*cd));
-			fr_message_done(&cd->m);
+		insert_waiting:
+			if (cd->m.status != FR_MESSAGE_LOCALIZED) {
+				fr_message_t *lm;
 
-			if (!lm) {
-				ERROR("Failed copying packet.  Discarding it.");
-				continue;
+				lm = fr_message_localize(s, &cd->m, sizeof(*cd));
+				fr_message_done(&cd->m);
+
+				if (!lm) {
+					ERROR("Failed copying packet.  Discarding it.");
+					continue;
+				}
+
+				cd = (fr_channel_data_t *) lm;
 			}
 
-			cd = (fr_channel_data_t *) lm;
 			(void) fr_heap_insert(s->waiting, cd);
 			continue;
 		}
@@ -1368,21 +1379,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 					goto error;
 				}
 
-				/*
-				 *	Localize the message, and add
-				 *	it as the current pending /
-				 *	partially written packet.
-				 */
-				lm = fr_message_localize(s, &cd->m, sizeof(*cd));
-				fr_message_done(&cd->m);
-				if (!lm) {
-					ERROR("Failed copying packet.  Discarding it.");
-					continue;
-				}
-
-				cd = (fr_channel_data_t *) lm;
-				s->pending = cd;
-				continue;
+				goto insert_waiting;
 			}
 
 			/*
