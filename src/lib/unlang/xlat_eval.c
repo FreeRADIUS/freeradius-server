@@ -460,7 +460,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 		if (!request->component) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
+		if (fr_value_box_strdup(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
 		goto done;
 	}
 
