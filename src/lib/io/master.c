@@ -2482,10 +2482,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	inst->app_io_instance = inst->submodule->data;
 
 	/*
-	 *	If we're not tracking duplicatesm then we don't need a
+	 *	If we're not tracking duplicates then we don't need a
 	 *	cleanup delay.
+	 *
+	 *	If we are tracking duplicates, then we must have a non-zero cleanup delay.
 	 */
-	if (!inst->app_io->track_duplicates) inst->cleanup_delay = 0;
+	if (!inst->app_io->track_duplicates) {
+		inst->cleanup_delay = 0;
+
+	} else {
+		FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, >=, fr_time_delta_from_sec(1));
+	}
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
