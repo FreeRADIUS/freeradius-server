@@ -1,0 +1,5 @@
+User-Name =  "08000f510d1e"
+CHAP-Password = 0xa1526f5b6d5cc40d3d87df334515befc07
+CHAP-Challenge = 0xbf61a943b98f4d1b9e9885677705a6b8
+
+Packet-Type == Access-Accept

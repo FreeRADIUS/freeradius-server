@@ -63,8 +63,9 @@ void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE
 	md5_ctx = fr_md5_ctx_alloc(true);
 
 	/*
-	 *	First ingest the password
+	 *	First ingest the ID and the password.
 	 */
+	fr_md5_update(md5_ctx, (uint8_t const *)&id, 1);
 	fr_md5_update(md5_ctx, (uint8_t const *)password, password_len);
 
 	/*
