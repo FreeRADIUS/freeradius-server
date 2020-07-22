@@ -1335,7 +1335,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer),
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buffer, sizeof(buffer)),
 					    &our_name, SIZE_MAX,
 					    fr_dict_attr_allowed_chars);
 	if (len == 0) {
@@ -1734,9 +1734,9 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 
 	INTERNAL_IF_NULL(dict, 0);
 
-	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer),
-				       &our_name, SIZE_MAX,
-				       fr_dict_attr_allowed_chars);
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buffer, sizeof(buffer)),
+					    &our_name, SIZE_MAX,
+					    fr_dict_attr_allowed_chars);
 	if (len == 0) {
 		fr_strerror_printf("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;

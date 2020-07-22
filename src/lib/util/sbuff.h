@@ -140,7 +140,6 @@ do { \
 	.end		= (_sbuff)->end, \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
-	.shifted	= (_sbuff)->shifted + ((_sbuff)->p - (_sbuff)->start), \
 	.extend		= (_sbuff)->extend, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
@@ -158,7 +157,6 @@ do { \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
 	.adv_parent	= 1, \
-	.shifted	= (_sbuff)->shifted + ((_sbuff)->p - (_sbuff)->start), \
 	.extend		= (_sbuff)->extend, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
@@ -179,8 +177,8 @@ do { \
 	.buff_i		= _start, \
 	.start_i	= _start, \
 	.end_i		= _Generic((_len_or_end), \
-				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
-				long		: (char const *)(_start) + (size_t)(_len_or_end), \
+				size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
+				long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				char *		: (char const *)(_len_or_end), \
 				char const *	: (char const *)(_len_or_end) \
 			), \
@@ -191,13 +189,13 @@ do { \
 	       		) \
 }
 
-int	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
+void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
 size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
 size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
 
-int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff);
+int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
 
 static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const)
 {
@@ -234,12 +232,12 @@ _Generic((_len_or_end), \
  * @param[in] init	The length of the initial buffer.
  * @param[in] max	The maximum length of the buffer.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- The passed sbuff on success.
+ *	- NULL on failure.
  */
-static inline int fr_sbuff_init_talloc(TALLOC_CTX *ctx,
-				       fr_sbuff_t *sbuff, fr_sbuff_uctx_talloc_t *tctx,
-				       size_t init, size_t max)
+static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
+					       fr_sbuff_t *sbuff, fr_sbuff_uctx_talloc_t *tctx,
+					       size_t init, size_t max)
 {
 	char *buff;
 
@@ -260,7 +258,7 @@ static inline int fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 	if (!buff) {
 		fr_strerror_printf("Failed allocating buffer of %zu bytes", init + 1);
 		memset(sbuff, 0, sizeof(*sbuff));	/* clang scan */
-		return -1;
+		return NULL;
 	}
 
 	*sbuff = (fr_sbuff_t){
@@ -272,7 +270,7 @@ static inline int fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 		.uctx = tctx
 	};
 
-	return 0;
+	return sbuff;
 }
 /** @} */
 
@@ -304,7 +302,7 @@ static inline size_t fr_sbuff_used_total(fr_sbuff_t const *sbuff)
 	return (sbuff->p - sbuff->start) + sbuff->shifted;
 }
 
-/** How many bytes in the buffer total
+/** The length of the buffer
  *
  */
 static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
@@ -625,24 +623,14 @@ do { \
 	if (_match_len) *(_match_len) = _match_len_tmp; \
 } while (0)
 
-size_t	fr_sbuff_out_talloc_bstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
+size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
-size_t	fr_sbuff_out_talloc_bstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len);
+ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
-size_t	fr_sbuff_out_talloc_bstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-					     bool const allowed_chars[static UINT8_MAX + 1]);
-
-size_t	fr_sbuff_out_talloc_bstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-					   bool const until[static UINT8_MAX + 1]);
-
-ssize_t	fr_sbuff_out_bstrncpy_exact(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
-
-size_t	fr_sbuff_out_bstrncpy(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len);
-
-size_t	fr_sbuff_out_bstrncpy_allowed(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
+size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				      bool const allowed_chars[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_out_bstrncpy_until(char *out, size_t outlen, fr_sbuff_t *sbuff, size_t len,
+size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    bool const until[static UINT8_MAX + 1]);
 /** @} */
 

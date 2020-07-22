@@ -47,7 +47,7 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
 #if defined(__clang_analyzer__) || !defined(NDEBUG)
-#  define CHECK_SBUFF_INIT(_sbuff)	if (!(_sbuff)->buff || !(_sbuff)->start || !(_sbuff)->end || !(_sbuff)->p) return 0;
+#  define CHECK_SBUFF_INIT(_sbuff)	if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0;
 #else
 #  define CHECK_SBUFF_INIT(_sbuff)
 #endif
@@ -59,21 +59,18 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
  * @param[in] sbuff	to update.
  * @param[in] new_buff	to assign to to sbuff.
  * @param[in] new_len	Length of the new buffer.
- * @return
- *	- 0 on success.
- *	- <0 if pointer is out of range.
  */
-int fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
+void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 {
 	fr_sbuff_t		*sbuff_i;
-	char			*old_buff;	/* Current start */
-	int			ret = 0;
+	char			*old_buff;	/* Current buff */
 
-	CHECK_SBUFF_INIT(sbuff);
+#define update_ptr(_old_buff, _new_buff, _new_len, _field) \
+	_field = (size_t)((_field) - (_old_buff)) < _new_len ? \
+		(_new_buff) + ((_field) - (_old_buff)) : \
+		(_new_buff) + (_new_len)
 
-#define update_ptr(_old_buff, _new_buff, _field) (_field = (_new_buff) + ((_field) - (_old_buff)))
-
-	old_buff = sbuff->start;
+	old_buff = sbuff->buff;
 
 	/*
 	 *	Update pointers to point to positions
@@ -84,26 +81,12 @@ int fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 		fr_sbuff_marker_t	*m_i;
 
 		sbuff_i->buff = new_buff;
+		update_ptr(old_buff, new_buff, new_len, sbuff_i->start);
+		*(sbuff_i->end = sbuff_i->start + new_len) = '\0';	/* Re-terminate */
+		update_ptr(old_buff, new_buff, new_len, sbuff_i->p);
 
-		update_ptr(old_buff, new_buff, sbuff_i->start);
-		sbuff_i->end = sbuff_i->start + new_len;
-
-		update_ptr(old_buff, new_buff, sbuff_i->p);
-		if (unlikely(sbuff_i->p > sbuff_i->end)) {
-			ret = -1;
-			sbuff_i->p = sbuff_i->end;
-		}
-
-		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) {
-			update_ptr(old_buff, new_buff, m_i->p);
-			if (unlikely(m_i->p > sbuff_i->end)) {
-				ret = -1;
-				sbuff_i->p = sbuff_i->end;
-			}
-		}
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(old_buff, new_buff, new_len, m_i->p);
 	}
-
-	return ret;
 #undef update_ptr
 }
 
@@ -143,8 +126,8 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 	/*
 	 *	Determine the maximum shift amount.
-	 *	Shifts are constrained by pointers
-	 *	into the buffer.
+	 *	Shifts are constrained by the position
+	 *	of pointers into the buffer.
 	 */
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
@@ -160,6 +143,8 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
+
+		sbuff_i->shifted += max_shift;
 
 		/*
 		 *	Current position shifts, but stays the same
@@ -197,7 +182,7 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	clen = talloc_array_length(sbuff->buff);
+	clen = sbuff->buff ? talloc_array_length(sbuff->buff) : 0;
 	/*
 	 *	If the current buffer size + the extension
 	 *	is less than init, extend the buffer to init.
@@ -245,243 +230,139 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
 /** Trim a talloced sbuff to the minimum length required to represent the contained string
  *
  * @param[in] sbuff	to trim.
+ * @param[in] len	Length to trim to.  Passing SIZE_MAX will
+ *			result in the buffer being trimmed to the
+ *			length of the content.
  * @return
  *	- 0 on success.
  *	- -1 on failure - markers present pointing past the end of string data.
  */
-int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff)
+int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
 {
-	size_t	clen, nlen;
-	char	*new_buff;
+	size_t			clen = 0, nlen = 1;
+	char			*new_buff;
+	fr_sbuff_uctx_talloc_t	*tctx = sbuff->uctx;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	clen = talloc_array_length(sbuff->start);
-	nlen = (sbuff->p - sbuff->start) + 1;
+	if (sbuff->buff) clen = talloc_array_length(sbuff->buff);
 
-	if (nlen < clen) {
-		new_buff = talloc_realloc(NULL, sbuff->start, char, nlen);
+	if (len != SIZE_MAX) {
+		nlen += len;
+	} else if (sbuff->buff){
+		nlen += (sbuff->p - sbuff->start);
+	}
+
+	if (nlen != clen) {
+		new_buff = talloc_realloc(tctx->ctx, sbuff->buff, char, nlen);
 		if (!new_buff) {
 			fr_strerror_printf("Failed trimming buffer from %zu to %zu", clen, nlen);
 			return -1;
 		}
-		if (fr_sbuff_update(sbuff, new_buff, nlen - 1) < 0) return -1;
+		fr_sbuff_update(sbuff, new_buff, nlen - 1);
 	}
 
 	return 0;
 }
 
-/** Copy n bytes from the sbuff to a talloced buffer
+/** Extend a buffer if no space remains
  *
- * Will fail if output buffer is too small, or insufficient data is available in sbuff.
+ * @param[in] _sbuff	to extend.
+ * @param[in] _need	How many bytes to request if no data remains.
+ */
+#define CANT_EXTEND(_sbuff, _need) \
+((fr_sbuff_remaining(_sbuff) == 0) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, _need)))
+
+/** Fill as much of the output buffer we can and break on partial copy
  *
- * @param[in] ctx	to allocate talloced buffer in.
+ * @param[in] _out	sbuff to write to.
+ * @param[in] _in	sbuff to copy from.
+ * @param[in] _len	maximum amount to copy.
+ */
+#define FILL_OR_BREAK(_out, _in, _len) \
+do { \
+	ssize_t _copied; \
+	_copied = fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len); \
+	if (_copied < 0) { \
+		fr_sbuff_advance(_in, fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len + _copied)); \
+		goto done;\
+	} \
+	fr_sbuff_advance(_in, _copied); \
+} while(0)
+
+/** Copy as many bytes as possible from the sbuff to a talloced buffer.
+ *
+ * Copy size is limited by available data in sbuff.
+ *
  * @param[out] out	Where to copy to.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @return
- *      - 0 if insufficient bytes are available in the sbuff.
- *	- >0 the number of bytes copied to out.
+ *	- 0 no bytes copied.
+ *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_out_talloc_bstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
+	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		remaining;
+
 	CHECK_SBUFF_INIT(in);
 
-	if (len == SIZE_MAX) len = in->end - in->p;
-	if ((in->p + len) > in->end) return 0;	/* Copying off the end of sbuff */
+	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
+		size_t chunk_len;
 
-	*out = talloc_bstrndup(ctx, in->p, len);
-	if (unlikely(!*out)) return 0;
+		if (CANT_EXTEND(&our_in, remaining)) break;
 
-	fr_sbuff_advance(in, len);
+		chunk_len = fr_sbuff_remaining(&our_in);
+		if (chunk_len > remaining) chunk_len = remaining;
 
-	return len;
+		FILL_OR_BREAK(out, &our_in, chunk_len);
+	};
+done:
+
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Copy as many bytes as possible from the sbuff to a talloced buffer.
  *
  * Copy size is limited by available data in sbuff.
  *
- * @param[in] ctx	to allocate talloced buffer in.
  * @param[out] out	Where to copy to.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @return
- *	- 0 no bytes copied.
+ *	- 0 no bytes copied, no token found of sufficient length in input buffer.
  *	- >0 the number of bytes copied.
+ *	- <0 the number of additional output bytes we would have needed to
+ *	  complete the copy.
  */
-size_t fr_sbuff_out_talloc_bstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	CHECK_SBUFF_INIT(in);
-
-	if (len > fr_sbuff_remaining(in)) len = fr_sbuff_remaining(in);
-	if (len == 0) {
-		*out = talloc_bstrndup(ctx, "", 0);
-		return 0;
-	}
-
-	*out = talloc_bstrndup(ctx, in->p, len);
-	if (unlikely(!*out)) return 0;
-
-	fr_sbuff_advance(in, len);
-
-	return len;
-}
-
-/** Copy as many allowed characters as possible from the sbuff to a talloced buffer.
- *
- * Copy size is limited by available data in sbuff and output buffer length.
- *
- * As soon as a disallowed character is found the copy is stopped.
- *
- * @param[in] ctx		to allocate talloced buffer in.
- * @param[out] out		Where to copy to.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @param[in] allowed_chars	Characters to include the copy.
- * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
- */
-size_t fr_sbuff_out_talloc_bstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-					    bool const allowed_chars[static UINT8_MAX + 1])
-{
-	char const	*p = in->p;
-	char const	*end;
-	size_t		to_copy;
+	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		remaining;
 
 	CHECK_SBUFF_INIT(in);
 
-	if (len > fr_sbuff_remaining(in)) len = fr_sbuff_remaining(in);
-	if (len == 0) {
-		*out = talloc_bstrndup(ctx, "", 0);
-		return 0;
-	}
+	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
+		ssize_t copied;
+		size_t chunk_len;
 
-	end = p + len;
+		if (CANT_EXTEND(&our_in, remaining)) return 0;
 
-	while ((p < end) && allowed_chars[(uint8_t)*p]) p++;
-	to_copy = (p - in->p);
+		chunk_len = fr_sbuff_remaining(&our_in);
+		if (chunk_len > remaining) chunk_len = remaining;
 
-	*out = talloc_bstrndup(ctx, in->p, to_copy);
-	if (unlikely(!*out)) return 0;
+		copied = fr_sbuff_in_bstrncpy(out, our_in.p, chunk_len);
+		if (copied < 0) {
+			/* Amount remaining in input buffer minus the amount we could have copied */
+			if (len == SIZE_MAX) return -(fr_sbuff_remaining(in) - (chunk_len + copied));
+			/* Amount remaining to copy minus the amount we could have copied */
+			return -(remaining - (chunk_len + copied));
+		}
+		fr_sbuff_advance(&our_in, copied);
+	};
 
-	fr_sbuff_advance(in, to_copy);
-
-	return to_copy;
-}
-
-/** Copy as many allowed characters as possible from the sbuff to a talloced buffer
- *
- * Copy size is limited by available data in sbuff and output buffer length.
- *
- * As soon as a disallowed character is found the copy is stopped.
- *
- * @param[in] ctx		to allocate talloced buffer in.
- * @param[out] out		Where to copy to.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @param[in] until		Characters which stop the copy operation.
- * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
- */
-size_t fr_sbuff_out_talloc_bstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-					  bool const until[static UINT8_MAX + 1])
-{
-	char const	*p = in->p;
-	char const	*end;
-	size_t		to_copy;
-
-	CHECK_SBUFF_INIT(in);
-
-	if (len > fr_sbuff_remaining(in)) len = fr_sbuff_remaining(in);
-	if (len == 0) {
-		*out = talloc_bstrndup(ctx, "", 0);
-		return 0;
-	}
-
-	end = p + len;
-
-	while ((p < end) && !until[(uint8_t)*p]) p++;
-	to_copy = (p - in->p);
-
-	*out = talloc_bstrndup(ctx, in->p, to_copy);
-	if (unlikely(!*out)) return 0;
-
-	fr_sbuff_advance(in, to_copy);
-
-	return to_copy;
-}
-
-/** Copy n bytes from the sbuff to another buffer
- *
- * Will fail if output buffer is too small, or insufficient data is available in sbuff.
- *
- * @param[out] out	Where to copy to.
- * @param[in] outlen	Size of output buffer.
- * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len	How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @return
- *      - 0 if insufficient bytes are available in the sbuff.
- *	- <0 the number of additional bytes we'd need in the output buffer as a negative value.
- *	- >0 the number of bytes copied to out.
- */
-ssize_t fr_sbuff_out_bstrncpy_exact(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
-{
-	CHECK_SBUFF_INIT(in);
-
-	if (len == SIZE_MAX) len = in->end - in->p;
-	if (unlikely(outlen == 0)) return -(len + 1);
-
-	outlen--;	/* Account the \0 byte */
-
-	if (len > outlen) return outlen - len;	/* Return how many bytes we'd need */
-	if ((in->p + len) > in->end) return 0;	/* Copying off the end of sbuff */
-
-	memcpy(out, in->p, len);
-	out[len] = '\0';
-
-	fr_sbuff_advance(in, len);
-
-	return len;
-}
-
-#define STRNCPY_TRIM_LEN(_len, _in, _outlen) \
-do { \
-	if (_len == SIZE_MAX) _len = _in->end - _in->p; \
-	if (_len > _outlen) _len = _outlen; \
-	if ((_in->p + _len) > _in->end) _len = (_in->end - _in->p); \
-} while(0)
-
-/** Copy as many bytes as possible from the sbuff to another buffer
- *
- * Copy size is limited by available data in sbuff and output buffer length.
- *
- * @param[out] out		Where to copy to.
- * @param[in] outlen		Size of output buffer.
- * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
- * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @return
- *	- 0 no bytes copied.
- *	- >0 the number of bytes copied.
- */
-size_t fr_sbuff_out_bstrncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t len)
-{
-	CHECK_SBUFF_INIT(in);
-
-	if (unlikely(outlen == 0)) return 0;
-
-	outlen--;	/* Account the \0 byte */ \
-
-	STRNCPY_TRIM_LEN(len, in, outlen);
-
-	memcpy(out, in->p, len);
-	out[len] = '\0';
-
-	fr_sbuff_advance(in, len);
-
-	return len;
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Copy as many allowed characters as possible from the sbuff to another buffer
@@ -491,40 +372,39 @@ size_t fr_sbuff_out_bstrncpy(char *out, size_t outlen, fr_sbuff_t *in, size_t le
  * As soon as a disallowed character is found the copy is stopped.
  *
  * @param[out] out		Where to copy to.
- * @param[in] outlen		Size of output buffer.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @param[in] allowed_chars	Characters to include the copy.
+ * @param[in] allowed		Characters to include the copy.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_out_bstrncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
-				     bool const allowed_chars[static UINT8_MAX + 1])
+size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				     bool const allowed[static UINT8_MAX + 1])
 {
-	char const	*p = in->p;
-	char const	*end;
-	char		*out_p = out;
-	size_t		copied;
+	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		remaining;
 
 	CHECK_SBUFF_INIT(in);
 
-	if (unlikely(outlen == 0)) return 0;
+	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
+		size_t	chunk_len;
+		char	*p;
 
-	outlen--;	/* Account the \0 byte */
+		if (CANT_EXTEND(&our_in, remaining)) break;
 
-	STRNCPY_TRIM_LEN(len, in, outlen);
+		chunk_len = fr_sbuff_remaining(&our_in);
+		if (chunk_len > remaining) chunk_len = remaining;
 
-	end = p + len;
+		for (p = our_in.p; (p < (our_in.start + chunk_len)) && allowed[(uint8_t)*p]; p++);
+		chunk_len = p - our_in.p;
+		if (!chunk_len) break;
 
-	while ((p < end) && allowed_chars[(uint8_t)*p]) *out_p++ = *p++;
-	*out_p = '\0';
+		FILL_OR_BREAK(out, &our_in, chunk_len);
+	}
+done:
 
-	copied = (p - in->p);
-
-	fr_sbuff_advance(in, copied);
-
-	return copied;
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Copy as many allowed characters as possible from the sbuff to another buffer
@@ -534,7 +414,6 @@ size_t fr_sbuff_out_bstrncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, s
  * As soon as a disallowed character is found the copy is stopped.
  *
  * @param[out] out		Where to copy to.
- * @param[in] outlen		Size of output buffer.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] until		Characters which stop the copy operation.
@@ -542,34 +421,33 @@ size_t fr_sbuff_out_bstrncpy_allowed(char *out, size_t outlen, fr_sbuff_t *in, s
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
-size_t fr_sbuff_out_bstrncpy_until(char *out, size_t outlen, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   bool const until[static UINT8_MAX + 1])
 {
-	char const	*p = in->p;
-	char const	*end;
-	char		*out_p = out;
-	size_t		copied;
+	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t		remaining;
 
 	CHECK_SBUFF_INIT(in);
 
-	if (unlikely(outlen == 0)) return 0;
+	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
+		size_t	chunk_len;
+		char	*p;
 
-	outlen--;	/* Account the \0 byte */
+		if (CANT_EXTEND(&our_in, remaining)) break;
 
-	STRNCPY_TRIM_LEN(len, in, outlen);
+		chunk_len = fr_sbuff_remaining(&our_in);
+		if (chunk_len > remaining) chunk_len = remaining;
 
-	end = p + len;
+		for (p = our_in.p; (p < (our_in.start + chunk_len)) && !until[(uint8_t)*p]; p++);
+		chunk_len = p - our_in.p;
+		if (!chunk_len) break;
 
-	while ((p < end) && !until[(uint8_t)*p]) *out_p++ = *p++;
-	*out_p = '\0';
+		FILL_OR_BREAK(out, &our_in, chunk_len);
+	}
+done:
 
-	copied = (p - in->p);
-
-	fr_sbuff_advance(in, copied);
-
-	return copied;
+	return fr_sbuff_set(in, &our_in);
 }
-
 /** Used to define a number parsing functions for singed integers
  *
  * @param[in] _name	Function suffix.
@@ -591,7 +469,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(buff, sizeof(buff), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -643,7 +521,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(buff, sizeof(buff), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -692,20 +570,20 @@ static bool float_chars[UINT8_MAX + 1] = {
 #define SBUFF_PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char		buffer[_max_char + 1]; \
+	char		buff[_max_char + 1]; \
 	char		*end; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
 	size_t		len; \
 	_type		res; \
-	len = fr_sbuff_out_bstrncpy_allowed(buffer, sizeof(buffer), &our_in, SIZE_MAX, float_chars); \
-	if (len == sizeof(buffer)) { \
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, SIZE_MAX, float_chars); \
+	if (len == sizeof(buff)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \
 	} else if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	res = _func(buffer, &end); \
+	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		return 0; \
@@ -715,7 +593,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		*out = res; \
 		return 0; \
 	} \
-	return fr_sbuff_advance(in, end - buffer); \
+	return fr_sbuff_advance(in, end - buff); \
 }
 
 SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
