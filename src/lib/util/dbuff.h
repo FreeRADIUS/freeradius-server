@@ -450,7 +450,7 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 {
 	m->parent->m = m->next;
 
-#ifndef NDEBUF
+#ifndef NDEBUG
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
 }
