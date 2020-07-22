@@ -823,7 +823,7 @@ ldap {
 #		cacheable_dn = 'no'
 #		cache_attribute = 'LDAP-Cached-Membership'
 #		allow_dangling_group_ref = 'no'
-		group_attribute = "${.:instance}-Group"
+		group_attribute = "${..:instance}-Group"
 	}
 	profile {
 #		filter = '(objectclass=radiusprofile)'
