@@ -687,7 +687,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		/*
 		 *	Get / skip protocol name.
 		 */
-		slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_TMP(ref, strlen(ref)), ctx->dict);
+		slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_TMP(ref, strlen(ref) + 1), ctx->dict);
 		if (slen < 0) {
 			talloc_free(ref);
 			return -1;
@@ -1508,7 +1508,8 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			 *	Get / skip protocol name.
 			 */
 			slen = dict_by_protocol_substr(NULL,
-						       &dict, &FR_SBUFF_TMP(this->ref, strlen(this->ref)), ctx->dict);
+						       &dict, &FR_SBUFF_TMP(this->ref, strlen(this->ref) + 1),
+						       ctx->dict);
 			if (slen <= 0) {
 				fr_dict_t *other;
 

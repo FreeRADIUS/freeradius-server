@@ -1354,7 +1354,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	parsing the configuration files.
 	 */
 	slen = fr_dict_attr_by_qualified_name_substr(NULL, &da,
-						     rules->dict_def, &FR_SBUFF_TMP(p, strlen(p)),
+						     rules->dict_def, &FR_SBUFF_TMP(p, strlen(p) + 1),
 						     !rules->disallow_internal);
 	if (slen <= 0) {
 		fr_dict_attr_t *unknown_da;
