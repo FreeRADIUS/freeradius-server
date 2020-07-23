@@ -3314,9 +3314,8 @@ post_ca:
 	 *	to the same server recently. This doesn't work for EAP, so we
 	 *	disable early data.
 	 *
-	 *	OpenSSL 1.1.1 and later set this as the default
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && OPENSSL_VERSION_NUMBER < 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	SSL_CTX_set_max_early_data(ctx, 0);
 #endif
 
