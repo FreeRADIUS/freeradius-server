@@ -340,6 +340,20 @@ do { \
 	} \
 } while (0)
 
+/** Extend a buffer if we're below the low water mark
+ *
+ * @param[in] _sbuff	to extend.
+ * @param[in] _lowat	If bytes remaining are below the amount, extend.
+ */
+#define FR_SBUFF_CANT_EXTEND_LOWAT(_sbuff, _lowat) \
+((fr_sbuff_remaining(_sbuff) < (_lowat)) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, (_lowat) - fr_sbuff_remaining(_sbuff))))
+
+/** Extend a buffer if no space remains
+ *
+ * @param[in] _sbuff	to extend.
+ */
+#define FR_SBUFF_CANT_EXTEND(_sbuff) FR_SBUFF_CANT_EXTEND_LOWAT(_sbuff, 1)
+
 /** @} */
 
 /** @name Accessors
@@ -703,13 +717,17 @@ bool	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
 
 size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff);
 
-size_t	fr_sbuff_adv_to_strchr_utf8(fr_sbuff_t *in, char *chr);
+size_t	fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, char *chr);
 
-size_t	fr_sbuff_adv_to_strchr(fr_sbuff_t *in, char c);
+size_t	fr_sbuff_adv_to_chr(fr_sbuff_t *in, char c);
 
-size_t	fr_sbuff_adv_to_strstr(fr_sbuff_t *sbuff, char const *needle, ssize_t len);
+size_t	fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len);
 
-#define fr_sbuff_adv_to_strstr_literal(_sbuff, _needle) fr_sbuff_adv_to_strstr(_sbuff, _needle, sizeof(_needle) - 1)
+#define fr_sbuff_adv_to_str_literal(_sbuff, _needle) fr_sbuff_adv_to_str(_sbuff, _needle, sizeof(_needle) - 1)
+
+size_t	fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len);
+
+#define fr_sbuff_adv_to_strcase_literal(_sbuff, _needle) fr_sbuff_adv_to_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
 bool	fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c);
 
@@ -720,11 +738,8 @@ bool	fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c);
  */
 static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return '\0';
-
-	sbuff->p++;
-
-	return *sbuff->p;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return '\0';
+	return *(sbuff->p++);
 }
 /** @} */
 
@@ -736,43 +751,43 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  */
 static inline bool fr_sbuff_is_allowed(fr_sbuff_t *sbuff, bool const allowed_chars[static UINT8_MAX + 1])
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return allowed_chars[(uint8_t)*sbuff->p];
 }
 
 static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return *sbuff->p == c;
 }
 
 static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return isdigit(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_upper(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return isupper(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_lower(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return islower(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_alpha(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return isalpha(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
 {
-	if (sbuff->p >= sbuff->end) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return isspace(*sbuff->p);
 }
 /** @} */
