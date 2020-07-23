@@ -220,7 +220,9 @@ static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const
  */
 #define fr_sbuff_init(_out, _start, _len_or_end) \
 _Generic((_len_or_end), \
-	size_t		: _fr_sbuff_init(_out, _start, (char const *)(_start) + (size_t)(_len_or_end), true), \
+	size_t		: _fr_sbuff_init(_out, _start, (char const *)(_start) + ((size_t)(_len_or_end) - 1), true), \
+	long		: _fr_sbuff_init(_out, _start, (char const *)(_start) + ((size_t)(_len_or_end) - 1), true), \
+	int		: _fr_sbuff_init(_out, _start, (char const *)(_start) + ((size_t)(_len_or_end) - 1), true), \
 	char *		: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), false), \
 	char const *	: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), true) \
 )

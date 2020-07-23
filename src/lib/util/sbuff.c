@@ -273,6 +273,15 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
 #define CANT_EXTEND(_sbuff, _need) \
 ((_need) && (fr_sbuff_remaining(_sbuff) == 0) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, _need)))
 
+/** Extend a buffer if we're below the low water mark
+ *
+ * @param[in] _sbuff	to extend.
+ * @param[in] _need	How many bytes to request if no data remains.
+ * @param[in] _lowat	If bytes remaining are below the amount, extend.
+ */
+#define CANT_EXTEND_LOWAT(_sbuff, _need, _lowat) \
+((fr_sbuff_remaining(_sbuff) < (_lowat)) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, _need)))
+
 /** Fill as much of the output buffer we can and break on partial copy
  *
  * @param[in] _out	sbuff to write to.
@@ -809,7 +818,13 @@ bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (len == SIZE_MAX) len = strlen(needle);
-	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	/*
+	 *	If there's insufficient bytes in the
+	 *	buffer currently, try to extend it,
+	 *	returning if we can't.
+	 */
+	if (CANT_EXTEND_LOWAT(sbuff, len, len)) return false;
 
 	found = memmem(sbuff->p, len, needle, len);	/* sbuff len and needle len ensures match must be next */
 	if (!found) return false;
@@ -836,7 +851,13 @@ bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (len == SIZE_MAX) len = strlen(needle);
-	if ((sbuff->p + len) >= sbuff->end) return false;
+
+	/*
+	 *	If there's insufficient bytes in the
+	 *	buffer currently, try to extend it,
+	 *	returning if we can't.
+	 */
+	if (CANT_EXTEND_LOWAT(sbuff, len, len)) return false;
 
 	p = sbuff->p;
 	end = p + len;
