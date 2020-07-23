@@ -113,39 +113,26 @@ BEGIN
         -- recently used address from the pool which maximises the likelihood
         -- of re-assigning the other addresses to their recent user
         --
-        IF r_address IS NULL THEN
-                BEGIN
-                        SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
-                                SELECT id FROM (
-                                        SELECT *
-                                        FROM radippool
-                                        WHERE pool_name = v_pool_name
-                                        AND expiry_time < CURRENT_TIMESTAMP
-                                        ORDER BY expiry_time
-                                       ) WHERE ROWNUM <= 1
-                        ) FOR UPDATE SKIP LOCKED;
-                EXCEPTION
-                        WHEN NO_DATA_FOUND THEN
-                                r_address := NULL;
-                END;
-        END IF;
 
-        -- Oracle >= 12c version of the above query
-        --
-        -- IF r_address IS NULL THEN
-        --         BEGIN
-        --                 SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
-        --                         SELECT id FROM radippool
-        --                         WHERE pool_name = v_pool_name
-        --                         AND expiry_time < CURRENT_TIMESTAMP
-        --                         ORDER BY expiry_time
-        --                         FETCH FIRST 1 ROWS ONLY
-        --                 ) FOR UPDATE SKIP LOCKED;
-        --         EXCEPTION
-        --                 WHEN NO_DATA_FOUND THEN
-        --                         r_address := NULL;
-        --         END;
-        -- END IF;
+	IF r_address IS NULL THEN
+		DECLARE
+			l_cursor sys_refcursor;
+		BEGIN
+			OPEN l_cursor FOR
+				SELECT framedipaddress
+				FROM radippool
+				WHERE pool_name = v_pool_name
+				AND expiry_time < CURRENT_TIMESTAMP
+				ORDER BY expiry_time
+				FOR UPDATE SKIP LOCKED;
+			FETCH l_cursor INTO r_address;
+			CLOSE l_cursor;
+		EXCEPTION
+			WHEN NO_DATA_FOUND THEN
+				r_address := NULL;
+		END;
+	END IF;
+	
 
         -- Return nothing if we failed to allocated an address
         --
