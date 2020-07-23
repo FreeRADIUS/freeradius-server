@@ -46,13 +46,16 @@ BEGIN
 
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
-	SELECT framedipaddress INTO r_address
-	FROM radippool
-	WHERE pool_name = v_pool_name
-		AND expiry_time > NOW()
-		AND pool_key = v_pool_key
-	LIMIT 1
-	FOR UPDATE SKIP LOCKED;
+	WITH ips AS (
+		SELECT framedipaddress FROM radippool
+		WHERE pool_name = v_pool_name
+			AND pool_key = v_pool_key
+			AND expiry_time > NOW()
+		LIMIT 1 FOR UPDATE SKIP LOCKED )
+	UPDATE radippool
+	SET expiry_time = NOW() + v_lease_duration * interval '1 sec'
+	FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+	RETURNING radippool.framedipaddress INTO r_address;
 
 	-- Reissue an user's previous IP address, provided that the lease is
 	-- available (i.e. enable sticky IPs)
@@ -61,44 +64,36 @@ BEGIN
 	-- set allocate_clear = "" in queries.conf to persist the associations
 	-- for expired leases.
 	--
-	-- SELECT framedipaddress INTO r_address
-	-- FROM radippool
-	-- WHERE pool_name = v_pool_name
-	--	 AND pool_key = v_pool_key
-	-- LIMIT 1
-	-- FOR UPDATE SKIP LOCKED;
+	-- WITH ips AS (
+	--	SELECT framedipaddress FROM radippool
+	--	WHERE pool_name = v_pool_name
+	--		AND pool_key = v_pool_key
+	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
+	-- UPDATE radippool
+	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
+	-- FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+	-- RETURNING radippool.framedipaddress INTO r_address;
 
 	-- If we didn't reallocate a previous address then pick the least
 	-- recently used address from the pool which maximises the likelihood
 	-- of re-assigning the other addresses to their recent user
 	--
 	IF r_address IS NULL THEN
-		SELECT framedipaddress INTO r_address
-		FROM radippool
-		WHERE pool_name = v_pool_name
-		AND expiry_time < NOW()
-		ORDER BY
-		    expiry_time
-		LIMIT 1
-		FOR UPDATE SKIP LOCKED;
+		WITH ips AS (
+			SELECT framedipaddress FROM radippool
+			WHERE pool_name = v_pool_name
+				AND expiry_time < NOW()
+			ORDER BY expiry_time
+			LIMIT 1 FOR UPDATE SKIP LOCKED )
+		UPDATE radippool
+		SET pool_key = v_pool_key,
+			expiry_time = NOW() + v_lease_duration * interval '1 sec',
+			nasipaddress = v_nasipaddress,
+			callingstationid = v_callingstationid,
+			username = v_username
+		FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+		RETURNING radippool.framedipaddress INTO r_address;
 	END IF;
-
-	-- Return nothing if we failed to allocated an address
-	--
-	IF r_address IS NULL THEN
-		RETURN r_address;
-	END IF;
-
-	-- Update the pool having allocated an IP address
-	--
-	UPDATE radippool
-	SET
-		nasipaddress = v_nasipaddress,
-		pool_key = v_pool_key,
-		callingstationid = v_callingstationid,
-		username = v_username,
-		expiry_time = NOW() + v_lease_duration * interval '1 sec'
-	WHERE framedipaddress = r_address;
 
 	-- Return the address that we allocated
 	RETURN r_address;
