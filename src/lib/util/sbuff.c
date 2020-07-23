@@ -863,10 +863,10 @@ bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
  *
  * @param[in] sbuff		sbuff to search in.
  * @return
- *	- 0, first character is not a whitespace character.
- *	- >0 how many whitespace characters we skipped.
+ *	- true and advance past the need if whitespace occurs next.
+ *	- false and don't advance if the whitespace does not occur next.
  */
-size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
+bool fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 {
 
 	size_t		total = 0;
@@ -879,12 +879,12 @@ size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 
 		p = sbuff->p;
 		while ((p < sbuff->end) && isspace(*p)) p++;
-		if (p == sbuff->p) return 0;
+		if (p == sbuff->p) break;
 
 		total += fr_sbuff_advance(sbuff, p - sbuff->p);
 	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
 
-	return total;
+	return (total > 0);
 }
 
 /** Wind position to first instance of specified multibyte utf8 char
@@ -895,13 +895,13 @@ size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
  * @param[in,out] sbuff		to search in.
  * @param[in] chr		to search for.
  * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the multi-byte chr was found.
+ *	- NULL, no instances found.
+ *	- The position of the first character.
  */
-size_t fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char *chr)
+char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char const *chr)
 {
-	size_t		total = 0;
 	size_t		clen = strlen(chr);
+	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 
 	CHECK_SBUFF_INIT(sbuff);
 
@@ -912,18 +912,18 @@ size_t fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char *chr)
 		 *	Ensure we have enough chars to match
 		 *	the needle.
 		 */
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, clen)) break;
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, clen)) break;
 
-		found = fr_utf8_strchr(NULL, fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff), chr);
+		found = fr_utf8_strchr(NULL, fr_sbuff_current(&our_sbuff), fr_sbuff_remaining(&our_sbuff), chr);
 		if (found) {
-			total += fr_sbuff_set(sbuff, found);
-			break;
+			(void)fr_sbuff_set(sbuff, found);
+			return sbuff->p;
 		}
 
-		total += fr_sbuff_advance(sbuff, 1);	/* Can't advance by clen, because we're searching for a sequence */
+		(void)fr_sbuff_advance(&our_sbuff, 1);	/* Can't advance by clen, because we're searching for a sequence */
 	}
 
-	return total;
+	return NULL;
 }
 
 /** Wind position to first instance of specified char
@@ -931,29 +931,30 @@ size_t fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char *chr)
  * @param[in,out] sbuff		to search in.
  * @param[in] c			to search for.
  * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the char was found.
+ *	- NULL, no instances found.
+ *	- The position of the first character.
  */
-size_t fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, char c)
+char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, char c)
 {
-	size_t		total = 0;
-	char const	*found;
+	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 
 	CHECK_SBUFF_INIT(sbuff);
 
 	for (;;) {
-		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+		char const	*found;
 
-		found = memchr(fr_sbuff_current(sbuff), c, fr_sbuff_remaining(sbuff));
+		if (FR_SBUFF_CANT_EXTEND(&our_sbuff)) break;
+
+		found = memchr(fr_sbuff_current(&our_sbuff), c, fr_sbuff_remaining(&our_sbuff));
 		if (found) {
-			total += fr_sbuff_set(sbuff, found);
-			break;
+			(void)fr_sbuff_set(sbuff, found);
+			return sbuff->p;
 		}
 
-		total += fr_sbuff_set(sbuff, sbuff->end);
+		(void)fr_sbuff_set(&our_sbuff, our_sbuff.end);
 	}
 
-	return total;
+	return NULL;
 }
 
 /** Wind position to the first instance of the specified needle
@@ -962,12 +963,12 @@ size_t fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, char c)
  * @param[in] needle		to search for.
  * @param[in] len		Length of the needle.  -1 to use strlen.
  * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the needle was found.
+ *	- NULL, no instances found.
+ *	- The position of the first character.
  */
-size_t fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
-	size_t		total = 0;
+	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 	char const	*found;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -975,13 +976,11 @@ size_t fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 	if (len == SIZE_MAX) len = strlen(needle);
 	if (!len) return 0;
 
-	for (;;) {
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) break;
-
-		found = memmem(fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff), needle, len);
+	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, len)) {
+		found = memmem(fr_sbuff_current(&our_sbuff), fr_sbuff_remaining(&our_sbuff), needle, len);
 		if (found) {
-			total += fr_sbuff_set(sbuff, found);
-			break;
+			(void)fr_sbuff_set(sbuff, found);
+			return sbuff->p;
 		}
 
 		/*
@@ -989,10 +988,10 @@ size_t fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 		 *      the end of the buffer so
 		 *	don't advance too far.
 		 */
-		total += fr_sbuff_advance(sbuff, (fr_sbuff_remaining(sbuff) - len) - 1);
+		(void)fr_sbuff_advance(&our_sbuff, (fr_sbuff_remaining(&our_sbuff) - len) - 1);
 	}
 
-	return total;
+	return NULL;
 }
 
 /** Wind position to the first instance of the specified needle
@@ -1001,37 +1000,34 @@ size_t fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
  * @param[in] needle		to search for.
  * @param[in] len		Length of the needle.  -1 to use strlen.
  * @return
- *	- 0, no instances found.
- *	- >0 the offset at which the first occurrence of the needle was found.
+ *	- NULL, no instances found.
+ *	- The position of the first character.
  */
-size_t fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
-	size_t		total = 0;
+	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (len == SIZE_MAX) len = strlen(needle);
 	if (!len) return 0;
 
-	for (;;) {
+	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, len)) {
 		char *p, *end;
 		char const *n_p;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) break;
-
-		p = sbuff->p;
-		end = p + len;
-
-		for (p = sbuff->p, n_p = needle; (p < end) && (tolower(*p) != tolower(*n_p)); p++, n_p++);
+		for (p = our_sbuff.p, n_p = needle, end = our_sbuff.p + len;
+		     (p < end) && (tolower(*p) == tolower(*n_p));
+		     p++, n_p++);
 		if (p == end) {
-			total += fr_sbuff_set(sbuff, end);
-			break;
+			(void)fr_sbuff_set(sbuff, our_sbuff.p);
+			return sbuff->p;
 		}
 
-		total += fr_sbuff_advance(sbuff, 1);
+		(void)fr_sbuff_advance(&our_sbuff, 1);
 	}
 
-	return total;
+	return NULL;
 }
 
 /** Return true if the current char matches, and if it does, advance
@@ -1046,7 +1042,7 @@ bool fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c)
 {
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (!FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 
 	if (*sbuff->p != c) return false;
 
@@ -1067,7 +1063,7 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 {
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (!FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 
 	if (*sbuff->p == c) return false;
 
