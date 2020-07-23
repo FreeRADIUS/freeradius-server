@@ -271,7 +271,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
  * @param[in] _need	How many bytes to request if no data remains.
  */
 #define CANT_EXTEND(_sbuff, _need) \
-((fr_sbuff_remaining(_sbuff) == 0) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, _need)))
+((_need) && (fr_sbuff_remaining(_sbuff) == 0) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, _need)))
 
 /** Fill as much of the output buffer we can and break on partial copy
  *
@@ -279,7 +279,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
  * @param[in] _in	sbuff to copy from.
  * @param[in] _len	maximum amount to copy.
  */
-#define FILL_OR_BREAK(_out, _in, _len) \
+#define FILL_OR_GOTO_DONE(_out, _in, _len) \
 do { \
 	ssize_t _copied; \
 	_copied = fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len); \
@@ -308,16 +308,18 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 	CHECK_SBUFF_INIT(in);
 
-	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
+	do {
 		size_t chunk_len;
+
+		remaining = (len - fr_sbuff_used_total(&our_in));
 
 		if (CANT_EXTEND(&our_in, remaining)) break;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
 
-		FILL_OR_BREAK(out, &our_in, chunk_len);
-	};
+		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
+	} while (remaining);
 done:
 
 	return fr_sbuff_set(in, &our_in);
@@ -343,9 +345,12 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 	CHECK_SBUFF_INIT(in);
 
-	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
-		ssize_t copied;
+	do {
+
 		size_t chunk_len;
+		ssize_t copied;
+
+		remaining = (len - fr_sbuff_used_total(&our_in));
 
 		if (CANT_EXTEND(&our_in, remaining)) return 0;
 
@@ -360,7 +365,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			return -(remaining - (chunk_len + copied));
 		}
 		fr_sbuff_advance(&our_in, copied);
-	};
+	} while (remaining);
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -384,13 +389,15 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
 	size_t		remaining;
+	size_t		chunk_len;
 
 	CHECK_SBUFF_INIT(in);
 
-	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
-		size_t	chunk_len;
+	do {
+
 		char	*p;
 
+		remaining = (len - fr_sbuff_used_total(&our_in));
 		if (CANT_EXTEND(&our_in, remaining)) break;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
@@ -398,10 +405,9 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 
 		for (p = our_in.p; (p < (our_in.start + chunk_len)) && allowed[(uint8_t)*p]; p++);
 		chunk_len = p - our_in.p;
-		if (!chunk_len) break;
 
-		FILL_OR_BREAK(out, &our_in, chunk_len);
-	}
+		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
+	} while (remaining && chunk_len);
 done:
 
 	return fr_sbuff_set(in, &our_in);
@@ -426,13 +432,15 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
 	size_t		remaining;
+	size_t		chunk_len;
 
 	CHECK_SBUFF_INIT(in);
 
-	while ((remaining = (len - fr_sbuff_used_total(&our_in))) > 0) {
-		size_t	chunk_len;
+	do {
+
 		char	*p;
 
+		remaining = (len - fr_sbuff_used_total(&our_in));
 		if (CANT_EXTEND(&our_in, remaining)) break;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
@@ -442,8 +450,8 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		chunk_len = p - our_in.p;
 		if (!chunk_len) break;
 
-		FILL_OR_BREAK(out, &our_in, chunk_len);
-	}
+		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
+	} while (remaining && chunk_len);
 done:
 
 	return fr_sbuff_set(in, &our_in);

@@ -179,6 +179,7 @@ do { \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
+				int		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				char *		: (char const *)(_len_or_end), \
 				char const *	: (char const *)(_len_or_end) \
 			), \

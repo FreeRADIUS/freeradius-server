@@ -63,7 +63,7 @@ static void test_parse_init(void)
 	TEST_CHECK(sbuff.end == in + strlen(in));
 }
 
-static void test_strncpy_exact(void)
+static void test_bstrncpy_exact(void)
 {
 	char const	*in = "i am a test string";
 	char const	*in_long = "i am a longer test string";
@@ -105,9 +105,17 @@ static void test_strncpy_exact(void)
 	TEST_CHECK_SLEN(-25, slen);
 	TEST_CHECK(out[0] == 'a');	/* Must not write \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Zero length size");
+	fr_sbuff_set_to_start(&sbuff);
+	out[0] = 'a';
+	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, 0);
+	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
-static void test_strncpy(void)
+static void test_bstrncpy(void)
 {
 	char const	*in = "i am a test string";
 	char const	*in_long = "i am a longer test string";
@@ -149,9 +157,17 @@ static void test_strncpy(void)
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Zero length size");
+	fr_sbuff_set_to_start(&sbuff);
+	out[0] = 'a';
+	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, 0);
+	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
-static bool allow_lowercase[UINT8_MAX + 1] = {
+static bool allow_lowercase_and_space[UINT8_MAX + 1] = {
 	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
 	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
 	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
@@ -160,7 +176,16 @@ static bool allow_lowercase[UINT8_MAX + 1] = {
 	['z'] = true, [' '] = true
 };
 
-static void test_strncpy_allowed(void)
+static bool allow_lowercase_and_space_no_t[UINT8_MAX + 1] = {
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
+	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
+	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
+	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = false,
+	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
+	['z'] = true, [' '] = true
+};
+
+static void test_bstrncpy_allowed(void)
 {
 	char const	*in = "i am a test string";
 	char const	*in_long = "i am a longer test string";
@@ -170,38 +195,74 @@ static void test_strncpy_allowed(void)
 
 	fr_sbuff_init(&sbuff, in, strlen(in));
 
+	/*
+	 *	Should behave identically to bstrncpy
+	 *	where there's no restrictions on char
+	 *      set.
+	 */
 	TEST_CASE("Copy 5 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 5, allow_lowercase);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 5, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(5, slen);
 	TEST_CHECK_STRCMP("i am ", out);
 	TEST_CHECK_STRCMP("a test string", sbuff.p);
 
 	TEST_CASE("Copy 13 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 13, allow_lowercase);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 13, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("a test string", out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 1, allow_lowercase);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 1, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, strlen(in_long));
 
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX, allow_lowercase);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(18, slen);
 	TEST_CHECK_STRCMP("i am a longer test", out);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, SIZE_MAX, allow_lowercase);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, SIZE_MAX, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
+
+	/*
+	 *	Check copy stops early
+	 */
+	TEST_CASE("Copy until first t");
+	fr_sbuff_set_to_start(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX,
+					     allow_lowercase_and_space_no_t);
+	TEST_CHECK_SLEN(14, slen);
+	TEST_CHECK_STRCMP("i am a longer ", out);
+
+	TEST_CASE("Copy until first t with length constraint (same len as token)");
+	fr_sbuff_set_to_start(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, 15), &sbuff, SIZE_MAX,
+					     allow_lowercase_and_space_no_t);
+	TEST_CHECK_SLEN(14, slen);
+	TEST_CHECK_STRCMP("i am a longer ", out);
+
+	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
+	fr_sbuff_set_to_start(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, 14), &sbuff, SIZE_MAX,
+					     allow_lowercase_and_space_no_t);
+	TEST_CHECK_SLEN(13, slen);
+	TEST_CHECK_STRCMP("i am a longer", out);
+
+	TEST_CASE("Zero length token (should still be terminated)");
+	fr_sbuff_set_to_start(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, 14), &sbuff, SIZE_MAX,
+					     (bool[UINT8_MAX + 1]){});
+	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_STRCMP("", out);
 }
 
 
@@ -412,9 +473,9 @@ TEST_LIST = {
 	 *	Basic tests
 	 */
 	{ "fr_sbuff_init",			test_parse_init },
-	{ "fr_sbuff_out_bstrncpy_exact",	test_strncpy_exact },
-	{ "fr_sbuff_out_bstrncpy",		test_strncpy },
-	{ "fr_sbuff_out_bstrncpy_allowed",	test_strncpy_allowed },
+	{ "fr_sbuff_out_bstrncpy_exact",	test_bstrncpy_exact },
+	{ "fr_sbuff_out_bstrncpy",		test_bstrncpy },
+	{ "fr_sbuff_out_bstrncpy_allowed",	test_bstrncpy_allowed },
 
 	/*
 	 *	Extending buffer
