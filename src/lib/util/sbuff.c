@@ -448,7 +448,6 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 		for (p = our_in.p; (p < (our_in.start + chunk_len)) && !until[(uint8_t)*p]; p++);
 		chunk_len = p - our_in.p;
-		if (!chunk_len) break;
 
 		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
 	} while (remaining && chunk_len);
