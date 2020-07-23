@@ -69,8 +69,10 @@ $(TEST).radiusd_kill: | ${2}
 #
 .PHONY: $(TEST).radiusd_stop
 $(TEST).radiusd_stop: | ${2}
-	${Q}if [ -f ${2}/radiusd.pid ]; then \
-		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+	${Q}mt=5; \
+	if [ -f ${2}/radiusd.pid ]; then \
+		pid=`cat ${2}/radiusd.pid`; \
+		if ! ps $$$${pid} >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \
 		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
@@ -80,9 +82,17 @@ $(TEST).radiusd_stop: | ${2}
 		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
 		    exit 1; \
 		fi; \
-		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+		if ! kill -TERM $$$${pid} >/dev/null 2>&1; then \
 			exit 1; \
 		fi; \
+		while ps $$$$pid 1> /dev/null 2>&1; do \
+			if ((mt-- == 0)); then \
+				echo "$(TEST).radiusd_stop: Reached max tries for PID=$$$$pid, Being killed."; \
+				kill -9 $$$$pid; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
 		rm -f ${2}/radiusd.pid; \
 		exit 0; \
 	fi
