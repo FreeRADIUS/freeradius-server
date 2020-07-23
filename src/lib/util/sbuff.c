@@ -282,7 +282,7 @@ do { \
 	fr_sbuff_advance(_in, _copied); \
 } while(0)
 
-/** Copy as many bytes as possible from the sbuff to a talloced buffer.
+/** Copy as many bytes as possible from the sbuff to a sbuff
  *
  * Copy size is limited by available data in sbuff.
  *

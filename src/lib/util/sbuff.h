@@ -620,12 +620,28 @@ ssize_t		fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quot
  *
  * @{
  */
+#define SBUFF_IN_FUNC_DEF_BODY(_func, _in, _len, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	ssize_t			slen; \
+	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
+			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
+	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
+	if (slen <= 0) { \
+		talloc_free(sbuff.buff); \
+		return 0; \
+	} \
+	*out = sbuff.buff; \
+	return (size_t)slen; \
+}
 
 /** Find the longest prefix in an sbuff
  *
  * @param[out] _match_len	The length of the matched string.
  *				May be NULL.
- * @param[out] _out		The value resolve in the table.
+ * @param[out] _out		The value resolved in the table.
  * @param[in] _table		to find longest match in.
  * @param[in] _sbuff		containing the needle.
  * @param[in] _def		Default value if no match is found.
@@ -645,10 +661,24 @@ size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				      bool const allowed_chars[static UINT8_MAX + 1]);
+				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    bool const until[static UINT8_MAX + 1]);
+
+static inline size_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+	SBUFF_IN_FUNC_DEF_BODY(fr_sbuff_out_bstrncpy, in, len);
+
+static inline size_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+	SBUFF_IN_FUNC_DEF_BODY(fr_sbuff_out_bstrncpy_exact, in, len);
+
+static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						    bool const allowed[static UINT8_MAX + 1])
+	SBUFF_IN_FUNC_DEF_BODY(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
+
+static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						    bool const until[static UINT8_MAX + 1])
+	SBUFF_IN_FUNC_DEF_BODY(fr_sbuff_out_bstrncpy_until, in, len, until);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
