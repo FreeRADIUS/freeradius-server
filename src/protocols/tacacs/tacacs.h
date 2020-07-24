@@ -232,6 +232,14 @@ typedef struct CC_HINT(__packed__) {
 	};
 } fr_tacacs_packet_t;
 
+/** Used as the decoder ctx
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const *root;
+	char const           *secret;
+} fr_tacacs_ctx_t;
+
 tacacs_type_t	tacacs_type(RADIUS_PACKET const * const packet);
 
 char const	*tacacs_packet_code(RADIUS_PACKET const * const packet);
