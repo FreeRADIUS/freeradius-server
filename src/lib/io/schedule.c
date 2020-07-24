@@ -146,6 +146,8 @@ struct fr_schedule_s {
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
+
+	fr_network_t	*last;			//!< for round robin selection of networks
 };
 
 static _Thread_local int worker_id;		//!< Internal ID of the current worker thread.
@@ -831,14 +833,18 @@ fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li)
 	if (sc->el) {
 		nr = sc->single_network;
 	} else {
-		fr_schedule_network_t *sn;
+		/*
+		 *	This may walk off of the end of the list.
+		 */
+		if (sc->last) sc->last = fr_dlist_next(&sc->networks, sc->last);
 
 		/*
-		 *	@todo - round robin it among the listeners?
-		 *	or maybe add it to the same parent thread?
+		 *	If we did walk off of the end of the list, go
+		 *	back to the first one again.
 		 */
-		sn = fr_dlist_head(&sc->networks);
-		nr = sn->nr;
+		if (!sc->last) sc->last = fr_dlist_head(&sc->networks);
+
+		nr = sc->last;
 	}
 
 	if (fr_network_listen_add(nr, li) < 0) return NULL;
