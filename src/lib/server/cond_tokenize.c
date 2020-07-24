@@ -568,7 +568,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
 							&(vp_tmpl_rules_t){
 								.allow_unknown = true,
-								.allow_undefined = true
+								.allow_unparsed = true
 							});
 			if ((attr_slen > 0) && (vpt->len == c->data.map->lhs->len)) {
 				talloc_free(c->data.map->lhs);
@@ -684,7 +684,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	 */
 	parse_rules = *rules;
 	parse_rules.allow_unknown = true;
-	parse_rules.allow_undefined = true;
+	parse_rules.allow_unparsed = true;
 
 	c = talloc_zero(ctx, fr_cond_t);
 

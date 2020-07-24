@@ -1194,7 +1194,7 @@ static vp_tmpl_rules_t const default_rules = {
  *							If the unknown attribute is not added to
  *							the main dictionary the #vp_tmpl_t cannot be used
  *							to search for a #VALUE_PAIR in a #REQUEST.
- *				- allow_undefined	If true, we don't generate a parse error on
+ *				- allow_unparsed	If true, we don't generate a parse error on
  *							unknown attributes. If an unknown attribute is
  *							found a #TMPL_TYPE_ATTR_UNPARSED
  *							#vp_tmpl_t will be produced.
@@ -1412,7 +1412,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		 *	Don't alter the fr_strerror buffer, should contain the parse
 		 *	error from fr_dict_unknown_from_suboid.
 		 */
-		if (!rules->allow_undefined) {
+		if (!rules->allow_unparsed) {
 			fr_strerror_printf_push("Undefined attributes not allowed here");
 			if (err) *err = ATTR_REF_ERROR_UNDEFINED_ATTRIBUTE_NOT_ALLOWED;
 			slen = -(p - name);
@@ -1746,7 +1746,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		 */
 		quote = '\0';
 
-		mrules.allow_undefined = (in[0] == '&');
+		mrules.allow_unparsed = (in[0] == '&');
 
 		/*
 		 *	This doesn't take a length, but it does return
@@ -1756,7 +1756,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 		 *	the attribute name.
 		 */
 		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, in, inlen, &mrules);
-		if (mrules.allow_undefined && (slen <= 0)) return slen;
+		if (mrules.allow_unparsed && (slen <= 0)) return slen;
 		if (slen > 0) {
 			if ((size_t) slen < inlen) {
 				fr_strerror_printf("Unexpected text after attribute name");

@@ -520,7 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      cf_pair_value_quote(cp),
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true }, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			return RLM_MODULE_FAIL;

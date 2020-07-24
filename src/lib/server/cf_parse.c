@@ -190,7 +190,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cp->value,
 						   &(vp_tmpl_rules_t){
 							.allow_unknown = true,
-							.allow_undefined = true
+							.allow_unparsed = true
 						   });
 			if (slen < 0) {
 				char *spaces, *text;
@@ -1437,7 +1437,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
 					      cf_pair_value_quote(cp),
-					      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true },
+					      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
 					      true);
 			if (slen < 0) {
 				char *spaces, *text;

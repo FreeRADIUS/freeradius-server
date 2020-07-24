@@ -513,7 +513,7 @@ struct vp_tmpl_rules_s {
 	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	bool			allow_undefined;	//!< Allow attributes that look valid but were
+	bool			allow_unparsed;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
