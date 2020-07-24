@@ -597,6 +597,25 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
 SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100);
 
+/** Copy char into the sbuff
+ *
+ * @param[in] sbuff	to copy into.
+ * @param[in] c	to copy into buffer.
+ * @return
+ *	- >= 0 the number of bytes copied into the sbuff.
+ *	- <0 the number of bytes required to complete the copy operation.
+ */
+ssize_t fr_sbuff_in_char(fr_sbuff_t *sbuff, char c)
+{
+	CHECK_SBUFF_INIT(sbuff);
+
+	FR_SBUFF_EXTEND_OR_RETURN(sbuff, 1);
+
+	*sbuff->p = c;
+
+	return fr_sbuff_advance(sbuff, 1);
+}
+
 /** Copy bytes into the sbuff up to the first \0
  *
  * @param[in] sbuff	to copy into.
@@ -793,8 +812,8 @@ ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote
  * @param[in] len	of needle. If SIZE_MAX strlen is used
  *			to determine length of the needle.
  * @return
- *	- true and advance past the need if the needle occurs next.
- *	- false and don't advance if the needle does not occur next.
+ *	- true, and advance past the needle if the needle occurs next.
+ *	- false, and don't advance if the needle does not occur next.
  */
 bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
@@ -828,8 +847,8 @@ bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
  * @param[in] len	of needle. If SIZE_MAX strlen is used
  *			to determine length of the needle.
  * @return
- *	- true and advance past the need if the needle occurs next.
- *	- false and don't advance if the needle does not occur next.
+ *	- true, and advance past the needle if the needle occurs next.
+ *	- false, and don't advance if the needle does not occur next.
  */
 bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
@@ -863,12 +882,11 @@ bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
  *
  * @param[in] sbuff		sbuff to search in.
  * @return
- *	- true and advance past the need if whitespace occurs next.
- *	- false and don't advance if the whitespace does not occur next.
+ *	- true, and advance past the whitespace characters.
+ *	- false, and don't advance if whitespace chars do not occur next.
  */
 bool fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 {
-
 	size_t		total = 0;
 	char const	*p;
 
@@ -879,6 +897,62 @@ bool fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 
 		p = sbuff->p;
 		while ((p < sbuff->end) && isspace(*p)) p++;
+		if (p == sbuff->p) break;
+
+		total += fr_sbuff_advance(sbuff, p - sbuff->p);
+	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
+
+	return (total > 0);
+}
+
+/** Wind position past the allowed character sets
+ *
+ * @param[in] sbuff		sbuff to search in.
+ * @param[in] allowed		character set.
+ * @return
+ *	- true, and advance past the allowed characters.
+ *	- false, and don't advance if allowed chars do not occur next.
+ */
+bool fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1])
+{
+	size_t		total = 0;
+	char const	*p;
+
+	CHECK_SBUFF_INIT(sbuff);
+
+	do {
+		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+
+		p = sbuff->p;
+		while ((p < sbuff->end) && allowed[(uint8_t)*p]) p++;
+		if (p == sbuff->p) break;
+
+		total += fr_sbuff_advance(sbuff, p - sbuff->p);
+	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
+
+	return (total > 0);
+}
+
+/** Wind position until we hit one of the specified chars
+ *
+ * @param[in] sbuff		sbuff to search in.
+ * @param[in] until		character set.
+ * @return
+ *	- true, and advance past the allowed characters.
+ *	- false, and don't advance if allowed chars do not occur next.
+ */
+bool fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1])
+{
+	size_t		total = 0;
+	char const	*p;
+
+	CHECK_SBUFF_INIT(sbuff);
+
+	do {
+		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+
+		p = sbuff->p;
+		while ((p < sbuff->end) && !until[(uint8_t)*p]) p++;
 		if (p == sbuff->p) break;
 
 		total += fr_sbuff_advance(sbuff, p - sbuff->p);

@@ -333,7 +333,7 @@ do { \
  */
 #define FR_SBUFF_EXTEND_OR_RETURN(_sbuff, _len) \
 do { \
-	if (((_sbuff)->p + (_len)) > (_sbuff)->end) { \
+	if (fr_sbuff_remaining(_sbuff) < (_len)) { \
 		if (!_sbuff->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
 			return -(((_sbuff)->p + (_len)) - (_sbuff->end)); \
 		} \
@@ -599,19 +599,30 @@ static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
  *
  * @{
  */
+ssize_t		fr_sbuff_in_char(fr_sbuff_t *sbuff, char c);
+#define		FR_SBUFF_IN_CHAR_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_char, ##__VA_ARGS__)
+
 ssize_t		fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
+#define		FR_SBUFF_IN_STRCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_strcpy, ##__VA_ARGS__)
 
 ssize_t		fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len);
+#define		FR_SBUFF_IN_BSTRNCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, ##__VA_ARGS__)
+#define		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(_sbuff, _str) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, _sbuff, _str, sizeof(_str) - 1)
 
 ssize_t		fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str);
+#define		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_bstrcpy_buffer, ##__VA_ARGS__)
 
 ssize_t		fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap);
+#define		FR_SBUFF_IN_VSPRINTF_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_vsprintf, ##__VA_ARGS__)
 
 ssize_t		fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...);
+#define		FR_SBUFF_IN_SPRINTF_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_sprintf, ##__VA_ARGS__)
 
 ssize_t		fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, char quote);
+#define		FR_SBUFF_IN_SNPRINT_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_snprint, ##__VA_ARGS__)
 
 ssize_t		fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote);
+#define		FR_SBUFF_IN_SNPRINT_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_snprint_buffer, ##__VA_ARGS__)
 /** @} */
 
 /** @name Copy data out of an sbuff
@@ -654,7 +665,7 @@ ssize_t		fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quot
  * @param[in] _sbuff		containing the needle.
  * @param[in] _def		Default value if no match is found.
  */
-#define fr_sbuff_out_table_value_by_longest_prefix(_match_len, _out, _table, _sbuff, _def) \
+#define fr_sbuff_out_by_longest_prefix(_match_len, _out, _table, _sbuff, _def) \
 do { \
 	size_t		_match_len_tmp; \
 	*(_out) = fr_table_value_by_longest_prefix(&_match_len_tmp, _table, \
@@ -666,23 +677,23 @@ do { \
 
 size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
-ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
-
-size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				      bool const allowed[static UINT8_MAX + 1]);
-
-size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    bool const until[static UINT8_MAX + 1]);
-
 static inline size_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 	SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy, in, len);
+
+ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 static inline size_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 	SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_exact, in, len);
 
+size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				      bool const allowed[static UINT8_MAX + 1]);
+
 static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 						    bool const allowed[static UINT8_MAX + 1])
 	SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
+
+size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				    bool const until[static UINT8_MAX + 1]);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
 						    bool const until[static UINT8_MAX + 1])
@@ -734,7 +745,7 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
 		 uint32_t *	: fr_sbuff_out_uint32(_err, (uint32_t *)_out, _in, true), \
 		 uint64_t *	: fr_sbuff_out_uint64(_err, (uint64_t *)_out, _in, true), \
 		 float *	: fr_sbuff_out_float32(_err, (float *)_out, _in, true), \
-		 double *	: fr_sbuff_out_float64(_err, (double *)_out, _in, true), \
+		 double *	: fr_sbuff_out_float64(_err, (double *)_out, _in, true) \
 	)
 /** @} */
 
@@ -754,6 +765,10 @@ bool	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
 #define fr_sbuff_adv_past_strcase_literal(_sbuff, _needle) fr_sbuff_adv_past_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
 bool	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff);
+
+bool	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1]);
+
+bool	fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1]);
 
 char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, char const *chr);
 

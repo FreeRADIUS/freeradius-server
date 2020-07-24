@@ -643,6 +643,60 @@ static void test_adv_past_whitespace(void)
 	TEST_CHECK(fr_sbuff_adv_past_whitespace(&sbuff) == true);
 }
 
+static void test_adv_past_allowed(void)
+{
+	fr_sbuff_t	sbuff;
+	char const	in[] = "     i am a         test string";
+	char const	in_ns[] = "i am a test string";
+	char const	in_ws[] = "     ";
+
+	TEST_CASE("Check for token at beginning of string");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }) == true);
+	TEST_CHECK_STRCMP("i am a         test string", sbuff.p);
+
+	TEST_CASE("Check for token not at beginning of string");
+	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
+	TEST_CHECK(fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }) == false);
+	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+
+	TEST_CASE("Check for token with zero length string");
+	fr_sbuff_init(&sbuff, in, 0 + 1);
+	TEST_CHECK(fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }) == false);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token at the end of the string");
+	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
+	TEST_CHECK(fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }) == true);
+	TEST_CHECK(sbuff.p == sbuff.end);
+}
+
+static void test_adv_until(void)
+{
+	fr_sbuff_t	sbuff;
+	char const	in[] = " abcdefgh ijklmnop";
+
+	TEST_CASE("Check for token at beginning of string");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }) == false);
+	TEST_CHECK_STRCMP(" abcdefgh ijklmnop", sbuff.p);
+
+	TEST_CASE("Check for token not at beginning of string");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['a'] = true }) == true);
+	TEST_CHECK_STRCMP("abcdefgh ijklmnop", sbuff.p);
+
+	TEST_CASE("Check for token with zero length string");
+	fr_sbuff_init(&sbuff, in, 0 + 1);
+	TEST_CHECK(fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['a'] = true }) == false);
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token that is not in the string");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['|'] = true }) == true);
+	TEST_CHECK(sbuff.p == sbuff.end);
+}
+
 static void test_adv_to_utf8(void)
 {
 	fr_sbuff_t	sbuff;
@@ -885,6 +939,8 @@ TEST_LIST = {
 	{ "fr_sbuff_adv_past_str", 		test_adv_past_str },
 	{ "fr_sbuff_adv_past_strcase", 		test_adv_past_strcase },
 	{ "fr_sbuff_adv_past_whitespace",	test_adv_past_whitespace },
+	{ "fr_sbuff_adv_past_allowed",		test_adv_past_allowed },
+	{ "fr_sbuff_adv_until",			test_adv_until },
 
 	/*
 	 *	Token searching
@@ -892,6 +948,7 @@ TEST_LIST = {
 	{ "fr_sbuff_adv_to_utf8",		test_adv_to_utf8 },
 	{ "fr_sbuff_adv_to_chr",		test_adv_to_chr },
 	{ "fr_sbuff_adv_to_str",		test_adv_to_str },
+	{ "fr_sbuff_adv_to_strcase",		test_adv_to_strcase },
 	{ "fr_sbuff_adv_to_strcase",		test_adv_to_strcase },
 
 	/*
