@@ -189,6 +189,46 @@ typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
 #  define _CONST
 #endif
 
+/** Specify whether attribute references require a prefix
+ *
+ */
+typedef enum {
+	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
+	TMPL_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
+	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
+} tmpl_attr_ref_prefix_t;
+
+/** Optional arguments passed to vp_tmpl functions
+ *
+ */
+struct vp_tmpl_rules_s {
+	fr_dict_t const		*dict_def;		//!< Default dictionary to use
+							///< with unqualified attribute references.
+
+	request_ref_t		request_def;		//!< Default request to use with
+							///< unqualified attribute references.
+
+	pair_list_t		list_def;		//!< Default list to use with unqualified
+							///< attribute reference.
+
+	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
+							///< defined by OID string.
+
+	bool			allow_unparsed;		//!< Allow attributes that look valid but were
+							///< not found in the dictionaries.
+							///< This should be used as part of a multi-pass
+							///< approach to parsing.
+
+	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
+
+	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
+
+	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
+
+	tmpl_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
+							///< a prefix.
+};
+
 typedef enum {
 	TMPL_ATTR_TYPE_NORMAL = 0,			//!< Normal, resolved, attribute ref.
 	TMPL_ATTR_TYPE_UNKNOWN,				//!< We have an attribute number but
@@ -486,47 +526,6 @@ do {\
 		_head = NULL; \
 	}\
 } while (0)
-
-/** Specify whether attribute references require a prefix
- *
- */
-typedef enum {
-	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
-	TMPL_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
-	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
-} vp_attr_ref_prefix_t;
-
-
-/** Optional arguments passed to vp_tmpl functions
- *
- */
-struct vp_tmpl_rules_s {
-	fr_dict_t const		*dict_def;		//!< Default dictionary to use
-							///< with unqualified attribute references.
-
-	request_ref_t		request_def;		//!< Default request to use with
-							///< unqualified attribute references.
-
-	pair_list_t		list_def;		//!< Default list to use with unqualified
-							///< attribute reference.
-
-	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
-							///< defined by OID string.
-
-	bool			allow_unparsed;	//!< Allow attributes that look valid but were
-							///< not found in the dictionaries.
-							///< This should be used as part of a multi-pass
-							///< approach to parsing.
-
-	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
-
-	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
-
-	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
-
-	vp_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
-							///< a prefix.
-};
 
 typedef enum {
 	ATTR_REF_ERROR_NONE = 0,			//!< No error.
