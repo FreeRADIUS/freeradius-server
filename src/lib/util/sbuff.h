@@ -771,31 +771,31 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
  * a sequence of characters in the sbuff.
  * @{
  */
-size_t	fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len);
+size_t	fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t need_len);
 
 #define fr_sbuff_adv_past_str_literal(_sbuff, _needle) fr_sbuff_adv_past_str(_sbuff, _needle, sizeof(_needle) - 1)
 
-size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len);
+size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t need_len);
 
 #define fr_sbuff_adv_past_strcase_literal(_sbuff, _needle) fr_sbuff_adv_past_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
-size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff);
+size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
 
-size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1]);
+size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1]);
+size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1]);
 
-char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, char const *chr);
+char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 
-char	*fr_sbuff_adv_to_chr(fr_sbuff_t *in, char c);
+char	*fr_sbuff_adv_to_chr(fr_sbuff_t *in, size_t len, char c);
 
-char	*fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len);
+char	*fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len);
 
-#define fr_sbuff_adv_to_str_literal(_sbuff, _needle) fr_sbuff_adv_to_str(_sbuff, _needle, sizeof(_needle) - 1)
+#define fr_sbuff_adv_to_str_literal(_sbuff, _len, _needle) fr_sbuff_adv_to_str(_sbuff, _len, _needle, sizeof(_needle) - 1)
 
-char	*fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len);
+char	*fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len);
 
-#define fr_sbuff_adv_to_strcase_literal(_sbuff, _needle) fr_sbuff_adv_to_strcase(_sbuff, _needle, sizeof(_needle) - 1)
+#define fr_sbuff_adv_to_strcase_literal(_sbuff, _len, _needle) fr_sbuff_adv_to_strcase(_sbuff, _len, _needle, sizeof(_needle) - 1)
 
 bool	fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c);
 

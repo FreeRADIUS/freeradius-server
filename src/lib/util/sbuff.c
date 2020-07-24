@@ -809,142 +809,164 @@ ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote
 
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
- * @param[in] sbuff	to search in.
- * @param[in] needle	to search for.
- * @param[in] len	of needle. If SIZE_MAX strlen is used
- *			to determine length of the needle.
+ * @param[in] sbuff		to search in.
+ * @param[in] needle		to search for.
+ * @param[in] needle_len	of needle. If SIZE_MAX strlen is used
+ *				to determine length of the needle.
  * @return how many bytes we advanced
  */
-size_t fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+size_t fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t needle_len)
 {
 	char const *found;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (len == SIZE_MAX) len = strlen(needle);
+	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
 
 	/*
 	 *	If there's insufficient bytes in the
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return 0;
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len)) return 0;
 
-	found = memmem(sbuff->p, len, needle, len);	/* sbuff len and needle len ensures match must be next */
+	found = memmem(sbuff->p, needle_len, needle, needle_len);	/* sbuff needle_len and needle needle_len ensures match must be next */
 	if (!found) return 0;
 
-	return fr_sbuff_advance(sbuff, len);
+	return fr_sbuff_advance(sbuff, needle_len);
 }
 
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
  * This function is similar to fr_sbuff_adv_past_str but is case insensitive.
  *
- * @param[in] sbuff	to search in.
- * @param[in] needle	to search for.
- * @param[in] len	of needle. If SIZE_MAX strlen is used
- *			to determine length of the needle.
+ * @param[in] sbuff		to search in.
+ * @param[in] needle		to search for.
+ * @param[in] needle_len	of needle. If SIZE_MAX strlen is used
+ *				to determine length of the needle.
  * @return how many bytes we advanced
  */
-size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t needle_len)
 {
 	char const *p, *n_p;
 	char const *end;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (len == SIZE_MAX) len = strlen(needle);
+	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
 
 	/*
 	 *	If there's insufficient bytes in the
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return 0;
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len)) return 0;
 
 	p = sbuff->p;
-	end = p + len;
+	end = p + needle_len;
 
 	for (p = sbuff->p, n_p = needle; p < end; p++, n_p++) {
 		if (tolower(*p) != tolower(*n_p)) return 0;
 	}
 
-	return fr_sbuff_advance(sbuff, len);
+	return fr_sbuff_advance(sbuff, needle_len);
 }
+
+/** Constrain end pointer to prevent advancing more than the amount the called specified
+ *
+ * @param[in] _sbuff	to constrain.
+ * @param[in] _max	maximum amount to advance.
+ * @param[in] _used	how much we've advanced so far.
+ * @return a temporary end pointer.
+ */
+#define CONSTRAINED_END(_sbuff, _max, _used) \
+	(((_max) - (_used)) > fr_sbuff_remaining(sbuff) ? sbuff->end : sbuff->p + ((_max) - (_used)))
 
 /** Wind position to the first non-whitespace character
  *
  * @param[in] sbuff		sbuff to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
+size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len)
 {
 	size_t		total = 0;
 	char const	*p;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	do {
+	while (total < len) {
+		char *end;
+
 		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
 
+		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < sbuff->end) && isspace(*p)) p++;
-		if (p == sbuff->p) break;
+		while ((p < end) && isspace(*p)) p++;
 
-		total += fr_sbuff_advance(sbuff, p - sbuff->p);
-	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
+		total += fr_sbuff_set(sbuff, p);
+		if (p != end) break;		/* stopped early, break */
+	}
 
 	return total;
 }
 
-/** Wind position past the allowed character sets
+/** Wind position past characters in the allowed set
  *
  * @param[in] sbuff		sbuff to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] allowed		character set.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1])
+size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1])
 {
 	size_t		total = 0;
 	char const	*p;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	do {
+	while (total < len) {
+		char *end;
+
 		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
 
+		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < sbuff->end) && allowed[(uint8_t)*p]) p++;
-		if (p == sbuff->p) break;
+		while ((p < end) && allowed[(uint8_t)*p]) p++;
 
-		total += fr_sbuff_advance(sbuff, p - sbuff->p);
-	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
+		total += fr_sbuff_set(sbuff, p);
+		if (p != end) break;	/* stopped early, break */
+	};
 
 	return total;
 }
 
-/** Wind position until we hit one of the specified chars
+/** Wind position until we hit a character in the until set
  *
  * @param[in] sbuff		sbuff to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] until		character set.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1])
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1])
 {
 	size_t		total = 0;
 	char const	*p;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	do {
+	while (total < len) {
+		char *end;
+
 		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
 
+		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < sbuff->end) && !until[(uint8_t)*p]) p++;
-		if (p == sbuff->p) break;
+		while ((p < end) && !until[(uint8_t)*p]) p++;
 
-		total += fr_sbuff_advance(sbuff, p - sbuff->p);
-	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
+		total += fr_sbuff_set(sbuff, p);
+		if (p != end) break;	/* stopped early, break */
+	};
 
 	return total;
 }
@@ -960,15 +982,22 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX +
  *	- NULL, no instances found.
  *	- The position of the first character.
  */
-char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char const *chr)
+char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
 {
-	size_t		clen = strlen(chr);
 	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	size_t		total = 0;
+	size_t		clen = strlen(chr);
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	for (;;) {
-		char const *found;
+	/*
+	 *	Needle bigger than haystack
+	 */
+	if (len < clen) return NULL;
+
+	while (total <= (len - clen)) {
+		char const	*found;
+		char		*end;
 
 		/*
 		 *	Ensure we have enough chars to match
@@ -976,13 +1005,14 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char const *chr)
 		 */
 		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, clen)) break;
 
-		found = fr_utf8_strchr(NULL, fr_sbuff_current(&our_sbuff), fr_sbuff_remaining(&our_sbuff), chr);
+		end = CONSTRAINED_END(&our_sbuff, len, total);
+
+		found = fr_utf8_strchr(NULL, our_sbuff.p, end - our_sbuff.p, chr);
 		if (found) {
 			(void)fr_sbuff_set(sbuff, found);
 			return sbuff->p;
 		}
-
-		(void)fr_sbuff_advance(&our_sbuff, 1);	/* Can't advance by clen, because we're searching for a sequence */
+		total += fr_sbuff_set(&our_sbuff, (end - clen) + 1);
 	}
 
 	return NULL;
@@ -991,29 +1021,33 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, char const *chr)
 /** Wind position to first instance of specified char
  *
  * @param[in,out] sbuff		to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] c			to search for.
  * @return
  *	- NULL, no instances found.
  *	- The position of the first character.
  */
-char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, char c)
+char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 {
 	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	for (;;) {
+	while (total < len) {
 		char const	*found;
+		char		*end;
 
 		if (FR_SBUFF_CANT_EXTEND(&our_sbuff)) break;
 
-		found = memchr(fr_sbuff_current(&our_sbuff), c, fr_sbuff_remaining(&our_sbuff));
+		end = CONSTRAINED_END(sbuff, len, total);
+		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
 		if (found) {
 			(void)fr_sbuff_set(sbuff, found);
 			return sbuff->p;
 		}
 
-		(void)fr_sbuff_set(&our_sbuff, our_sbuff.end);
+		total += fr_sbuff_set(&our_sbuff, end);
 	}
 
 	return NULL;
@@ -1022,24 +1056,36 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, char c)
 /** Wind position to the first instance of the specified needle
  *
  * @param[in,out] sbuff		sbuff to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] needle		to search for.
- * @param[in] len		Length of the needle.  -1 to use strlen.
+ * @param[in] needle_len	Length of the needle. SIZE_MAX to used strlen.
  * @return
  *	- NULL, no instances found.
  *	- The position of the first character.
  */
-char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
 {
 	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
-	char const	*found;
+	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (len == SIZE_MAX) len = strlen(needle);
-	if (!len) return 0;
+	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
+	if (!needle_len) return 0;
 
-	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, len)) {
-		found = memmem(fr_sbuff_current(&our_sbuff), fr_sbuff_remaining(&our_sbuff), needle, len);
+	/*
+	 *	Needle bigger than haystack
+	 */
+	if (len < needle_len) return NULL;
+
+	while (total <= (len - needle_len)) {
+		char const	*found;
+		char		*end;
+
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, needle_len)) break;
+
+		end = CONSTRAINED_END(&our_sbuff, len, total);
+		found = memmem(our_sbuff.p, end - our_sbuff.p, needle, needle_len);
 		if (found) {
 			(void)fr_sbuff_set(sbuff, found);
 			return sbuff->p;
@@ -1050,7 +1096,7 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 		 *      the end of the buffer so
 		 *	don't advance too far.
 		 */
-		(void)fr_sbuff_advance(&our_sbuff, (fr_sbuff_remaining(&our_sbuff) - len) - 1);
+		total += fr_sbuff_set(&our_sbuff, (end - needle_len) + 1);
 	}
 
 	return NULL;
@@ -1059,26 +1105,35 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 /** Wind position to the first instance of the specified needle
  *
  * @param[in,out] sbuff		sbuff to search in.
+ * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] needle		to search for.
- * @param[in] len		Length of the needle.  -1 to use strlen.
+ * @param[in] needle_len	Length of the needle. SIZE_MAX to used strlen.
  * @return
  *	- NULL, no instances found.
  *	- The position of the first character.
  */
-char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
 {
 	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (len == SIZE_MAX) len = strlen(needle);
-	if (!len) return 0;
+	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
+	if (!needle_len) return 0;
 
-	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, len)) {
+	/*
+	 *	Needle bigger than haystack
+	 */
+	if (len < needle_len) return NULL;
+
+	while (total <= (len - needle_len)) {
 		char *p, *end;
 		char const *n_p;
 
-		for (p = our_sbuff.p, n_p = needle, end = our_sbuff.p + len;
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, needle_len)) break;
+
+		for (p = our_sbuff.p, n_p = needle, end = our_sbuff.p + needle_len;
 		     (p < end) && (tolower(*p) == tolower(*n_p));
 		     p++, n_p++);
 		if (p == end) {
@@ -1086,7 +1141,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
 			return sbuff->p;
 		}
 
-		(void)fr_sbuff_advance(&our_sbuff, 1);
+		total += fr_sbuff_advance(&our_sbuff, 1);
 	}
 
 	return NULL;

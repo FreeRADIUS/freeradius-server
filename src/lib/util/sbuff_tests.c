@@ -24,23 +24,26 @@ do { \
 
 #define TEST_CHECK_LEN(_exp, _got) \
 do { \
-	TEST_CHECK(_exp == _got); \
+	size_t _our_got = (_got); \
+	TEST_CHECK(_exp == _our_got); \
 	TEST_MSG("Expected length : %zu", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zu", (ssize_t)_got); \
+	TEST_MSG("Got length      : %zu", (ssize_t)_our_got); \
 } while(0)
 
 #define TEST_CHECK_SLEN(_exp, _got) \
 do { \
-	TEST_CHECK(_exp == _got); \
+	ssize_t _our_got = (_got); \
+	TEST_CHECK(_exp == _our_got); \
 	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zd", (ssize_t)_got); \
+	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
 } while(0)
 
 #define TEST_CHECK_STRCMP(_exp, _got) \
 do { \
-	TEST_CHECK(strcmp(_exp, _got) == 0); \
+	char *_our_got = (_got); \
+	TEST_CHECK(strcmp(_exp, _our_got) == 0); \
 	TEST_MSG("Expected : \"%s\"", _exp); \
-	TEST_MSG("Got      : \"%s\"", _got); \
+	TEST_MSG("Got      : \"%s\"", _our_got); \
 } while(0)
 
 static void test_parse_init(void)
@@ -626,21 +629,31 @@ static void test_adv_past_whitespace(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
 	TEST_CHECK_STRCMP("i am a         test string", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
 	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
+
+	TEST_CASE("Length constraint with token match");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK_LEN(2, fr_sbuff_adv_past_whitespace(&sbuff, 2));
+	TEST_CHECK_STRCMP("   i am a         test string", sbuff.p);
+
+	TEST_CASE("Length constraint without token match");
+	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, 2));
+	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 }
 
 static void test_adv_past_allowed(void)
@@ -652,23 +665,33 @@ static void test_adv_past_allowed(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
 	TEST_CHECK_STRCMP("i am a         test string", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
 	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
 	TEST_CHECK(sbuff.p == sbuff.end);
+
+	TEST_CASE("Length constraint with token match");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK_LEN(2, fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_STRCMP("   i am a         test string", sbuff.p);
+
+	TEST_CASE("Length constraint with token match");
+	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 }
 
 static void test_adv_until(void)
@@ -678,23 +701,28 @@ static void test_adv_until(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
 	TEST_CHECK_STRCMP(" abcdefgh ijklmnop", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['a'] = true }));
+	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }));
 	TEST_CHECK_STRCMP("abcdefgh ijklmnop", sbuff.p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['a'] = true }));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }));
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token that is not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, (bool[UINT8_MAX + 1]){ ['|'] = true }));
+	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['|'] = true }));
 	TEST_CHECK(sbuff.p == sbuff.end);
+
+	TEST_CASE("Check for token that is not in the string with length constraint");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, (bool[UINT8_MAX + 1]){ ['|'] = true }));
+	TEST_CHECK(sbuff.p == (sbuff.start + 5));
 }
 
 static void test_adv_to_utf8(void)
@@ -705,31 +733,56 @@ static void test_adv_to_utf8(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr_utf8(&sbuff, "🥺");
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🥺");
 	TEST_CHECK(p == sbuff.p);
 	TEST_CHECK_STRCMP("🥺🥺🥺🥺🍪😀", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr_utf8(&sbuff, "🍪");
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🍪");
 	TEST_CHECK(p == (sbuff.start + (sizeof("🥺🥺🥺🥺") - 1)));
 	TEST_CHECK_STRCMP("🍪😀", p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	p = fr_sbuff_adv_to_chr_utf8(&sbuff, "🍪");
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🍪");
 	TEST_CHECK(p == NULL);
 	TEST_CHECK(sbuff.start == sbuff.p);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr_utf8(&sbuff, "😀");
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "😀");
 	TEST_CHECK(p == sbuff.start + (sizeof("🥺🥺🥺🥺🍪") - 1));
 
 	TEST_CASE("Check for token not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr_utf8(&sbuff, "🍆 ");
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🍆 ");
 	TEST_CHECK(p == NULL);
+
+	TEST_CASE("Check for token at the end of the string within len contraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	p = fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 1), "😀");
+	TEST_CHECK(p == sbuff.start + (sizeof("🥺🥺🥺🥺🍪") - 1));
+
+	TEST_CASE("Check for token at the end of the string outside len constraints #1");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 2), "😀"));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token at the end of the string outside len constraints #2");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 3), "😀"));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token at the end of the string outside len constraints #3");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 4), "😀"));
+	TEST_CHECK(sbuff.p == sbuff.start);
+
+	TEST_CASE("Check for token at the end of the string outside len constraints #4");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 5), "😀"));
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
 static void test_adv_to_chr(void)
@@ -740,31 +793,41 @@ static void test_adv_to_chr(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr(&sbuff, 'A');
+	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'A');
 	TEST_CHECK(p == sbuff.p);
 	TEST_CHECK_STRCMP("AAAAbC", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr(&sbuff, 'b');
+	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'b');
 	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
 	TEST_CHECK_STRCMP("bC", p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	p = fr_sbuff_adv_to_chr(&sbuff, 'b');
-	TEST_CHECK(p == NULL);
+	TEST_CHECK(!fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'b'));
 	TEST_CHECK(sbuff.start == sbuff.p);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr(&sbuff, 'C');
+	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'C');
 	TEST_CHECK(p == sbuff.start + (sizeof("AAAAb") - 1));
 
 	TEST_CASE("Check for token not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_chr(&sbuff, 'D');
+	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'D');
 	TEST_CHECK(p == NULL);
+
+	TEST_CASE("Check for token not at beginning of string within length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	p = fr_sbuff_adv_to_chr(&sbuff, 5, 'b');
+	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
+	TEST_CHECK_STRCMP("bC", p);
+
+	TEST_CASE("Check for token not at beginning of string outside length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_chr(&sbuff, 4, 'b'));
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
 static void test_adv_to_str(void)
@@ -775,46 +838,57 @@ static void test_adv_to_str(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_str(&sbuff, "i am a test", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a test", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_str(&sbuff, "test", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "test", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("test string", sbuff.p);
 
 	TEST_CASE("Check for token at the end of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_str(&sbuff, "ing", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "ing", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("ing", sbuff.p);
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_str(&sbuff, "i am a test string ", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a test string ", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token shorter than string, not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "ng ", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "ng ", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	p = fr_sbuff_adv_to_str(&sbuff, "i am a", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_str(&sbuff, "i am a test string", SIZE_MAX);
+	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a test string", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("i am a test string", p);
+
+	TEST_CASE("Check for token not at beginning of string within length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	p = fr_sbuff_adv_to_str(&sbuff, 11, "test", SIZE_MAX);
+	TEST_CHECK(sbuff.p == p);
+	TEST_CHECK_STRCMP("test string", sbuff.p);
+
+	TEST_CASE("Check for token not at beginning of string outside length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_str(&sbuff, 10, "test", SIZE_MAX));
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
 static void test_adv_to_strcase(void)
@@ -825,46 +899,57 @@ static void test_adv_to_strcase(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "i AM a TEST", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i AM a TEST", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "tEst", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "tEst", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("test string", sbuff.p);
 
 	TEST_CASE("Check for token at the end of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "Ing", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "Ing", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("ing", sbuff.p);
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "i aM a tEst stRIng ", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i aM a tEst stRIng ", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token shorter than string, not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "nG ", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "nG ", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	p = fr_sbuff_adv_to_strcase(&sbuff, "i AM a", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i AM a", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(p == NULL);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	p = fr_sbuff_adv_to_strcase(&sbuff, "i AM a teST stRIng", SIZE_MAX);
+	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i AM a teST stRIng", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(sbuff.p == p);
 	TEST_CHECK_STRCMP("i am a test string", p);
+
+	TEST_CASE("Check for token not at beginning of string within length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	p = fr_sbuff_adv_to_strcase(&sbuff, 11, "tEst", SIZE_MAX);
+	TEST_CHECK(sbuff.p == p);
+	TEST_CHECK_STRCMP("test string", sbuff.p);
+
+	TEST_CASE("Check for token not at beginning of string outside length constraints");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK(!fr_sbuff_adv_to_strcase(&sbuff, 10, "tEst", SIZE_MAX));
+	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
 static void test_next_if_char(void)
@@ -948,7 +1033,6 @@ TEST_LIST = {
 	{ "fr_sbuff_adv_to_utf8",		test_adv_to_utf8 },
 	{ "fr_sbuff_adv_to_chr",		test_adv_to_chr },
 	{ "fr_sbuff_adv_to_str",		test_adv_to_str },
-	{ "fr_sbuff_adv_to_strcase",		test_adv_to_strcase },
 	{ "fr_sbuff_adv_to_strcase",		test_adv_to_strcase },
 
 	/*
