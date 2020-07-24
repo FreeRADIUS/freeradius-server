@@ -660,7 +660,8 @@ void tmpl_attr_debug(vp_tmpl_t const *vpt)
 	 *	Print all the request references
 	 */
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
-		INFO("\t[%u] %s", i, fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
+		INFO("\t[%u] %s (%u)", i,
+		     fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"), rr->request);
 		i++;
 	}
 	i = 0;
@@ -684,10 +685,12 @@ void tmpl_attr_debug(vp_tmpl_t const *vpt)
 				goto next;
 			}
 
-			INFO("\t[%u] <%s> %s%s%s%s%s",
+
+			INFO("\t[%u] %s %s(%u)%s%s%s%s",
 			     i,
 			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
 			     ar->da->name,
+			     ar->da->attr,
 			     ar->num != NUM_ANY ? "[" : "",
 			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
 			     ar->num != NUM_ANY ? "]" : "",
