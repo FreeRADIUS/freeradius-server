@@ -1239,7 +1239,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	Check to see if we expect a reference prefix
 	 */
 	switch (rules->prefix) {
-	case VP_ATTR_REF_PREFIX_YES:
+	case TMPL_ATTR_REF_PREFIX_YES:
 		if (*p != '&') {
 			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
 			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
@@ -1248,7 +1248,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		p++;
 		break;
 
-	case VP_ATTR_REF_PREFIX_NO:
+	case TMPL_ATTR_REF_PREFIX_NO:
 		if (*p == '&') {
 			fr_strerror_printf("Attribute references used here must not have a '&' prefix");
 			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
@@ -1256,7 +1256,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		}
 		break;
 
-	case VP_ATTR_REF_PREFIX_AUTO:
+	case TMPL_ATTR_REF_PREFIX_AUTO:
 		if (*p == '&') p++;
 		break;
 	}

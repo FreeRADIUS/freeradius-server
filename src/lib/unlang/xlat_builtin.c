@@ -84,7 +84,7 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
-					.prefix = VP_ATTR_REF_PREFIX_AUTO
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) return -4;
 
 	rcode = tmpl_find_vp(out, request, vpt);
@@ -159,7 +159,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, fmt,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
-					.prefix = VP_ATTR_REF_PREFIX_AUTO
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Failed parsing attribute reference");
 		return -1;
@@ -858,7 +858,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
-					.prefix = VP_ATTR_REF_PREFIX_AUTO
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1365,7 +1365,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	vp_tmpl_rules_t parse_rules = {
 		.dict_def = request->dict,
-		.prefix = VP_ATTR_REF_PREFIX_AUTO
+		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 	};
 
 	if (map_afrom_attr_str(request, &map, fmt, &parse_rules, &parse_rules) < 0) {
@@ -2184,7 +2184,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, (*in)->vb_strvalue,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
-					.prefix = VP_ATTR_REF_PREFIX_AUTO
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return XLAT_ACTION_FAIL;

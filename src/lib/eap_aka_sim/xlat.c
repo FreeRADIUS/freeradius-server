@@ -56,7 +56,7 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -131,7 +131,7 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -204,7 +204,7 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -260,7 +260,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
@@ -279,7 +279,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");
@@ -375,7 +375,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
@@ -394,7 +394,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");

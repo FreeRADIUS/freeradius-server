@@ -1219,7 +1219,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(vp_tmpl_rules_t){
 					   	.dict_def = request->dict,
-					   	.prefix = VP_ATTR_REF_PREFIX_NO
+					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);

@@ -365,7 +365,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	p = in + 2;
 
 	our_rules.allow_unparsed = true;		/* So we can check for virtual attributes later */
-  	our_rules.prefix = VP_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
+  	our_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
 	slen = tmpl_afrom_attr_substr(NULL, &err, &vpt, p, inlen - 2, &our_rules);
 	if (slen <= 0) {
 		/*

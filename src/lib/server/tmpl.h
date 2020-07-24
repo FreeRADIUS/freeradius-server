@@ -491,9 +491,9 @@ do {\
  *
  */
 typedef enum {
-	VP_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
-	VP_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
-	VP_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
+	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
+	TMPL_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
+	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } vp_attr_ref_prefix_t;
 
 
