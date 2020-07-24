@@ -218,8 +218,14 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	sw->status = FR_CHILD_RUNNING;
 
-	sn = fr_dlist_head(&sc->networks);
-	(void) fr_network_worker_add(sn->nr, sw->worker);
+	/*
+	 *	Add this worker to all network threads.
+	 */
+	for (sn = fr_dlist_head(&sc->networks);
+	       sn != NULL;
+	       sn = fr_dlist_next(&sc->networks, sn)) {
+		(void) fr_network_worker_add(sn->nr, sw->worker);
+	}
 
 	DEBUG3("%s - Started", worker_name);
 
@@ -730,9 +736,10 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 
 	/*
 	 *	If the network threads are running, tell them to exit,
-	 *	and wait for them to do so.  Once they have exited, we
-	 *	know that this thread can use the network channels to
-	 *	tell the workers that the network side is going away.
+	 *	and wait for them to do so.  Each network thread tells
+	 *	all of its worker threads that it's exiting.  It then
+	 *	closes the channels.  When the workers see that there
+	 *	are no input channels, they exit, too.
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
 		DEBUG2("Scheduler - Waiting for semaphore indicating network exit %u/%u", i,
