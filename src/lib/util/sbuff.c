@@ -282,9 +282,9 @@ do { \
 	fr_sbuff_advance(_in, _copied); \
 } while(0)
 
-/** Copy as many bytes as possible from the sbuff to a sbuff
+/** Copy as many bytes as possible from a sbuff to a sbuff
  *
- * Copy size is limited by available data in sbuff.
+ * Copy size is limited by available data in sbuff and space in output sbuff.
  *
  * @param[out] out	Where to copy to.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
@@ -317,9 +317,9 @@ done:
 	return fr_sbuff_set(in, &our_in);
 }
 
-/** Copy as many bytes as possible from the sbuff to a talloced buffer.
+/** Copy exactly len bytes from a sbuff to a sbuff or fail
  *
- * Copy size is limited by available data in sbuff.
+ * Copy size is limited by available data in sbuff, space in output sbuff, and length.
  *
  * @param[out] out	Where to copy to.
  * @param[in] in	Where to copy from.  Will copy len bytes from current position in buffer.
@@ -361,11 +361,12 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 	return fr_sbuff_set(in, &our_in);
 }
 
-/** Copy as many allowed characters as possible from the sbuff to another buffer
+/** Copy as many allowed characters as possible from a sbuff to sbuff
  *
  * Copy size is limited by available data in sbuff and output buffer length.
  *
  * As soon as a disallowed character is found the copy is stopped.
+ * The input sbuff will be left pointing at the first disallowed character.
  *
  * @param[out] out		Where to copy to.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
@@ -404,11 +405,12 @@ done:
 	return fr_sbuff_set(in, &our_in);
 }
 
-/** Copy as many allowed characters as possible from the sbuff to another buffer
+/** Copy as many allowed characters as possible from a sbuff to sbuff
  *
  * Copy size is limited by available data in sbuff and output buffer length.
  *
  * As soon as a disallowed character is found the copy is stopped.
+ * The input sbuff will be left pointing at the first disallowed character.
  *
  * @param[out] out		Where to copy to.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
@@ -811,11 +813,9 @@ ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote
  * @param[in] needle	to search for.
  * @param[in] len	of needle. If SIZE_MAX strlen is used
  *			to determine length of the needle.
- * @return
- *	- true, and advance past the needle if the needle occurs next.
- *	- false, and don't advance if the needle does not occur next.
+ * @return how many bytes we advanced
  */
-bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
+size_t fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
 	char const *found;
 
@@ -828,14 +828,12 @@ bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return false;
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return 0;
 
 	found = memmem(sbuff->p, len, needle, len);	/* sbuff len and needle len ensures match must be next */
-	if (!found) return false;
+	if (!found) return 0;
 
-	fr_sbuff_advance(sbuff, len);
-
-	return true;
+	return fr_sbuff_advance(sbuff, len);
 }
 
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
@@ -846,11 +844,9 @@ bool fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t len)
  * @param[in] needle	to search for.
  * @param[in] len	of needle. If SIZE_MAX strlen is used
  *			to determine length of the needle.
- * @return
- *	- true, and advance past the needle if the needle occurs next.
- *	- false, and don't advance if the needle does not occur next.
+ * @return how many bytes we advanced
  */
-bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
+size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len)
 {
 	char const *p, *n_p;
 	char const *end;
@@ -864,28 +860,24 @@ bool fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t len
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return false;
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return 0;
 
 	p = sbuff->p;
 	end = p + len;
 
 	for (p = sbuff->p, n_p = needle; p < end; p++, n_p++) {
-		if (tolower(*p) != tolower(*n_p)) return false;
+		if (tolower(*p) != tolower(*n_p)) return 0;
 	}
 
-	fr_sbuff_advance(sbuff, len);
-
-	return true;
+	return fr_sbuff_advance(sbuff, len);
 }
 
 /** Wind position to the first non-whitespace character
  *
  * @param[in] sbuff		sbuff to search in.
- * @return
- *	- true, and advance past the whitespace characters.
- *	- false, and don't advance if whitespace chars do not occur next.
+ * @return how many bytes we advanced.
  */
-bool fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
+size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 {
 	size_t		total = 0;
 	char const	*p;
@@ -902,18 +894,16 @@ bool fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff)
 		total += fr_sbuff_advance(sbuff, p - sbuff->p);
 	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
 
-	return (total > 0);
+	return total;
 }
 
 /** Wind position past the allowed character sets
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] allowed		character set.
- * @return
- *	- true, and advance past the allowed characters.
- *	- false, and don't advance if allowed chars do not occur next.
+ * @return how many bytes we advanced.
  */
-bool fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1])
+size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT8_MAX + 1])
 {
 	size_t		total = 0;
 	char const	*p;
@@ -930,18 +920,16 @@ bool fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, bool const allowed[static UINT
 		total += fr_sbuff_advance(sbuff, p - sbuff->p);
 	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
 
-	return (total > 0);
+	return total;
 }
 
 /** Wind position until we hit one of the specified chars
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] until		character set.
- * @return
- *	- true, and advance past the allowed characters.
- *	- false, and don't advance if allowed chars do not occur next.
+ * @return how many bytes we advanced.
  */
-bool fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1])
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1])
 {
 	size_t		total = 0;
 	char const	*p;
@@ -958,7 +946,7 @@ bool fr_sbuff_adv_until(fr_sbuff_t *sbuff, bool const until[static UINT8_MAX + 1
 		total += fr_sbuff_advance(sbuff, p - sbuff->p);
 	} while (p == sbuff->end);	/* Hit the end of the chunk, try again */
 
-	return (total > 0);
+	return total;
 }
 
 /** Wind position to first instance of specified multibyte utf8 char
