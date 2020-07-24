@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file src/lib/server/cond_eval.c
+ * @file src/lib/server/cond_tokenize.c
  * @brief Parse complex conditions
  *
  * @copyright 2013 Alan DeKok (aland@freeradius.org)
