@@ -51,14 +51,28 @@ BEGIN
                                 FROM radippool
                                 WHERE pool_name = v_pool_name
                                         AND expiry_time > current_timestamp
-                                        AND username = v_username
-                                        AND callingstationid = v_callingstationid
+                                        AND pool_key = v_pool_key
                         ) WHERE ROWNUM <= 1
                 ) FOR UPDATE SKIP LOCKED;
           EXCEPTION
                     WHEN NO_DATA_FOUND THEN
                         r_address := NULL;
           END;
+
+        -- Oracle >= 12c version of the above query
+        --
+        -- BEGIN
+        --       SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
+        --               SELECT id FROM radippool
+        --               WHERE pool_name = v_pool_name
+        --                       AND expiry_time > current_timestamp
+        --                       AND pool_key = v_pool_key
+        --               FETCH FIRST 1 ROWS ONLY
+        --       ) FOR UPDATE SKIP LOCKED;
+        -- EXCEPTION
+        --           WHEN NO_DATA_FOUND THEN
+        --               r_address := NULL;
+        -- END;
 
         -- Reissue an user's previous IP address, provided that the lease is
         -- available (i.e. enable sticky IPs)
@@ -73,8 +87,7 @@ BEGIN
         --                         SELECT *
         --                         FROM radippool
         --                         WHERE pool_name = v_pool_name
-        --                                 AND username = v_username
-        --                                 AND callingstationid = v_callingstationid
+        --                                 AND pool_key = v_pool_key
         --                 ) WHERE ROWNUM <= 1
         --         ) FOR UPDATE SKIP LOCKED;
         -- EXCEPTION
@@ -82,26 +95,44 @@ BEGIN
         --              r_address := NULL;
         -- END;
 
+        -- Oracle >= 12c version of the above query
+        --
+        -- BEGIN
+        --       SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
+        --               SELECT id FROM radippool
+        --               WHERE pool_name = v_pool_name
+        --                       AND pool_key = v_pool_key
+        --               FETCH FIRST 1 ROWS ONLY
+        --       ) FOR UPDATE SKIP LOCKED;
+        -- EXCEPTION
+        --           WHEN NO_DATA_FOUND THEN
+        --               r_address := NULL;
+        -- END;
+
         -- If we didn't reallocate a previous address then pick the least
         -- recently used address from the pool which maximises the likelihood
         -- of re-assigning the other addresses to their recent user
         --
-        IF r_address IS NULL THEN
-                BEGIN
-                        SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
-                                SELECT id FROM (
-                                        SELECT *
-                                        FROM radippool
-                                        WHERE pool_name = v_pool_name
-                                        AND expiry_time < CURRENT_TIMESTAMP
-                                        ORDER BY expiry_time
-                                       ) WHERE ROWNUM <= 1
-                        ) FOR UPDATE SKIP LOCKED;
-                EXCEPTION
-                        WHEN NO_DATA_FOUND THEN
-                                r_address := NULL;
-                END;
-        END IF;
+
+	IF r_address IS NULL THEN
+		DECLARE
+			l_cursor sys_refcursor;
+		BEGIN
+			OPEN l_cursor FOR
+				SELECT framedipaddress
+				FROM radippool
+				WHERE pool_name = v_pool_name
+				AND expiry_time < CURRENT_TIMESTAMP
+				ORDER BY expiry_time
+				FOR UPDATE SKIP LOCKED;
+			FETCH l_cursor INTO r_address;
+			CLOSE l_cursor;
+		EXCEPTION
+			WHEN NO_DATA_FOUND THEN
+				r_address := NULL;
+		END;
+	END IF;
+	
 
         -- Return nothing if we failed to allocated an address
         --
@@ -126,4 +157,4 @@ BEGIN
         RETURN r_address;
 
 END;
-/
+

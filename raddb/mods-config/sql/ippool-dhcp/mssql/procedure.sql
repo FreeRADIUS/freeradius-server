@@ -29,9 +29,6 @@
 -- allocate_commit = ""
 --
 
-CREATE INDEX UserName_CallingStationId ON radippool(pool_name,UserName,CallingStationId)
-GO
-
 CREATE OR ALTER PROCEDURE fr_allocate_previous_or_new_framedipaddress
 	@v_pool_name VARCHAR(64),
 	@v_username VARCHAR(64),
@@ -64,8 +61,7 @@ AS
 			FROM radippool
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
-				AND UserName = @v_username
-				AND CallingStationId = @v_callingstationid
+				AND pool_key = @v_pool_key
 		)
 		UPDATE cte WITH (rowlock, readpast)
 		SET FramedIPAddress = FramedIPAddress
@@ -83,8 +79,7 @@ AS
 		-- 	SELECT TOP(1) FramedIPAddress
 		-- 	FROM radippool
 		-- 	WHERE pool_name = @v_pool_name
-		-- 		AND UserName = @v_username
-		-- 		AND CallingStationId = @v_callingstationid
+		-- 		AND pool_key = @v_pool_key
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
 		-- SET FramedIPAddress = FramedIPAddress
@@ -101,7 +96,7 @@ AS
 				SELECT TOP(1) FramedIPAddress
 				FROM radippool
 				WHERE pool_name = @v_pool_name
-					AND ( expiry_time < CURRENT_TIMESTAMP OR expiry_time IS NULL )
+					AND expiry_time < CURRENT_TIMESTAMP
 				ORDER BY
 					expiry_time
 			)

@@ -185,6 +185,127 @@ INSERT INTO radippool (pool_name,framedipaddress)
 COMMIT;
 END_postgresql
 
-	return %template;
+#
+#  Oracle
+#
+	$template{'oracle'} = <<'END_oracle';
+-- Temporary table holds the provided IP pools
+CREATE GLOBAL TEMPORARY TABLE radippool_temp (
+  pool_name               VARCHAR(30) NOT NULL,
+  FramedIPAddress         VARCHAR(15) NOT NULL
+) ON COMMIT DELETE ROWS;
+CREATE INDEX radippool_temp_idx ON radippool_temp (pool_name,FramedIPAddress);
+
+-- Populate the temporary table
+[%- FOREACH m IN ips %]
+[%- "\nINSERT INTO radippool_temp (pool_name,framedipaddress) VALUES " %]('[% m.poolname %]','[% m.ip %]');
+[%- END %]
+
+-- Delete old pools that have been removed
+DELETE FROM radippool WHERE (pool_name, framedipaddress)
+  NOT IN (SELECT pool_name, framedipaddress FROM radippool_temp);
+
+-- Add new pools that have been created
+INSERT INTO radippool (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM radippool_temp t WHERE NOT EXISTS (
+    SELECT * FROM radippool r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );
+
+COMMIT;
+END_oracle
+
+#
+#  SQLite
+#
+
+	$template{'sqlite'} = <<'END_sqlite';
+-- Temporary table holds the provided IP pools
+DROP TABLE IF EXISTS radippool_temp;
+CREATE TABLE radippool_temp (
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL
+);
+
+CREATE INDEX radippool_temp_idx ON radippool_temp (pool_name,FramedIPAddress);
+
+-- Populate the temporary table
+[%- FOREACH m IN ips %]
+[%- "\n\nINSERT INTO radippool_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-   IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% m.poolname %]','[% m.ip %]');
+[%-   ELSE %]
+('[% m.poolname %]','[% m.ip %]'),
+[%-   END %]
+[%- END %]
+
+BEGIN TRANSACTION;
+
+-- Delete old pools that have been removed
+DELETE FROM radippool WHERE rowid IN (
+  SELECT r.rowid FROM radippool r
+  LEFT JOIN radippool_temp t USING (pool_name,framedipaddress)
+      WHERE t.rowid IS NULL);
+
+-- Add new pools that have been created
+INSERT INTO radippool (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM radippool_temp t WHERE NOT EXISTS (
+    SELECT * FROM radippool r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );
+
+COMMIT;
+
+DROP TABLE radippool_temp;
+END_sqlite
+
+#
+#  MS SQL
+#
+	$template{'mssql'} = <<'END_mssql';
+-- Temporary table holds the provided IP pools
+DROP TABLE IF EXISTS #radippool_temp;
+GO
+
+CREATE TABLE #radippool_temp (
+  id                    int identity(1, 1) NOT NULL,
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL,
+  PRIMARY KEY (id),
+);
+GO
+
+CREATE INDEX pool_name_framedipaddress ON #radippool_temp(pool_name, framedipaddress);
+GO
+
+-- Populate the temporary table
+[%- FOREACH m IN ips %]
+[%- "\n\nINSERT INTO #radippool_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-   IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% m.poolname %]','[% m.ip %]');
+GO
+[%-   ELSE %]
+('[% m.poolname %]','[% m.ip %]'),
+[%-   END %]
+[%- END %]
+
+BEGIN TRAN;
+
+-- Delete old pools that have been removed
+DELETE r FROM radippool r
+  LEFT JOIN #radippool_temp t ON r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress
+      WHERE t.id IS NULL;
+
+-- Add new pools that have been created
+INSERT INTO radippool (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM #radippool_temp t WHERE NOT EXISTS (
+    SELECT * FROM radippool r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );
+
+COMMIT TRAN;
+END_mssql
+
+    return %template;
 
 }

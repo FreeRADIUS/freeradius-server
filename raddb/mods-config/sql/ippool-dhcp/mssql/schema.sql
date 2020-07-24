@@ -6,9 +6,9 @@ CREATE TABLE radippool (
   pool_name             varchar(30) NOT NULL,
   FramedIPAddress       varchar(15) NOT NULL default '',
   NASIPAddress          varchar(15) NOT NULL default '',
-  CalledStationId       VARCHAR(32) NOT NULL,
-  CallingStationId      VARCHAR(30) NOT NULL,
-  expiry_time           DATETIME NULL default NULL,
+  CalledStationId       VARCHAR(32) NOT NULL default '',
+  CallingStationId      VARCHAR(30) NOT NULL default '',
+  expiry_time           DATETIME NOT NULL default CURRENT_TIMESTAMP,
   UserName              varchar(64) NOT NULL default '',
   pool_key              varchar(30) NOT NULL default '',
   PRIMARY KEY (id)
@@ -21,5 +21,5 @@ GO
 CREATE INDEX FramedIPAddress ON radippool(FramedIPAddress)
 GO
 
-CREATE INDEX NASIPAddress_poolkey_FramedIPAddress ON radippool(NASIPAddress, pool_key, FramedIPAddress)
+CREATE INDEX poolname_poolkey_FramedIPAddress ON radippool(pool_name, pool_key, FramedIPAddress)
 GO
