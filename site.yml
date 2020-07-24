@@ -1,6 +1,6 @@
 site:
   title: The FreeRADIUS project - Documentation
-  url: https://www.freeradius.org/docs
+  url:
 content:
   sources:
   - url: .
@@ -11,7 +11,7 @@ asciidoc:
     attribute-missing: skip
 ui:
   bundle:
-    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/master/raw/build/ui-bundle.zip?job=bundle-stable
+    url: https://github.com/FreeRADIUS/freeradius-docs-ui/blob/master-releases/ui-bundle.zip?raw=true
     snapshot: true
 output:
   clean: true
