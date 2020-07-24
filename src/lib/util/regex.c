@@ -1282,7 +1282,7 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *flags)
+size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
 {
 	char *p = out, *end = p + outlen;
 

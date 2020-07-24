@@ -165,8 +165,11 @@ typedef struct {
 	uint8_t extended:1;			//!< x - Permit whitespace and comments.
 } fr_regex_flags_t;
 
+#define REGEX_FLAG_BUFF_SIZE	7
+
 ssize_t		regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_t len, bool err_on_dup);
-size_t		regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *flags);
+size_t		regex_flags_snprint(char *out, size_t outlen,
+				    fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE]);
 ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 			      fr_regex_flags_t const *flags, bool subcaptures, bool runtime);
 int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch);
