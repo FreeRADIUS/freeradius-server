@@ -95,7 +95,7 @@ void cond_debug(fr_cond_t const *cond)
 		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, cond->type, "<INVALID>"), cond);
 		INFO("\tnegate : %s", cond->negate ? "true" : "false");
 		INFO("\tcast   : %s", cond->cast ? fr_table_str_by_value(fr_value_box_type_table,
-									 cond->cast->type, "<INVALID>") : "nonde");
+									 cond->cast->type, "<INVALID>") : "none");
 		INFO("\top     : %s", fr_table_str_by_value(cond_op_table, cond->next_op, "<INVALID>"));
 		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, cond->pass2_fixup, "<INVALID>"));
 
