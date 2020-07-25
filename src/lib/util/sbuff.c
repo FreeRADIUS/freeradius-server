@@ -503,12 +503,12 @@ done:
 #define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char		buff[_max_char + 1]; \
+	char		buff[_max_char + 2]; \
 	char		*end; \
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, (_max_char) + 1); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -534,11 +534,10 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
-	return end - buff; \
+	return	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 }
 
-SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 2)
+SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4)
 SBUFF_PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6)
 SBUFF_PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11)
 SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
@@ -555,12 +554,12 @@ SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char			buff[_max_char + 1]; \
+	char			buff[_max_char + 2]; \
 	char			*end; \
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, _max_char); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, (_max_char) + 1); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -582,11 +581,10 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} \
-	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
-	return end - buff; \
+	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 }
 
-SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 1)
+SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 3)
 SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
 SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
 SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
