@@ -674,7 +674,7 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    bool const until[static UINT8_MAX + 1], char escape);
 
-size_t fr_sbuff_out_descape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				  bool const until[static UINT8_MAX + 1],
 				  char escape,
 				  char const escape_subs[static UINT8_MAX + 1]);
