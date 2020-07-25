@@ -502,7 +502,102 @@ done:
 	return fr_sbuff_used_total(&our_in);
 }
 
+/** Copy as many allowed characters as possible from a sbuff to a sbuff
+ *
+ * Copy size is limited by available data in sbuff and output buffer length.
+ *
+ * As soon as a disallowed character is found the copy is stopped.
+ * The input sbuff will be left pointing at the first disallowed character.
+ *
+ * This de-escapes characters as they're copied out of the sbuff.
+ *
+ * @param[out] out		Where to copy to.
+ * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
+ * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
+ * @param[in] until		Characters which stop the copy operation.
+ * @param[in] escape		Ignore characters in the until set when prefixed
+ *				with this escape character. Must be specified.
+ * @param[in] escape_subs	Escape characters and their substitutions.
+ * @return
+ *	- 0 no bytes copied.
+ *	- >0 the number of bytes copied including escape sequences.
+ */
+size_t fr_sbuff_out_descape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				  bool const until[static UINT8_MAX + 1],
+				  char escape,
+				  char const escape_subs[static UINT8_MAX + 1])
+{
+	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
+	bool		do_escape = false;	/* Track state across extensions */
+
+	CHECK_SBUFF_INIT(in);
+	if (unlikely(escape == '\0')) return 0;
+
+	do {
+		char	*p;
+		char	*end;
+
+		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
+
+		p = our_in.p;
+		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
+
+		while (p < end) {
+			if (do_escape) {
+				do_escape = false;
+
+				/*
+				 *	Not an actual escape seq
+				 */
+				if (escape_subs[(uint8_t)*p] == '\0') goto next;
+
+				/*
+				 *  	We already copied everything up
+				 *	to this point, so we can now
+				 *	write the substituted char to
+				 *	the output buffer.
+				 */
+				if (fr_sbuff_in_char(out, escape_subs[(uint8_t)*p]) <= 0) goto done;
+
+				/*
+				 *	...and advance past the entire
+				 *	escape seq in the input buffer.
+				 */
+				fr_sbuff_advance(&our_in, 2);
+				p++;
+				continue;
+			}
+
+			if (*p == escape) {
+				/*
+				 *	Copy out any data we got before
+				 *	we hit the escape char.
+				 *
+				 *      We need to do this before we
+				 *	can write the escape char to
+				 *	the output sbuff.
+				 */
+				if (p > our_in.p) FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
+
+				do_escape = true;
+				p++;
+				continue;
+			}
+
+		next:
+			if (until[(uint8_t)*p]) break;
+			p++;
+		}
+
+		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
+
+		if (p != end) break;		/* stopped early, break */
+	} while (fr_sbuff_used_total(&our_in) < len);
+
+done:
+	return fr_sbuff_used_total(&our_in);
 }
+
 /** Used to define a number parsing functions for singed integers
  *
  * @param[in] _name	Function suffix.
