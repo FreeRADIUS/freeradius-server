@@ -338,7 +338,7 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		if (chunk_len > remaining) chunk_len = remaining;
 
 		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
-	} while (remaining);
+	} while (fr_sbuff_used_total(&our_in) < len);
 done:
 
 	return fr_sbuff_set(in, &our_in);
@@ -365,7 +365,6 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 	CHECK_SBUFF_INIT(in);
 
 	do {
-
 		size_t chunk_len;
 		ssize_t copied;
 
@@ -383,7 +382,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			return -(remaining - (chunk_len + copied));
 		}
 		fr_sbuff_advance(&our_in, copied);
-	} while (remaining);
+	} while (fr_sbuff_used_total(&our_in) < len);
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -419,7 +418,7 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 		p = our_in.p;
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
-		while((p < end) && allowed[(uint8_t)*p]) p++;
+		while ((p < end) && allowed[(uint8_t)*p]) p++;
 
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
