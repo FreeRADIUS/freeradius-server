@@ -115,6 +115,10 @@ typedef enum {
 extern fr_table_num_ordered_t const sbuff_parse_error_table[];
 extern size_t sbuff_parse_error_table_len;
 
+extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
+extern bool const sbuff_char_class_int[UINT8_MAX + 1];
+extern bool const sbuff_char_class_float[UINT8_MAX + 1];
+
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
  */
@@ -286,6 +290,15 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
  */
 static inline size_t fr_sbuff_remaining(fr_sbuff_t const *sbuff)
 {
+	return sbuff->end - sbuff->p;
+}
+
+/** How many free bytes remain in the buffer (after trying to extend)
+ *
+ */
+static inline size_t fr_sbuff_remaining_extend(fr_sbuff_t *sbuff)
+{
+	if ((sbuff->end == sbuff->p) && sbuff->extend) sbuff->extend(sbuff, 1);
 	return sbuff->end - sbuff->p;
 }
 
@@ -783,7 +796,7 @@ size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1]);
+size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape);
 
 char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 

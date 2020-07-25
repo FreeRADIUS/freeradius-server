@@ -52,6 +52,23 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 #  define CHECK_SBUFF_INIT(_sbuff)
 #endif
 
+bool const sbuff_char_class_uint[UINT8_MAX + 1] = {
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true
+};
+
+bool const sbuff_char_class_int[UINT8_MAX + 1] = {
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	['+'] = true, ['-'] = true
+};
+
+bool const sbuff_char_class_float[UINT8_MAX + 1] = {
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
+};
+
 /** Update all markers and pointers in the set of sbuffs to point to new_buff
  *
  * This function should be used if the underlying buffer is realloced.
@@ -552,12 +569,6 @@ SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
 SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
 SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
 
-static bool float_chars[UINT8_MAX + 1] = {
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
-	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
-};
-
 /** Used to define a number parsing functions for floats
  *
  * @param[in] _name	Function suffix.
@@ -575,7 +586,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
 	size_t		len; \
 	_type		res; \
-	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, SIZE_MAX, float_chars); \
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
 	if (len == sizeof(buff)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \
@@ -946,12 +957,15 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allow
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] until		character set.
+ * @param[in] escape		If not '\0', ignore characters in the until set when
+ *				prefixed with this escape character.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1])
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape)
 {
 	size_t		total = 0;
 	char const	*p;
+	bool		do_escape = false;	/* Track state across extensions */
 
 	CHECK_SBUFF_INIT(sbuff);
 
@@ -962,7 +976,21 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < end) && !until[(uint8_t)*p]) p++;
+
+		if (escape == '\0') {
+			while ((p < end) && !until[(uint8_t)*p]) p++;
+		} else {
+			while (p < end) {
+				if (do_escape) {
+					do_escape = false;
+				} else if (*p == escape) {
+					do_escape = true;
+				} else if (until[(uint8_t)*p]) {
+					break;
+				}
+				p++;
+			}
+		}
 
 		total += fr_sbuff_set(sbuff, p);
 		if (p != end) break;	/* stopped early, break */
