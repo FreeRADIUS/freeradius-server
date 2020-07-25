@@ -331,7 +331,7 @@ do { \
  */
 size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	size_t		remaining;
 
 	CHECK_SBUFF_INIT(in);
@@ -348,9 +348,9 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
 	} while (fr_sbuff_used_total(&our_in) < len);
-done:
 
-	return fr_sbuff_set(in, &our_in);
+done:
+	return fr_sbuff_used_total(&our_in);
 }
 
 /** Copy exactly len bytes from a sbuff to a sbuff or fail
@@ -368,10 +368,13 @@ done:
  */
 ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
-	size_t		remaining;
+	fr_sbuff_t 		our_in = FR_SBUFF_NO_ADVANCE(in);
+	size_t			remaining;
+	fr_sbuff_marker_t	m;
 
 	CHECK_SBUFF_INIT(in);
+
+	fr_sbuff_marker(&m, out);
 
 	do {
 		size_t chunk_len;
@@ -385,6 +388,9 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 		copied = fr_sbuff_in_bstrncpy(out, our_in.p, chunk_len);
 		if (copied < 0) {
+			fr_sbuff_set_to_marker(&m);	/* Reset out */
+			*m.p = '\0';			/* Re-terminate */
+
 			/* Amount remaining in input buffer minus the amount we could have copied */
 			if (len == SIZE_MAX) return -(fr_sbuff_remaining(in) - (chunk_len + copied));
 			/* Amount remaining to copy minus the amount we could have copied */
@@ -393,10 +399,10 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		fr_sbuff_advance(&our_in, copied);
 	} while (fr_sbuff_used_total(&our_in) < len);
 
-	return fr_sbuff_set(in, &our_in);
+	return fr_sbuff_set(in, &our_in);	/* in was pinned, so this works */
 }
 
-/** Copy as many allowed characters as possible from a sbuff to sbuff
+/** Copy as many allowed characters as possible from a sbuff to a sbuff
  *
  * Copy size is limited by available data in sbuff and output buffer length.
  *
@@ -414,11 +420,11 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				     bool const allowed[static UINT8_MAX + 1])
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 
 	CHECK_SBUFF_INIT(in);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
+	do {
 		char	*p;
 		char	*end;
 
@@ -431,14 +437,14 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
-		if (p != end) break;	/* stopped early, break */
-	};
-done:
+		if (p != end) break;		/* stopped early, break */
+	} while (fr_sbuff_used_total(&our_in) < len);
 
-	return fr_sbuff_set(in, &our_in);
+done:
+	return fr_sbuff_used_total(&our_in);
 }
 
-/** Copy as many allowed characters as possible from a sbuff to sbuff
+/** Copy as many allowed characters as possible from a sbuff to a sbuff
  *
  * Copy size is limited by available data in sbuff and output buffer length.
  *
@@ -458,12 +464,12 @@ done:
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   bool const until[static UINT8_MAX + 1], char escape)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	bool		do_escape = false;	/* Track state across extensions */
 
 	CHECK_SBUFF_INIT(in);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
+	do {
 		char	*p;
 		char	*end;
 
@@ -489,11 +495,13 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
-		if (p != end) break;	/* stopped early, break */
-	}
-done:
+		if (p != end) break;		/* stopped early, break */
+	} while (fr_sbuff_used_total(&our_in) < len);
 
-	return fr_sbuff_set(in, &our_in);
+done:
+	return fr_sbuff_used_total(&our_in);
+}
+
 }
 /** Used to define a number parsing functions for singed integers
  *
@@ -653,6 +661,7 @@ ssize_t fr_sbuff_in_char(fr_sbuff_t *sbuff, char c)
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, 1);
 
 	*sbuff->p = c;
+	*(sbuff->p + 1) = '\0';
 
 	return fr_sbuff_advance(sbuff, 1);
 }

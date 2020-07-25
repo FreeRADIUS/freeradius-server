@@ -113,7 +113,7 @@ static void test_bstrncpy_exact(void)
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, SIZE_MAX);
 	TEST_CHECK_SLEN(-25, slen);
-	TEST_CHECK(out[0] == 'a');	/* Must not write \0 */
+	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Zero length size");
@@ -243,6 +243,14 @@ static void test_bstrncpy_allowed(void)
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
+	TEST_CASE("Zero length size");
+	fr_sbuff_set_to_start(&sbuff);
+	out[0] = 'a';
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, SIZE_MAX, allow_lowercase_and_space);
+	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
+	TEST_CHECK(sbuff.p == sbuff.start);
+
 	/*
 	 *	Check copy stops early
 	 */
@@ -336,6 +344,15 @@ static void test_bstrncpy_until(void)
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
+	TEST_CASE("Zero length size");
+	fr_sbuff_set_to_start(&sbuff);
+	out[0] = 'a';
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 0,
+					   (bool[UINT8_MAX + 1]){ }, '\0');
+	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
+	TEST_CHECK(sbuff.p == sbuff.start);
+
 	/*
 	 *	Check copy stops early
 	 */
@@ -367,7 +384,6 @@ static void test_bstrncpy_until(void)
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK_STRCMP("", out);
 }
-
 
 static void test_no_advance(void)
 {

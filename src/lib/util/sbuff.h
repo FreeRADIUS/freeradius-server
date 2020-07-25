@@ -348,8 +348,8 @@ do { \
 #define FR_SBUFF_EXTEND_OR_RETURN(_sbuff, _len) \
 do { \
 	if (fr_sbuff_remaining(_sbuff) < (_len)) { \
-		if (!_sbuff->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
-			return -(((_sbuff)->p + (_len)) - (_sbuff->end)); \
+		if (!(_sbuff)->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
+			return -(((_sbuff)->p + (_len)) - ((_sbuff)->end)); \
 		} \
 	} \
 } while (0)
@@ -422,7 +422,9 @@ static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
  */
 static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
 {
-	if ((sbuff->p + n) > sbuff->end) return 0;
+	if (unlikely((sbuff->p + n) > sbuff->end)) return 0;
+	if (n == 0) return 0;
+
 	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
 	return n;
 }
@@ -443,6 +445,7 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 
 	if (unlikely(p > sbuff->end)) return 0;
 	if (unlikely(p < sbuff->start)) return 0;
+	if (p == sbuff->p) return 0;
 
 	c = sbuff->p;
 	_fr_sbuff_set_recurse(sbuff, p);
