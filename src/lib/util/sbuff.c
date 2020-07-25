@@ -299,6 +299,16 @@ do { \
 	fr_sbuff_advance(_in, _copied); \
 } while(0)
 
+/** Constrain end pointer to prevent advancing more than the amount the called specified
+ *
+ * @param[in] _sbuff	to constrain.
+ * @param[in] _max	maximum amount to advance.
+ * @param[in] _used	how much we've advanced so far.
+ * @return a temporary end pointer.
+ */
+#define CONSTRAINED_END(_sbuff, _max, _used) \
+	(((_max) - (_used)) > fr_sbuff_remaining(_sbuff) ? (_sbuff)->end : (_sbuff)->p + ((_max) - (_used)))
+
 /** Copy as many bytes as possible from a sbuff to a sbuff
  *
  * Copy size is limited by available data in sbuff and space in output sbuff.
@@ -397,26 +407,24 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				     bool const allowed[static UINT8_MAX + 1])
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
-	size_t		remaining;
-	size_t		chunk_len;
 
 	CHECK_SBUFF_INIT(in);
 
-	do {
-
+	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
+		char	*end;
 
-		remaining = (len - fr_sbuff_used_total(&our_in));
 		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
 
-		chunk_len = fr_sbuff_remaining(&our_in);
-		if (chunk_len > remaining) chunk_len = remaining;
+		p = our_in.p;
+		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
-		for (p = our_in.p; (p < (our_in.start + chunk_len)) && allowed[(uint8_t)*p]; p++);
-		chunk_len = p - our_in.p;
+		while((p < end) && allowed[(uint8_t)*p]) p++;
 
-		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
-	} while (remaining && chunk_len);
+		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
+
+		if (p != end) break;	/* stopped early, break */
+	};
 done:
 
 	return fr_sbuff_set(in, &our_in);
@@ -433,34 +441,48 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] until		Characters which stop the copy operation.
+ * @param[in] escape		If not '\0', ignore characters in the until set when
+ *				prefixed with this escape character.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   bool const until[static UINT8_MAX + 1])
+				   bool const until[static UINT8_MAX + 1], char escape)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_NO_ADVANCE(in);
-	size_t		remaining;
-	size_t		chunk_len;
+	bool		do_escape = false;	/* Track state across extensions */
 
 	CHECK_SBUFF_INIT(in);
 
-	do {
-
+	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
+		char	*end;
 
-		remaining = (len - fr_sbuff_used_total(&our_in));
 		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
 
-		chunk_len = fr_sbuff_remaining(&our_in);
-		if (chunk_len > remaining) chunk_len = remaining;
+		p = our_in.p;
+		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
-		for (p = our_in.p; (p < (our_in.start + chunk_len)) && !until[(uint8_t)*p]; p++);
-		chunk_len = p - our_in.p;
+		if (escape == '\0') {
+			while((p < end) && !until[(uint8_t)*p]) p++;
+		} else {
+			while (p < end) {
+				if (do_escape) {
+					do_escape = false;
+				} else if (*p == escape) {
+					do_escape = true;
+				} else if (until[(uint8_t)*p]) {
+					break;
+				}
+				p++;
+			}
+		}
 
-		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
-	} while (remaining && chunk_len);
+		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
+
+		if (p != end) break;	/* stopped early, break */
+	}
 done:
 
 	return fr_sbuff_set(in, &our_in);
@@ -882,16 +904,6 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 
 	return fr_sbuff_advance(sbuff, needle_len);
 }
-
-/** Constrain end pointer to prevent advancing more than the amount the called specified
- *
- * @param[in] _sbuff	to constrain.
- * @param[in] _max	maximum amount to advance.
- * @param[in] _used	how much we've advanced so far.
- * @return a temporary end pointer.
- */
-#define CONSTRAINED_END(_sbuff, _max, _used) \
-	(((_max) - (_used)) > fr_sbuff_remaining(sbuff) ? sbuff->end : sbuff->p + ((_max) - (_used)))
 
 /** Wind position to the first non-whitespace character
  *

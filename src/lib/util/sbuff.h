@@ -668,7 +668,7 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    bool const until[static UINT8_MAX + 1]);
+				    bool const until[static UINT8_MAX + 1], char escape);
 
 /** Find the longest prefix in an sbuff
  *
@@ -724,8 +724,8 @@ static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out,
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						    bool const until[static UINT8_MAX + 1])
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, until);
+						    bool const until[static UINT8_MAX + 1], char escape)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, until, escape);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer

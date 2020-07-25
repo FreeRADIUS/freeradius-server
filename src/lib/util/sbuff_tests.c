@@ -291,34 +291,47 @@ static void test_bstrncpy_until(void)
 	 *      set.
 	 */
 	TEST_CASE("Copy 5 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 5, (bool[UINT8_MAX + 1]){ });
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 5,
+					   (bool[UINT8_MAX + 1]){ }, '\0');
 	TEST_CHECK_SLEN(5, slen);
 	TEST_CHECK_STRCMP("i am ", out);
 	TEST_CHECK_STRCMP("a test string", sbuff.p);
 
 	TEST_CASE("Copy 13 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 13, (bool[UINT8_MAX + 1]){ });
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 13,
+					   (bool[UINT8_MAX + 1]){ }, '\0');
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("a test string", out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 1, (bool[UINT8_MAX + 1]){ });
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, 1,
+					   (bool[UINT8_MAX + 1]){ }, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(sbuff.p == sbuff.end);
+
+	TEST_CASE("Check escapes");
+	fr_sbuff_set_to_start(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX,
+					   (bool[UINT8_MAX + 1]){ ['g'] = true }, 'n');
+	TEST_CHECK_SLEN(18, slen);
+	TEST_CHECK_STRCMP("i am a test string", out);
+	TEST_CHECK_STRCMP("", sbuff.p);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ });
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff,
+					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, '\0');
 	TEST_CHECK_SLEN(18, slen);
 	TEST_CHECK_STRCMP("i am a longer test", out);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, (size_t)1), &sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ });
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, (size_t)1), &sbuff,
+					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -329,28 +342,28 @@ static void test_bstrncpy_until(void)
 	TEST_CASE("Copy until first t");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, sizeof(out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true });
+					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, 15), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true });
+					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true });
+					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("i am a longer", out);
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_TMP(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['i'] = true });
+					   (bool[UINT8_MAX + 1]){ ['i'] = true }, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK_STRCMP("", out);
 }
@@ -697,31 +710,36 @@ static void test_adv_past_allowed(void)
 static void test_adv_until(void)
 {
 	fr_sbuff_t	sbuff;
-	char const	in[] = " abcdefgh ijklmnop";
+	char const	in[] = " abcdefgh ijklmnopp";
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
-	TEST_CHECK_STRCMP(" abcdefgh ijklmnop", sbuff.p);
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, '\0'));
+	TEST_CHECK_STRCMP(" abcdefgh ijklmnopp", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }));
-	TEST_CHECK_STRCMP("abcdefgh ijklmnop", sbuff.p);
+	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }, '\0'));
+	TEST_CHECK_STRCMP("abcdefgh ijklmnopp", sbuff.p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }, '\0'));
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token that is not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['|'] = true }));
+	TEST_CHECK_LEN(19, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['|'] = true }, '\0'));
 	TEST_CHECK(sbuff.p == sbuff.end);
+
+	TEST_CASE("Check escapes");
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['p'] = true }, 'o'));
+	TEST_CHECK_STRCMP("p", sbuff.p);
 
 	TEST_CASE("Check for token that is not in the string with length constraint");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, (bool[UINT8_MAX + 1]){ ['|'] = true }));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, (bool[UINT8_MAX + 1]){ ['|'] = true }, '\0'));
 	TEST_CHECK(sbuff.p == (sbuff.start + 5));
 }
 
