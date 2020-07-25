@@ -521,7 +521,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return 0; \
-	} else if (no_trailing && (*end != '\0')) { \
+	} else if (no_trailing && isdigit(*end)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		*out = (_type)(_max); \
 		return 0; \
@@ -533,7 +533,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} \
-	return	fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
+	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 }
 
 SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4)
@@ -572,7 +572,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return 0; \
-	} else if (no_trailing && (*end != '\0')) { \
+	} else if (no_trailing && isdigit(*end)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		*out = (_type)(_max); \
 		return 0; \
