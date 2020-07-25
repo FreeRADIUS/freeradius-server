@@ -118,6 +118,7 @@ extern size_t sbuff_parse_error_table_len;
 extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
 extern bool const sbuff_char_class_float[UINT8_MAX + 1];
+extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
