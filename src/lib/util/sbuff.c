@@ -658,6 +658,8 @@ ssize_t fr_sbuff_in_char(fr_sbuff_t *sbuff, char c)
 {
 	CHECK_SBUFF_INIT(sbuff);
 
+	if (unlikely(sbuff->is_const)) return 0;
+
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, 1);
 
 	*sbuff->p = c;
@@ -680,6 +682,8 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 
 	CHECK_SBUFF_INIT(sbuff);
 
+	if (unlikely(sbuff->is_const)) return 0;
+
 	len = strlen(str);
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
@@ -700,6 +704,8 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
 	CHECK_SBUFF_INIT(sbuff);
+
+	if (unlikely(sbuff->is_const)) return 0;
 
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
@@ -722,6 +728,8 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 	size_t len;
 
 	CHECK_SBUFF_INIT(sbuff);
+
+	if (unlikely(sbuff->is_const)) return 0;
 
 	len = talloc_array_length(str) - 1;
 
@@ -778,6 +786,8 @@ ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
 
 	CHECK_SBUFF_INIT(sbuff);
 
+	if (unlikely(sbuff->is_const)) return 0;
+
 	if (sbuff_scratch_init(&scratch) < 0) return 0;
 
 	va_copy(ap_p, ap);
@@ -805,6 +815,8 @@ ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
 	va_list		ap;
 	ssize_t		slen;
 
+	if (unlikely(sbuff->is_const)) return 0;
+
 	va_start(ap, fmt);
 	slen = fr_sbuff_in_vsprintf(sbuff, fmt, ap);
 	va_end(ap);
@@ -829,6 +841,8 @@ ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, cha
 
 	CHECK_SBUFF_INIT(sbuff);
 
+	if (unlikely(sbuff->is_const)) return 0;
+
 	len = fr_snprint_len(in, inlen, quote);
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
@@ -851,6 +865,8 @@ ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, cha
 ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote)
 {
 	if (unlikely(!in)) return 0;
+
+	if (unlikely(sbuff->is_const)) return 0;
 
 	return fr_sbuff_in_snprint(sbuff, in, talloc_array_length(in) - 1, quote);
 }
