@@ -1160,7 +1160,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy",		test_bstrncpy },
 	{ "fr_sbuff_out_bstrncpy_allowed",	test_bstrncpy_allowed },
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
-	{ "fr_sbuff_out_descape_until",		test_descape_until },
+	{ "fr_sbuff_out_descape_until",		test_unescape_until },
 
 	/*
 	 *	Extending buffer

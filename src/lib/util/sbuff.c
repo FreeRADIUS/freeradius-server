@@ -662,7 +662,7 @@ SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
  */
-#define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char) \
+#define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char			buff[_max_char + 2]; \
@@ -675,7 +675,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
-	num = strtoull(buff, &end, 10); \
+	num = strtoull(buff, &end, _base); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \
@@ -684,7 +684,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return 0; \
-	} else if (no_trailing && isdigit(*end)) { \
+	} else if (no_trailing && (isdigit(*end) || ((_base > 10) && ((tolower(*end) >= 'a') && (tolower(*end) <= 'f'))))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		*out = (_type)(_max); \
 		return 0; \
@@ -695,10 +695,20 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 }
 
-SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 3)
-SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 5)
-SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10)
-SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 20)
+SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 3, 10)
+SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 4, 10)
+SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10, 10)
+SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 19, 10)
+
+SBUFF_PARSE_UINT_DEF(uint8_oct, uint8_t, UINT8_MAX, 3, 8)
+SBUFF_PARSE_UINT_DEF(uint16_oct, uint16_t, UINT16_MAX, 6, 8)
+SBUFF_PARSE_UINT_DEF(uint32_oct, uint32_t, UINT32_MAX, 11, 8)
+SBUFF_PARSE_UINT_DEF(uint64_oct, uint64_t, UINT64_MAX, 22, 8)
+
+SBUFF_PARSE_UINT_DEF(uint8_hex, uint8_t, UINT8_MAX, 2, 16)
+SBUFF_PARSE_UINT_DEF(uint16_hex, uint16_t, UINT16_MAX, 4, 16)
+SBUFF_PARSE_UINT_DEF(uint32_hex, uint32_t, UINT32_MAX, 8, 16)
+SBUFF_PARSE_UINT_DEF(uint64_hex, uint64_t, UINT64_MAX, 16, 16)
 
 /** Used to define a number parsing functions for floats
  *
