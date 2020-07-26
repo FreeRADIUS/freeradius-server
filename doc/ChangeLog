@@ -19,6 +19,9 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  for assistance.
 	* The default configuration now replies with EAP-Key-Name, if it
 	  is available, and was requested.
+	* Include extensions in generated certificates.
+	* Many improvements for DHCP IP pools for all SQL dialects.
+	  Patches from Nick Porter.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
