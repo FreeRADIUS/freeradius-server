@@ -798,7 +798,8 @@ do { \
 			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
 	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
 	if (slen <= 0) { \
-		talloc_free(sbuff.buff); \
+		fr_sbuff_trim_talloc(&sbuff, 0); \
+		*out = sbuff.buff; \
 		return 0; \
 	} \
 	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \

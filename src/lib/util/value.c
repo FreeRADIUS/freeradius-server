@@ -4358,33 +4358,11 @@ parse:
 	switch (*dst_type) {
 	case FR_TYPE_STRING:
 	{
-		char *buff, *p;
+		char *buff;
 
-		buff = talloc_bstrndup(ctx, in, len);
-
-		/*
-		 *	No de-quoting.  Just copy the string.
-		 */
-		if (!quote) {
-			ret = len;
-			dst->vb_strvalue = buff;
-			goto finish;
-		}
-
-		len = fr_value_str_unescape((uint8_t *)buff, in, len, quote);
-
-		/*
-		 *	Shrink the buffer to the correct size
-		 *	and \0 terminate it.  There is a significant
-		 *	amount of legacy code that assumes the string
-		 *	buffer in value pairs is a C string.
-		 *
-		 *	It's better for the server to print partial
-		 *	strings, instead of SEGV.
-		 */
-		dst->vb_strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
-		p[len] = '\0';
-		ret = len;
+		ret = fr_value_substr_aunescape(ctx, &buff, &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
+		talloc_get_type_abort(buff, char);
+		dst->vb_strvalue = buff;
 	}
 		goto finish;
 

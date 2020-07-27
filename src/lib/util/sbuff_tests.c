@@ -597,6 +597,22 @@ static void test_unescape_until(void)
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh  ", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
 	}
+
+	/*
+	 *	Verify dynamic allocation
+	 */
+	{
+		char		*buff;
+		size_t		len;
+		char const	in_zero[] = "";
+
+		len = fr_sbuff_out_aunescape_until(NULL, &buff, &FR_SBUFF_TMP(in_zero, sizeof(in_zero)),
+						   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+		TEST_CHECK_SLEN(0, len);
+		talloc_get_type_abort(buff, char);
+		TEST_CHECK_SLEN(1, talloc_array_length(buff));
+		talloc_free(buff);
+	}
 }
 
 static void test_no_advance(void)
