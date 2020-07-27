@@ -95,6 +95,7 @@ static sql_rcode_t sql_error_to_rcode(int status)
 	case SQLITE_ERROR:	/* SQL error or missing database */
 	case SQLITE_FULL:
 	case SQLITE_MISMATCH:
+	case SQLITE_BUSY:	/* Can be caused by database locking */
 		return RLM_SQL_ERROR;
 
 	/*
