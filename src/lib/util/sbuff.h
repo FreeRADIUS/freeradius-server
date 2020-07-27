@@ -733,6 +733,7 @@ do { \
 		talloc_free(sbuff.buff); \
 		return 0; \
 	} \
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
 	*out = sbuff.buff; \
 	return (size_t)slen; \
 }
