@@ -2148,7 +2148,9 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		len = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		len = fr_value_str_unescape(&FR_SBUFF_TMP((char *)buff, slen + 1),
+					    &FR_SBUFF_TMP((char *)buff, slen + 1), SIZE_MAX, '"');
+		fr_assert(buff);
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
 		src_type = FR_TYPE_STRING;
 	}
@@ -2176,7 +2178,9 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		len = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		len = fr_value_str_unescape(&FR_SBUFF_TMP((char *)buff, slen + 1),
+					    &FR_SBUFF_TMP((char *)buff, slen + 1), SIZE_MAX, '"');
+		fr_assert(buff);
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
 		src_type = FR_TYPE_STRING;
 	}

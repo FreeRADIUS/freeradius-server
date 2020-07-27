@@ -288,6 +288,69 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
+fr_sbuff_escape_rules_t fr_value_escape_double_quote = {
+	.chr = '\\',
+	.subs = {
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v',
+		['\\'] = '\\',
+		['"'] = '"'	/* Quoting char */
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_single_quote = {
+	.chr = '\\',
+	.subs = {
+		['\\'] = '\\',
+		['\''] = '\''	/* Quoting char */
+	},
+	.do_hex = false,
+	.do_oct = false
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+	.chr = '\\',
+	.subs = {
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v',
+		['/'] = '/'	/* Quoting char */
+	},
+	.skip = {
+		['\\'] = '\\'	/* Leave this for the regex library */
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+	.chr = '\\',
+	.subs = {
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v',
+		['\\'] = '\\',
+		['`'] = '`'	/* Quoting char */
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
 /** Copy flags and type data from one value box to another
  *
  * @param[in] dst to copy flags to
@@ -693,179 +756,152 @@ static char const hextab[] = "0123456789abcdef";
  *
  * The quote character determines the escape sequences recognised.
  *
- * Literal mode ("'" quote char) will unescape:
+ * - Literal mode ("'" quote char) will unescape:
  @verbatim
    - \\        - Literal backslash.
    - \<quote>  - The quotation char.
  @endverbatim
- *
- * Expanded mode (any other quote char) will also unescape:
+ * - Expanded mode ('"' quote char) will also unescape:
  @verbatim
+   - \a        - Alert.
+   - \b        - Backspace.
+   - \e        - Escape character i.e. (\)
    - \r        - Carriage return.
    - \n        - Newline.
    - \t        - Tab.
+   - \v        - Vertical tab
    - \<oct>    - An octal escape sequence.
    - \x<hex>   - A hex escape sequence.
  @endverbatim
+ * - Backtick mode ('`' quote char) identical to expanded mode.
+ * - Regex mode ('/') identical to expanded mode but two successive
+ * backslashes will be interpreted as an escape sequence, but not
+ * unescaped, so that they will be passed to the underlying regex
+ * library.
+ * - Verbatim mode ('\0' quote char) copies in to out verbatim.
  *
- * Verbatim mode ("\0") passing \0 as the quote char copies in to out verbatim.
- *
- * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
- * @note Invalid escape sequences will be copied verbatim.
- * @note in and out may point to the same buffer.
+ * @note The resulting output may contain embedded \0s.
+ * @note Unrecognised escape sequences will be copied verbatim.
+ * @note In and out may point to the same underlying buffer.
+ * @note Copying will stop early if an unescaped instance of the
+ *	 quoting char is found in the input buffer.
  *
  * @param[out] out	Where to write the unescaped string.
- *			Unescaping never introduces additional chars.
  * @param[in] in	The string to unescape.
- * @param[in] inlen	Length of input string.
+ * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
+ *			in the input buffer.
  * @param[in] quote	Character around the string, determines unescaping mode.
  *
- * @return >= 0 the number of uint8s written to out.
+ * @return
+ *	- 0 if input string was empty.
+ *	- >0 the number of bytes written to out.
  */
-size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
+size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
 {
-	char const	*p = in;
-	uint8_t		*out_p = out;
-	int		x;
+	static bool until[UINT8_MAX + 1] = { };
 
-	/*
-	 *	No de-quoting.  Just copy the string.
-	 */
-	if (!quote) {
-		memcpy(out, in, inlen);
-		return inlen;
+	switch (quote) {
+	default:
+		break;
+
+	case '"':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_double_quote);
+	}
+	case '\'':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_single_quote);
 	}
 
-	/*
-	 *	Do escaping for single quoted strings.  Only
-	 *	single quotes get escaped.  Everything else is
-	 *	left as-is.
-	 */
-	if (quote == '\'') {
-		while (p < (in + inlen)) {
-			/*
-			 *	The quotation character is escaped.
-			 */
-			if ((p[0] == '\\') &&
-			    (p[1] == quote)) {
-				*(out_p++) = quote;
-				p += 2;
-				continue;
-			}
-
-			/*
-			 *	Two backslashes get mangled to one.
-			 */
-			if ((p[0] == '\\') &&
-			    (p[1] == '\\')) {
-				*(out_p++) = '\\';
-				p += 2;
-				continue;
-			}
-
-			/*
-			 *	Not escaped, just copy it over.
-			 */
-			*(out_p++) = *(p++);
-		}
-		return out_p - out;
+	case '`':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_backtick);
 	}
 
-	/*
-	 *	It's "string" or `string`, do all standard
-	 *	escaping.
-	 */
-	while (p < (in + inlen)) {
-		uint8_t c = *p++;
-		uint8_t *h0, *h1;
-
-		/*
-		 *	We copy all invalid escape sequences verbatim,
-		 *	even if they occur at the end of sthe string.
-		 */
-		if ((c == '\\') && (p >= (in + inlen))) {
-		invalid_escape:
-			*out_p++ = c;
-			while (p < (in + inlen)) *out_p++ = *p++;
-			return out_p - out;
-		}
-
-		/*
-		 *	Fix up \[rnt\\] -> ... the binary form of it.
-		 */
-		if (c == '\\') {
-			switch (*p) {
-			case 'r':
-				c = '\r';
-				p++;
-				break;
-
-			case 'n':
-				c = '\n';
-				p++;
-				break;
-
-			case 't':
-				c = '\t';
-				p++;
-				break;
-
-			case '\\':
-				c = '\\';
-				p++;
-				break;
-
-			default:
-				/*
-				 *	\" --> ", but only inside of double quoted strings, etc.
-				 */
-				if (*p == quote) {
-					c = quote;
-					p++;
-					break;
-				}
-
-				/*
-				 *	We need at least three chars, for either octal or hex
-				 */
-				if ((p + 2) >= (in + inlen)) goto invalid_escape;
-
-				/*
-				 *	\x00 --> binary zero character
-				 */
-				if ((p[0] == 'x') &&
-				    (h0 = memchr((uint8_t const *)hextab, tolower((int) p[1]), sizeof(hextab))) &&
-				    (h1 = memchr((uint8_t const *)hextab, tolower((int) p[2]), sizeof(hextab)))) {
-				 	c = ((h0 - (uint8_t const *)hextab) << 4) + (h1 - (uint8_t const *)hextab);
-				 	p += 3;
-				}
-
-				/*
-				 *	\000 --> binary zero character
-				 */
-				if ((p[0] >= '0') &&
-				    (p[0] <= '9') &&
-				    (p[1] >= '0') &&
-				    (p[1] <= '9') &&
-				    (p[2] >= '0') &&
-				    (p[2] <= '9') &&
-				    (sscanf(p, "%3o", &x) == 1)) {
-					c = x;
-					p += 3;
-				}
-
-				/*
-				 *	Else It's not a recognised escape sequence DON'T
-				 *	consume the backslash. This is identical
-				 *	behaviour to bash and most other things that
-				 *	use backslash escaping.
-				 */
-			}
-		}
-		*out_p++ = c;
+	case '/':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_solidus);
+	}
 	}
 
-	return out_p - out;
+	return fr_sbuff_out_bstrncpy(out, in, inlen);
+}
+
+/** Convert a string value with escape sequences into its binary form
+ *
+ * The quote character determines the escape sequences recognised.
+ *
+ * - Literal mode ("'" quote char) will unescape:
+ @verbatim
+   - \\        - Literal backslash.
+   - \<quote>  - The quotation char.
+ @endverbatim
+ * - Expanded mode ('"' quote char) will also unescape:
+ @verbatim
+   - \a        - Alert.
+   - \b        - Backspace.
+   - \e        - Escape character i.e. (\)
+   - \r        - Carriage return.
+   - \n        - Newline.
+   - \t        - Tab.
+   - \v        - Vertical tab
+   - \<oct>    - An octal escape sequence.
+   - \x<hex>   - A hex escape sequence.
+ @endverbatim
+ * - Backtick mode ('`' quote char) identical to expanded mode.
+ * - Regex mode ('/') identical to expanded mode but two successive
+ * backslashes will be interpreted as an escape sequence, but not
+ * unescaped, so that they will be passed to the underlying regex
+ * library.
+ * - Verbatim mode ('\0' quote char) copies in to out verbatim.
+ *
+ * @note The resulting output may contain embedded \0s.
+ * @note Unrecognised escape sequences will be copied verbatim.
+ * @note In and out may point to the same underlying buffer.
+ * @note Copying will stop early if an unescaped instance of the
+ *	 quoting char is found in the input buffer.
+ *
+ * @param[out] out	Where to write the unescaped string.
+ * @param[in] in	The string to unescape.
+ * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
+ *			in the input buffer.
+ * @param[in] quote	Character around the string, determines unescaping mode.
+ *
+ * @return
+ *	- 0 if input string was empty.
+ *	- >0 the number of bytes written to out.
+ */
+size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+{
+	switch (quote) {
+	default:
+		break;
+
+	case '"':
+	{
+		static bool until[UINT8_MAX + 1] = { ['"'] = true };
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_double_quote);
+	}
+	case '\'':
+	{
+		static bool until[UINT8_MAX + 1] = { ['\''] = true };
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_single_quote);
+	}
+
+	case '`':
+	{
+		static bool until[UINT8_MAX + 1] = { ['`'] = true };
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_backtick);
+	}
+
+	case '/':
+	{
+		static bool until[UINT8_MAX + 1] = { ['/'] = true };
+		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_solidus);
+	}
+	}
+
+	return fr_sbuff_out_bstrncpy(out, in, inlen);
 }
 
 /** Performs byte order reversal for types that need it
@@ -4317,16 +4353,15 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		fr_dict_enum_t	*enumv;
 
 		if (len > (sizeof(buffer) - 1)) {
-			tmp = talloc_array(NULL, char, len + 1);
-			if (!tmp) return -1;
-
-			name_len = fr_value_str_unescape((uint8_t *)tmp, in, len, quote);
+			name_len = fr_value_str_aunescape(NULL, &tmp,
+							  &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
 			name = tmp;
 		} else {
-			name_len = fr_value_str_unescape((uint8_t *)buffer, in, len, quote);
+			name_len = fr_value_str_unescape(&FR_SBUFF_TMP(buffer, sizeof(buffer)),
+							 &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
 			name = buffer;
 		}
-		name[name_len] = '\0';
+		fr_assert(name);
 
 		/*
 		 *	Check the name name is valid first before bothering
@@ -4360,7 +4395,7 @@ parse:
 	{
 		char *buff;
 
-		ret = fr_value_substr_aunescape(ctx, &buff, &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
+		ret = fr_value_str_aunescape(ctx, &buff, &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
 		talloc_get_type_abort(buff, char);
 		dst->vb_strvalue = buff;
 	}
@@ -5178,12 +5213,10 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 			 *	results.
 			 */
 			if ((argv[i][0] == '"') || (argv[i][0] == '\'')) {
-				size_t inlen, outlen;
-
-				inlen = talloc_array_length(argv[i]) - 3;
-				outlen = fr_value_str_unescape((uint8_t *) argv[i], argv[i] + 1, inlen, *argv[i]);
-				fr_assert(outlen <= inlen);
-				argv[i][outlen] = '\0';
+				size_t inlen = talloc_array_length(argv[i]);
+				fr_value_substr_unescape(&FR_SBUFF_TMP(argv[i], inlen),
+							 &FR_SBUFF_TMP(argv[i] + 1, inlen - 1),
+							 SIZE_MAX, *argv[i]);
 			}
 
 			i++;

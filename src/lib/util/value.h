@@ -557,7 +557,15 @@ int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t 
 /*
  *	Conversion
  */
-size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
+size_t		fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote);
+
+size_t		fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote);
+
+static inline size_t fr_value_str_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_str_unescape, in, inlen, quote);
+
+static inline size_t fr_value_substr_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_substr_unescape, in, inlen, quote);
 
 int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 
