@@ -396,12 +396,38 @@ static void test_unescape_until(void)
 
 	fr_sbuff_t		sbuff;
 	ssize_t			slen;
-	fr_sbuff_escape_rules_t	rules = { .chr = '\\' };
-	fr_sbuff_escape_rules_t	pipe_rules = { .chr = '|', .subs = { ['g'] = 'g' } };
-	fr_sbuff_escape_rules_t	pipe_rules_sub = { .chr = '|', .subs = { ['g'] = 'h' } };
-	fr_sbuff_escape_rules_t	pipe_rules_sub_hex = { .chr = '|', .subs = { ['g'] = 'h' }, .do_hex = true };
-	fr_sbuff_escape_rules_t	pipe_rules_sub_oct = { .chr = '|', .subs = { ['g'] = 'h' }, .do_oct = true };
-	fr_sbuff_escape_rules_t	pipe_rules_both = { .chr = '|', .subs = { ['g'] = 'h' }, .do_hex = true, .do_oct = true };
+
+	fr_sbuff_escape_rules_t	rules = {
+					.chr = '\\'
+				};
+
+	fr_sbuff_escape_rules_t	pipe_rules = {
+					.chr = '|',
+					.subs = { ['g'] = 'g' }
+				};
+
+	fr_sbuff_escape_rules_t	pipe_rules_sub = {
+					.chr = '|', .subs = { ['g'] = 'h' }
+				};
+
+	fr_sbuff_escape_rules_t	pipe_rules_sub_hex = {
+					.chr = '|',
+					.subs = { ['g'] = 'h' },
+					.do_hex = true
+				};
+
+	fr_sbuff_escape_rules_t	pipe_rules_sub_oct = {
+					.chr = '|',
+					.subs = { ['g'] = 'h' },
+					.do_oct = true
+				};
+
+	fr_sbuff_escape_rules_t	pipe_rules_both = {
+					.chr = '|',
+					.subs = { ['g'] = 'h' },
+					.do_hex = true,
+					.do_oct = true
+				};
 
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 
