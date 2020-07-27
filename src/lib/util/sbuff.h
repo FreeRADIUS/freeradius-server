@@ -503,6 +503,56 @@ static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
  * if the buffer is re-allocated.
  * @{
  */
+/** Return the current position of the marker
+ *
+ */
+static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
+{
+	return m->p;
+}
+
+/** How many free bytes remain in the buffer (calculated from marker)
+ *
+ */
+static inline size_t fr_sbuff_marker_remaining(fr_sbuff_marker_t *m)
+{
+	return m->parent->end - m->p;
+}
+
+/** How many bytes we've used in the buffer (calculated from marker)
+ *
+ */
+static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
+{
+	return m->p - m->parent->start;
+}
+
+/** How many bytes the marker is behind p
+ *
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p
+ */
+static inline size_t fr_sbuff_marker_behind(fr_sbuff_marker_t *m)
+{
+	char *s_p = m->parent->p;
+	char *m_p = m->p;
+	return m_p > s_p ? 0 : s_p - m_p;
+}
+
+/** How many bytes the marker is ahead of p
+ *
+ * @return
+ *	- 0 marker is behind p.
+ *	- >0 the number of bytes the marker is ahead of p
+ */
+static inline size_t fr_sbuff_marker_ahead(fr_sbuff_marker_t *m)
+{
+	char *s_p = m->parent->p;
+	char *m_p = m->p;
+	return m_p < s_p ? 0 : m_p - s_p;
+}
+
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
  * @param[out] m	to initialise.
@@ -521,7 +571,7 @@ static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
 	return sbuff->p;
 }
 
-/** Trims the linked list backed to the specified pointer
+/** Trims the linked list back to the specified pointer
  *
  * Pointers should be released in the inverse order to allocation.
  *
@@ -537,6 +587,48 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
 #ifndef NDEBUF
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
+}
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was behind p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p/
+ */
+static inline size_t fr_sbuff_marker_release_behind(fr_sbuff_marker_t *m)
+{
+	size_t len = fr_sbuff_marker_behind(m);
+
+	fr_sbuff_marker_release(m);
+
+	return len;
+}
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was ahead of p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p/
+ */
+static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
+{
+	size_t len = fr_sbuff_marker_ahead(m);
+
+	fr_sbuff_marker_release(m);
+
+	return len;
 }
 
 /** Change the position in the buffer a marker points to
@@ -583,30 +675,6 @@ static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
 	fr_sbuff_t *sbuff = m->parent;
 
 	_fr_sbuff_set_recurse(sbuff, m->p);
-}
-
-/** Return the current position of the marker
- *
- */
-static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
-{
-	return m->p;
-}
-
-/** How many free bytes remain in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_remaining(fr_sbuff_marker_t *m)
-{
-	return m->parent->end - m->p;
-}
-
-/** How many bytes we've used in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
-{
-	return m->p - m->parent->start;
 }
 /** @} */
 

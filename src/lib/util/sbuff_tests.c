@@ -521,7 +521,7 @@ static void test_unescape_until(void)
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules);
-	TEST_CHECK_SLEN(21, slen);
+	TEST_CHECK_SLEN(20, slen);
 	TEST_CHECK_STRCMP("i am a |t|est string", escape_out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 
@@ -529,7 +529,7 @@ static void test_unescape_until(void)
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub);
-	TEST_CHECK_SLEN(21, slen);
+	TEST_CHECK_SLEN(20, slen);
 	TEST_CHECK_STRCMP("i am a |t|est strinh", escape_out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 
@@ -541,7 +541,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX,
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_hex);
-		TEST_CHECK_SLEN(25, slen);
+		TEST_CHECK_SLEN(24, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh", tmp_out);
 		TEST_CHECK_STRCMP("|x20|040", sbuff.p);
 	}
@@ -554,7 +554,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX,
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_hex);
-		TEST_CHECK_SLEN(29, slen);
+		TEST_CHECK_SLEN(25, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh ", tmp_out);
 		TEST_CHECK_STRCMP("|040", sbuff.p);
 	}
@@ -567,7 +567,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX,
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_oct);
-		TEST_CHECK_SLEN(29, slen);
+		TEST_CHECK_SLEN(28, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20", tmp_out);
 		TEST_CHECK_STRCMP("|040", sbuff.p);
 	}
@@ -580,7 +580,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX,
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_oct);
-		TEST_CHECK_SLEN(33, slen);
+		TEST_CHECK_SLEN(29, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20 ", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
 	}
@@ -593,7 +593,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX,
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_both);
-		TEST_CHECK_SLEN(33, slen);
+		TEST_CHECK_SLEN(26, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh  ", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
 	}

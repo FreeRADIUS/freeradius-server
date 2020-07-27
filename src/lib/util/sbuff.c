@@ -517,14 +517,17 @@ done:
  * @param[in] rules		for processing escape sequences.
  * @return
  *	- 0 no bytes copied.
- *	- >0 the number of bytes copied including escape sequences.
+ *	- >0 the number of bytes written to out.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				  bool const until[static UINT8_MAX + 1],
-				  fr_sbuff_escape_rules_t const *rules)
+				   bool const until[static UINT8_MAX + 1],
+				   fr_sbuff_escape_rules_t const *rules)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
-	bool		do_escape = false;	/* Track state across extensions */
+	fr_sbuff_t 		our_in = FR_SBUFF_COPY(in);
+	bool			do_escape = false;	/* Track state across extensions */
+	fr_sbuff_marker_t	o_s;
+
+	fr_sbuff_marker(&o_s, out);
 
 	CHECK_SBUFF_INIT(in);
 	if (unlikely(rules->chr == '\0')) return 0;
@@ -555,11 +558,13 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
 						p = m.p + 1;			/* skip escape char */
+						fr_sbuff_marker_release(&m);
 						goto check_subs;
 					}
 
 					if (fr_sbuff_in_char(out, escape) <= 0) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_marker_release(&m);
 						goto done;
 					}
 					p = our_in.p;
@@ -579,11 +584,13 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
 						p = m.p + 1;			/* skip escape char */
+						fr_sbuff_marker_release(&m);
 						goto check_subs;
 					}
 
 					if (fr_sbuff_in_char(out, escape) <= 0) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_marker_release(&m);
 						goto done;
 					}
 					p = our_in.p;
@@ -643,7 +650,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	} while (fr_sbuff_used_total(&our_in) < len);
 
 done:
-	return fr_sbuff_used_total(&our_in);
+	return fr_sbuff_marker_release_behind(&o_s);
 }
 
 /** Used to define a number parsing functions for singed integers
