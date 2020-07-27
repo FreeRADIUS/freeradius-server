@@ -669,8 +669,8 @@ done:
 #define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char		buff[_max_char + 2]; \
-	char		*end; \
+	char		buff[_max_char + 1]; \
+	char		*end, *a_end; \
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
@@ -688,10 +688,12 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return 0; \
-	} else if (no_trailing && isdigit(*end)) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
-		*out = (_type)(_max); \
-		return 0; \
+	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+		if (isdigit(*a_end)) { \
+			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+			*out = (_type)(_max); \
+			return 0; \
+		} \
 	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
@@ -720,8 +722,8 @@ SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char			buff[_max_char + 2]; \
-	char			*end; \
+	char			buff[_max_char + 1]; \
+	char			*end, *a_end; \
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
@@ -739,10 +741,12 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return 0; \
-	} else if (no_trailing && (isdigit(*end) || ((_base > 10) && ((tolower(*end) >= 'a') && (tolower(*end) <= 'f'))))) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
-		*out = (_type)(_max); \
-		return 0; \
+	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+		if (isdigit(*a_end) || ((_base > 10) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+			*out = (_type)(_max); \
+			return 0; \
+		} \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \

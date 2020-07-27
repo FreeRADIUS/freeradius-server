@@ -430,7 +430,6 @@ static void test_unescape_until(void)
 				};
 
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-
 	/*
 	 *	Should behave identically to bstrncpy
 	 *	where there's no restrictions on char
@@ -609,6 +608,55 @@ static void test_unescape_until(void)
 						   (bool[UINT8_MAX + 1]){ }, &pipe_rules);
 		TEST_CHECK_SLEN(1, slen);
 		TEST_CHECK_STRCMP("|", tmp_out);
+		TEST_CHECK_STRCMP("", sbuff.p);
+	}
+
+	{
+		char		tmp_out[30 + 1];
+
+		fr_sbuff_escape_rules_t double_quote_rules = {
+			.chr = '\\',
+			.subs = {
+				['a'] = '\a',
+				['b'] = '\b',
+				['e'] = '\\',
+				['n'] = '\n',
+				['r'] = '\r',
+				['t'] = '\t',
+				['v'] = '\v',
+				['\\'] = '\\',
+				['"'] = '"'	/* Quoting char */
+			},
+			.do_hex = true,
+			.do_oct = true
+		};
+
+		char const	in_escapes_unit[] =
+			"0x01\\001"
+			"0x07\\007"
+			"0x0A\\n"
+			"0x0D\\r"
+			"\\\"\\\""
+			"0xb0"
+			"\\260\\xb0";
+
+		char const	expected[] = {
+			'0', 'x', '0', '1', '\001',
+			'0', 'x', '0', '7', '\007',
+			'0', 'x', '0', 'A', '\n',
+			'0', 'x', '0', 'D', '\r',
+			'"', '"',
+			'0', 'x', 'b', '0',
+			'\260', '\xb0', '\0'
+		};
+
+		TEST_CASE("Check unit test test strings");
+		fr_sbuff_init(&sbuff, in_escapes_unit, sizeof(in_escapes_unit));
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
+						   &sbuff, SIZE_MAX,
+						   (bool[UINT8_MAX + 1]){ }, &double_quote_rules);
+		TEST_CHECK_SLEN(28, slen);
+		TEST_CHECK_STRCMP(expected, tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
 	}
 
