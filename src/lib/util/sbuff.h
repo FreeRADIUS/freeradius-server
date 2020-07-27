@@ -672,12 +672,21 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    bool const until[static UINT8_MAX + 1], char escape);
+				    bool const until[static UINT8_MAX + 1], char escape_chr);
+
+/** Set of parsing rules for *unescape_until functions
+ *
+ */
+typedef struct {
+	char		chr;				//!< Character at the start of an escape sequence.
+	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
+	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
+} fr_sbuff_escape_rules_t;
 
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				  bool const until[static UINT8_MAX + 1],
-				  char escape,
-				  char const escape_subs[static UINT8_MAX + 1]);
+				   bool const until[static UINT8_MAX + 1],
+				   fr_sbuff_escape_rules_t const *rules);
 
 /** Find the longest prefix in an sbuff
  *
@@ -733,8 +742,13 @@ static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out,
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						    bool const until[static UINT8_MAX + 1], char escape)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, until, escape);
+						    bool const until[static UINT8_MAX + 1], char escape_chr)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, until, escape_chr);
+
+static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						  bool const until[static UINT8_MAX + 1],
+						  fr_sbuff_escape_rules_t const *rules)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, until, rules);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
@@ -752,19 +766,11 @@ size_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_
 size_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_out_int8_oct(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int16_oct(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int32_oct(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int64_oct(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint8_oct(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint16_oct(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint32_oct(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint64_oct(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_out_int8_hex(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int16_hex(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int32_hex(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int64_hex(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint8_hex(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint16_hex(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_uint32_hex(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
@@ -815,7 +821,7 @@ size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape);
+size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape_chr);
 
 char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 
@@ -889,6 +895,12 @@ static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
 {
 	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return isspace(*sbuff->p);
+}
+
+static inline bool fr_sbuff_is_hex(fr_sbuff_t *sbuff)
+{
+	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	return (isdigit(*sbuff->p) || ((tolower(*sbuff->p) >= 'a') && (tolower(*sbuff->p) <= 'f')));
 }
 /** @} */
 

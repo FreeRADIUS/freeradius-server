@@ -299,8 +299,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
  */
 #define FILL_OR_GOTO_DONE(_out, _in, _len) \
 do { \
-	ssize_t _copied; \
-	_copied = fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len); \
+	ssize_t _copied = fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len); \
 	if (_copied < 0) { \
 		fr_sbuff_advance(_in, fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len + _copied)); \
 		goto done;\
@@ -455,14 +454,14 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] until		Characters which stop the copy operation.
- * @param[in] escape		If not '\0', ignore characters in the until set when
+ * @param[in] escape_chr	If not '\0', ignore characters in the until set when
  *				prefixed with this escape character.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   bool const until[static UINT8_MAX + 1], char escape)
+				   bool const until[static UINT8_MAX + 1], char escape_chr)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	bool		do_escape = false;	/* Track state across extensions */
@@ -478,13 +477,13 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		p = our_in.p;
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
-		if (escape == '\0') {
+		if (escape_chr == '\0') {
 			while((p < end) && !until[(uint8_t)*p]) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
-				} else if (*p == escape) {
+				} else if (*p == escape_chr) {
 					do_escape = true;
 				} else if (until[(uint8_t)*p]) {
 					break;
@@ -515,23 +514,20 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] until		Characters which stop the copy operation.
- * @param[in] escape		Ignore characters in the until set when prefixed
- *				with this escape character. Must be specified.
- * @param[in] escape_subs	Escape characters and their substitutions.
+ * @param[in] rules		for processing escape sequences.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied including escape sequences.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				  bool const until[static UINT8_MAX + 1],
-				  char escape,
-				  char const escape_subs[static UINT8_MAX + 1])
+				  fr_sbuff_escape_rules_t const *rules)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	bool		do_escape = false;	/* Track state across extensions */
 
 	CHECK_SBUFF_INIT(in);
-	if (unlikely(escape == '\0')) return 0;
+	if (unlikely(rules->chr == '\0')) return 0;
 
 	do {
 		char	*p;
@@ -547,9 +543,58 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				do_escape = false;
 
 				/*
-				 *	Not an actual escape seq
+				 *	Check for \x<hex><hex>
 				 */
-				if (escape_subs[(uint8_t)*p] == '\0') goto next;
+				if (rules->do_hex && (*p == 'x')) {
+					uint8_t			escape;
+					fr_sbuff_marker_t	m;
+
+					fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
+					fr_sbuff_set(&our_in, ++p);		/* sync sbuff */
+
+					if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
+						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						p = m.p;
+						goto check_subs;
+					}
+
+					if (fr_sbuff_in_char(out, escape) <= 0) {
+						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						goto done;
+					}
+					p = our_in.p;
+					continue;
+				}
+
+				/*
+				 *	Check for \<oct><oct><oct>
+				 */
+				if (rules->do_oct && isdigit(*p)) {
+					uint8_t 		escape;
+					fr_sbuff_marker_t	m;
+
+					fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
+					fr_sbuff_set(&our_in, p);		/* sync sbuff */
+
+					if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
+						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						p = m.p;
+						goto check_subs;
+					}
+
+					if (fr_sbuff_in_char(out, escape) <= 0) {
+						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						goto done;
+					}
+					p = our_in.p;
+					continue;
+				}
+
+			check_subs:
+				/*
+				 *	Not a recognised escape sequence.
+				 */
+				if (rules->subs[(uint8_t)*p] == '\0') goto next;
 
 				/*
 				 *  	We already copied everything up
@@ -557,18 +602,17 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				 *	write the substituted char to
 				 *	the output buffer.
 				 */
-				if (fr_sbuff_in_char(out, escape_subs[(uint8_t)*p]) <= 0) goto done;
+				if (fr_sbuff_in_char(out, rules->subs[(uint8_t)*p++]) <= 0) goto done;
 
 				/*
 				 *	...and advance past the entire
 				 *	escape seq in the input buffer.
 				 */
 				fr_sbuff_advance(&our_in, 2);
-				p++;
 				continue;
 			}
 
-			if (*p == escape) {
+			if (*p == rules->chr) {
 				/*
 				 *	Copy out any data we got before
 				 *	we hit the escape char.
@@ -1105,11 +1149,11 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allow
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] until		character set.
- * @param[in] escape		If not '\0', ignore characters in the until set when
+ * @param[in] escape_chr	If not '\0', ignore characters in the until set when
  *				prefixed with this escape character.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape)
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape_chr)
 {
 	size_t		total = 0;
 	char const	*p;
@@ -1125,13 +1169,13 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
 
-		if (escape == '\0') {
+		if (escape_chr == '\0') {
 			while ((p < end) && !until[(uint8_t)*p]) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
-				} else if (*p == escape) {
+				} else if (*p == escape_chr) {
 					do_escape = true;
 				} else if (until[(uint8_t)*p]) {
 					break;
