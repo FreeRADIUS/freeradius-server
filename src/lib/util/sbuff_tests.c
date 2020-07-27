@@ -403,28 +403,28 @@ static void test_unescape_until(void)
 
 	fr_sbuff_escape_rules_t	pipe_rules = {
 					.chr = '|',
-					.subs = { ['g'] = 'g' }
+					.subs = { ['g'] = 'g', ['|'] = '|'  }
 				};
 
 	fr_sbuff_escape_rules_t	pipe_rules_sub = {
-					.chr = '|', .subs = { ['g'] = 'h' }
+					.chr = '|', .subs = { ['g'] = 'h', ['|'] = '|'  }
 				};
 
 	fr_sbuff_escape_rules_t	pipe_rules_sub_hex = {
 					.chr = '|',
-					.subs = { ['g'] = 'h' },
+					.subs = { ['g'] = 'h', ['|'] = '|'  },
 					.do_hex = true
 				};
 
 	fr_sbuff_escape_rules_t	pipe_rules_sub_oct = {
 					.chr = '|',
-					.subs = { ['g'] = 'h' },
+					.subs = { ['g'] = 'h', ['|'] = '|' },
 					.do_oct = true
 				};
 
 	fr_sbuff_escape_rules_t	pipe_rules_both = {
 					.chr = '|',
-					.subs = { ['g'] = 'h' },
+					.subs = { ['g'] = 'h', ['|'] = '|'  },
 					.do_hex = true,
 					.do_oct = true
 				};
@@ -595,6 +595,20 @@ static void test_unescape_until(void)
 						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_both);
 		TEST_CHECK_SLEN(26, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh  ", tmp_out);
+		TEST_CHECK_STRCMP("", sbuff.p);
+	}
+
+	{
+		char		tmp_out[2 + 1];
+		char const	in_escapes_collapse[] = "||";
+
+		TEST_CASE("Collapse double escapes");
+		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(tmp_out, sizeof(tmp_out)),
+						   &sbuff, SIZE_MAX,
+						   (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+		TEST_CHECK_SLEN(1, slen);
+		TEST_CHECK_STRCMP("|", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
 	}
 
