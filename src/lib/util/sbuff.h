@@ -680,6 +680,12 @@ size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 typedef struct {
 	char		chr;				//!< Character at the start of an escape sequence.
 	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
+							///< output along with the escape character.
+							///< This is useful where we need to interpret escape
+							///< sequences for parsing, but where the string will
+							///< be passed off to a 3rd party library which will
+							///< need to interpret the same sequences.
 	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
 	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
 } fr_sbuff_escape_rules_t;

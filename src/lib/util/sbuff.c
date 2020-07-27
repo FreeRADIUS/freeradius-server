@@ -554,7 +554,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 					if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
-						p = m.p;
+						p = m.p + 1;			/* skip escape char */
 						goto check_subs;
 					}
 
@@ -578,7 +578,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 					if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
 						fr_sbuff_set_to_marker(&m);	/* backtrack */
-						p = m.p;
+						p = m.p + 1;			/* skip escape char */
 						goto check_subs;
 					}
 
@@ -594,7 +594,10 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				/*
 				 *	Not a recognised escape sequence.
 				 */
-				if (rules->subs[(uint8_t)*p] == '\0') goto next;
+				if (rules->subs[(uint8_t)*p] == '\0') {
+					if (rules->skip[(uint8_t)*p] == true) goto next;
+					goto next_esc;
+				}
 
 				/*
 				 *  	We already copied everything up
@@ -612,6 +615,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				continue;
 			}
 
+		next_esc:
 			if (*p == rules->chr) {
 				/*
 				 *	Copy out any data we got before
