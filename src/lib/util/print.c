@@ -740,9 +740,14 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 				switch (in->type) {
 				case FR_TYPE_OCTETS:
-					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+					if (in->vb_octets) {
+						subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
+						if (!subst) goto oom;
+						fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+					} else {
+						subst = talloc_zero_array(NULL, char, 1);
+						if (!subst) goto oom;
+					}
 					break;
 
 				case FR_TYPE_STRING:
