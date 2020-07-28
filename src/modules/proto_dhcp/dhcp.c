@@ -349,31 +349,24 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	packet->code = code[2] | PW_DHCP_OFFSET;
 
 	/*
-	 *	Create a unique vector from the MAC address and the
-	 *	DHCP opcode.  This is a hack for the RADIUS
+	 *	Create a unique vector from the xid and the client
+	 *	hardware address.  This is a hack for the RADIUS
 	 *	infrastructure in the rest of the server.
+	 *	It is also used for de-duplicating DHCP packets
 	 *
-	 *	Note: packet->data[2] == 6, which is smaller than
-	 *	sizeof(packet->vector)
-	 *
-	 *	FIXME:  Look for client-identifier in packet,
-	 *      and use that, too?
+	 *	Note: packet->data[2] == 6, when the hardware address
+	 *	is a MAC address which is smaller than AUTH_VECTOR_LEN
+	 *	but can be up to 16
 	 */
-	memset(packet->vector, 0, sizeof(packet->vector));
-	memcpy(packet->vector, packet->data + 28, packet->data[2]);
-	packet->vector[packet->data[2]] = packet->code & 0xff;
+	memset(packet->vector, 0, AUTH_VECTOR_LEN);
+	memcpy(packet->vector, packet->data + 4, 4); /* xid */
+	memcpy(packet->vector + 4, packet->data + 28,
+		(packet->data[2] + 4 > AUTH_VECTOR_LEN ?
+		AUTH_VECTOR_LEN - 4 - packet->data[2] : packet->data[2])); /* chaddr */
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
 	 *	FIXME: for OFFER / ACK       : src_port = dst_port - 1
-	 */
-
-	/*
-	 *	Unique keys are xid, client mac, and client ID?
-	 */
-
-	/*
-	 *	FIXME: More checks, like DHCP packet type?
 	 */
 
 	sizeof_dst = sizeof(dst);
@@ -2184,19 +2177,20 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	packet->code = code[2] | PW_DHCP_OFFSET;
 
 	/*
-	 *	Create a unique vector from the MAC address and the
-	 *	DHCP opcode.  This is a hack for the RADIUS
+	 *	Create a unique vector from the xid and the client
+	 *	hardware address.  This is a hack for the RADIUS
 	 *	infrastructure in the rest of the server.
+	 *	It is also used for de-duplicating DHCP packets
 	 *
-	 *	Note: packet->data[2] == 6, which is smaller than
-	 *	sizeof(packet->vector)
-	 *
-	 *	FIXME:  Look for client-identifier in packet,
-	 *      and use that, too?
+	 *	Note: packet->data[2] == 6, when the hardware address
+	 *	is a MAC address which is smaller than AUTH_VECTOR_LEN - 4
+	 *	but can be up to 16.
 	 */
-	memset(packet->vector, 0, sizeof(packet->vector));
-	memcpy(packet->vector, packet->data + 28, packet->data[2]);
-	packet->vector[packet->data[2]] = packet->code & 0xff;
+	memset(packet->vector, 0, AUTH_VECTOR_LEN);
+	memcpy(packet->vector, packet->data + 4, 4); /* xid */
+	memcpy(packet->vector + 4, packet->data + 28,
+		(packet->data[2] + 4 > AUTH_VECTOR_LEN ?
+		AUTH_VECTOR_LEN - 4 - packet->data[2] : packet->data[2])); /* chaddr */
 
 	packet->src_port = udp_src_port;
 	packet->dst_port = udp_dst_port;
