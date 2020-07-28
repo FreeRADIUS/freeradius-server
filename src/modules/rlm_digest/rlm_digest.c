@@ -428,7 +428,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		return RLM_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(&FR_DBUFF_TMP(&hash[0], sizeof(hash)), &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length)) != (vp->vp_length >> 1)) {
+	if (fr_hex2bin(&FR_DBUFF_TMP(&hash[0], sizeof(hash)),
+		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length)) != (ssize_t)(vp->vp_length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}
