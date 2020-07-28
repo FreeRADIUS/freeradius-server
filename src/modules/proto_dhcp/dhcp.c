@@ -353,17 +353,11 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 *	hardware address.  This is a hack for the RADIUS
 	 *	infrastructure in the rest of the server.
 	 *	It is also used for de-duplicating DHCP packets
-	 *
-	 *	Note: packet->data[2] == 6, when the hardware address
-	 *	is a MAC address which is smaller than AUTH_VECTOR_LEN
-	 *	but can be up to 16
 	 */
-	memset(packet->vector, 0, AUTH_VECTOR_LEN);
 	memcpy(packet->vector, packet->data + 4, 4); /* xid */
-	memcpy(packet->vector, packet->data + 24, 4); /* giaddr */
-	memcpy(packet->vector + 8, packet->data + 28,
-		(packet->data[2] + 8 > AUTH_VECTOR_LEN ?
-		AUTH_VECTOR_LEN - 8 - packet->data[2] : packet->data[2])); /* chaddr */
+	memcpy(packet->vector + 4, packet->data + 24, 4); /* giaddr */
+	packet->vector[8] = packet->code & 0xff;	/* message type */
+	memcpy(packet->vector + 9, packet->data + 28, 6); /* chaddr is always 6 for us */
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
@@ -2182,17 +2176,11 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	 *	hardware address.  This is a hack for the RADIUS
 	 *	infrastructure in the rest of the server.
 	 *	It is also used for de-duplicating DHCP packets
-	 *
-	 *	Note: packet->data[2] == 6, when the hardware address
-	 *	is a MAC address which is smaller than AUTH_VECTOR_LEN - 4
-	 *	but can be up to 16.
 	 */
-	memset(packet->vector, 0, AUTH_VECTOR_LEN);
 	memcpy(packet->vector, packet->data + 4, 4); /* xid */
-	memcpy(packet->vector, packet->data + 24, 4); /* giaddr */
-	memcpy(packet->vector + 8, packet->data + 28,
-		(packet->data[2] + 8 > AUTH_VECTOR_LEN ?
-		AUTH_VECTOR_LEN - 8 - packet->data[2] : packet->data[2])); /* chaddr */
+	memcpy(packet->vector + 4, packet->data + 24, 4); /* giaddr */
+	packet->vector[8] = packet->code & 0xff;	/* message type */
+	memcpy(packet->vector + 9, packet->data + 28, 6); /* chaddr is always 6 for us */
 
 	packet->src_port = udp_src_port;
 	packet->dst_port = udp_dst_port;
