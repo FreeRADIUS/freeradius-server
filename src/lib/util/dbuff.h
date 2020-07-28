@@ -372,7 +372,7 @@ static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
 #define fr_dbuff_set(_dst, _src) \
 _fr_dbuff_set(_dst, \
 	      _Generic(_src, \
-			fr_dbuff_t *	: (_src)->p, \
+			fr_dbuff_t *	: ((fr_dbuff_t *)(_src))->p, \
 			uint8_t const *	: (_src), \
 			uint8_t *	: (_src), \
 			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
