@@ -421,7 +421,7 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 		buffer[0] = 0x00;	/* clang scan */
 
 		decoded = fr_hex2bin(NULL, &FR_DBUFF_TMP(buffer, bufflen), &FR_SBUFF_IN(known_good, len), true);
-		if (decoded == (len >> 1)) {
+		if (decoded == (ssize_t)(len >> 1)) {
 			if (action) *action = NORMALISED_HEX;
 			return decoded;
 		}
