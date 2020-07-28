@@ -360,9 +360,10 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 */
 	memset(packet->vector, 0, AUTH_VECTOR_LEN);
 	memcpy(packet->vector, packet->data + 4, 4); /* xid */
-	memcpy(packet->vector + 4, packet->data + 28,
-		(packet->data[2] + 4 > AUTH_VECTOR_LEN ?
-		AUTH_VECTOR_LEN - 4 - packet->data[2] : packet->data[2])); /* chaddr */
+	memcpy(packet->vector, packet->data + 24, 4); /* giaddr */
+	memcpy(packet->vector + 8, packet->data + 28,
+		(packet->data[2] + 8 > AUTH_VECTOR_LEN ?
+		AUTH_VECTOR_LEN - 8 - packet->data[2] : packet->data[2])); /* chaddr */
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
@@ -2188,9 +2189,10 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	 */
 	memset(packet->vector, 0, AUTH_VECTOR_LEN);
 	memcpy(packet->vector, packet->data + 4, 4); /* xid */
-	memcpy(packet->vector + 4, packet->data + 28,
-		(packet->data[2] + 4 > AUTH_VECTOR_LEN ?
-		AUTH_VECTOR_LEN - 4 - packet->data[2] : packet->data[2])); /* chaddr */
+	memcpy(packet->vector, packet->data + 24, 4); /* giaddr */
+	memcpy(packet->vector + 8, packet->data + 28,
+		(packet->data[2] + 8 > AUTH_VECTOR_LEN ?
+		AUTH_VECTOR_LEN - 8 - packet->data[2] : packet->data[2])); /* chaddr */
 
 	packet->src_port = udp_src_port;
 	packet->dst_port = udp_dst_port;
