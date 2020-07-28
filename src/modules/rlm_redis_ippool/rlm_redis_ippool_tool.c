@@ -352,10 +352,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			}
 
 			if (!replies) replies = talloc_zero_array(inst, redisReply *, pipelined);
-			if (!replies) {
-				*out = NULL;
-				return -1;
-			}
+			if (!replies) return -1;
 
 			reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
 							     talloc_array_length(replies), conn);
