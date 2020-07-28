@@ -78,6 +78,37 @@ bool const sbuff_char_class_hex[UINT8_MAX + 1] = {
 	['F'] = true
 };
 
+/** Copy function that allows overlapping memory ranges to be copied
+ *
+ * @param[out] o_start		start of output buffer.
+ * @param[in] o_end		end of the output buffer.
+ * @param[in] i_start		start of the input buffer.
+ * @param[in] i_end		end of data to copy.
+ * @return
+ *	- >0 the number of bytes copied.
+ *      - 0 invalid args.
+ *      - <0 the number of bytes we'd need to complete the copy.
+ */
+static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
+						     char const *i_start, char const *i_end)
+{
+	ssize_t	diff;
+	size_t	i_len = i_end - i_start;
+
+	if (unlikely((o_end < o_start) || (i_end < i_start))) return 0;	/* sanity check */
+
+	diff = (o_end - o_start) - (i_len);
+	if (diff < 0) return diff;
+
+	if ((o_start < i_end) || (i_start > o_end)) {			/* no-overlap */
+		memcpy(o_start,  i_start, i_len);
+	} else {							/* overlap */
+		memmove(o_start, i_start, i_len);
+	}
+
+	return (i_len);
+}
+
 /** Update all markers and pointers in the set of sbuffs to point to new_buff
  *
  * This function should be used if the underlying buffer is realloced.
@@ -299,12 +330,14 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
  */
 #define FILL_OR_GOTO_DONE(_out, _in, _len) \
 do { \
-	ssize_t _copied = fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len); \
+	ssize_t _copied = safecpy((_out)->p, (_out)->end, (_in)->p, \
+				  ((_in)->p) + ((size_t)(_len) <= fr_sbuff_remaining(_in) ? (_len) : fr_sbuff_remaining(_in))); \
 	if (_copied < 0) { \
-		fr_sbuff_advance(_in, fr_sbuff_in_bstrncpy(_out, fr_sbuff_current(_in), _len + _copied)); \
+		if ((_out)->extend && ((_out)->extend(_out, _copied * -1) > 0)) continue; \
+		fr_sbuff_advance(_out, fr_sbuff_advance(_in, safecpy((_out)->p, (_out)->end, (_in)->p, (_in)->p + ((_len) + _copied)))); \
 		goto done;\
 	} \
-	fr_sbuff_advance(_in, _copied); \
+	fr_sbuff_advance(_out, fr_sbuff_advance(_in, _copied)); \
 } while(0)
 
 /** Constrain end pointer to prevent advancing more than the amount the called specified
@@ -335,7 +368,7 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 	CHECK_SBUFF_INIT(in);
 
-	do {
+	while (fr_sbuff_used_total(&our_in) < len) {
 		size_t chunk_len;
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
@@ -346,9 +379,10 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		if (chunk_len > remaining) chunk_len = remaining;
 
 		FILL_OR_GOTO_DONE(out, &our_in, chunk_len);
-	} while (fr_sbuff_used_total(&our_in) < len);
+	}
 
 done:
+	*out->p = '\0';
 	return fr_sbuff_used_total(&our_in);
 }
 
@@ -423,7 +457,7 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 
 	CHECK_SBUFF_INIT(in);
 
-	do {
+	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
 		char	*end;
 
@@ -437,9 +471,10 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
 		if (p != end) break;		/* stopped early, break */
-	} while (fr_sbuff_used_total(&our_in) < len);
+	};
 
 done:
+	*out->p = '\0';
 	return fr_sbuff_used_total(&our_in);
 }
 
@@ -468,7 +503,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 	CHECK_SBUFF_INIT(in);
 
-	do {
+	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
 		char	*end;
 
@@ -495,9 +530,10 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
 		if (p != end) break;		/* stopped early, break */
-	} while (fr_sbuff_used_total(&our_in) < len);
+	};
 
 done:
+	*out->p = '\0';
 	return fr_sbuff_used_total(&our_in);
 }
 
@@ -532,7 +568,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	CHECK_SBUFF_INIT(in);
 	if (unlikely(rules->chr == '\0')) return 0;
 
-	do {
+	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
 		char	*end;
 
@@ -647,9 +683,10 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
 		if (p != end) break;		/* stopped early, break */
-	} while (fr_sbuff_used_total(&our_in) < len);
+	};
 
 done:
+	*out->p = '\0';
 	return fr_sbuff_marker_release_behind(&o_s);
 }
 
@@ -851,7 +888,8 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 	len = strlen(str);
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
-	strlcpy(sbuff->p, str, len + 1);
+	safecpy(sbuff->p, sbuff->end, str, str + len);
+	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);
 }
@@ -873,7 +911,7 @@ ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
-	memcpy(sbuff->p, str, len);
+	safecpy(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);
@@ -899,7 +937,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 
 	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
 
-	memcpy(sbuff->p, str, len);
+	safecpy(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);

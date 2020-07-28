@@ -612,6 +612,19 @@ static void test_unescape_until(void)
 	}
 
 	{
+		char	in_escapes_collapse[] = "||foo||";
+
+		TEST_CASE("Collapse double escapes overlapping");
+		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_TMP(in_escapes_collapse, sizeof(in_escapes_collapse)),
+						   &sbuff, SIZE_MAX,
+						   (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+		TEST_CHECK_SLEN(5, slen);
+		TEST_CHECK_STRCMP("|foo|", in_escapes_collapse);
+		TEST_CHECK_STRCMP("", sbuff.p);
+	}
+
+	{
 		char		tmp_out[30 + 1];
 
 		fr_sbuff_escape_rules_t double_quote_rules = {
