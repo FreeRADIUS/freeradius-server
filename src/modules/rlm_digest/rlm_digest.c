@@ -205,7 +205,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
 		if (passwd->da == attr_digest_ha1) {
-			if (fr_hex2bin(&FR_DBUFF_TMP(&a1[0], sizeof(a1)), &FR_SBUFF_IN(passwd->vp_strvalue, passwd->vp_length)) != 16) {
+			if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&a1[0], sizeof(a1)),
+				       &FR_SBUFF_IN(passwd->vp_strvalue, passwd->vp_length), false) != 16) {
 				RDEBUG2("Invalid text in Digest-HA1");
 				return RLM_MODULE_INVALID;
 			}
@@ -428,8 +429,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		return RLM_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(&FR_DBUFF_TMP(&hash[0], sizeof(hash)),
-		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length)) != (ssize_t)(vp->vp_length >> 1)) {
+	if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&hash[0], sizeof(hash)),
+		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (ssize_t)(vp->vp_length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}

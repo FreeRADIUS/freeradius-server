@@ -456,7 +456,8 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 			return -1;
 		}
 
-		return fr_hex2bin(&FR_DBUFF_TMP(secret, BFD_MAX_SECRET_LENGTH), &FR_SBUFF_IN(value + 2, (len - 2)));
+		return fr_hex2bin(NULL, &FR_DBUFF_TMP(secret, BFD_MAX_SECRET_LENGTH),
+				  &FR_SBUFF_IN(value + 2, (len - 2)), false);
 	}
 
 	if (len >= 20) {

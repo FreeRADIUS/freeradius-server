@@ -216,7 +216,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
 			/*
 			 *	Hex encoding, consume three chars
 			 */
-			if (fr_hex2bin(&FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2)) == 1) {
+			if (fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1) {
 				inlen -= 2;
 				p += 2;
 				continue;
@@ -417,7 +417,7 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			 *	special encoding, get rewritten to the
 			 *	special encoding.
 			 */
-			if (fr_hex2bin(&FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2)) == 1) {
+			if (fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1) {
 				switch (c) {
 				case ' ':
 				case '#':

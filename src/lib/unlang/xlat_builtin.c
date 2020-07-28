@@ -1709,10 +1709,11 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
-	fr_value_box_t	*result;
-	char		*buff = NULL, *p, *end;
-	uint8_t		*bin;
-	size_t		len, outlen;
+	fr_value_box_t		*result;
+	char			*buff = NULL, *p, *end;
+	uint8_t			*bin;
+	size_t			len, outlen;
+	fr_sbuff_parse_error_t	err;
 
 	/*
 	 *	If there's no input, there's no output
@@ -1742,7 +1743,12 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(result = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(*in)) == 0);
-	fr_hex2bin(&FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p));
+	fr_hex2bin(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
+	if (err) {
+		REDEBUG2("Invalid hex string");
+		talloc_free(result);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_cursor_append(out, result);
 

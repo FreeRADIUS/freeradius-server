@@ -4432,7 +4432,7 @@ parse:
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(&FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len)) != (ssize_t)ret) {
+		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len), false) != (ssize_t)ret) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
 			return -1;
@@ -4452,7 +4452,8 @@ parse:
 				return -1;
 			}
 
-			bin = fr_hex2bin(&FR_DBUFF_TMP((uint8_t *) &dst->datum.filter, (len - 2) / 2), &FR_SBUFF_IN(in + 2, len - 2));
+			bin = fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &dst->datum.filter, (len - 2) / 2),
+					 &FR_SBUFF_IN(in + 2, len - 2), false);
 			if (bin < ret) {
 				memset(((uint8_t *) &dst->datum.filter) + bin, 0, ret - bin);
 			}

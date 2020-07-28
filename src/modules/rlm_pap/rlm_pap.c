@@ -717,7 +717,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(UNUSED rlm_pap_t const *inst, RE
 	len = xlat_eval(charbuf, sizeof(charbuf), request, "%{mschap:LM-Hash %{User-Password}}", NULL, NULL);
 	if (len < 0) return RLM_MODULE_FAIL;
 
-	if ((fr_hex2bin(&FR_DBUFF_TMP(digest, sizeof(digest)), &FR_SBUFF_IN(charbuf, len)) != (ssize_t)known_good->vp_length) ||
+	if ((fr_hex2bin(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)), &FR_SBUFF_IN(charbuf, len), false) !=
+	     (ssize_t)known_good->vp_length) ||
 	    (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
@@ -746,7 +747,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	/*
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
-	if (fr_hex2bin(&FR_DBUFF_TMP(digest, sizeof(digest)), &FR_SBUFF_IN(known_good->vp_strvalue, known_good->vp_length)) != 16) {
+	if (fr_hex2bin(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)),
+		       &FR_SBUFF_IN(known_good->vp_strvalue, known_good->vp_length), false) != 16) {
 		REDEBUG("\"known good\" NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_INVALID;
 	}

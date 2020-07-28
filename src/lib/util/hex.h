@@ -32,7 +32,7 @@ extern "C" {
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/dbuff.h>
 
-ssize_t		fr_hex2bin(fr_dbuff_t *out, fr_sbuff_t *in);
+ssize_t		fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in, bool no_trailing);
 
 ssize_t		fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in);
 

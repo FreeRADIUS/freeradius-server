@@ -392,8 +392,9 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 
 	strlcpy(identity, conf->psk_identity, max_identity_len);
 
-	return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
-				        &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len));
+	return fr_hex2bin(NULL,
+			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
+			  &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len), false);
 }
 
 /** Determine the PSK to use for an incoming connection
@@ -458,7 +459,9 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 *	convert the expansion from printable string
 		 *	back to hex.
 		 */
-		return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len), &FR_SBUFF_IN(buffer, hex_len));
+		return fr_hex2bin(NULL,
+				  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
+				  &FR_SBUFF_IN(buffer, hex_len), false);
 	}
 
 	if (!conf->psk_identity) {
@@ -479,7 +482,9 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	psk_len = strlen(conf->psk_password);
 	if (psk_len > (2 * max_psk_len)) return 0;
 
-	return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len), &FR_SBUFF_IN(conf->psk_password, psk_len));
+	return fr_hex2bin(NULL,
+			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
+			  &FR_SBUFF_IN(conf->psk_password, psk_len), false);
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
 

@@ -113,7 +113,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 	ptr = talloc_array(map, uint8_t, len >> 1);
 	if (!ptr) return false;
 
-	fr_hex2bin(&FR_DBUFF_TMP(ptr, len >> 1), &FR_SBUFF_IN(rhs + 2, len));
+	fr_hex2bin(NULL, &FR_DBUFF_TMP(ptr, len >> 1), &FR_SBUFF_IN(rhs + 2, len), false);
 
 	/*
 	 *	Convert to da->type (if possible);

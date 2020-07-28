@@ -815,6 +815,37 @@ do { \
  * @param[in] _len	expected output len.
  * @param[in] ...	additional arguments to pass to _func.
  */
+#define SBUFF_OUT_TALLOC_ERR_FUNC_DEF(_func, _in, _len, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	fr_sbuff_parse_error_t	err; \
+	ssize_t			slen; \
+	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
+			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
+	slen = _func(&err, &sbuff, _in, _len, ##__VA_ARGS__); \
+	if (slen <= 0) { \
+		if (err != FR_SBUFF_PARSE_OK) { \
+			TALLOC_FREE(sbuff.buff); \
+		} else { \
+			fr_sbuff_trim_talloc(&sbuff, 0); \
+		} \
+		*out = sbuff.buff; \
+		return 0; \
+	} \
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
+	*out = sbuff.buff; \
+	return (size_t)slen; \
+}
+
+/** Build a talloc wrapper function for a fr_sbuff_out_* function
+ *
+ * @param[in] _func	to call.
+ * @param[in] _in	input sbuff arg.
+ * @param[in] _len	expected output len.
+ * @param[in] ...	additional arguments to pass to _func.
+ */
 #define SBUFF_OUT_TALLOC_FUNC_DEF(_func, _in, _len, ...) \
 { \
 	fr_sbuff_t		sbuff; \

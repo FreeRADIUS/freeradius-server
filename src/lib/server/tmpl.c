@@ -1733,7 +1733,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
 			(void)fr_value_box_mem_alloc(vpt, &bin, &vpt->data.literal, NULL, binlen, false);
-			len = fr_hex2bin(&FR_DBUFF_TMP(bin, binlen), &FR_SBUFF_IN(in + 2, inlen - 2));
+			len = fr_hex2bin(NULL, &FR_DBUFF_TMP(bin, binlen), &FR_SBUFF_IN(in + 2, inlen - 2), false);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains non-hex char");
 				talloc_free(vpt);

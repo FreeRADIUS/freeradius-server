@@ -390,7 +390,8 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *i
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				fr_hex2bin(&FR_DBUFF_TMP(data->auth_challenge, 16), &FR_SBUFF_IN(buf, strlen(buf)));
+				fr_hex2bin(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
+					   &FR_SBUFF_IN(buf, strlen(buf)), false);
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}

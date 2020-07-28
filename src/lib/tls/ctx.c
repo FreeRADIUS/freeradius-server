@@ -395,7 +395,9 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	Check the password now, so that we don't have
 		 *	errors at run-time.
 		 */
-		hex_len = fr_hex2bin(&FR_DBUFF_TMP(buffer, sizeof(buffer)), &FR_SBUFF_IN(conf->psk_password, psk_len));
+		hex_len = fr_hex2bin(NULL,
+				     &FR_DBUFF_TMP(buffer, sizeof(buffer)),
+				     &FR_SBUFF_IN(conf->psk_password, psk_len), false);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
 			goto error;

@@ -1222,7 +1222,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst, 
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(&FR_DBUFF_TMP(nthashhash, NT_DIGEST_LENGTH), &FR_SBUFF_IN(buffer + 8, len)) != NT_DIGEST_LENGTH) {
+		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(nthashhash, NT_DIGEST_LENGTH),
+			       &FR_SBUFF_IN(buffer + 8, len), false) != NT_DIGEST_LENGTH) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}

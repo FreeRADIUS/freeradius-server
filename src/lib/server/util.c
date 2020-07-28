@@ -311,7 +311,9 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 			/*
 			 *	If hex2bin returns 0 the next two chars weren't hexits.
 			 */
-			if (fr_hex2bin(&FR_DBUFF_TMP((uint8_t *) out, 1), &FR_SBUFF_IN(in, 1)) == 0) return in - (p + 1);
+			if (fr_hex2bin(NULL,
+				       &FR_DBUFF_TMP((uint8_t *) out, 1),
+				       &FR_SBUFF_IN(in, 1), false) == 0) return in - (p + 1);
 			in += 2;
 			out++;
 			freespace--;

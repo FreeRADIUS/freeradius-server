@@ -128,13 +128,17 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	Hex data.
 		 */
 		len = strlen(data_name + 2);
-		if ((len & 0x01) != 0) {
-			REDEBUG("Invalid hex string in '%s'", data_name);
-			goto nothing;
-		}
-		input = blob;
-		input_len = fr_hex2bin(&FR_DBUFF_TMP(blob, sizeof(blob)), &FR_SBUFF_IN(data_name + 2, len));
+		if (len > 0) {
+			fr_sbuff_parse_error_t err;
 
+			input = blob;
+			input_len = fr_hex2bin(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
+					       &FR_SBUFF_IN(data_name + 2, len), true);
+			if (err) {
+				REDEBUG("Invalid hex string in '%s'", data_name);
+				goto nothing;
+			}
+		}
 	} else {
 		GOTO_ERROR;
 	}
