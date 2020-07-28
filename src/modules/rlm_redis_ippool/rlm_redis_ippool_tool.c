@@ -1540,7 +1540,7 @@ do { \
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
 			fr_exit_now(EXIT_FAILURE);
 		}
-		fr_assert(leases);
+		if (!fr_cond_assert(leases)) continue;
 
 		len = talloc_array_length(leases);
 		INFO("Retrieved information for %zu address(es)/prefix(es)", len - 1);
