@@ -561,7 +561,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	 *	exist according to RFC 4388 Section 6.3
 	 */
 	if (option[2] != FR_DHCP_LEASE_QUERY) {
-		if (dhcp->hlen == 6) memcpy(&chaddr, &dhcp->chaddr, 6);
+		if (dhcp->hlen == 6) memcpy(&track->chaddr, &dhcp->chaddr, 6);
 
 	} else {
 		memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
