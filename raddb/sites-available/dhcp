@@ -102,6 +102,14 @@ listen {
 	#
 	# This will allow the server to set ARP table entries
 	# for newly allocated IPs
+
+	# De-duplicate DHCP packets.  If clients don't receive
+	# a reply within their timeout, most will re-transmit.
+	# A reply to either packet will satisfy, so de-duplicating
+	# helps manage load on a busy server
+	performance {
+		skip_duplicate_checks = no
+	}
 }
 
 #  Packets received on the socket will be processed through one
