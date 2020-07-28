@@ -331,7 +331,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
 #define FILL_OR_GOTO_DONE(_out, _in, _len) \
 do { \
 	ssize_t _copied = safecpy((_out)->p, (_out)->end, (_in)->p, \
-				  ((_in)->p) + ((size_t)(_len) <= fr_sbuff_remaining(_in) ? (_len) : fr_sbuff_remaining(_in))); \
+				  ((_in)->p) + ((size_t)(_len) <= fr_sbuff_remaining(_in) ? (size_t)(_len) : fr_sbuff_remaining(_in))); \
 	if (_copied < 0) { \
 		if ((_out)->extend && ((_out)->extend(_out, _copied * -1) > 0)) continue; \
 		fr_sbuff_advance(_out, fr_sbuff_advance(_in, safecpy((_out)->p, (_out)->end, (_in)->p, (_in)->p + ((_len) + _copied)))); \
