@@ -540,18 +540,33 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	dhcp_packet_t const *dhcp = (dhcp_packet_t const *) packet;
 	uint8_t const  *option;
 
-	if (dhcp->hlen != 6) return NULL;
-
 	option = fr_dhcpv4_packet_get_option(dhcp, packet_len, attr_message_type);
-	if (!option || (option[1] == 0)) return NULL;
+	if (!option || (option[1] == 0)) {
+		DEBUG("No %s in the packet - ignoring", attr_message_type->name);
+		return NULL;
+	}
 
 	track = talloc_zero(ctx, proto_dhcpv4_track_t);
 	if (!track) return NULL;
 
 	memcpy(&track->xid, &dhcp->xid, sizeof(track->xid));
-	memcpy(&track->chaddr, &dhcp->chaddr, 6);
+
 	track->message_type = option[2];
 
+	/*
+	 *	Track most packets by chaddr.  For lease queries, that
+	 *	field can be the client address being queried, not the
+	 *	address of the system which sent the packet.  So
+	 *	instead for lease queries, we use giaddr, which MUST
+	 *	exist according to RFC 4388 Section 6.3
+	 */
+	if (option[2] != FR_DHCP_LEASE_QUERY) {
+		if (dhcp->hlen == 6) memcpy(&chaddr, &dhcp->chaddr, 6);
+
+	} else {
+		memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
+	}
+	
 	return track;
 }
 
@@ -573,6 +588,12 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	 *	Hardware addresses should also be randomly distributed.
 	 */
 	rcode = memcmp(&a->chaddr, &b->chaddr, sizeof(a->chaddr));
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Compare giaddr for lease queries.
+	 */
+	rcode = memcmp(&a->giaddr, &b->giaddr, sizeof(a->giaddr));
 	if (rcode != 0) return rcode;
 
 	return (a->message_type < b->message_type) - (a->message_type > b->message_type);

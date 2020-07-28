@@ -50,4 +50,5 @@ typedef struct {
 	int				message_type;
 	uint32_t			xid;
 	fr_ethernet_t			chaddr;
+	uint32_t			giaddr;		//!< only for lease queries
 } proto_dhcpv4_track_t;
