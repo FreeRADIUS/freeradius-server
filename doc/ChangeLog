@@ -42,7 +42,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Do home_server failover immediately when an initial TCP / Radsec
 	  connection fails.
 	* Port EAP-PWD constant time fixes from "master" branch.  The issue
-	  was verified by Mohamed Sabt, and a patch supplied by Daniel De Almeida Braga.
+	  was verified by Mohamed Sabt, and a patch supplied by
+	  Daniel De Almeida Braga.
+	* Clear error on SQLITE_BUSY to prevent memory leak in corner cases.
+	  Patch from Nick Porter.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
