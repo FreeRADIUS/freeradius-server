@@ -32,11 +32,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 #include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
@@ -1741,7 +1742,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(result = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(*in)) == 0);
-	fr_hex2bin(bin, outlen, p, end - p);
+	fr_hex2bin(&FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p));
 
 	fr_cursor_append(out, result);
 
@@ -1841,7 +1842,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 	vb->vb_length = ((*in)->vb_length * 2);
 	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
-	fr_bin2hex(p, (*in)->vb_octets, (*in)->vb_length);
+	fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP((*in)->vb_octets, (*in)->vb_length));
 
 	fr_cursor_append(out, vb);
 

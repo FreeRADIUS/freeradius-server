@@ -28,8 +28,8 @@
 #include <freeradius-devel/unlang/base.h>
 
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/socket.h>
@@ -456,7 +456,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 			return -1;
 		}
 
-		return fr_hex2bin(secret, BFD_MAX_SECRET_LENGTH, value + 2, (len - 2));
+		return fr_hex2bin(&FR_DBUFF_TMP(secret, BFD_MAX_SECRET_LENGTH), &FR_SBUFF_IN(value + 2, (len - 2)));
 	}
 
 	if (len >= 20) {

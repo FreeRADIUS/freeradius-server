@@ -22,8 +22,10 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -156,86 +158,6 @@ int rad_unlockfd(int fd, int lock_len)
 	 *	Note UNLOCK.
 	 */
 	return rad_lock(fd, lock_len, F_SETLK, F_UNLCK);
-}
-
-static char const hextab[] = "0123456789abcdef";
-
-/** Convert hex strings to binary data
- *
- * @param bin Buffer to write output to.
- * @param outlen length of output buffer (or length of input string / 2).
- * @param hex input string.
- * @param inlen length of the input string
- * @return length of data written to buffer.
- */
-size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
-{
-	size_t i;
-	size_t len;
-	char *c1, *c2;
-
-	/*
-	 *	Smartly truncate output, caller should check number of bytes
-	 *	written.
-	 */
-	len = inlen >> 1;
-	if (len > outlen) len = outlen;
-
-	for (i = 0; i < len; i++) {
-		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), sizeof(hextab))) ||
-		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), sizeof(hextab))))
-			break;
-		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
-	}
-
-	return i;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @warning If the output buffer isn't long enough, we have a buffer overflow.
- *
- * @param[out] hex Buffer to write hex output.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
-{
-	size_t i;
-
-	for (i = 0; i < inlen; i++) {
-		hex[0] = hextab[((*bin) >> 4) & 0x0f];
-		hex[1] = hextab[*bin & 0x0f];
-		hex += 2;
-		bin++;
-	}
-
-	*hex = '\0';
-	return inlen * 2;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @param[in] ctx to alloc buffer in.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
-{
-	char *buff;
-
-	buff = talloc_array(ctx, char, (inlen << 2));
-	if (!buff) return NULL;
-
-	fr_bin2hex(buff, bin, inlen);
-
-	return buff;
 }
 
 /** Consume the integer (or hex) portion of a value string

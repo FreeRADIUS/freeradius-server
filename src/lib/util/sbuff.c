@@ -847,28 +847,6 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
 SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100);
 
-/** Copy char into the sbuff
- *
- * @param[in] sbuff	to copy into.
- * @param[in] c	to copy into buffer.
- * @return
- *	- >= 0 the number of bytes copied into the sbuff.
- *	- <0 the number of bytes required to complete the copy operation.
- */
-ssize_t fr_sbuff_in_char(fr_sbuff_t *sbuff, char c)
-{
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
-
-	FR_SBUFF_EXTEND_OR_RETURN(sbuff, 1);
-
-	*sbuff->p = c;
-	*(sbuff->p + 1) = '\0';
-
-	return fr_sbuff_advance(sbuff, 1);
-}
-
 /** Copy bytes into the sbuff up to the first \0
  *
  * @param[in] sbuff	to copy into.

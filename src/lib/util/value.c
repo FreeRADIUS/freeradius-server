@@ -51,10 +51,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/net.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -4432,7 +4432,7 @@ parse:
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(p, ret, in + 2, len) != (size_t)ret) {
+		if (fr_hex2bin(&FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len)) != (ssize_t)ret) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
 			return -1;
@@ -4452,7 +4452,7 @@ parse:
 				return -1;
 			}
 
-			bin = fr_hex2bin((uint8_t *) &dst->datum.filter, ret, in + 2, len - 2);
+			bin = fr_hex2bin(&FR_DBUFF_TMP((uint8_t *) &dst->datum.filter, (len - 2) / 2), &FR_SBUFF_IN(in + 2, len - 2));
 			if (bin < ret) {
 				memset(((uint8_t *) &dst->datum.filter) + bin, 0, ret - bin);
 			}
@@ -4785,8 +4785,8 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p[0] = '0';
 		p[1] = 'x';
 
-		if (data->vb_octets) {
-			fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
+		if (data->vb_octets && data->datum.length) {
+			fr_bin2hex(&FR_SBUFF_OUT(p + 2, (data->datum.length * 2) + 1), &FR_DBUFF_TMP(data->vb_octets, data->datum.length));
 			p[2 + (data->datum.length * 2)] = '\0';
 		} else {
 			p[2] = '\0';
@@ -5535,10 +5535,11 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		}
 
 		/* Get maximum number of uint8s we can encode given (end - p) */
-		if (data->vb_octets) {
+		if (data->vb_octets && data->datum.length) {
 			max = (((end - p) % 2) ? (end - p) - 1 : (end - p) - 2) / 2;
-			fr_bin2hex(p, data->vb_octets,
-				   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
+			fr_bin2hex(&FR_SBUFF_OUT(p, end),
+				   &FR_DBUFF_TMP(data->vb_octets,
+				   		 (size_t)data->datum.length > max ? max : (size_t)data->datum.length));
 		} else {
 			*p = '\0';
 		}

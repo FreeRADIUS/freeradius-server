@@ -26,6 +26,7 @@ SOURCES		:= \
 		   getaddrinfo.c \
 		   hash.c \
 		   heap.c \
+		   hex.c \
 		   hmac_md5.c \
 		   hmac_sha1.c \
 		   hw.c \

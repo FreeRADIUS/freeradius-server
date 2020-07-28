@@ -26,6 +26,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+
+#include <freeradius-devel/util/hex.h>
+
 #include <ctype.h>
 
 static fr_dict_t const *dict_freeradius;
@@ -130,7 +133,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			goto nothing;
 		}
 		input = blob;
-		input_len = fr_hex2bin(blob, sizeof(blob), data_name + 2, len);
+		input_len = fr_hex2bin(&FR_DBUFF_TMP(blob, sizeof(blob)), &FR_SBUFF_IN(data_name + 2, len));
 
 	} else {
 		GOTO_ERROR;

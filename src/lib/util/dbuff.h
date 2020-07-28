@@ -209,6 +209,9 @@ _fr_dbuff_init(_out, \
 	       (uint8_t const *)(_start), \
 	       _Generic((_len_or_end), \
 			size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+			long		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+			int		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+			unsigned int	: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
 			uint8_t *	: (uint8_t const *)(_len_or_end), \
 			uint8_t const *	: (uint8_t const *)(_len_or_end), \
 			char *		: (uint8_t const *)(_len_or_end), \
@@ -236,6 +239,9 @@ _fr_dbuff_init(_out, \
 	.start_i	= (uint8_t const *)(_start), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+				long		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+				int		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
+				unsigned int	: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
 				uint8_t *	: (uint8_t const *)(_len_or_end), \
 				uint8_t const *	: (uint8_t const *)(_len_or_end), \
 				char *		: (uint8_t const *)(_len_or_end), \

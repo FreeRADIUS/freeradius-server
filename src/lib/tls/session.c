@@ -28,9 +28,10 @@
 #ifdef HAVE_OPENSSL_OCSP_H
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/pair.h>
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
@@ -391,7 +392,8 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 
 	strlcpy(identity, conf->psk_identity, max_identity_len);
 
-	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
+	return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
+				        &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len));
 }
 
 /** Determine the PSK to use for an incoming connection
@@ -405,9 +407,9 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
  *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
  */
 unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
-				       unsigned char *psk, unsigned int max_psk_len)
+					  unsigned char *psk, unsigned int max_psk_len)
 {
-	unsigned int	psk_len = 0;
+	size_t		psk_len = 0;
 	fr_tls_conf_t	*conf;
 	REQUEST		*request;
 
@@ -456,7 +458,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 *	convert the expansion from printable string
 		 *	back to hex.
 		 */
-		return fr_hex2bin(psk, max_psk_len, buffer, hex_len);
+		return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len), &FR_SBUFF_IN(buffer, hex_len));
 	}
 
 	if (!conf->psk_identity) {
@@ -477,7 +479,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	psk_len = strlen(conf->psk_password);
 	if (psk_len > (2 * max_psk_len)) return 0;
 
-	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
+	return fr_hex2bin(&FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len), &FR_SBUFF_IN(conf->psk_password, psk_len));
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
 

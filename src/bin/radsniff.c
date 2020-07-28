@@ -28,14 +28,15 @@ RCSID("$Id$")
 
 #include <time.h>
 #include <math.h>
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/event.h>
 
 #include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radius/list.h>
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/timeval.h>
-#include <freeradius-devel/radius/list.h>
 
 #ifdef HAVE_COLLECTDC_H
 #  include <collectd/client.h>
@@ -486,7 +487,8 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 				fr_pair_list_log(&default_log, packet->vps);
 			}
 
-			fr_bin2hex(vector, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
+			fr_bin2hex(&FR_SBUFF_OUT(vector, sizeof(vector)),
+						 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}

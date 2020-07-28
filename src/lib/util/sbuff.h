@@ -183,6 +183,7 @@ do { \
 				size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				int		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
+				unsigned int	: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				char *		: (char const *)(_len_or_end), \
 				char const *	: (char const *)(_len_or_end) \
 			), \
@@ -209,6 +210,7 @@ do { \
 				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
 				long		: (char const *)(_start) + (size_t)(_len_or_end), \
 				int		: (char const *)(_start) + (size_t)(_len_or_end), \
+				unsigned int	: (char const *)(_start) + (size_t)(_len_or_end), \
 				char *		: (char const *)(_len_or_end), \
 				char const *	: (char const *)(_len_or_end) \
 			), \
@@ -709,8 +711,8 @@ static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
  *
  * @{
  */
-ssize_t	fr_sbuff_in_char(fr_sbuff_t *sbuff, char c);
-#define	FR_SBUFF_IN_CHAR_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_char, ##__VA_ARGS__)
+#define	fr_sbuff_in_char(_sbuff, ...) fr_sbuff_in_bstrncpy(_sbuff, ((char []){ __VA_ARGS__ }), sizeof((char []){ __VA_ARGS__ }))
+#define	FR_SBUFF_IN_CHAR_RETURN(_sbuff, ...) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, _sbuff, ((char []){ __VA_ARGS__ }), sizeof((char []){ __VA_ARGS__ }))
 
 ssize_t	fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
 #define	FR_SBUFF_IN_STRCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_strcpy, ##__VA_ARGS__)

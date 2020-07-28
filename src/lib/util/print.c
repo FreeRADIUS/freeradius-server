@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
 
@@ -741,13 +742,13 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				case FR_TYPE_OCTETS:
 					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
 					if (!subst) goto oom;
-					fr_bin2hex(subst, in->vb_octets, in->vb_length);
+					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
 					break;
 
 				case FR_TYPE_STRING:
 					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
 					if (!subst) goto oom;
-					fr_bin2hex(subst, (uint8_t const *)in->vb_strvalue, in->vb_length);
+					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
 					break;
 
 				default:
@@ -764,7 +765,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 					subst = talloc_array(NULL, char, (dst.vb_length * 2) + 1);
 					if (!subst) goto oom;
-					fr_bin2hex(subst, dst.vb_octets, dst.vb_length);
+					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(dst.vb_octets, dst.vb_length));
 
 					fr_value_box_clear(&dst);
 					break;

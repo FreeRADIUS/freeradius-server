@@ -26,14 +26,15 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/trie.h>
 
@@ -740,7 +741,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			hex_len = talloc_array_length(value) - 3;
 			bin_len = (hex_len / 2) + 1;
 			MEM(bin = talloc_array(c, uint8_t, bin_len));
-			converted = fr_hex2bin(bin, bin_len, value + 2, hex_len);
+			converted = fr_hex2bin(&FR_DBUFF_TMP(bin, bin_len), &FR_SBUFF_IN(value + 2, hex_len));
 			if (converted < (bin_len - 1)) {
 				cf_log_err(cs, "Invalide hex string in shared secret");
 				goto error;

@@ -30,9 +30,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <openssl/rand.h>
 #include <openssl/dh.h>
@@ -394,7 +395,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	Check the password now, so that we don't have
 		 *	errors at run-time.
 		 */
-		hex_len = fr_hex2bin(buffer, sizeof(buffer), conf->psk_password, psk_len);
+		hex_len = fr_hex2bin(&FR_DBUFF_TMP(buffer, sizeof(buffer)), &FR_SBUFF_IN(conf->psk_password, psk_len));
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
 			goto error;
@@ -748,7 +749,7 @@ post_ca:
 	    		goto error;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#ifdef X509_V_FLAG_USE_DELTAS 
+#ifdef X509_V_FLAG_USE_DELTAS
 		/*
 		 *	If set, delta CRLs (if present) are used to
 		 *	determine certificate status. If not set

@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/util/debug.h>
 
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/md4.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
@@ -581,7 +582,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			return -1;
 		}
 
-		fr_bin2hex(*out, buffer, NT_DIGEST_LENGTH);
+		fr_bin2hex(&FR_SBUFF_OUT(*out, (NT_DIGEST_LENGTH * 2) + 1), &FR_DBUFF_TMP(buffer, NT_DIGEST_LENGTH));
 		(*out)[32] = '\0';
 		RDEBUG2("NT-Hash of \"known-good\" password: %s", *out);
 		return 32;
@@ -599,7 +600,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		fr_skip_whitespace(p);
 
 		smbdes_lmpwdhash(p, buffer);
-		fr_bin2hex(*out, buffer, LM_DIGEST_LENGTH);
+		fr_bin2hex(&FR_SBUFF_OUT(*out, (LM_DIGEST_LENGTH * 2) + 1), &FR_DBUFF_TMP(buffer, LM_DIGEST_LENGTH));
 		(*out)[32] = '\0';
 		RDEBUG2("LM-Hash of %s = %s", p, *out);
 		return 32;
@@ -797,7 +798,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 
 		/* now the password blobs */
 		len = sprintf(buf, "new-nt-password-blob: ");
-		fr_bin2hex(buf+len, new_nt_password, 516);
+		fr_bin2hex(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(new_nt_password, 516));
 		buf[len+1032] = '\n';
 		buf[len+1033] = '\0';
 		len = strlen(buf);
@@ -807,7 +808,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		}
 
 		len = sprintf(buf, "old-nt-hash-blob: ");
-		fr_bin2hex(buf+len, old_nt_hash, NT_DIGEST_LENGTH);
+		fr_bin2hex(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH));
 		buf[len+32] = '\n';
 		buf[len+33] = '\0';
 		len = strlen(buf);
@@ -1221,7 +1222,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst, 
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(nthashhash, NT_DIGEST_LENGTH, buffer + 8, len) != NT_DIGEST_LENGTH) {
+		if (fr_hex2bin(&FR_DBUFF_TMP(nthashhash, NT_DIGEST_LENGTH), &FR_SBUFF_IN(buffer + 8, len)) != NT_DIGEST_LENGTH) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
