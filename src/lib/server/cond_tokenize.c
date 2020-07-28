@@ -822,7 +822,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 
 		fr_assert(!tmpl_is_regex_unparsed(c->data.vpt));
 
-		if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
+		if (tmpl_unknown_attr_add(c->data.vpt) < 0) {
 			p = lhs - tlen;
 			return_P("Failed defining attribute");
 		}
@@ -946,7 +946,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P(fr_strerror());
 		}
 
-		if (tmpl_define_unknown_attr(map->lhs) < 0) {
+		if (tmpl_unknown_attr_add(map->lhs) < 0) {
 			*error = "Failed defining attribute";
 		return_lhs:
 			talloc_free(c);
@@ -999,7 +999,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			}
 		}
 
-		if (tmpl_define_unknown_attr(map->rhs) < 0) {
+		if (tmpl_unknown_attr_add(map->rhs) < 0) {
 			*error = "Failed defining attribute";
 		return_rhs:
 			talloc_free(c);

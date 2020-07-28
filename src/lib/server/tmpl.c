@@ -1192,7 +1192,7 @@ static vp_tmpl_rules_t const default_rules = {
  *							#vp_tmpl_t will be produced.
  *							If #tmpl_afrom_attr_substr is being called on
  *							startup, the #vp_tmpl_t may be passed to
- *							#tmpl_define_unknown_attr to
+ *							#tmpl_unknown_attr_add to
  *							add the unknown attribute to the main dictionary.
  *							If the unknown attribute is not added to
  *							the main dictionary the #vp_tmpl_t cannot be used
@@ -1894,7 +1894,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
  *
  * #tmpl_cast_to_vp does the same as #tmpl_cast_in_place, but outputs a #VALUE_PAIR.
  *
- * #tmpl_define_unknown_attr converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
+ * #tmpl_unknown_attr_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
  * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main
  * dictionary, and updating the ``tmpl_da`` pointer.
  * @{
@@ -1963,7 +1963,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
+int tmpl_unknown_attr_add(vp_tmpl_t *vpt)
 {
 	fr_dict_attr_t const *da;
 
