@@ -100,7 +100,7 @@ static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
 	diff = (o_end - o_start) - (i_len);
 	if (diff < 0) return diff;
 
-	if ((o_start < i_end) || (i_start > o_end)) {			/* no-overlap */
+	if ((o_end < i_start) || (i_start > o_end)) {			/* no-overlap */
 		memcpy(o_start,  i_start, i_len);
 	} else {							/* overlap */
 		memmove(o_start, i_start, i_len);
