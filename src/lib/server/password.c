@@ -416,9 +416,11 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 	 *	twice the minimum length.
 	 */
 	if (!(len & 0x01) && len >= (2 * min_len)) {
-		size_t	decoded;
+		ssize_t	decoded;
 
-		decoded = fr_hex2bin(NULL, &FR_DBUFF_TMP(buffer, bufflen), &FR_SBUFF_IN(known_good, len), false);
+		buffer[0] = 0x00;	/* clang scan */
+
+		decoded = fr_hex2bin(NULL, &FR_DBUFF_TMP(buffer, bufflen), &FR_SBUFF_IN(known_good, len), true);
 		if (decoded == (len >> 1)) {
 			if (action) *action = NORMALISED_HEX;
 			return decoded;

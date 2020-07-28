@@ -45,7 +45,7 @@ ssize_t fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 	fr_dbuff_t	our_out = FR_DBUFF_NO_ADVANCE(out);
 
 	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_in, 2)) {
-		char *c1, *c2;
+		char *c1, *c2 = NULL;
 
 		if(!(c1 = memchr(hextab, tolower((int) *our_in.p), sizeof(hextab))) ||
 		   !(c2 = memchr(hextab, tolower((int) *(our_in.p + 1)), sizeof(hextab)))) {

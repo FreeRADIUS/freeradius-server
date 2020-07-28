@@ -138,6 +138,9 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				REDEBUG("Invalid hex string in '%s'", data_name);
 				goto nothing;
 			}
+		} else {
+			input = blob;
+			input_len = 0;
 		}
 	} else {
 		GOTO_ERROR;
