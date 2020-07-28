@@ -169,15 +169,13 @@ do { \
 
 /** Creates a compound literal to pass into functions which accept a sbuff
  *
- * @note This should only be used as a temporary measure when refactoring code.
- *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
  *
  * @param[in] _start		of the buffer.
  * @param[in] _len_or_end	Length of the buffer or the end pointer.
  */
-#define FR_SBUFF_TMP(_start, _len_or_end) \
+#define FR_SBUFF_OUT(_start, _len_or_end) \
 (fr_sbuff_t){ \
 	.buff_i		= _start, \
 	.start_i	= _start, \
@@ -194,6 +192,33 @@ do { \
 				char const *	: true \
 	       		) \
 }
+
+/** Creates a compound literal to pass into functions which accept a sbuff
+ *
+ * @note The return value of the function should be used to determine how much
+ *	 data was written to the buffer.
+ *
+ * @param[in] _start		of the buffer.
+ * @param[in] _len_or_end	Length of the buffer or the end pointer.
+ */
+#define FR_SBUFF_IN(_start, _len_or_end) \
+(fr_sbuff_t){ \
+	.buff_i		= _start, \
+	.start_i	= _start, \
+	.end_i		= _Generic((_len_or_end), \
+				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
+				long		: (char const *)(_start) + (size_t)(_len_or_end), \
+				int		: (char const *)(_start) + (size_t)(_len_or_end), \
+				char *		: (char const *)(_len_or_end), \
+				char const *	: (char const *)(_len_or_end) \
+			), \
+	.p_i		= _start, \
+	.is_const	= _Generic((_start), \
+				char *		: false, \
+				char const *	: true \
+	       		) \
+}
+
 
 void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 

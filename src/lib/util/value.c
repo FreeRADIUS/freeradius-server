@@ -4354,11 +4354,11 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 		if (len > (sizeof(buffer) - 1)) {
 			name_len = fr_value_str_aunescape(NULL, &tmp,
-							  &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
+							  &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
 			name = tmp;
 		} else {
-			name_len = fr_value_str_unescape(&FR_SBUFF_TMP(buffer, sizeof(buffer)),
-							 &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
+			name_len = fr_value_str_unescape(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+							 &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
 			name = buffer;
 		}
 		fr_assert(name);
@@ -4395,7 +4395,7 @@ parse:
 	{
 		char *buff;
 
-		ret = fr_value_str_aunescape(ctx, &buff, &FR_SBUFF_TMP(in, len + 1), SIZE_MAX, quote);
+		ret = fr_value_str_aunescape(ctx, &buff, &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
 		talloc_get_type_abort(buff, char);
 		dst->vb_strvalue = buff;
 	}
@@ -5214,8 +5214,8 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 			 */
 			if ((argv[i][0] == '"') || (argv[i][0] == '\'')) {
 				size_t inlen = talloc_array_length(argv[i]);
-				fr_value_substr_unescape(&FR_SBUFF_TMP(argv[i], inlen),
-							 &FR_SBUFF_TMP(argv[i] + 1, inlen - 1),
+				fr_value_substr_unescape(&FR_SBUFF_OUT(argv[i], inlen),
+							 &FR_SBUFF_IN(argv[i] + 1, inlen - 1),
 							 SIZE_MAX, *argv[i]);
 			}
 

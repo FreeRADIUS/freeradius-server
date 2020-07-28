@@ -1053,8 +1053,7 @@ int tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 		ssize_t		slen;
 
 		slen = fr_dict_attr_child_by_name_substr(NULL, &da, parent,
-							 &FR_SBUFF_TMP(ar->unknown.name,
-							 strlen(ar->unknown.name)),
+							 &FR_SBUFF_IN(ar->unknown.name, strlen(ar->unknown.name)),
 							 false);
 		if (slen <= 0) {
 			fr_dict_attr_t	*unknown_da;
@@ -1357,7 +1356,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	parsing the configuration files.
 	 */
 	slen = fr_dict_attr_by_qualified_name_substr(NULL, &da,
-						     rules->dict_def, &FR_SBUFF_TMP(p, strlen(p) + 1),
+						     rules->dict_def, &FR_SBUFF_IN(p, strlen(p)),
 						     !rules->disallow_internal);
 	if (slen <= 0) {
 		fr_dict_attr_t *unknown_da;
@@ -2148,8 +2147,8 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		len = fr_value_str_unescape(&FR_SBUFF_TMP((char *)buff, slen + 1),
-					    &FR_SBUFF_TMP((char *)buff, slen + 1), SIZE_MAX, '"');
+		len = fr_value_str_unescape(&FR_SBUFF_IN((char *)buff, slen),
+					    &FR_SBUFF_IN((char *)buff, slen), SIZE_MAX, '"');
 		fr_assert(buff);
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
 		src_type = FR_TYPE_STRING;
@@ -2178,8 +2177,8 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		len = fr_value_str_unescape(&FR_SBUFF_TMP((char *)buff, slen + 1),
-					    &FR_SBUFF_TMP((char *)buff, slen + 1), SIZE_MAX, '"');
+		len = fr_value_str_unescape(&FR_SBUFF_IN((char *)buff, slen),
+					    &FR_SBUFF_IN((char *)buff, slen), SIZE_MAX, '"');
 		fr_assert(buff);
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
 		src_type = FR_TYPE_STRING;

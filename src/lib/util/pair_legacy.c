@@ -416,7 +416,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Parse the name.
 		 */
-		slen = fr_dict_attr_by_qualified_name_substr(NULL, &da, dict, &FR_SBUFF_TMP(p, strlen(p) + 1), true);
+		slen = fr_dict_attr_by_qualified_name_substr(NULL, &da, dict, &FR_SBUFF_IN(p, strlen(p)), true);
 		if (slen <= 0) {
 
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);

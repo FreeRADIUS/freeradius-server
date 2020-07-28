@@ -711,7 +711,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, (_max_char) + 1); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -764,7 +764,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
-	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, (_max_char) + 1); \
+	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
@@ -823,7 +823,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
 	size_t		len; \
 	_type		res; \
-	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_TMP(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
 	if (len == sizeof(buff)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 		return 0; \

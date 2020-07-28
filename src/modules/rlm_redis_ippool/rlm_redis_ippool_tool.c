@@ -1352,7 +1352,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(NULL, &out, &tctx, strlen(argv[1]), SIZE_MAX));
 		len = fr_value_str_unescape(&out,
-					    &FR_SBUFF_TMP(argv[1], strlen(argv[1]) + 1), SIZE_MAX, '"');
+					    &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
 		fr_sbuff_trim_talloc(&out, fr_sbuff_used(&out));	/* We don't want a NULL terminating byte */
 		if (!fr_cond_assert(len)) fr_exit_now(EXIT_FAILURE);
 		pool_arg = (uint8_t *)fr_sbuff_start(&out);
@@ -1365,7 +1365,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(NULL, &out, &tctx, strlen(argv[1]), SIZE_MAX));
 		len = fr_value_str_unescape(&out,
-					    &FR_SBUFF_TMP(argv[2], strlen(argv[2]) + 1), SIZE_MAX, '"');
+					    &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
 		fr_sbuff_trim_talloc(&out, fr_sbuff_used(&out));	/* We don't want a NULL terminating byte */
 		if (!fr_cond_assert(len)) fr_exit_now(EXIT_FAILURE);
 		range_arg = (uint8_t *)fr_sbuff_start(&out);

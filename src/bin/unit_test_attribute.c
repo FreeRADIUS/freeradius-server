@@ -2146,7 +2146,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	/*
 	 *	Process special chars, octal escape sequences and hex sequences
 	 */
-	len = fr_value_str_aunescape(NULL, &fmt, &FR_SBUFF_TMP(in, input_len + 1), SIZE_MAX, '\"');
+	len = fr_value_str_aunescape(NULL, &fmt, &FR_SBUFF_IN(in, input_len), SIZE_MAX, '\"');
 	fr_assert(fmt);
 	dec_len = xlat_tokenize(fmt, &head, fmt, len,
 				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
