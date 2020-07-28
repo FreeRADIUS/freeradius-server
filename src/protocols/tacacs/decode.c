@@ -110,6 +110,11 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 	vp->vp_uint8 = pkt->hdr.seq_no;
 	fr_cursor_append(&cursor, vp);
 
+	vp = fr_pair_afrom_da(packet, attr_tacacs_flags);
+	if (!vp) goto oom;
+	vp->vp_uint8 = pkt->hdr.flags;
+	fr_cursor_append(&cursor, vp);
+
 	vp = fr_pair_afrom_da(packet, attr_tacacs_session_id);
 	if (!vp) goto oom;
 	vp->vp_uint32 = ntohl(pkt->hdr.session_id);

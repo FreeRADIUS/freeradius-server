@@ -55,6 +55,7 @@ fr_dict_attr_t const *attr_tacacs_authentication_type;
 fr_dict_attr_t const *attr_tacacs_authorization_status;
 fr_dict_attr_t const *attr_tacacs_client_port;
 fr_dict_attr_t const *attr_tacacs_data;
+fr_dict_attr_t const *attr_tacacs_flags;
 fr_dict_attr_t const *attr_tacacs_packet;
 fr_dict_attr_t const *attr_tacacs_packet_type;
 fr_dict_attr_t const *attr_tacacs_privilege_level;
@@ -79,6 +80,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_client_port, .name = "TACACS-Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_flags, .name = "TACACS-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_packet, .name = "TACACS-Packet", .type = FR_TYPE_STRUCT, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_packet_type, .name = "TACACS-Packet-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_privilege_level, .name = "TACACS-Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
