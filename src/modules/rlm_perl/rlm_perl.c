@@ -907,6 +907,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		count = call_pv(function_name, G_SCALAR | G_EVAL | G_NOARGS);
 
+		rlm_perl_request = NULL;
+
 		SPAGAIN;
 
 		if (SvTRUE(ERRSV)) {
