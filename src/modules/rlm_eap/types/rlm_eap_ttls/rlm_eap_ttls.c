@@ -189,6 +189,15 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
+	 *	Set the label to a fixed string.  For TLS 1.3, the
+	 *	label is the same for all TLS-based EAP methods.  If
+	 *	the client is using TLS 1.3, then eaptls_success()
+	 *	will over-ride this label with the correct label for
+	 *	TLS 1.3.
+	 */
+	ssn->label = "ttls keying material";
+
+	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
@@ -266,13 +275,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			}
 
 		do_keys:
-			/*
-			 *	Set the label to a fixed string.  For TLS 1.3,
-			 *	the label is the same for all TLS-based EAP
-			 *	methods.
-			 */
-			tls_session->label = "ttls keying material";
-
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */

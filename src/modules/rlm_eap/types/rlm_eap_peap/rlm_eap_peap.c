@@ -200,6 +200,15 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
+	 *	Set the label to a fixed string.  For TLS 1.3, the
+	 *	label is the same for all TLS-based EAP methods.  If
+	 *	the client is using TLS 1.3, then eaptls_success()
+	 *	will over-ride this label with the correct label for
+	 *	TLS 1.3.
+	 */
+	ssn->label = "client EAP encryption";
+
+	/*
 	 *	As it is a poorly designed protocol, PEAP uses
 	 *	bits in the TLS header to indicate PEAP
 	 *	version numbers.  For now, we only support
@@ -367,13 +376,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (peap->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-
-		/*
-		 *	Set the label to a fixed string.  For TLS 1.3,
-		 *	the label is the same for all TLS-based EAP
-		 *	methods.
-		 */
-		tls_session->label = "client EAP encryption";
 
 		/*
 		 *	Success: Automatically return MPPE keys.
