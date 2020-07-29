@@ -46,6 +46,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Daniel De Almeida Braga.
 	* Clear error on SQLITE_BUSY to prevent memory leak in corner cases.
 	  Patch from Nick Porter.
+	* Properly add SQL clients to virtual servers.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
