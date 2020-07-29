@@ -227,14 +227,13 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 					ERROR("Out of memory");
 					return false;
 				}
-
-				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
-					ERROR("Failed to associate clients with virtual server %s", client->server);
-					client_list_free(clients);
-					return false;
-				}
 			}
 
+			if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
+				ERROR("Failed to associate clients with virtual server %s", client->server);
+				client_list_free(clients);
+				return false;
+			}
 		} else {
 		global_clients:
 			/*
