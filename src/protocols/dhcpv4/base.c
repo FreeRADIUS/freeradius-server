@@ -607,21 +607,21 @@ static char const *short_header_names[] = {
 	"boot_filename",
 };
 
-static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+static void print_hex_data(FILE *fp, uint8_t const *ptr, int attrlen, int depth)
 {
 	int i;
 	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 	for (i = 0; i < attrlen; i++) {
 		if ((i > 0) && ((i & 0x0f) == 0x00))
-			fprintf(fr_log_fp, "%.*s", depth, tabs);
-		fprintf(fr_log_fp, "%02x ", ptr[i]);
-		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+			fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fp, "\n");
 	}
-	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+	if ((i & 0x0f) != 0) fprintf(fp, "\n");
 }
 
-/** Print a raw RADIUS packet as hex.
+/** Print a raw DHCP packet as hex.
  *
  */
 void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
@@ -634,7 +634,7 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	for (i = 0; i < 14; i++) {
 		fprintf(fp, "\t%s: ", short_header_names[i]);
-		print_hex_data(attr, dhcp_header_sizes[i], 2);
+		print_hex_data(fp, attr, dhcp_header_sizes[i], 2);
 		attr += dhcp_header_sizes[i];
 	}
 
@@ -643,7 +643,7 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
 
-		print_hex_data(attr + 2, attr[1], 3);
+		print_hex_data(fp, attr + 2, attr[1], 3);
 
 		/*
 		 *	"End of option" option.
