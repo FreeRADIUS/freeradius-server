@@ -683,13 +683,13 @@ static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 }
 #define fr_sbuff_marker_set(_dst, _src) \
 _fr_sbuff_marker_set(_dst, \
-		      _Generic((_src), \
+		     _Generic((_src), \
 				fr_sbuff_t *		: ((fr_sbuff_t const *)(_src))->p, \
 				fr_sbuff_marker_t *	: ((fr_sbuff_marker_t const *)(_src))->p, \
 				char const *		: (char const *)(_src), \
 				char *			: (char const *)(_src), \
 				size_t			: ((_dst)->p += (uintptr_t)(_src)) \
-		      ))
+		     ))
 
 /** Change the position in the buffer a marker points to
  *

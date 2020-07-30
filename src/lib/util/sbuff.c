@@ -731,6 +731,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 			*out = (_type)(_max); \
 			return 0; \
 		} \
+		*out = (_type)(num); \
 	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
@@ -784,6 +785,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 			*out = (_type)(_max); \
 			return 0; \
 		} \
+		*out = (_type)(num); \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
