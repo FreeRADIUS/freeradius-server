@@ -31,6 +31,7 @@ extern fr_dict_attr_t const *attr_tacacs_accounting_flags;
 extern fr_dict_attr_t const *attr_tacacs_accounting_status;
 extern fr_dict_attr_t const *attr_tacacs_action;
 extern fr_dict_attr_t const *attr_tacacs_authentication_flags;
+extern fr_dict_attr_t const *attr_tacacs_authentication_continue_flags;
 extern fr_dict_attr_t const *attr_tacacs_authentication_method;
 extern fr_dict_attr_t const *attr_tacacs_authentication_service;
 extern fr_dict_attr_t const *attr_tacacs_authentication_status;

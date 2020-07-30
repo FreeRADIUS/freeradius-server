@@ -48,6 +48,7 @@ fr_dict_attr_t const *attr_tacacs_accounting_flags;
 fr_dict_attr_t const *attr_tacacs_accounting_status;
 fr_dict_attr_t const *attr_tacacs_action;
 fr_dict_attr_t const *attr_tacacs_authentication_flags;
+fr_dict_attr_t const *attr_tacacs_authentication_continue_flags;
 fr_dict_attr_t const *attr_tacacs_authentication_method;
 fr_dict_attr_t const *attr_tacacs_authentication_service;
 fr_dict_attr_t const *attr_tacacs_authentication_status;
@@ -75,6 +76,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_action, .name = "TACACS-Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_flags, .name = "TACACS-Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_continue_flags, .name = "TACACS-Authentication-Continue-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_method, .name = "TACACS-Authentication-Method", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_service, .name = "TACACS-Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
