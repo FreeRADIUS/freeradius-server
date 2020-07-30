@@ -14,5 +14,7 @@ CREATE TABLE radippool (
   PRIMARY KEY (id),
   KEY radippool_poolname_expire (pool_name, expiry_time),
   KEY framedipaddress (framedipaddress),
-  KEY radippool_nasip_poolkey_ipaddress (nasipaddress, pool_key, framedipaddress)
+  KEY radippool_nasip_poolkey_ipaddress (nasipaddress, pool_key, framedipaddress),
+  KEY poolkey (pool_key),
+  KEY nasipaddress_expiry (nasipaddress, expiry_time)
 ) ENGINE=InnoDB;
