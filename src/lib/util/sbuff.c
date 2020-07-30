@@ -421,7 +421,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 		copied = fr_sbuff_in_bstrncpy(out, our_in.p, chunk_len);
 		if (copied < 0) {
-			fr_sbuff_set_to_marker(&m);	/* Reset out */
+			fr_sbuff_set(out, &m);		/* Reset out */
 			*m.p = '\0';			/* Re-terminate */
 
 			/* Amount remaining in input buffer minus the amount we could have copied */
@@ -592,14 +592,14 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					fr_sbuff_set(&our_in, ++p);		/* sync sbuff */
 
 					if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
-						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_set(&our_in, &m);	/* backtrack */
 						p = m.p + 1;			/* skip escape char */
 						fr_sbuff_marker_release(&m);
 						goto check_subs;
 					}
 
 					if (fr_sbuff_in_char(out, escape) <= 0) {
-						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_set(&our_in, &m);	/* backtrack */
 						fr_sbuff_marker_release(&m);
 						goto done;
 					}
@@ -618,14 +618,14 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 					fr_sbuff_set(&our_in, p);		/* sync sbuff */
 
 					if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
-						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_set(&our_in, &m);	/* backtrack */
 						p = m.p + 1;			/* skip escape char */
 						fr_sbuff_marker_release(&m);
 						goto check_subs;
 					}
 
 					if (fr_sbuff_in_char(out, escape) <= 0) {
-						fr_sbuff_set_to_marker(&m);	/* backtrack */
+						fr_sbuff_set(&our_in, &m);	/* backtrack */
 						fr_sbuff_marker_release(&m);
 						goto done;
 					}

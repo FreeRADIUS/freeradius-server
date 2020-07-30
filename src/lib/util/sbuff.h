@@ -449,7 +449,8 @@ static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
  */
 static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
 {
-	if (unlikely((sbuff->p + n) > sbuff->end)) return 0;
+	/* overflow conditions */
+	if (unlikely((n > (SIZE_MAX - (uintptr_t)sbuff->p)) || ((sbuff->p + n) > sbuff->end))) return 0;
 	if (n == 0) return 0;
 
 	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
@@ -492,11 +493,12 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
  */
 #define fr_sbuff_set(_dst, _src) \
 _fr_sbuff_set(_dst, \
-	      _Generic(_src, \
-			fr_sbuff_t *	: ((fr_sbuff_t const *)(_src))->p, \
-			char const *	: (_src), \
-			char *		: (_src), \
-			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
+	      _Generic((_src), \
+			fr_sbuff_t *		: ((fr_sbuff_t const *)(_src))->p, \
+			fr_sbuff_marker_t *	: ((fr_sbuff_marker_t const *)(_src))->p, \
+			char const *		: (char const *)(_src), \
+			char *			: (char const *)(_src), \
+			size_t			: ((_dst)->p += (uintptr_t)(_src)) \
 	      ))
 
 
@@ -667,7 +669,7 @@ static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
  *	- >0 the number of bytes the marker advanced.
  *	- <0 the number of bytes the marker retreated.
  */
-static inline ssize_t fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
+static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 {
 	fr_sbuff_t 	*sbuff = m->parent;
 	char		*current = m->p;
@@ -679,19 +681,32 @@ static inline ssize_t fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 
 	return p - current;
 }
+#define fr_sbuff_marker_set(_dst, _src) \
+_fr_sbuff_marker_set(_dst, \
+		      _Generic((_src), \
+				fr_sbuff_t *		: ((fr_sbuff_t const *)(_src))->p, \
+				fr_sbuff_marker_t *	: ((fr_sbuff_marker_t const *)(_src))->p, \
+				char const *		: (char const *)(_src), \
+				char *			: (char const *)(_src), \
+				size_t			: ((_dst)->p += (uintptr_t)(_src)) \
+		      ))
 
 /** Change the position in the buffer a marker points to
  *
  * @param[in] m		marker to alter.
- * @param[in] len	how much to advance the marker by.
+ * @param[in] n	how much to advance the marker by.
  * @return
  *	- 0 on failure (p out of range), marker position will remain unchanged.
  *	- >0 the number of bytes the marker advanced.
  *	- <0 the number of bytes the marker retreated.
  */
-static inline ssize_t fr_sbuff_marker_advance(fr_sbuff_marker_t *m, size_t len)
+static inline ssize_t fr_sbuff_marker_advance(fr_sbuff_marker_t *m, size_t n)
 {
-	return fr_sbuff_marker_set(m, m->p + len);
+	/* overflow conditions */
+	if (unlikely((n > (SIZE_MAX - (uintptr_t)m->p)) || ((m->p + n) > m->parent->end))) return 0;
+	if (n == 0) return 0;
+
+	return fr_sbuff_marker_set(m, m->p + n);
 }
 
 /** Resets the position in an sbuff to specified marker
