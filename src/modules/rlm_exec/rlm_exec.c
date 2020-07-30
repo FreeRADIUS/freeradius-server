@@ -295,11 +295,11 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 
-	RDEBUG("EXEC GOT -- %pV", m->box);
-
-	if (inst->output) {
+	if (inst->output && m->box) {
 		TALLOC_CTX *ctx;
 		VALUE_PAIR *vps, **output_pairs;
+
+		RDEBUG("EXEC GOT -- %pV", m->box);
 
 		output_pairs = radius_list(request, inst->output_list);
 		fr_assert(output_pairs != NULL);
