@@ -81,6 +81,7 @@ static int reply_fail[] = {
  */
 static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
+	int i;
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
@@ -112,6 +113,21 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 		       packet->if_index ? " " : ""
 #endif
 		       );
+
+	/*
+	 *	Print the fields in the header, too.
+	 */
+	RINDENT();
+	for (i = 0; dhcp_header_attrs[i] != NULL; i++) {
+		VALUE_PAIR *vp;
+
+		if (!*dhcp_header_attrs[i]) continue;
+
+		vp = fr_pair_find_by_da(packet->vps, *dhcp_header_attrs[i], TAG_ANY);
+		if (!vp) continue;
+		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
+	}
+	REXDENT();
 
 	if (received) {
 		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
