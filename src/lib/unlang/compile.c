@@ -75,8 +75,7 @@ typedef struct {
 	vp_tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
-static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_type_t mod_type, fr_cond_type_t cond_type);
+static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t mod_type);
 
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
@@ -1590,7 +1589,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 
 	if (!cf_item_next(cs, NULL)) {
 		talloc_free(vpt);
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_MAP, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_MAP);
 	}
 
 	/*
@@ -1654,7 +1653,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	vp_tmpl_rules_t		parse_rules;
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_UPDATE, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_UPDATE);
 	}
 
 	/*
@@ -1710,7 +1709,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	vp_tmpl_rules_t		parse_rules;
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FILTER, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FILTER);
 	}
 
 	/*
@@ -1845,8 +1844,7 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 	return true;
 }
 
-static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_type_t mod_type, fr_cond_type_t cond_type)
+static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -1875,11 +1873,6 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 			c->name = name2;
 			c->debug_name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), name2);
 		}
-	}
-
-	if (cond_type != COND_TYPE_INVALID) {
-		g->cond = talloc_zero(g, fr_cond_t);
-		g->cond->type = cond_type;
 	}
 
 	return compile_action_defaults(c, unlang_ctx);
@@ -2096,7 +2089,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	char const *name1, *name2;
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, mod_type);
 	}
 
 	g = group_allocate(parent, cs, mod_type);
@@ -2154,7 +2147,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	}
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SWITCH, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SWITCH);
 	}
 
 	g = group_allocate(parent, cs, UNLANG_TYPE_SWITCH);
@@ -2416,7 +2409,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (!cf_item_next(cs, NULL)) {
 		talloc_free(vpt);
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH);
 	}
 
 	/*
@@ -2481,8 +2474,7 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		return NULL;
 	}
 
-	c = compile_empty(parent, unlang_ctx, NULL,
-			  UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
+	c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
 	if (!c) return NULL;
 
 	parent->closed = ci;
@@ -2513,8 +2505,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL,
-			     UNLANG_TYPE_DETACH, COND_TYPE_INVALID);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_DETACH);
 }
 #endif
 
@@ -2602,18 +2593,18 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[mod_type].name);
-		return compile_empty(parent, unlang_ctx, cs, mod_type, COND_TYPE_FALSE);
+		c = compile_empty(parent, unlang_ctx, cs, mod_type);
+	} else {
+		/*
+		 *	The condition may refer to attributes, xlats, or
+		 *	Auth-Types which didn't exist when it was first
+		 *	parsed.  Now that they are all defined, we need to fix
+		 *	them up.
+		 */
+		if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
+
+		c = compile_section(parent, unlang_ctx, cs, mod_type);
 	}
-
-	/*
-	 *	The condition may refer to attributes, xlats, or
-	 *	Auth-Types which didn't exist when it was first
-	 *	parsed.  Now that they are all defined, we need to fix
-	 *	them up.
-	 */
-	if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
-
-	c = compile_section(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -2637,6 +2628,25 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 		return -1;
 	}
 
+	/*
+	 *	No condition means that we always skipped the previous
+	 *	"elsif".  Which means that this "elsif" or "else" is
+	 *	always skipped, too.
+	 */
+	if (!f->cond) {
+		fr_assert(f->self.type == UNLANG_TYPE_ELSIF);
+
+		cf_log_debug_prefix(cs, "Skipping contents of '%s' due to previous '%s' being always skipped, too",
+				    unlang_ops[mod_type].name,
+				    unlang_ops[f->self.type].name);
+		return 0;
+	}
+
+	/*
+	 *	The previous "if" or "elsif" is always taken.  So we
+	 *	can skip this "elsif" or "else", along with everything
+	 *	after that.
+	 */
 	if (f->cond->type == COND_TYPE_TRUE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as previous '%s' is always 'true'",
 				    unlang_ops[mod_type].name,
@@ -2668,7 +2678,7 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSIF);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF, COND_TYPE_TRUE);
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF);
 
 	return compile_if_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF);
 }
@@ -2685,9 +2695,7 @@ static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSE);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE, COND_TYPE_TRUE);
-	}
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 
 	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 }
@@ -3050,7 +3058,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	parse_rules.dict_def = dict;
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SUBREQUEST, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SUBREQUEST);
 	}
 
 	g = group_allocate(parent, cs, UNLANG_TYPE_SUBREQUEST);
@@ -3124,7 +3132,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	}
 
 	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_CALL, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
 	}
 
 	g = group_allocate(parent, cs, UNLANG_TYPE_CALL);
@@ -3451,7 +3459,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
+		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
 		if (!c) return NULL;
 
 		/*
