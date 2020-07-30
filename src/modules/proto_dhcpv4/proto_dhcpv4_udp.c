@@ -261,7 +261,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		}
 
 		/*
-		 *	Set the source IP of the packet.
+		 *	Set the source IP we'll use for sending the packets.
 		 *
 		 *	- if src_ipaddr is unicast, use that
 		 *	- else if socket wasn't bound to *, then use that
@@ -288,10 +288,28 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		}
 
 		/*
+		 *	If we're forwarding the Discover or Request,
+		 *	then we need to figure out where to forward it
+		 *	to?
+		 */
+		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
+			DEBUG("WARNING - silently discarding client request, as we do not know where to send it.");
+			return 0;
+		}
+
+		/*
 		 *	We have GIADDR in the packet, so send it
 		 *	there.  The packet is FROM our IP address and
 		 *	port, TO the destination IP address, at the
 		 *	same (i.e. server) port.
+		 *
+		 *	RFC 2131 page 23
+		 *
+		 *	"If the 'giaddr' field in a DHCP message from
+		 *	a client is non-zero, the server sends any
+		 *	return messages to the 'DHCP server' port on
+		 *	the BOOTP relay agent whose address appears in
+		 *	'giaddr'.
 		 */
 		memcpy(&ipaddr, &packet->giaddr, 4);
 		if (ipaddr != INADDR_ANY) {
@@ -315,32 +333,32 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			goto send_reply;
 		}
 
-		/*
-		 *	If there's no GIADDR, we don't know where to
-		 *	send client packets.
-		 */
-		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
-			DEBUG("WARNING - silently discarding client reply, as there is no GIADDR to send it to.");
-			return 0;
-		}
-
 		packet->opcode = 2; /* server message */
 
 		/*
-		 *	The original packet requested a broadcast
-		 *	reply, and CIADDR is empty, go broadcast the
-		 *	reply.  RFC 2131 page 23.
+		 *	NAKs are broadcast when there's no giaddr.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"In all cases, when 'giaddr' is zero, the server
+		 *	broadcasts any DHCPNAK messages to 0xffffffff."
 		 */
-		if (((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) &&
-		    (request->ciaddr == INADDR_ANY)) {
-			DEBUG("Reply will be broadcast due to client request.");
+		if (code[2] == FR_DHCP_NAK) {
+			DEBUG("Reply will be broadcast due to NAK.");
 			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
 
 		/*
 		 *	The original packet has CIADDR, so we unicast
-		 *	the reply there.  RFC 2131 page 23.
+		 *	the reply there.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If the 'giaddr' field is zero and the
+		 *	'ciaddr' field is nonzero, then the server
+		 *	unicasts DHCPOFFER and DHCPACK messages to the
+		 *	address in 'ciaddr'."
 		 */
 		if (request->ciaddr != INADDR_ANY) {
 			DEBUG("Reply will be unicast to CIADDR from original packet.");
@@ -349,9 +367,28 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		}
 
 		/*
+		 *	The original packet requested a broadcast
+		 *	reply, so we broadcast the reply.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If 'giaddr' is zero and 'ciaddr' is zero, and
+		 *	the broadcast bit is set, then the server
+		 *	broadcasts DHCPOFFER and DHCPACK messages to
+		 *	0xffffffff."
+		 */
+		if ((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) {
+			DEBUG("Reply will be broadcast due to client request.");
+			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			goto send_reply;
+		}
+
+		/*
 		 *	The original packet was unicast to us, such as
 		 *	via a relay.  We have a unicast destination
 		 *	address, so we just use that.
+		 *
+		 *	This extension isn't in the RFC, but we find it useful.
 		 */
 		if ((packet->yiaddr == htonl(INADDR_ANY)) &&
 		    (address.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
@@ -359,6 +396,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			goto send_reply;
 		}
 
+		/*
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If the broadcast bit is not set and 'giaddr'
+		 *	is zero and 'ciaddr' is zero, then the server
+		 *	unicasts DHCPOFFER and DHCPACK messages to the
+		 *	client's hardware address and 'yiaddr'
+		 *	address."
+		 */
 		switch (code[2]) {
 			/*
 			 *	Offers are sent to YIADDR if we
@@ -370,24 +416,41 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		case FR_DHCP_OFFER:
 			/*
 			 *	If the packet was unicast from the
-			 *	client, unicast it back.
+			 *	client, unicast it back without
+			 *	updating the ARP table.  We presume
+			 *	that the ARP table has been updated by
+			 *	the OS, since we received a unicast
+			 *	packet.
+			 *
+			 *	This check simply makes sure that we
+			 *	don't needlessly update the ARP table.
 			 */
 			if (memcmp(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
 				DEBUG("Reply will be unicast to YIADDR.");
 
 #ifdef SIOCSARP
 			} else if (inst->broadcast && inst->interface) {
+				/*
+				 *	Else the offer was broadcast.
+				 *	This socket is listening for
+				 *	broadcast packets on a
+				 *	particular interface.  We're
+				 *	too lazy to write raw UDP
+				 *	packets, so we update our
+				 *	local ARP table and then
+				 *	unicast the reply.
+				 */
 				if (fr_dhcpv4_udp_add_arp_entry(thread->sockfd, inst->interface,
 								&packet->yiaddr, &packet->chaddr) < 0) {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				} else {
-					DEBUG("Reply will be unicast to YIADDR after ARP table updates.");
+					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
 				}
 
 #endif
 			} else {
-				DEBUG("Reply will be broadcast due to OFFER.");
+				DEBUG("Reply will be broadcast as we do not create raw UDP sockets.");
 				address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
 			break;
@@ -400,16 +463,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 			break;
 
-			/*
-			 *	NAKs are broadcast.
-			 */
-		case FR_DHCP_NAK:
-			DEBUG("Reply will be broadcast due to NAK.");
-			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
-			break;
-
 		default:
-			DEBUG("WARNING - silently discarding reply due to invalid message type %d", code[2]);
+			DEBUG("WARNING - silently discarding reply due to unimplemented message type %d", code[2]);
 			return 0;
 		}
 	}
