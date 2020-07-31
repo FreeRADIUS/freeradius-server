@@ -139,7 +139,8 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 
 		sbuff_i->buff = new_buff;
 		update_ptr(old_buff, new_buff, new_len, sbuff_i->start);
-		*(sbuff_i->end = sbuff_i->start + new_len) = '\0';	/* Re-terminate */
+		sbuff_i->end = sbuff_i->buff + new_len;
+		*(sbuff_i->end) = '\0';	/* Re-terminate */
 		update_ptr(old_buff, new_buff, new_len, sbuff_i->p);
 
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(old_buff, new_buff, new_len, m_i->p);
