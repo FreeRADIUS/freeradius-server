@@ -114,7 +114,7 @@ int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], ui
 	memset(&req, 0, sizeof(req));
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;
-	memcpy(&sin->sin_addr.s_addr, &ipaddr, 4);
+	memcpy(&sin->sin_addr.s_addr, ipaddr, 4);
 
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
