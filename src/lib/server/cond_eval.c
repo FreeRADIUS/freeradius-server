@@ -35,12 +35,10 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifdef WITH_UNLANG
 #ifdef WITH_EVAL_DEBUG
 #  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");fr_fprintf(stdout, fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #  define EVAL_DEBUG(...)
-#endif
 
 /** Map keywords to #pair_list_t values
  */

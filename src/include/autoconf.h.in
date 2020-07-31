@@ -648,14 +648,8 @@
 /* define if you want tacacs */
 #undef WITH_TACACS
 
-/* define if you want tcp */
-#undef WITH_TCP
-
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
-
-/* define if you want vmps */
-#undef WITH_VMPS
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

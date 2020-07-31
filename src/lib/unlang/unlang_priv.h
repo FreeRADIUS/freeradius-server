@@ -60,7 +60,6 @@ typedef enum {
 	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
 	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
 	UNLANG_TYPE_PARALLEL,			//!< execute statements in parallel
-#ifdef WITH_UNLANG
 	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
@@ -76,7 +75,6 @@ typedef enum {
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
-#endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a vp_tmpl_t

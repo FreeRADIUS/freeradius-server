@@ -2109,18 +2109,11 @@ INCLUDE_FILE_PATTERNS  = *.h
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
 PREDEFINED             = WITH_PROXY \
-                         WITH_UNLANG \
                          WITH_ACCOUNTING \
-                         WITH_DETAIL \
-                         WITH_SESSION_MGMT \
                          WITH_DYNAMIC_CLIENTS \
                          WITH_STATS \
-                         WITH_COMMAND_SOCKET \
                          WITH_COA \
-                         WITH_TCP \
                          WITH_DHCP \
-                         WITH_VMPS \
-                         WITH_THREADS \
                          HAVE_JSON
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this

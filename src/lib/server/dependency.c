@@ -379,24 +379,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-
-	dependency_feature_add(cs, "control-socket",
-#ifdef WITH_COMMAND_SOCKET
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "detail",
-#ifdef WITH_DETAIL
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "dhcp",
 #ifdef WITH_DHCP
 				true
@@ -484,22 +466,6 @@ void dependency_features_init(CONF_SECTION *cs)
 
 	dependency_feature_add(cs, "tls-key-agility",
 #ifdef WITH_TLS
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "unlang",
-#ifdef WITH_UNLANG
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "vmps",
-#ifdef WITH_VMPS
 				true
 #else
 				false

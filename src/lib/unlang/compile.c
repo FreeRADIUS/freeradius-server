@@ -245,7 +245,6 @@ defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 #endif
 };
 
-#ifdef WITH_UNLANG
 static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
 			       fr_dict_attr_t const *da, vp_tmpl_rules_t const *rules)
 {
@@ -917,7 +916,6 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 
 	return pass2_fixup_tmpl(g->map->ci, &g->vpt, rules, false);
 }
-#endif
 
 static void unlang_dump(unlang_t *mc, int depth)
 {
@@ -939,7 +937,6 @@ static void unlang_dump(unlang_t *mc, int depth)
 		}
 			break;
 
-#ifdef WITH_UNLANG
 		case UNLANG_TYPE_MAP:
 			g = unlang_generic_to_group(inst); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name,
@@ -999,7 +996,6 @@ static void unlang_dump(unlang_t *mc, int depth)
 			 *	Policies are just groups with a different way of handling them.
 			 */
 		case UNLANG_TYPE_POLICY:
-#endif
 		case UNLANG_TYPE_GROUP:
 			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
@@ -1018,7 +1014,6 @@ static void unlang_dump(unlang_t *mc, int depth)
 	}
 }
 
-#ifdef WITH_UNLANG
 /** Validate and fixup a map that's part of an map section.
  *
  * @param map to validate.
@@ -2507,7 +2502,6 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_DETACH);
 }
-#endif
 
 static unlang_t *compile_tmpl(unlang_t *parent,
 			      unlang_compile_t *unlang_ctx, CONF_PAIR *cp)
@@ -3387,7 +3381,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return c;
 		}
 
-#ifdef WITH_UNLANG
 		if (strcmp(modrefname, "break") == 0) {
 			cf_log_err(ci, "Invalid use of 'break'");
 			return NULL;
@@ -3401,7 +3394,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 
 		} /* else it's something like sql { fail = 1 ...} */
-#endif
 
 	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
 		return NULL;
@@ -3434,7 +3426,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 	}
 
-#ifdef WITH_UNLANG
 	/*
 	 *	These can't be over-ridden.
 	 */
@@ -3466,7 +3457,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 		return c;
 	}
-#endif
 
 	/*
 	 *	We now have a name.  It can be one of two forms.  A

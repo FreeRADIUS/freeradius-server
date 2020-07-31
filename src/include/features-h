@@ -11,24 +11,8 @@
 #  define WITHOUT_COA (1)
 #endif
 
-#ifndef WITHOUT_UNLANG
-#  define WITH_UNLANG (1)
-#endif
-
 #ifndef WITHOUT_ACCOUNTING
 #  define WITH_ACCOUNTING (1)
-#endif
-
-#ifdef WITH_ACCOUNTING
-#  ifndef WITHOUT_DETAIL
-#    define WITH_DETAIL (1)
-#  endif
-#endif
-
-#ifdef WITH_ACCOUNTING
-#  ifndef WITHOUT_SESSION_MGMT
-#    define WITH_SESSION_MGMT (1)
-#  endif
 #endif
 
 #ifndef WITHOUT_DYNAMIC_CLIENTS
@@ -37,12 +21,6 @@
 
 #ifndef WITHOUT_STATS
 #  define WITH_STATS
-#endif
-
-#ifndef WITHOUT_COMMAND_SOCKET
-#  ifdef HAVE_SYS_UN_H
-#    define WITH_COMMAND_SOCKET (1)
-#  endif
 #endif
 
 #ifndef WITHOUT_COA

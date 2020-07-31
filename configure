@@ -761,8 +761,6 @@ with_radacctdir
 with_raddbdir
 with_dictdir
 with_ascend_binary
-with_tcp
-with_vmps
 with_dhcp
 with_tacacs
 with_udpfromto
@@ -1463,8 +1461,6 @@ Optional Packages:
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
-  --with-tcp              compile in support for tcp (default=yes)
-  --with-vmps             compile in support for vmps (default=yes)
   --with-dhcp             compile in support for dhcp (default=yes)
   --with-tacacs           compile in support for tacacs (default=yes)
   --with-udpfromto        compile in support for udpfromto (default=yes)
@@ -6075,62 +6071,6 @@ if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 $as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
 
 fi
-
-
-    WITH_TCP=yes
-
-
-# Check whether --with-tcp was given.
-if test "${with_tcp+set}" = set; then :
-  withval=$with_tcp; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-tcp expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_TCP 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_TCP /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_VMPS=yes
-
-
-# Check whether --with-vmps was given.
-if test "${with_vmps+set}" = set; then :
-  withval=$with_vmps; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-vmps expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_VMPS 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_VMPS /**/" >>confdefs.h
-
-    fi
 
 
     WITH_DHCP=yes

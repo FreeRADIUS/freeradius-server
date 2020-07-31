@@ -56,10 +56,6 @@ RCSID("$Id$")
 
 static rbtree_t *xlat_root = NULL;
 
-#ifdef WITH_UNLANG
-
-#endif
-
 static char const hextab[] = "0123456789abcdef";
 
 
