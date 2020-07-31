@@ -87,36 +87,15 @@ done:
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.
  */
-ssize_t fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in)
+ssize_t fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in, size_t len)
 {
 	size_t	total = 0;
 
-	while (fr_dbuff_remaining(in) > 0) {	/* Fixme to be extension check */
+	while ((fr_dbuff_remaining(in) > 0) && (total < len)) {	/* Fixme to be extension check */
 		FR_SBUFF_IN_CHAR_RETURN(out, hextab[((*in->p) >> 4) & 0x0f], hextab[*in->p & 0x0f]);
 
 		fr_dbuff_advance(in, 1);
-		total += 2;
+		total++;
 	};
-	return total;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @param[in] ctx to alloc buffer in.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
-{
-	char *buff;
-
-	buff = talloc_array(ctx, char, (inlen << 2));
-	if (!buff) return NULL;
-
-	fr_bin2hex(&FR_SBUFF_OUT(buff, (inlen * 2) + 1), &FR_DBUFF_TMP(bin, inlen));
-
-	return buff;
+	return total * 2;
 }

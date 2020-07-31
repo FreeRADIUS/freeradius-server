@@ -488,7 +488,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			}
 
 			fr_bin2hex(&FR_SBUFF_OUT(vector, sizeof(vector)),
-						 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
+						 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH), SIZE_MAX);
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}

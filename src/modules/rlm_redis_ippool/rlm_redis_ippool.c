@@ -1366,17 +1366,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_alloc_cmd, sizeof(lua_alloc_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(&FR_SBUFF_OUT(lua_alloc_digest, sizeof(lua_alloc_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_alloc_digest, sizeof(lua_alloc_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_update_cmd, sizeof(lua_update_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(&FR_SBUFF_OUT(lua_update_digest, sizeof(lua_update_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_update_digest, sizeof(lua_update_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_release_cmd, sizeof(lua_release_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(&FR_SBUFF_OUT(lua_release_digest, sizeof(lua_release_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_release_digest, sizeof(lua_release_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 	}
 
 	/*

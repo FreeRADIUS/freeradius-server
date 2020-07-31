@@ -253,7 +253,7 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		 */
 		*out++ = '-';
 		in++;
-		fr_bin2hex(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
+		fr_bin2hex(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1), SIZE_MAX);
 		out += 2;
 		freespace -= 3;
 	}

@@ -221,7 +221,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		 */
 		if (passwd->da == attr_cleartext_password) {
 			fr_md5_calc(hash, &a1[0], a1_len);
-			fr_bin2hex(&FR_SBUFF_OUT((char *) &a1[0], 32 + 1), &FR_DBUFF_TMP(hash, 16));
+			fr_bin2hex(&FR_SBUFF_OUT((char *) &a1[0], 32 + 1), &FR_DBUFF_TMP(hash, 16), SIZE_MAX);
 		} else {	/* MUST be Digest-HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
@@ -342,7 +342,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
 	}
-	fr_bin2hex(&FR_SBUFF_OUT((char *) kd, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)));
+	fr_bin2hex(&FR_SBUFF_OUT((char *) kd, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)), SIZE_MAX);
 
 	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A1)");
 
@@ -404,7 +404,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 
 	fr_md5_calc(&hash[0], &a2[0], a2_len);
 
-	fr_bin2hex(&FR_SBUFF_OUT((char *) kd + kd_len, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)));
+	fr_bin2hex(&FR_SBUFF_OUT((char *) kd + kd_len, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)), SIZE_MAX);
 
 	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A2)");
 

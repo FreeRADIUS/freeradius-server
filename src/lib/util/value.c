@@ -4774,7 +4774,8 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p[1] = 'x';
 
 		if (data->vb_octets && data->datum.length) {
-			fr_bin2hex(&FR_SBUFF_OUT(p + 2, (data->datum.length * 2) + 1), &FR_DBUFF_TMP(data->vb_octets, data->datum.length));
+			fr_bin2hex(&FR_SBUFF_OUT(p + 2, (data->datum.length * 2) + 1), &FR_DBUFF_TMP(data->vb_octets, data->datum.length),
+				   SIZE_MAX);
 			p[2 + (data->datum.length * 2)] = '\0';
 		} else {
 			p[2] = '\0';
@@ -5527,7 +5528,8 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			max = (((end - p) % 2) ? (end - p) - 1 : (end - p) - 2) / 2;
 			fr_bin2hex(&FR_SBUFF_OUT(p, end),
 				   &FR_DBUFF_TMP(data->vb_octets,
-				   		 (size_t)data->datum.length > max ? max : (size_t)data->datum.length));
+				   		 (size_t)data->datum.length > max ? max : (size_t)data->datum.length),
+				   SIZE_MAX);
 		} else {
 			*p = '\0';
 		}

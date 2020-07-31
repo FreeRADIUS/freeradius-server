@@ -139,7 +139,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 		 *	so we fix it here.
 		 */
 		for (i = 0; i < 6; i++) {
-			fr_bin2hex(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1));
+			fr_bin2hex(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1), SIZE_MAX);
 			p[(i * 3) + 2] = '-';
 		}
 

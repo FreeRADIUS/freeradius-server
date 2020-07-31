@@ -34,9 +34,10 @@ extern "C" {
 
 ssize_t		fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in, bool no_trailing);
 
-ssize_t		fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in);
+ssize_t		fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in, size_t len);
 
-char		*fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen);
+static inline ssize_t fr_abin2hex(TALLOC_CTX *ctx, char **out, fr_dbuff_t *in)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_bin2hex, in, fr_dbuff_remaining(in) << 1)
 
 #ifdef __cplusplus
 }

@@ -740,20 +740,11 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 				switch (in->type) {
 				case FR_TYPE_OCTETS:
-					if (in->vb_octets) {
-						subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
-						if (!subst) goto oom;
-						fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
-					} else {
-						subst = talloc_zero_array(NULL, char, 1);
-						if (!subst) goto oom;
-					}
+					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
 					break;
 
 				case FR_TYPE_STRING:
-					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
+					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
 					break;
 
 				default:
@@ -768,10 +759,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 						if (!subst) goto oom;
 					}
 
-					subst = talloc_array(NULL, char, (dst.vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(&FR_SBUFF_OUT(subst, talloc_array_length(subst)), &FR_DBUFF_TMP(dst.vb_octets, dst.vb_length));
-
+					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)dst.vb_octets, dst.vb_length));
 					fr_value_box_clear(&dst);
 					break;
 				}

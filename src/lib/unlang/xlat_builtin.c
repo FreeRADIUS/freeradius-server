@@ -1848,7 +1848,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 	vb->vb_length = ((*in)->vb_length * 2);
 	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
-	fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP((*in)->vb_octets, (*in)->vb_length));
+	fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP((*in)->vb_octets, (*in)->vb_length), SIZE_MAX);
 
 	fr_cursor_append(out, vb);
 
