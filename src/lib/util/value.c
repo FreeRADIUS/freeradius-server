@@ -876,16 +876,16 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
 		break;
 
 	case '"':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("\""), &fr_value_escape_double_quote);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("\""), &fr_value_escape_double_quote);
 
 	case '\'':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("'"), &fr_value_escape_single_quote);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("'"), &fr_value_escape_single_quote);
 
 	case '`':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("`"), &fr_value_escape_backtick);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("`"), &fr_value_escape_backtick);
 
 	case '/':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("/"), &fr_value_escape_solidus);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("/"), &fr_value_escape_solidus);
 	}
 
 	return fr_sbuff_out_bstrncpy(out, in, inlen);

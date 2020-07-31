@@ -359,7 +359,7 @@ do { \
  */
 static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *needle_len,
 								     uint8_t idx[static UINT8_MAX + 1],
-								     fr_sbuff_terminals_t const *term)
+								     fr_sbuff_term_t const *term)
 {
 	size_t i, len, max = 0;
 
@@ -369,10 +369,10 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
 	*needle_len = 0;
 
 	for (i = 0; i < term->len; i++) {
-		len = strlen(term->str[i]);
+		len = term->elem[i].len;
 		if (len > max) max = len;
 
-		idx[(uint8_t)term->str[i][0]] = i + 1;
+		idx[(uint8_t)term->elem[i].str[0]] = i + 1;
 	}
 
 	*needle_len = max;
@@ -394,7 +394,7 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
  */
 static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 					    uint8_t idx[static UINT8_MAX + 1],
-					    fr_sbuff_terminals_t const *term)
+					    fr_sbuff_term_t const *term)
 {
 	uint8_t 	term_idx;
 
@@ -418,7 +418,7 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 		size_t		tlen;
 		int		ret;
 
-		elem = term->str[mid];
+		elem = term->elem[mid].str;
 		tlen = strlen(elem);
 
 		ret = strncasecmp(p, elem, tlen < (size_t)remaining ? tlen : (size_t)remaining);
@@ -582,7 +582,7 @@ done:
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_terminals_t const *tt, char escape_chr)
+				   fr_sbuff_term_t const *tt, char escape_chr)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	bool		do_escape = false;		/* Track state across extensions */
@@ -651,7 +651,7 @@ done:
  *	- >0 the number of bytes written to out.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_terminals_t const *tt,
+				   fr_sbuff_term_t const *tt,
 				   fr_sbuff_escape_rules_t const *rules)
 {
 	fr_sbuff_t 		our_in = FR_SBUFF_COPY(in);
@@ -1291,7 +1291,7 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allow
  *				prefixed with this escape character.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_terminals_t const *tt, char escape_chr)
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *tt, char escape_chr)
 {
 	size_t		total = 0;
 	char const	*p;
@@ -1568,7 +1568,7 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
  *      - true if found.
  *	- false if not.
  */
-bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_terminals_t const *tt)
+bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
 	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
 	size_t		needle_len = 1;

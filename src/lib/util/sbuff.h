@@ -103,11 +103,38 @@ typedef struct {
 	size_t			max;			//!< Maximum size of the buffer.
 } fr_sbuff_uctx_talloc_t;
 
-
+/** Terminal element with pre-calculated lengths
+ *
+ */
 typedef struct {
-	char const		**str;			//!< A sorted list of terminal strings.
+	char const		*str;			//!< Terminal string
+	size_t			len;			//!< Length of string
+} fr_sbuff_term_elem_t;
+
+/** Set of terminal elements
+ *
+ */
+typedef struct {
 	size_t			len;			//!< Length of the list.
-} fr_sbuff_terminals_t;
+	fr_sbuff_term_elem_t	*elem;			//!< A sorted list of terminal strings.
+} fr_sbuff_term_t;
+
+/** Terminal element
+ *
+ * @param[in] _str	terminal string.
+ */
+#define FR_SBUFF_ELEM(_str) \
+	{ .str = _str, .len = (sizeof(_str) - 1) }
+
+/** Initialise a terminal structure with a single string
+ *
+ * @param[in] _str	terminal string.
+ */
+#define FR_SBUFF_TERM(_str) \
+(fr_sbuff_term_t){ \
+	.len = 1, \
+	.elem = (fr_sbuff_term_elem_t[]){ FR_SBUFF_ELEM(_str) }, \
+}
 
 /** Initialise a terminal structure with a list of sorted strings
  *
@@ -115,10 +142,10 @@ typedef struct {
  *
  * @param[in] ...	Lexicographically sorted list of terminal strings.
  */
-#define FR_SBUFF_TERMINALS(...) \
-(fr_sbuff_terminals_t){ \
-	.str = (char const *[]){ __VA_ARGS__}, \
-	.len = (sizeof((char const *[]){ __VA_ARGS__ }) / sizeof(char const *)) \
+#define FR_SBUFF_TERMS(...) \
+(fr_sbuff_term_t){ \
+	.len = (sizeof((fr_sbuff_term_elem_t[]){ __VA_ARGS__ }) / sizeof(fr_sbuff_term_elem_t)), \
+	.elem = (fr_sbuff_term_elem_t[]){ __VA_ARGS__ }, \
 }
 
 /** Set of parsing rules for *unescape_until functions
@@ -846,10 +873,10 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    fr_sbuff_terminals_t const *tt, char escape_chr);
+				    fr_sbuff_term_t const *tt, char escape_chr);
 
 size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    fr_sbuff_terminals_t const *tt,
+				    fr_sbuff_term_t const *tt,
 				    fr_sbuff_escape_rules_t const *rules);
 
 /** Find the longest prefix in an sbuff
@@ -939,11 +966,11 @@ static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out,
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_terminals_t const *tt, char escape_chr)
+						  fr_sbuff_term_t const *tt, char escape_chr)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, escape_chr);
 
 static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_terminals_t const *tt, fr_sbuff_escape_rules_t const *rules)
+						  fr_sbuff_term_t const *tt, fr_sbuff_escape_rules_t const *rules)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, rules);
 /** @} */
 
@@ -1017,7 +1044,7 @@ size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_terminals_t const *tt, char escape_chr);
+size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *tt, char escape_chr);
 
 char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 
@@ -1051,7 +1078,7 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  * look ahead.
  * @{
  */
-bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_terminals_t const *tt);
+bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
 static inline bool fr_sbuff_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
 {
