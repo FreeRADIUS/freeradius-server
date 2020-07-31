@@ -740,7 +740,11 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 				switch (in->type) {
 				case FR_TYPE_OCTETS:
-					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+					if (in->vb_octets) {
+						fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+					} else {
+						subst = talloc_strdup(NULL, "");
+					}
 					break;
 
 				case FR_TYPE_STRING:
