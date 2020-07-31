@@ -1,4 +1,4 @@
-/*
+>/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -39,6 +39,7 @@ RCSID("$Id$")
 #  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");fr_fprintf(stdout, fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #  define EVAL_DEBUG(...)
+#endif
 
 /** Map keywords to #pair_list_t values
  */
@@ -806,4 +807,3 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 	}
 	return rcode;
 }
-#endif
