@@ -35,7 +35,6 @@ fr_table_num_sorted_t const fr_aka_sim_id_request_table[] = {
 	{ "no",			AKA_SIM_NO_ID_REQ		},	/* Used for config parsing */
 	{ "none",		AKA_SIM_NO_ID_REQ		},
 	{ "Permanent-Id-Req",	AKA_SIM_PERMANENT_ID_REQ	},
-	{ NULL }
 };
 size_t fr_aka_sim_id_request_table_len = NUM_ELEMENTS(fr_aka_sim_id_request_table);
 
@@ -43,7 +42,6 @@ fr_table_num_sorted_t const fr_aka_sim_id_method_table[] = {
 	{ "AKA'",		AKA_SIM_METHOD_HINT_AKA_PRIME	},
 	{ "AKA",		AKA_SIM_METHOD_HINT_AKA		},
 	{ "SIM",		AKA_SIM_METHOD_HINT_SIM		},
-	{ NULL }
 };
 size_t fr_aka_sim_id_method_table_len = NUM_ELEMENTS(fr_aka_sim_id_method_table);
 
