@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
@@ -94,7 +95,7 @@ static uint8_t const zeros[6] = { 0 };
  *
  * @param[in] fd	to add arp entry on.
  * @param[in] interface	to add arp entry on.
- * @param[in] ip	to insert into ARP table.
+ * @param[in] ipaddr	to insert into ARP table.
  * @param[in] macaddr	to insert into ARP table.
  * @return
  *	- 0 on success.
