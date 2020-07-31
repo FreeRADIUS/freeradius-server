@@ -1,0 +1,63 @@
+#
+# 11344.4.2.2.1
+# |     | | | |_ Profile attributes (.2) profile objects
+# |     | | |_ Profile attributes
+# |     | |_ DHCPv4
+# |     |_ LDAP Attributes
+# |_ Vendor
+#
+attributetype ( 1.3.6.1.4.1.11344.4.2.2.1.1
+	NAME 'freeradiusDhcpv4Attribute'
+	DESC 'DHCP attribute in format [<list>:]<attr> <op> <value>'
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ )
+
+objectclass ( 1.3.6.1.4.1.11344.4.2.2.2.2
+	NAME 'freeradiusDhcpv4Profile'
+	SUP top
+	AUXILIARY
+	MAY ( freeradiusDhcpv4Attribute )
+ )
+
+#
+# 11344.4.2.1.1
+# |     | | | |_ Profile attributes (.2) profile objects
+# |     | | |_ Client attributes
+# |     | |_ DHCPv4
+# |     |_ LDAP Attributes
+# |_ Vendor
+#
+attributetype ( 1.3.6.1.4.1.11344.4.2.1.1.1
+	NAME 'freeradiusDhcpv4GatewayIdentifier'
+	DESC 'Gateway Identifier, usually Option 82 Remote ID'
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.2.1.1.2
+	NAME 'freeradiusDhcpv4GatewayAddr'
+	DESC 'Gateway IP address, usually GIADDR'
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.2.1.1.3
+	NAME 'freeradiusDhcpv4PoolName'
+	DESC 'DHCP ip pool name''
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+	SINGLE-VALUE
+ )
+
+objectclass ( 1.3.6.1.4.1.11344.4.2.1.2.1
+	NAME 'freeradiusDhcpv4Gateway'
+	DESC 'A DHCP gateway, and attributes specific to it'
+	SUP top
+	AUXILIARY
+	MAY ( freeradiusDhcpv4GatewayIdentifier $ freeradiusDhcpv4GatewayAddr $ freeradiusDhcpv4PoolName )
+ )

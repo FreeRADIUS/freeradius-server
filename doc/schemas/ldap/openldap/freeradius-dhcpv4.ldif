@@ -1,0 +1,9 @@
+dn: cn=freeradius-dhcpv4,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: freeradius-dhcpv4
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.1 NAME 'freeradiusDhcpv4GatewayIdentifier' DESC 'Usually Option 82 Remote ID' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.2 NAME 'freeradiusDhcpv4GatewayAddr' DESC 'Gateway IP address, usually GIADDR' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.3 NAME 'freeradiusDhcpv4PoolName' DESC 'DHCP IP pool name' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.2.1.4 NAME 'freeradiusDhcpv4Attribute' DESC 'DHCP attribute in format [<list>:]<attr> <op> <value>' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.2.1.2.1 NAME 'freeradiusDhcpv4Gateway' DESC 'A DHCP gateway, and attributes specific to it' SUP top AUXILIARY MAY ( freeradiusDhcpv4GatewayIdentifier $ freeradiusDhcpv4GatewayAddr $ freeradiusDhcpv4PoolName ) )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.2.2.2.2 NAME 'freeradiusDhcpv4Profile' SUP top AUXILIARY MAY ( freeradiusDhcpv4Attribute ) )
