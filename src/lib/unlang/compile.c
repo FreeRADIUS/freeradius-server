@@ -3110,7 +3110,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	type = cf_section_name2_quote(cs);
 	if (type != T_BARE_WORD) {
-		cf_log_err(cs, "The arguments to 'call' cannot by a quoted string or a dynamic value");
+		cf_log_err(cs, "The arguments to 'call' cannot be a quoted string or a dynamic value");
 		return NULL;
 	}
 
@@ -3131,20 +3131,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
-	}
-
-	g = group_allocate(parent, cs, UNLANG_TYPE_CALL);
-	if (!g) return NULL;
-
-	g->server_cs = server_cs;
-
-	c = compile_children(g, parent, unlang_ctx);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
 	if (!c) return NULL;
 
-	c->name = "call";
-	c->debug_name = talloc_typed_asprintf(c, "call %s", cf_section_name2(cs));
+	/*
+	 *	Set the virtual server name, which tells unlang_call()
+	 *	which virtual server to call.
+	 */
+	g = unlang_generic_to_group(c);
+	g->server_cs = server_cs;
 
 	return c;
 }
