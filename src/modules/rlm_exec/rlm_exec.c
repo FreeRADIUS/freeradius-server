@@ -288,6 +288,19 @@ typedef struct {
 	int		status;
 } rlm_exec_ctx_t;
 
+static const rlm_rcode_t status2rcode[] = {
+	[0] = RLM_MODULE_OK,
+	[1] = RLM_MODULE_REJECT,
+	[2] = RLM_MODULE_FAIL,
+	[3] = RLM_MODULE_OK,
+	[4] = RLM_MODULE_HANDLED,
+	[5] = RLM_MODULE_INVALID,
+	[6] = RLM_MODULE_DISALLOW,
+	[7] = RLM_MODULE_NOTFOUND,
+	[8] = RLM_MODULE_NOOP,
+	[9] = RLM_MODULE_UPDATED,
+};
+
 
 /** Process the exit code returned by one of the exec functions
  *
@@ -299,6 +312,8 @@ typedef struct {
  */
 static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t len, int status)
 {
+	rlm_rcode_t rcode;
+
 	if (status < 0) {
 		return RLM_MODULE_FAIL;
 	}
@@ -315,15 +330,15 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 		return RLM_MODULE_OK;
 	}
 
-	if (status > RLM_MODULE_NUMCODES) {
+	if (status > 9) {
 		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
 			status, RLM_MODULE_NUMCODES, answer);
 		goto fail;
 	}
 
-	status--;	/* Lets hope no one ever re-enumerates RLM_MODULE_* */
+	rcode = status2rcode[status];
 
-	if (status == RLM_MODULE_FAIL) {
+	if (rcode == RLM_MODULE_FAIL) {
 		fail:
 
 		if (len > 0) {
@@ -336,13 +351,13 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 				*p-- = '\0';
 			}
 
-			module_failure_msg(request, "%s", answer);
+//			module_failure_msg(request, "%s", answer);
 		}
 
 		return RLM_MODULE_FAIL;
 	}
 
-	return status;
+	return rcode;
 }
 
 static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
