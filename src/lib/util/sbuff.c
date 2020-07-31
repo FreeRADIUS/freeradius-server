@@ -351,6 +351,91 @@ do { \
 #define CONSTRAINED_END(_sbuff, _max, _used) \
 	(((_max) - (_used)) > fr_sbuff_remaining(_sbuff) ? (_sbuff)->end : (_sbuff)->p + ((_max) - (_used)))
 
+/** Populate a terminal index
+ *
+ * @param[out] needle_len	the longest needle.
+ * @param[out] idx		to populate.
+ * @param[in] term		Terminals to populate the index with.
+ */
+static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *needle_len,
+								     uint8_t idx[static UINT8_MAX + 1],
+								     fr_sbuff_terminals_t const *term)
+{
+	size_t i, len, max = 0;
+
+	if (!term) return;
+
+	memset(idx, 0, UINT8_MAX + 1);
+	*needle_len = 0;
+
+	for (i = 0; i < term->len; i++) {
+		len = strlen(term->str[i]);
+		if (len > max) max = len;
+
+		idx[(uint8_t)term->str[i][0]] = i + 1;
+	}
+
+	*needle_len = max;
+}
+
+/** Efficient terminal string search
+ *
+ * Caller should ensure that a buffer extension of needle_len bytes has been requested
+ * before calling this function.
+ *
+ * @param[in] in		Sbuff to search in.
+ * @param[in] p			Current position (may be ahead of in->p).
+ * @param[in] idx		Fastpath index, populated by
+ *				fr_sbuff_terminal_idx_init.
+ * @param[in] term		terminals to search in.
+ * @return
+ *      - true if found.
+ *	- false if not.
+ */
+static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
+					    uint8_t idx[static UINT8_MAX + 1],
+					    fr_sbuff_terminals_t const *term)
+{
+	uint8_t 	term_idx;
+
+	ssize_t		start = 0;
+	ssize_t		end;
+	ssize_t		mid;
+
+	size_t		remaining;
+
+	if (!term) return false;			/* If there's no terminals, we don't need to search */
+
+	end = term->len - 1;
+	term_idx = idx[(uint8_t)*p];			/* Fast path */
+	if (!term_idx) return false;
+
+	remaining = fr_sbuff_remaining(in);
+	mid = term_idx - 1;				/* Inform the mid point from the index */
+
+	while (start <= end) {
+		char const	*elem;
+		size_t		tlen;
+		int		ret;
+
+		elem = term->str[mid];
+		tlen = strlen(elem);
+
+		ret = strncasecmp(p, elem, tlen < (size_t)remaining ? tlen : (size_t)remaining);
+		if (ret == 0) return true;
+
+		if (ret < 0) {
+			end = mid - 1;
+		} else {
+			start = mid + 1;
+		}
+
+		mid = start + ((end - start) / 2);	/* Avoid overflow */
+	}
+
+	return false;
+}
+
 /** Copy as many bytes as possible from a sbuff to a sbuff
  *
  * Copy size is limited by available data in sbuff and space in output sbuff.
@@ -489,7 +574,7 @@ done:
  * @param[out] out		Where to copy to.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @param[in] until		Characters which stop the copy operation.
+ * @param[in] tt		Token terminals in the encompassing grammar.
  * @param[in] escape_chr	If not '\0', ignore characters in the until set when
  *				prefixed with this escape character.
  * @return
@@ -497,31 +582,40 @@ done:
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   bool const until[static UINT8_MAX + 1], char escape_chr)
+				   fr_sbuff_terminals_t const *tt, char escape_chr)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
-	bool		do_escape = false;	/* Track state across extensions */
+	bool		do_escape = false;		/* Track state across extensions */
+
+	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	size_t		needle_len = 1;
 
 	CHECK_SBUFF_INIT(in);
+
+	/*
+	 *	Initialise the fastpath index and
+	 *	figure out the longest needle.
+	 */
+	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
 	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
 		char	*end;
 
-		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) break;
 
 		p = our_in.p;
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
 		if (escape_chr == '\0') {
-			while((p < end) && !until[(uint8_t)*p]) p++;
+			while ((p < end) && !fr_sbuff_terminal_search(in, p, idx, tt)) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
 				} else if (*p == escape_chr) {
 					do_escape = true;
-				} else if (until[(uint8_t)*p]) {
+				} else if (fr_sbuff_terminal_search(in, p, idx, tt)) {
 					break;
 				}
 				p++;
@@ -550,30 +644,40 @@ done:
  * @param[out] out		Where to copy to.
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
- * @param[in] until		Characters which stop the copy operation.
+ * @param[in] tt		Token terminal strings in the encompassing grammar.
  * @param[in] rules		for processing escape sequences.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes written to out.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   bool const until[static UINT8_MAX + 1],
+				   fr_sbuff_terminals_t const *tt,
 				   fr_sbuff_escape_rules_t const *rules)
 {
 	fr_sbuff_t 		our_in = FR_SBUFF_COPY(in);
-	bool			do_escape = false;	/* Track state across extensions */
+	bool			do_escape = false;		/* Track state across extensions */
 	fr_sbuff_marker_t	o_s;
+
+	uint8_t			idx[UINT8_MAX + 1];		/* Fast path index */
+	size_t			needle_len = 1;
+
+	CHECK_SBUFF_INIT(in);
+
+	if (unlikely(rules->chr == '\0')) return 0;
 
 	fr_sbuff_marker(&o_s, out);
 
-	CHECK_SBUFF_INIT(in);
-	if (unlikely(rules->chr == '\0')) return 0;
+	/*
+	 *	Initialise the fastpath index and
+	 *	figure out the longest needle.
+	 */
+	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
 	while (fr_sbuff_used_total(&our_in) < len) {
 		char	*p;
 		char	*end;
 
-		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) break;
 
 		p = our_in.p;
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
@@ -677,7 +781,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 			}
 
 		next:
-			if (until[(uint8_t)*p]) break;
+			if (fr_sbuff_terminal_search(in, p, idx, tt)) break;
 			p++;
 		}
 
@@ -1182,36 +1286,45 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allow
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
- * @param[in] until		character set.
+ * @param[in] tt		Token terminals in the encompassing grammar.
  * @param[in] escape_chr	If not '\0', ignore characters in the until set when
  *				prefixed with this escape character.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape_chr)
+size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_terminals_t const *tt, char escape_chr)
 {
 	size_t		total = 0;
 	char const	*p;
-	bool		do_escape = false;	/* Track state across extensions */
+	bool		do_escape = false;		/* Track state across extensions */
+
+	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	size_t		needle_len = 1;
 
 	CHECK_SBUFF_INIT(sbuff);
+
+	/*
+	 *	Initialise the fastpath index and
+	 *	figure out the longest needle.
+	 */
+	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
 	while (total < len) {
 		char *end;
 
-		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+		if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len) && (fr_sbuff_remaining(sbuff) < 1)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
 
 		if (escape_chr == '\0') {
-			while ((p < end) && !until[(uint8_t)*p]) p++;
+			while ((p < end) && !fr_sbuff_terminal_search(sbuff, p, idx, tt)) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
 				} else if (*p == escape_chr) {
 					do_escape = true;
-				} else if (until[(uint8_t)*p]) {
+				} else if (fr_sbuff_terminal_search(sbuff, p, idx, tt)) {
 					break;
 				}
 				p++;
@@ -1441,4 +1554,34 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 	fr_sbuff_advance(sbuff, 1);
 
 	return true;
+}
+
+
+/** Efficient terminal string search
+ *
+ * Caller should ensure that a buffer extension of needle_len bytes has been requested
+ * before calling this function.
+ *
+ * @param[in] in	Sbuff to search in.
+ * @param[in] tt	Token terminals in the encompassing grammar.
+ * @return
+ *      - true if found.
+ *	- false if not.
+ */
+bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_terminals_t const *tt)
+{
+	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	size_t		needle_len = 1;
+
+	if (!tt) return false;
+
+	/*
+	 *	Initialise the fastpath index and
+	 *	figure out the longest needle.
+	 */
+	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
+
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) return false;
+
+	return fr_sbuff_terminal_search(in, in->p, idx, tt);
 }

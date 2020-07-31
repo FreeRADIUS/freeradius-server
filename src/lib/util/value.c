@@ -798,29 +798,27 @@ static char const hextab[] = "0123456789abcdef";
  */
 size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
 {
-	static bool until[UINT8_MAX + 1] = { };
-
 	switch (quote) {
 	default:
 		break;
 
 	case '"':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_double_quote);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_double_quote);
 	}
 	case '\'':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_single_quote);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_single_quote);
 	}
 
 	case '`':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_backtick);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_backtick);
 	}
 
 	case '/':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_solidus);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_solidus);
 	}
 	}
 
@@ -878,27 +876,16 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
 		break;
 
 	case '"':
-	{
-		static bool until[UINT8_MAX + 1] = { ['"'] = true };
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_double_quote);
-	}
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("\""), &fr_value_escape_double_quote);
+
 	case '\'':
-	{
-		static bool until[UINT8_MAX + 1] = { ['\''] = true };
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_single_quote);
-	}
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("'"), &fr_value_escape_single_quote);
 
 	case '`':
-	{
-		static bool until[UINT8_MAX + 1] = { ['`'] = true };
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_backtick);
-	}
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("`"), &fr_value_escape_backtick);
 
 	case '/':
-	{
-		static bool until[UINT8_MAX + 1] = { ['/'] = true };
-		return fr_sbuff_out_unescape_until(out, in, inlen, until, &fr_value_escape_solidus);
-	}
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERMINALS("/"), &fr_value_escape_solidus);
 	}
 
 	return fr_sbuff_out_bstrncpy(out, in, inlen);

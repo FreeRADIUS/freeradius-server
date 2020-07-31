@@ -299,30 +299,26 @@ static void test_bstrncpy_until(void)
 	 *	set.
 	 */
 	TEST_CASE("Copy 5 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5,
-					   (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, '\0');
 	TEST_CHECK_SLEN(5, slen);
 	TEST_CHECK_STRCMP("i am ", out);
 	TEST_CHECK_STRCMP("a test string", sbuff.p);
 
 	TEST_CASE("Copy 13 bytes to out");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13,
-					   (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13, NULL, '\0');
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("a test string", out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1,
-					   (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1, NULL, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Check escapes");
 	fr_sbuff_set_to_start(&sbuff);
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['g'] = true }, 'n');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("g"), 'n');
 	TEST_CHECK_SLEN(18, slen);
 	TEST_CHECK_STRCMP("i am a test string", out);
 	TEST_CHECK_STRCMP("", sbuff.p);
@@ -330,16 +326,14 @@ static void test_bstrncpy_until(void)
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff,
-					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, '\0');
 	TEST_CHECK_SLEN(18, slen);
 	TEST_CHECK_STRCMP("i am a longer test", out);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff,
-					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, NULL, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -347,8 +341,7 @@ static void test_bstrncpy_until(void)
 	TEST_CASE("Zero length size");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0,
-					   (bool[UINT8_MAX + 1]){ }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0, NULL, '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -358,29 +351,25 @@ static void test_bstrncpy_until(void)
 	 */
 	TEST_CASE("Copy until first t");
 	fr_sbuff_set_to_start(&sbuff);
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("t"), '\0');
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("t"), '\0');
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("t"), '\0');
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("i am a longer", out);
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
-	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['i'] = true }, '\0');
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("i"), '\0');
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK_STRCMP("", out);
 }
@@ -436,39 +425,34 @@ static void test_unescape_until(void)
 	 *	set.
 	 */
 	TEST_CASE("Copy 5 bytes to out");
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5,
-					   (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, &rules);
 	TEST_CHECK_SLEN(5, slen);
 	TEST_CHECK_STRCMP("i am ", out);
 	TEST_CHECK_STRCMP("a test string", sbuff.p);
 
 	TEST_CASE("Copy 13 bytes to out");
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13,
-					   (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13, NULL, &rules);
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("a test string", out);
 	TEST_CHECK_STRCMP("", sbuff.p);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1,
-					   (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1, NULL, &rules);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff,
-					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, &rules);
 	TEST_CHECK_SLEN(18, slen);
 	TEST_CHECK_STRCMP("i am a longer test", out);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff,
-					   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, NULL, &rules);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -476,8 +460,7 @@ static void test_unescape_until(void)
 	TEST_CASE("Zero length size");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
-	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0,
-					   (bool[UINT8_MAX + 1]){ }, &rules);
+	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0, NULL, &rules);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -488,28 +471,28 @@ static void test_unescape_until(void)
 	TEST_CASE("Copy until first t");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, &rules);
+					   &FR_SBUFF_TERMINALS("t"), &rules);
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, &rules);
+					   &FR_SBUFF_TERMINALS("t"), &rules);
 	TEST_CHECK_SLEN(14, slen);
 	TEST_CHECK_STRCMP("i am a longer ", out);
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['t'] = true }, &rules);
+					   &FR_SBUFF_TERMINALS("t"), &rules);
 	TEST_CHECK_SLEN(13, slen);
 	TEST_CHECK_STRCMP("i am a longer", out);
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['i'] = true }, &rules);
+					   &FR_SBUFF_TERMINALS("i"), &rules);
 	TEST_CHECK_SLEN(0, slen);
 	TEST_CHECK_STRCMP("", out);
 
@@ -519,7 +502,7 @@ static void test_unescape_until(void)
 	TEST_CASE("Escape with substition to same char");
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules);
+					   &FR_SBUFF_TERMINALS("g"), &pipe_rules);
 	TEST_CHECK_SLEN(20, slen);
 	TEST_CHECK_STRCMP("i am a |t|est string", escape_out);
 	TEST_CHECK_STRCMP("", sbuff.p);
@@ -527,7 +510,7 @@ static void test_unescape_until(void)
 	TEST_CASE("Escape with substition to different char");
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
-					   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub);
+					   &FR_SBUFF_TERMINALS("g"), &pipe_rules_sub);
 	TEST_CHECK_SLEN(20, slen);
 	TEST_CHECK_STRCMP("i am a |t|est strinh", escape_out);
 	TEST_CHECK_STRCMP("", sbuff.p);
@@ -537,9 +520,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Escape with hex substitutions (insufficient output space)");
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_hex);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   &FR_SBUFF_TERMINALS("g"), &pipe_rules_sub_hex);
 		TEST_CHECK_SLEN(24, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh", tmp_out);
 		TEST_CHECK_STRCMP("|x20|040", sbuff.p);
@@ -550,9 +532,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Escape with hex substitutions (sufficient output space)");
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_hex);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   &FR_SBUFF_TERMINALS("g"), &pipe_rules_sub_hex);
 		TEST_CHECK_SLEN(25, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh ", tmp_out);
 		TEST_CHECK_STRCMP("|040", sbuff.p);
@@ -563,9 +544,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Escape with oct substitutions (insufficient output space)");
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_oct);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   &FR_SBUFF_TERMINALS("g"), &pipe_rules_sub_oct);
 		TEST_CHECK_SLEN(28, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20", tmp_out);
 		TEST_CHECK_STRCMP("|040", sbuff.p);
@@ -576,9 +556,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Escape with oct substitutions (sufficient output space)");
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_sub_oct);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   &FR_SBUFF_TERMINALS("g"), &pipe_rules_sub_oct);
 		TEST_CHECK_SLEN(29, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20 ", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
@@ -589,9 +568,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Escape with hex and oct substitutions (sufficient output space)");
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ ['g'] = true }, &pipe_rules_both);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   &FR_SBUFF_TERMINALS("g"), &pipe_rules_both);
 		TEST_CHECK_SLEN(26, slen);
 		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh  ", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
@@ -604,8 +582,7 @@ static void test_unescape_until(void)
 		TEST_CASE("Collapse double escapes");
 		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+						   &sbuff, SIZE_MAX, NULL, &pipe_rules);
 		TEST_CHECK_SLEN(1, slen);
 		TEST_CHECK_STRCMP("|", tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
@@ -617,8 +594,7 @@ static void test_unescape_until(void)
 		TEST_CASE("Collapse double escapes overlapping");
 		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(in_escapes_collapse, sizeof(in_escapes_collapse)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+						   &sbuff, SIZE_MAX, NULL, &pipe_rules);
 		TEST_CHECK_SLEN(5, slen);
 		TEST_CHECK_STRCMP("|foo|", in_escapes_collapse);
 		TEST_CHECK_STRCMP("", sbuff.p);
@@ -665,9 +641,8 @@ static void test_unescape_until(void)
 
 		TEST_CASE("Check unit test test strings");
 		fr_sbuff_init(&sbuff, in_escapes_unit, sizeof(in_escapes_unit));
-		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
-						   &sbuff, SIZE_MAX,
-						   (bool[UINT8_MAX + 1]){ }, &double_quote_rules);
+		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
+						   NULL, &double_quote_rules);
 		TEST_CHECK_SLEN(28, slen);
 		TEST_CHECK_STRCMP(expected, tmp_out);
 		TEST_CHECK_STRCMP("", sbuff.p);
@@ -681,13 +656,45 @@ static void test_unescape_until(void)
 		size_t		len;
 		char const	in_zero[] = "";
 
-		len = fr_sbuff_out_aunescape_until(NULL, &buff, &FR_SBUFF_IN(in_zero, sizeof(in_zero) - 1),
-						   SIZE_MAX, (bool[UINT8_MAX + 1]){ }, &pipe_rules);
+		len = fr_sbuff_out_aunescape_until(NULL, &buff, &FR_SBUFF_IN(in_zero, sizeof(in_zero) - 1), SIZE_MAX,
+						   NULL, &pipe_rules);
 		TEST_CHECK_SLEN(0, len);
 		talloc_get_type_abort(buff, char);
 		TEST_CHECK_SLEN(1, talloc_array_length(buff));
 		talloc_free(buff);
 	}
+}
+
+static void test_unescape_multi_char_terminals(void)
+{
+	char const		in[] = "foo, bar, baz```";
+	fr_sbuff_t		sbuff;
+	ssize_t			slen;
+	fr_sbuff_terminals_t	tt = FR_SBUFF_TERMINALS(
+					",",
+					"```",
+					"bad",
+					"bar",
+					"boink",
+					"food",
+					"nyi"
+				);
+	char			out[100];
+
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK_STRCMP("foo", out);
+
+	fr_sbuff_advance(&sbuff, 1);
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK_STRCMP(" ", out);
+
+	fr_sbuff_advance(&sbuff, 4);
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK_STRCMP(" baz", out);
 }
 
 static void test_no_advance(void)
@@ -1035,32 +1042,32 @@ static void test_adv_until(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, '\0'));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS(" "), '\0'));
 	TEST_CHECK_STRCMP(" abcdefgh ijklmnopp", sbuff.p);
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }, '\0'));
+	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("a"), '\0'));
 	TEST_CHECK_STRCMP("abcdefgh ijklmnopp", sbuff.p);
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['a'] = true }, '\0'));
+	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("a"), '\0'));
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token that is not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(19, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['|'] = true }, '\0'));
+	TEST_CHECK_LEN(19, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("|"), '\0'));
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Check escapes");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ ['p'] = true }, 'o'));
+	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERMINALS("p"), 'o'));
 	TEST_CHECK_STRCMP("p", sbuff.p);
 
 	TEST_CASE("Check for token that is not in the string with length constraint");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, (bool[UINT8_MAX + 1]){ ['|'] = true }, '\0'));
+	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, &FR_SBUFF_TERMINALS("|"), '\0'));
 	TEST_CHECK(sbuff.p == (sbuff.start + 5));
 }
 
@@ -1346,6 +1353,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy",		test_bstrncpy },
 	{ "fr_sbuff_out_bstrncpy_allowed",	test_bstrncpy_allowed },
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
+	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
 
 	/*

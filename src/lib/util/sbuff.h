@@ -103,6 +103,40 @@ typedef struct {
 	size_t			max;			//!< Maximum size of the buffer.
 } fr_sbuff_uctx_talloc_t;
 
+
+typedef struct {
+	char const		**str;			//!< A sorted list of terminal strings.
+	size_t			len;			//!< Length of the list.
+} fr_sbuff_terminals_t;
+
+/** Initialise a terminal structure with a list of sorted strings
+ *
+ * Strings must be lexicographically sorted.
+ *
+ * @param[in] ...	Lexicographically sorted list of terminal strings.
+ */
+#define FR_SBUFF_TERMINALS(...) \
+(fr_sbuff_terminals_t){ \
+	.str = (char const *[]){ __VA_ARGS__}, \
+	.len = (sizeof((char const *[]){ __VA_ARGS__ }) / sizeof(char const *)) \
+}
+
+/** Set of parsing rules for *unescape_until functions
+ *
+ */
+typedef struct {
+	char		chr;				//!< Character at the start of an escape sequence.
+	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
+							///< output along with the escape character.
+							///< This is useful where we need to interpret escape
+							///< sequences for parsing, but where the string will
+							///< be passed off to a 3rd party library which will
+							///< need to interpret the same sequences.
+	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
+	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
+} fr_sbuff_escape_rules_t;
+
 typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
 	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token
@@ -119,6 +153,11 @@ extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
 extern bool const sbuff_char_class_float[UINT8_MAX + 1];
 extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
+extern bool const sbuff_char_class_empty[UINT8_MAX + 1];
+extern bool const sbuff_char_double_quote[UINT8_MAX + 1];
+extern bool const sbuff_char_single_quote[UINT8_MAX + 1];
+extern bool const sbuff_char_solidus[UINT8_MAX + 1];
+extern bool const sbuff_char_backtick[UINT8_MAX + 1];
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -229,6 +268,11 @@ size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
 
 int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
+
+static inline void fr_sbuff_terminate(fr_sbuff_t *sbuff)
+{
+	*sbuff->p = '\0';
+}
 
 static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const)
 {
@@ -358,6 +402,16 @@ static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
  *
  */
 #define FR_SBUFF_ERROR_RETURN(_sbuff) return -(fr_sbuff_used(_sbuff))
+
+/** Return the current position in the sbuff as a negative offset
+ *
+ */
+#define FR_SBUFF_MARKER_ERROR_RETURN(_marker) return -(fr_sbuff_marker_used(_marker))
+
+/** Return the current adjusted position in the sbuff as a negative offset
+ *
+ */
+#define FR_SBUFF_ERROR_RETURN_ADJ(_sbuff, _slen) return -((fr_sbuff_used(_sbuff) + ((_slen) * -1)))
 
 /** Check if _len bytes are available in the sbuff, and if not return the number of bytes we'd need
  *
@@ -660,6 +714,26 @@ static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
 	return len;
 }
 
+/** Resets the position in an sbuff to specified marker
+ *
+ */
+static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
+{
+	fr_sbuff_t *sbuff = m->parent;
+
+	_fr_sbuff_set_recurse(sbuff, m->p);
+}
+
+/** Reset an sbuff to the marker position and release the marker
+ *
+ * @param[in] m		marker to operate on.
+ */
+static inline void fr_sbuff_set_to_marker_release(fr_sbuff_marker_t *m)
+{
+	fr_sbuff_set_to_marker(m);
+	fr_sbuff_marker_release(m);
+}
+
 /** Change the position in the buffer a marker points to
  *
  * @param[in] m		marker to alter.
@@ -707,16 +781,6 @@ static inline ssize_t fr_sbuff_marker_advance(fr_sbuff_marker_t *m, size_t n)
 	if (n == 0) return 0;
 
 	return fr_sbuff_marker_set(m, m->p + n);
-}
-
-/** Resets the position in an sbuff to specified marker
- *
- */
-static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
-{
-	fr_sbuff_t *sbuff = m->parent;
-
-	_fr_sbuff_set_recurse(sbuff, m->p);
 }
 /** @} */
 
@@ -782,27 +846,11 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    bool const until[static UINT8_MAX + 1], char escape_chr);
+				    fr_sbuff_terminals_t const *tt, char escape_chr);
 
-/** Set of parsing rules for *unescape_until functions
- *
- */
-typedef struct {
-	char		chr;				//!< Character at the start of an escape sequence.
-	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
-	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
-							///< output along with the escape character.
-							///< This is useful where we need to interpret escape
-							///< sequences for parsing, but where the string will
-							///< be passed off to a 3rd party library which will
-							///< need to interpret the same sequences.
-	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
-	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
-} fr_sbuff_escape_rules_t;
-
-size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   bool const until[static UINT8_MAX + 1],
-				   fr_sbuff_escape_rules_t const *rules);
+size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				    fr_sbuff_terminals_t const *tt,
+				    fr_sbuff_escape_rules_t const *rules);
 
 /** Find the longest prefix in an sbuff
  *
@@ -820,7 +868,7 @@ do { \
 						   fr_sbuff_current(_sbuff), fr_sbuff_remaining(_sbuff), \
 						   _def); \
 	(void) fr_sbuff_advance(_sbuff, _match_len_tmp); /* can't fail */ \
-	if (_match_len) *(_match_len) = _match_len_tmp; \
+	*(_match_len) = _match_len_tmp; \
 } while (0)
 
 /** Build a talloc wrapper function for a fr_sbuff_out_* function
@@ -891,13 +939,12 @@ static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out,
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						    bool const until[static UINT8_MAX + 1], char escape_chr)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, until, escape_chr);
+						  fr_sbuff_terminals_t const *tt, char escape_chr)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, escape_chr);
 
 static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  bool const until[static UINT8_MAX + 1],
-						  fr_sbuff_escape_rules_t const *rules)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, until, rules);
+						  fr_sbuff_terminals_t const *tt, fr_sbuff_escape_rules_t const *rules)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, rules);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
@@ -970,7 +1017,7 @@ size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 
-size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, bool const until[static UINT8_MAX + 1], char escape_chr);
+size_t	fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_terminals_t const *tt, char escape_chr);
 
 char	*fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *in, size_t len, char const *chr);
 
@@ -1004,10 +1051,12 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  * look ahead.
  * @{
  */
-static inline bool fr_sbuff_is_allowed(fr_sbuff_t *sbuff, bool const allowed_chars[static UINT8_MAX + 1])
+bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_terminals_t const *tt);
+
+static inline bool fr_sbuff_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
 {
 	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
-	return allowed_chars[(uint8_t)*sbuff->p];
+	return chars[(uint8_t)*sbuff->p];
 }
 
 static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
