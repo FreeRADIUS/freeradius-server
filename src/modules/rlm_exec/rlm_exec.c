@@ -289,6 +289,62 @@ typedef struct {
 } rlm_exec_ctx_t;
 
 
+/** Process the exit code returned by one of the exec functions
+ *
+ * @param request Current request.
+ * @param answer Output string from exec call.
+ * @param len length of data in answer.
+ * @param status code returned by exec call.
+ * @return One of the RLM_MODULE_* values.
+ */
+static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t len, int status)
+{
+	if (status < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Exec'd programs are meant to return exit statuses that correspond
+	 *	to the standard RLM_MODULE_* + 1.
+	 *
+	 *	This frees up 0, for success where it'd normally be reject.
+	 */
+	if (status == 0) {
+		RDEBUG("Program executed successfully");
+
+		return RLM_MODULE_OK;
+	}
+
+	if (status > RLM_MODULE_NUMCODES) {
+		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
+			status, RLM_MODULE_NUMCODES, answer);
+		goto fail;
+	}
+
+	status--;	/* Lets hope no one ever re-enumerates RLM_MODULE_* */
+
+	if (status == RLM_MODULE_FAIL) {
+		fail:
+
+		if (len > 0) {
+			char *p = &answer[len - 1];
+
+			/*
+			 *	Trim off trailing returns
+			 */
+			while((p > answer) && ((*p == '\r') || (*p == '\n'))) {
+				*p-- = '\0';
+			}
+
+			module_failure_msg(request, "%s", answer);
+		}
+
+		return RLM_MODULE_FAIL;
+	}
+
+	return status;
+}
+
 static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
 {
 	int			status;
@@ -312,22 +368,16 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 
 	status = m->status;
 
-	/*
-	 *	Don't print anything on success.
-	 */
-	if (status == 0) return RLM_MODULE_OK;
-
 	if (status < 0) {
 		REDEBUG("Program exited with signal %d", -status);
 		return RLM_MODULE_FAIL;
 	}
 
-	if (status > RLM_MODULE_NUMCODES) return RLM_MODULE_OK;
-
 	/*
-	 *	Return the exit status as an rcode.
+	 *	The status rcodes aren't quite the same as the rcode
+	 *	enumeration.
 	 */
-	return status - 1;
+	return rlm_exec_status2rcode(request, NULL, 0, status);
 }
 
 /*
