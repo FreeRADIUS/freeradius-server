@@ -445,11 +445,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 *	local ARP table and then
 				 *	unicast the reply.
 				 */
-				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) < 0) {
+				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) == 0) {
+					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
+					memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				} else {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
-				} else {
-					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
 				}
 
 #endif
