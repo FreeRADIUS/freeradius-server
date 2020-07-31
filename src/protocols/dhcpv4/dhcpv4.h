@@ -139,9 +139,6 @@ typedef struct {
 	fr_dict_attr_t const *root;
 } fr_dhcpv4_ctx_t;
 
-RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd);
-int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
-
 /*
  *	base.c
  */
@@ -203,8 +200,9 @@ int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET
 /*
  *	udp.c
  */
-int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface,
-					    fr_ipaddr_t const *ip, uint8_t macaddr[static 6]);
+RADIUS_PACKET	*fr_dhcpv4_udp_packet_recv(int sockfd);
+int		fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
+
 #ifdef __cplusplus
 }
 #endif

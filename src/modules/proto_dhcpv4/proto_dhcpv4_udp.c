@@ -23,7 +23,6 @@
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <sys/ioctl.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
@@ -35,6 +34,7 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/dhcpv4/freeradius.internal.h>
+#include <freeradius-devel/arp/arp.h>
 #include "proto_dhcpv4.h"
 
 extern fr_app_io_t proto_dhcpv4_udp;
@@ -429,11 +429,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 #ifdef SIOCSARP
 			} else if (inst->broadcast && inst->interface) {
-				fr_ipaddr_t ipaddr;
 				uint8_t macaddr[6];
+				uint8_t ipaddr[4];
 
-				ipaddr.af = AF_INET;
-				memcpy(&ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				memcpy(&ipaddr, &packet->yiaddr, 4);
 				memcpy(&macaddr, &packet->chaddr, 6);
 
 				/*
@@ -446,8 +445,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 *	local ARP table and then
 				 *	unicast the reply.
 				 */
-				if (fr_dhcpv4_udp_add_arp_entry(thread->sockfd, inst->interface,
-								&ipaddr, macaddr) < 0) {
+				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) < 0) {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				} else {

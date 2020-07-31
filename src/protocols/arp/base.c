@@ -30,6 +30,13 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+#  include <linux/if_packet.h>
+#  include <linux/if_ether.h>
+#endif
+
+#include <net/if_arp.h>
+
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_arp;
@@ -81,6 +88,54 @@ char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE] = {
 };
 
 static uint8_t const zeros[6] = { 0 };
+
+#ifdef SIOCSARP
+/** Forcibly add an ARP entry so we can send unicast packets to hosts that don't have IP addresses yet
+ *
+ * @param[in] fd	to add arp entry on.
+ * @param[in] interface	to add arp entry on.
+ * @param[in] ip	to insert into ARP table.
+ * @param[in] macaddr	to insert into ARP table.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], uint8_t macaddr[static 6])
+{
+	struct sockaddr_in *sin;
+	struct arpreq req;
+
+	if (!interface) {
+		fr_strerror_printf("No interface specified.  Cannot update ARP table");
+		return -1;
+	}
+
+	memset(&req, 0, sizeof(req));
+	sin = (struct sockaddr_in *) &req.arp_pa;
+	sin->sin_family = AF_INET;
+	memcpy(&sin->sin_addr.s_addr, &ipaddr, 4);
+
+	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
+
+	memcpy(&req.arp_ha.sa_data, macaddr, 6);
+
+	req.arp_flags = ATF_COM;
+	if (ioctl(fd, SIOCSARP, &req) < 0) {
+		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", fr_syserror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+#else
+int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
+		     UNUSED uint8_t ipaddr[static 4], UNUSED uint8_t macaddr[static 6])
+{
+	fr_strerror_printf("Adding ARP entry is unsupported on this system");
+	return -1;
+}
+#endif
+
 
 /** Encode VPS into a raw ARP packet.
  *

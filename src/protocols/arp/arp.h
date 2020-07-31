@@ -31,6 +31,9 @@
 #include <freeradius-devel/protocol/arp/dictionary.h>
 #include <freeradius-devel/protocol/arp/rfc826.h>
 
+/* for SIOCSARP, and fr_arp_entry_add */
+#include <sys/ioctl.h>
+
 #define FR_ARP_PACKET_SIZE (28)
 #define ETH_TYPE_ARP (0x0806)
 
@@ -39,6 +42,8 @@ void fr_arp_free(void);
 
 ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, VALUE_PAIR *vps);
 ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps);
+
+int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], uint8_t macaddr[static 6]);
 
 /*
  *	ARP for ethernet && IPv4.
