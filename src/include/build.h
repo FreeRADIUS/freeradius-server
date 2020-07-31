@@ -67,7 +67,7 @@ extern "C" {
 
 /*
  *	Helpers for initialising arrays
- *      of string literals.
+ *	of string literals.
  */
 #define L(_str)		{ _str, sizeof(_str) - 1 }
 
