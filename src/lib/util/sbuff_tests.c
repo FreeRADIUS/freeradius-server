@@ -684,16 +684,19 @@ static void test_unescape_multi_char_terminals(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK(slen == 3);
 	TEST_CHECK_STRCMP("foo", out);
 
 	fr_sbuff_advance(&sbuff, 1);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK(slen == 1);
 	TEST_CHECK_STRCMP(" ", out);
 
 	fr_sbuff_advance(&sbuff, 4);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, '\0');
+	TEST_CHECK(slen == 4);
 	TEST_CHECK_STRCMP(" baz", out);
 }
 
