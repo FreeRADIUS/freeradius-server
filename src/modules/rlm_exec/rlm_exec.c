@@ -305,12 +305,11 @@ static const rlm_rcode_t status2rcode[] = {
 /** Process the exit code returned by one of the exec functions
  *
  * @param request Current request.
- * @param answer Output string from exec call.
- * @param len length of data in answer.
+ * @param box Output string from exec call.
  * @param status code returned by exec call.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t len, int status)
+static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, fr_value_box_t *box, int status)
 {
 	rlm_rcode_t rcode;
 
@@ -331,28 +330,17 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 	}
 
 	if (status > 9) {
-		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
-			status, RLM_MODULE_NUMCODES, answer);
+		REDEBUG("Program returned invalid code (greater than max rcode) (%i > 9): %pV",
+			status, box);
 		goto fail;
 	}
 
 	rcode = status2rcode[status];
 
 	if (rcode == RLM_MODULE_FAIL) {
-		fail:
+	fail:
 
-		if (len > 0) {
-			char *p = &answer[len - 1];
-
-			/*
-			 *	Trim off trailing returns
-			 */
-			while((p > answer) && ((*p == '\r') || (*p == '\n'))) {
-				*p-- = '\0';
-			}
-
-//			module_failure_msg(request, "%s", answer);
-		}
+		if (box) log_module_failure_msg(request, "%pV", box);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -379,6 +367,8 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 
 		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
 		if (vps) fr_pair_list_move(output_pairs, &vps);
+
+		m->box = NULL;	/* has been consumed */
 	}
 
 	status = m->status;
@@ -392,7 +382,7 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 	 *	The status rcodes aren't quite the same as the rcode
 	 *	enumeration.
 	 */
-	return rlm_exec_status2rcode(request, NULL, 0, status);
+	return rlm_exec_status2rcode(request, m->box, status);
 }
 
 /*
