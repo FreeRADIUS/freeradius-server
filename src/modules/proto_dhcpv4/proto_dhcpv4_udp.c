@@ -215,6 +215,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
+	proto_dhcpv4_track_t		*request = talloc_get_type_abort(track->packet, proto_dhcpv4_track_t);
 	fr_io_address_t			address;
 
 	int				flags;
@@ -246,7 +247,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	if (!thread->connection) {
 		uint8_t const *code, *sid;
 		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
-		dhcp_packet_t *request = (dhcp_packet_t *) track->packet; /* only 20 bytes tho! */
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 		fr_ipaddr_t primary;
 #endif
@@ -376,7 +376,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	broadcasts DHCPOFFER and DHCPACK messages to
 		 *	0xffffffff."
 		 */
-		if ((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) {
+		if (request->broadcast) {
 			DEBUG("Reply will be broadcast due to client request.");
 			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
@@ -622,11 +622,13 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	 */
 	if (option[2] != FR_DHCP_LEASE_QUERY) {
 		if (dhcp->hlen == 6) memcpy(&track->chaddr, &dhcp->chaddr, 6);
-
-	} else {
-		memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
 	}
-	
+
+	track->broadcast = ((dhcp->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0);
+	track->hops = dhcp->hops;
+	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->giaddr));
+	memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
+
 	return track;
 }
 
@@ -651,7 +653,7 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	if (rcode != 0) return rcode;
 
 	/*
-	 *	Compare giaddr for lease queries.
+	 *	Compare giaddr, but not ciaddr
 	 */
 	rcode = memcmp(&a->giaddr, &b->giaddr, sizeof(a->giaddr));
 	if (rcode != 0) return rcode;

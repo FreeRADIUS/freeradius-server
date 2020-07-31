@@ -50,5 +50,8 @@ typedef struct {
 	int				message_type;
 	uint32_t			xid;
 	fr_ethernet_t			chaddr;
-	uint32_t			giaddr;		//!< only for lease queries
+	bool				broadcast;
+	uint8_t				hops;
+	uint32_t			ciaddr;
+	uint32_t			giaddr;
 } proto_dhcpv4_track_t;
