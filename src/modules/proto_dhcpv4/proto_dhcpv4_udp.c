@@ -23,6 +23,7 @@
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
+#include <sys/ioctl.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
@@ -244,7 +245,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 */
 	if (!thread->connection) {
 		uint8_t const *code, *sid;
-		uint32_t ipaddr;
 		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
 		dhcp_packet_t *request = (dhcp_packet_t *) track->packet; /* only 20 bytes tho! */
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
@@ -311,10 +311,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	the BOOTP relay agent whose address appears in
 		 *	'giaddr'.
 		 */
-		memcpy(&ipaddr, &packet->giaddr, 4);
-		if (ipaddr != INADDR_ANY) {
+		if (packet->giaddr != INADDR_ANY) {
 			DEBUG("Reply will be sent to giaddr.");
-			address.dst_ipaddr.addr.v4.s_addr = ipaddr;
+			address.dst_ipaddr.addr.v4.s_addr = packet->giaddr;
 			address.dst_port = inst->port;
 			address.src_port = inst->port;
 
@@ -407,7 +406,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		switch (code[2]) {
 			/*
-			 *	Offers are sent to YIADDR if we
+			 *	OFFERs are sent to YIADDR if we
 			 *	received a unicast packet from YIADDR.
 			 *	Otherwise, they are unicast to YIADDR
 			 *	(if we can update ARP), otherwise they
@@ -430,8 +429,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 #ifdef SIOCSARP
 			} else if (inst->broadcast && inst->interface) {
+				fr_ipaddr_t ipaddr;
+				uint8_t macaddr[6];
+
+				ipaddr.af = AF_INET;
+				memcpy(&ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				memcpy(&macaddr, &packet->chaddr, 6);
+
 				/*
-				 *	Else the offer was broadcast.
+				 *	Else the OFFER was broadcast.
 				 *	This socket is listening for
 				 *	broadcast packets on a
 				 *	particular interface.  We're
@@ -441,7 +447,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 *	unicast the reply.
 				 */
 				if (fr_dhcpv4_udp_add_arp_entry(thread->sockfd, inst->interface,
-								&packet->yiaddr, &packet->chaddr) < 0) {
+								&ipaddr, macaddr) < 0) {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				} else {
