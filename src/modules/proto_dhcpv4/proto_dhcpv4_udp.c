@@ -736,8 +736,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	If we're listening for broadcast requests, we MUST
 	 */
 	if (inst->broadcast && !inst->interface) {
-		cf_log_warn("You SHOULD set 'interface' if you have set 'broadcast = yes'.");
-		cf_log_warn("All replies will be broadcast, as ARP updates require 'interface' to be set.")
+		cf_log_warn(cs, "You SHOULD set 'interface' if you have set 'broadcast = yes'.");
+		cf_log_warn(cs, "All replies will be broadcast, as ARP updates require 'interface' to be set.")
 	}
 #endif
 
