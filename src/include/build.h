@@ -66,6 +66,12 @@ extern "C" {
 #define JOINSTR(x,y) XSTRINGIFY(x ## y)
 
 /*
+ *	Helpers for initialising arrays
+ *      of string literals.
+ */
+#define L(_str)		{ _str, sizeof(_str) - 1 }
+
+/*
  *	HEX concatenation macros
  */
 #ifndef HEXIFY

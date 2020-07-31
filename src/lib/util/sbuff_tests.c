@@ -671,13 +671,13 @@ static void test_unescape_multi_char_terminals(void)
 	fr_sbuff_t		sbuff;
 	ssize_t			slen;
 	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
-					FR_SBUFF_ELEM(","),
-					FR_SBUFF_ELEM("```"),
-					FR_SBUFF_ELEM("bad"),
-					FR_SBUFF_ELEM("bar"),
-					FR_SBUFF_ELEM("boink"),
-					FR_SBUFF_ELEM("food"),
-					FR_SBUFF_ELEM("nyi")
+					L(","),
+					L("```"),
+					L("bad"),
+					L("bar"),
+					L("boink"),
+					L("food"),
+					L("nyi")
 				);
 	char			out[100];
 

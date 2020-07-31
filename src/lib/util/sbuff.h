@@ -119,13 +119,6 @@ typedef struct {
 	fr_sbuff_term_elem_t	*elem;			//!< A sorted list of terminal strings.
 } fr_sbuff_term_t;
 
-/** Terminal element
- *
- * @param[in] _str	terminal string.
- */
-#define FR_SBUFF_ELEM(_str) \
-	{ .str = _str, .len = (sizeof(_str) - 1) }
-
 /** Initialise a terminal structure with a single string
  *
  * @param[in] _str	terminal string.
@@ -133,7 +126,7 @@ typedef struct {
 #define FR_SBUFF_TERM(_str) \
 (fr_sbuff_term_t){ \
 	.len = 1, \
-	.elem = (fr_sbuff_term_elem_t[]){ FR_SBUFF_ELEM(_str) }, \
+	.elem = (fr_sbuff_term_elem_t[]){ L(_str) }, \
 }
 
 /** Initialise a terminal structure with a list of sorted strings
