@@ -3057,13 +3057,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	parse_rules = *unlang_ctx->rules;
 	parse_rules.dict_def = dict;
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SUBREQUEST);
-	}
-
-	g = group_allocate(parent, cs, UNLANG_TYPE_SUBREQUEST);
-	if (!g) return NULL;
-
 	unlang_ctx2.actions = unlang_ctx->actions;
 
 	/*
@@ -3075,16 +3068,16 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	unlang_ctx2.rules = &parse_rules;
 
 	/*
-	 *	Compile the children of this subrequest in the context
-	 *	of the dictionary && namespace that was given by the
-	 *	subrequest.
+	 *	Compile the subsection with a *different* default dictionary.
 	 */
-	c = compile_children(g, parent, &unlang_ctx2);
+	c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_SUBREQUEST);
 	if (!c) return NULL;
 
-	c->name = "subrequest";
-	c->debug_name = talloc_typed_asprintf(c, "subrequest %s", cf_section_name2(cs));
-
+	/*
+	 *	Set the dictionary and packet information, which tells
+	 *	unlang_subrequest() how to process the request.
+	 */
+	g = unlang_generic_to_group(c);
 	g->dict = dict;
 	g->attr_packet_type = da;
 	g->type_enum = type_enum;
