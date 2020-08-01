@@ -248,9 +248,9 @@ static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, fr_table_num_
 	fr_table_num_sorted_t const	*p;
 	fr_value_box_t		value = { .type = FR_TYPE_INT32 };
 
-	for (p = table; p->name; p++) {
+	for (p = table; p->name.str; p++) {
 		value.vb_int32 = p->value;
-		if (fr_dict_enum_add_name(fr_dict_attr_unconst(da), p->name, &value, true, false) < 0) return -1;
+		if (fr_dict_enum_add_name(fr_dict_attr_unconst(da), p->name.str, &value, true, false) < 0) return -1;
 	}
 
 	return 0;
