@@ -1502,23 +1502,25 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	fr_assert(el);
 
-	conn = talloc_zero(ctx, fr_connection_t);
+	conn = talloc(ctx, fr_connection_t);
 	if (!conn) return NULL;
 	talloc_set_destructor(conn, _connection_free);
-
-	conn->pub.id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
-	conn->pub.state = FR_CONNECTION_STATE_HALTED;
-	conn->pub.el = el;
-	conn->pub.h = NULL;
-	conn->reconnection_delay = conf->reconnection_delay;
-	conn->connection_timeout = conf->connection_timeout;
-	conn->init = funcs->init;
-	conn->open = funcs->open;
-	conn->close = funcs->close;
-	conn->failed = funcs->failed;
-	conn->shutdown = funcs->shutdown;
-	conn->is_closed = true;		/* Starts closed */
-	conn->pub.log_prefix = talloc_typed_strdup(conn, log_prefix);
+	*conn = (fr_connection_t){
+		.pub = {
+			.id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed),
+			.state = FR_CONNECTION_STATE_HALTED,
+			.el = el
+		},
+		.reconnection_delay = conf->reconnection_delay,
+		.connection_timeout = conf->connection_timeout,
+		.init = funcs->init,
+		.open = funcs->open,
+		.close = funcs->close,
+		.failed = funcs->failed,
+		.shutdown = funcs->shutdown,
+		.is_closed = true,		/* Starts closed */
+		.pub.log_prefix = talloc_typed_strdup(conn, log_prefix)
+	};
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 
 	for (i = 0; i < NUM_ELEMENTS(conn->watch_pre); i++) {
