@@ -234,31 +234,31 @@ typedef struct {
  * ??? What the heck is wrong with getservbyname?
  */
 static fr_table_num_sorted_t const filterPortType[] = {
-	{ "cmd",	514 },
-	{ "domain",	53 },
-	{ "exec",	512 },
-	{ "finger",	79 },
-	{ "ftp",	21 },
-	{ "ftp-data",   20 },
-	{ "gopher",	70 },
-	{ "hostname",	101 },
-	{ "kerberos",	88 },
-	{ "login",	513 },
-	{ "nameserver", 42 },
-	{ "nntp",	119 },
-	{ "ntp",	123 },
-	{ "smtp",	25 },
-	{ "talk",	517 },
-	{ "telnet",	23 },
-	{ "tftp",	69 },
-	{ "www",	80 }
+	{ L("cmd"),	514 },
+	{ L("domain"),	53 },
+	{ L("exec"),	512 },
+	{ L("finger"),	79 },
+	{ L("ftp"),	21 },
+	{ L("ftp-data"),   20 },
+	{ L("gopher"),	70 },
+	{ L("hostname"),	101 },
+	{ L("kerberos"),	88 },
+	{ L("login"),	513 },
+	{ L("nameserver"), 42 },
+	{ L("nntp"),	119 },
+	{ L("ntp"),	123 },
+	{ L("smtp"),	25 },
+	{ L("talk"),	517 },
+	{ L("telnet"),	23 },
+	{ L("tftp"),	69 },
+	{ L("www"),	80 }
 };
 static size_t filterPortType_len = NUM_ELEMENTS(filterPortType);
 
 static fr_table_num_sorted_t const filterType[] = {
-	{ "generic",	ASCEND_FILTER_GENERIC},
-	{ "ip", 	ASCEND_FILTER_IP},
-	{ "ipx", 	ASCEND_FILTER_IPX}
+	{ L("generic"),	ASCEND_FILTER_GENERIC},
+	{ L("ip"), 	ASCEND_FILTER_IP},
+	{ L("ipx"), 	ASCEND_FILTER_IPX}
 };
 static size_t filterType_len = NUM_ELEMENTS(filterType);
 
@@ -292,27 +292,27 @@ typedef enum {
 
 
 static fr_table_num_sorted_t const filterKeywords[] = {
-	{ "!=",		FILTER_GENERIC_COMPNEQ },
-	{ "==",		FILTER_GENERIC_COMPEQ  },
-	{ "drop",	FILTER_DROP },
-	{ "dstip",  	FILTER_IP_DST },
-	{ "dstipxnet",	FILTER_IPX_DST_IPXNET  },
-	{ "dstipxnode",	FILTER_IPX_DST_IPXNODE  },
-	{ "dstipxsock",	FILTER_IPX_DST_IPXSOCK  },
-	{ "dstport",	FILTER_IP_DST_PORT },
-	{ "est",	FILTER_EST },
-	{ "forward",	FILTER_FORWARD },
-	{ "generic",	FILTER_GENERIC_TYPE },
-	{ "in", 	FILTER_IN },
-	{ "ip", 	FILTER_IP_TYPE },
-	{ "ipx",	FILTER_IPX_TYPE  },
-	{ "more",	FILTER_MORE },
-	{ "out",	FILTER_OUT },
-	{ "srcip",  	FILTER_IP_SRC },
-	{ "srcipxnet",	FILTER_IPX_SRC_IPXNET  },
-	{ "srcipxnode",	FILTER_IPX_SRC_IPXNODE  },
-	{ "srcipxsock",	FILTER_IPX_SRC_IPXSOCK  },
-	{ "srcport",	FILTER_IP_SRC_PORT }
+	{ L("!="),		FILTER_GENERIC_COMPNEQ },
+	{ L("=="),		FILTER_GENERIC_COMPEQ  },
+	{ L("drop"),	FILTER_DROP },
+	{ L("dstip"),  	FILTER_IP_DST },
+	{ L("dstipxnet"),	FILTER_IPX_DST_IPXNET  },
+	{ L("dstipxnode"),	FILTER_IPX_DST_IPXNODE  },
+	{ L("dstipxsock"),	FILTER_IPX_DST_IPXSOCK  },
+	{ L("dstport"),	FILTER_IP_DST_PORT },
+	{ L("est"),	FILTER_EST },
+	{ L("forward"),	FILTER_FORWARD },
+	{ L("generic"),	FILTER_GENERIC_TYPE },
+	{ L("in"), 	FILTER_IN },
+	{ L("ip"), 	FILTER_IP_TYPE },
+	{ L("ipx"),	FILTER_IPX_TYPE  },
+	{ L("more"),	FILTER_MORE },
+	{ L("out"),	FILTER_OUT },
+	{ L("srcip"),  	FILTER_IP_SRC },
+	{ L("srcipxnet"),	FILTER_IPX_SRC_IPXNET  },
+	{ L("srcipxnode"),	FILTER_IPX_SRC_IPXNODE  },
+	{ L("srcipxsock"),	FILTER_IPX_SRC_IPXSOCK  },
+	{ L("srcport"),	FILTER_IP_SRC_PORT }
 };
 static size_t filterKeywords_len = NUM_ELEMENTS(filterKeywords);
 
@@ -324,11 +324,11 @@ static size_t filterKeywords_len = NUM_ELEMENTS(filterKeywords);
  *  ??? What the heck is wrong with getprotobyname?
  */
 static fr_table_num_sorted_t const filterProtoName[] = {
-	{ "0",	  0 },
-	{ "icmp", 1 },
-	{ "ospf", 89 },
-	{ "tcp",  6 },
-	{ "udp",  17 }
+	{ L("0"),	  0 },
+	{ L("icmp"), 1 },
+	{ L("ospf"), 89 },
+	{ L("tcp"),  6 },
+	{ L("udp"),  17 }
 };
 static size_t filterProtoName_len = NUM_ELEMENTS(filterProtoName);
 
@@ -347,10 +347,10 @@ typedef enum {
 } RadFilterComparison;
 
 static fr_table_num_sorted_t const filterCompare[] = {
-	{ "!=", RAD_COMPARE_NOT_EQUAL	},
-	{ "<",	RAD_COMPARE_LESS	},
-	{ "=",	RAD_COMPARE_EQUAL	},
-	{ ">",	RAD_COMPARE_GREATER	}
+	{ L("!="), RAD_COMPARE_NOT_EQUAL	},
+	{ L("<"),	RAD_COMPARE_LESS	},
+	{ L("="),	RAD_COMPARE_EQUAL	},
+	{ L(">"),	RAD_COMPARE_GREATER	}
 };
 static size_t filterCompare_len = NUM_ELEMENTS(filterCompare);
 

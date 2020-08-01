@@ -1643,12 +1643,12 @@ static int bfd_session_cmp(const void *one, const void *two)
 }
 
 static fr_table_num_sorted_t const auth_types[] = {
-	{ "keyed-md5",		BFD_AUTH_KEYED_MD5	},
-	{ "keyed-sha1",		BFD_AUTH_KEYED_SHA1	},
-	{ "met-keyed-md5",	BFD_AUTH_MET_KEYED_MD5	},
-	{ "met-keyed-sha1",	BFD_AUTH_MET_KEYED_SHA1 },
-	{ "none",		BFD_AUTH_RESERVED	},
-	{ "simple",		BFD_AUTH_SIMPLE		}
+	{ L("keyed-md5"),		BFD_AUTH_KEYED_MD5	},
+	{ L("keyed-sha1"),		BFD_AUTH_KEYED_SHA1	},
+	{ L("met-keyed-md5"),	BFD_AUTH_MET_KEYED_MD5	},
+	{ L("met-keyed-sha1"),	BFD_AUTH_MET_KEYED_SHA1 },
+	{ L("none"),		BFD_AUTH_RESERVED	},
+	{ L("simple"),		BFD_AUTH_SIMPLE		}
 };
 static size_t auth_types_len = NUM_ELEMENTS(auth_types);
 

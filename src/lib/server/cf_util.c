@@ -1757,7 +1757,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 		return 0;
 	}
 
-	for (i = 0; i < table_len; i++) MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", table[i].name));
+	for (i = 0; i < table_len; i++) MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", table[i].name.str));
 
 	if (!list) {
 		cf_log_err(cp, "Internal error parsing %s: Table was empty", cf_pair_attr(cp));

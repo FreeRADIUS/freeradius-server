@@ -48,17 +48,17 @@ static fr_ldap_config_t ldap_global_handle_config = {
 };
 
 fr_table_num_sorted_t const fr_ldap_connection_states[] = {
-	{ "bind",	FR_LDAP_STATE_BIND	},
-	{ "error",	FR_LDAP_STATE_ERROR	},
-	{ "init",	FR_LDAP_STATE_INIT	},
-	{ "run",	FR_LDAP_STATE_RUN	},
-	{ "start-tls",	FR_LDAP_STATE_START_TLS	}
+	{ L("bind"),	FR_LDAP_STATE_BIND	},
+	{ L("error"),	FR_LDAP_STATE_ERROR	},
+	{ L("init"),	FR_LDAP_STATE_INIT	},
+	{ L("run"),	FR_LDAP_STATE_RUN	},
+	{ L("start-tls"),	FR_LDAP_STATE_START_TLS	}
 };
 size_t fr_ldap_connection_states_len = NUM_ELEMENTS(fr_ldap_connection_states);
 
 fr_table_num_sorted_t const fr_ldap_supported_extensions[] = {
-	{ "bindname",	LDAP_DEREF_NEVER	},
-	{ "x-bindpw",	LDAP_DEREF_SEARCHING	}
+	{ L("bindname"),	LDAP_DEREF_NEVER	},
+	{ L("x-bindpw"),	LDAP_DEREF_SEARCHING	}
 };
 size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensions);
 
@@ -66,31 +66,31 @@ size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensi
  *	Scopes
  */
 fr_table_num_sorted_t const fr_ldap_scope[] = {
-	{ "base",	LDAP_SCOPE_BASE },
+	{ L("base"),	LDAP_SCOPE_BASE },
 #ifdef LDAP_SCOPE_CHILDREN
-	{ "children",	LDAP_SCOPE_CHILDREN },
+	{ L("children"),	LDAP_SCOPE_CHILDREN },
 #endif
-	{ "one",	LDAP_SCOPE_ONE	},
-	{ "sub",	LDAP_SCOPE_SUB	}
+	{ L("one"),	LDAP_SCOPE_ONE	},
+	{ L("sub"),	LDAP_SCOPE_SUB	}
 };
 size_t fr_ldap_scope_len = NUM_ELEMENTS(fr_ldap_scope);
 
 #ifdef LDAP_OPT_X_TLS_NEVER
 fr_table_num_sorted_t const fr_ldap_tls_require_cert[] = {
-	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
-	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
-	{ "hard",	LDAP_OPT_X_TLS_HARD	},
-	{ "never",	LDAP_OPT_X_TLS_NEVER	},
-	{ "try",	LDAP_OPT_X_TLS_TRY	}
+	{ L("allow"),	LDAP_OPT_X_TLS_ALLOW	},
+	{ L("demand"),	LDAP_OPT_X_TLS_DEMAND	},
+	{ L("hard"),	LDAP_OPT_X_TLS_HARD	},
+	{ L("never"),	LDAP_OPT_X_TLS_NEVER	},
+	{ L("try"),	LDAP_OPT_X_TLS_TRY	}
 };
 size_t fr_ldap_tls_require_cert_len = NUM_ELEMENTS(fr_ldap_tls_require_cert);
 #endif
 
 fr_table_num_sorted_t const fr_ldap_dereference[] = {
-	{ "always",	LDAP_DEREF_ALWAYS	},
-	{ "finding",	LDAP_DEREF_FINDING	},
-	{ "never",	LDAP_DEREF_NEVER	},
-	{ "searching",	LDAP_DEREF_SEARCHING	}
+	{ L("always"),	LDAP_DEREF_ALWAYS	},
+	{ L("finding"),	LDAP_DEREF_FINDING	},
+	{ L("never"),	LDAP_DEREF_NEVER	},
+	{ L("searching"),	LDAP_DEREF_SEARCHING	}
 };
 size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
 

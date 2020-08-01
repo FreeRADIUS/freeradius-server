@@ -93,12 +93,12 @@ typedef enum {
 } ldap_sync_packet_code_t;
 
 static fr_table_num_sorted_t const ldap_sync_code_table[] = {
-	{ "cookie-load",	LDAP_SYNC_CODE_COOKIE_LOAD	},
-	{ "cookie-store",	LDAP_SYNC_CODE_COOKIE_STORE	},
-	{ "entry-add",		LDAP_SYNC_CODE_ADD		},
-	{ "entry-delete",	LDAP_SYNC_CODE_DELETE		},
-	{ "entry-modify",	LDAP_SYNC_CODE_MODIFY		},
-	{ "entry-present",	LDAP_SYNC_CODE_PRESENT		}
+	{ L("cookie-load"),	LDAP_SYNC_CODE_COOKIE_LOAD	},
+	{ L("cookie-store"),	LDAP_SYNC_CODE_COOKIE_STORE	},
+	{ L("entry-add"),		LDAP_SYNC_CODE_ADD		},
+	{ L("entry-delete"),	LDAP_SYNC_CODE_DELETE		},
+	{ L("entry-modify"),	LDAP_SYNC_CODE_MODIFY		},
+	{ L("entry-present"),	LDAP_SYNC_CODE_PRESENT		}
 };
 static size_t ldap_sync_code_table_len = NUM_ELEMENTS(ldap_sync_code_table);
 

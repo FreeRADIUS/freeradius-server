@@ -56,8 +56,8 @@ typedef enum {
 
 #ifdef DEBUG_CHANNEL
 static fr_table_num_sorted_t const channel_direction[] = {
-	{ "to responder",	TO_RESPONDER },
-	{ "to requestor",	TO_REQUESTOR },
+	{ L("to responder"),	TO_RESPONDER },
+	{ L("to requestor"),	TO_REQUESTOR },
 };
 size_t channel_direction_len = NUM_ELEMENTS(channel_direction);
 #endif
@@ -151,21 +151,21 @@ struct fr_channel_s {
 };
 
 fr_table_num_sorted_t const channel_signals[] = {
-	{ "error",			FR_CHANNEL_ERROR			},
-	{ "data-to-responder",		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
-	{ "data-to-requestor",		FR_CHANNEL_DATA_READY_REQUESTOR		},
-	{ "open",			FR_CHANNEL_OPEN				},
-	{ "close",			FR_CHANNEL_CLOSE			},
-	{ "data-done-responder",	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
-	{ "responder-sleeping",		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
+	{ L("error"),			FR_CHANNEL_ERROR			},
+	{ L("data-to-responder"),		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
+	{ L("data-to-requestor"),		FR_CHANNEL_DATA_READY_REQUESTOR		},
+	{ L("open"),			FR_CHANNEL_OPEN				},
+	{ L("close"),			FR_CHANNEL_CLOSE			},
+	{ L("data-done-responder"),	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
+	{ L("responder-sleeping"),		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
 };
 size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
 fr_table_num_sorted_t const channel_packet_priority[] = {
-	{ "high",	PRIORITY_HIGH		},
-	{ "low",	PRIORITY_LOW		},
-	{ "normal",	PRIORITY_NORMAL		},
-	{ "now",	PRIORITY_NOW		}
+	{ L("high"),	PRIORITY_HIGH		},
+	{ L("low"),	PRIORITY_LOW		},
+	{ L("normal"),	PRIORITY_NORMAL		},
+	{ L("now"),	PRIORITY_NOW		}
 };
 size_t channel_packet_priority_len = NUM_ELEMENTS(channel_packet_priority);
 

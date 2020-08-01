@@ -32,15 +32,15 @@ RCSID("$Id$")
 #include <ctype.h>
 
 static fr_table_num_sorted_t const allowed_return_codes[] = {
-	{ "fail",       1 },
-	{ "handled",    1 },
-	{ "invalid",    1 },
-	{ "noop",       1 },
-	{ "notfound",   1 },
-	{ "ok",	 	1 },
-	{ "reject",     1 },
-	{ "updated",    1 },
-	{ "disallow",   1 }
+	{ L("fail"),       1 },
+	{ L("handled"),    1 },
+	{ L("invalid"),    1 },
+	{ L("noop"),       1 },
+	{ L("notfound"),   1 },
+	{ L("ok"),	 	1 },
+	{ L("reject"),     1 },
+	{ L("updated"),    1 },
+	{ L("disallow"),   1 }
 };
 static size_t allowed_return_codes_len = NUM_ELEMENTS(allowed_return_codes);
 

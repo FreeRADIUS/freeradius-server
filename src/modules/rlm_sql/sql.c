@@ -44,22 +44,22 @@ RCSID("$Id$")
  *	readable reason strings.
  */
 fr_table_num_sorted_t const sql_rcode_description_table[] = {
-	{ "need alt query",	RLM_SQL_ALT_QUERY	},
-	{ "no connection",	RLM_SQL_RECONNECT	},
-	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
-	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
-	{ "server error",	RLM_SQL_ERROR		},
-	{ "success",		RLM_SQL_OK		}
+	{ L("need alt query"),	RLM_SQL_ALT_QUERY	},
+	{ L("no connection"),	RLM_SQL_RECONNECT	},
+	{ L("no more rows"),	RLM_SQL_NO_MORE_ROWS	},
+	{ L("query invalid"),	RLM_SQL_QUERY_INVALID	},
+	{ L("server error"),	RLM_SQL_ERROR		},
+	{ L("success"),		RLM_SQL_OK		}
 };
 size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
 fr_table_num_sorted_t const sql_rcode_table[] = {
-	{ "alternate",		RLM_SQL_ALT_QUERY	},
-	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
-	{ "error",		RLM_SQL_ERROR		},
-	{ "invalid",		RLM_SQL_QUERY_INVALID	},
-	{ "ok",			RLM_SQL_OK		},
-	{ "reconnect",		RLM_SQL_RECONNECT	}
+	{ L("alternate"),		RLM_SQL_ALT_QUERY	},
+	{ L("empty"),		RLM_SQL_NO_MORE_ROWS	},
+	{ L("error"),		RLM_SQL_ERROR		},
+	{ L("invalid"),		RLM_SQL_QUERY_INVALID	},
+	{ L("ok"),			RLM_SQL_OK		},
+	{ L("reconnect"),		RLM_SQL_RECONNECT	}
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 

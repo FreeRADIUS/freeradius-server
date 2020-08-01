@@ -34,11 +34,16 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+typedef struct {
+	char const		*str;	//!< Literal string.
+	size_t			len;	//!< Literal string length.
+} fr_table_elem_t;
+
 /** An element in a lexicographically sorted array of name to num mappings
  *
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	int			value;
 } fr_table_num_sorted_t;
 
@@ -46,7 +51,7 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	int			value;
 } fr_table_num_ordered_t;
 
@@ -54,7 +59,7 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	void const		*value;
 } fr_table_ptr_sorted_t;
 
@@ -62,7 +67,7 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	void const		*value;
 } fr_table_ptr_ordered_t;
 
@@ -72,7 +77,7 @@ typedef struct {
  * will be returned.
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	uint64_t		value;
 } fr_table_num_indexed_bit_pos_t;
 
@@ -81,7 +86,7 @@ typedef struct {
  * i.e. if the value is 0, we return the string mapped to the first element of the table.
  */
 typedef struct {
-	char const		*name;
+	fr_table_elem_t		name;
 	unsigned int		value;
 } fr_table_num_indexed_t;
 

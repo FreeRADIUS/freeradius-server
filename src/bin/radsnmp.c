@@ -62,11 +62,11 @@ typedef enum {
 } radsnmp_command_t;
 
 static fr_table_num_sorted_t const radsnmp_command_str[] = {
-	{ "",		RADSNMP_EXIT },			//!< Terminate radsnmp.
-	{ "PING", 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
-	{ "get",	RADSNMP_GET },			//!< Get the value of an OID.
-	{ "getnext", 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
-	{ "set",	RADSNMP_SET },			//!< Set the value of an OID.
+	{ L(""),		RADSNMP_EXIT },			//!< Terminate radsnmp.
+	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
+	{ L("get"),	RADSNMP_GET },			//!< Get the value of an OID.
+	{ L("getnext"), 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
+	{ L("set"),	RADSNMP_SET },			//!< Set the value of an OID.
 };
 static size_t radsnmp_command_str_len = NUM_ELEMENTS(radsnmp_command_str);
 

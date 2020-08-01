@@ -39,10 +39,10 @@ static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide o
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
 
 fr_table_num_ordered_t const sbuff_parse_error_table[] = {
-	{ "ok",			FR_SBUFF_PARSE_OK				},
-	{ "token not found",	FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
-	{ "integer overflow",	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
-	{ "integer underflow",	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
+	{ L("ok"),			FR_SBUFF_PARSE_OK				},
+	{ L("token not found"),	FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
+	{ L("integer overflow"),	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
+	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 

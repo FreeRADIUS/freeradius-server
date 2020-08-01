@@ -30,7 +30,8 @@ RCSID("$Id$")
 #include <stdio.h>
 
 #define TABLE_IDX(_table, _idx, _element_size) (((uint8_t const *)(_table)) + ((_idx) * (_element_size)))
-#define ELEM_NAME(_offset) *((char const * const *)(_offset))
+#define ELEM_STR(_offset) (*((fr_table_elem_t const *)(_offset))).str
+#define ELEM_LEN(_offset) (*((fr_table_elem_t const *)(_offset))).len
 
 /** Create type specific string to value functions
  *
@@ -95,7 +96,7 @@ _our_return_type _our_name(size_t *match_len, _our_table_type table, size_t tabl
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
 	size_t		i; \
-	for (i = 0; i < table_len; i++) if (table[i].value == value) return table[i].name; \
+	for (i = 0; i < table_len; i++) if (table[i].value == value) return table[i].name.str; \
 	return def; \
 }
 
@@ -104,14 +105,14 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
 { \
 	uint8_t	idx = fr_high_bit_pos(value); \
 	if (idx >= table_len) return def; \
-	return table[idx].name; \
+	return table[idx].name.str; \
 }
 
 #define TABLE_TYPE_VALUE_INDEX_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
 { \
 	if (value >= table_len) return def; \
-	return table[value].name; \
+	return table[value].name.str; \
 }
 
 /** Convert a string to a value using a lexicographically sorted table
@@ -141,7 +142,7 @@ static void const *table_sorted_value_by_str(void const *table, size_t table_len
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
 
 		offset = TABLE_IDX(table, mid, element_size);
-		ret = strcasecmp(name, ELEM_NAME(offset));
+		ret = strcasecmp(name, ELEM_STR(offset));
 		if (ret == 0) return offset;
 		if (ret < 0) {
 			end = mid - 1;
@@ -177,7 +178,7 @@ static void const *table_ordered_value_by_str(void const *table, size_t table_le
 
 	for (i = 0; i < table_len; i++) {
 		void const *offset = TABLE_IDX(table, i, element_size);
-		if (strcasecmp(name, ELEM_NAME(offset)) == 0) return offset;
+		if (strcasecmp(name, ELEM_STR(offset)) == 0) return offset;
 	}
 
 	return NULL;
@@ -222,8 +223,8 @@ static void const *table_sorted_value_by_substr(void const *table, size_t table_
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		ret = strncasecmp(name, ELEM_NAME(offset),
-				  (name_len < 0) ?  strlen(ELEM_NAME(offset)) : (size_t)name_len);
+		ret = strncasecmp(name, ELEM_STR(offset),
+				  (name_len < 0) ?  ELEM_LEN(offset) : (size_t)name_len);
 		if (ret == 0) return offset;
 
 		if (ret < 0) {
@@ -267,7 +268,7 @@ static void const *table_ordered_value_by_substr(void const *table, size_t table
 
 		offset = TABLE_IDX(table, i, element_size);
 
-		tlen = strlen(ELEM_NAME(offset));
+		tlen = ELEM_LEN(offset);
 
 		/*
 		 *	Don't match "request" to user input "req".
@@ -277,7 +278,7 @@ static void const *table_ordered_value_by_substr(void const *table, size_t table
 		/*
 		 *	Match up to the length of the table entry if len is < 0.
 		 */
-		if (strncasecmp(name, ELEM_NAME(offset),
+		if (strncasecmp(name, ELEM_STR(offset),
 				(name_len < 0) ? tlen : (size_t)name_len) == 0) return offset;
 	}
 
@@ -330,8 +331,8 @@ static void const *table_sorted_value_by_longest_prefix(size_t *match_len,
 		mid = start + ((end - start) / 2);	/* Avoid overflow */
 
 		offset = TABLE_IDX(table, mid, element_size);
-		elem = ELEM_NAME(offset);
-		tlen = strlen(elem);
+		elem = ELEM_STR(offset);
+		tlen = ELEM_LEN(offset);
 
 		ret = strncasecmp(name, elem, tlen < (size_t)name_len ? tlen : (size_t)name_len);
 		if (ret == 0) {
@@ -406,13 +407,13 @@ static void const *table_ordered_value_by_longest_prefix(size_t *match_len,
 
 		offset = TABLE_IDX(table, i, element_size);
 
-		for (j = 0; (j < (size_t)name_len) && (name[j] == (ELEM_NAME(offset))[j]); j++);
+		for (j = 0; (j < (size_t)name_len) && (name[j] == (ELEM_STR(offset))[j]); j++);
 
 		/*
 		 *	If we didn't get to the end of the
 		 *	table string, then continue.
 		 */
-		if ((ELEM_NAME(offset))[j] != '\0') continue;
+		if ((ELEM_STR(offset))[j] != '\0') continue;
 
 		/*
 		 *	Exact match

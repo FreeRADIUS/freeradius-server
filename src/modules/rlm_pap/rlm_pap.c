@@ -91,24 +91,24 @@ static fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 
 #ifdef HAVE_OPENSSL_EVP_H
 static fr_table_num_sorted_t const pbkdf2_crypt_names[] = {
-	{ "HMACSHA1",		FR_SSHA1_PASSWORD },
-	{ "HMACSHA2+224",	FR_SSHA2_224_PASSWORD },
-	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
-	{ "HMACSHA2+384",	FR_SSHA2_384_PASSWORD },
-	{ "HMACSHA2+512",	FR_SSHA2_512_PASSWORD },
+	{ L("HMACSHA1"),		FR_SSHA1_PASSWORD },
+	{ L("HMACSHA2+224"),	FR_SSHA2_224_PASSWORD },
+	{ L("HMACSHA2+256"),	FR_SSHA2_256_PASSWORD },
+	{ L("HMACSHA2+384"),	FR_SSHA2_384_PASSWORD },
+	{ L("HMACSHA2+512"),	FR_SSHA2_512_PASSWORD },
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "HMACSHA3+224",	FR_SSHA3_224_PASSWORD },
-	{ "HMACSHA3+256",	FR_SSHA3_256_PASSWORD },
-	{ "HMACSHA3+384",	FR_SSHA3_384_PASSWORD },
-	{ "HMACSHA3+512",	FR_SSHA3_512_PASSWORD },
+	{ L("HMACSHA3+224"),	FR_SSHA3_224_PASSWORD },
+	{ L("HMACSHA3+256"),	FR_SSHA3_256_PASSWORD },
+	{ L("HMACSHA3+384"),	FR_SSHA3_384_PASSWORD },
+	{ L("HMACSHA3+512"),	FR_SSHA3_512_PASSWORD },
 #  endif
 };
 static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
 static fr_table_num_sorted_t const pbkdf2_passlib_names[] = {
-	{ "sha1",		FR_SSHA1_PASSWORD },
-	{ "sha256",		FR_SSHA2_256_PASSWORD },
-	{ "sha512",		FR_SSHA2_512_PASSWORD }
+	{ L("sha1"),		FR_SSHA1_PASSWORD },
+	{ L("sha256"),		FR_SSHA2_256_PASSWORD },
+	{ L("sha512"),		FR_SSHA2_512_PASSWORD }
 };
 static size_t pbkdf2_passlib_names_len = NUM_ELEMENTS(pbkdf2_passlib_names);
 #endif

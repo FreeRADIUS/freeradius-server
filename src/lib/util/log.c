@@ -153,15 +153,15 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 /** Maps log categories to message prefixes
  */
 fr_table_num_ordered_t const fr_log_levels[] = {
-	{ "Debug : ",		L_DBG		},
-	{ "Info  : ",		L_INFO		},
-	{ "Warn  : ",		L_WARN		},
-	{ "Error : ",		L_ERR		},
-	{ "Auth  : ",		L_AUTH		},
-	{ "WARN  : ",		L_DBG_WARN	},
-	{ "ERROR : ",		L_DBG_ERR	},
-	{ "WARN  : ",		L_DBG_WARN_REQ	},
-	{ "ERROR : ",		L_DBG_ERR_REQ	}
+	{ L("Debug : "),		L_DBG		},
+	{ L("Info  : "),		L_INFO		},
+	{ L("Warn  : "),		L_WARN		},
+	{ L("Error : "),		L_ERR		},
+	{ L("Auth  : "),		L_AUTH		},
+	{ L("WARN  : "),		L_DBG_WARN	},
+	{ L("ERROR : "),		L_DBG_ERR	},
+	{ L("WARN  : "),		L_DBG_WARN_REQ	},
+	{ L("ERROR : "),		L_DBG_ERR_REQ	}
 };
 size_t fr_log_levels_len = NUM_ELEMENTS(fr_log_levels);
 
@@ -184,13 +184,13 @@ size_t fr_log_levels_len = NUM_ELEMENTS(fr_log_levels);
 /** Maps log categories to VT100 style/colour escape sequences
  */
 static fr_table_num_ordered_t const colours[] = {
-	{ VTC_BOLD,		L_INFO		},
-	{ VTC_RED,		L_ERR		},
-	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR_REQ	},
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN_REQ	},
+	{ L(VTC_BOLD),			L_INFO		},
+	{ L(VTC_RED),			L_ERR		},
+	{ L(VTC_BOLD VTC_YELLOW),	L_WARN		},
+	{ L(VTC_BOLD VTC_RED),		L_DBG_ERR	},
+	{ L(VTC_BOLD VTC_YELLOW),	L_DBG_WARN	},
+	{ L(VTC_BOLD VTC_RED),		L_DBG_ERR_REQ	},
+	{ L(VTC_BOLD VTC_YELLOW),	L_DBG_WARN_REQ	},
 };
 static size_t colours_len = NUM_ELEMENTS(colours);
 

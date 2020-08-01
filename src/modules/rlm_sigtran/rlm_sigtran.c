@@ -65,9 +65,9 @@ static uint32_t	sigtran_instances = 0;
 unsigned int __hack_opc, __hack_dpc;
 
 static fr_table_num_sorted_t const m3ua_traffic_mode_table[] = {
-	{ "broadcast", 3 },
-	{ "loadshare", 2 },
-	{ "override",  1 }
+	{ L("broadcast"), 3 },
+	{ L("loadshare"), 2 },
+	{ L("override"),  1 }
 };
 static size_t m3ua_traffic_mode_table_len = NUM_ELEMENTS(m3ua_traffic_mode_table);
 

@@ -44,27 +44,27 @@ RCSID("$Id$")
 /** Map keywords to #pair_list_t values
  */
 static fr_table_num_sorted_t const cond_type_table[] = {
-	{ "child",	COND_TYPE_CHILD			},
-	{ "exists",	COND_TYPE_EXISTS		},
-	{ "false",	COND_TYPE_FALSE			},
-	{ "invalid",	COND_TYPE_INVALID		},
-	{ "map",	COND_TYPE_MAP			},
-	{ "true",	COND_TYPE_TRUE			},
+	{ L("child"),	COND_TYPE_CHILD			},
+	{ L("exists"),	COND_TYPE_EXISTS		},
+	{ L("false"),	COND_TYPE_FALSE			},
+	{ L("invalid"),	COND_TYPE_INVALID		},
+	{ L("map"),	COND_TYPE_MAP			},
+	{ L("true"),	COND_TYPE_TRUE			},
 };
 static size_t cond_type_table_len = NUM_ELEMENTS(cond_type_table);
 
 static fr_table_num_sorted_t const cond_op_table[] = {
-	{ "none",	COND_NONE			},
-	{ "&&",		COND_AND			},
-	{ "||",		COND_OR				},
+	{ L("none"),	COND_NONE			},
+	{ L("&&"),		COND_AND			},
+	{ L("||"),		COND_OR				},
 };
 static size_t cond_op_table_len = NUM_ELEMENTS(cond_op_table);
 
 static fr_table_num_sorted_t const cond_pass2_table[] = {
-	{ "none",	PASS2_FIXUP_NONE		},
-	{ "attr",	PASS2_FIXUP_ATTR		},
-	{ "type",	PASS2_FIXUP_TYPE		},
-	{ "paircompre",	PASS2_PAIRCOMPARE		},
+	{ L("none"),	PASS2_FIXUP_NONE		},
+	{ L("attr"),	PASS2_FIXUP_ATTR		},
+	{ L("type"),	PASS2_FIXUP_TYPE		},
+	{ L("paircompre"),	PASS2_PAIRCOMPARE		},
 };
 static size_t cond_pass2_table_len = NUM_ELEMENTS(cond_pass2_table);
 

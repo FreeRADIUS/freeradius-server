@@ -59,11 +59,11 @@ typedef enum {
 } linefr_log_dst_t;
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
-	{ "file",	LINELOG_DST_FILE	},
-	{ "syslog",	LINELOG_DST_SYSLOG	},
-	{ "tcp",	LINELOG_DST_TCP		},
-	{ "udp",	LINELOG_DST_UDP		},
-	{ "unix",	LINELOG_DST_UNIX	}
+	{ L("file"),	LINELOG_DST_FILE	},
+	{ L("syslog"),	LINELOG_DST_SYSLOG	},
+	{ L("tcp"),	LINELOG_DST_TCP		},
+	{ L("udp"),	LINELOG_DST_UDP		},
+	{ L("unix"),	LINELOG_DST_UNIX	}
 };
 static size_t linefr_log_dst_table_len = NUM_ELEMENTS(linefr_log_dst_table);
 

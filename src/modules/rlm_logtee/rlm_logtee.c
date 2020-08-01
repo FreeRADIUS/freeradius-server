@@ -60,10 +60,10 @@ typedef enum {
 } logtee_dst_t;
 
 static fr_table_num_sorted_t const logtee_dst_table[] = {
-	{ "file",		LOGTEE_DST_FILE	},
-	{ "tcp",		LOGTEE_DST_TCP	},
-	{ "udp",		LOGTEE_DST_UDP	},
-	{ "unix",		LOGTEE_DST_UNIX	}
+	{ L("file"),		LOGTEE_DST_FILE	},
+	{ L("tcp"),		LOGTEE_DST_TCP	},
+	{ L("udp"),		LOGTEE_DST_UDP	},
+	{ L("unix"),		LOGTEE_DST_UNIX	}
 };
 static size_t logtee_dst_table_len = NUM_ELEMENTS(logtee_dst_table);
 

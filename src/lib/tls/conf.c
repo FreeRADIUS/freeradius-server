@@ -47,16 +47,16 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  */
 static fr_table_num_sorted_t const certificate_format_table[] = {
-	{ "ASN1",	SSL_FILETYPE_ASN1	},
-	{ "DER",	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
-	{ "PEM",	SSL_FILETYPE_PEM	}
+	{ L("ASN1"),	SSL_FILETYPE_ASN1	},
+	{ L("DER"),	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
+	{ L("PEM"),	SSL_FILETYPE_PEM	}
 };
 static size_t certificate_format_table_len = NUM_ELEMENTS(certificate_format_table);
 
 static fr_table_num_sorted_t const chain_verify_mode_table[] = {
-	{ "hard",	FR_TLS_CHAIN_VERIFY_HARD },
-	{ "none",	FR_TLS_CHAIN_VERIFY_NONE },
-	{ "soft",	FR_TLS_CHAIN_VERIFY_SOFT }
+	{ L("hard"),	FR_TLS_CHAIN_VERIFY_HARD },
+	{ L("none"),	FR_TLS_CHAIN_VERIFY_NONE },
+	{ L("soft"),	FR_TLS_CHAIN_VERIFY_SOFT }
 };
 static size_t chain_verify_mode_table_len = NUM_ELEMENTS(chain_verify_mode_table);
 

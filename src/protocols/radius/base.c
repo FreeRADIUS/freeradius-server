@@ -129,13 +129,13 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 fr_table_num_sorted_t const fr_request_types[] = {
-	{ "acct",	FR_CODE_ACCOUNTING_REQUEST	},
-	{ "auth",	FR_CODE_ACCESS_REQUEST		},
-	{ "auto",	FR_CODE_UNDEFINED		},
-	{ "challenge",	FR_CODE_ACCESS_CHALLENGE	},
-	{ "coa",	FR_CODE_COA_REQUEST		},
-	{ "disconnect",	FR_CODE_DISCONNECT_REQUEST	},
-	{ "status",	FR_CODE_STATUS_SERVER		}
+	{ L("acct"),	FR_CODE_ACCOUNTING_REQUEST	},
+	{ L("auth"),	FR_CODE_ACCESS_REQUEST		},
+	{ L("auto"),	FR_CODE_UNDEFINED		},
+	{ L("challenge"),	FR_CODE_ACCESS_CHALLENGE	},
+	{ L("coa"),	FR_CODE_COA_REQUEST		},
+	{ L("disconnect"),	FR_CODE_DISCONNECT_REQUEST	},
+	{ L("status"),	FR_CODE_STATUS_SERVER		}
 };
 size_t fr_request_types_len = NUM_ELEMENTS(fr_request_types);
 
@@ -1124,17 +1124,17 @@ void fr_radius_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
-	{ "encrypt=1",		FLAG_ENCRYPT_USER_PASSWORD },
-	{ "encrypt=2",		FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ "encrypt=3",		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ "long",		FLAG_EXTENDED_ATTR },
+	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },
+	{ L("encrypt=2"),		FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ L("encrypt=3"),		FLAG_ENCRYPT_ASCEND_SECRET },
+	{ L("long"),		FLAG_EXTENDED_ATTR },
 
 	/*
 	 *	And some humanly-readable names
 	 */
-	{ "encrypt=Ascend-Secret",	FLAG_ENCRYPT_ASCEND_SECRET },
-	{ "encrypt=Tunnel-Password",	FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ "encrypt=User-Password",	FLAG_ENCRYPT_USER_PASSWORD },
+	{ L("encrypt=Ascend-Secret"),	FLAG_ENCRYPT_ASCEND_SECRET },
+	{ L("encrypt=Tunnel-Password"),	FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ L("encrypt=User-Password"),	FLAG_ENCRYPT_USER_PASSWORD },
 };
 
 static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,

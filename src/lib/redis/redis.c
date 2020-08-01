@@ -27,22 +27,22 @@
 #include <freeradius-devel/util/debug.h>
 
 fr_table_num_sorted_t const redis_reply_types[] = {
-	{ "array",	REDIS_REPLY_ARRAY	},
-	{ "error",	REDIS_REPLY_ERROR	},
-	{ "integer",	REDIS_REPLY_INTEGER	},
-	{ "nil",	REDIS_REPLY_NIL		},
-	{ "status",	REDIS_REPLY_STATUS	},
-	{ "string",	REDIS_REPLY_STRING	}
+	{ L("array"),	REDIS_REPLY_ARRAY	},
+	{ L("error"),	REDIS_REPLY_ERROR	},
+	{ L("integer"),	REDIS_REPLY_INTEGER	},
+	{ L("nil"),	REDIS_REPLY_NIL		},
+	{ L("status"),	REDIS_REPLY_STATUS	},
+	{ L("string"),	REDIS_REPLY_STRING	}
 };
 size_t redis_reply_types_len = NUM_ELEMENTS(redis_reply_types);
 
 fr_table_num_sorted_t const redis_rcodes[] = {
-	{ "ask",	REDIS_RCODE_ASK		},
-	{ "error",	REDIS_RCODE_ERROR	},
-	{ "move",	REDIS_RCODE_MOVE	},
-	{ "reconnect",	REDIS_RCODE_RECONNECT	},
-	{ "success",	REDIS_RCODE_SUCCESS	},
-	{ "try again",	REDIS_RCODE_TRY_AGAIN	}
+	{ L("ask"),	REDIS_RCODE_ASK		},
+	{ L("error"),	REDIS_RCODE_ERROR	},
+	{ L("move"),	REDIS_RCODE_MOVE	},
+	{ L("reconnect"),	REDIS_RCODE_RECONNECT	},
+	{ L("success"),	REDIS_RCODE_SUCCESS	},
+	{ L("try again"),	REDIS_RCODE_TRY_AGAIN	}
 };
 size_t redis_rcodes_len = NUM_ELEMENTS(redis_rcodes);
 

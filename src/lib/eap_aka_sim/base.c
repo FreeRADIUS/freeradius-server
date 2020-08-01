@@ -258,7 +258,7 @@ void fr_aka_sim_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
-	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
+	{ L("encrypt=aes-cbc"),		1 }, /* any non-zero value will do */
 };
 
 extern fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol;

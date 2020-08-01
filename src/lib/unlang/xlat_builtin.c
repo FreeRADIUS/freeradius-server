@@ -926,10 +926,10 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 				goto next_type;
 			}
 
-			if ((pad = (11 - strlen(type->name))) < 0) pad = 0;
+			if ((pad = (11 - type->name.len)) < 0) pad = 0;
 
 			RINDENT();
-			RDEBUG2("as %s%*s: %pV", type->name, pad, " ", dst);
+			RDEBUG2("as %s%*s: %pV", type->name.str, pad, " ", dst);
 			REXDENT();
 
 		next_type:

@@ -263,11 +263,11 @@ struct fr_redis_cluster {
 };
 
 fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[] = {
-	{ "bad-input",		FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
-	{ "failed",		FR_REDIS_CLUSTER_RCODE_FAILED		},
-	{ "ignored",		FR_REDIS_CLUSTER_RCODE_IGNORED		},
-	{ "no-connection",	FR_REDIS_CLUSTER_RCODE_NO_CONNECTION	},
-	{ "success",		FR_REDIS_CLUSTER_RCODE_SUCCESS		}
+	{ L("bad-input"),		FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
+	{ L("failed"),		FR_REDIS_CLUSTER_RCODE_FAILED		},
+	{ L("ignored"),		FR_REDIS_CLUSTER_RCODE_IGNORED		},
+	{ L("no-connection"),	FR_REDIS_CLUSTER_RCODE_NO_CONNECTION	},
+	{ L("success"),		FR_REDIS_CLUSTER_RCODE_SUCCESS		}
 };
 size_t fr_redis_cluster_rcodes_table_len = NUM_ELEMENTS(fr_redis_cluster_rcodes_table);
 

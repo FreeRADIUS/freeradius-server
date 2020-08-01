@@ -84,10 +84,10 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 };
 
 fr_table_num_sorted_t const xlat_action_table[] = {
-	{ "done",	XLAT_ACTION_DONE	},
-	{ "fail",	XLAT_ACTION_FAIL	},
-	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
-	{ "yield",	XLAT_ACTION_YIELD	}
+	{ L("done"),	XLAT_ACTION_DONE	},
+	{ L("fail"),	XLAT_ACTION_FAIL	},
+	{ L("push-child"),	XLAT_ACTION_PUSH_CHILD	},
+	{ L("yield"),	XLAT_ACTION_YIELD	}
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 

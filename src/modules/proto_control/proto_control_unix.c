@@ -107,10 +107,10 @@ static const CONF_PARSER unix_listen_config[] = {
 #define FR_WRITE (2)
 
 static fr_table_num_sorted_t mode_names[] = {
-	{ "read-only",		FR_READ			},
-	{ "read-write",		FR_READ | FR_WRITE	},
-	{ "ro",			FR_READ			},
-	{ "rw",			FR_READ | FR_WRITE	}
+	{ L("read-only"),		FR_READ			},
+	{ L("read-write"),		FR_READ | FR_WRITE	},
+	{ L("ro"),			FR_READ			},
+	{ L("rw"),			FR_READ | FR_WRITE	}
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 

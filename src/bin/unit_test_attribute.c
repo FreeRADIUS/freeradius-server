@@ -151,12 +151,12 @@ typedef enum {
 } command_rcode_t;
 
 static fr_table_num_sorted_t command_rcode_table[] = {
-	{ "command-error",		RESULT_COMMAND_ERROR			},
-	{ "exit",			RESULT_EXIT				},
-	{ "ok",				RESULT_OK				},
-	{ "parse-error",		RESULT_PARSE_ERROR			},
-	{ "result-mismatch",		RESULT_MISMATCH				},
-	{ "skip-file",			RESULT_SKIP_FILE			},
+	{ L("command-error"),		RESULT_COMMAND_ERROR			},
+	{ L("exit"),			RESULT_EXIT				},
+	{ L("ok"),				RESULT_OK				},
+	{ L("parse-error"),		RESULT_PARSE_ERROR			},
+	{ L("result-mismatch"),		RESULT_MISMATCH				},
+	{ L("skip-file"),			RESULT_SKIP_FILE			},
 };
 static size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
@@ -2212,178 +2212,178 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 }
 
 static fr_table_ptr_sorted_t	commands[] = {
-	{ "#",			&(command_entry_t){
+	{ L("#"),			&(command_entry_t){
 					.func = command_comment,
 					.usage = "#<string>",
 					.description = "A comment - not processed"
 				}},
-	{ "$INCLUDE ",		&(command_entry_t){
+	{ L("$INCLUDE "),	&(command_entry_t){
 					.func = command_include,
 					.usage = "$INCLUDE <relative_path>",
 					.description = "Execute a test file"
 				}},
-	{ "attribute ",		&(command_entry_t){
+	{ L("attribute "),	&(command_entry_t){
 					.func = command_normalise_attribute,
 					.usage = "attribute <attr> = <value>",
 					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
 				}},
-	{ "cd ",		&(command_entry_t){
+	{ L("cd "),		&(command_entry_t){
 					.func = command_cd,
 					.usage = "cd <path>",
 					.description = "Change the directory for loading dictionaries and $INCLUDEs, writing the full path into the data buffer on success"
 				}},
-	{ "clear",		&(command_entry_t){
+	{ L("clear"),		&(command_entry_t){
 					.func = command_clear,
 					.usage = "clear",
 					.description = "Explicitly zero out the contents of the data buffer"
 				}},
-	{ "command add ",	&(command_entry_t){
+	{ L("command add "),	&(command_entry_t){
 					.func = command_radmin_add,
 					.usage = "command add <string>",
 					.description = "Add a command to a radmin command tree"
 				}},
-	{ "command tab ",	&(command_entry_t){
+	{ L("command tab "),	&(command_entry_t){
 					.func = command_radmin_tab,
 					.usage = "command tab <string>",
 					.description = "Test a tab completion against a radmin command tree"
 				}},
-	{ "condition ",		&(command_entry_t){
+	{ L("condition "),	&(command_entry_t){
 					.func = command_condition_normalise,
 					.usage = "condition <string>",
 					.description = "Parse and reprint a condition, writing the normalised condition to the data buffer on success"
 				}},
-	{ "count",		&(command_entry_t){
+	{ L("count"),		&(command_entry_t){
 					.func = command_count,
 					.usage = "count",
 					.description = "Write the number of executed tests to the data buffer.  A test is any command that should return 'ok'"
 				}},
-	{ "decode-dns-label ",	&(command_entry_t){
+	{ L("decode-dns-label "), &(command_entry_t){
 					.func = command_decode_dns_label,
 					.usage = "decode-dns-label (-|<hex_string>)",
 					.description = "Decode one or more DNS labels, writing the decoded strings to the data buffer.",
 				}},
-	{ "decode-pair",	&(command_entry_t){
+	{ L("decode-pair"),	&(command_entry_t){
 					.func = command_decode_pair,
 					.usage = "decode-pair[.<testpoint_symbol>] (-|<hex_string>)",
 					.description = "Produce an attribute value pair from a binary value using a specified protocol decoder.  Protocol must be loaded with \"load <protocol>\" first",
 				}},
-	{ "decode-proto",	&(command_entry_t){
+	{ L("decode-proto"),	&(command_entry_t){
 					.func = command_decode_proto,
 					.usage = "decode-proto[.<testpoint_symbol>] (-|<hex string>)",
 					.description = "Decode a packet as attribute value pairs from a binary value using a specified protocol decoder.  Protocol must be loaded with \"load <protocol>\" first",
 				}},
-	{ "dictionary ",	&(command_entry_t){
+	{ L("dictionary "),	&(command_entry_t){
 					.func = command_dictionary_attribute_parse,
 					.usage = "dictionary <string>",
 					.description = "Parse dictionary attribute definition, writing \"ok\" to the data buffer if successful",
 				}},
-	{ "dictionary-dump",	&(command_entry_t){
+	{ L("dictionary-dump"),	&(command_entry_t){
 					.func = command_dictionary_dump,
 					.usage = "dictionary-dump",
 					.description = "Print the contents of the currently active dictionary to stdout",
 				}},
-	{ "encode-dns-label ",	&(command_entry_t){
+	{ L("encode-dns-label "),	&(command_entry_t){
 					.func = command_encode_dns_label,
 					.usage = "encode-dns-label (-|string[,string])",
 					.description = "Encode one or more DNS labels, writing a hex string to the data buffer.",
 				}},
-	{ "encode-pair",	&(command_entry_t){
+	{ L("encode-pair"),	&(command_entry_t){
 					.func = command_encode_pair,
 					.usage = "encode-pair[.<testpoint_symbol>] [truncate] (-|<attribute> = <value>[,<attribute = <value>])",
 					.description = "Encode one or more attribute value pairs, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first",
 				}},
-	{ "encode-proto",	&(command_entry_t){
+	{ L("encode-proto"),	&(command_entry_t){
 					.func = command_encode_proto,
 					.usage = "encode-proto[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
 					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first"
 				}},
-	{ "eof",		&(command_entry_t){
+	{ L("eof"),		&(command_entry_t){
 					.func = command_eof,
 					.usage = "eof",
 					.description = "Mark the end of a 'virtual' file.  Used to prevent 'need-feature' skipping all the content of a command stream or file",
 				}},
-	{ "exit",		&(command_entry_t){
+	{ L("exit"),		&(command_entry_t){
 					.func = command_exit,
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
-	{ "match",		&(command_entry_t){
+	{ L("match"),		&(command_entry_t){
 					.func = command_match,
 					.usage = "match <string>",
 					.description = "Compare the contents of the data buffer with an expected value"
 				}},
-	{ "match-regex ",	&(command_entry_t){
+	{ L("match-regex "),	&(command_entry_t){
 					.func = command_match_regex,
 					.usage = "match-regex <regex>",
 					.description = "Compare the contents of the data buffer with a regular expression"
 				}},
-	{ "max-buffer-size",   &(command_entry_t){
+	{ L("max-buffer-size"),   &(command_entry_t){
 					.func = command_max_buffer_size,
 					.usage = "max-buffer-size[ <intger>]",
 					.description = "Limit the maximum temporary buffer space available for any command which uses it"
 				}},
-	{ "need-feature ", 	&(command_entry_t){
+	{ L("need-feature "),	&(command_entry_t){
 					.func = command_need_feature,
 					.usage = "need-feature <feature>",
 					.description = "Skip the contents of the current file, or up to the next \"eof\" command if a particular feature is not available"
 				}},
-	{ "no ", 		&(command_entry_t){
+	{ L("no "), 		&(command_entry_t){
 					.func = command_no,
 					.usage = "no ...",
 					.description = "Negate the result of a command returning 'ok'"
 				}},
-	{ "pair ",		&(command_entry_t){
+	{ L("pair "),		&(command_entry_t){
 					.func = command_pair,
 					.usage = "pair ... data ...",
 					.description = "Parse a list of pairs",
 				}},
-	{ "proto ",		&(command_entry_t){
+	{ L("proto "),		&(command_entry_t){
 					.func = command_proto,
 					.usage = "proto <protocol>",
 					.description = "Switch the active protocol to the one specified, unloading the previous protocol",
 				}},
-	{ "proto-dictionary ",	&(command_entry_t){
+	{ L("proto-dictionary "),&(command_entry_t){
 					.func = command_proto_dictionary,
 					.usage = "proto-dictionary <proto_name> [<proto_dir>]",
 					.description = "Switch the active dictionary.  Root is set to the default dictionary path, or the one specified with -d.  <proto_dir> is relative to the root.",
 				}},
-	{ "raw ",		&(command_entry_t){
+	{ L("raw "),		&(command_entry_t){
 					.func = command_encode_raw,
 					.usage = "raw <string>",
 					.description = "Create nested attributes from OID strings and values"
 				}},
-	{ "returned",		&(command_entry_t){
+	{ L("returned"),		&(command_entry_t){
 					.func = command_returned,
 					.usage = "returned",
 					.description = "Print the returned value to the data buffer"
 				}},
-	{ "test-dictionary ",	&(command_entry_t){
+	{ L("test-dictionary "),&(command_entry_t){
 					.func = command_test_dictionary,
 					.usage = "test-dictionary <proto_name> [<test_dir>]",
 					.description = "Switch the active dictionary.  Root is set to the path containing the current test file (override with cd <path>).  <test_dir> is relative to the root.",
 				}},
-	{ "touch ",		&(command_entry_t){
+	{ L("touch "),		&(command_entry_t){
 					.func = command_touch,
 					.usage = "touch <file>",
 					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
 				}},
-	{ "value ",		&(command_entry_t){
+	{ L("value "),		&(command_entry_t){
 					.func = command_value_box_normalise,
 					.usage = "value <type> <string>",
 					.description = "Parse a value of a given type from its presentation form, print it, then parse it again (checking printed/parsed versions match), writing printed form to the data buffer"
 				}},
-	{ "write ",		&(command_entry_t){
+	{ L("write "),		&(command_entry_t){
 					.func = command_write,
 					.usage = "write <file>",
 					.description = "Write the contents of the data buffer (as a raw binary string) to the specified file"
 				}},
-	{ "xlat ",		&(command_entry_t){
+	{ L("xlat "),		&(command_entry_t){
 					.func = command_xlat_normalise,
 					.usage = "xlat <string>",
 					.description = "Parse then print an xlat expansion, writing the normalised xlat expansion to the data buffer"
 				}},
 
-	{ "xlat_argv ",		&(command_entry_t){
+	{ L("xlat_argv "),	&(command_entry_t){
 					.func = command_xlat_argv,
 					.usage = "xlat_argv <string>",
 					.description = "Parse then print an xlat expansion argv, writing the normalised xlat expansion arguments to the data buffer"

@@ -33,36 +33,36 @@ RCSID("$Id$")
 #include <string.h>
 
 fr_table_num_ordered_t const fr_tokens_table[] = {
-	{ "=~", T_OP_REG_EQ	}, /* order is important! */
-	{ "!~", T_OP_REG_NE	},
-	{ "{",	T_LCBRACE	},
-	{ "}",	T_RCBRACE	},
-	{ "(",	T_LBRACE	},
-	{ ")",	T_RBRACE	},
-	{ ",",	T_COMMA		},
-	{ "++",	T_OP_INCRM	},
-	{ "+=",	T_OP_ADD	},
-	{ "-=",	T_OP_SUB	},
-	{ ":=",	T_OP_SET	},
-	{ "=*", T_OP_CMP_TRUE	},
-	{ "!*", T_OP_CMP_FALSE	},
-	{ "==",	T_OP_CMP_EQ	},
-	{ "=",	T_OP_EQ		},
-	{ "!=",	T_OP_NE		},
-	{ ">=",	T_OP_GE		},
-	{ ">",	T_OP_GT		},
-	{ "<=",	T_OP_LE		},
-	{ "<",	T_OP_LT		},
-	{ "#",	T_HASH		},
-	{ ";",	T_SEMICOLON	}
+	{ L("=~"), T_OP_REG_EQ	}, /* order is important! */
+	{ L("!~"), T_OP_REG_NE	},
+	{ L("{"),	T_LCBRACE	},
+	{ L("}"),	T_RCBRACE	},
+	{ L("("),	T_LBRACE	},
+	{ L(")"),	T_RBRACE	},
+	{ L(","),	T_COMMA		},
+	{ L("++"),	T_OP_INCRM	},
+	{ L("+="),	T_OP_ADD	},
+	{ L("-="),	T_OP_SUB	},
+	{ L(":="),	T_OP_SET	},
+	{ L("=*"), T_OP_CMP_TRUE	},
+	{ L("!*"), T_OP_CMP_FALSE	},
+	{ L("=="),	T_OP_CMP_EQ	},
+	{ L("="),	T_OP_EQ		},
+	{ L("!="),	T_OP_NE		},
+	{ L(">="),	T_OP_GE		},
+	{ L(">"),	T_OP_GT		},
+	{ L("<="),	T_OP_LE		},
+	{ L("<"),	T_OP_LT		},
+	{ L("#"),	T_HASH		},
+	{ L(";"),	T_SEMICOLON	}
 };
 size_t fr_tokens_table_len = NUM_ELEMENTS(fr_tokens_table);
 
 fr_table_num_sorted_t const fr_token_quotes_table[] = {
-	{ "",	T_BARE_WORD		},
-	{ "'",	T_SINGLE_QUOTED_STRING	},
-	{ "\"", T_DOUBLE_QUOTED_STRING	},
-	{ "`",	T_BACK_QUOTED_STRING	}
+	{ L(""),	T_BARE_WORD		},
+	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("\""),	T_DOUBLE_QUOTED_STRING	},
+	{ L("`"),	T_BACK_QUOTED_STRING	}
 };
 size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 
@@ -279,9 +279,9 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 	 */
 	if (tok) {
 		for (i = 0; i < tokenlist_len; i++) {
-			if (TOKEN_MATCH(p, tokenlist[i].name)) {
-				strcpy(buf, tokenlist[i].name);
-				p += strlen(tokenlist[i].name);
+			if (TOKEN_MATCH(p, tokenlist[i].name.str)) {
+				strcpy(buf, tokenlist[i].name.str);
+				p += tokenlist[i].name.len;
 
 				rcode = tokenlist[i].value;
 				goto done;
@@ -327,7 +327,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 			if (tok) {
 				for (i = 0; i < tokenlist_len; i++) {
-					if (TOKEN_MATCH(p, tokenlist[i].name)) {
+					if (TOKEN_MATCH(p, tokenlist[i].name.str)) {
 						*s++ = 0;
 						goto done;
 					}

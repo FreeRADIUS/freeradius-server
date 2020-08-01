@@ -34,17 +34,17 @@ RCSID("$Id$")
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
-	{ "...",        RLM_MODULE_UNKNOWN      },
-	{ "disallow",   RLM_MODULE_DISALLOW     },
-	{ "fail",       RLM_MODULE_FAIL		},
-	{ "handled",    RLM_MODULE_HANDLED      },
-	{ "invalid",    RLM_MODULE_INVALID      },
-	{ "noop",       RLM_MODULE_NOOP		},
-	{ "notfound",   RLM_MODULE_NOTFOUND     },
-	{ "ok",	 	RLM_MODULE_OK		},
-	{ "reject",     RLM_MODULE_REJECT       },
-	{ "updated",    RLM_MODULE_UPDATED      },
-	{ "yield",      RLM_MODULE_YIELD	}
+	{ L("..."),        RLM_MODULE_UNKNOWN      },
+	{ L("disallow"),   RLM_MODULE_DISALLOW     },
+	{ L("fail"),       RLM_MODULE_FAIL		},
+	{ L("handled"),    RLM_MODULE_HANDLED      },
+	{ L("invalid"),    RLM_MODULE_INVALID      },
+	{ L("noop"),       RLM_MODULE_NOOP		},
+	{ L("notfound"),   RLM_MODULE_NOTFOUND     },
+	{ L("ok"),	 	RLM_MODULE_OK		},
+	{ L("reject"),     RLM_MODULE_REJECT       },
+	{ L("updated"),    RLM_MODULE_UPDATED      },
+	{ L("yield"),      RLM_MODULE_YIELD	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
 

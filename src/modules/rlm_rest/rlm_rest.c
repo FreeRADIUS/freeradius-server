@@ -37,24 +37,24 @@ RCSID("$Id$")
 
 static fr_table_num_sorted_t const http_negotiation_table[] = {
 
-	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
-	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+	{ L("1.0"), 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ L("1.1"),	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
 /*
  *	These are all enum values
  */
 #if CURL_AT_LEAST_VERSION(7,49,0)
-	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
+	{ L("2.0"), 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
 #endif
-	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+	{ L("2.0+auto"),	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
 								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
 								///< server. (Added in 7.33.0)
 #if CURL_AT_LEAST_VERSION(7,47,0)
-	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+	{ L("2.0+tls"),	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
 								///< libcurl will fall back to HTTP 1.1 if HTTP 2
 								///< can't be negotiated with the HTTPS server.
 								///< For clear text HTTP servers, libcurl will use 1.1.
 #endif
-	{ "default", 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
+	{ L("default"), 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
 								///< libcurl will use whatever it thinks fit.
 };
 static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
@@ -345,7 +345,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	method = fr_table_value_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
 	if (method != REST_HTTP_METHOD_UNKNOWN) {
 		section->method = method;
-		p += strlen(http_method_table[method].name);
+		p += http_method_table[method].name.len;
 	/*
 	 *  If the method is unknown, it's either a URL or a verb
 	 */

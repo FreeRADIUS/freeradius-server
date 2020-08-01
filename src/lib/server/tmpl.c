@@ -40,44 +40,44 @@ RCSID("$Id$")
 /** Map #tmpl_type_t values to descriptive strings
  */
 fr_table_num_sorted_t const tmpl_type_table[] = {
-	{ "uninitialised",	TMPL_TYPE_UNINITIALISED		},
+	{ L("uninitialised"),	TMPL_TYPE_UNINITIALISED		},
 
-	{ "null",		TMPL_TYPE_NULL			},
-	{ "data",		TMPL_TYPE_DATA			},
+	{ L("null"),		TMPL_TYPE_NULL			},
+	{ L("data"),		TMPL_TYPE_DATA			},
 
-	{ "attr",		TMPL_TYPE_ATTR			},
-	{ "list",		TMPL_TYPE_LIST			},
+	{ L("attr"),		TMPL_TYPE_ATTR			},
+	{ L("list"),		TMPL_TYPE_LIST			},
 
-	{ "exec",		TMPL_TYPE_EXEC			},
-	{ "xlat",		TMPL_TYPE_XLAT			},
+	{ L("exec"),		TMPL_TYPE_EXEC			},
+	{ L("xlat"),		TMPL_TYPE_XLAT			},
 
-	{ "regex",		TMPL_TYPE_REGEX			},
+	{ L("regex"),		TMPL_TYPE_REGEX			},
 
-	{ "literal",		TMPL_TYPE_UNPARSED 		},
-	{ "attr-unparsed",	TMPL_TYPE_ATTR_UNPARSED		},
-	{ "xlat-unparsed",	TMPL_TYPE_XLAT_UNPARSED		},
-	{ "regex-unparsed",	TMPL_TYPE_REGEX_UNPARSED	}
+	{ L("literal"),		TMPL_TYPE_UNPARSED 		},
+	{ L("attr-unparsed"),	TMPL_TYPE_ATTR_UNPARSED		},
+	{ L("xlat-unparsed"),	TMPL_TYPE_XLAT_UNPARSED		},
+	{ L("regex-unparsed"),	TMPL_TYPE_REGEX_UNPARSED	}
 };
 size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
 /** Map keywords to #pair_list_t values
  */
 fr_table_num_ordered_t const pair_list_table[] = {
-	{ "request",		PAIR_LIST_REQUEST		},
-	{ "reply",		PAIR_LIST_REPLY			},
-	{ "control",		PAIR_LIST_CONTROL		},		/* New name should have priority */
-	{ "config",		PAIR_LIST_CONTROL		},
-	{ "session-state",	PAIR_LIST_STATE			},
+	{ L("request"),		PAIR_LIST_REQUEST		},
+	{ L("reply"),		PAIR_LIST_REPLY			},
+	{ L("control"),		PAIR_LIST_CONTROL		},		/* New name should have priority */
+	{ L("config"),		PAIR_LIST_CONTROL		},
+	{ L("session-state"),	PAIR_LIST_STATE			},
 };
 size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
 /** Map keywords to #request_ref_t values
  */
 fr_table_num_sorted_t const request_ref_table[] = {
-	{ "current",		REQUEST_CURRENT			},
-	{ "outer",		REQUEST_OUTER			},
-	{ "parent",		REQUEST_PARENT			},
-	{ "proxy",		REQUEST_PROXY			}
+	{ L("current"),		REQUEST_CURRENT			},
+	{ L("outer"),		REQUEST_OUTER			},
+	{ L("parent"),		REQUEST_PARENT			},
+	{ L("proxy"),		REQUEST_PROXY			}
 };
 size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
 
@@ -85,10 +85,10 @@ size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
 /** Special attribute reference indexes
  */
 static fr_table_num_sorted_t const attr_num_table[] = {
-	{ "*",			NUM_ALL				},
-	{ "#",			NUM_COUNT			},
-	{ "any",		NUM_ANY				},
-	{ "n",			NUM_LAST			}
+	{ L("*"),			NUM_ALL				},
+	{ L("#"),			NUM_COUNT			},
+	{ L("any"),		NUM_ANY				},
+	{ L("n"),			NUM_LAST			}
 };
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 

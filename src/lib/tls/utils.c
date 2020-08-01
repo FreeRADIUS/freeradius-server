@@ -33,10 +33,10 @@
  *
  */
 static fr_table_num_sorted_t const pkey_types[] = {
-	{ "DH",		EVP_PKEY_DH		},
-	{ "DSA",	EVP_PKEY_DSA		},
-	{ "EC",		EVP_PKEY_EC		},
-	{ "RSA",	EVP_PKEY_RSA		}
+	{ L("DH"),		EVP_PKEY_DH		},
+	{ L("DSA"),	EVP_PKEY_DSA		},
+	{ L("EC"),		EVP_PKEY_EC		},
+	{ L("RSA"),	EVP_PKEY_RSA		}
 };
 static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
 

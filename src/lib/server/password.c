@@ -172,17 +172,17 @@ typedef enum {
 } normalise_t;
 
 static fr_table_num_sorted_t const normalise_table[] = {
-	{ "base64",			NORMALISED_B64		},
-	{ "hex",			NORMALISED_HEX		},
-	{ "nothing",			NORMALISED_NOTHING	}
+	{ L("base64"),			NORMALISED_B64		},
+	{ L("hex"),			NORMALISED_HEX		},
+	{ L("nothing"),			NORMALISED_NOTHING	}
 };
 static size_t normalise_table_len = NUM_ELEMENTS(normalise_table);
 
 static fr_table_num_sorted_t const password_type_table[] = {
-	{ "cleartext",			PASSWORD_CLEARTEXT	},
-	{ "hashed",			PASSWORD_HASH		},
-	{ "salted-hash",		PASSWORD_HASH_SALTED	},
-	{ "variable-length-hash",	PASSWORD_HASH_VARIABLE	}
+	{ L("cleartext"),			PASSWORD_CLEARTEXT	},
+	{ L("hashed"),			PASSWORD_HASH		},
+	{ L("salted-hash"),		PASSWORD_HASH_SALTED	},
+	{ L("variable-length-hash"),	PASSWORD_HASH_VARIABLE	}
 };
 static size_t password_type_table_len = NUM_ELEMENTS(password_type_table);
 
@@ -192,42 +192,42 @@ static size_t password_type_table_len = NUM_ELEMENTS(password_type_table);
  *	@note Header comparison is case insensitive.
  */
 static fr_table_num_sorted_t const password_header_table[] = {
-	{ "{base64_md5}",		FR_MD5_PASSWORD		},
-	{ "{clear}",			FR_CLEARTEXT_PASSWORD	},
-	{ "{cleartext}",		FR_CLEARTEXT_PASSWORD	},
-	{ "{crypt}",			FR_CRYPT_PASSWORD	},
-	{ "{md4}",			FR_NT_PASSWORD		},
-	{ "{md5}",			FR_MD5_PASSWORD		},
-	{ "{ns-mta-md5}",		FR_NS_MTA_MD5_PASSWORD	},
-	{ "{nt}",			FR_NT_PASSWORD		},
-	{ "{nthash}",			FR_NT_PASSWORD		},
+	{ L("{base64_md5}"),		FR_MD5_PASSWORD		},
+	{ L("{clear}"),			FR_CLEARTEXT_PASSWORD	},
+	{ L("{cleartext}"),		FR_CLEARTEXT_PASSWORD	},
+	{ L("{crypt}"),			FR_CRYPT_PASSWORD	},
+	{ L("{md4}"),			FR_NT_PASSWORD		},
+	{ L("{md5}"),			FR_MD5_PASSWORD		},
+	{ L("{ns-mta-md5}"),		FR_NS_MTA_MD5_PASSWORD	},
+	{ L("{nt}"),			FR_NT_PASSWORD		},
+	{ L("{nthash}"),			FR_NT_PASSWORD		},
 
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{sha224}",			FR_SHA2_PASSWORD	},
-	{ "{sha256}",			FR_SHA2_PASSWORD	},
-	{ "{sha2}",			FR_SHA2_PASSWORD	},
-	{ "{sha384}",			FR_SHA2_384_PASSWORD	},
-	{ "{sha512}",			FR_SHA2_512_PASSWORD	},
+	{ L("{sha224}"),			FR_SHA2_PASSWORD	},
+	{ L("{sha256}"),			FR_SHA2_PASSWORD	},
+	{ L("{sha2}"),			FR_SHA2_PASSWORD	},
+	{ L("{sha384}"),			FR_SHA2_384_PASSWORD	},
+	{ L("{sha512}"),			FR_SHA2_512_PASSWORD	},
 #endif
-	{ "{sha}",			FR_SHA1_PASSWORD	},
-	{ "{smd5}",			FR_SMD5_PASSWORD	},
+	{ L("{sha}"),			FR_SHA1_PASSWORD	},
+	{ L("{smd5}"),			FR_SMD5_PASSWORD	},
 #ifdef HAVE_OPENSSL_EVP_H
-	{ "{ssha224}",			FR_SSHA2_224_PASSWORD	},
-	{ "{ssha256}",			FR_SSHA2_256_PASSWORD	},
+	{ L("{ssha224}"),			FR_SSHA2_224_PASSWORD	},
+	{ L("{ssha256}"),			FR_SSHA2_256_PASSWORD	},
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ "{ssha3-224}",		FR_SSHA3_224_PASSWORD	},
-	{ "{ssha3-256}",		FR_SSHA3_256_PASSWORD	},
-	{ "{ssha3-384}",		FR_SSHA3_384_PASSWORD	},
-	{ "{ssha3-512}",		FR_SSHA3_512_PASSWORD	},
+	{ L("{ssha3-224}"),		FR_SSHA3_224_PASSWORD	},
+	{ L("{ssha3-256}"),		FR_SSHA3_256_PASSWORD	},
+	{ L("{ssha3-384}"),		FR_SSHA3_384_PASSWORD	},
+	{ L("{ssha3-512}"),		FR_SSHA3_512_PASSWORD	},
 #  endif
-	{ "{ssha384}",			FR_SSHA2_384_PASSWORD	},
-	{ "{ssha512}",			FR_SSHA2_512_PASSWORD	},
+	{ L("{ssha384}"),			FR_SSHA2_384_PASSWORD	},
+	{ L("{ssha512}"),			FR_SSHA2_512_PASSWORD	},
 #endif
-	{ "{ssha}",			FR_SSHA1_PASSWORD	},
-	{ "{x- orcllmv}",		FR_LM_PASSWORD		},
-	{ "{x- orclntv}",		FR_NT_PASSWORD		},
-	{ "{x-nthash}",			FR_NT_PASSWORD		},
-	{ "{x-pbkdf2}",			FR_PBKDF2_PASSWORD	},
+	{ L("{ssha}"),			FR_SSHA1_PASSWORD	},
+	{ L("{x- orcllmv}"),		FR_LM_PASSWORD		},
+	{ L("{x- orclntv}"),		FR_NT_PASSWORD		},
+	{ L("{x-nthash}"),			FR_NT_PASSWORD		},
+	{ L("{x-pbkdf2}"),			FR_PBKDF2_PASSWORD	},
 };
 static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
 

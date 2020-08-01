@@ -701,9 +701,9 @@ void fr_dhcpv6_global_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
-	{ "dns_label",			FLAG_ENCODE_DNS_LABEL },
-	{ "encode=dns_label",		FLAG_ENCODE_DNS_LABEL },
-	{ "partial_dns_label", 		FLAG_ENCODE_PARTIAL_DNS_LABEL },
+	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
+	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
+	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL },
 };
 
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,

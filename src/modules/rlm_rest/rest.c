@@ -127,12 +127,12 @@ const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_method_table[] = {
-	{ "DELETE",				REST_HTTP_METHOD_DELETE		},
-	{ "GET",				REST_HTTP_METHOD_GET		},
-	{ "PATCH",				REST_HTTP_METHOD_PATCH		},
-	{ "POST",				REST_HTTP_METHOD_POST		},
-	{ "PUT",				REST_HTTP_METHOD_PUT		},
-	{ "UNKNOWN",				REST_HTTP_METHOD_UNKNOWN	}
+	{ L("DELETE"),				REST_HTTP_METHOD_DELETE		},
+	{ L("GET"),				REST_HTTP_METHOD_GET		},
+	{ L("PATCH"),				REST_HTTP_METHOD_PATCH		},
+	{ L("POST"),				REST_HTTP_METHOD_POST		},
+	{ L("PUT"),				REST_HTTP_METHOD_PUT		},
+	{ L("UNKNOWN"),				REST_HTTP_METHOD_UNKNOWN	}
 };
 size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
 
@@ -146,31 +146,31 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_body_type_table[] = {
-	{ "html",				REST_HTTP_BODY_HTML		},
-	{ "invalid",				REST_HTTP_BODY_INVALID		},
-	{ "json",				REST_HTTP_BODY_JSON		},
-	{ "none",				REST_HTTP_BODY_NONE		},
-	{ "plain",				REST_HTTP_BODY_PLAIN		},
-	{ "post",				REST_HTTP_BODY_POST		},
-	{ "unavailable",			REST_HTTP_BODY_UNAVAILABLE	},
-	{ "unknown",				REST_HTTP_BODY_UNKNOWN		},
-	{ "unsupported",			REST_HTTP_BODY_UNSUPPORTED	},
-	{ "xml",				REST_HTTP_BODY_XML		},
-	{ "yaml",				REST_HTTP_BODY_YAML		}
+	{ L("html"),				REST_HTTP_BODY_HTML		},
+	{ L("invalid"),				REST_HTTP_BODY_INVALID		},
+	{ L("json"),				REST_HTTP_BODY_JSON		},
+	{ L("none"),				REST_HTTP_BODY_NONE		},
+	{ L("plain"),				REST_HTTP_BODY_PLAIN		},
+	{ L("post"),				REST_HTTP_BODY_POST		},
+	{ L("unavailable"),			REST_HTTP_BODY_UNAVAILABLE	},
+	{ L("unknown"),				REST_HTTP_BODY_UNKNOWN		},
+	{ L("unsupported"),			REST_HTTP_BODY_UNSUPPORTED	},
+	{ L("xml"),				REST_HTTP_BODY_XML		},
+	{ L("yaml"),				REST_HTTP_BODY_YAML		}
 };
 size_t http_body_type_table_len = NUM_ELEMENTS(http_body_type_table);
 
 fr_table_num_sorted_t const http_auth_table[] = {
-	{ "any",				REST_HTTP_AUTH_ANY		},
-	{ "basic",				REST_HTTP_AUTH_BASIC		},
-	{ "digest",				REST_HTTP_AUTH_DIGEST		},
-	{ "digest-ie",				REST_HTTP_AUTH_DIGEST_IE	},
-	{ "gss-negotiate",			REST_HTTP_AUTH_GSSNEGOTIATE	},
-	{ "none",				REST_HTTP_AUTH_NONE		},
-	{ "ntlm",				REST_HTTP_AUTH_NTLM		},
-	{ "ntlm-winbind",			REST_HTTP_AUTH_NTLM_WB		},
-	{ "safe",				REST_HTTP_AUTH_ANY_SAFE		},
-	{ "srp",				REST_HTTP_AUTH_TLS_SRP		}
+	{ L("any"),				REST_HTTP_AUTH_ANY		},
+	{ L("basic"),				REST_HTTP_AUTH_BASIC		},
+	{ L("digest"),				REST_HTTP_AUTH_DIGEST		},
+	{ L("digest-ie"),				REST_HTTP_AUTH_DIGEST_IE	},
+	{ L("gss-negotiate"),			REST_HTTP_AUTH_GSSNEGOTIATE	},
+	{ L("none"),				REST_HTTP_AUTH_NONE		},
+	{ L("ntlm"),				REST_HTTP_AUTH_NTLM		},
+	{ L("ntlm-winbind"),			REST_HTTP_AUTH_NTLM_WB		},
+	{ L("safe"),				REST_HTTP_AUTH_ANY_SAFE		},
+	{ L("srp"),				REST_HTTP_AUTH_TLS_SRP		}
 };
 size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
 
@@ -189,15 +189,15 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
-	{ "application/json",			REST_HTTP_BODY_JSON		},
-	{ "application/x-www-form-urlencoded",	REST_HTTP_BODY_POST		},
-	{ "application/x-yaml",			REST_HTTP_BODY_YAML		},
-	{ "application/yaml",			REST_HTTP_BODY_YAML		},
-	{ "text/html",				REST_HTTP_BODY_HTML		},
-	{ "text/plain",				REST_HTTP_BODY_PLAIN		},
-	{ "text/x-yaml",			REST_HTTP_BODY_YAML		},
-	{ "text/xml",				REST_HTTP_BODY_XML		},
-	{ "text/yaml",				REST_HTTP_BODY_YAML		}
+	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
+	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("text/html"),				REST_HTTP_BODY_HTML		},
+	{ L("text/plain"),				REST_HTTP_BODY_PLAIN		},
+	{ L("text/x-yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("text/xml"),				REST_HTTP_BODY_XML		},
+	{ L("text/yaml"),				REST_HTTP_BODY_YAML		}
 };
 size_t http_content_type_table_len = NUM_ELEMENTS(http_content_type_table);
 

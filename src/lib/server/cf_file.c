@@ -71,8 +71,8 @@ typedef enum conf_property {
 } CONF_PROPERTY;
 
 static fr_table_num_sorted_t const conf_property_name[] = {
-	{ "instance",	CONF_PROPERTY_INSTANCE	},
-	{ "name",	CONF_PROPERTY_NAME	}
+	{ L("instance"),	CONF_PROPERTY_INSTANCE	},
+	{ L("name"),	CONF_PROPERTY_NAME	}
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
@@ -1491,9 +1491,9 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {
-	{ "elsif",	(void *) process_if },
-	{ "if",		(void *) process_if },
-	{ "map",	(void *) process_map },
+	{ L("elsif"),	(void *) process_if },
+	{ L("if"),		(void *) process_if },
+	{ L("map"),	(void *) process_map },
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 

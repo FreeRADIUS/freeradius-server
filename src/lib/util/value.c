@@ -101,60 +101,60 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 /** Map data types to names representing those types
  */
 fr_table_num_ordered_t const fr_value_box_type_table[] = {
-	{ "string",		FR_TYPE_STRING		},
-	{ "octets",		FR_TYPE_OCTETS		},
+	{ L("string"),		FR_TYPE_STRING		},
+	{ L("octets"),		FR_TYPE_OCTETS		},
 
-	{ "ipaddr",		FR_TYPE_IPV4_ADDR	},
-	{ "ipv4addr",		FR_TYPE_IPV4_ADDR	},
-	{ "ipv4prefix",		FR_TYPE_IPV4_PREFIX	},
-	{ "ipv6addr",		FR_TYPE_IPV6_ADDR	},
-	{ "ipv6prefix",		FR_TYPE_IPV6_PREFIX	},
-	{ "ifid",		FR_TYPE_IFID		},
-	{ "combo-ip",		FR_TYPE_COMBO_IP_ADDR	},
-	{ "combo-prefix",	FR_TYPE_COMBO_IP_PREFIX	},
-	{ "ether",		FR_TYPE_ETHERNET	},
+	{ L("ipaddr"),		FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4addr"),		FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4prefix"),		FR_TYPE_IPV4_PREFIX	},
+	{ L("ipv6addr"),		FR_TYPE_IPV6_ADDR	},
+	{ L("ipv6prefix"),		FR_TYPE_IPV6_PREFIX	},
+	{ L("ifid"),		FR_TYPE_IFID		},
+	{ L("combo-ip"),		FR_TYPE_COMBO_IP_ADDR	},
+	{ L("combo-prefix"),	FR_TYPE_COMBO_IP_PREFIX	},
+	{ L("ether"),		FR_TYPE_ETHERNET	},
 
-	{ "bool",		FR_TYPE_BOOL		},
+	{ L("bool"),		FR_TYPE_BOOL		},
 
-	{ "uint8",        	FR_TYPE_UINT8		},
-	{ "uint16",        	FR_TYPE_UINT16		},
-	{ "uint32",		FR_TYPE_UINT32		},
-	{ "uint64",		FR_TYPE_UINT64		},
+	{ L("uint8"),        	FR_TYPE_UINT8		},
+	{ L("uint16"),        	FR_TYPE_UINT16		},
+	{ L("uint32"),		FR_TYPE_UINT32		},
+	{ L("uint64"),		FR_TYPE_UINT64		},
 
-	{ "int8",		FR_TYPE_INT8 		},
-	{ "int16",		FR_TYPE_INT16		},
-	{ "int32",         	FR_TYPE_INT32		},
-	{ "int64",		FR_TYPE_INT64		},
+	{ L("int8"),		FR_TYPE_INT8 		},
+	{ L("int16"),		FR_TYPE_INT16		},
+	{ L("int32"),         	FR_TYPE_INT32		},
+	{ L("int64"),		FR_TYPE_INT64		},
 
-	{ "float32",		FR_TYPE_FLOAT32		},
-	{ "float64",		FR_TYPE_FLOAT64		},
+	{ L("float32"),		FR_TYPE_FLOAT32		},
+	{ L("float64"),		FR_TYPE_FLOAT64		},
 
-	{ "time_delta",		FR_TYPE_TIME_DELTA	},
-	{ "date",		FR_TYPE_DATE		},
+	{ L("time_delta"),		FR_TYPE_TIME_DELTA	},
+	{ L("date"),		FR_TYPE_DATE		},
 
-	{ "abinary",		FR_TYPE_ABINARY		},
+	{ L("abinary"),		FR_TYPE_ABINARY		},
 
-	{ "size",		FR_TYPE_SIZE		},
+	{ L("size"),		FR_TYPE_SIZE		},
 
-	{ "tlv",		FR_TYPE_TLV		},
-	{ "struct",        	FR_TYPE_STRUCT		},
+	{ L("tlv"),		FR_TYPE_TLV		},
+	{ L("struct"),        	FR_TYPE_STRUCT		},
 
-	{ "extended",      	FR_TYPE_EXTENDED	},
+	{ L("extended"),      	FR_TYPE_EXTENDED	},
 
-	{ "vsa",          	FR_TYPE_VSA		},
-	{ "vendor",        	FR_TYPE_VENDOR		},
-	{ "group",        	FR_TYPE_GROUP		},
+	{ L("vsa"),          	FR_TYPE_VSA		},
+	{ L("vendor"),        	FR_TYPE_VENDOR		},
+	{ L("group"),        	FR_TYPE_GROUP		},
 
 	/*
 	 *	Alternative names
 	 */
-	{ "cidr",         	FR_TYPE_IPV4_PREFIX	},
-	{ "byte",		FR_TYPE_UINT8		},
-	{ "short",		FR_TYPE_UINT16		},
-	{ "integer",		FR_TYPE_UINT32		},
-	{ "integer64",		FR_TYPE_UINT64		},
-	{ "decimal",		FR_TYPE_FLOAT64		},
-	{ "signed",        	FR_TYPE_INT32		}
+	{ L("cidr"),         	FR_TYPE_IPV4_PREFIX	},
+	{ L("byte"),		FR_TYPE_UINT8		},
+	{ L("short"),		FR_TYPE_UINT16		},
+	{ L("integer"),		FR_TYPE_UINT32		},
+	{ L("integer64"),		FR_TYPE_UINT64		},
+	{ L("decimal"),		FR_TYPE_FLOAT64		},
+	{ L("signed"),        	FR_TYPE_INT32		}
 };
 size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
 

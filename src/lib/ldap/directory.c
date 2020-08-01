@@ -34,18 +34,18 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/ldap/base.h>
 
 static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
-	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
-	{ "IBM",			FR_LDAP_DIRECTORY_IBM				},
-	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE			},
-	{ "OpenLDAP",			FR_LDAP_DIRECTORY_OPENLDAP			},
-	{ "Oracle Internet Directory",	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
-	{ "Oracle Unified Directory",	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY	},
-	{ "Oracle Virtual Directory",	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY	},
-	{ "Siemens AG",			FR_LDAP_DIRECTORY_SIEMENS_AG			},
-	{ "Sun One Directory",		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
-	{ "Unbound ID",			FR_LDAP_DIRECTORY_UNBOUND_ID			},
-	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN			},
-	{ "eDirectory",			FR_LDAP_DIRECTORY_EDIRECTORY			}
+	{ L("Active Directory"),		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
+	{ L("IBM"),			FR_LDAP_DIRECTORY_IBM				},
+	{ L("NetScape"),			FR_LDAP_DIRECTORY_NETSCAPE			},
+	{ L("OpenLDAP"),			FR_LDAP_DIRECTORY_OPENLDAP			},
+	{ L("Oracle Internet Directory"),	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
+	{ L("Oracle Unified Directory"),	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY	},
+	{ L("Oracle Virtual Directory"),	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY	},
+	{ L("Siemens AG"),			FR_LDAP_DIRECTORY_SIEMENS_AG			},
+	{ L("Sun One Directory"),		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
+	{ L("Unbound ID"),			FR_LDAP_DIRECTORY_UNBOUND_ID			},
+	{ L("Unknown"),			FR_LDAP_DIRECTORY_UNKNOWN			},
+	{ L("eDirectory"),			FR_LDAP_DIRECTORY_EDIRECTORY			}
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 

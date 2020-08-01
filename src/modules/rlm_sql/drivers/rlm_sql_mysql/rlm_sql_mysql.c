@@ -78,9 +78,9 @@ typedef enum {
 } rlm_sql_mysql_warnings;
 
 static fr_table_num_sorted_t const server_warnings_table[] = {
-	{ "auto",	SERVER_WARNINGS_AUTO	},
-	{ "no",		SERVER_WARNINGS_NO	},
-	{ "yes",	SERVER_WARNINGS_YES	}
+	{ L("auto"),	SERVER_WARNINGS_AUTO	},
+	{ L("no"),		SERVER_WARNINGS_NO	},
+	{ L("yes"),	SERVER_WARNINGS_YES	}
 };
 static size_t server_warnings_table_len = NUM_ELEMENTS(server_warnings_table);
 

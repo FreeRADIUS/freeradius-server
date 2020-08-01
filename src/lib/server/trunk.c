@@ -311,35 +311,35 @@ CONF_PARSER const fr_trunk_config[] = {
  * Must stay in the same order as #fr_trunk_connection_state_t
  */
 static fr_table_num_indexed_bit_pos_t const fr_trunk_req_trigger_names[] = {
-	{ "pool.request_init",			FR_TRUNK_REQUEST_STATE_INIT		},	/* 0x0000 - bit 0 */
-	{ "pool.request_unassigned",		FR_TRUNK_REQUEST_STATE_UNASSIGNED	},	/* 0x0001 - bit 1 */
-	{ "pool.request_backlog",		FR_TRUNK_REQUEST_STATE_BACKLOG		},	/* 0x0002 - bit 2 */
-	{ "pool.request_pending",		FR_TRUNK_REQUEST_STATE_PENDING		},	/* 0x0004 - bit 3 */
-	{ "pool.request_partial",		FR_TRUNK_REQUEST_STATE_PARTIAL		},	/* 0x0008 - bit 4 */
-	{ "pool.request_sent",			FR_TRUNK_REQUEST_STATE_SENT		},	/* 0x0010 - bit 5 */
-	{ "pool.request_complete",		FR_TRUNK_REQUEST_STATE_COMPLETE		},	/* 0x0020 - bit 6 */
-	{ "pool.request_state_failed",		FR_TRUNK_REQUEST_STATE_FAILED		},	/* 0x0040 - bit 7 */
-	{ "pool.request_state_cancel",		FR_TRUNK_REQUEST_STATE_CANCEL		},	/* 0x0080 - bit 8 */
-	{ "pool.request_state_cancel_sent",	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},	/* 0x0100 - bit 9 */
-	{ "pool.request_state_cancel_partial",	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},	/* 0x0200 - bit 10 */
-	{ "pool.request_state_cancel_complete",	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}	/* 0x0400 - bit 11 */
+	{ L("pool.request_init"),			FR_TRUNK_REQUEST_STATE_INIT		},	/* 0x0000 - bit 0 */
+	{ L("pool.request_unassigned"),		FR_TRUNK_REQUEST_STATE_UNASSIGNED	},	/* 0x0001 - bit 1 */
+	{ L("pool.request_backlog"),		FR_TRUNK_REQUEST_STATE_BACKLOG		},	/* 0x0002 - bit 2 */
+	{ L("pool.request_pending"),		FR_TRUNK_REQUEST_STATE_PENDING		},	/* 0x0004 - bit 3 */
+	{ L("pool.request_partial"),		FR_TRUNK_REQUEST_STATE_PARTIAL		},	/* 0x0008 - bit 4 */
+	{ L("pool.request_sent"),			FR_TRUNK_REQUEST_STATE_SENT		},	/* 0x0010 - bit 5 */
+	{ L("pool.request_complete"),		FR_TRUNK_REQUEST_STATE_COMPLETE		},	/* 0x0020 - bit 6 */
+	{ L("pool.request_state_failed"),		FR_TRUNK_REQUEST_STATE_FAILED		},	/* 0x0040 - bit 7 */
+	{ L("pool.request_state_cancel"),		FR_TRUNK_REQUEST_STATE_CANCEL		},	/* 0x0080 - bit 8 */
+	{ L("pool.request_state_cancel_sent"),	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},	/* 0x0100 - bit 9 */
+	{ L("pool.request_state_cancel_partial"),	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},	/* 0x0200 - bit 10 */
+	{ L("pool.request_state_cancel_complete"),	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}	/* 0x0400 - bit 11 */
 };
 static size_t fr_trunk_req_trigger_names_len = NUM_ELEMENTS(fr_trunk_req_trigger_names);
 #endif
 
 static fr_table_num_ordered_t const fr_trunk_request_states[] = {
-	{ "INIT",				FR_TRUNK_REQUEST_STATE_INIT		},
-	{ "UNASSIGNED",				FR_TRUNK_REQUEST_STATE_UNASSIGNED	},
-	{ "BACKLOG",				FR_TRUNK_REQUEST_STATE_BACKLOG		},
-	{ "PENDING",				FR_TRUNK_REQUEST_STATE_PENDING		},
-	{ "PARTIAL",				FR_TRUNK_REQUEST_STATE_PARTIAL		},
-	{ "SENT",				FR_TRUNK_REQUEST_STATE_SENT		},
-	{ "COMPLETE",				FR_TRUNK_REQUEST_STATE_COMPLETE		},
-	{ "FAILED",				FR_TRUNK_REQUEST_STATE_FAILED		},
-	{ "CANCEL",				FR_TRUNK_REQUEST_STATE_CANCEL		},
-	{ "CANCEL-SENT",			FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
-	{ "CANCEL-PARTIAL",			FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
-	{ "CANCEL-COMPLETE",			FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}
+	{ L("INIT"),				FR_TRUNK_REQUEST_STATE_INIT		},
+	{ L("UNASSIGNED"),				FR_TRUNK_REQUEST_STATE_UNASSIGNED	},
+	{ L("BACKLOG"),				FR_TRUNK_REQUEST_STATE_BACKLOG		},
+	{ L("PENDING"),				FR_TRUNK_REQUEST_STATE_PENDING		},
+	{ L("PARTIAL"),				FR_TRUNK_REQUEST_STATE_PARTIAL		},
+	{ L("SENT"),				FR_TRUNK_REQUEST_STATE_SENT		},
+	{ L("COMPLETE"),				FR_TRUNK_REQUEST_STATE_COMPLETE		},
+	{ L("FAILED"),				FR_TRUNK_REQUEST_STATE_FAILED		},
+	{ L("CANCEL"),				FR_TRUNK_REQUEST_STATE_CANCEL		},
+	{ L("CANCEL-SENT"),			FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
+	{ L("CANCEL-PARTIAL"),			FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
+	{ L("CANCEL-COMPLETE"),			FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}
 };
 static size_t fr_trunk_request_states_len = NUM_ELEMENTS(fr_trunk_request_states);
 
@@ -348,46 +348,46 @@ static size_t fr_trunk_request_states_len = NUM_ELEMENTS(fr_trunk_request_states
  * Must stay in the same order as #fr_trunk_connection_state_t
  */
 static fr_table_num_indexed_bit_pos_t const fr_trunk_conn_trigger_names[] = {
-	{ "pool.connection_halted",		FR_TRUNK_CONN_HALTED			},	/* 0x0000 - bit 0 */
-	{ "pool.connection_init",		FR_TRUNK_CONN_INIT			},	/* 0x0001 - bit 1 */
-	{ "pool.connection_connecting",		FR_TRUNK_CONN_CONNECTING		},	/* 0x0002 - bit 2 */
-	{ "pool.connection_active",		FR_TRUNK_CONN_ACTIVE			},	/* 0x0004 - bit 3 */
-	{ "pool.connection_closed",		FR_TRUNK_CONN_CLOSED			},	/* 0x0008 - bit 4 */
-	{ "pool.connection_full",		FR_TRUNK_CONN_FULL			},	/* 0x0010 - bit 5 */
-	{ "pool.connection_inactive",		FR_TRUNK_CONN_INACTIVE			},	/* 0x0020 - bit 6 */
-	{ "pool.connection_inactive_draining",	FR_TRUNK_CONN_INACTIVE_DRAINING		},	/* 0x0040 - bit 7 */
-	{ "pool.connection_draining",		FR_TRUNK_CONN_DRAINING			},	/* 0x0080 - bit 8 */
-	{ "pool.connection_draining_to_free",	FR_TRUNK_CONN_DRAINING_TO_FREE		}	/* 0x0100 - bit 9 */
+	{ L("pool.connection_halted"),		FR_TRUNK_CONN_HALTED			},	/* 0x0000 - bit 0 */
+	{ L("pool.connection_init"),		FR_TRUNK_CONN_INIT			},	/* 0x0001 - bit 1 */
+	{ L("pool.connection_connecting"),		FR_TRUNK_CONN_CONNECTING		},	/* 0x0002 - bit 2 */
+	{ L("pool.connection_active"),		FR_TRUNK_CONN_ACTIVE			},	/* 0x0004 - bit 3 */
+	{ L("pool.connection_closed"),		FR_TRUNK_CONN_CLOSED			},	/* 0x0008 - bit 4 */
+	{ L("pool.connection_full"),		FR_TRUNK_CONN_FULL			},	/* 0x0010 - bit 5 */
+	{ L("pool.connection_inactive"),		FR_TRUNK_CONN_INACTIVE			},	/* 0x0020 - bit 6 */
+	{ L("pool.connection_inactive_draining"),	FR_TRUNK_CONN_INACTIVE_DRAINING		},	/* 0x0040 - bit 7 */
+	{ L("pool.connection_draining"),		FR_TRUNK_CONN_DRAINING			},	/* 0x0080 - bit 8 */
+	{ L("pool.connection_draining_to_free"),	FR_TRUNK_CONN_DRAINING_TO_FREE		}	/* 0x0100 - bit 9 */
 };
 static size_t fr_trunk_conn_trigger_names_len = NUM_ELEMENTS(fr_trunk_conn_trigger_names);
 
 static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
-	{ "INIT",				FR_TRUNK_CONN_INIT			},
-	{ "HALTED",				FR_TRUNK_CONN_HALTED			},
-	{ "CONNECTING",				FR_TRUNK_CONN_CONNECTING		},
-	{ "ACTIVE",				FR_TRUNK_CONN_ACTIVE			},
-	{ "CLOSED",				FR_TRUNK_CONN_CLOSED			},
-	{ "FULL",				FR_TRUNK_CONN_FULL			},
-	{ "INACTIVE",				FR_TRUNK_CONN_INACTIVE			},
-	{ "INACTIVE-DRAINING",			FR_TRUNK_CONN_INACTIVE_DRAINING		},
-	{ "DRAINING",				FR_TRUNK_CONN_DRAINING			},
-	{ "DRAINING-TO-FREE",			FR_TRUNK_CONN_DRAINING_TO_FREE		}
+	{ L("INIT"),				FR_TRUNK_CONN_INIT			},
+	{ L("HALTED"),				FR_TRUNK_CONN_HALTED			},
+	{ L("CONNECTING"),				FR_TRUNK_CONN_CONNECTING		},
+	{ L("ACTIVE"),				FR_TRUNK_CONN_ACTIVE			},
+	{ L("CLOSED"),				FR_TRUNK_CONN_CLOSED			},
+	{ L("FULL"),				FR_TRUNK_CONN_FULL			},
+	{ L("INACTIVE"),				FR_TRUNK_CONN_INACTIVE			},
+	{ L("INACTIVE-DRAINING"),			FR_TRUNK_CONN_INACTIVE_DRAINING		},
+	{ L("DRAINING"),				FR_TRUNK_CONN_DRAINING			},
+	{ L("DRAINING-TO-FREE"),			FR_TRUNK_CONN_DRAINING_TO_FREE		}
 };
 static size_t fr_trunk_connection_states_len = NUM_ELEMENTS(fr_trunk_connection_states);
 
 static fr_table_num_ordered_t const fr_trunk_cancellation_reasons[] = {
-	{ "FR_TRUNK_CANCEL_REASON_NONE",	FR_TRUNK_CANCEL_REASON_NONE		},
-	{ "FR_TRUNK_CANCEL_REASON_SIGNAL",	FR_TRUNK_CANCEL_REASON_SIGNAL		},
-	{ "FR_TRUNK_CANCEL_REASON_MOVE",	FR_TRUNK_CANCEL_REASON_MOVE		},
-	{ "FR_TRUNK_CANCEL_REASON_REQUEUE",	FR_TRUNK_CANCEL_REASON_REQUEUE		}
+	{ L("FR_TRUNK_CANCEL_REASON_NONE"),	FR_TRUNK_CANCEL_REASON_NONE		},
+	{ L("FR_TRUNK_CANCEL_REASON_SIGNAL"),	FR_TRUNK_CANCEL_REASON_SIGNAL		},
+	{ L("FR_TRUNK_CANCEL_REASON_MOVE"),	FR_TRUNK_CANCEL_REASON_MOVE		},
+	{ L("FR_TRUNK_CANCEL_REASON_REQUEUE"),	FR_TRUNK_CANCEL_REASON_REQUEUE		}
 };
 static size_t fr_trunk_cancellation_reasons_len = NUM_ELEMENTS(fr_trunk_cancellation_reasons);
 
 static fr_table_num_ordered_t const fr_trunk_connection_events[] = {
-	{ "FR_TRUNK_CONN_EVENT_NONE",		FR_TRUNK_CONN_EVENT_NONE 		},
-	{ "FR_TRUNK_CONN_EVENT_READ",		FR_TRUNK_CONN_EVENT_READ		},
-	{ "FR_TRUNK_CONN_EVENT_WRITE",		FR_TRUNK_CONN_EVENT_WRITE		},
-	{ "FR_TRUNK_CONN_EVENT_BOTH",		FR_TRUNK_CONN_EVENT_BOTH		},
+	{ L("FR_TRUNK_CONN_EVENT_NONE"),		FR_TRUNK_CONN_EVENT_NONE 		},
+	{ L("FR_TRUNK_CONN_EVENT_READ"),		FR_TRUNK_CONN_EVENT_READ		},
+	{ L("FR_TRUNK_CONN_EVENT_WRITE"),		FR_TRUNK_CONN_EVENT_WRITE		},
+	{ L("FR_TRUNK_CONN_EVENT_BOTH"),		FR_TRUNK_CONN_EVENT_BOTH		},
 };
 static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_events);
 

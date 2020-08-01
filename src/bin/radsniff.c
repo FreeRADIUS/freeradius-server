@@ -79,12 +79,12 @@ static int rs_useful_codes[] = {
 };
 
 static fr_table_num_sorted_t const rs_events[] = {
-	{ "error",	RS_ERROR	},
-	{ "noreq",	RS_UNLINKED	},
-	{ "norsp",	RS_LOST		},
-	{ "received",	RS_NORMAL	},
-	{ "reused",	RS_REUSED	},
-	{ "rtx",	RS_RTX		}
+	{ L("error"),	RS_ERROR	},
+	{ L("noreq"),	RS_UNLINKED	},
+	{ L("norsp"),	RS_LOST		},
+	{ L("received"),	RS_NORMAL	},
+	{ L("reused"),	RS_REUSED	},
+	{ L("rtx"),	RS_RTX		}
 };
 static size_t rs_events_len = NUM_ELEMENTS(rs_events);
 

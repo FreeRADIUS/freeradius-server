@@ -75,20 +75,20 @@ DIAG_ON(unused-macros)
 
 static fr_table_num_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
-	{ "EVFILT_AIO",		EVFILT_AIO },
+	{ L("EVFILT_AIO"),		EVFILT_AIO },
 #endif
 #ifdef EVFILT_EXCEPT
-	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
+	{ L("EVFILT_EXCEPT"),	EVFILT_EXCEPT },
 #endif
 #ifdef EVFILT_MACHPORT
-	{ "EVFILT_MACHPORT",	EVFILT_MACHPORT },
+	{ L("EVFILT_MACHPORT"),	EVFILT_MACHPORT },
 #endif
-	{ "EVFILT_PROC",	EVFILT_PROC },
-	{ "EVFILT_READ",	EVFILT_READ },
-	{ "EVFILT_SIGNAL",	EVFILT_SIGNAL },
-	{ "EVFILT_TIMER",	EVFILT_TIMER },
-	{ "EVFILT_VNODE",	EVFILT_VNODE },
-	{ "EVFILT_WRITE",	EVFILT_WRITE }
+	{ L("EVFILT_PROC"),	EVFILT_PROC },
+	{ L("EVFILT_READ"),	EVFILT_READ },
+	{ L("EVFILT_SIGNAL"),	EVFILT_SIGNAL },
+	{ L("EVFILT_TIMER"),	EVFILT_TIMER },
+	{ L("EVFILT_VNODE"),	EVFILT_VNODE },
+	{ L("EVFILT_WRITE"),	EVFILT_WRITE }
 };
 static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 
@@ -241,10 +241,10 @@ static fr_event_func_map_t vnode_func_map[] = {
 };
 
 static fr_table_num_sorted_t const fr_event_fd_type_table[] = {
-	{ "directory",		FR_EVENT_FD_DIRECTORY },
-	{ "file",		FR_EVENT_FD_FILE },
-	{ "pcap",		FR_EVENT_FD_PCAP },
-	{ "socket",		FR_EVENT_FD_SOCKET }
+	{ L("directory"),		FR_EVENT_FD_DIRECTORY },
+	{ L("file"),		FR_EVENT_FD_FILE },
+	{ L("pcap"),		FR_EVENT_FD_PCAP },
+	{ L("socket"),		FR_EVENT_FD_SOCKET }
 };
 static size_t fr_event_fd_type_table_len = NUM_ELEMENTS(fr_event_fd_type_table);
 

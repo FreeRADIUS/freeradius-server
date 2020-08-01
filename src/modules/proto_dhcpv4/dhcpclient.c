@@ -112,13 +112,13 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 };
 
 static fr_table_num_sorted_t const request_types[] = {
-	{ "auto",     		FR_CODE_UNDEFINED	},
-	{ "decline",		FR_DHCP_DECLINE		},
-	{ "discover",		FR_DHCP_DISCOVER	},
-	{ "inform",		FR_DHCP_INFORM		},
-	{ "lease_query",	FR_DHCP_LEASE_QUERY	},
-	{ "release",		FR_DHCP_RELEASE		},
-	{ "request",		FR_DHCP_REQUEST		}
+	{ L("auto"),     		FR_CODE_UNDEFINED	},
+	{ L("decline"),		FR_DHCP_DECLINE		},
+	{ L("discover"),		FR_DHCP_DISCOVER	},
+	{ L("inform"),		FR_DHCP_INFORM		},
+	{ L("lease_query"),	FR_DHCP_LEASE_QUERY	},
+	{ L("release"),		FR_DHCP_RELEASE		},
+	{ L("request"),		FR_DHCP_REQUEST		}
 };
 static size_t request_types_len = NUM_ELEMENTS(request_types);
 

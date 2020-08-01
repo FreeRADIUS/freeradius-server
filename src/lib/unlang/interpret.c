@@ -34,19 +34,19 @@ RCSID("$Id$")
 #include "module_priv.h"
 
 static fr_table_num_ordered_t const unlang_action_table[] = {
-	{ "unwind", 		UNLANG_ACTION_UNWIND },
-	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
-	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
-	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
-	{ "stop",		UNLANG_ACTION_STOP_PROCESSING },
-	{ "yield",		UNLANG_ACTION_YIELD }
+	{ L("unwind"), 		UNLANG_ACTION_UNWIND },
+	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
+	{ L("next"),		UNLANG_ACTION_EXECUTE_NEXT },
+	{ L("pushed-child"),	UNLANG_ACTION_PUSHED_CHILD },
+	{ L("stop"),		UNLANG_ACTION_STOP_PROCESSING },
+	{ L("yield"),		UNLANG_ACTION_YIELD }
 };
 static size_t unlang_action_table_len = NUM_ELEMENTS(unlang_action_table);
 
 static fr_table_num_ordered_t const unlang_frame_action_table[] = {
-	{ "pop", 		UNLANG_FRAME_ACTION_POP		},
-	{ "next",		UNLANG_FRAME_ACTION_NEXT	},
-	{ "yield",		UNLANG_FRAME_ACTION_YIELD	}
+	{ L("pop"), 		UNLANG_FRAME_ACTION_POP		},
+	{ L("next"),		UNLANG_FRAME_ACTION_NEXT	},
+	{ L("yield"),		UNLANG_FRAME_ACTION_YIELD	}
 };
 static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_table);
 

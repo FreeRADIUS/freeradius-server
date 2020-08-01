@@ -2356,7 +2356,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 		fr_dict_attr_t			*n;
 		fr_table_num_ordered_t const	*p = &fr_value_box_type_table[i];
 
-		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name);
+		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name.str);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
 				    FR_CAST_BASE + p->value, p->value, &flags);

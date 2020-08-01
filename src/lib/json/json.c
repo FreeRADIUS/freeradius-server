@@ -30,11 +30,11 @@
 #include "base.h"
 
 fr_table_num_sorted_t const fr_json_format_table[] = {
-	{ "array",		JSON_MODE_ARRAY		},
-	{ "array_of_names",	JSON_MODE_ARRAY_OF_NAMES	},
-	{ "array_of_values",	JSON_MODE_ARRAY_OF_VALUES	},
-	{ "object",		JSON_MODE_OBJECT		},
-	{ "object_simple",	JSON_MODE_OBJECT_SIMPLE	},
+	{ L("array"),		JSON_MODE_ARRAY		},
+	{ L("array_of_names"),	JSON_MODE_ARRAY_OF_NAMES	},
+	{ L("array_of_values"),	JSON_MODE_ARRAY_OF_VALUES	},
+	{ L("object"),		JSON_MODE_OBJECT		},
+	{ L("object_simple"),	JSON_MODE_OBJECT_SIMPLE	},
 };
 size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
 

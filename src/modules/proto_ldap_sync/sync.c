@@ -49,36 +49,36 @@ struct sync_state_s {
 };
 
 fr_table_num_sorted_t sync_state_table[] = {
-	{ "present",			SYNC_STATE_PRESENT		},
-	{ "add",			SYNC_STATE_ADD			},
-	{ "modify",			SYNC_STATE_MODIFY		},
-	{ "delete",			SYNC_STATE_DELETE		}
+	{ L("present"),			SYNC_STATE_PRESENT		},
+	{ L("add"),			SYNC_STATE_ADD			},
+	{ L("modify"),			SYNC_STATE_MODIFY		},
+	{ L("delete"),			SYNC_STATE_DELETE		}
 };
 size_t sync_state_table_len = NUM_ELEMENTS(sync_state_table);
 
 fr_table_num_sorted_t sync_phase_table[] = {
-	{ "delete",			SYNC_PHASE_DELETE		},
-	{ "delete-idset",		SYNC_PHASE_DELETE_IDSET		},
-	{ "done",			SYNC_PHASE_DONE			},
-	{ "init",			SYNC_PHASE_INIT			},
-	{ "present",			SYNC_PHASE_PRESENT		},
-	{ "present-idset",		SYNC_PHASE_PRESENT_IDSET	}
+	{ L("delete"),			SYNC_PHASE_DELETE		},
+	{ L("delete-idset"),		SYNC_PHASE_DELETE_IDSET		},
+	{ L("done"),			SYNC_PHASE_DONE			},
+	{ L("init"),			SYNC_PHASE_INIT			},
+	{ L("present"),			SYNC_PHASE_PRESENT		},
+	{ L("present-idset"),		SYNC_PHASE_PRESENT_IDSET	}
 };
 size_t sync_phase_table_len = NUM_ELEMENTS(sync_state_table);
 
 fr_table_num_sorted_t sync_protocol_op_table[] = {
-	{ "intermediateResponse",	LDAP_RES_INTERMEDIATE		},
-	{ "searchRes",			LDAP_RES_SEARCH_RESULT		},
-	{ "searchResEntry",		LDAP_RES_SEARCH_ENTRY		},
-	{ "searchResReference",		LDAP_RES_SEARCH_REFERENCE	}
+	{ L("intermediateResponse"),	LDAP_RES_INTERMEDIATE		},
+	{ L("searchRes"),			LDAP_RES_SEARCH_RESULT		},
+	{ L("searchResEntry"),		LDAP_RES_SEARCH_ENTRY		},
+	{ L("searchResReference"),		LDAP_RES_SEARCH_REFERENCE	}
 };
 size_t sync_protocol_op_table_len = NUM_ELEMENTS(sync_state_table);
 
 fr_table_num_sorted_t sync_info_tag_table[] = {
- 	{ "newCookie",			LDAP_TAG_SYNC_NEW_COOKIE	},
- 	{ "refreshDelete",		LDAP_TAG_SYNC_REFRESH_DELETE	},
-	{ "refreshIDSet",		LDAP_TAG_SYNC_ID_SET		},
- 	{ "refreshPresent",		LDAP_TAG_SYNC_REFRESH_PRESENT	}
+ 	{ L("newCookie"),			LDAP_TAG_SYNC_NEW_COOKIE	},
+ 	{ L("refreshDelete"),		LDAP_TAG_SYNC_REFRESH_DELETE	},
+	{ L("refreshIDSet"),		LDAP_TAG_SYNC_ID_SET		},
+ 	{ L("refreshPresent"),		LDAP_TAG_SYNC_REFRESH_PRESENT	}
 };
 size_t sync_info_tag_table_len = NUM_ELEMENTS(sync_state_table);
 

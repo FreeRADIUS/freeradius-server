@@ -55,79 +55,79 @@ static _Thread_local TALLOC_CTX *fr_vlog_request_pool;
  */
 fr_table_num_sorted_t const syslog_facility_table[] = {
 #ifdef LOG_AUTH
-	{ "auth",		LOG_AUTH	},
+	{ L("auth"),		LOG_AUTH	},
 #endif
 
 #ifdef LOG_AUTHPRIV
-	{ "authpriv",		LOG_AUTHPRIV	},
+	{ L("authpriv"),		LOG_AUTHPRIV	},
 #endif
 
 #ifdef LOG_CRON
-	{ "cron",		LOG_CRON	},
+	{ L("cron"),		LOG_CRON	},
 #endif
 
 #ifdef LOG_DAEMON
-	{ "daemon",		LOG_DAEMON	},
+	{ L("daemon"),		LOG_DAEMON	},
 #endif
 
 #ifdef LOG_FTP
-	{ "ftp",		LOG_FTP		},
+	{ L("ftp"),		LOG_FTP		},
 #endif
 
 #ifdef LOG_KERN
-	{ "kern",		LOG_KERN	},
+	{ L("kern"),		LOG_KERN	},
 #endif
 
 #ifdef LOG_LOCAL0
-	{ "local0",		LOG_LOCAL0	},
+	{ L("local0"),		LOG_LOCAL0	},
 #endif
 
 #ifdef LOG_LOCAL1
-	{ "local1",		LOG_LOCAL1	},
+	{ L("local1"),		LOG_LOCAL1	},
 #endif
 
 #ifdef LOG_LOCAL2
-	{ "local2",		LOG_LOCAL2	},
+	{ L("local2"),		LOG_LOCAL2	},
 #endif
 
 #ifdef LOG_LOCAL3
-	{ "local3",		LOG_LOCAL3	},
+	{ L("local3"),		LOG_LOCAL3	},
 #endif
 
 #ifdef LOG_LOCAL4
-	{ "local4",		LOG_LOCAL4	},
+	{ L("local4"),		LOG_LOCAL4	},
 #endif
 
 #ifdef LOG_LOCAL5
-	{ "local5",		LOG_LOCAL5	},
+	{ L("local5"),		LOG_LOCAL5	},
 #endif
 
 #ifdef LOG_LOCAL6
-	{ "local6",		LOG_LOCAL6	},
+	{ L("local6"),		LOG_LOCAL6	},
 #endif
 
 #ifdef LOG_LOCAL7
-	{ "local7",		LOG_LOCAL7	},
+	{ L("local7"),		LOG_LOCAL7	},
 #endif
 
 #ifdef LOG_LPR
-	{ "lpr",		LOG_LPR		},
+	{ L("lpr"),		LOG_LPR		},
 #endif
 
 #ifdef LOG_MAIL
-	{ "mail",		LOG_MAIL	},
+	{ L("mail"),		LOG_MAIL	},
 #endif
 
 #ifdef LOG_NEWS
-	{ "news",		LOG_NEWS	},
+	{ L("news"),		LOG_NEWS	},
 #endif
 
 #ifdef LOG_USER
-	{ "user",		LOG_USER	},
+	{ L("user"),		LOG_USER	},
 #endif
 
 #ifdef LOG_UUCP
-	{ "uucp",		LOG_UUCP	}
+	{ L("uucp"),		LOG_UUCP	}
 #endif
 };
 size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
@@ -140,45 +140,45 @@ size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
  */
 fr_table_num_sorted_t const syslog_severity_table[] = {
 #ifdef LOG_ALERT
-	{ "alert",		LOG_ALERT	},
+	{ L("alert"),		LOG_ALERT	},
 #endif
 
 #ifdef LOG_CRIT
-	{ "critical",		LOG_CRIT	},
+	{ L("critical"),		LOG_CRIT	},
 #endif
 
 #ifdef LOG_DEBUG
-	{ "debug",		LOG_DEBUG	},
+	{ L("debug"),		LOG_DEBUG	},
 #endif
 
 #ifdef LOG_EMERG
-	{ "emergency",		LOG_EMERG	},
+	{ L("emergency"),		LOG_EMERG	},
 #endif
 
 #ifdef LOG_ERR
-	{ "error",		LOG_ERR		},
+	{ L("error"),		LOG_ERR		},
 #endif
 
 #ifdef LOG_INFO
-	{ "info",		LOG_INFO	},
+	{ L("info"),		LOG_INFO	},
 #endif
 
 #ifdef LOG_NOTICE
-	{ "notice",		LOG_NOTICE	},
+	{ L("notice"),		LOG_NOTICE	},
 #endif
 
 #ifdef LOG_WARNING
-	{ "warning",		LOG_WARNING	},
+	{ L("warning"),		LOG_WARNING	},
 #endif
 };
 size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
 
 fr_table_num_sorted_t const log_str2dst[] = {
-	{ "files",		L_DST_FILES	},
-	{ "null",		L_DST_NULL	},
-	{ "stderr",		L_DST_STDERR	},
-	{ "stdout",		L_DST_STDOUT	},
-	{ "syslog",		L_DST_SYSLOG	},
+	{ L("files"),		L_DST_FILES	},
+	{ L("null"),		L_DST_NULL	},
+	{ L("stderr"),		L_DST_STDERR	},
+	{ L("stdout"),		L_DST_STDOUT	},
+	{ L("syslog"),		L_DST_SYSLOG	},
 };
 size_t log_str2dst_len = NUM_ELEMENTS(log_str2dst);
 

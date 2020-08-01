@@ -26,8 +26,8 @@
  *
  */
 fr_table_num_sorted_t const fr_net_ip_proto_table[] = {
-	{ "TCP",	IPPROTO_TCP },
-	{ "UDP",	IPPROTO_UDP }
+	{ L("TCP"),	IPPROTO_TCP },
+	{ L("UDP"),	IPPROTO_UDP }
 };
 size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
 
@@ -35,8 +35,8 @@ size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
  *
  */
 fr_table_num_sorted_t const fr_net_sock_type_table[] = {
-	{ "TCP",	SOCK_STREAM	},
-	{ "UDP",	SOCK_DGRAM	}
+	{ L("TCP"),	SOCK_STREAM	},
+	{ L("UDP"),	SOCK_DGRAM	}
 };
 size_t fr_net_sock_type_table_len = NUM_ELEMENTS(fr_net_sock_type_table);
 
@@ -44,8 +44,8 @@ size_t fr_net_sock_type_table_len = NUM_ELEMENTS(fr_net_sock_type_table);
  *
  */
 fr_table_num_sorted_t const fr_net_af_table[] = {
-	{ "IPv4",	AF_INET		},
-	{ "IPv6",	AF_INET6	}
+	{ L("IPv4"),	AF_INET		},
+	{ L("IPv6"),	AF_INET6	}
 };
 size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 

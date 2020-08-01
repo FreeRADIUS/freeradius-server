@@ -75,18 +75,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "attrs.h"
 
 fr_table_num_ordered_t const eap_tls_status_table[] = {
-	{ "invalid",			EAP_TLS_INVALID			},
-	{ "established",		EAP_TLS_ESTABLISHED		},
-	{ "fail",			EAP_TLS_FAIL			},
-	{ "handled",			EAP_TLS_HANDLED			},
+	{ L("invalid"),			EAP_TLS_INVALID			},
+	{ L("established"),		EAP_TLS_ESTABLISHED		},
+	{ L("fail"),			EAP_TLS_FAIL			},
+	{ L("handled"),			EAP_TLS_HANDLED			},
 
-	{ "start",			EAP_TLS_START_SEND		},
-	{ "request",			EAP_TLS_RECORD_SEND		},
-	{ "ack",			EAP_TLS_ACK_SEND		},
+	{ L("start"),			EAP_TLS_START_SEND		},
+	{ L("request"),			EAP_TLS_RECORD_SEND		},
+	{ L("ack"),			EAP_TLS_ACK_SEND		},
 
-	{ "first",			EAP_TLS_RECORD_RECV_FIRST	},
-	{ "more",			EAP_TLS_RECORD_RECV_MORE	},
-	{ "complete",			EAP_TLS_RECORD_RECV_COMPLETE	}
+	{ L("first"),			EAP_TLS_RECORD_RECV_FIRST	},
+	{ L("more"),			EAP_TLS_RECORD_RECV_MORE	},
+	{ L("complete"),			EAP_TLS_RECORD_RECV_COMPLETE	}
 };
 size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
 
