@@ -840,8 +840,6 @@ static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 #ifdef PCRE_ERROR_UNSET
 	{ L("PCRE_ERROR_UNSET"),		PCRE_ERROR_UNSET },
 #endif
-
-	{ NULL, 0 }
 };
 static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
 

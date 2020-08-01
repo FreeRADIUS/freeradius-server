@@ -2212,7 +2212,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 }
 
 static fr_table_ptr_sorted_t	commands[] = {
-	{ L("#"),			&(command_entry_t){
+	{ L("#"),		&(command_entry_t){
 					.func = command_comment,
 					.usage = "#<string>",
 					.description = "A comment - not processed"
