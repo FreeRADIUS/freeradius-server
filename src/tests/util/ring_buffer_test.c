@@ -135,7 +135,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "usage: ring_buffer_test [OPTS]\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");
-	fprintf(stderr, "  -l <lenght>            Set the interation number to <length>.\n");
+	fprintf(stderr, "  -l <length>            Set the interation number to <length>.\n");
 
 	fr_exit_now(EXIT_SUCCESS);
 }
