@@ -973,6 +973,8 @@ SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, rules);
  * so that if the output variable type changes, the parse rules are automatically changed.
  * @{
  */
+size_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in);
+
 size_t fr_sbuff_out_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 size_t fr_sbuff_out_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
@@ -1005,6 +1007,7 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
  */
 #define fr_sbuff_out(_err, _out, _in) \
 	_Generic((_out), \
+		 bool *		: fr_sbuff_out_bool((bool *)_out, _in), \
 		 int8_t *	: fr_sbuff_out_int8(_err, (int8_t *)_out, _in, true), \
 		 int16_t *	: fr_sbuff_out_int16(_err, (int16_t *)_out, _in, true), \
 		 int32_t *	: fr_sbuff_out_int32(_err, (int32_t *)_out, _in, true), \
@@ -1073,7 +1076,7 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  */
 bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
-static inline bool fr_sbuff_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
+static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
 {
 	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return chars[(uint8_t)*sbuff->p];

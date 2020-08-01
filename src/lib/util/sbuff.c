@@ -795,6 +795,65 @@ done:
 	return fr_sbuff_marker_release_behind(&o_s);
 }
 
+/** See if the string contains a truth value
+ *
+ * @param[out] out	Where to write boolean value.
+ * @param[in] in	Where to search for a truth value.
+ * @return
+ *	- 0 no bytes copied.  Was not a truth value.
+ *	- >0 the number of bytes consumed.
+ */
+size_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
+{
+	static bool const bool_prefix[UINT8_MAX + 1] = {
+		['t'] = true, ['T'] = true,	/* true */
+		['f'] = true, ['F'] = true,	/* false */
+		['y'] = true, ['Y'] = true,	/* yes */
+		['n'] = true, ['N'] = true	/* no */
+	};
+
+#define IS_TOKEN(_t) (!FR_SBUFF_CANT_EXTEND_LOWAT(in, sizeof(_t) - 1) && \
+		      (strncasecmp(in->p, _t, sizeof(_t) - 1) == 0))
+
+	if (fr_sbuff_is_in_charset(in, bool_prefix)) {
+		switch (tolower(*in->p)) {
+		default:
+			break;
+
+		case 't':
+			if (IS_TOKEN("true")) {
+				*out = true;
+				return fr_sbuff_advance(in, sizeof("true") - 1);
+			}
+			break;
+
+		case 'f':
+			if (IS_TOKEN("false")) {
+				*out = false;
+				return fr_sbuff_advance(in, sizeof("false") - 1);
+			}
+			break;
+
+		case 'y':
+			if (IS_TOKEN("yes")) {
+				*out = true;
+				return fr_sbuff_advance(in, sizeof("yes") - 1);
+			}
+			break;
+
+		case 'n':
+			if (IS_TOKEN("no")) {
+				*out = false;
+				return fr_sbuff_advance(in, sizeof("no") - 1);
+			}
+			break;
+		}
+	}
+
+	*out = false;	/* Always initialise out */
+	return 0;
+}
+
 /** Used to define a number parsing functions for singed integers
  *
  * @param[in] _name	Function suffix.
@@ -804,9 +863,6 @@ done:
  * @param[in] _max_char	Maximum digits that can be used to represent an integer.
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
- * @return
- *	- 0 no bytes copied.  Examine err.
- *	- >0 the number of bytes copied.
  */
 #define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \

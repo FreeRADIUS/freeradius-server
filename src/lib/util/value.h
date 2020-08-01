@@ -228,6 +228,8 @@ struct value_box_s {
 #define fr_box_ifid(_val)			_fr_box(FR_TYPE_IFID, .vb_ifid, _val)
 #define fr_box_ether(_val)                      &(fr_value_box_t){ .type = FR_TYPE_ETHERNET, .vb_ether = { _val[0], _val[1], _val[2], _val[3], _val[4], _val[5] } }
 
+#define fr_box_bool(_val)			_fr_box(FR_TYPE_BOOL, .vb_bool, _val)
+
 #define fr_box_uint8(_val)			_fr_box(FR_TYPE_UINT8, .vb_uint8, _val)
 #define fr_box_uint16(_val)			_fr_box(FR_TYPE_UINT16, .vb_uint16, _val)
 #define fr_box_uint32(_val)			_fr_box(FR_TYPE_UINT32, .vb_uint32, _val)
