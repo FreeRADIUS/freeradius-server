@@ -626,7 +626,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 
 	track->broadcast = ((dhcp->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0);
 	track->hops = dhcp->hops;
-	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->giaddr));
+	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->ciaddr));
 	memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
 
 	return track;
