@@ -68,10 +68,6 @@ address into the `Framed-IP-Address` attribute (as it is by default),
 and that attribute already exists, the module does nothing, and
 returns `noop`.
 
-. Otherwise, the module runs the `allocate_clear` query in order to
-clear expired leases.  This process frees up expired leases, and
-performs any additional cleanup that is necessarty.
-
 . The module then runs the `allocate_find` query, which chooses a free
 IP address from the pool indicated by `Pool-Name`.  If `allocate_find`
 does not return an IP address, the `pool_check` query is run in order
@@ -765,11 +761,11 @@ mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/procedure.sql
 NOTE: The above command assumes that passwordless login has been configured via
 the user’s `~/.my.cnf` file, or otherwise.
 
-Read the comments in the `procedure.sql` file which explain how to use the
-stored procedure, then amend the `allocate_find`, `allocate_update` and
-possibly `allocate_clear` queries (as well as the corresponding start/end
-transaction query-parts) in the dialect's `queries.conf` file, *exactly as
-described*.
+Read the comments in the `procedure.sql` file which explain how to use
+the stored procedure, then amend the `allocate_find`, and
+`allocate_update` queries (as well as the corresponding start/end
+transaction query-parts) in the dialect's `queries.conf` file,
+*exactly as described*.
 
 
 .Example queries.conf configuration to use the stored procedure with MySQL
@@ -828,11 +824,11 @@ which contains the definition of the stored procedure for your database dialect
 has comments that explain how to amend the procedure to choose either a dynamic
 or sticky IP policy.
 
-With a sticky IP policy it is necessary to disable the `allocate_clear` query
-and amend the default actions of the `stop_clear`, `on_clear` and `off_clear`
-queries.  By default, each of these queries clobbers the `User-Name` and
-`Calling-Station-Id` attributes when sessions expire therefore erasing the
-affinity information.
+With a sticky IP policy it is necessary to amend the default actions
+of the `stop_clear`, `on_clear` and `off_clear` queries.  By default,
+each of these queries clobbers the `User-Name` and
+`Calling-Station-Id` attributes when sessions expire therefore erasing
+the affinity information.
 
 TIP: A performance benefit of sticky IP addresses derived from the fact that
 reallocation of an existing IP address is generally much quicker than
@@ -853,7 +849,6 @@ any RADIUS attribute that is available during authentication can be used.
 ----
 ...
 allocate_begin = ""
-allocate_clear = ""
 allocate_find = "\
         CALL fr_allocate_previous_or_new_framedipaddress( \
                 '%{control:${pool_name}}', \

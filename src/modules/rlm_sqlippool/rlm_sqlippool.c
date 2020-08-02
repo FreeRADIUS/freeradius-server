@@ -50,9 +50,7 @@ typedef struct {
 	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
 	char const	*attribute_name;	//!< name of the IP address attribute
 
-	time_t		last_clear;		//!< So we only do it once a second.
-	char const	*allocate_begin;	//!< SQL query to begin.
-	char const	*allocate_clear;	//!< SQL query to clear an IP.
+	char const	*allocate_begin;	//!< SQL query to begin.	
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
 	char const	*allocate_update;	//!< SQL query to mark an IP as used.
 	char const	*allocate_commit;	//!< SQL query to commit.
@@ -118,8 +116,6 @@ static CONF_PARSER module_config[] = {
 
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
-
-	{ FR_CONF_OFFSET("allocate_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, allocate_clear), .dflt = "" },
 
 	{ FR_CONF_OFFSET("allocate_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), .dflt = "" },
 
@@ -513,22 +509,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	Limit the number of clears we do.  There are minor
-	 *	race conditions for the check, but so what.  The
-	 *	actual work is protected by a transaction.  The idea
-	 *	here is that if we're allocating 100 IPs a second,
-	 *	we're only do 1 CLEAR per second.
-	 */
-	now = time(NULL);
-	if (inst->last_clear < now) {
-		inst->last_clear = now;
-
-		DO_PART(allocate_begin);
-		DO_PART(allocate_clear);
-		DO_PART(allocate_commit);
 	}
 
 	DO_PART(allocate_begin);
