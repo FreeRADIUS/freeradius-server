@@ -55,13 +55,14 @@ test: \
 		test.map	\
 		test.modules	\
 		test.radiusd-c	\
-		test.radclient	\
 		test.radsniff	\
 		test.auth	\
 		test.digest	\
 		test.radmin	\
 		test.eap	\
 		| build.raddb
+
+#		test.radclient	\
 
 clean: clean.test
 .PHONY: clean.test
