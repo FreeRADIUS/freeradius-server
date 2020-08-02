@@ -484,7 +484,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	int			allocation_len;
 	VALUE_PAIR		*vp;
 	rlm_sql_handle_t	*handle;
-	time_t			now;
 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
