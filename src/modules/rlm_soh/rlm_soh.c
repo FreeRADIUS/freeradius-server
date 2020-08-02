@@ -144,7 +144,6 @@ static const CONF_PARSER module_config[] = {
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
-#ifdef WITH_DHCP
 	int			rcode;
 	VALUE_PAIR		*vp;
 	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_soh_t);
@@ -202,7 +201,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		}
 		return RLM_MODULE_OK;
 	}
-#endif
+
 	return RLM_MODULE_NOOP;
 }
 

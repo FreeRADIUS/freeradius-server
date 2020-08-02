@@ -2113,7 +2113,6 @@ PREDEFINED             = WITH_PROXY \
                          WITH_DYNAMIC_CLIENTS \
                          WITH_STATS \
                          WITH_COA \
-                         WITH_DHCP \
                          HAVE_JSON
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this

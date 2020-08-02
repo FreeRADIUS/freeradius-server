@@ -37,8 +37,6 @@ RCSID("$Id$")
 
 #define ERROR(fmt, ...)		fr_perror("dhcpclient: " fmt, ## __VA_ARGS__)
 
-#ifdef WITH_DHCP
-
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
@@ -813,5 +811,3 @@ int main(int argc, char **argv)
 
 	return ret < 0 ? 1 : 0;
 }
-
-#endif	/* WITH_DHCP */

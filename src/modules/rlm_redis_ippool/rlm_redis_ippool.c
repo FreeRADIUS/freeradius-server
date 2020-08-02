@@ -52,9 +52,7 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 
-#ifdef WITH_DHCP
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#endif
 
 /** rlm_redis module instance
  *
@@ -141,33 +139,25 @@ static CONF_PARSER module_config[] = {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
-#ifdef WITH_DHCP
 static fr_dict_t const *dict_dhcpv4;
-#endif
 
 extern fr_dict_autoload_t rlm_redis_ippool_dict[];
 fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-#ifdef WITH_DHCP
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-#endif
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_pool_action;
 static fr_dict_attr_t const *attr_acct_status_type;
-#ifdef WITH_DHCP
 static fr_dict_attr_t const *attr_message_type;
-#endif
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_pool_action, .name = "Pool-Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-#ifdef WITH_DHCP
 	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-#endif
 	{ NULL }
 };
 
@@ -1325,13 +1315,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 			RWDEBUG("Ignoring invalid action %d", vp->vp_uint32);
 			return RLM_MODULE_NOOP;
 		}
-#ifdef WITH_DHCP
+
 	} else if (request->dict == dict_dhcpv4) {
 		vp = fr_pair_find_by_da(request->control, attr_message_type, TAG_ANY);
 		if (!vp) goto run;
 
 		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
-#endif
 	}
 
 run:

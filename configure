@@ -761,8 +761,6 @@ with_radacctdir
 with_raddbdir
 with_dictdir
 with_ascend_binary
-with_dhcp
-with_tacacs
 with_udpfromto
 with_cap
 with_cap_lib_dir
@@ -1461,8 +1459,6 @@ Optional Packages:
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
-  --with-dhcp             compile in support for dhcp (default=yes)
-  --with-tacacs           compile in support for tacacs (default=yes)
   --with-udpfromto        compile in support for udpfromto (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
@@ -6071,62 +6067,6 @@ if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 $as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
 
 fi
-
-
-    WITH_DHCP=yes
-
-
-# Check whether --with-dhcp was given.
-if test "${with_dhcp+set}" = set; then :
-  withval=$with_dhcp; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-dhcp expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_DHCP 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_DHCP /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_TACACS=yes
-
-
-# Check whether --with-tacacs was given.
-if test "${with_tacacs+set}" = set; then :
-  withval=$with_tacacs; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-tacacs expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_TACACS 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_TACACS /**/" >>confdefs.h
-
-    fi
 
 
     WITH_UDPFROMTO=yes

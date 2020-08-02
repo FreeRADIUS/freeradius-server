@@ -639,14 +639,8 @@
 /* include support for Ascend binary filter attributes */
 #undef WITH_ASCEND_BINARY
 
-/* define if you want dhcp */
-#undef WITH_DHCP
-
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
-
-/* define if you want tacacs */
-#undef WITH_TACACS
 
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO

@@ -379,14 +379,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "dhcp",
-#ifdef WITH_DHCP
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "dynamic-clients",
 #ifdef WITH_DYNAMIC_CLIENTS
 				true
