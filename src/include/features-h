@@ -26,7 +26,3 @@
 #    endif
 #  endif
 #endif
-
-#ifndef WITHOUT_BFD
-#  define WITH_BFD (1)
-#endif
