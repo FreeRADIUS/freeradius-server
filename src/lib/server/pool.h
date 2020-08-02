@@ -56,10 +56,6 @@ struct fr_pool_state_s {
 	fr_time_t	last_released;		//!< Last time a connection was released.
 	fr_time_t	last_closed;		//!< Last time a connection was closed.
 
-#ifdef WITH_STATS
-	fr_stats_t	held_stats;		//!< How long connections were held for.
-#endif
-
 	fr_time_t	last_held_min;		//!< Last time we warned about a low latency event.
 	fr_time_t	last_held_max;		//!< Last time we warned about a high latency event.
 
