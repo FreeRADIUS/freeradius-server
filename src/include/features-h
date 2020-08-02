@@ -15,10 +15,6 @@
 #  define WITH_ACCOUNTING (1)
 #endif
 
-#ifndef WITHOUT_DYNAMIC_CLIENTS
-#  define WITH_DYNAMIC_CLIENTS (1)
-#endif
-
 #ifndef WITHOUT_STATS
 #  define WITH_STATS
 #endif

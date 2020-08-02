@@ -339,7 +339,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 }
 
 
-#ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
 #ifdef WITH_TRIE
@@ -366,7 +365,6 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 	(void) rbtree_deletebydata(clients->tree[client->ipaddr.prefix], client);
 #endif
 }
-#endif
 
 RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int number)
 {
@@ -593,7 +591,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, int proto, TLS_
 	return clients;
 }
 
-#ifdef WITH_DYNAMIC_CLIENTS
 /** Create a client CONF_SECTION using a mapping section to map values from a result set to client attributes
  *
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
@@ -1113,5 +1110,3 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 
 	return c;
 }
-#endif
-

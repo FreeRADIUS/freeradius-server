@@ -2110,7 +2110,6 @@ INCLUDE_FILE_PATTERNS  = *.h
 
 PREDEFINED             = WITH_PROXY \
                          WITH_ACCOUNTING \
-                         WITH_DYNAMIC_CLIENTS \
                          WITH_STATS \
                          WITH_COA \
                          HAVE_JSON

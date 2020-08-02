@@ -129,11 +129,9 @@ void		client_free(RADCLIENT *client);
 
 bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-#ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 
 RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, REQUEST *request);
-#endif
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
