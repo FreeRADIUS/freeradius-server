@@ -7,12 +7,6 @@
  */
 #ifndef WITHOUT_PROXY
 #  define WITH_PROXY (1)
-#else
-#  define WITHOUT_COA (1)
-#endif
-
-#ifndef WITHOUT_ACCOUNTING
-#  define WITH_ACCOUNTING (1)
 #endif
 
 #ifndef WITHOUT_STATS

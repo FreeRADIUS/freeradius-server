@@ -104,9 +104,7 @@ struct rad_client {
 
 #ifdef WITH_STATS
 	fr_stats_t		auth;			//!< Authentication stats.
-#  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;			//!< Accounting stats.
-#  endif
 #endif
 
 	fr_time_delta_t		response_window;	//!< How long the client has to respond.

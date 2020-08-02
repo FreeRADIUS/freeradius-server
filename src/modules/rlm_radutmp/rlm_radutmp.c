@@ -101,7 +101,6 @@ fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
 	{ NULL }
 };
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
@@ -547,7 +546,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 
 	return rcode;
 }
-#endif
 
 /* globally exported name */
 extern module_t rlm_radutmp;
@@ -558,9 +556,7 @@ module_t rlm_radutmp = {
 	.inst_size	= sizeof(rlm_radutmp_t),
 	.config		= module_config,
 	.methods = {
-#ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 };
 

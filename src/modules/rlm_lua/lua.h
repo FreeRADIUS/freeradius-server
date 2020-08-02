@@ -54,10 +54,8 @@ typedef struct {
 
 	const char	*func_authorize;	//!< Name of function to run on authorization.
 	const char	*func_authenticate;	//!< Name of function to run on authentication.
-#ifdef WITH_ACCOUNTING
 	const char	*func_preacct;		//!< Name of function to run on preacct.
 	const char	*func_accounting;	//!< Name of function to run on accounting.
-#endif
 	const char	*func_post_auth;	//!< Name of function to run after authentication.
 	const char	*func_xlat;		//!< Name of function to be called for string expansions.
 } rlm_lua_t;

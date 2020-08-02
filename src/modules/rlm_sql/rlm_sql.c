@@ -1588,8 +1588,6 @@ finish:
 	return rcode;
 }
 
-#ifdef WITH_ACCOUNTING
-
 /*
  *	Accounting: Insert or update session data in our sql table
  */
@@ -1603,8 +1601,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 
 	return RLM_MODULE_NOOP;
 }
-
-#endif
 
 /*
  *	Postauth: Write a record of the authentication attempt
@@ -1637,9 +1633,7 @@ module_t rlm_sql = {
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

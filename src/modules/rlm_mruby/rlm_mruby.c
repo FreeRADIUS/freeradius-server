@@ -477,10 +477,8 @@ DIAG_ON(class-varargs)
 RLM_MRUBY_FUNC(authorize)
 RLM_MRUBY_FUNC(authenticate)
 RLM_MRUBY_FUNC(post_auth)
-#ifdef WITH_ACCOUNTING
 RLM_MRUBY_FUNC(preacct)
 RLM_MRUBY_FUNC(accounting)
-#endif
 
 
 /*
@@ -518,9 +516,7 @@ module_t rlm_mruby = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 };

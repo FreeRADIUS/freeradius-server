@@ -55,11 +55,11 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("bucket", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_couchbase_t, bucket) },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, rlm_couchbase_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, rlm_couchbase_t, password) },
-#ifdef WITH_ACCOUNTING
+
 	{ FR_CONF_OFFSET("acct_key", FR_TYPE_TMPL, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("doctype", FR_TYPE_STRING, rlm_couchbase_t, doctype), .dflt = "radacct" },
 	{ FR_CONF_OFFSET("expire", FR_TYPE_UINT32, rlm_couchbase_t, expire), .dflt = 0 },
-#endif
+
 	{ FR_CONF_OFFSET("user_key", FR_TYPE_TMPL, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
 	{ FR_CONF_POINTER("client", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) client_config },
@@ -220,7 +220,6 @@ finish:
 	return rcode;
 }
 
-#ifdef WITH_ACCOUNTING
 /** Write accounting data to Couchbase documents
  *
  * Handle accounting requests and store the associated data into JSON documents
@@ -410,7 +409,6 @@ finish:
 	/* return */
 	return rcode;
 }
-#endif
 
 
 /** Detach the module
@@ -576,8 +574,6 @@ module_t rlm_couchbase = {
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 };

@@ -303,7 +303,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, U
 	return RLM_MODULE_OK;
 }
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Massage the request before recording it or proxying it
  */
@@ -327,7 +326,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNU
 
 	return RLM_MODULE_OK;
 }
-#endif
 
 /*
  *	Write accounting information to this modules database.
@@ -367,10 +365,8 @@ module_t rlm_test = {
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 	.method_names = (module_method_names_t[]){
 		{ "recv",	"Access-Challenge", mod_return },

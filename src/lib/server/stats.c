@@ -43,15 +43,11 @@ static fr_time_t hup_time;
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
 
 fr_stats_t radius_auth_stats = FR_STATS_INIT;
-#ifdef WITH_ACCOUNTING
 fr_stats_t radius_acct_stats = FR_STATS_INIT;
-#endif
 
 #ifdef WITH_PROXY
 fr_stats_t proxy_auth_stats = FR_STATS_INIT;
-#ifdef WITH_ACCOUNTING
 fr_stats_t proxy_acct_stats = FR_STATS_INIT;
-#endif
 #endif
 
 void request_stats_final(REQUEST *request)
@@ -63,9 +59,7 @@ void request_stats_final(REQUEST *request)
 	if (!request->packet) return;
 
 	if ((request->listener->type != RAD_LISTEN_NONE) &&
-#ifdef WITH_ACCOUNTING
 	    (request->listener->type != RAD_LISTEN_ACCT) &&
-#endif
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 
 	/* don't count statistic requests */
@@ -76,11 +70,7 @@ void request_stats_final(REQUEST *request)
 #define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;request->client->auth._x++;
 
 #undef INC_ACCT
-#ifdef WITH_ACCOUNTING
 #define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;request->client->acct._x++
-#else
-#define INC_ACCT(_x)
-#endif
 
 	/*
 	 *	Update the statistics.
@@ -119,7 +109,6 @@ void request_stats_final(REQUEST *request)
 		INC_AUTH(total_access_challenges);
 		goto auth_stats;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
 		fr_stats_bins(&radius_acct_stats,
@@ -129,7 +118,6 @@ void request_stats_final(REQUEST *request)
 			      request->packet->timestamp,
 			      request->reply->timestamp);
 		break;
-#endif
 
 		/*
 		 *	No response, it must have been a bad
@@ -146,7 +134,6 @@ void request_stats_final(REQUEST *request)
 			break;
 
 
-#ifdef WITH_ACCOUNTING
 		case FR_CODE_ACCOUNTING_REQUEST:
 			if (request->reply->id == -1) {
 				INC_ACCT(total_bad_authenticators);
@@ -154,7 +141,6 @@ void request_stats_final(REQUEST *request)
 				INC_ACCT(total_packets_dropped);
 			}
 			break;
-#endif
 
 			default:
 				break;
@@ -177,14 +163,12 @@ void request_stats_final(REQUEST *request)
 #endif
 		break;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 #if 0
 		proxy_acct_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 #endif
 		break;
-#endif
 
 	default:
 		break;
@@ -226,7 +210,6 @@ void request_stats_final(REQUEST *request)
 #endif
 		goto proxy_stats;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
 #if 0
 		proxy_acct_stats.total_responses++;
@@ -239,7 +222,6 @@ void request_stats_final(REQUEST *request)
 			      &request->proxy->reply->timestamp);
 #endif
 		break;
-#endif
 
 	default:
 #if 0
@@ -299,7 +281,6 @@ static fr_stats2vp proxy_authvp[] = {
 #endif
 
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Accounting
  */
@@ -326,7 +307,6 @@ static fr_stats2vp proxy_acctvp[] = {
 	{ 0, 0 }
 };
 #endif
-#endif
 
 static fr_stats2vp client_authvp[] = {
 	{ FR_FREERADIUS_TOTAL_ACCESS_REQUESTS, offsetof(fr_stats_t, total_requests) },
@@ -342,7 +322,6 @@ static fr_stats2vp client_authvp[] = {
 	{ 0, 0 }
 };
 
-#ifdef WITH_ACCOUNTING
 static fr_stats2vp client_acctvp[] = {
 	{ FR_FREERADIUS_TOTAL_ACCOUNTING_REQUESTS, offsetof(fr_stats_t, total_requests) },
 	{ FR_FREERADIUS_TOTAL_ACCOUNTING_RESPONSES, offsetof(fr_stats_t, total_responses) },
@@ -353,7 +332,6 @@ static fr_stats2vp client_acctvp[] = {
 	{ FR_FREERADIUS_TOTAL_ACCT_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
-#endif
 
 #define ADD_TO_REPLY(_attr, _vendor) \
 do { \
@@ -400,7 +378,6 @@ void request_stats_reply(REQUEST *request)
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 
-#ifdef WITH_ACCOUNTING
 	/*
 	 *	Accounting
 	 */
@@ -408,7 +385,6 @@ void request_stats_reply(REQUEST *request)
 	    ((flag->vp_uint32 & 0xc0) == 0)) {
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
-#endif
 
 #ifdef WITH_PROXY
 	/*
@@ -419,7 +395,6 @@ void request_stats_reply(REQUEST *request)
 		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
 
-#ifdef WITH_ACCOUNTING
 	/*
 	 *	Proxied accounting requests.
 	 */
@@ -427,7 +402,6 @@ void request_stats_reply(REQUEST *request)
 	    ((flag->vp_uint32 & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
 	}
-#endif
 #endif
 
 	/*
@@ -530,12 +504,10 @@ void request_stats_reply(REQUEST *request)
 				request_stats_addvp(request, client_authvp,
 						    &client->auth);
 			}
-#ifdef WITH_ACCOUNTING
 			if ((flag->vp_uint32 & 0x02) != 0) {
 				request_stats_addvp(request, client_acctvp,
 						    &client->acct);
 			}
-#endif
 		} /* else client wasn't found, don't echo it back */
 	}
 
@@ -582,13 +554,11 @@ void request_stats_reply(REQUEST *request)
 			request_stats_addvp(request, authvp, &this->stats);
 		}
 
-#ifdef WITH_ACCOUNTING
 		if (((flag->vp_uint32 & 0x02) != 0) &&
 		    ((request->listener->type == RAD_LISTEN_ACCT) ||
 		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, acctvp, &this->stats);
 		}
-#endif
 	}
 
 #ifdef WITH_PROXY
@@ -668,13 +638,11 @@ void request_stats_reply(REQUEST *request)
 					    &home->stats);
 		}
 
-#ifdef WITH_ACCOUNTING
 		if (((flag->vp_uint32 & 0x02) != 0) &&
 		    (home->type == HOME_TYPE_ACCT)) {
 			request_stats_addvp(request, proxy_acctvp,
 					    &home->stats);
 		}
-#endif
 	}
 #endif	/* WITH_PROXY */
 }

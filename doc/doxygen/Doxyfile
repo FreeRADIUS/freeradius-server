@@ -2109,7 +2109,6 @@ INCLUDE_FILE_PATTERNS  = *.h
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
 PREDEFINED             = WITH_PROXY \
-                         WITH_ACCOUNTING \
                          WITH_STATS \
                          HAVE_JSON
 

@@ -154,7 +154,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	return RLM_MODULE_OK;
 }
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Massage the request before recording it or proxying it
  */
@@ -170,7 +169,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED module_ctx_t const *mc
 {
 	return RLM_MODULE_OK;
 }
-#endif
 
 
 /*
@@ -204,9 +202,7 @@ module_t rlm_example = {
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 };

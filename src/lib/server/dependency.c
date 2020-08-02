@@ -353,13 +353,7 @@ void dependency_features_init(CONF_SECTION *cs)
 {
 	default_feature_cs = cs;
 
-	dependency_feature_add(cs, "accounting",
-#ifdef WITH_ACCOUNTING
-				true
-#else
-				false
-#endif
-				);
+	dependency_feature_add(cs, "accounting", true);
 
 	dependency_feature_add(cs, "authentication", true);
 
