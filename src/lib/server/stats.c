@@ -67,10 +67,10 @@ void request_stats_final(REQUEST *request)
 		return;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;request->client->auth._x++;
+#define INC_AUTH(_x) radius_auth_stats._x++;request->client->auth._x++;
 
 #undef INC_ACCT
-#define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;request->client->acct._x++
+#define INC_ACCT(_x) radius_acct_stats._x++;request->client->acct._x++
 
 	/*
 	 *	Update the statistics.
@@ -96,9 +96,6 @@ void request_stats_final(REQUEST *request)
 		fr_stats_bins(&request->client->auth,
 			      request->packet->timestamp,
 			      request->reply->timestamp);
-		fr_stats_bins(&request->listener->stats,
-			      request->packet->timestamp,
-			      request->reply->timestamp);
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
@@ -112,9 +109,6 @@ void request_stats_final(REQUEST *request)
 	case FR_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
 		fr_stats_bins(&radius_acct_stats,
-			      request->packet->timestamp,
-			      request->reply->timestamp);
-		fr_stats_bins(&request->client->acct,
 			      request->packet->timestamp,
 			      request->reply->timestamp);
 		break;

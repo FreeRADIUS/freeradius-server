@@ -103,10 +103,6 @@ struct rad_listen {
 
 	CONF_SECTION const	*cs;
 	void			*data;
-
-#ifdef WITH_STATS
-	fr_stats_t		stats;
-#endif
 };
 
 #ifdef HAVE_LIBPCAP
