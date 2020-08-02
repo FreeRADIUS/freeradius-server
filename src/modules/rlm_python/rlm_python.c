@@ -76,8 +76,6 @@ typedef struct {
 	authenticate,
 	preacct,
 	accounting,
-	pre_proxy,
-	post_proxy,
 	post_auth,
 	detach;
 
@@ -152,8 +150,6 @@ static CONF_PARSER module_config[] = {
 	A(authenticate)
 	A(preacct)
 	A(accounting)
-	A(pre_proxy)
-	A(post_proxy)
 	A(post_auth)
 	A(detach)
 
@@ -227,7 +223,7 @@ static PyMethodDef module_methods[] = {
 	{ "log", &mod_log, METH_VARARGS,
 	  "radiusd.log(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
-	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
+	  "constants L_DBG, L_AUTH, L_INFO, L_ERR\n"
 	},
 	{ NULL, NULL, 0, NULL },
 };
@@ -660,8 +656,6 @@ MOD_FUNC(authenticate)
 MOD_FUNC(authorize)
 MOD_FUNC(preacct)
 MOD_FUNC(accounting)
-MOD_FUNC(pre_proxy)
-MOD_FUNC(post_proxy)
 MOD_FUNC(post_auth)
 
 static void python_obj_destroy(PyObject **ob)
@@ -1111,8 +1105,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	PYTHON_FUNC_LOAD(authorize);
 	PYTHON_FUNC_LOAD(preacct);
 	PYTHON_FUNC_LOAD(accounting);
-	PYTHON_FUNC_LOAD(pre_proxy);
-	PYTHON_FUNC_LOAD(post_proxy);
 	PYTHON_FUNC_LOAD(post_auth);
 	PYTHON_FUNC_LOAD(detach);
 
@@ -1172,8 +1164,6 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(authenticate);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
-	PYTHON_FUNC_DESTROY(pre_proxy);
-	PYTHON_FUNC_DESTROY(post_proxy);
 	PYTHON_FUNC_DESTROY(post_auth);
 	PYTHON_FUNC_DESTROY(detach);
 
@@ -1338,8 +1328,6 @@ module_t rlm_python = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth,
 	}
 };

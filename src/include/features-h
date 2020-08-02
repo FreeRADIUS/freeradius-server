@@ -5,10 +5,6 @@
  *	This is a hack and should be removed when the protocols are moved
  *	into individual modules.
  */
-#ifndef WITHOUT_PROXY
-#  define WITH_PROXY (1)
-#endif
-
 #ifndef WITHOUT_STATS
 #  define WITH_STATS
 #endif

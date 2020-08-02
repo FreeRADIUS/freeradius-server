@@ -792,8 +792,6 @@ module_t rlm_linelog = {
 		[MOD_AUTHORIZE]		= mod_do_linelog,
 		[MOD_PREACCT]		= mod_do_linelog,
 		[MOD_ACCOUNTING]	= mod_do_linelog,
-		[MOD_PRE_PROXY]		= mod_do_linelog,
-		[MOD_POST_PROXY]	= mod_do_linelog,
 		[MOD_POST_AUTH]		= mod_do_linelog,
 	},
 };

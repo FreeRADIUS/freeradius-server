@@ -1011,8 +1011,6 @@ module_t rlm_cache = {
 		[MOD_AUTHORIZE]		= mod_cache_it,
 		[MOD_PREACCT]		= mod_cache_it,
 		[MOD_ACCOUNTING]	= mod_cache_it,
-		[MOD_PRE_PROXY]		= mod_cache_it,
-		[MOD_POST_PROXY]	= mod_cache_it,
 		[MOD_POST_AUTH]		= mod_cache_it
 	},
 };

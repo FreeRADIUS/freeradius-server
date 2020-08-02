@@ -350,21 +350,6 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	}
 
 	/*
-	 *	Add non-protocol attributes.
-	 */
-	if (compat) {
-#ifdef WITH_PROXY
-		if (request->proxy) {
-			char proxy_buffer[INET6_ADDRSTRLEN];
-
-			inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.addr,
-				  proxy_buffer, sizeof(proxy_buffer));
-			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
-		}
-#endif
-	}
-
-	/*
 	 *	Add the original protocol of the request, this should
 	 *	be used by the detail reader to set the default
 	 *	dictionary used for decoding.
@@ -484,41 +469,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	return detail_do(mctx->instance, request, request->reply, false);
 }
 
-/*
- *	Outgoing Access-Request to home server - write the detail files.
- */
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(module_ctx_t const *mctx, REQUEST *request)
-{
-	return detail_do(mctx->instance, request, request->proxy->packet, false);
-}
-
-
-/*
- *	Outgoing Access-Request Reply - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
-{
-	/*
-	 *	No reply: we must be doing Post-Proxy-Type = Fail.
-	 *
-	 *	Note that we just call the normal accounting function,
-	 *	to minimize the amount of code, and to highlight that
-	 *	it's doing normal accounting.
-	 */
-	if (!request->proxy->reply) {
-		rlm_rcode_t rcode;
-
-		rcode = mod_accounting(mctx, request);
-		if (rcode == RLM_MODULE_OK) {
-			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
-		}
-		return rcode;
-	}
-
-	return detail_do(mctx->instance, request, request->proxy->reply, false);
-}
-#endif
 
 /* globally exported name */
 extern module_t rlm_detail;
@@ -533,10 +483,6 @@ module_t rlm_detail = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_accounting,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
 };

@@ -63,10 +63,6 @@ typedef struct {
 
 extern fr_stats_t	radius_auth_stats;
 extern fr_stats_t	radius_acct_stats;
-#ifdef WITH_PROXY
-extern fr_stats_t	proxy_auth_stats;
-extern fr_stats_t	proxy_acct_stats;
-#endif
 
 void radius_stats_init(int flag);
 void request_stats_final(REQUEST *request);

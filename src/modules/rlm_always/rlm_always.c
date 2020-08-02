@@ -179,8 +179,6 @@ module_t rlm_always = {
 		[MOD_AUTHORIZE]		= mod_always_return,
 		[MOD_PREACCT]		= mod_always_return,
 		[MOD_ACCOUNTING]	= mod_always_return,
-		[MOD_PRE_PROXY]		= mod_always_return,
-		[MOD_POST_PROXY]	= mod_always_return,
 		[MOD_POST_AUTH]		= mod_always_return,
 	},
 };

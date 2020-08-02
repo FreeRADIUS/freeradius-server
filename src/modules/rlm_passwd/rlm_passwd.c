@@ -583,8 +583,6 @@ module_t rlm_passwd = {
 		[MOD_AUTHORIZE]		= mod_passwd_map,
 		[MOD_ACCOUNTING]	= mod_passwd_map,
 		[MOD_POST_AUTH]		= mod_passwd_map,
-		[MOD_PRE_PROXY]		= mod_passwd_map,
-		[MOD_POST_PROXY]  	= mod_passwd_map,
 	},
 };
 #endif /* TEST */

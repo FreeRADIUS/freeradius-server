@@ -672,8 +672,6 @@ module_t rlm_logtee = {
 		[MOD_AUTHORIZE]		= mod_insert_logtee,
 		[MOD_PREACCT]		= mod_insert_logtee,
 		[MOD_ACCOUNTING]	= mod_insert_logtee,
-		[MOD_PRE_PROXY]		= mod_insert_logtee,
-		[MOD_POST_PROXY]	= mod_insert_logtee,
 		[MOD_POST_AUTH]		= mod_insert_logtee,
 	},
 };

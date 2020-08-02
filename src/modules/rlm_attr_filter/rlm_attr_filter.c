@@ -333,11 +333,6 @@ RLM_AF_FUNC(post_auth, reply)
 RLM_AF_FUNC(preacct, packet)
 RLM_AF_FUNC(accounting, reply)
 
-#ifdef WITH_PROXY
-RLM_AF_FUNC(pre_proxy, proxy->packet)
-RLM_AF_FUNC(post_proxy, proxy->reply)
-#endif
-
 /* globally exported name */
 extern module_t rlm_attr_filter;
 module_t rlm_attr_filter = {
@@ -350,10 +345,6 @@ module_t rlm_attr_filter = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
 };

@@ -68,8 +68,6 @@ const char *section_type_value[MOD_COUNT] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"pre-proxy",
-	"post-proxy",
 	"post-auth"
 };
 

@@ -55,8 +55,6 @@ char const * const comp2str[] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"pre-proxy",
-	"post-proxy",
 	"post-auth"
 };
 
@@ -174,30 +172,6 @@ defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 		MOD_ACTION_RETURN,	/* notfound */
 		1,			/* noop     */
 		3			/* updated  */
-	},
-	/* pre-proxy */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
-	},
-	/* post-proxy */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
 	},
 	/* post-auth */
 	{
