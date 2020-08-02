@@ -19,13 +19,6 @@
 #  define WITH_STATS
 #endif
 
-#ifndef WITHOUT_COA
-#  define WITH_COA (1)
-#  ifndef WITH_PROXY
-#    error WITH_COA requires WITH_PROXY
-#  endif
-#endif
-
 #ifdef WITHOUT_TLS
 #  ifndef HAVE_OPENSSL_SSL_H
 #    error TLS requires OpenSSL

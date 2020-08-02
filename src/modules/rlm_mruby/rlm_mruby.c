@@ -481,10 +481,6 @@ RLM_MRUBY_FUNC(post_auth)
 RLM_MRUBY_FUNC(preacct)
 RLM_MRUBY_FUNC(accounting)
 #endif
-#ifdef WITH_COA
-RLM_MRUBY_FUNC(recv_coa)
-RLM_MRUBY_FUNC(send_coa)
-#endif
 
 
 /*
@@ -525,10 +521,6 @@ module_t rlm_mruby = {
 #ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa,
 #endif
 	},
 };

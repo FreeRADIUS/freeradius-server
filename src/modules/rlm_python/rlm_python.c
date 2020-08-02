@@ -79,10 +79,6 @@ typedef struct {
 	pre_proxy,
 	post_proxy,
 	post_auth,
-#ifdef WITH_COA
-	recv_coa,
-	send_coa,
-#endif
 	detach;
 
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
@@ -159,10 +155,6 @@ static CONF_PARSER module_config[] = {
 	A(pre_proxy)
 	A(post_proxy)
 	A(post_auth)
-#ifdef WITH_COA
-	A(recv_coa)
-	A(send_coa)
-#endif
 	A(detach)
 
 #undef A
@@ -671,10 +663,7 @@ MOD_FUNC(accounting)
 MOD_FUNC(pre_proxy)
 MOD_FUNC(post_proxy)
 MOD_FUNC(post_auth)
-#ifdef WITH_COA
-MOD_FUNC(recv_coa)
-MOD_FUNC(send_coa)
-#endif
+
 static void python_obj_destroy(PyObject **ob)
 {
 	if (*ob != NULL) {
@@ -1125,10 +1114,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	PYTHON_FUNC_LOAD(pre_proxy);
 	PYTHON_FUNC_LOAD(post_proxy);
 	PYTHON_FUNC_LOAD(post_auth);
-#ifdef WITH_COA
-	PYTHON_FUNC_LOAD(recv_coa);
-	PYTHON_FUNC_LOAD(send_coa);
-#endif
 	PYTHON_FUNC_LOAD(detach);
 
 	/*
@@ -1190,10 +1175,6 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(pre_proxy);
 	PYTHON_FUNC_DESTROY(post_proxy);
 	PYTHON_FUNC_DESTROY(post_auth);
-#ifdef WITH_COA
-	PYTHON_FUNC_DESTROY(recv_coa);
-	PYTHON_FUNC_DESTROY(send_coa);
-#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_XDECREF(inst->pythonconf_dict);
@@ -1360,9 +1341,5 @@ module_t rlm_python = {
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	}
 };

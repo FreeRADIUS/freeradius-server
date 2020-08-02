@@ -424,6 +424,5 @@ module_t rlm_stats = {
 		[MOD_AUTHORIZE]		= mod_stats, /* @mod_stats_query */
 		[MOD_POST_AUTH]		= mod_stats,
 		[MOD_ACCOUNTING]	= mod_stats,
-		[MOD_SEND_COA]		= mod_stats,
 	},
 };

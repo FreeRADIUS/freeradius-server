@@ -182,9 +182,5 @@ module_t rlm_always = {
 		[MOD_PRE_PROXY]		= mod_always_return,
 		[MOD_POST_PROXY]	= mod_always_return,
 		[MOD_POST_AUTH]		= mod_always_return,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_always_return,
-		[MOD_SEND_COA]		= mod_always_return
-#endif
 	},
 };

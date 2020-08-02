@@ -66,8 +66,5 @@ module_t rlm_utf8 = {
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_utf8_clean,
 		[MOD_PREACCT]		= mod_utf8_clean,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_utf8_clean
-#endif
 	},
 };

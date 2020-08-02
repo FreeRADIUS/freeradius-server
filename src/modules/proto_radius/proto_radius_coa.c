@@ -241,31 +241,31 @@ static virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "CoA-Request",\
-		.component = MOD_RECV_COA,
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "send",
 		.name2 = "CoA-ACK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",.name2 = "CoA-NAK",
-		.component = MOD_SEND_COA,
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "recv",
 		.name2 = "Disconnect-Request",
-		.component = MOD_RECV_COA,
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-ACK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-NAK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",

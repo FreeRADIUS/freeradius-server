@@ -71,11 +71,6 @@ const char *section_type_value[MOD_COUNT] = {
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
-#ifdef WITH_COA
-	,
-	"recv-coa",
-	"send-coa"
-#endif
 };
 
 

@@ -58,11 +58,6 @@ char const * const comp2str[] = {
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
-#ifdef WITH_COA
-	,
-	"recv-coa",
-	"send-coa"
-#endif
 };
 
 typedef int const unlang_action_table_t[RLM_MODULE_NUMCODES];
@@ -216,33 +211,6 @@ defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 		2,			/* noop     */
 		4			/* updated  */
 	}
-#ifdef WITH_COA
-	,
-	/* recv-coa */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
-	},
-	/* send-coa */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
-	},
-#endif
 };
 
 static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,

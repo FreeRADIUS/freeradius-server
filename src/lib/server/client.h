@@ -107,10 +107,6 @@ struct rad_client {
 #  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;			//!< Accounting stats.
 #  endif
-#  ifdef WITH_COA
-	fr_stats_t		coa;			//!< Change of Authorization stats.
-	fr_stats_t		dsc;			//!< Disconnect-Request stats.
-#  endif
 #endif
 
 	fr_time_delta_t		response_window;	//!< How long the client has to respond.

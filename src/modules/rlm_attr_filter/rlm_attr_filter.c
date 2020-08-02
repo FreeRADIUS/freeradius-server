@@ -338,11 +338,6 @@ RLM_AF_FUNC(pre_proxy, proxy->packet)
 RLM_AF_FUNC(post_proxy, proxy->reply)
 #endif
 
-#ifdef WITH_COA
-RLM_AF_FUNC(recv_coa, packet)
-RLM_AF_FUNC(send_coa, reply)
-#endif
-
 /* globally exported name */
 extern module_t rlm_attr_filter;
 module_t rlm_attr_filter = {
@@ -360,10 +355,6 @@ module_t rlm_attr_filter = {
 		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	},
 };
 

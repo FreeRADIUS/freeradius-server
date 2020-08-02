@@ -165,9 +165,5 @@ module_t rlm_sometimes = {
 		[MOD_PREACCT]		= mod_sometimes_packet,
 		[MOD_ACCOUNTING]	= mod_sometimes_packet,
 		[MOD_POST_AUTH]		= mod_sometimes_reply,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_sometimes_packet,
-		[MOD_SEND_COA]		= mod_sometimes_reply,
-#endif
 	},
 };

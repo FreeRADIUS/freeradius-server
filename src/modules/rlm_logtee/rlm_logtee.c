@@ -675,9 +675,5 @@ module_t rlm_logtee = {
 		[MOD_PRE_PROXY]		= mod_insert_logtee,
 		[MOD_POST_PROXY]	= mod_insert_logtee,
 		[MOD_POST_AUTH]		= mod_insert_logtee,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_insert_logtee,
-		[MOD_SEND_COA]		= mod_insert_logtee
-#endif
 	},
 };

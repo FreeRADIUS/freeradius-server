@@ -46,19 +46,11 @@ fr_stats_t radius_auth_stats = FR_STATS_INIT;
 #ifdef WITH_ACCOUNTING
 fr_stats_t radius_acct_stats = FR_STATS_INIT;
 #endif
-#ifdef WITH_COA
-fr_stats_t radius_coa_stats = FR_STATS_INIT;
-fr_stats_t radius_dsc_stats = FR_STATS_INIT;
-#endif
 
 #ifdef WITH_PROXY
 fr_stats_t proxy_auth_stats = FR_STATS_INIT;
 #ifdef WITH_ACCOUNTING
 fr_stats_t proxy_acct_stats = FR_STATS_INIT;
-#endif
-#ifdef WITH_COA
-fr_stats_t proxy_coa_stats = FR_STATS_INIT;
-fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
@@ -74,9 +66,6 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	    (request->listener->type != RAD_LISTEN_ACCT) &&
 #endif
-#ifdef WITH_COA
-	    (request->listener->type != RAD_LISTEN_COA) &&
-#endif
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 
 	/* don't count statistic requests */
@@ -91,20 +80,6 @@ void request_stats_final(REQUEST *request)
 #define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;request->client->acct._x++
 #else
 #define INC_ACCT(_x)
-#endif
-
-#undef INC_COA
-#ifdef WITH_COA
-#define INC_COA(_x) radius_coa_stats._x++;request->listener->stats._x++;request->client->coa._x++
-#else
-#define INC_COA(_x)
-#endif
-
-#undef INC_DSC
-#ifdef WITH_DSC
-#define INC_DSC(_x) radius_dsc_stats._x++;request->listener->stats._x++;request->client->dsc._x++
-#else
-#define INC_DSC(_x)
 #endif
 
 	/*
@@ -156,34 +131,6 @@ void request_stats_final(REQUEST *request)
 		break;
 #endif
 
-#ifdef WITH_COA
-	case FR_CODE_COA_ACK:
-		INC_COA(total_access_accepts);
-	  coa_stats:
-		INC_COA(total_responses);
-		fr_stats_bins(&request->client->coa,
-			      request->packet->timestamp,
-			      request->reply->timestamp);
-		break;
-
-	case FR_CODE_COA_NAK:
-		INC_COA(total_access_rejects);
-		goto coa_stats;
-
-	case FR_CODE_DISCONNECT_ACK:
-		INC_DSC(total_access_accepts);
-	  dsc_stats:
-		INC_DSC(total_responses);
-		fr_stats_bins(&request->client->dsc,
-			      request->packet->timestamp,
-			      request->reply->timestamp);
-		break;
-
-	case FR_CODE_DISCONNECT_NAK:
-		INC_DSC(total_access_rejects);
-		goto dsc_stats;
-#endif
-
 		/*
 		 *	No response, it must have been a bad
 		 *	authenticator.
@@ -205,24 +152,6 @@ void request_stats_final(REQUEST *request)
 				INC_ACCT(total_bad_authenticators);
 			} else {
 				INC_ACCT(total_packets_dropped);
-			}
-			break;
-#endif
-
-#ifdef WITH_COA
-		case FR_CODE_COA_REQUEST:
-			if (request->reply->id == -1) {
-				INC_COA(total_bad_authenticators);
-			} else {
-				INC_COA(total_packets_dropped);
-			}
-			break;
-
-		case FR_CODE_DISCONNECT_REQUEST:
-			if (request->reply->id == -1) {
-				INC_DSC(total_bad_authenticators);
-			} else {
-				INC_DSC(total_packets_dropped);
 			}
 			break;
 #endif
@@ -252,22 +181,6 @@ void request_stats_final(REQUEST *request)
 	case FR_CODE_ACCOUNTING_REQUEST:
 #if 0
 		proxy_acct_stats.total_requests += request->proxy->packet->count;
-		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
-#endif
-		break;
-#endif
-
-#ifdef WITH_COA
-	case FR_CODE_COA_REQUEST:
-#if 0
-		proxy_coa_stats.total_requests += request->proxy->packet->count;
-		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
-#endif
-		break;
-
-	case FR_CODE_DISCONNECT_REQUEST:
-#if 0
-		proxy_dsc_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 #endif
 		break;
@@ -319,36 +232,6 @@ void request_stats_final(REQUEST *request)
 		proxy_acct_stats.total_responses++;
 		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_acct_stats,
-			      &request->proxy->packet->timestamp,
-			      &request->proxy->reply->timestamp);
-		fr_stats_bins(&request->proxy->home_server->stats,
-			      &request->proxy->packet->timestamp,
-			      &request->proxy->reply->timestamp);
-#endif
-		break;
-#endif
-
-#ifdef WITH_COA
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-#if 0
-		proxy_coa_stats.total_responses++;
-		request->proxy->home_server->stats.total_responses++;
-		fr_stats_bins(&proxy_coa_stats,
-			      &request->proxy->packet->timestamp,
-			      &request->proxy->reply->timestamp);
-		fr_stats_bins(&request->proxy->home_server->stats,
-			      &request->proxy->packet->timestamp,
-			      &request->proxy->reply->timestamp);
-#endif
-		break;
-
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-#if 0
-		proxy_dsc_stats.total_responses++;
-		request->proxy->home_server->stats.total_responses++;
-		fr_stats_bins(&proxy_dsc_stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
 		fr_stats_bins(&request->proxy->home_server->stats,

@@ -363,14 +363,6 @@ void dependency_features_init(CONF_SECTION *cs)
 
 	dependency_feature_add(cs, "authentication", true);
 
-	dependency_feature_add(cs, "coa",
-#ifdef WITH_COA
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "proxy",
 #ifdef WITH_PROXY
 				true

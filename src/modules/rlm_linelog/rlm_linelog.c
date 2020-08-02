@@ -795,9 +795,5 @@ module_t rlm_linelog = {
 		[MOD_PRE_PROXY]		= mod_do_linelog,
 		[MOD_POST_PROXY]	= mod_do_linelog,
 		[MOD_POST_AUTH]		= mod_do_linelog,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_do_linelog,
-		[MOD_SEND_COA]		= mod_do_linelog
-#endif
 	},
 };

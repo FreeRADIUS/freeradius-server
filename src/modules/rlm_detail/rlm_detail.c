@@ -484,24 +484,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	return detail_do(mctx->instance, request, request->reply, false);
 }
 
-#ifdef WITH_COA
-/*
- *	Incoming CoA - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(module_ctx_t const *mctx, REQUEST *request)
-{
-	return detail_do(mctx->instance, request, request->packet, false);
-}
-
-/*
- *	Outgoing CoA - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(module_ctx_t const *mctx, REQUEST *request)
-{
-	return detail_do(mctx->instance, request, request->reply, false);
-}
-#endif
-
 /*
  *	Outgoing Access-Request to home server - write the detail files.
  */
@@ -556,10 +538,6 @@ module_t rlm_detail = {
 		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	},
 };
 

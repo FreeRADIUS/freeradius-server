@@ -64,10 +64,6 @@ typedef struct {
 	char const	*func_detach;
 	char const	*func_xlat;
 	char const	*func_post_auth;
-#ifdef WITH_COA
-	char const	*func_recv_coa;
-	char const	*func_send_coa;
-#endif
 	char const	*xlat_name;
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
@@ -101,10 +97,6 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(detach),
 	RLM_PERL_CONF(xlat),
 
-#ifdef WITH_COA
-	RLM_PERL_CONF(recv_coa),
-	RLM_PERL_CONF(send_coa),
-#endif
 	{ FR_CONF_OFFSET("perl_flags", FR_TYPE_STRING, rlm_perl_t, perl_flags) },
 
 	{ FR_CONF_OFFSET("func_start_accounting", FR_TYPE_STRING, rlm_perl_t, func_start_accounting) },
@@ -966,12 +958,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, REQUEST *
 RLM_PERL_FUNC(authorize)
 RLM_PERL_FUNC(authenticate)
 RLM_PERL_FUNC(post_auth)
-
-#ifdef WITH_COA
-RLM_PERL_FUNC(recv_coa)
-RLM_PERL_FUNC(send_coa)
-#endif
-
 RLM_PERL_FUNC(preacct)
 
 /*
@@ -1117,9 +1103,5 @@ module_t rlm_perl = {
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	},
 };

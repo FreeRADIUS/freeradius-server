@@ -2111,7 +2111,6 @@ INCLUDE_FILE_PATTERNS  = *.h
 PREDEFINED             = WITH_PROXY \
                          WITH_ACCOUNTING \
                          WITH_STATS \
-                         WITH_COA \
                          HAVE_JSON
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this

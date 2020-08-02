@@ -660,7 +660,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /tmp/freeradius/install
+prefix = /Users/alandekok/git/wrapper//install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
