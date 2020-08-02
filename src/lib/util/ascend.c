@@ -22,7 +22,6 @@
  */
 RCSID("$Id$")
 
-#ifdef WITH_ASCEND_BINARY
 #include "ascend.h"
 
 #include <freeradius-devel/util/hex.h>
@@ -1258,5 +1257,3 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 
 	return p - out;
 }
-
-#endif

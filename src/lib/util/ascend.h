@@ -17,6 +17,9 @@
 
 /** Routines to parse Ascend's filter attributes
  *
+ *  These filters are also used by Juniper, and extended with
+ *  additional fields.
+ *
  * @file src/lib/util/ascend.h
  *
  * @copyright 2003,2006 The FreeRADIUS server project
@@ -27,15 +30,13 @@ RCSIDH(ascend_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef WITH_ASCEND_BINARY
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/value.h>
 
-/* filters.c */
+/* ascend.c */
 int		ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len);
 size_t		print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
-#endif /*WITH_ASCEND_BINARY*/
 
 #ifdef __cplusplus
 }

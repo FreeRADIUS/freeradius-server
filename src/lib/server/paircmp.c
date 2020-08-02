@@ -413,13 +413,11 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	Not a regular expression, compare the types.
 	 */
 	switch (check->vp_type) {
-#ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
 		 *	as opaque objects, I guess...
 		 */
 		case FR_TYPE_ABINARY:
-#endif
 		case FR_TYPE_OCTETS:
 			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */

@@ -4430,7 +4430,6 @@ parse:
 		goto finish;
 
 	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
 		if ((len > 1) && (strncasecmp(in, "0x", 2) == 0)) {
 			ssize_t bin;
 
@@ -4453,14 +4452,6 @@ parse:
 
 		ret = sizeof(dst->datum.filter);
 		goto finish;
-#else
-		/*
-		 *	If Ascend binary is NOT defined,
-		 *	then fall through to raw octets, so that
-		 *	the user can at least make them by hand...
-		 */
-	 	goto do_octets;
-#endif
 
 	case FR_TYPE_IPV4_ADDR:
 	{
@@ -4946,14 +4937,10 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
 		print_abinary(NULL, p, 128, (uint8_t const *) &data->datum.filter, data->datum.length, 0);
 		break;
-#else
-		  /* FALL THROUGH */
-#endif
 
 	case FR_TYPE_GROUP:
 	{
@@ -5493,14 +5480,11 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		break;
 
 	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
 		len = print_abinary(NULL, buf, sizeof(buf),
 				    (uint8_t const *) data->datum.filter, data->datum.length, quote);
 		a = buf;
 		break;
-#else
-	/* FALL THROUGH */
-#endif
+
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_TLV:
 	{

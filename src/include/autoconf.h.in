@@ -636,9 +636,6 @@
 #endif
 
 
-/* include support for Ascend binary filter attributes */
-#undef WITH_ASCEND_BINARY
-
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
 

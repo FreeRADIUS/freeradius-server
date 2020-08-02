@@ -2256,10 +2256,8 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
 	case FR_TYPE_ETHERNET:
 		return talloc_typed_strdup(ctx, "??:??:??:??:??:??:??:??");
 
-#ifdef WITH_ASCEND_BINARY
 	case FR_TYPE_ABINARY:
 		return talloc_typed_strdup(ctx, "??");
-#endif
 
 	case FR_TYPE_GROUP:
 		return talloc_typed_strdup(ctx, "{ ? }");

@@ -760,7 +760,6 @@ with_logdir
 with_radacctdir
 with_raddbdir
 with_dictdir
-with_ascend_binary
 with_udpfromto
 with_cap
 with_cap_lib_dir
@@ -1458,7 +1457,6 @@ Optional Packages:
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
-  --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
   --with-udpfromto        compile in support for udpfromto (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
@@ -6048,25 +6046,6 @@ $as_echo "$dictdir" >&6; }
 modconfdir='${raddbdir}/mods-config'
 
 
-
-WITH_ASCEND_BINARY=yes
-
-# Check whether --with-ascend-binary was given.
-if test "${with_ascend_binary+set}" = set; then :
-  withval=$with_ascend_binary;  case "$withval" in
-  yes)
-    ;;
-  *)
-    WITH_ASCEND_BINARY=no
-  esac
-
-fi
-
-if test "x$WITH_ASCEND_BINARY" = "xyes"; then
-
-$as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
-
-fi
 
 
     WITH_UDPFROMTO=yes

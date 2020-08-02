@@ -627,23 +627,6 @@ dnl #  0d. Enable/disable build time features
 dnl #
 dnl #############################################################
 
-dnl #
-dnl #  extra argument:		--with-ascend-binary
-dnl #
-WITH_ASCEND_BINARY=yes
-AC_ARG_WITH(ascend-binary,
-[  --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)],
-[ case "$withval" in
-  yes)
-    ;;
-  *)
-    WITH_ASCEND_BINARY=no
-  esac ]
-)
-if test "x$WITH_ASCEND_BINARY" = "xyes"; then
-  AC_DEFINE(WITH_ASCEND_BINARY, [1], [include support for Ascend binary filter attributes])
-fi
-
 AX_WITH_FEATURE_ARGS([udpfromto],[yes])
 
 dnl #############################################################
