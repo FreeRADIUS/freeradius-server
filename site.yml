@@ -1,6 +1,5 @@
 site:
   title: The FreeRADIUS project - Documentation
-  url:
 content:
   sources:
   - url: .
