@@ -238,7 +238,7 @@ doc/raddb/%.adoc: raddb/%
 #
 #  Filter out test modules, and ones we don't care about.
 #
-IGNORE_MODULES := $(patsubst %,src/modules/%/README.md,rlm_dict rlm_example rlm_securid rlm_sigtran rlm_test)
+IGNORE_MODULES := $(patsubst %,src/modules/%/README.md,rlm_dict rlm_securid rlm_sigtran rlm_test)
 README_MODULES := $(filter-out $(IGNORE_MODULES), $(wildcard src/modules/rlm_*/README.md))
 doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)
 	@echo ADOC mods-available/all_modules.adoc
