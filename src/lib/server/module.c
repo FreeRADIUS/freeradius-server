@@ -793,7 +793,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	the section has a list of allowed methods.
 		 */
 		allowed_list = virtual_server_section_methods(method_name1, method_name2);
-		if (!allowed_list) return mi;
+		if (!allowed_list) goto return_component;
 
 		/*
 		 *	Walk over allowed methods for this section,
