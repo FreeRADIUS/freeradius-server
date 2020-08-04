@@ -144,12 +144,14 @@ dhcp DHCP-Discover {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
@@ -190,12 +192,14 @@ dhcp DHCP-Request {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
