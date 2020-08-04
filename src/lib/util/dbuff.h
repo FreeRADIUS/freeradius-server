@@ -342,15 +342,16 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
  * @param[out] dbuff	dbuff to set a position in.
  * @param[in] p		Position to set.
  * @return
- *	- 0	not advanced (p out of range).
+ *	- 0	not advanced (p before dbuff start).
  *	- >0	the number of bytes the dbuff advanced by.
- *	- <0	the number of bytes the dbuff retreated by.
+ *	- <0	the number of bytes the dbuff retreated by,
+ *		or the number of bytes required to complete the advancement.
  */
 static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
 {
 	uint8_t *c;
 
-	if (unlikely(p > dbuff->end)) return 0;
+	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
 	if (unlikely(p < dbuff->start)) return 0;
 
 	c = dbuff->p;
@@ -377,6 +378,7 @@ _fr_dbuff_set(_dst, \
 			uint8_t *	: (_src), \
 			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
 	      ))
+#define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
 
 /** Advance position in dbuff by N bytes
  *
