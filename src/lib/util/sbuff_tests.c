@@ -41,7 +41,7 @@ do { \
 #define TEST_CHECK_STRCMP(_exp, _got) \
 do { \
 	char *_our_got = (_got); \
-	TEST_CHECK(strcmp(_exp, _our_got) == 0); \
+	TEST_CHECK((_exp) && (_got) && (strcmp(_exp, _our_got) == 0)); \
 	TEST_MSG("Expected : \"%s\"", _exp); \
 	TEST_MSG("Got      : \"%s\"", _our_got); \
 } while(0)
@@ -868,7 +868,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Should alloc one byte");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_0, "A") == 1);
-	TEST_CHECK(strcmp(fr_sbuff_start(&sbuff_0), "A") == 0);
+	TEST_CHECK_STRCMP("A", fr_sbuff_start(&sbuff_0));
 	TEST_SBUFF_USED(&sbuff_0, 1);
 	TEST_SBUFF_LEN(&sbuff_0, 2);
 
@@ -877,7 +877,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Ensure marker is updated");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_0, "B") == 1);
-	TEST_CHECK(strcmp(fr_sbuff_start(&sbuff_0), "AB") == 0);
+	TEST_CHECK_STRCMP("AB", fr_sbuff_start(&sbuff_0));
 	TEST_SBUFF_USED(&sbuff_0, 2);
 	TEST_SBUFF_LEN(&sbuff_0, 3);
 	TEST_CHECK((marker_0.p - sbuff_0.start) == 1);
@@ -893,7 +893,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Trigger re-alloc, ensure all pointers are updated");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_1, "C") == 1);
-	TEST_CHECK(strcmp(fr_sbuff_start(&sbuff_1), "C") == 0);
+	TEST_CHECK_STRCMP("C", fr_sbuff_start(&sbuff_1));
 	TEST_CHECK(sbuff_0.buff == sbuff_1.buff);
 	TEST_CHECK(sbuff_0.p == sbuff_1.start + 1);
 	TEST_CHECK((marker_1.p - sbuff_1.start) == 0);
