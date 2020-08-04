@@ -1063,6 +1063,9 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		break;
 	}
 
+	*name1 = name + (p - inst_name);
+	*name2 = NULL;
+
 	talloc_free(inst_name);
 	return mi;
 }
