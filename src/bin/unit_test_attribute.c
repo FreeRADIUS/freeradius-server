@@ -153,10 +153,10 @@ typedef enum {
 static fr_table_num_sorted_t command_rcode_table[] = {
 	{ L("command-error"),		RESULT_COMMAND_ERROR			},
 	{ L("exit"),			RESULT_EXIT				},
-	{ L("ok"),				RESULT_OK				},
+	{ L("ok"),			RESULT_OK				},
 	{ L("parse-error"),		RESULT_PARSE_ERROR			},
 	{ L("result-mismatch"),		RESULT_MISMATCH				},
-	{ L("skip-file"),			RESULT_SKIP_FILE			},
+	{ L("skip-file"),		RESULT_SKIP_FILE			},
 };
 static size_t command_rcode_table_len = NUM_ELEMENTS(command_rcode_table);
 
@@ -189,7 +189,7 @@ typedef struct {
 
 	char			*path;			//!< Current path we're operating in.
 	char const		*filename;		//!< Current file we're operating on.
-	int			lineno;			//!< Current line number.
+	uint32_t		lineno;			//!< Current line number.
 
 	uint32_t		test_count;		//!< How many tests we've executed in this file.
 	ssize_t			last_ret;		//!< Last return value.
@@ -206,6 +206,13 @@ typedef struct {
 
 	command_config_t const	*config;
 } command_file_ctx_t;
+
+
+typedef struct {
+	fr_dlist_t	entry;	//!< Entry in the dlist.
+	uint32_t	start;	//!< Start of line range.
+	uint32_t	end;	//!< End of line range.
+} command_line_range_t;
 
 /** Command to execute
  *
@@ -238,7 +245,7 @@ static dl_loader_t	*dl_loader;
 
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
-			command_config_t const *config, const char *root_dir, char const *filename);
+			command_config_t const *config, const char *root_dir, char const *filename, fr_dlist_head_t *lines);
 
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 #  define BUFF_POISON_START	1024
@@ -984,13 +991,13 @@ static size_t command_include(command_result_t *result, command_file_ctx_t *cc,
 	q = strrchr(cc->path, '/');
 	if (q) {
 		*q = '\0';
-		ret = process_file(&exit_now, cc->tmp_ctx, cc->config, cc->path, in);
+		ret = process_file(&exit_now, cc->tmp_ctx, cc->config, cc->path, in, NULL);
 		if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 		*q = '/';
 		RETURN_OK(0);
 	}
 
-	ret = process_file(&exit_now, cc->tmp_ctx, cc->config, NULL, in);
+	ret = process_file(&exit_now, cc->tmp_ctx, cc->config, NULL, in, NULL);
 	if (exit_now || (ret != 0)) RETURN_EXIT(ret);
 
 	RETURN_OK(0);
@@ -2520,7 +2527,7 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 }
 
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config,
-			const char *root_dir, char const *filename)
+			const char *root_dir, char const *filename, fr_dlist_head_t *lines)
 {
 	int		ret = 0;
 	FILE		*fp;				/* File we're reading from */
@@ -2528,6 +2535,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	char		data[COMMAND_OUTPUT_MAX + 1];	/* Data written by previous command */
 	ssize_t		data_used = 0;			/* How much data the last command wrote */
 	static char	path[PATH_MAX] = { '\0' };
+	command_line_range_t	*lr = NULL;
 
 	command_file_ctx_t	*cc;
 
@@ -2556,6 +2564,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		filename = path;
 	}
 
+	if (lines && !fr_dlist_empty(lines)) lr = fr_dlist_head(lines);
+
 	/*
 	 *	Loop over lines in the file or stdin
 	 */
@@ -2563,7 +2573,16 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
 		char			*p = strchr(buffer, '\n');
 
-		cc->lineno++;
+		cc->lineno++;	/* The first line of the file becomes line 1 */
+
+		if (lr) {
+			if (cc->lineno > lr->end) {
+				lr = fr_dlist_next(lines, lr);
+				if (!lr) goto finish;
+			}
+
+			if (cc->lineno < lr->start) continue;
+		}
 
 		if (!p) {
 			if (!feof(fp)) {
@@ -2663,7 +2682,7 @@ finish:
 
 static void usage(char const *name)
 {
-	INFO("usage: %s [options] (-|<filename>[ <filename>])", name);
+	INFO("usage: %s [options] (-|<filename>[:<lines>] [ <filename>[:<lines>]])", name);
 	INFO("options:");
 	INFO("  -d <raddb>         Set user dictionary path (defaults to " RADDBDIR ").");
 	INFO("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
@@ -2674,6 +2693,7 @@ static void usage(char const *name)
 	INFO("  -M                 Show talloc memory report.");
 	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
+	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
 }
 
 static void features_print(CONF_SECTION *features)
@@ -2698,6 +2718,93 @@ static void commands_print(void)
 		INFO("    %s.", ((command_entry_t const *)commands[i].value)->description);
 		INFO("");
 	}
+}
+
+static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *in)
+{
+	static bool		tokens[UINT8_MAX + 1] = { [','] = true , ['-'] = true };
+	uint32_t		max = 0;
+	command_line_range_t	*lr;
+	fr_sbuff_parse_error_t	err;
+
+	while (!FR_SBUFF_CANT_EXTEND(in)) {
+		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+
+		MEM(lr = talloc_zero(ctx, command_line_range_t));
+		fr_dlist_insert_tail(out, lr);
+
+		fr_sbuff_out(&err, &lr->start, in);
+		if (err != FR_SBUFF_PARSE_OK) {
+			ERROR("Invalid line start number");
+		error:
+			fr_dlist_talloc_free(out);
+			return -1;
+		}
+		if (max > lr->start) {
+			ERROR("Out of order line numbers (%u > %u) not allowed", max, lr->start);
+			goto error;
+		} else {
+			max = lr->start;
+		}
+		lr->end = lr->start;	/* Default to a single line */
+		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+
+	again:
+		if (FR_SBUFF_CANT_EXTEND(in)) break;
+		if (!fr_sbuff_is_in_charset(in, tokens)) {
+			ERROR("Unexpected text \"%pV\"",
+			      fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+			goto error;
+		}
+
+		switch (*fr_sbuff_current(in)) {
+		/*
+		 *	More ranges...
+		 */
+		case ',':
+			fr_sbuff_next(in);
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+			continue;
+
+		/*
+		 *	<start>-<end>
+		 */
+		case '-':
+		{
+			fr_sbuff_next(in);
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+
+			/*
+			 *	A bare '-' with no number means
+			 *	run all remaining lines.
+			 */
+			if (FR_SBUFF_CANT_EXTEND(in)) {
+				lr->end = UINT32_MAX;
+				return 0;
+			}
+
+			fr_sbuff_out(&err, &lr->end, in);
+			if (err != FR_SBUFF_PARSE_OK) {
+				ERROR("Invalid line end number");
+				goto error;
+			}
+			if (lr->end < lr->start) {
+				ERROR("Line end must be >= line start (%u < %u)", lr->end, lr->start);
+				goto error;
+			}
+			if (max > lr->end) {
+				ERROR("Out of order line numbers (%u > %u) not allowed", max, lr->end);
+				goto error;
+			} else {
+				max = lr->end;
+			}
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+		}
+			goto again;
+		}
+	}
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -2855,7 +2962,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		ret = process_file(&exit_now, autofree, &config, name, "-");
+		ret = process_file(&exit_now, autofree, &config, name, "-", NULL);
 
 	/*
 	 *	...or process each file in turn.
@@ -2864,19 +2971,53 @@ int main(int argc, char *argv[])
 		int i;
 
 		for (i = 1; i < argc; i++) {
-			char *dir, *file;
-			char *p = strrchr(argv[i], '/');
+			char			*dir = NULL, *file;
+			fr_sbuff_t		in = FR_SBUFF_IN(argv[i], strlen(argv[i]));
+			fr_sbuff_term_t		dir_sep = FR_SBUFF_TERMS(
+							L("/"),
+							L(":")
+						);
+			fr_sbuff_marker_t	file_start, file_end, dir_end;
+			fr_dlist_head_t		lines;
 
-			if (p) {
-				*p = '\0'; /* we are allowed to modify our arguments.  No one cares. */
-				dir = argv[i];
-				file = p + 1;
-			} else {
-				dir = NULL;
-				file = argv[i];
+			fr_sbuff_marker(&file_start, &in);
+			fr_sbuff_marker(&file_end, &in);
+			fr_sbuff_marker(&dir_end, &in);
+			fr_sbuff_set(&file_end, fr_sbuff_end(&in));
+
+			fr_dlist_init(&lines, command_line_range_t, entry);
+
+			while (fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0')) {
+				switch (*fr_sbuff_current(&in)) {
+				case '/':
+					fr_sbuff_set(&dir_end, &in);
+					fr_sbuff_advance(&in, 1);
+					fr_sbuff_set(&file_start, &in);
+					break;
+
+				case ':':
+					fr_sbuff_set(&file_end, &in);
+					fr_sbuff_advance(&in, 1);
+					if (line_ranges_parse(autofree, &lines, &in) < 0) EXIT_WITH_FAILURE;
+					break;
+
+				default:
+					fr_sbuff_set(&file_end, &in);
+					break;
+				}
 			}
 
-			ret = process_file(&exit_now, autofree, &config, dir, file);
+			file = talloc_bstrndup(autofree,
+					       fr_sbuff_current(&file_start), fr_sbuff_diff(&file_end, &file_start));
+			if (fr_sbuff_used(&dir_end)) dir = talloc_bstrndup(autofree,
+									   fr_sbuff_start(&in),
+									   fr_sbuff_used(&dir_end));
+
+			ret = process_file(&exit_now, autofree, &config, dir, file, &lines);
+			talloc_free(dir);
+			talloc_free(file);
+			fr_dlist_talloc_free(&lines);
+
 			if ((ret != 0) || exit_now) break;
 		}
 	}
