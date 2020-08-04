@@ -737,22 +737,15 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		if (!method) return mi;
 
 		/*
-		 *	For now, prefer existing methods over named
-		 *	sections.  That is because modules can now
-		 *	export both old-style methods and new
-		 *	"wildcard" methods, which may do different
-		 *	things.
-		 */
-		if (component && mi->module->methods[*component]) {
-			*method = mi->module->methods[*component];
-			return mi;
-		}
-
-		/*
-		 *	We weren't asked to search for specific names,
-		 *	OR the module has no specific names, return.
+		 *	We're not searching for a named method, OR the
+		 *	module has no named methods.  Try to return a
+		 *	method based on the component.
 		 */
 		if (!method_name1 || !mi->module->method_names) {
+			if (component && mi->module->methods[*component]) {
+				*method = mi->module->methods[*component];
+			}
+
 			return mi;
 		}
 
@@ -812,7 +805,11 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	Walk over allowed methods for this section,
 		 *	(implicitly ordered by priority), and see if
 		 *	the allowed method matches any of the module
-		 *	methods.
+		 *	methods.  This process lets us reference a
+		 *	module as "foo" in the configuration.  If the
+		 *	module exports a "recv bar" method, and the
+		 *	virtual server has a "recv bar" processing
+		 *	section, then they shoul match.
 		 *
 		 *	Unfortunately, this process is O(N*M).
 		 *	Luckily, we only do it if all else fails, so
