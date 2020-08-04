@@ -631,7 +631,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 /*
  *	Based on https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
  */
-time_t fr_utc_to_time(struct tm *tm)
+time_t fr_time_from_utc(struct tm *tm)
 {
 	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
 						181, 212, 243, 273, 304, 334};
