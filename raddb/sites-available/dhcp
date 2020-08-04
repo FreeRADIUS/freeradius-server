@@ -145,12 +145,14 @@ recv DHCP-Discover {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
@@ -173,6 +175,11 @@ recv DHCP-Discover {
 #	update control {
 #		&Pool-Name := "local"
 #	}
+	# Update the request to contain fields needed for SQL pool
+	# address allocation
+#	update request {
+#		&Calling-Station-Id = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+#	}
 #	dhcp_sqlippool
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
@@ -191,12 +198,14 @@ recv DHCP-Request {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
@@ -218,6 +227,12 @@ recv DHCP-Request {
 	#  set the pool name here if you haven't set it elsewhere.
 #	update control {
 #		&Pool-Name := "local"
+#	}
+	# Update the request to contain fields needed for SQL pool
+	# address allocation
+#	update request {
+#		&Calling-Station-Id = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+#		&NAS-IP-Address = "%{%{DHCP-Gateway-IP-Address}:-127.0.0.1}"
 #	}
 #	dhcp_sqlippool
 

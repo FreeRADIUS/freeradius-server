@@ -1,0 +1,96 @@
+--
+-- A stored procedure to reallocate a user's previous address, otherwise
+-- provide a free address.
+--
+-- Using this SP reduces the usual set dialogue of queries to a single
+-- query:
+--
+--   START TRANSACTION; SELECT FOR UPDATE; UPDATE; COMMIT;  ->  SELECT sp()
+--
+-- The stored procedure is executed on an database instance within a single
+-- round trip which often leads to reduced deadlocking and significant
+-- performance improvements especially on multi-master clusters, perhaps even
+-- by an order of magnitude or more.
+--
+-- To use this stored procedure the corresponding queries.conf statements must
+-- be configured as follows:
+--
+-- allocate_begin = ""
+-- allocate_find = "\
+--	SELECT fr_dhcp_allocate_previous_or_new_framedipaddress( \
+--		'%{control:${pool_name}}', \
+--		'%{DHCP-Gateway-IP-Address}', \
+--		'${pool_key}', \
+--		${lease_duration} \
+--	)"
+-- allocate_update = ""
+-- allocate_commit = ""
+--
+
+CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
+	v_pool_name VARCHAR(64),
+	v_nasipaddress VARCHAR(16),
+	v_pool_key VARCHAR(64),
+	v_lease_duration INT
+)
+RETURNS inet
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	r_address inet;
+BEGIN
+
+	-- Reissue an existing IP address lease when re-authenticating a session
+	--
+	WITH ips AS (
+		SELECT framedipaddress FROM radippool
+		WHERE pool_name = v_pool_name
+			AND pool_key = v_pool_key
+			AND expiry_time > NOW()
+		LIMIT 1 FOR UPDATE SKIP LOCKED )
+	UPDATE radippool
+	SET expiry_time = NOW() + v_lease_duration * interval '1 sec'
+	FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+	RETURNING radippool.framedipaddress INTO r_address;
+
+	-- Reissue an user's previous IP address, provided that the lease is
+	-- available (i.e. enable sticky IPs)
+	--
+	-- When using this SELECT you should delete the one above. You must also
+	-- set allocate_clear = "" in queries.conf to persist the associations
+	-- for expired leases.
+	--
+	-- WITH ips AS (
+	--	SELECT framedipaddress FROM radippool
+	--	WHERE pool_name = v_pool_name
+	--		AND pool_key = v_pool_key
+	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
+	-- UPDATE radippool
+	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
+	-- FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+	-- RETURNING radippool.framedipaddress INTO r_address;
+
+	-- If we didn't reallocate a previous address then pick the least
+	-- recently used address from the pool which maximises the likelihood
+	-- of re-assigning the other addresses to their recent user
+	--
+	IF r_address IS NULL THEN
+		WITH ips AS (
+			SELECT framedipaddress FROM radippool
+			WHERE pool_name = v_pool_name
+				AND expiry_time < NOW()
+			ORDER BY expiry_time
+			LIMIT 1 FOR UPDATE SKIP LOCKED )
+		UPDATE radippool
+		SET pool_key = v_pool_key,
+			expiry_time = NOW() + v_lease_duration * interval '1 sec',
+			nasipaddress = v_nasipaddress
+		FROM ips WHERE radippool.framedipaddress = ips.framedipaddress
+		RETURNING radippool.framedipaddress INTO r_address;
+	END IF;
+
+	-- Return the address that we allocated
+	RETURN r_address;
+
+END
+$$;
