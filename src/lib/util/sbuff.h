@@ -193,7 +193,7 @@ do { \
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
 #define FR_SBUFF_NO_ADVANCE(_sbuff) \
-(fr_sbuff_t){ \
+((fr_sbuff_t){ \
 	.buff		= (_sbuff)->buff, \
 	.start		= (_sbuff)->p, \
 	.end		= (_sbuff)->end, \
@@ -202,14 +202,14 @@ do { \
 	.extend		= (_sbuff)->extend, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
-}
+})
 
 /** Copy all fields in an sbuff
  *
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
 #define FR_SBUFF_COPY(_sbuff) \
-(fr_sbuff_t){ \
+((fr_sbuff_t){ \
 	.buff		= (_sbuff)->buff, \
 	.start		= (_sbuff)->p, \
 	.end		= (_sbuff)->end, \
@@ -219,7 +219,7 @@ do { \
 	.extend		= (_sbuff)->extend, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
-}
+})
 
 /** Creates a compound literal to pass into functions which accept a sbuff
  *
@@ -230,7 +230,7 @@ do { \
  * @param[in] _len_or_end	Length of the buffer or the end pointer.
  */
 #define FR_SBUFF_OUT(_start, _len_or_end) \
-(fr_sbuff_t){ \
+((fr_sbuff_t){ \
 	.buff_i		= _start, \
 	.start_i	= _start, \
 	.end_i		= _Generic((_len_or_end), \
@@ -246,7 +246,7 @@ do { \
 				char *		: false, \
 				char const *	: true \
 	       		) \
-}
+})
 
 /** Creates a compound literal to pass into functions which accept a sbuff
  *
@@ -257,7 +257,7 @@ do { \
  * @param[in] _len_or_end	Length of the buffer or the end pointer.
  */
 #define FR_SBUFF_IN(_start, _len_or_end) \
-(fr_sbuff_t){ \
+((fr_sbuff_t){ \
 	.buff_i		= _start, \
 	.start_i	= _start, \
 	.end_i		= _Generic((_len_or_end), \
@@ -273,7 +273,7 @@ do { \
 				char *		: false, \
 				char const *	: true \
 	       		) \
-}
+})
 
 
 void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
@@ -368,50 +368,168 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 }
 /** @} */
 
+/** @name Accessors
+ *
+ * Caching the values of these pointers or the pointer values from the sbuff
+ * directly is strongly discouraged as they can become invalidated during
+ * stream parsing or when printing to an auto-expanding buffer.
+ *
+ * These functions should only be used to pass sbuff pointers into 3rd party
+ * APIs.
+ */
+
+/** Return a pointer to the start of the underlying buffer in an sbuff or one of its markers
+ *
+ * @param[in] _sbuff_or_marker	to return the buffer for.
+ * @return A pointer to the start of the buffer.
+ */
+#define fr_sbuff_buff(_sbuff_or_marker) \
+	_Generic((_sbuff_or_marker), \
+		 fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker))->buff, \
+		 fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker))->buff, \
+		 fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->buff, \
+		 fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->buff \
+	)
+
+/** Return a pointer to the 'start' position of an sbuff or one of its markers
+ *
+ * The start position is not necessarily the start of the buffer, and is
+ * advanced every time an sbuff is copied.
+ *
+ * @param[in] _sbuff_or_marker	to return the start position of.
+ * @return A pointer to the start position of the buffer.
+ */
+#define fr_sbuff_start(_sbuff_or_marker) \
+	(_Generic((_sbuff_or_marker), \
+		  fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker))->start, \
+		  fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker))->start, \
+		  fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->start, \
+		  fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->start \
+	))
+
+/** Return a pointer to the 'current' position of an sbuff or one of its markers
+ *
+ * @param[in] _sbuff_or_marker	to return the current position of.
+ * @return A pointer to the current position of the buffer or marker.
+ */
+#define fr_sbuff_current(_sbuff_or_marker) \
+	(_Generic((_sbuff_or_marker), \
+		  fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker))->p, \
+		  fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker))->p, \
+		  fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->p, \
+		  fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->p \
+	))
+
+/** Return a pointer to the 'end' position of an sbuff or one of its markers
+ *
+ * @param[in] _sbuff_or_marker	to return the end position of.
+ * @return A pointer to the end position of the buffer or marker.
+ */
+#define fr_sbuff_end(_sbuff_or_marker) \
+	(_Generic((_sbuff_or_marker), \
+		  fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker))->end, \
+		  fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker))->end, \
+		  fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->end, \
+		  fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->end \
+	))
+
+/** Return the value of the shifted field
+ *
+ * @param[in] _sbuff_or_marker	to return the position of.
+ * @return the number of bytes the buffer has been shifted.
+ */
+#define fr_sbuff_shifted(_sbuff_or_marker) \
+	(_Generic((_sbuff_or_marker), \
+		  fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker))->shifted, \
+		  fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker))->shifted, \
+		  fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->shifted, \
+		  fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->shifted \
+	))
+/** @} */
+
 /** @name Length calculations
  * @{
  */
 
-/** How many free bytes remain in the buffer
+/** Return the difference in position between the two sbuffs or markers
  *
+ * @param[in] _a	The first sbuff or marker.
+ * @param[in] _b	The second sbuff or marker.
+ * @return
+ *	- >0 the number of bytes _a is ahead of _b.
+ *	- 0 _a and _b are the same position.
+ *	- <0 the number of bytes _a is behind of _b.
  */
-static inline size_t fr_sbuff_remaining(fr_sbuff_t const *sbuff)
-{
-	return sbuff->end - sbuff->p;
-}
+#define fr_sbuff_diff(_a, _b) \
+	((ssize_t)(fr_sbuff_current(_a) - fr_sbuff_current(_b)))
 
-/** How many free bytes remain in the buffer (after trying to extend)
+/** Return the number of bytes remaining between the sbuff or marker and the end of the buffer
  *
+ * @note Do not use this in functions that may be used for stream parsing
+ *	 unless you're sure you know what you're doing.
+ *	 The value return does not reflect the number of bytes that may
+ *	 be potentially read from the stream, only the number of bytes
+ *	 until the end of the current chunk.
+ *
+ * @param[in] _sbuff_or_marker	to return the number of bytes remaining for.
+ * @return
+ *	- >0 the number of bytes remaining before we reach the end of the buffer.
+ *	- -0 we're at the end of the buffer.
  */
-static inline size_t fr_sbuff_remaining_extend(fr_sbuff_t *sbuff)
-{
-	if ((sbuff->end == sbuff->p) && sbuff->extend) sbuff->extend(sbuff, 1);
-	return sbuff->end - sbuff->p;
-}
+#define fr_sbuff_remaining(_sbuff_or_marker) \
+	((size_t)(fr_sbuff_end(_sbuff_or_marker) < fr_sbuff_current(_sbuff_or_marker) ? \
+		0 : (fr_sbuff_end(_sbuff_or_marker) - fr_sbuff_current(_sbuff_or_marker))))
 
-/** How many bytes we've used in the buffer
+/** Return the number of bytes remaining between the start of the sbuff or marker and the current position
  *
+ * @param[in] _sbuff_or_marker	to return the number of bytes used for.
+ * @return
+ *	- >0 the number of bytes the current position has advanced past the start.
+ *	- -0 the current position is at the start of the buffer.
  */
-static inline size_t fr_sbuff_used(fr_sbuff_t const *sbuff)
-{
-	return sbuff->p - sbuff->start;
-}
+#define fr_sbuff_used(_sbuff_or_marker) \
+	((size_t)(fr_sbuff_start(_sbuff_or_marker) > fr_sbuff_current(_sbuff_or_marker) ? \
+		0 : (fr_sbuff_current(_sbuff_or_marker) - fr_sbuff_start(_sbuff_or_marker))))
 
-/** How many bytes we've used in the buffer including shifts
+/** Like fr_sbuff_used, but adjusts for the value returned for the amount shifted
  *
+ * @param[in] _sbuff_or_marker	to return the number of bytes used for.
+ * @return
+ *	- >0 the number of bytes the current position has advanced past the start +
+ *	     the amount the buffer has shifted.
+ *	- -0 the current position is at the start of the buffer (and hasn't been shifted).
  */
-static inline size_t fr_sbuff_used_total(fr_sbuff_t const *sbuff)
-{
-	return (sbuff->p - sbuff->start) + sbuff->shifted;
-}
+#define fr_sbuff_used_total(_sbuff_or_marker) \
+	((size_t)((fr_sbuff_current(_sbuff_or_marker) + fr_sbuff_shifted(_sbuff_or_marker)) - fr_sbuff_start(_sbuff_or_marker)))
 
-/** The length of the buffer
+/** The length of the underlying buffer
  *
+ * @param[in] _sbuff_or_marker	to return the length of.
+ * @return The length of the underlying buffer (minus 1 byte for \0).
  */
-static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
-{
-	return sbuff->end - sbuff->start;
-}
+#define fr_sbuff_len(_sbuff_or_marker) \
+	((size_t)(fr_sbuff_end(_sbuff_or_marker) - fr_sbuff_buff(_sbuff_or_marker)))
+
+/** How many the sbuff or marker is behind its parent
+ *
+ * @param[in] _sbuff_or_marker
+ * @return
+ *	- 0 the sbuff or marker is ahead of its parent.
+ *	- >0 the number of bytes the marker is behind its parent.
+ */
+#define fr_sbuff_behind(_sbuff_or_marker) \
+	(fr_sbuff_current(_sbuff_or_marker) > fr_sbuff_current((_sbuff_or_marker)->parent) ? \
+		0 : fr_sbuff_current((_sbuff_or_marker)->parent) - fr_sbuff_current(_sbuff_or_marker))
+
+/** How many the sbuff or marker is ahead of its parent
+ *
+ * @return
+ *	- 0 the sbuff or marker is behind its parent.
+ *	- >0 the number of bytes the marker is ahead of its parent.
+ */
+#define fr_sbuff_ahead(_sbuff_or_marker) \
+	(fr_sbuff_current((_sbuff_or_marker)->parent) > fr_sbuff_current(_sbuff_or_marker) ? \
+		0 : fr_sbuff_current(_sbuff_or_marker) - fr_sbuff_current((_sbuff_or_marker)->parent))
 
 /** Return the current position in the sbuff as a negative offset
  *
@@ -421,7 +539,7 @@ static inline size_t fr_sbuff_len(fr_sbuff_t const *sbuff)
 /** Return the current position in the sbuff as a negative offset
  *
  */
-#define FR_SBUFF_MARKER_ERROR_RETURN(_marker) return -(fr_sbuff_marker_used(_marker))
+#define FR_SBUFF_MARKER_ERROR_RETURN(_marker) return -(fr_sbuff_used(_marker))
 
 /** Return the current adjusted position in the sbuff as a negative offset
  *
@@ -466,31 +584,6 @@ do { \
 
 /** @} */
 
-/** @name Accessors
- *
- * Caching the values of these pointers or the pointer values from the sbuff
- * directly is strongly discouraged as they can become invalidated during
- * stream parsing or when printing to an auto-expanding buffer.
- *
- * These functions should only be used to pass sbuff pointers into 3rd party
- * APIs.
- */
-static inline char *fr_sbuff_start(fr_sbuff_t *sbuff)
-{
-	return sbuff->start;
-}
-
-static inline char *fr_sbuff_current(fr_sbuff_t *sbuff)
-{
-	return sbuff->p;
-}
-
-static inline char *fr_sbuff_end(fr_sbuff_t *sbuff)
-{
-	return sbuff->end;
-}
-/** @} */
-
 /** @name Position modification (recursive)
  *
  * Change the current position of pointers in the sbuff and their children.
@@ -507,40 +600,24 @@ static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
 	if (sbuff->adv_parent && sbuff->parent) _fr_sbuff_set_recurse(sbuff->parent, p);
 }
 
-/** Advance position in sbuff by N bytes
- *
- * @param[in] sbuff	to advance.
- * @param[in] n		How much to advance sbuff by.
- * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
- */
-static inline ssize_t fr_sbuff_advance(fr_sbuff_t *sbuff, size_t n)
+static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 {
-	/* overflow conditions */
-	if (unlikely((n > (SIZE_MAX - (uintptr_t)sbuff->p)) || ((sbuff->p + n) > sbuff->end))) return 0;
-	if (n == 0) return 0;
+	fr_sbuff_t 	*sbuff = m->parent;
+	char		*current = m->p;
 
-	_fr_sbuff_set_recurse(sbuff, sbuff->p + n);
-	return n;
+	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
+	if (unlikely(p < sbuff->start)) return 0;
+
+	m->p_i = p;
+
+	return p - current;
 }
-#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
 
-/** Set a new position for 'p' in an sbuff
- *
- * @param[out] sbuff	sbuff to set a position in.
- * @param[in] p		Position to set.
- * @return
- *	- 0	not advanced.
- *	- >0	the number of bytes the sbuff was advanced by.
- *	- <0	the number of bytes required to complete the advancement
- */
 static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 {
 	char const *c;
 
-	if (unlikely(p > sbuff->end)) return 0;
+	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
 	if (unlikely(p < sbuff->start)) return 0;
 	if (p == sbuff->p) return 0;
 
@@ -552,24 +629,44 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 
 /** Set the position in a sbuff using another sbuff, a char pointer, or a length
  *
- * @param[out] _dst	sbuff to advance.
- * @param[in] _src	An sbuff, char pointer, or length value to advance
- *			_dst by.
+ * @param[in] _dst	sbuff or marker to set the position for.
+ * @param[in] _src	Variable to glean new position from.  Behaviour here
+ *			depends on the type of the variable.
+ *			- sbuff, the current position of the sbuff.
+ *			- marker, the current position of the marker.
+ *			- pointer, the position of the pointer.
+ *			- size_t, _dst->start + _src.
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the sbuff was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
 #define fr_sbuff_set(_dst, _src) \
-_fr_sbuff_set(_dst, \
-	      _Generic((_src), \
-			fr_sbuff_t *		: ((fr_sbuff_t const *)(_src))->p, \
-			fr_sbuff_marker_t *	: ((fr_sbuff_marker_t const *)(_src))->p, \
-			char const *		: (char const *)(_src), \
-			char *			: (char const *)(_src), \
-			size_t			: ((_dst)->p += (uintptr_t)(_src)) \
-	      ))
+_Generic((_dst), \
+	 fr_sbuff_t *			: _fr_sbuff_set, \
+	 fr_sbuff_marker_t *		: _fr_sbuff_marker_set \
+)(_dst, \
+_Generic((_src), \
+	fr_sbuff_t *			: fr_sbuff_current((fr_sbuff_t const *)(_src)), \
+	fr_sbuff_t const *		: fr_sbuff_current((fr_sbuff_t const *)(_src)), \
+	fr_sbuff_marker_t *		: fr_sbuff_current((fr_sbuff_marker_t const *)(_src)), \
+	fr_sbuff_marker_t const *	: fr_sbuff_current((fr_sbuff_marker_t const *)(_src)), \
+	char const *			: (char const *)(_src), \
+	char *				: (char const *)(_src), \
+	size_t				: (fr_sbuff_start(_dst) + (uintptr_t)(_src)) \
+))
 
+/** Advance position in sbuff by N bytes
+ *
+ * @param[in] sbuff	to advance.
+ * @param[in] n		How much to advance sbuff by.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
+ */
+#define fr_sbuff_advance(_sbuff_or_marker, _n)  fr_sbuff_set(_sbuff_or_marker, (fr_sbuff_current(_sbuff_or_marker) + (_n)))
+#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
 
 /** Reset the current position of the sbuff to the start of the string
  *
@@ -601,55 +698,6 @@ static inline void fr_sbuff_set_to_end(fr_sbuff_t *sbuff)
  * if the buffer is re-allocated.
  * @{
  */
-/** Return the current position of the marker
- *
- */
-static inline char *fr_sbuff_marker_current(fr_sbuff_marker_t *m)
-{
-	return m->p;
-}
-
-/** How many free bytes remain in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_remaining(fr_sbuff_marker_t *m)
-{
-	return m->parent->end - m->p;
-}
-
-/** How many bytes we've used in the buffer (calculated from marker)
- *
- */
-static inline size_t fr_sbuff_marker_used(fr_sbuff_marker_t *m)
-{
-	return m->p - m->parent->start;
-}
-
-/** How many bytes the marker is behind p
- *
- * @return
- *	- 0 marker is ahead of p.
- *	- >0 the number of bytes the marker is behind p
- */
-static inline size_t fr_sbuff_marker_behind(fr_sbuff_marker_t *m)
-{
-	char *s_p = m->parent->p;
-	char *m_p = m->p;
-	return m_p > s_p ? 0 : s_p - m_p;
-}
-
-/** How many bytes the marker is ahead of p
- *
- * @return
- *	- 0 marker is behind p.
- *	- >0 the number of bytes the marker is ahead of p
- */
-static inline size_t fr_sbuff_marker_ahead(fr_sbuff_marker_t *m)
-{
-	char *s_p = m->parent->p;
-	char *m_p = m->p;
-	return m_p < s_p ? 0 : m_p - s_p;
-}
 
 /** Adds a new pointer to the beginning of the list of pointers to update
  *
@@ -697,14 +745,12 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
  * @param[in] m		to release.
  * @return
  *	- 0 marker is ahead of p.
- *	- >0 the number of bytes the marker is behind p/
+ *	- >0 the number of bytes the marker is behind p.
  */
 static inline size_t fr_sbuff_marker_release_behind(fr_sbuff_marker_t *m)
 {
-	size_t len = fr_sbuff_marker_behind(m);
-
+	size_t len = fr_sbuff_behind(m);
 	fr_sbuff_marker_release(m);
-
 	return len;
 }
 
@@ -718,84 +764,13 @@ static inline size_t fr_sbuff_marker_release_behind(fr_sbuff_marker_t *m)
  * @param[in] m		to release.
  * @return
  *	- 0 marker is ahead of p.
- *	- >0 the number of bytes the marker is behind p/
+ *	- >0 the number of bytes the marker is behind p.
  */
 static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
 {
-	size_t len = fr_sbuff_marker_ahead(m);
-
+	size_t len = fr_sbuff_ahead(m);
 	fr_sbuff_marker_release(m);
-
 	return len;
-}
-
-/** Resets the position in an sbuff to specified marker
- *
- */
-static inline void fr_sbuff_set_to_marker(fr_sbuff_marker_t *m)
-{
-	fr_sbuff_t *sbuff = m->parent;
-
-	_fr_sbuff_set_recurse(sbuff, m->p);
-}
-
-/** Reset an sbuff to the marker position and release the marker
- *
- * @param[in] m		marker to operate on.
- */
-static inline void fr_sbuff_set_to_marker_release(fr_sbuff_marker_t *m)
-{
-	fr_sbuff_set_to_marker(m);
-	fr_sbuff_marker_release(m);
-}
-
-/** Change the position in the buffer a marker points to
- *
- * @param[in] m		marker to alter.
- * @param[in] p		Position to set.
- * @return
- *	- 0 on failure (p out of range), marker position will remain unchanged.
- *	- >0 the number of bytes the marker advanced.
- *	- <0 the number of bytes the marker retreated.
- */
-static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
-{
-	fr_sbuff_t 	*sbuff = m->parent;
-	char		*current = m->p;
-
-	if (unlikely(p > sbuff->end)) return 0;
-	if (unlikely(p < sbuff->start)) return 0;
-
-	m->p_i = p;
-
-	return p - current;
-}
-#define fr_sbuff_marker_set(_dst, _src) \
-_fr_sbuff_marker_set(_dst, \
-		     _Generic((_src), \
-				fr_sbuff_t *		: ((fr_sbuff_t const *)(_src))->p, \
-				fr_sbuff_marker_t *	: ((fr_sbuff_marker_t const *)(_src))->p, \
-				char const *		: (char const *)(_src), \
-				char *			: (char const *)(_src), \
-				size_t			: ((_dst)->p += (uintptr_t)(_src)) \
-		     ))
-
-/** Change the position in the buffer a marker points to
- *
- * @param[in] m		marker to alter.
- * @param[in] n	how much to advance the marker by.
- * @return
- *	- 0 on failure (p out of range), marker position will remain unchanged.
- *	- >0 the number of bytes the marker advanced.
- *	- <0 the number of bytes the marker retreated.
- */
-static inline ssize_t fr_sbuff_marker_advance(fr_sbuff_marker_t *m, size_t n)
-{
-	/* overflow conditions */
-	if (unlikely((n > (SIZE_MAX - (uintptr_t)m->p)) || ((m->p + n) > m->parent->end))) return 0;
-	if (n == 0) return 0;
-
-	return fr_sbuff_marker_set(m, m->p + n);
 }
 /** @} */
 
