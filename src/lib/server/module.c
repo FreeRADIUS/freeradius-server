@@ -741,13 +741,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	module has no named methods.  Try to return a
 		 *	method based on the component.
 		 */
-		if (!method_name1 || !mi->module->method_names) {
-			if (component && mi->module->methods[*component]) {
-				*method = mi->module->methods[*component];
-			}
-
-			return mi;
-		}
+		if (!method_name1 || !mi->module->method_names) goto return_component;
 
 		/*
 		 *	Walk through the module, finding a matching
@@ -854,6 +848,15 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 
 				if (strcmp(methods->name2, allowed->name2) == 0) goto found_allowed;
 			}
+		}
+
+	return_component:
+		/*
+		 *	No matching method.  Just return a method
+		 *	based on the component.
+		 */
+		if (component && mi->module->methods[*component]) {
+			*method = mi->module->methods[*component];
 		}
 
 		/*
