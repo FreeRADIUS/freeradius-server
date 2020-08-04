@@ -207,6 +207,7 @@ size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)  
 
 void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
+time_t		fr_utc_to_time(struct tm *tm) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

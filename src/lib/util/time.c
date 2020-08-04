@@ -627,3 +627,23 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 		}
 	}
 }
+
+/*
+ *	Based on https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
+ */
+time_t fr_utc_to_time(struct tm *tm)
+{
+	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
+						181, 212, 243, 273, 304, 334};
+
+	uint32_t year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
+	uint32_t febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
+	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
+	uint32_t days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
+
+	/*
+	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
+	 *	(365.2425 * (4800 + 1970))
+	 */
+	return (days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
+}
