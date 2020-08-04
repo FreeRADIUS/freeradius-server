@@ -557,8 +557,9 @@ void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	if (request->module && (request->module[0] != '\0')) {
 		fr_pair_value_asprintf(vp, "%s: %s", request->module, p);
 	} else {
-		fr_pair_value_asprintf(vp, "%s", p);
+		fr_pair_value_strdup(vp, p);
 	}
+
 	talloc_free(p);
 }
 
