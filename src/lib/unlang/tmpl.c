@@ -313,12 +313,13 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	 *	can't get the PID, call it a failure and clean up the
 	 *	PID at some point later in time.
 	 */
-	fr_assert(state->pid > 0);
-
-	if (waitpid(state->pid, &state->status, WNOHANG) == 0) {
-		state->failed = true;
-	} else {
-		state->pid = 0;
+	if (state->pid > 0) {
+		if (waitpid(state->pid, &state->status, WNOHANG) == state->pid) {
+			state->pid = 0;
+		} else {
+			RDEBUG("Failed waiting for program - continuing as if it had failed");
+			state->failed = true;
+		}
 	}
 
 	unlang_tmpl_exec_cleanup(request);
