@@ -4,23 +4,23 @@
 
 test
 
-if ("%{request:Module-Failure-Message[4]}" != 'test: RERROR error message') {
+if (&request:Module-Failure-Message[4] != 'test: RERROR error message') {
 	test_fail
 }
 
-if ("%{request:Module-Failure-Message[3]}" != 'test: RDEBUG error message') {
+if (&request:Module-Failure-Message[3] != 'test: RDEBUG error message') {
 	test_fail
 }
 
-if ("%{request:Module-Failure-Message[2]}" != 'test: RDEBUG2 error message') {
+if (&request:Module-Failure-Message[2] != 'test: RDEBUG2 error message') {
 	test_fail
 }
 
-if ("%{request:Module-Failure-Message[1]}" != 'test: RDEBUG3 error message') {
+if (&request:Module-Failure-Message[1] != 'test: RDEBUG3 error message') {
 	test_fail
 }
 
-if ("%{request:Module-Failure-Message[0]}" != 'test: RDEBUG4 error message') {
+if (&request:Module-Failure-Message[0] != 'test: RDEBUG4 error message') {
 	test_fail
 }
 
