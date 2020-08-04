@@ -334,15 +334,16 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 	}
 
 	fr_assert(state->pid == 0);
-	if (state->status_p) *state->status_p = state->status;
 
 	if (state->status != 0) {
 		if (WIFEXITED(state->status)) {
 			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->status));
 			state->status = WEXITSTATUS(state->status);
+
 		} else if (WIFSIGNALED(state->status)) {
 			RDEBUG("Program exited due to signal with status code %d", WTERMSIG(state->status));
 			state->status = -WTERMSIG(state->status);
+
 		} else {
 			RDEBUG("Program exited due to unknown status %d", state->status);
 			state->status = -state->status;
@@ -351,6 +352,11 @@ static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t
 		fr_assert(state->box == NULL);
 		goto resume;
 	}
+
+	/*
+	 *	Save the *mangled* exit status, not the raw one.
+	 */
+	if (state->status_p) *state->status_p = state->status;
 
 	/*
 	 *	We might want to just get the status of the program,
