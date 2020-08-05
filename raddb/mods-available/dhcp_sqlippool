@@ -30,7 +30,7 @@ sqlippool dhcp_sqlippool {
 	pool_name = "Pool-Name"
 
 	# SQL table to use for ippool range and lease info
-	ippool_table = "radippool"
+	ippool_table = "dhcpippool"
 
 	# IP lease duration. (Leases expire even if no DHCP-Release packet is received)
 	lease_duration = 7200
