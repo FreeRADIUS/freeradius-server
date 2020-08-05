@@ -1352,6 +1352,23 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 
 	if (!file) return 0;
 
+	/*
+	 * Prior to trying to load the file, check what OpenSSL will do with it.
+	 *
+	 * Certain downstreams (such as RHEL) will ignore user-provided dhparams
+	 * in FIPS mode, unless the specified parameters are FIPS-approved.
+	 * However, since OpenSSL >= 1.1.1 will automatically select parameters
+	 * anyways, there's no point in attempting to load them.
+	 *
+	 * Change suggested by @t8m
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (FIPS_mode() > 0) {
+		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
+		return;
+	}
+#endif
+
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		ERROR(LOG_PREFIX ": Unable to open DH file - %s", file);
 		return -1;
