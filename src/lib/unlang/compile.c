@@ -2051,7 +2051,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (mod_type == UNLANG_TYPE_POLICY) {
 		MEM(c->debug_name = talloc_typed_asprintf(c, "policy %s", name1));
 
-	else if (!name2) {
+	} else if (!name2) {
 		c->debug_name = c->name;
 
 	} else {
