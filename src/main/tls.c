@@ -1365,7 +1365,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	if (FIPS_mode() > 0) {
 		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
-		return;
+		return 0;
 	}
 #endif
 
