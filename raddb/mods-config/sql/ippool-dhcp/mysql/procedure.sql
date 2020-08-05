@@ -17,11 +17,9 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
--- 	CALL fr_allocate_previous_or_new_framedipaddress( \
+-- 	CALL fr_dhcp_allocate_previous_or_new_framedipaddress( \
 -- 		'%{control:${pool_name}}', \
--- 		'%{User-Name}', \
--- 		'%{Calling-Station-Id}', \
--- 		'%{NAS-IP-Address}', \
+-- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
 -- 		${lease_duration} \
 -- 	)"
@@ -31,13 +29,11 @@
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS fr_allocate_previous_or_new_framedipaddress;
-CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
-        IN v_pool_name VARCHAR(64),
-        IN v_username VARCHAR(64),
-        IN v_callingstationid VARCHAR(64),
-        IN v_nasipaddress VARCHAR(15),
-        IN v_pool_key VARCHAR(64),
+DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_framedipaddress;
+CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress (
+        IN v_pool_name VARCHAR(30),
+        IN v_gatewayipaddress VARCHAR(15),
+        IN v_pool_key VARCHAR(30),
         IN v_lease_duration INT
 )
 proc:BEGIN
@@ -50,7 +46,7 @@ proc:BEGIN
         -- Reissue an existing IP address lease when re-authenticating a session
         --
         SELECT framedipaddress INTO r_address
-        FROM radippool
+        FROM dhcpippool
         WHERE pool_name = v_pool_name
                 AND expiry_time > NOW()
                 AND pool_key = v_pool_key
@@ -74,7 +70,7 @@ proc:BEGIN
         -- for expired leases.
         --
         -- SELECT framedipaddress INTO r_address
-        -- FROM radippool
+        -- FROM dhcpippool
         -- WHERE pool_name = v_pool_name
         --         AND pool_key = v_pool_key
         -- LIMIT 1
@@ -87,7 +83,7 @@ proc:BEGIN
         --
         IF r_address IS NULL THEN
                 SELECT framedipaddress INTO r_address
-                FROM radippool
+                FROM dhcpippool
                 WHERE pool_name = v_pool_name
                         AND expiry_time < NOW()
                 ORDER BY
@@ -106,12 +102,10 @@ proc:BEGIN
 
         -- Update the pool having allocated an IP address
         --
-        UPDATE radippool
+        UPDATE dhcpippool
         SET
-                nasipaddress = v_nasipaddress,
+                gatewayipaddress = v_gatewayipaddress,
                 pool_key = v_pool_key,
-                callingstationid = v_callingstationid,
-                username = v_username,
                 expiry_time = NOW() + INTERVAL v_lease_duration SECOND
         WHERE framedipaddress = r_address;
 

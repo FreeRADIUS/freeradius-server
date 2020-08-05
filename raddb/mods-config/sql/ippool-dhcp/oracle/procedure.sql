@@ -17,11 +17,9 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---         SELECT fr_allocate_previous_or_new_framedipaddress( \
+--         SELECT fr_dhcp_allocate_previous_or_new_framedipaddress( \
 --                 '%{control:${pool_name}}', \
---                 '%{User-Name}', \
---                 '%{%{Calling-Station-Id}:-0}', \
---                 '%{NAS-IP-Address}', \
+--                 '%{DHCP-Gateway-IP-Address}', \
 --                 '${pool_key}', \
 --                 ${lease_duration} \
 --         ) FROM dual"
@@ -29,11 +27,9 @@
 -- allocate_commit = ""
 --
 
-CREATE OR REPLACE FUNCTION fr_allocate_previous_or_new_framedipaddress (
+CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
         v_pool_name IN VARCHAR2,
-        v_username IN VARCHAR2,
-        v_callingstationid IN VARCHAR2,
-        v_nasipaddress IN VARCHAR2,
+        v_gatewayipaddress IN VARCHAR2,
         v_pool_key IN VARCHAR2,
         v_lease_duration IN INTEGER
 )
@@ -45,10 +41,10 @@ BEGIN
         -- Reissue an existing IP address lease when re-authenticating a session
         --
           BEGIN
-                SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
+                SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
                         SELECT id FROM (
                                 SELECT *
-                                FROM radippool
+                                FROM dhcpippool
                                 WHERE pool_name = v_pool_name
                                         AND expiry_time > current_timestamp
                                         AND pool_key = v_pool_key
@@ -62,8 +58,8 @@ BEGIN
         -- Oracle >= 12c version of the above query
         --
         -- BEGIN
-        --       SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
-        --               SELECT id FROM radippool
+        --       SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+        --               SELECT id FROM dhcpippool
         --               WHERE pool_name = v_pool_name
         --                       AND expiry_time > current_timestamp
         --                       AND pool_key = v_pool_key
@@ -82,10 +78,10 @@ BEGIN
         -- for expired leases.
         --
         -- BEGIN
-        --         SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
+        --         SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
         --                 SELECT id FROM (
         --                         SELECT *
-        --                         FROM radippool
+        --                         FROM dhcpippool
         --                         WHERE pool_name = v_pool_name
         --                                 AND pool_key = v_pool_key
         --                 ) WHERE ROWNUM <= 1
@@ -98,8 +94,8 @@ BEGIN
         -- Oracle >= 12c version of the above query
         --
         -- BEGIN
-        --       SELECT framedipaddress INTO r_address FROM radippool WHERE id IN (
-        --               SELECT id FROM radippool
+        --       SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+        --               SELECT id FROM dhcpippool
         --               WHERE pool_name = v_pool_name
         --                       AND pool_key = v_pool_key
         --               FETCH FIRST 1 ROWS ONLY
@@ -120,7 +116,7 @@ BEGIN
 		BEGIN
 			OPEN l_cursor FOR
 				SELECT framedipaddress
-				FROM radippool
+				FROM dhcpippool
 				WHERE pool_name = v_pool_name
 				AND expiry_time < CURRENT_TIMESTAMP
 				ORDER BY expiry_time
@@ -143,12 +139,10 @@ BEGIN
 
         -- Update the pool having allocated an IP address
         --
-        UPDATE radippool
+        UPDATE dhcpippool
         SET
-                nasipaddress = v_nasipaddress,
+                gatewayipaddress = v_gatewayipaddress,
                 pool_key = v_pool_key,
-                callingstationid = v_callingstationid,
-                username = v_username,
                 expiry_time = CURRENT_TIMESTAMP + v_lease_duration * INTERVAL '1' SECOND(1)
         WHERE framedipaddress = r_address;
 

@@ -29,11 +29,9 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
--- 	CALL fr_allocate_previous_or_new_framedipaddress( \
+-- 	CALL fr_dhcp_allocate_previous_or_new_framedipaddress( \
 -- 		'%{control:${pool_name}}', \
--- 		'%{User-Name}', \
--- 		'%{Calling-Station-Id}', \
--- 		'%{NAS-IP-Address}', \
+-- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
 -- 		${lease_duration} \
 -- 	)"
@@ -43,12 +41,10 @@
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS fr_allocate_previous_or_new_framedipaddress;
+DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_framedipaddress;
 CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
         IN v_pool_name VARCHAR(64),
-        IN v_username VARCHAR(64),
-        IN v_callingstationid VARCHAR(64),
-        IN v_nasipaddress VARCHAR(15),
+        IN v_gatewayipaddress VARCHAR(15),
         IN v_pool_key VARCHAR(64),
         IN v_lease_duration INT
 )
@@ -58,7 +54,7 @@ proc:BEGIN
         -- Reissue an existing IP address lease when re-authenticating a session
         --
         SELECT framedipaddress INTO r_address
-        FROM radippool
+        FROM dhcpippool
         WHERE pool_name = v_pool_name
                 AND expiry_time > NOW()
                 AND pool_key = v_pool_key
@@ -72,18 +68,16 @@ proc:BEGIN
         -- for expired leases.
         --
         -- SELECT framedipaddress INTO r_address
-        -- FROM radippool
+        -- FROM dhcpippool
         -- WHERE pool_name = v_pool_name
         --         AND pool_key = v_pool_key
         -- LIMIT 1;
 
         IF r_address IS NOT NULL THEN
-                UPDATE radippool
+                UPDATE dhcpippool
                 SET
-                        nasipaddress = v_nasipaddress,
+                        gatewayipaddress = v_gatewayipaddress,
                         pool_key = v_pool_key,
-                        callingstationid = v_callingstationid,
-                        username = v_username,
                         expiry_time = NOW() + INTERVAL v_lease_duration SECOND
                 WHERE
                         framedipaddress = r_address;
@@ -98,7 +92,7 @@ proc:BEGIN
                 -- of re-assigning the other addresses to their recent user
                 --
                 SELECT framedipaddress INTO r_address
-                FROM radippool
+                FROM dhcpippool
                 WHERE pool_name = v_pool_name
                         AND expiry_time < NOW()
                 --
@@ -111,20 +105,18 @@ proc:BEGIN
                 -- to reorder the WHERE condition. Therefore we must recheck the condition
                 -- in the UPDATE statement below to detect this race.
                 --
-                        AND GET_LOCK(CONCAT('radippool_', framedipaddress), 0) = 1
+                        AND GET_LOCK(CONCAT('dhcpippool_', framedipaddress), 0) = 1
                 LIMIT 1;
 
                 IF r_address IS NULL THEN
-                        DO RELEASE_LOCK(CONCAT('radippool_', r_address));
+                        DO RELEASE_LOCK(CONCAT('dhcpippool_', r_address));
                         LEAVE proc;
                 END IF;
 
-                UPDATE radippool
+                UPDATE dhcpippool
                 SET
-                        nasipaddress = v_nasipaddress,
+                        gatewayipaddress = v_gatewayipaddress,
                         pool_key = v_pool_key,
-                        callingstationid = v_callingstationid,
-                        username = v_username,
                         expiry_time = NOW() + INTERVAL v_lease_duration SECOND
                 WHERE
                         framedipaddress = r_address
@@ -136,7 +128,7 @@ proc:BEGIN
 
         UNTIL ROW_COUNT() <> 0 END REPEAT;
 
-        DO RELEASE_LOCK(CONCAT('radippool_', r_address));
+        DO RELEASE_LOCK(CONCAT('dhcpippool_', r_address));
         SELECT r_address;
 
 END$$
