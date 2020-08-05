@@ -41,7 +41,7 @@ do { \
 #define TEST_CHECK_STRCMP(_exp, _got) \
 do { \
 	char *_our_got = (_got); \
-	TEST_CHECK((_exp) && (_got) && (strcmp(_exp, _our_got) == 0)); \
+	TEST_CHECK(((_exp) != NULL) && ((_got) != NULL) && (strcmp(_exp, _our_got) == 0)); \
 	TEST_MSG("Expected : \"%s\"", _exp); \
 	TEST_MSG("Got      : \"%s\"", _our_got); \
 } while(0)
