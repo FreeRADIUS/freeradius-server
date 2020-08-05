@@ -12,4 +12,4 @@ CREATE TABLE dhcpippool (
 
 CREATE INDEX dhcpippool_poolname_expire ON dhcpippool(pool_name, expiry_time);
 CREATE INDEX dhcpippool_framedipaddress ON dhcpippool(framedipaddress);
-CREATE INDEX dhcpippool_nasip_poolkey_ipaddress ON dhcpippool(pool_name, pool_key, framedipaddress);
+CREATE INDEX dhcpippool_poolname_poolkey_ipaddress ON dhcpippool(pool_name, pool_key, framedipaddress);
