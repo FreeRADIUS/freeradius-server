@@ -2044,8 +2044,16 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	name2 = cf_section_name2(cs);
 	c->name = name1;
 
-	if (!name2) {
+	/*
+	 *	Make sure to tell the user that we're running a
+	 *	policy, and not anything else.
+	 */
+	if (mod_type == UNLANG_TYPE_POLICY) {
+		MEM(c->debug_name = talloc_typed_asprintf(c, "policy %s", name1));
+
+	else if (!name2) {
 		c->debug_name = c->name;
+
 	} else {
 		MEM(c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2));
 	}
