@@ -545,7 +545,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 				break;
 
 			default:
-				fr_strerror_printf("Failed to find expected value on right hand side");
+				fr_strerror_printf("Failed to find expected value on right hand side in %s", da->name);
 				goto error;
 			}
 
