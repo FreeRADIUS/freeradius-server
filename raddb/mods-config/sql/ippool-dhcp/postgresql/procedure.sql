@@ -47,6 +47,7 @@ BEGIN
 		WHERE pool_name = v_pool_name
 			AND pool_key = v_pool_key
 			AND expiry_time > NOW()
+			AND status IN ('dynamic', 'static')
 		LIMIT 1 FOR UPDATE SKIP LOCKED )
 	UPDATE dhcpippool
 	SET expiry_time = NOW() + v_lease_duration * interval '1 sec'
@@ -64,6 +65,7 @@ BEGIN
 	--	SELECT framedipaddress FROM dhcpippool
 	--	WHERE pool_name = v_pool_name
 	--		AND pool_key = v_pool_key
+	--		AND status IN ('dynamic', 'static')
 	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
 	-- UPDATE dhcpippool
 	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
@@ -79,6 +81,7 @@ BEGIN
 			SELECT framedipaddress FROM dhcpippool
 			WHERE pool_name = v_pool_name
 				AND expiry_time < NOW()
+				AND status = 'dynamic'
 			ORDER BY expiry_time
 			LIMIT 1 FOR UPDATE SKIP LOCKED )
 		UPDATE dhcpippool

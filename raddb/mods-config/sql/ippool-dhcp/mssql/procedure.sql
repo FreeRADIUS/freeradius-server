@@ -55,9 +55,12 @@ AS
 		WITH cte AS (
 			SELECT TOP(1) FramedIPAddress
 			FROM dhcpippool
+			JOIN dhcpstatus
+			ON dhcpstatus.status_id = dhcpippool.status_id
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
 				AND pool_key = @v_pool_key
+				AND dhcpstatus.status IN ('dynamic', 'static')
 		)
 		UPDATE cte WITH (rowlock, readpast)
 		SET FramedIPAddress = FramedIPAddress
@@ -74,8 +77,11 @@ AS
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) FramedIPAddress
 		-- 	FROM dhcpippool
+		--	JOIN dhcpstatus
+		--	ON dhcpstatus.status_id = dhcpippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
 		-- 		AND pool_key = @v_pool_key
+		--		AND dhcpstatus.status IN ('dynamic', 'static')
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
 		-- SET FramedIPAddress = FramedIPAddress
@@ -91,8 +97,11 @@ AS
 			WITH cte AS (
 				SELECT TOP(1) FramedIPAddress
 				FROM dhcpippool
+				JOIN dhcpstatus
+				ON dhcpstatus.status_id = dhcpippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND expiry_time < CURRENT_TIMESTAMP
+					AND dhcpstatus.status = 'dynamic'
 				ORDER BY
 					expiry_time
 			)
