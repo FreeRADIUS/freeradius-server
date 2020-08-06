@@ -40,6 +40,7 @@ extern fr_dict_attr_t const *attr_tacacs_client_port;
 extern fr_dict_attr_t const *attr_tacacs_data;
 extern fr_dict_attr_t const *attr_tacacs_flags;
 extern fr_dict_attr_t const *attr_tacacs_packet;
+extern fr_dict_attr_t const *attr_tacacs_packet_body_type;
 extern fr_dict_attr_t const *attr_tacacs_packet_type;
 extern fr_dict_attr_t const *attr_tacacs_privilege_level;
 extern fr_dict_attr_t const *attr_tacacs_remote_address;

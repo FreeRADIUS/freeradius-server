@@ -132,6 +132,11 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 			}
 			remaining -= 8;
 
+			vp = fr_pair_afrom_da(packet, attr_tacacs_packet_body_type);
+			if (!vp) goto oom;
+			vp->vp_uint8 = TACACS_PACKET_BODY_TYPE_START;
+			fr_cursor_append(&cursor, vp);
+
 			/*
 			 *	Decode 4 octets of various flags.
 			 */
@@ -188,6 +193,12 @@ int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
 				return -1;
 			}
 			remaining -= 5;
+
+			vp = fr_pair_afrom_da(packet, attr_tacacs_packet_body_type);
+			if (!vp) goto oom;
+			vp->vp_uint8 = TACACS_PACKET_BODY_TYPE_CONTINUE;
+			fr_cursor_append(&cursor, vp);
+
 
 			/*
 			 *	Decode 2 fields, based on their 'length'
