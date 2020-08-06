@@ -1,25 +1,26 @@
 --
--- Table structure for table 'radippool'
+-- Table structure for table 'dhcpippool'
 --
-CREATE TABLE radippool (
+-- See also "procedure.sql" in this directory for
+-- a stored procedure that gives much faster response.
+--
+
+CREATE TABLE dhcpippool (
   id                    int IDENTITY (1,1) NOT NULL,
   pool_name             varchar(30) NOT NULL,
   FramedIPAddress       varchar(15) NOT NULL default '',
-  NASIPAddress          varchar(15) NOT NULL default '',
-  CalledStationId       VARCHAR(32) NOT NULL default '',
-  CallingStationId      VARCHAR(30) NOT NULL default '',
-  expiry_time           DATETIME NOT NULL default CURRENT_TIMESTAMP,
-  UserName              varchar(64) NOT NULL default '',
   pool_key              varchar(30) NOT NULL default '',
+  GatewayIPAddress      varchar(15) NOT NULL default '',
+  expiry_time           DATETIME NOT NULL default CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 )
 GO
 
-CREATE INDEX poolname_expire ON radippool(pool_name, expiry_time)
+CREATE INDEX dhcp_poolname_expire ON dhcpippool(pool_name, expiry_time)
 GO
 
-CREATE INDEX FramedIPAddress ON radippool(FramedIPAddress)
+CREATE INDEX dhcp_FramedIPAddress ON dhcpippool(FramedIPAddress)
 GO
 
-CREATE INDEX poolname_poolkey_FramedIPAddress ON radippool(pool_name, pool_key, FramedIPAddress)
+CREATE INDEX dhcp_poolname_poolkey_FramedIPAddress ON dhcpippool(pool_name, pool_key, FramedIPAddress)
 GO
