@@ -377,7 +377,7 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 	 * But ubsan still flags this, grrr.
 	 */
 	if (inlen > 0) memcpy(p, in, inlen - 1);
-	p[inlen] = '\0';
+	p[inlen - 1] = '\0';
 
 	return p;
 }
