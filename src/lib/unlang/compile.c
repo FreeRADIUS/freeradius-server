@@ -1358,7 +1358,7 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 }
 
 
-static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
+static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 {
 	int i;
 
@@ -1382,7 +1382,7 @@ static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_c
 			}
 		}
 
-		return c;
+		return;
 	}
 
 	/*
@@ -1394,11 +1394,6 @@ static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_c
 			c->actions[i] = unlang_ctx->actions[0][i];
 		}
 	}
-
-	/*
-	 *	FIXME: If there are no children, return NULL?
-	 */
-	return c;
 }
 
 static int compile_map_name(unlang_group_t *g)
@@ -1554,8 +1549,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	}
 	c = unlang_group_to_generic(g);
 
-	(void) compile_action_defaults(c, unlang_ctx);
-
 	g->map = talloc_steal(g, head);
 	if (vpt) g->vpt = talloc_steal(g, vpt);
 	g->proc_inst = proc_inst;
@@ -1574,8 +1567,8 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		return NULL;
 	}
 
+	compile_action_defaults(c, unlang_ctx);
 	return c;
-
 }
 
 static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
@@ -1622,8 +1615,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->debug_name = c->name;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx);
-
 	g->map = talloc_steal(g, head);
 
 	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
@@ -1631,6 +1622,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
+	compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -1678,8 +1670,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->debug_name = c->name;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx);
-
 	g->map = talloc_steal(g, head);
 
 	/*
@@ -1690,6 +1680,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
+	compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -1812,7 +1803,8 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		}
 	}
 
-	return compile_action_defaults(c, unlang_ctx);
+	compile_action_defaults(c, unlang_ctx);
+	return c;
 }
 
 
@@ -2011,7 +2003,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 		}
 	}
 
-	return compile_action_defaults(c, unlang_ctx);
+	compile_action_defaults(c, unlang_ctx);
+	return c;
 }
 
 
@@ -2476,8 +2469,6 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 		ut->inline_exec = true;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx);
-
 	slen = tmpl_afrom_str(ut, &vpt, p, talloc_array_length(p) - 1, T_DOUBLE_QUOTED_STRING, unlang_ctx->rules, true);
 	if (slen <= 0) {
 		char *spaces, *text;
@@ -2516,6 +2507,8 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	tmpl_xlat(vpt) = head;
 
 	ut->tmpl = vpt;	/* const issues */
+
+	compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -3226,12 +3219,14 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	c->parent = parent;
 	c->next = NULL;
 
-	(void) compile_action_defaults(c, unlang_ctx);
-
 	c->name = talloc_typed_strdup(c, realname);
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_MODULE;
 
+	/*
+	 *	Set the default actions, and then try to compile an action subsection.
+	 */
+	compile_action_defaults(c, unlang_ctx);
 	if (!compile_action_section(c, ci)) {
 		talloc_free(c);
 		return NULL;
