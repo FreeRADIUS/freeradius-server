@@ -1,22 +1,22 @@
 --
--- Table structure for table 'radippool'
+-- Table structure for table 'dhcpippool'
 --
--- See also "procedure.sql" in this directory for additional
--- indices and a stored procedure that is much faster.
+-- See also "procedure.sql" in this directory for
+-- a stored procedure that can give faster response.
 --
 
-CREATE TABLE radippool (
+CREATE TYPE dhcp_status AS ENUM ('dynamic', 'static', 'declined', 'disabled');
+
+CREATE TABLE dhcpippool (
 	id			BIGSERIAL PRIMARY KEY,
 	pool_name		varchar(64) NOT NULL,
 	FramedIPAddress		INET NOT NULL,
-	NASIPAddress		VARCHAR(16) NOT NULL default '',
-	pool_key		VARCHAR(64) NOT NULL default 0,
-	CalledStationId		VARCHAR(64),
-	CallingStationId	text NOT NULL default ''::text,
+	pool_key		VARCHAR(64) NOT NULL default '0',
+	GatewayIPAddress	VARCHAR(16) NOT NULL default '',
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default NOW(),
-	username		text DEFAULT ''::text
+	status			dhcp_status DEFAULT 'dynamic'
 );
 
-CREATE INDEX radippool_poolname_expire ON radippool USING btree (pool_name, expiry_time);
-CREATE INDEX radippool_framedipaddress ON radippool USING btree (framedipaddress);
-CREATE INDEX radippool_poolname_poolkey_ipaddress ON radippool USING btree (pool_name, pool_key, framedipaddress);
+CREATE INDEX dhcpippool_poolname_expire ON dhcpippool USING btree (pool_name, expiry_time);
+CREATE INDEX dhcpippool_framedipaddress ON dhcpippool USING btree (framedipaddress);
+CREATE INDEX dhcpippool_poolname_poolkey_ipaddress ON dhcpippool USING btree (pool_name, pool_key, framedipaddress);
