@@ -3343,11 +3343,11 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
 		return NULL;
 
-		/*
-		 *	Else it's a module reference, with updated return
-		 *	codes.
-		 */
 	} else {
+		/*
+		 *	Else it's a module reference such as "sql", OR
+		 *	one of the few bare keywords that we allow.
+		 */
 		CONF_PAIR *cp = cf_item_to_pair(ci);
 		modrefname = cf_pair_attr(cp);
 
@@ -3369,38 +3369,38 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
-	}
-
-	/*
-	 *	These can't be over-ridden.
-	 */
-	if (strcmp(modrefname, "break") == 0) {
-		return compile_break(parent, unlang_ctx, ci);
-	}
-
-	if (strcmp(modrefname, "detach") == 0) {
-		return compile_detach(parent, unlang_ctx, ci);
-	}
-
-	if (strcmp(modrefname, "return") == 0) {
-		c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
-		if (!c) return NULL;
 
 		/*
-		 *	These types are all parallel, and therefore can have a "return" in them.
+		 *	These can't be over-ridden.
 		 */
-		switch (parent->type) {
-		case UNLANG_TYPE_LOAD_BALANCE:
-		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-		case UNLANG_TYPE_PARALLEL:
-			break;
-
-		default:
-			parent->closed = ci;
-			break;
+		if (strcmp(modrefname, "break") == 0) {
+			return compile_break(parent, unlang_ctx, ci);
 		}
 
-		return c;
+		if (strcmp(modrefname, "detach") == 0) {
+			return compile_detach(parent, unlang_ctx, ci);
+		}
+
+		if (strcmp(modrefname, "return") == 0) {
+			c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
+			if (!c) return NULL;
+
+			/*
+			 *	These types are all parallel, and therefore can have a "return" in them.
+			 */
+			switch (parent->type) {
+			case UNLANG_TYPE_LOAD_BALANCE:
+			case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+			case UNLANG_TYPE_PARALLEL:
+				break;
+
+			default:
+				parent->closed = ci;
+				break;
+			}
+
+			return c;
+		}
 	}
 
 	/*
