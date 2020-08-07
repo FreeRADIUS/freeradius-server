@@ -15,7 +15,7 @@ CREATE TABLE dhcpippool (
 	pool_name		VARCHAR(30) NOT NULL,
 	framedipaddress		VARCHAR(15) NOT NULL,
 	pool_key		VARCHAR(30) NOT NULL,
-	gatewayipaddress	VARCHAR(15) NOT NULL,
+	gateway			VARCHAR(15) NOT NULL,
 	expiry_time		TIMESTAMP(0) NOT NULL,
 	status_id		INT DEFAULT 1,
 	FOREIGN KEY (status_id) REFERENCES dhcpstatus(status_id)

@@ -6,7 +6,7 @@ CREATE TABLE dhcpippool (
 	pool_name		varchar(30) NOT NULL,
 	framedipaddress		varchar(15) NOT NULL DEFAULT '',
 	pool_key		varchar(30) NOT NULL DEFAULT '',
-	gatewayipaddress	varchar(15) NOT NULL DEFAULT '',
+	gateway			varchar(15) NOT NULL DEFAULT '',
 	expiry_time		DATETIME NOT NULL DEFAULT NOW(),
 	status			ENUM('dynamic', 'static', 'declined', 'disabled') DEFAULT 'dynamic',
 	PRIMARY KEY (id),

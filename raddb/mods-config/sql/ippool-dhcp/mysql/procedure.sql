@@ -32,7 +32,7 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_framedipaddress;
 CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress (
 	IN v_pool_name VARCHAR(64),
-	IN v_gatewayipaddress VARCHAR(15),
+	IN v_gateway VARCHAR(15),
 	IN v_pool_key VARCHAR(64),
 	IN v_lease_duration INT
 )
@@ -107,7 +107,7 @@ proc:BEGIN
 	--
 	UPDATE radippool
 	SET
-		gatewayipaddress = v_gatewayipaddress,
+		gateway = v_gateway,
 		pool_key = v_pool_key,
 		expiry_time = NOW() + INTERVAL v_lease_duration SECOND
 	WHERE framedipaddress = r_address;

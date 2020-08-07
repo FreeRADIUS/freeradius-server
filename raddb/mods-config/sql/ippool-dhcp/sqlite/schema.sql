@@ -13,7 +13,7 @@ CREATE TABLE dhcpippool (
 	pool_name		varchar(30) NOT NULL,
 	framedipaddress		varchar(15) NOT NULL,
 	pool_key		varchar(30) NOT NULL DEFAULT '',
-	gatewayipaddress	varchar(15) NOT NULL DEFAULT '',
+	gateway			varchar(15) NOT NULL DEFAULT '',
 	expiry_time		DATETIME NOT NULL default (DATETIME('now')),
 	status_id		int NOT NULL DEFAULT 1,
 	FOREIGN KEY(status_id) REFERENCES dhcpstatus(status_id)
