@@ -1813,20 +1813,9 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 
 /* unlang_group_ts are grown by adding a unlang_t to the end */
-static bool add_child(unlang_group_t *g, unlang_t *c, CONF_ITEM *ci)
+static void add_child(unlang_group_t *g, unlang_t *c)
 {
-	if (!c) return true;
-
-	/*
-	 *	Check if the section is closed.  But the compiler
-	 *	closes the section BEFORE adding the child, so we have
-	 *	to double-check for the child here.
-	 */
-	if (g->self.closed && (g->self.closed != ci)) {
-		cf_log_err(ci, "Cannot add more items to section due to previous 'break' or 'return' at %s:%d",
-			cf_filename(g->self.closed), cf_lineno(g->self.closed));
-		return false;
-	}
+	if (!c) return;
 
 	(void) talloc_steal(g, c);
 
@@ -1840,8 +1829,6 @@ static bool add_child(unlang_group_t *g, unlang_t *c, CONF_ITEM *ci)
 
 	g->num_children++;
 	c->parent = unlang_group_to_generic(g);
-
-	return true;
 }
 
 /*
@@ -1943,10 +1930,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				talloc_free(c);
 				return NULL;
 			}
-			if (!add_child(g, single, ci)) {
-				talloc_free(c);
-				return NULL;
-			}
+			add_child(g, single);
 
 		} else if (cf_item_is_pair(ci)) {
 			char const *attr, *value;
@@ -1982,10 +1966,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 					talloc_free(c);
 					return NULL;
 				}
-				if (!add_child(g, single, ci)) {
-					talloc_free(c);
-					return NULL;
-				}
+				add_child(g, single);
 
 			} else if (!parent || (parent->type != UNLANG_TYPE_MODULE)) {
 				cf_log_err(cp, "Invalid location for action over-ride");
@@ -2415,7 +2396,7 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
 	if (!c) return NULL;
 
-	parent->closed = ci;
+	parent->closed = true;
 	return c;
 }
 
@@ -3395,7 +3376,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 				break;
 
 			default:
-				parent->closed = ci;
+				parent->closed = true;
 				break;
 			}
 

@@ -117,7 +117,7 @@ struct unlang_s {
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
-	CONF_ITEM const		*closed;       	//!< whether or not we can add any children, and where it was closed
+	bool			closed;		//!< whether or not this section is closed to new statements
 	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
 };
 
