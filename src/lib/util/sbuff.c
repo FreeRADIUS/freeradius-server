@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/thread_local.h>
 
@@ -209,7 +210,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 		 *	relative to content.
 		 */
 		update_ptr(buff, max_shift, sbuff_i->p);
-
+		update_ptr(buff, max_shift, sbuff_i->end);
 		sbuff_i->shifted += max_shift;
 
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
@@ -221,6 +222,47 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 #undef update_max_shift
 
 	return max_shift;
+}
+
+/** Refresh the buffer with more data from the file
+ *
+ */
+size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
+{
+	size_t			shifted, read, available;
+	fr_sbuff_uctx_file_t	*fctx = sbuff->uctx;
+
+	if (extension == SIZE_MAX) extension = 0;
+
+	if (fr_sbuff_used(sbuff)) {
+		/*
+		 *	Try and shift as much as we can out
+		 *	of the buffer to make space.
+		 *
+		 *	Note: p and markers are constraints here.
+		 */
+		shifted = fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
+	}
+
+	available = fctx->buff_end - sbuff->end;
+	if (available < extension) {
+		fr_strerror_printf("Can't satisfy extension request for %zu bytes", extension);
+		return 0;	/* There's no way we could satisfy the extension request */
+	}
+
+	read = fread(sbuff->end, 1, available, fctx->file);
+	sbuff->end += read;	/* Advance end, which increases fr_sbuff_remaining() */
+
+	/** Check for errors
+	 */
+	if (read < available) {
+		if (!feof(fctx->file)) {	/* It's a real error */
+			fr_strerror_printf("Error extending buffer: %s", fr_syserror(ferror(fctx->file)));
+			return 0;
+		}
+	}
+
+	return read;
 }
 
 /** Reallocate the current buffer

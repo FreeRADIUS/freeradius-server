@@ -34,6 +34,7 @@ extern "C" {
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <talloc.h>
@@ -102,6 +103,17 @@ typedef struct {
 	size_t			init;			//!< How much to allocate initially.
 	size_t			max;			//!< Maximum size of the buffer.
 } fr_sbuff_uctx_talloc_t;
+
+/** File sbuff extension structure
+ *
+ * Holds the data necessary for creating dynamically
+ * extensible file buffers.
+ */
+typedef struct {
+	FILE			*file;			//!< FILE * we're reading from.
+	char			*buff_end;		//!< The true end of the buffer.
+	size_t			max;			//!< Maximum number of bytes to read.
+} fr_sbuff_uctx_file_t;
 
 /** Terminal element with pre-calculated lengths
  *
@@ -280,6 +292,8 @@ void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
 size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
+size_t	fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension);
+
 size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
 
 int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
@@ -317,6 +331,38 @@ _Generic((_len_or_end), \
 	char *		: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), false), \
 	char const *	: _fr_sbuff_init(_out, _start, (char const *)(_len_or_end), true) \
 )
+
+/** Initialise a special sbuff which automatically reads in more data as the buffer is exhausted
+ *
+ * @param[out] sbuff	to initialise.
+ * @param[out] fctx	to initialise.  Must have a lifetime >= to the sbuff.
+ * @param[in] buff	Temporary buffer to use for storing file contents.
+ * @param[in] len	Length of the temporary buffer.
+ * @param[in] max	The maximum length of data to read from the file.
+ * @return
+ *	- The passed sbuff on success.
+ *	- NULL on failure.
+ */
+static inline fr_sbuff_t *fr_sbuff_init_file(fr_sbuff_t *sbuff, fr_sbuff_uctx_file_t *fctx,
+					     char *buff, size_t len, FILE *file, size_t max)
+{
+	*fctx = (fr_sbuff_uctx_file_t){
+		.file = file,
+		.max = max,
+		.buff_end = buff + len		//!< Store the real end
+	};
+
+	*sbuff = (fr_sbuff_t){
+		.buff = buff,
+		.start = buff,
+		.p = buff,
+		.end = buff,			//!< Starts with 0 bytes available
+		.extend = fr_sbuff_extend_file,
+		.uctx = fctx
+	};
+
+	return sbuff;
+}
 
 /** Initialise a special sbuff which automatically extends as additional data is written
  *
