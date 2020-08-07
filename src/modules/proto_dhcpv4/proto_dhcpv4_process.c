@@ -325,7 +325,7 @@ static virtual_server_compile_t compile_list[] = {
 		.component = MOD_POST_AUTH,
 	},
 	{
-		.name = "send",
+		.name = "recv",
 		.name2 = "DHCP-Decline",
 		.component = MOD_POST_AUTH,
 	},
