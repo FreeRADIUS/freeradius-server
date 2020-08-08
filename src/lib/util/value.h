@@ -71,6 +71,12 @@ extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
 
+extern fr_sbuff_escape_rules_t fr_value_escape_double;
+extern fr_sbuff_escape_rules_t fr_value_escape_single;
+extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
+extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
+extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
+
 typedef enum {
 	FR_VALUE_BOX_LIST_SINGLE = 0,				//!< Singly linked list.
 	FR_VALUE_BOX_LIST_DOUBLE,      				//!< Doubly linked list.
