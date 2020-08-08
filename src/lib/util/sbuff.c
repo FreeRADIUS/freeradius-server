@@ -22,6 +22,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
@@ -54,30 +55,26 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 #endif
 
 bool const sbuff_char_class_uint[UINT8_MAX + 1] = {
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true
+	SBUFF_CHAR_CLASS_NUM,
+	['+'] = true
 };
 
 bool const sbuff_char_class_int[UINT8_MAX + 1] = {
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	SBUFF_CHAR_CLASS_NUM,
 	['+'] = true, ['-'] = true
 };
 
 bool const sbuff_char_class_float[UINT8_MAX + 1] = {
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	SBUFF_CHAR_CLASS_NUM,
 	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
 };
 
-bool const sbuff_char_class_hex[UINT8_MAX + 1] = {
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
-	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
-	['f'] = true,
-	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true,
-	['F'] = true
-};
+bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
+bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
+
+/** Escape rules to use when an escape_rules pointer is NULL
+ */
+fr_sbuff_escape_rules_t escape_none = {};
 
 /** Copy function that allows overlapping memory ranges to be copied
  *
@@ -229,7 +226,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
  */
 size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 {
-	size_t			shifted, read, available;
+	size_t			read, available;
 	fr_sbuff_uctx_file_t	*fctx = sbuff->uctx;
 
 	if (extension == SIZE_MAX) extension = 0;
@@ -241,7 +238,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 		 *
 		 *	Note: p and markers are constraints here.
 		 */
-		shifted = fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
+		fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
 	}
 
 	available = fctx->buff_end - sbuff->end;
@@ -393,6 +390,7 @@ do { \
 #define CONSTRAINED_END(_sbuff, _max, _used) \
 	(((_max) - (_used)) > fr_sbuff_remaining(_sbuff) ? (_sbuff)->end : (_sbuff)->p + ((_max) - (_used)))
 
+
 /** Populate a terminal index
  *
  * @param[out] needle_len	the longest needle.
@@ -464,7 +462,18 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 		tlen = strlen(elem);
 
 		ret = strncasecmp(p, elem, tlen < (size_t)remaining ? tlen : (size_t)remaining);
-		if (ret == 0) return true;
+		if (ret == 0) {
+			/*
+			 *	If we have more text than the table element, that's fine
+			 */
+			if (remaining >= tlen) return true;
+
+			/*
+			 *	If input was shorter than the table element we need to
+			 *	keep searching.
+			 */
+			ret = -1;
+		}
 
 		if (ret < 0) {
 			end = mid - 1;
@@ -476,6 +485,86 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	}
 
 	return false;
+}
+
+/** Compare two terminal elements for ordering purposes
+ *
+ * @param[in] a		first terminal to compare.
+ * @param[in] b		second terminal to compare.
+ * @return
+ *	- >0 	if a > b.
+ *	- 0	if a == b.
+ *	- <0	if a < b.
+ */
+static inline int8_t terminal_cmp(void const *a, void const *b)
+{
+	fr_sbuff_term_elem_t const	*our_a = a;
+	fr_sbuff_term_elem_t const	*our_b = b;
+
+	int8_t	ret;
+	int	i_ret;
+
+	ret = (our_a->len > our_b->len) - (our_a->len < our_b->len);
+	if (ret != 0) return ret;
+
+	i_ret = memcmp(our_a->str, our_b->str, our_a->len);
+	return (i_ret > 0) - (i_ret < 0);
+}
+
+/** Merge two sets of terminal strings
+ *
+ * @param[in] ctx	to allocate the new terminal array in.
+ * @param[in] a		first set of terminals to merge.
+ * @param[in] b		second set of terminals to merge.
+ * @return A new set of de-duplicated and sorted terminals.
+ */
+fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t const *a, fr_sbuff_term_t const *b)
+{
+	size_t				i, j, k;
+	fr_sbuff_term_t			*new;
+	fr_sbuff_term_elem_t const	*tmp[UINT8_MAX + 1];
+
+	for (i = 0; i < a->len; i++) tmp[i] = &a->elem[i];
+	for (j = 0; j < b->len; i++, j++) tmp[i] = &b->elem[j];
+
+	if (likely(i > 1)) {
+		fr_quick_sort((void const **)tmp, 0, i, terminal_cmp);
+
+		for (j = 0; j < (i - 1); j++) {
+			/*
+			 *	Duplicate
+			 */
+			if (terminal_cmp(&tmp[j], &tmp[j + 1]) == 0) {
+				i--;
+				tmp[j] = NULL;
+			}
+		}
+	}
+
+	new = talloc_pooled_object(ctx, fr_sbuff_term_t, i, i * sizeof(fr_sbuff_term_elem_t));
+	if (unlikely(!new)) return NULL;
+
+	new->elem = talloc_array(new, fr_sbuff_term_elem_t, i);
+	if (unlikely(!new->elem)) {
+		talloc_free(new);
+		return NULL;
+	}
+
+	j = 0;	/* Tmp index */
+	k = 0;	/* How many non-nulls we've found */
+	while (j < i) {
+		if (tmp[j] == NULL) {
+			j++;
+			continue;
+		}
+
+		new->elem[k] = *tmp[j];
+		j++;
+		k++;
+	}
+	new->len = i;
+
+	return new;
 }
 
 /** Copy as many bytes as possible from a sbuff to a sbuff
@@ -696,17 +785,22 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   fr_sbuff_term_t const *tt,
 				   fr_sbuff_escape_rules_t const *rules)
 {
-	fr_sbuff_t 		our_in = FR_SBUFF_COPY(in);
+	fr_sbuff_t 		our_in;
 	bool			do_escape = false;		/* Track state across extensions */
 	fr_sbuff_marker_t	o_s;
 
 	uint8_t			idx[UINT8_MAX + 1];		/* Fast path index */
 	size_t			needle_len = 1;
 
+	/*
+	 *	If we don't need to do unescaping
+	 *	call a more suitable function.
+	 */
+	if (!rules || (rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
+
 	CHECK_SBUFF_INIT(in);
 
-	if (unlikely(rules->chr == '\0')) return 0;
-
+	our_in = FR_SBUFF_COPY(in);
 	fr_sbuff_marker(&o_s, out);
 
 	/*

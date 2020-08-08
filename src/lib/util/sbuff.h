@@ -169,6 +169,16 @@ typedef struct {
 	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
 } fr_sbuff_escape_rules_t;
 
+/** A set of terminal sequences, and escape rules
+ *
+ */
+typedef struct {
+	fr_sbuff_escape_rules_t const	*escapes;	//!< Escape characters
+
+	fr_sbuff_term_t const		*terminals;	//!< Terminal characters used as a hint
+							///< that a token is not complete.
+} fr_sbuff_parse_rules_t;
+
 typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
 	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token
@@ -185,6 +195,45 @@ extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
 extern bool const sbuff_char_class_float[UINT8_MAX + 1];
 extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
+extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
+
+/** Matches a-z,A-Z
+ */
+#define SBUFF_CHAR_CLASS_ALPHA \
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true, \
+	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true, \
+	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true, \
+	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true, \
+	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true, \
+	['z'] = true, \
+	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true, \
+	['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true,	['J'] = true, \
+	['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true,	['O'] = true, \
+	['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true,	['T'] = true, \
+	['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true,	['Y'] = true, \
+	['Z'] = true
+
+/** Matches 0-9
+ */
+#define SBUFF_CHAR_CLASS_NUM \
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true, \
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true
+
+/** Matches 0-9,a-z,A-Z
+ */
+#define SBUFF_CHAR_CLASS_ALPHA_NUM \
+	SBUFF_CHAR_CLASS_ALPHA, \
+	SBUFF_CHAR_CLASS_NUM
+
+/** Matches 0-9,a-f,A-F
+ */
+#define SBUFF_CHAR_CLASS_HEX \
+	SBUFF_CHAR_CLASS_NUM, \
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true, \
+	['f'] = true, \
+	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true, \
+	['F'] = true
+
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -874,6 +923,9 @@ do { \
  *
  * @{
  */
+fr_sbuff_term_t	*fr_sbuff_terminals_amerge(TALLOC_CTX *ctx,
+					   fr_sbuff_term_t const *a, fr_sbuff_term_t const *b);
+
 size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
@@ -954,6 +1006,30 @@ do { \
 			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
 			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
 	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
+	if (slen <= 0) { \
+		fr_sbuff_trim_talloc(&sbuff, 0); \
+		*out = sbuff.buff; \
+		return 0; \
+	} \
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
+	*out = sbuff.buff; \
+	return (size_t)slen; \
+}
+
+/** Build a talloc wrapper function for a fr_sbuff_out_* function
+ *
+ * @param[in] _func	to call.
+ * @param[in] _in	input sbuff arg.
+ * @param[in] _len	expected output len.
+ * @param[in] ...	additional arguments to pass to _func.
+ */
+#define SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(_func, ...) \
+{ \
+	fr_sbuff_t		sbuff; \
+	fr_sbuff_uctx_talloc_t	tctx; \
+	ssize_t			slen; \
+	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 256, SIZE_MAX); \
+	slen = _func(&sbuff, ##__VA_ARGS__); \
 	if (slen <= 0) { \
 		fr_sbuff_trim_talloc(&sbuff, 0); \
 		*out = sbuff.buff; \
@@ -1097,6 +1173,14 @@ static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[st
 	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
 	return chars[(uint8_t)*sbuff->p];
 }
+
+static inline bool fr_sbuff_is_str(fr_sbuff_t *sbuff, char const *str, size_t len)
+{
+	if (len == SIZE_MAX) len = strlen(str);
+	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return false;
+	return memcmp(sbuff->p, str, len) == 0;
+}
+#define fr_sbuff_is_str_literal(_sbuff, _str) fr_sbuff_is_str(_sbuff, _str, sizeof(_str) - 1)
 
 static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
 {
