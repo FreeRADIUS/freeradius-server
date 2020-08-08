@@ -65,6 +65,7 @@ typedef enum fr_token {
 	T_DOUBLE_QUOTED_STRING,		/* "foo" 	25 */
 	T_SINGLE_QUOTED_STRING,		/* 'foo' */
 	T_BACK_QUOTED_STRING,		/* `foo` */
+	T_SOLIDUS_QUOTED_STRING,	/* /foo/ */
 	T_TOKEN_LAST
 } fr_token_t;
 

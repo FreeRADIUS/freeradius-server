@@ -97,7 +97,8 @@ char const *fr_tokens[] = {
 	"<BARE-WORD>",
 	"<\"STRING\">",
 	"<'STRING'>",
-	"<`STRING`>"
+	"<`STRING`>",
+	"</STRING/>"
 };
 
 
@@ -135,6 +136,7 @@ const char fr_token_quote[] = {
 	'"',		/* "foo" 	25 */
 	'\'',		/* 'foo' */
 	'`',		/* `foo` */
+	'/',		/* /foo/ */
 	'?'
 };
 
