@@ -184,7 +184,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 	fr_json_format_t const *format = inst->format;
 
 	ssize_t slen;
-	vp_tmpl_t *vpt = NULL;
+	tmpl_t *vpt = NULL;
 	fr_cursor_t cursor;
 	fr_cursor_t filter;
 	VALUE_PAIR *json_vps = NULL;
@@ -227,7 +227,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 
 		/* Decode next attr template */
 		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1,
-			&(vp_tmpl_rules_t){ .dict_def = request->dict });
+			&(tmpl_rules_t){ .dict_def = request->dict });
 
 		if (slen <= 0) {
 			REMARKER(start, (p-start) + (-slen), "Invalid input");
@@ -309,7 +309,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    vp_tmpl_t const *src, vp_map_t const *maps)
+				    tmpl_t const *src, vp_map_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
 	vp_map_t const		*map;

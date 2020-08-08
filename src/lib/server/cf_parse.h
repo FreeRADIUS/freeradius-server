@@ -74,7 +74,7 @@ typedef void _mismatch_uint8_m;		//!< Dummy type used to indicate FR_TYPE_*/C ty
 typedef void _mismatch_uint8;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_tmpl_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 
 
@@ -129,10 +129,10 @@ __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !((_t) & FR_TYPE_MUL
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
 _Generic((_ct), \
-	vp_tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
+	tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
-	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_vp_tmpl_m) 0), \
+	tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_tmpl_m) 0), \
 	char const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char) 0), \
 	char const ***	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \

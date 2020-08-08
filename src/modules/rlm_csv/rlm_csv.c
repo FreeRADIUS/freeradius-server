@@ -62,7 +62,7 @@ typedef struct {
 	rbtree_t	*tree;
 	fr_trie_t	*trie;
 
-	vp_tmpl_t	*key;
+	tmpl_t	*key;
 	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
@@ -386,7 +386,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
  *	Verify the result of the map.
  */
 static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
-			  vp_tmpl_t const *src, vp_map_t const *maps)
+			  tmpl_t const *src, vp_map_t const *maps)
 {
 	vp_map_t const *map;
 
@@ -636,7 +636,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_SECTION *cs;
 	int lineno;
 	FILE *fp;
-	vp_tmpl_rules_t	parse_rules = {
+	tmpl_rules_t	parse_rules = {
 		.allow_foreign = true	/* Because we don't know where we'll be called */
 	};
 	char buffer[8192];

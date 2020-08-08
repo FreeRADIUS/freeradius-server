@@ -373,7 +373,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 				char const *rhs, fr_token_t rhs_type,
 				char const **error)
 {
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 
 	/*
 	 *	Two attributes?  They must be of the same type
@@ -566,7 +566,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 
 		if (may_be_attr) {
 			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
-							&(vp_tmpl_rules_t){
+							&(tmpl_rules_t){
 								.allow_unknown = true,
 								.allow_unparsed = true
 							});
@@ -668,7 +668,7 @@ static ssize_t cond_preparse(TALLOC_CTX *ctx, char const **out, size_t *outlen, 
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			     fr_cond_t **pcond, char const **error,
 			     char const *in, size_t inlen, int brace,
-			     vp_tmpl_rules_t const *rules)
+			     tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
 	char const		*p = in, *end = in + inlen;
@@ -677,7 +677,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	size_t			lhs_len, rhs_len;
 	fr_token_t		op, lhs_type, rhs_type;
 	bool			regex = false;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown and undefined attributes here
@@ -1284,7 +1284,7 @@ done:
 		 */
 		if ((c->data.map->op == T_OP_CMP_TRUE) ||
 		    (c->data.map->op == T_OP_CMP_FALSE)) {
-			vp_tmpl_t *vpt;
+			tmpl_t *vpt;
 
 			vpt = talloc_steal(c, c->data.map->lhs);
 			c->data.map->lhs = NULL;
@@ -1369,7 +1369,7 @@ done:
 		    tmpl_is_attr(c->data.map->rhs) &&
 		    (c->cast->type == tmpl_da(c->data.map->rhs)->type) &&
 		    !tmpl_is_attr(c->data.map->lhs)) {
-			vp_tmpl_t *tmp;
+			tmpl_t *tmp;
 
 			tmp = c->data.map->rhs;
 			c->data.map->rhs = c->data.map->lhs;
@@ -1614,7 +1614,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs,
 			 fr_cond_t **head, char const **error,
 			 fr_dict_t const *dict, char const *in, size_t inlen)
 {
-	return cond_tokenize(cs, cs, head, error, in, inlen, 0, &(vp_tmpl_rules_t){ .dict_def = dict });
+	return cond_tokenize(cs, cs, head, error, in, inlen, 0, &(tmpl_rules_t){ .dict_def = dict });
 }
 
 /*

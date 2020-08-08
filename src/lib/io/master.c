@@ -2589,7 +2589,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Maybe we should?
 		 */
 		if (app_process->compile_list) {
-			vp_tmpl_rules_t		parse_rules;
+			tmpl_rules_t		parse_rules;
 
 			memset(&parse_rules, 0, sizeof(parse_rules));
 			parse_rules.dict_def = virtual_server_namespace(cf_section_name2(inst->server_cs));

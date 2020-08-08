@@ -132,7 +132,7 @@ static virtual_server_compile_t compile_list[] = {
 static int mod_section_compile(eap_aka_sim_actions_t *actions, CONF_SECTION *server_cs)
 {
 	int found;
-	vp_tmpl_rules_t parse_rules;
+	tmpl_rules_t parse_rules;
 
 	if (!fr_cond_assert(server_cs)) return -1;
 

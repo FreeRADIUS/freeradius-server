@@ -61,15 +61,15 @@ static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type, char
 
 /** Try to convert an xlat to a tmpl for efficiency
  *
- * @param ctx to allocate new vp_tmpl_t in.
+ * @param ctx to allocate new tmpl_t in.
  * @param node to convert.
  * @return
  *	- NULL if unable to convert (not necessarily error).
- *	- A new #vp_tmpl_t.
+ *	- A new #tmpl_t.
  */
-vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
+tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 
 	if (node->next || (node->type != XLAT_ATTRIBUTE) || !tmpl_is_attr(node->attr)) return NULL;
 
@@ -95,9 +95,9 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
  * @param vpt to convert.
  * @return
  *	- NULL if unable to convert (not necessarily error).
- *	- a new #vp_tmpl_t.
+ *	- a new #tmpl_t.
  */
-xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
+xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, tmpl_t *vpt)
 {
 	xlat_exp_t *node;
 
@@ -111,12 +111,12 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 }
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				       vp_tmpl_rules_t const *rules);
+				       tmpl_rules_t const *rules);
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				     bool brace, vp_tmpl_rules_t const *rules);
+				     bool brace, tmpl_rules_t const *rules);
 
 static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-					 vp_tmpl_rules_t const *rules)
+					 tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
 	char const	*p = in;
@@ -264,7 +264,7 @@ static inline ssize_t xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, ch
  *
  */
 static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-					     vp_tmpl_rules_t const *rules)
+					     tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
 	char const	*p, *q, *end;
@@ -333,12 +333,12 @@ static inline ssize_t xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head,
  *
  */
 static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-					      vp_tmpl_rules_t const *rules)
+					      tmpl_rules_t const *rules)
 {
 	ssize_t			slen;
 	char const		*p, *q;
 	attr_ref_error_t	err;
-	vp_tmpl_t		*vpt = NULL;
+	tmpl_t		*vpt = NULL;
 	xlat_exp_t		*node;
 	xlat_t			*func;
 
@@ -349,7 +349,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	and instead are "virtual" attributes like
 	 *	Foreach-Variable-N.
 	 */
-	vp_tmpl_rules_t our_rules;
+	tmpl_rules_t our_rules;
 
 	if (inlen < 2) return 0;
 
@@ -423,7 +423,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 }
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				       vp_tmpl_rules_t const *rules)
+				       tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
 	char const	*p = in, *q, *end;
@@ -565,7 +565,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 
 
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				     bool brace, vp_tmpl_rules_t const *rules)
+				     bool brace, tmpl_rules_t const *rules)
 {
 	char const	*p, *end;
 	xlat_exp_t	*node;
@@ -788,7 +788,7 @@ static ssize_t skip_xlat(char const *start, char const *end)
  *	- >0  on success which is the number of characters parsed.
  */
 ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-			   vp_tmpl_rules_t const *rules)
+			   tmpl_rules_t const *rules)
 {
 	char const *p, *end;
 	ssize_t slen;
@@ -1126,7 +1126,7 @@ size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
  *	- >= 0 on success.  The number of bytes parsed.
  */
 ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
-			        char const *fmt, vp_tmpl_rules_t const *rules)
+			        char const *fmt, tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
 
@@ -1183,7 +1183,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
  *	- <0 on error.
  *	- 0 on success.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, vp_tmpl_rules_t const *rules)
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, tmpl_rules_t const *rules)
 {
 	int ret;
 

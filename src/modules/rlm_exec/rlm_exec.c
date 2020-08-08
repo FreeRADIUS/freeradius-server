@@ -47,7 +47,7 @@ typedef struct {
 	fr_time_delta_t	timeout;
 	bool		timeout_is_set;
 
-	vp_tmpl_t	*tmpl;
+	tmpl_t	*tmpl;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -235,7 +235,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	MEM(inst->tmpl = tmpl_alloc(inst, TMPL_TYPE_EXEC, inst->program, strlen(inst->program), T_BACK_QUOTED_STRING));
 
 	slen = xlat_tokenize_argv(inst->tmpl, &tmpl_xlat(inst->tmpl), inst->program, strlen(inst->program),
-				  &(vp_tmpl_rules_t) { .dict_def = fr_dict_internal() });
+				  &(tmpl_rules_t) { .dict_def = fr_dict_internal() });
 	if (slen <= 0) {
 		char *spaces, *text;
 

@@ -392,7 +392,7 @@ free_urldesc:
  *	Verify the result of the map.
  */
 static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			   tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing LDAP URI");
@@ -1971,7 +1971,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Build the attribute map
 	 */
 	{
-		vp_tmpl_rules_t	parse_rules = {
+		tmpl_rules_t	parse_rules = {
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 

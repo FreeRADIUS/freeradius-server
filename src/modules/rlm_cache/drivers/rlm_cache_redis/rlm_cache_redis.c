@@ -38,8 +38,8 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
-	vp_tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
-	vp_tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
+	tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
+	tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
 
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
@@ -190,7 +190,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	We can get a pretty good idea of the required size of the pool
 	 */
 	for (i = 0; i < reply->elements; i += 3) {
-		pool_size += sizeof(vp_map_t) + (sizeof(vp_tmpl_t) * 2);
+		pool_size += sizeof(vp_map_t) + (sizeof(tmpl_t) * 2);
 		if (reply->element[i]->type == REDIS_REPLY_STRING) pool_size += reply->element[i]->len + 1;
 	}
 
@@ -282,14 +282,14 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	int			cnt;
 
-	vp_tmpl_t		expires_value;
+	tmpl_t		expires_value;
 	vp_map_t		expires = {
 					.op	= T_OP_SET,
 					.lhs	= driver->expires_attr,
 					.rhs	= &expires_value,
 				};
 
-	vp_tmpl_t		created_value;
+	tmpl_t		created_value;
 	vp_map_t		created = {
 					.op	= T_OP_SET,
 					.lhs	= driver->created_attr,

@@ -341,7 +341,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	 *	Compile the "update" section.
 	 */
 	{
-		vp_tmpl_rules_t	parse_rules = {
+		tmpl_rules_t	parse_rules = {
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 

@@ -41,7 +41,7 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 					   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 					   REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t			*vpt;
+	tmpl_t			*vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *method;
@@ -54,7 +54,7 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -116,7 +116,7 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t			*vpt;
+	tmpl_t			*vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *type;
@@ -129,7 +129,7 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -191,7 +191,7 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 						 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 						 REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len;
 	char const	*p = fmt, *id;
@@ -202,7 +202,7 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -243,7 +243,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 					       REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t	*id_vpt, *key_vpt;
+	tmpl_t	*id_vpt, *key_vpt;
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len, key_len;
 	uint8_t		tag;
@@ -258,7 +258,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -277,7 +277,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	p++;
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -356,7 +356,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 					       REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t			*id_vpt, *key_vpt;
+	tmpl_t			*id_vpt, *key_vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len, key_len;
 	uint8_t				*key, tag = 0;
@@ -373,7 +373,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	fr_skip_whitespace(p);
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -392,7 +392,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	p++;
 
 	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });

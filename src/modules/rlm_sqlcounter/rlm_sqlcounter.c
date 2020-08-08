@@ -60,10 +60,10 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
-	vp_tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
-	vp_tmpl_t	*reply_attr;  	//!< Session-Timeout.
-	vp_tmpl_t	*key;  		//!< User-Name
+	tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
+	tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
+	tmpl_t	*reply_attr;  	//!< Session-Timeout.
+	tmpl_t	*key;  		//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.

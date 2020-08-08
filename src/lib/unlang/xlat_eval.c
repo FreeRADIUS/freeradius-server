@@ -427,7 +427,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
  *	- #XLAT_ACTION_FAIL	on memory allocation errors.
  *	- #XLAT_ACTION_DONE	if we're done processing this node.
  */
-static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
 {
 	RADIUS_PACKET	*packet = NULL;
 	fr_value_box_t	*value;
@@ -568,7 +568,7 @@ done:
  *	- #XLAT_ACTION_FAIL		we failed getting a value for the attribute.
  *	- #XLAT_ACTION_DONE		we
  */
-static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
 {
 	VALUE_PAIR	*vp = NULL;
 	fr_value_box_t	*value;

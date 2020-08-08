@@ -80,7 +80,7 @@ static int process_file(char const *filename)
 
 	main_config_t	*config;
 
-	vp_tmpl_rules_t	parse_rules = {
+	tmpl_rules_t	parse_rules = {
 		.dict_def = dict_radius,
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};

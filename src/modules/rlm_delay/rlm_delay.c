@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 typedef struct {
 	char const	*xlat_name;		//!< Name of our xlat function.
-	vp_tmpl_t	*delay;			//!< How long we delay for.
+	tmpl_t	*delay;			//!< How long we delay for.
 	bool		relative;		//!< Whether the delay is relative to the start of request processing.
 	bool		force_reschedule;	//!< Whether we should force rescheduling of the request.
 } rlm_delay_t;

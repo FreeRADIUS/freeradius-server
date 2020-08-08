@@ -120,7 +120,7 @@ void cond_debug(fr_cond_t const *cond)
 
 /** Evaluate a template
  *
- * Converts a vp_tmpl_t to a boolean value.
+ * Converts a tmpl_t to a boolean value.
  *
  * @param[in] request the REQUEST
  * @param[in] modreturn the previous module return code
@@ -131,7 +131,7 @@ void cond_debug(fr_cond_t const *cond)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
+int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t const *vpt)
 {
 	int rcode = -1;
 	int modcode;

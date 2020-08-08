@@ -196,7 +196,7 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
  *	- true if destination list is OK.
  *	- false if destination list is invalid.
  */
-static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, vp_tmpl_t const *src_dst)
+static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, tmpl_t const *src_dst)
 {
 	REQUEST		*context = request;
 	VALUE_PAIR	**list;
@@ -307,7 +307,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
-					   &(vp_tmpl_rules_t){
+					   &(tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
@@ -699,7 +699,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		(void)fr_cursor_init(&from, &vp_head);
 		while ((vp = fr_cursor_remove(&from))) {
 			vp_map_t *mod;
-			vp_tmpl_rules_t rules;
+			tmpl_rules_t rules;
 
 			memset(&rules, 0, sizeof(rules));
 			rules.request_def = tmpl_request(mutated->lhs);
@@ -773,7 +773,7 @@ error:
 	return -1;
 }
 
-static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, vp_tmpl_t const *attr, fr_value_box_t const *value)
+static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr, fr_value_box_t const *value)
 {
 	VALUE_PAIR *vp;
 

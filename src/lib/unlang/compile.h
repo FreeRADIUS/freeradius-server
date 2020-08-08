@@ -32,7 +32,7 @@ extern "C" {
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/tmpl.h>
 
-int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules, void **instruction);
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction);
 
 bool		unlang_compile_is_keyword(const char *name);
 

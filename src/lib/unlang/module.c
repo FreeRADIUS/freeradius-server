@@ -505,7 +505,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
-					REQUEST *request, vp_tmpl_t const *vpt,
+					REQUEST *request, tmpl_t const *vpt,
 					VALUE_PAIR *vps,
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)

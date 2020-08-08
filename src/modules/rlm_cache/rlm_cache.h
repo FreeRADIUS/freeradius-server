@@ -50,7 +50,7 @@ typedef enum {
 typedef struct {
 	char const		*name;			//!< Name of xlat function to register.
 	char const		*driver_name;		//!< Driver name.
-	vp_tmpl_t		*key;			//!< What to expand to get the value of the key.
+	tmpl_t		*key;			//!< What to expand to get the value of the key.
 	uint32_t		ttl;			//!< How long an entry is valid for.
 	uint32_t		max_entries;		//!< Maximum entries allowed.
 	int32_t			epoch;			//!< Time after which entries are considered valid.

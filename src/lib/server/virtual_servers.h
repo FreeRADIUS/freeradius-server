@@ -123,7 +123,7 @@ typedef struct {
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
 
 int		virtual_server_section_register(virtual_server_compile_t const *entry);
-int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
+int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
 
 int		virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2);
 virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));

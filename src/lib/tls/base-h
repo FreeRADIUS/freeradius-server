@@ -254,7 +254,7 @@ struct fr_tls_conf_s {
 #endif
 	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
 
-	vp_tmpl_t	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
+	tmpl_t	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 
 	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the

@@ -38,7 +38,7 @@ typedef struct fr_cond_s fr_cond_t;
 
 void	cond_debug(fr_cond_t const *cond);
 
-int	cond_eval_tmpl(REQUEST *request, int modreturn, int depth, vp_tmpl_t const *vpt);
+int	cond_eval_tmpl(REQUEST *request, int modreturn, int depth, tmpl_t const *vpt);
 int	cond_eval_map(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
 int	cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
 

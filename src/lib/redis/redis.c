@@ -289,7 +289,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	RDEBUG3("Got value : %pV", fr_box_strvalue_len(value->str, value->len));
 
 	map = talloc_zero(ctx, vp_map_t);
-	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str, &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen < 0) {
 		REMARKER(key->str, -slen, "%s", fr_strerror());
 		goto error;

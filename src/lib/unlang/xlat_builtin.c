@@ -74,12 +74,12 @@ static char const hextab[] = "0123456789abcdef";
 int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	int rcode;
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 
 	*out = NULL;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
-				&(vp_tmpl_rules_t){
+				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) return -4;
@@ -107,12 +107,12 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	int rcode;
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 
 	*out = NULL;
 
 	if (tmpl_afrom_attr_str(request, NULL,
-				&vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
+				&vpt, name, &(tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
 	rcode = tmpl_copy_vps(ctx, out, request, vpt);
 	talloc_free(vpt);
@@ -147,14 +147,14 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char c
 int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 		       bool *tainted, REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 	VALUE_PAIR	*vp;
 	fr_cursor_t	*cursor;
 
 	fr_skip_whitespace(fmt);	/* Not binary safe, but attr refs should only contain printable chars */
 
 	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, fmt,
-				&(vp_tmpl_rules_t){
+				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
@@ -846,14 +846,14 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 {
 	VALUE_PAIR	*vp;
 	fr_cursor_t	cursor;
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 
 	if (!RDEBUG_ENABLED2) return 0;	/* NOOP if debugging isn't enabled */
 
 	fr_skip_whitespace(fmt);
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(vp_tmpl_rules_t){
+				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
@@ -974,7 +974,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t	*vpt = NULL;
+	tmpl_t	*vpt = NULL;
 	VALUE_PAIR	*vp;
 	fr_cursor_t	cursor, to_merge;
 	VALUE_PAIR	*head = NULL;
@@ -988,7 +988,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1, &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1211,13 +1211,13 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
  *	- <= 0 the negative offset the parse error ocurred at.
  *	- >0 how many bytes of fmt were parsed.
  */
-static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
+static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
 {
 	ssize_t		slen;
 	unsigned long	pad_len;
 	char const	*p;
 	char		*end;
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 
 	*pad_char_p = ' ';		/* the default */
 
@@ -1231,7 +1231,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 		return 0;
 	}
 
-	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Failed parsing input string");
 		return slen;
@@ -1301,7 +1301,7 @@ static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	char		fill;
 	size_t		pad;
 	ssize_t		len;
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 	char		*to_pad = NULL;
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
@@ -1360,7 +1360,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	vp_map_t	*map = NULL;
 	int		ret;
 
-	vp_tmpl_rules_t parse_rules = {
+	tmpl_rules_t parse_rules = {
 		.dict_def = request->dict,
 		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 	};
@@ -1507,7 +1507,7 @@ static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	char		fill;
 	size_t		pad;
 	ssize_t		len;
-	vp_tmpl_t	*vpt;
+	tmpl_t	*vpt;
 	char		*to_pad = NULL;
 
 	fr_assert(!*out);
@@ -2168,7 +2168,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
-	vp_tmpl_t	*vpt = NULL;
+	tmpl_t	*vpt = NULL;
 	fr_cursor_t	cursor;
 	fr_value_box_t	*vb;
 
@@ -2185,7 +2185,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 	VALUE_PAIR *vp;
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, (*in)->vb_strvalue,
-				&(vp_tmpl_rules_t){
+				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {

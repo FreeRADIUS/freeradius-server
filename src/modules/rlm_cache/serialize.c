@@ -111,7 +111,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		vp_map_t	*map = NULL;
-		vp_tmpl_rules_t parse_rules = {
+		tmpl_rules_t parse_rules = {
 					.dict_def = dict
 				};
 

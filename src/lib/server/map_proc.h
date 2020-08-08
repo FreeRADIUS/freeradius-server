@@ -73,7 +73,7 @@ typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, REQUEST 
  *	- -1 on failure.
  */
 typedef int (*map_proc_instantiate_t)(CONF_SECTION *cs, void *mod_inst, void *proc_inst,
-				      vp_tmpl_t const *src, vp_map_t const *maps);
+				      tmpl_t const *src, vp_map_t const *maps);
 
 map_proc_t	*map_proc_find(char const *name);
 
@@ -83,7 +83,7 @@ int		map_proc_register(void *mod_inst, char const *name,
 				  map_proc_instantiate_t instantiate, size_t inst_size);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
-				      CONF_SECTION *cs, vp_tmpl_t const *src, vp_map_t const *maps);
+				      CONF_SECTION *cs, tmpl_t const *src, vp_map_t const *maps);
 
 rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst, fr_value_box_t **src);
 

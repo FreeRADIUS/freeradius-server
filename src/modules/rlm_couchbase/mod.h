@@ -42,7 +42,7 @@ RCSIDH(mod_h, "$Id$")
  * This struct contains the core module configuration.
  */
 typedef struct {
-	vp_tmpl_t		*acct_key;		//!< Accounting document key.
+	tmpl_t		*acct_key;		//!< Accounting document key.
 	char const		*doctype;		//!< Value of accounting 'docType' element name.
 	uint32_t		expire;			//!< Accounting document expire time in seconds.
 
@@ -52,7 +52,7 @@ typedef struct {
 	char const		*username;       	//!< Couchbase bucket username.
 	char const		*password;       	//!< Couchbase bucket password.
 
-	vp_tmpl_t		*user_key;       	//!< User document key.
+	tmpl_t		*user_key;       	//!< User document key.
 
 	bool			read_clients;		//!< Toggle for loading client records.
 	const char		*client_view;    	//!< Couchbase view that returns client documents.

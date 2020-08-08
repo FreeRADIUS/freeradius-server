@@ -208,7 +208,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 {
 	proto_detail_process_t *inst = talloc_get_type_abort(instance, proto_detail_process_t);
 	CONF_SECTION		*server_cs;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	The detail file reader gets its dictionary from the

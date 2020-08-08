@@ -318,7 +318,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		mrb_value	key, val;
 		char const	*ckey, *cval;
 		VALUE_PAIR	*vp;
-		vp_tmpl_t	*dst;
+		tmpl_t	*dst;
 		fr_token_t	op = T_OP_EQ;
 
 		/* This tuple should be an array of length 2 */
@@ -362,7 +362,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
-					&(vp_tmpl_rules_t){
+					&(tmpl_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {

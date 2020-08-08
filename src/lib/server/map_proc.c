@@ -167,7 +167,7 @@ int map_proc_register(void *mod_inst, char const *name,
  *	- NULL on error.
  */
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
-				      CONF_SECTION *cs, vp_tmpl_t const *src, vp_map_t const *maps)
+				      CONF_SECTION *cs, tmpl_t const *src, vp_map_t const *maps)
 {
 	map_proc_inst_t *inst;
 

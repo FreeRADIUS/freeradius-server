@@ -52,11 +52,11 @@ extern "C" {
  * Neither src or dst need to be an FR attribute, and their type can be inferred
  * from whether map->da is NULL (not FR).
  *
- * @see vp_tmpl_t
+ * @see tmpl_t
  */
 struct vp_map_s {
-	vp_tmpl_t		*lhs;		//!< Typically describes the attribute to add, modify or compare.
-	vp_tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
+	tmpl_t		*lhs;		//!< Typically describes the attribute to add, modify or compare.
+	tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
 						///< to copy or compare.
 
 	fr_token_t		op; 		//!< The operator that controls insertion of the dst attribute.
@@ -94,27 +94,27 @@ typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST 
 				     vp_map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
-			     vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules);
+			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
-			     vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules,
+			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
 int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
-				 char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+				 char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 				 fr_token_t op,
-				 char const *rhs, fr_token_t rhs_type, vp_tmpl_rules_t const *rhs_rules);
+				 char const *rhs, fr_token_t rhs_type, tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-				    char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+				    char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 				    fr_token_t op,
 				    fr_value_box_t *rhs, bool steal_rhs_buffs);
 
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
-				   vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules);
+				   tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp,
-			     vp_tmpl_rules_t const *rules);
+			     tmpl_rules_t const *rules);
 
 void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
 

@@ -483,7 +483,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 
 			if (map_afrom_value_box(ctx, &map,
 						attr_name, T_BARE_WORD,
-						&(vp_tmpl_rules_t){
+						&(tmpl_rules_t){
 							.dict_def = request->dict,
 							.list_def = list,
 						},

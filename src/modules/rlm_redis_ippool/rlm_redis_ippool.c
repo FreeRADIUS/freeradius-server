@@ -63,33 +63,33 @@ typedef struct {
 
 	char const		*name;		//!< Instance name.
 
-	vp_tmpl_t		*pool_name;	//!< Name of the pool we're allocating IP addresses from.
+	tmpl_t		*pool_name;	//!< Name of the pool we're allocating IP addresses from.
 
-	vp_tmpl_t		*offer_time;	//!< How long we should reserve a lease for during
+	tmpl_t		*offer_time;	//!< How long we should reserve a lease for during
 						//!< the pre-allocation stage (typically responding
 						//!< to DHCP discover).
-	vp_tmpl_t		*lease_time;	//!< How long an IP address should be allocated for.
+	tmpl_t		*lease_time;	//!< How long an IP address should be allocated for.
 
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
 						//!< or updates.
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
-	vp_tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
+	tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
 						//!< or a combination of User-Name and something
 						//!< unique to the device.
 
-	vp_tmpl_t		*gateway_id;	//!< Gateway identifier, usually
+	tmpl_t		*gateway_id;	//!< Gateway identifier, usually
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
+	tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
 
-	vp_tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
+	tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
 
-	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
+	tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
 
-	vp_tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
+	tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
@@ -661,7 +661,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process IP address
 	 */
 	if (reply->elements > 1) {
-		vp_tmpl_t ip_rhs;
+		tmpl_t ip_rhs;
 		vp_map_t ip_map = {
 			.lhs = inst->allocated_address_attr,
 			.op = T_OP_SET,
@@ -724,7 +724,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		 */
 		case REDIS_REPLY_STRING:
 		{
-			vp_tmpl_t range_rhs;
+			tmpl_t range_rhs;
 			vp_map_t range_map = {
 				.lhs = inst->range_attr,
 				.op = T_OP_SET,
@@ -756,7 +756,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process Expiry time
 	 */
 	if (inst->expiry_attr && (reply->elements > 3)) {
-		vp_tmpl_t expiry_rhs;
+		tmpl_t expiry_rhs;
 		vp_map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
@@ -798,7 +798,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	vp_tmpl_t		range_rhs;
+	tmpl_t		range_rhs;
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
@@ -901,7 +901,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	 *	Copy expiry time to expires attribute (if set)
 	 */
 	if (inst->expiry_attr) {
-		vp_tmpl_t expiry_rhs;
+		tmpl_t expiry_rhs;
 		vp_map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
@@ -1156,7 +1156,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 			 *	Copy over the input IP address to the reply attribute
 			 */
 			if (inst->copy_on_update) {
-				vp_tmpl_t ip_rhs = {
+				tmpl_t ip_rhs = {
 					.name = "",
 					.type = TMPL_TYPE_DATA,
 					.quote = T_BARE_WORD,

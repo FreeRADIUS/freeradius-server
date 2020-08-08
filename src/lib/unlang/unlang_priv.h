@@ -77,7 +77,7 @@ typedef enum {
 	UNLANG_TYPE_CALL,			//!< call another virtual server
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
-	UNLANG_TYPE_TMPL,			//!< asynchronously expand a vp_tmpl_t
+	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -139,7 +139,7 @@ typedef struct {
 	 */
 	union {
 		struct {
-			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP
+			tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP
 
 			union {
 				struct {
@@ -171,7 +171,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	vp_tmpl_t const		*tmpl;
+	tmpl_t const		*tmpl;
 	bool			inline_exec;
 } unlang_tmpl_t;
 

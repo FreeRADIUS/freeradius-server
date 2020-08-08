@@ -801,7 +801,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 	uint8_t const		*key;
 	ssize_t			key_len;
 
-	vp_tmpl_t		*target = NULL;
+	tmpl_t		*target = NULL;
 	vp_map_t		*map = NULL;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
@@ -809,7 +809,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 	if (key_len < 0) return -1;
 
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target, fmt, -1,
-				      &(vp_tmpl_rules_t){
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -971,7 +971,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Make sure the users don't screw up too badly.
 	 */
 	{
-		vp_tmpl_rules_t	parse_rules = {
+		tmpl_rules_t	parse_rules = {
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 

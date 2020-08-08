@@ -1193,7 +1193,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 {
 	int i;
 	CONF_PAIR *cp = NULL;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
@@ -1252,7 +1252,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
  *  This function walks down the registration table, compiling each
  *  named section.
  */
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules, void *uctx)
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *uctx)
 {
 	int i, found;
 	CONF_SECTION *subcs = NULL;

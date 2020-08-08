@@ -38,7 +38,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	fr_cond_t		cond;
 	fr_value_box_t		data;
 	vp_map_t		map;
-	vp_tmpl_t		vpt;
+	tmpl_t		vpt;
 
 	g = unlang_generic_to_group(instruction);
 

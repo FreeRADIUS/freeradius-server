@@ -435,7 +435,7 @@ static bool do_xlats(char const *filename, FILE *fp)
  *	Verify the result of the map.
  */
 static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			   tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing source");

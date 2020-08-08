@@ -109,7 +109,7 @@ struct xlat_exp {
 	union {
 		xlat_exp_t	*alternate;	//!< Alternative expansion if this one expanded to a zero length string.
 
-		vp_tmpl_t	*attr;		//!< An attribute template.
+		tmpl_t	*attr;		//!< An attribute template.
 
 		int		regex_index;	//!< for %{1} and friends.
 

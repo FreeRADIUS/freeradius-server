@@ -35,7 +35,7 @@ typedef struct {
 	char const	*rcode_str;
 	rlm_rcode_t	rcode;
 	float		percentage;
-	vp_tmpl_t	*key;
+	tmpl_t	*key;
 } rlm_sometimes_t;
 
 static const CONF_PARSER module_config[] = {

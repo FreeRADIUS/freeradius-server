@@ -83,9 +83,9 @@ typedef struct {
 	char const			*delimiter;		//!< Line termination string (usually \n).
 	size_t				delimiter_len;		//!< Length of line termination string.
 
-	vp_tmpl_t			*log_src;		//!< Source of log messages.
+	tmpl_t			*log_src;		//!< Source of log messages.
 
-	vp_tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+	tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
 								///< log messages).
 
 	linefr_log_dst_t		log_dst;		//!< Logging destination.
@@ -455,7 +455,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 
 	char				*p = buff;
 	char const			*value;
-	vp_tmpl_t			empty, *vpt = NULL, *vpt_p = NULL;
+	tmpl_t			empty, *vpt = NULL, *vpt_p = NULL;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
 	ssize_t				slen;
 
@@ -520,7 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      cf_pair_value_quote(cp),
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true }, true);
+				      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true }, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			return RLM_MODULE_FAIL;

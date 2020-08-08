@@ -81,7 +81,7 @@ typedef struct {
 	char const		*delimiter;		//!< Line termination string (usually \n).
 	size_t			delimiter_len;		//!< Length of line termination string.
 
-	vp_tmpl_t		*log_fmt;		//!< Source of log messages.
+	tmpl_t		*log_fmt;		//!< Source of log messages.
 
 	logtee_dst_t		log_dst;		//!< Logging destination.
 	char const		*log_dst_str;		//!< Logging destination string.

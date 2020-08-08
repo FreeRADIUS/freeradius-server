@@ -285,7 +285,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Compile the processing sections.
 	 */
 	if (app_process->compile_list) {
-		vp_tmpl_rules_t		parse_rules;
+		tmpl_rules_t		parse_rules;
 
 		memset(&parse_rules, 0, sizeof(parse_rules));
 		parse_rules.dict_def = dict_arp;

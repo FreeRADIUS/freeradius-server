@@ -49,7 +49,7 @@ struct map_proc {
  */
 struct map_proc_inst {
 	map_proc_t const	*proc;			//!< Map processor.
-	vp_tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
+	tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
 	vp_map_t const		*maps;			//!< Head of the map list.
 	void			*data;			//!< Instance data created by #map_proc_instantiate
 };

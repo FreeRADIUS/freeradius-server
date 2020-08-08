@@ -273,7 +273,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 {
 	int		i;
 	Py_ssize_t	tuple_len;
-	vp_tmpl_t	*dst;
+	tmpl_t	*dst;
 	VALUE_PAIR	*vp;
 	REQUEST		*current = request;
 
@@ -349,7 +349,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 		}
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
-					&(vp_tmpl_rules_t){
+					&(tmpl_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {

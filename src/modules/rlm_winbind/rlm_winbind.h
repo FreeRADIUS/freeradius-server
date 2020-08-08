@@ -14,11 +14,11 @@ typedef struct {
 	fr_dict_enum_t		*auth_type;
 
 	/* main config */
-	vp_tmpl_t		*wb_username;
-	vp_tmpl_t		*wb_domain;
+	tmpl_t		*wb_username;
+	tmpl_t		*wb_domain;
 
 	/* group config */
-	vp_tmpl_t		*group_username;
+	tmpl_t		*group_username;
 	bool			group_add_domain;
 	char const		*group_attribute;
 } rlm_winbind_t;

@@ -306,7 +306,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
  *	Verify the result of the map.
  */
 static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			  vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			  tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing SQL query");

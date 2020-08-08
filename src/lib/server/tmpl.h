@@ -21,9 +21,9 @@
  * @file lib/server/tmpl.h
  * @brief Structures and prototypes for templates
  *
- * These functions are used to work with #vp_tmpl_t structs.
+ * These functions are used to work with #tmpl_t structs.
  *
- * #vp_tmpl_t (VPTs) specify either a data source, or a data sink.
+ * #tmpl_t (VPTs) specify either a data source, or a data sink.
  *
  * Examples of sources are #TMPL_TYPE_XLAT_UNPARSED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
  * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
@@ -31,7 +31,7 @@
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
  * where values or #VALUE_PAIR should be copied to.
  *
- * To create new #vp_tmpl_t use one of the tmpl_*from_* functions.  These parse
+ * To create new #tmpl_t use one of the tmpl_*from_* functions.  These parse
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
@@ -43,7 +43,7 @@
  *
  * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
  * functions which can be used to iterate over only the #VALUE_PAIR that match a
- * vp_tmpl_t in a given list.
+ * tmpl_t in a given list.
  *
  * @see tmpl_cursor_init
  * @see tmpl_cursor_next
@@ -106,7 +106,7 @@ typedef enum requests_ref_e {
 extern fr_table_num_sorted_t const request_ref_table[];
 extern size_t request_ref_table_len;
 
-/** Types of #vp_tmpl_t
+/** Types of #tmpl_t
  */
 typedef enum tmpl_type_e {
 	TMPL_TYPE_UNINITIALISED = 0,	//!< Uninitialised.
@@ -147,7 +147,7 @@ typedef enum tmpl_type_e {
 	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
 } tmpl_type_t;
 
-/** Helpers to verify the type of #vp_tmpl_t
+/** Helpers to verify the type of #tmpl_t
  */
 #define tmpl_is_uninitialised(vpt) 	(vpt->type == TMPL_TYPE_UNINITIALISED)
 
@@ -170,8 +170,8 @@ typedef enum tmpl_type_e {
 extern fr_table_num_sorted_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
 
-typedef struct vp_tmpl_s vp_tmpl_t;
-typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
+typedef struct tmpl_s tmpl_t;
+typedef struct tmpl_rules_s tmpl_rules_t;
 
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/packet.h>
@@ -201,7 +201,7 @@ typedef enum {
 /** Optional arguments passed to vp_tmpl functions
  *
  */
-struct vp_tmpl_rules_s {
+struct tmpl_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
@@ -239,7 +239,7 @@ typedef enum {
 	TMPL_ATTR_TYPE_UNPARSED				//!< We have a name, but nothing else
 							///< to identify the attribute.
 							///< may be resolved later.
-} vp_tmpl_attr_type_t;
+} tmpl_attr_type_t;
 
 #define NUM_ANY			INT16_MIN
 #define NUM_ALL			(INT16_MIN + 1)
@@ -263,8 +263,8 @@ typedef struct {
 	int16_t			_CONST num;		//!< For array references.
 	int8_t			_CONST tag;		//!< For tag references.
 
-	vp_tmpl_attr_type_t	_CONST type;
-} vp_tmpl_attr_t;
+	tmpl_attr_type_t	_CONST type;
+} tmpl_attr_t;
 
 /** An element in a list of request references
  *
@@ -274,7 +274,7 @@ typedef struct {
 							///< of requestreferences.
 
 	request_ref_t		_CONST request;
-} vp_tmpl_request_t;
+} tmpl_request_t;
 
 /** @name Field accessors for attribute references
  *
@@ -312,7 +312,7 @@ typedef struct {
  *
  * @see vp_map_t
  */
-struct vp_tmpl_s {
+struct tmpl_s {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
 
 	char const	* _CONST name;		//!< Raw string used to create the template.
@@ -357,55 +357,55 @@ struct vp_tmpl_s {
  *
  * @{
  */
-static inline request_ref_t tmpl_request(vp_tmpl_t const *vpt)
+static inline request_ref_t tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unparsed(vpt) ||
 			 tmpl_is_list(vpt));
 
-	return ((vp_tmpl_request_t *)fr_dlist_tail(&vpt->data.attribute.rr))->request;
+	return ((tmpl_request_t *)fr_dlist_tail(&vpt->data.attribute.rr))->request;
 }
 
-static inline fr_dict_attr_t const *tmpl_da(vp_tmpl_t const *vpt)
+static inline fr_dict_attr_t const *tmpl_da(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_da;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_da;
 }
 
-static inline fr_dict_attr_t const *tmpl_unknown(vp_tmpl_t const *vpt)
+static inline fr_dict_attr_t const *tmpl_unknown(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unknown;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unknown;
 }
 
-static inline char const *tmpl_attr_unparsed(vp_tmpl_t const *vpt)
+static inline char const *tmpl_attr_unparsed(tmpl_t const *vpt)
 {
 	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNPARSED);
 
-	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unparsed;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unparsed;
 }
 
-static inline int16_t tmpl_num(vp_tmpl_t const *vpt)
+static inline int16_t tmpl_num(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unparsed(vpt) ||
 			 tmpl_is_list(vpt));
 
-	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
 }
 
-static inline int8_t tmpl_tag(vp_tmpl_t const *vpt)
+static inline int8_t tmpl_tag(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once tags are part of ar dlist */
 			 tmpl_is_list(vpt));
 
-	return ((vp_tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_tag;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_tag;
 }
 
-static inline pair_list_t tmpl_list(vp_tmpl_t const *vpt)
+static inline pair_list_t tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once list is part of ar dlist */
@@ -453,15 +453,15 @@ static inline pair_list_t tmpl_list(vp_tmpl_t const *vpt)
 #else
 #  define TMPL_ATTR_VERIFY(_vpt) tmpl_attr_verify(__FILE__, __LINE__, _vpt)
 #  define TMPL_VERIFY(_vpt) tmpl_verify(__FILE__, __LINE__, _vpt)
-void tmpl_attr_verify(char const *file, int line, vp_tmpl_t const *vpt);
-void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
+void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt);
+void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 #endif
 
-/** Produces an initialiser for static #TMPL_TYPE_LIST type #vp_tmpl_t
+/** Produces an initialiser for static #TMPL_TYPE_LIST type #tmpl_t
  *
  * Example:
  @code{.c}
-   static vp_tmpl_t list = tmpl_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   static tmpl_t list = tmpl_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
    fr_cursor_t cursor;
    VALUE_PAIR *vp;
 
@@ -534,7 +534,7 @@ typedef enum {
 	ATTR_REF_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
 	ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute specified as OID, could not be
 							///< found in the dictionaries, and is disallowed
-							///< because 'disallow_internal' in vp_tmpl_rules_t
+							///< because 'disallow_internal' in tmpl_rules_t
 							///< is trie.
 	ATTR_REF_ERROR_UNDEFINED_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute couldn't be found in the dictionaries.
 	ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME,		//!< Attribute ref length is zero, or longer than
@@ -604,92 +604,92 @@ int			radius_request(REQUEST **request, request_ref_t name);
 
 size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
 
-vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
+tmpl_t		*tmpl_init(tmpl_t *vpt, tmpl_type_t type,
 				   char const *name, ssize_t len, fr_token_t quote);
 
-vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
+tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len, fr_token_t quote);
 
-void			tmpl_set_name(vp_tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
+void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
 
-int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
+int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal);
 
-void			tmpl_attr_debug(vp_tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
-int			tmpl_attr_copy(vp_tmpl_t *dst, vp_tmpl_t const *src) CC_HINT(nonnull);
+int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
-int			tmpl_attr_abstract_to_concrete(vp_tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);
+int			tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);
 
-void			tmpl_attr_to_raw(vp_tmpl_t *vpt) CC_HINT(nonnull);
+void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
 
-int			tmpl_attr_set_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
+int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
-int			tmpl_attr_resolve_unparsed(vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
+int			tmpl_attr_resolve_unparsed(tmpl_t *vpt, tmpl_rules_t const *rules) CC_HINT(nonnull);
 
-void			tmpl_attr_set_unparsed(vp_tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
+void			tmpl_attr_set_unparsed(tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
 
-int			tmpl_attr_set_leaf_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
+int			tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
-void			tmpl_attr_set_leaf_num(vp_tmpl_t *vpt, int16_t num) CC_HINT(nonnull);
+void			tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num) CC_HINT(nonnull);
 
-void			tmpl_attr_rewrite_leaf_num(vp_tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
+void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_rewrite_num(vp_tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
+void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_set_leaf_tag(vp_tmpl_t *vpt, int8_t tag) CC_HINT(nonnull);
+void			tmpl_attr_set_leaf_tag(tmpl_t *vpt, int8_t tag) CC_HINT(nonnull);
 
-void			tmpl_attr_set_request(vp_tmpl_t *vpt, request_ref_t request) CC_HINT(nonnull);
+void			tmpl_attr_set_request(tmpl_t *vpt, request_ref_t request) CC_HINT(nonnull);
 
-void			tmpl_attr_set_list(vp_tmpl_t *vpt, pair_list_t list) CC_HINT(nonnull);
+void			tmpl_attr_set_list(tmpl_t *vpt, pair_list_t list) CC_HINT(nonnull);
 
-int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, vp_tmpl_t **out, vp_tmpl_t const *list,
+int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 					     fr_dict_attr_t const *da, int8_t tag);
 
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
-					       vp_tmpl_t **out, char const *name, ssize_t name_len,
-					       vp_tmpl_rules_t const *rules);
+					       tmpl_t **out, char const *name, ssize_t name_len,
+					       tmpl_rules_t const *rules);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
-					    vp_tmpl_t **out, char const *name,
-					    vp_tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
+					    tmpl_t **out, char const *name,
+					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
-ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
-				       fr_token_t type, vp_tmpl_rules_t const *rules, bool do_escape);
+ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, tmpl_t **out, char const *name, size_t inlen,
+				       fr_token_t type, tmpl_rules_t const *rules, bool do_escape);
 
-int			tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
+int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
-size_t			tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt);
+size_t			tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, tmpl_t const *vpt);
 
-size_t			tmpl_snprint(size_t *need, char *out, size_t outlen, vp_tmpl_t const *vpt);
+size_t			tmpl_snprint(size_t *need, char *out, size_t outlen, tmpl_t const *vpt);
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
 				      REQUEST *request,
-				      vp_tmpl_t const *vpt,
+				      tmpl_t const *vpt,
 				      xlat_escape_t escape, void const *escape_ctx,
 				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 
 ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       		       REQUEST *request,
-				       vp_tmpl_t const *vpt,
+				       tmpl_t const *vpt,
 				       xlat_escape_t escape, void const *escape_ctx,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request,
-					  vp_tmpl_t const *vpt);
+					  tmpl_t const *vpt);
 
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				      vp_tmpl_t const *vpt);
+				      tmpl_t const *vpt);
 
-int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
+int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
+int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_unknown_attr_add(vp_tmpl_t *vpt);
+int			tmpl_unknown_attr_add(tmpl_t *vpt);
 
-int			tmpl_unparsed_attr_add(fr_dict_t *dict, vp_tmpl_t *vpt,
+int			tmpl_unparsed_attr_add(fr_dict_t *dict, tmpl_t *vpt,
 						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
@@ -697,7 +697,7 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 				      fr_dict_attr_t const **castda, bool require_regex,
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
 
-bool			tmpl_async_required(vp_tmpl_t const *vpt);
+bool			tmpl_async_required(tmpl_t const *vpt);
 
 #undef _CONST
 

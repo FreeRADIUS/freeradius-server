@@ -43,7 +43,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*filename;
-	vp_tmpl_t	*key;
+	tmpl_t	*key;
 	bool		relaxed;
 	PAIR_LIST	*attrs;
 } rlm_attr_filter_t;

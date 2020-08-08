@@ -168,7 +168,7 @@ typedef struct sigtran_conn_conf {
 	sigtran_sccp_address_t		sccp_called;			//!< The calling SCCP address.
 	struct sockaddr_sccp		sccp_called_sockaddr;		//!< Parsed version of the above
 
-	vp_tmpl_t			*map_version;			//!< Application context version.
+	tmpl_t			*map_version;			//!< Application context version.
 } sigtran_conn_conf_t;
 
 /** Represents a connection to a remote SS7 entity
@@ -233,7 +233,7 @@ typedef struct rlm_sigtran {
 
 	sigtran_conn_conf_t	conn_conf;				//!< Connection configuration
 
-	vp_tmpl_t		*imsi;					//!< Subscriber identifier.
+	tmpl_t		*imsi;					//!< Subscriber identifier.
 } rlm_sigtran_t;
 
 extern int ctrl_pipe[2];

@@ -2156,7 +2156,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	len = fr_value_str_aunescape(NULL, &fmt, &FR_SBUFF_IN(in, input_len), SIZE_MAX, '\"');
 	fr_assert(fmt);
 	dec_len = xlat_tokenize(fmt, &head, fmt, len,
-				&(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
+				&(tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (dec_len <= 0) {
 		fr_strerror_printf_push("ERROR offset %d", (int) -dec_len);
 
@@ -2193,7 +2193,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	char		buff[1024];
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, in, input_len,
-				  &(vp_tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
+				  &(tmpl_rules_t) { .dict_def = cc->active_dict ? cc->active_dict : cc->config->dict });
 	if (slen <= 0) {
 		fr_strerror_printf_push("ERROR offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();

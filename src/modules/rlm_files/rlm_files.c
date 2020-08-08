@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 typedef struct {
-	vp_tmpl_t *key;
+	tmpl_t *key;
 
 	char const *filename;
 	rbtree_t *common;

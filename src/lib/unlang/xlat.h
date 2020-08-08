@@ -281,12 +281,12 @@ int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
-					char const *fmt, vp_tmpl_rules_t const *rules);
+					char const *fmt, tmpl_rules_t const *rules);
 
-ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, vp_tmpl_rules_t const *rules);
+ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, tmpl_rules_t const *rules);
 
 ssize_t		xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				   vp_tmpl_rules_t const *rules);
+				   tmpl_rules_t const *rules);
 
 size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
@@ -325,9 +325,9 @@ void		xlat_free(void);
 /*
  *	xlat_tokenize.c
  */
-vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
 
-xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
+xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, tmpl_t *vpt);
 
 /*
  *	xlat_inst.c

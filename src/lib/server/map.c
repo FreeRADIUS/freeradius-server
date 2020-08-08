@@ -77,7 +77,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
-	vp_tmpl_t		*vpt;
+	tmpl_t		*vpt;
 	fr_value_box_t		cast;
 
 	fr_assert(map != NULL);
@@ -124,7 +124,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
 	}
 
 	/*
-	 *	Package the #fr_value_box_t as a #vp_tmpl_t
+	 *	Package the #fr_value_box_t as a #tmpl_t
 	 */
 	if (tmpl_afrom_value_box(map, &map->rhs, &cast, true) < 0) {
 		talloc_free(ptr);
@@ -192,7 +192,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs)
  *	- NULL on error.
  */
 int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
-		 vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules)
+		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	vp_map_t	*map;
 	char const	*attr, *value;
@@ -312,7 +312,7 @@ error:
  *	- -1 on failure.
  */
 int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
-		 vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules,
+		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
 {
@@ -325,7 +325,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 	vp_map_t	**tail, *map;
 	TALLOC_CTX	*parent;
 
-	vp_tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
+	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
 
 	*out = NULL;
 	tail = out;
@@ -512,9 +512,9 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
  *	- NULL on error.
  */
 int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
-		     char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+		     char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 		     fr_token_t op,
-		     char const *rhs, fr_token_t rhs_type, vp_tmpl_rules_t const *rhs_rules)
+		     char const *rhs, fr_token_t rhs_type, tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
 	vp_map_t *map;
@@ -566,7 +566,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
  *	- NULL on error.
  */
 int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-			char const *lhs, fr_token_t lhs_type, vp_tmpl_rules_t const *lhs_rules,
+			char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 			fr_token_t op,
 			fr_value_box_t *rhs, bool steal_rhs_buffs)
 {
@@ -612,7 +612,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
  *	- < 0 on error.
  */
 int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
-		       vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules)
+		       tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	char const *p = vp_str;
 	fr_token_t quote;
@@ -668,7 +668,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, vp_tmpl_rules_t const *rules)
+int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, tmpl_rules_t const *rules)
 {
 	char buffer[256];
 
@@ -1177,7 +1177,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	bool			found = false;
 
 	vp_map_t		exp_map;
-	vp_tmpl_t		*exp_lhs;
+	tmpl_t		*exp_lhs;
 
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
@@ -1218,7 +1218,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
-					   &(vp_tmpl_rules_t){
+					   &(tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
@@ -1681,7 +1681,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	case TMPL_TYPE_LIST:
 	{
-		vp_tmpl_t	*vpt;
+		tmpl_t	*vpt;
 		char const	*quote = (vp->vp_type == FR_TYPE_STRING) ? "\"" : "";
 
 		vpt = tmpl_alloc(request, TMPL_TYPE_ATTR, map->rhs->name, strlen(map->rhs->name), *quote);

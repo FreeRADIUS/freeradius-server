@@ -716,7 +716,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	if (*p == '\0') return 0;
 
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
-		vp_tmpl_t		*dst;
+		tmpl_t		*dst;
 		REQUEST			*current;
 		VALUE_PAIR		**vps;
 		TALLOC_CTX		*ctx;
@@ -742,7 +742,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		RDEBUG2("Parsing attribute \"%pV\"", fr_box_strvalue_len(name, curl_len));
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(vp_tmpl_rules_t){
+					&(tmpl_rules_t){
 						.prefix = TMPL_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
@@ -991,7 +991,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			   REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
-	vp_tmpl_t *dst = NULL;
+	tmpl_t *dst = NULL;
 
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
@@ -1030,7 +1030,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(vp_tmpl_rules_t){
+					&(tmpl_rules_t){
 						.prefix = TMPL_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY

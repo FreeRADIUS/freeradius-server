@@ -65,7 +65,7 @@ typedef struct {
 	char const		*section_name1;
 	char const		*section_name2;
 	unlang_action_table_t	*actions;
-	vp_tmpl_rules_t const	*rules;
+	tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
 static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t mod_type);
@@ -187,12 +187,12 @@ defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 	}
 };
 
-static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
-			       fr_dict_attr_t const *da, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_xlat(CONF_ITEM const *ci, tmpl_t **pvpt, bool convert,
+			       fr_dict_attr_t const *da, tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	xlat_exp_t *head;
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 
 	vpt = *pvpt;
 
@@ -218,7 +218,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	 *	Convert %{Attribute-Name} to &Attribute-Name
 	 */
 	if (convert) {
-		vp_tmpl_t *attr;
+		tmpl_t *attr;
 
 		attr = xlat_to_tmpl_attr(talloc_parent(vpt), head);
 		if (attr) {
@@ -270,7 +270,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 
 #ifdef HAVE_REGEX
-static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_regex(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	regex_t *preg;
@@ -316,7 +316,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 }
 #endif
 
-static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_undefined(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t const *rules)
 {
 	fr_assert(tmpl_is_attr_unparsed(vpt));
 
@@ -329,9 +329,9 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 }
 
 
-static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rules_t const *rules, bool convert)
+static bool pass2_fixup_tmpl(CONF_ITEM const *ci, tmpl_t **pvpt, tmpl_rules_t const *rules, bool convert)
 {
-	vp_tmpl_t *vpt = *pvpt;
+	tmpl_t *vpt = *pvpt;
 
 	if (tmpl_is_xlat_unparsed(vpt)) {
 		return pass2_fixup_xlat(ci, pvpt, convert, NULL, rules);
@@ -363,9 +363,9 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	return true;
 }
 
-static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 {
-	vp_tmpl_t		*vpt;
+	tmpl_t		*vpt;
 	vp_map_t		*map;
 
 	map = c->data.map;	/* shorter */
@@ -594,7 +594,7 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 
 		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
 		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1, T_DOUBLE_QUOTED_STRING,
-				      &(vp_tmpl_rules_t){ .allow_unknown = true }, true);
+				      &(tmpl_rules_t){ .allow_unknown = true }, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -717,7 +717,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	}
 }
 
-static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
+static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	if (tmpl_is_xlat_unparsed(map->lhs)) {
 		fr_assert(tmpl_xlat(map->lhs) == NULL);
@@ -830,7 +830,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, vp_tmpl_rules_t const *rules, 
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	vp_map_t *map;
 
@@ -844,7 +844,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 /*
  *	Compile the RHS of map sections to xlat_exp_t
  */
-static bool pass2_fixup_map_rhs(unlang_group_t *g, vp_tmpl_rules_t const *rules)
+static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	/*
 	 *	Compile the map
@@ -1458,14 +1458,14 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	char const		*tmpl_str;
 
 	vp_map_t		*head;
-	vp_tmpl_t		*vpt = NULL;
+	tmpl_t		*vpt = NULL;
 
 	map_proc_t		*proc;
 	map_proc_inst_t		*proc_inst;
 
 	char const		*name2 = cf_section_name2(cs);
 
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1587,7 +1587,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	vp_map_t		*head;
 
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	if (!cf_item_next(cs, NULL)) {
 		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_UPDATE);
@@ -1643,7 +1643,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	vp_map_t		*head;
 
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	if (!cf_item_next(cs, NULL)) {
 		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FILTER);
@@ -2077,7 +2077,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t *c;
 	ssize_t slen;
 
-	vp_tmpl_rules_t	parse_rules;
+	tmpl_rules_t	parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -2185,8 +2185,8 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const		*name2;
 	unlang_t		*c;
 	unlang_group_t		*g;
-	vp_tmpl_t		*vpt = NULL;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_t		*vpt = NULL;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -2312,9 +2312,9 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	unlang_t		*c;
 	unlang_group_t		*g;
 	ssize_t			slen;
-	vp_tmpl_t		*vpt;
+	tmpl_t		*vpt;
 
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -2460,7 +2460,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	unlang_tmpl_t *ut;
 	ssize_t slen;
 	char const *p = cf_pair_attr(cp);
-	vp_tmpl_t *vpt;
+	tmpl_t *vpt;
 	xlat_exp_t *head;
 
 	ut = talloc_zero(parent, unlang_tmpl_t);
@@ -2736,7 +2736,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	unlang_t	*c;
 	unlang_group_t	*g;
 
-	vp_tmpl_rules_t	parse_rules;
+	tmpl_rules_t	parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -2885,7 +2885,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	unlang_t		*c;
 	unlang_group_t		*g;
 	unlang_compile_t	unlang_ctx2;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 	fr_dict_t const		*dict;
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
@@ -3585,10 +3585,10 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules, void **instruction)
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t		*c;
-	vp_tmpl_rules_t		my_rules;
+	tmpl_rules_t		my_rules;
 	char const		*name1, *name2;
 	CONF_DATA const		*cd;
 

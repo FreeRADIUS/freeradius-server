@@ -38,8 +38,8 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*tmpl;
-	vp_tmpl_t	**tmpl_m;
+	tmpl_t	*tmpl;
+	tmpl_t	**tmpl_m;
 	char const	*string;
 	char const	**string_m;
 

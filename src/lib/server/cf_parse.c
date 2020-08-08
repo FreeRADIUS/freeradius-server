@@ -174,7 +174,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	}
 
 	if (tmpl) {
-		vp_tmpl_t *vpt;
+		tmpl_t *vpt;
 
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
@@ -188,7 +188,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 */
 		if (attribute) {
 			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cp->value,
-						   &(vp_tmpl_rules_t){
+						   &(tmpl_rules_t){
 							.allow_unknown = true,
 							.allow_unparsed = true
 						   });
@@ -205,7 +205,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 				talloc_free(text);
 				goto error;
 			}
-			*(vp_tmpl_t **)out = vpt;
+			*(tmpl_t **)out = vpt;
 		}
 		goto finish;
 	}
@@ -681,7 +681,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 *	Tmpl is outside normal range
 		 */
 		else if (type & FR_TYPE_TMPL) {
-			array = (void **)talloc_zero_array(ctx, vp_tmpl_t *, count);
+			array = (void **)talloc_zero_array(ctx, tmpl_t *, count);
 		/*
 		 *	Allocate an array of values.
 		 *
@@ -854,7 +854,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  * **fr_type_t to data type mappings**
  * | fr_type_t               | Data type          | Dynamically allocated  |
  * | ----------------------- | ------------------ | ---------------------- |
- * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
+ * | FR_TYPE_TMPL            | ``tmpl_t``      | Yes                    |
  * | FR_TYPE_BOOL            | ``bool``           | No                     |
  * | FR_TYPE_UINT32          | ``uint32_t``       | No                     |
  * | FR_TYPE_UINT16          | ``uint16_t``       | No                     |
@@ -1293,7 +1293,7 @@ finish:
 
 /** Fixup xlat expansions and attributes
  *
- * @param[out] base start of structure to write #vp_tmpl_t s to.
+ * @param[out] base start of structure to write #tmpl_t s to.
  * @param[in] cs CONF_SECTION to fixup.
  * @return
  *	- 0 on success.
@@ -1432,12 +1432,12 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		} else if (is_tmpl) {
 			ssize_t	slen;
 
-			vp_tmpl_t **out = (vp_tmpl_t **)data;
-			vp_tmpl_t *vpt;
+			tmpl_t **out = (tmpl_t **)data;
+			tmpl_t *vpt;
 
 			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
 					      cf_pair_value_quote(cp),
-					      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
+					      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
 					      true);
 			if (slen < 0) {
 				char *spaces, *text;
@@ -1489,7 +1489,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	Free the old value if we're overwriting
 			 */
 			TALLOC_FREE(*out);
-			*(vp_tmpl_t **)out = vpt;
+			*(tmpl_t **)out = vpt;
 		}
 	}
 
