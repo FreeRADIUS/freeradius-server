@@ -1812,23 +1812,22 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			      char const **modname);
 
 
-/* unlang_group_ts are grown by adding a unlang_t to the end */
+/* unlang_group_t is grown by adding a unlang_t to the end */
 static void add_child(unlang_group_t *g, unlang_t *c)
 {
-	if (!c) return;
-
-	(void) talloc_steal(g, c);
+	fr_assert(c != NULL);
+	fr_assert(g == talloc_parent(c));
+	fr_assert(c->parent == unlang_group_to_generic(g));
+	fr_assert(!c->next);
 
 	if (!g->children) {
 		g->children = g->tail = c;
 	} else {
-		fr_assert(g->tail->next == NULL);
 		g->tail->next = c;
 		g->tail = c;
 	}
 
 	g->num_children++;
-	c->parent = unlang_group_to_generic(g);
 }
 
 /*
