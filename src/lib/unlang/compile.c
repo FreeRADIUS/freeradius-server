@@ -2419,6 +2419,25 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_DETACH);
 }
 
+static unlang_t *compile_return(unlang_t *parent, unlang_compile_t *unlang_ctx, UNUSED CONF_ITEM *ci)
+{
+	/*
+	 *	These types are all parallel, and therefore can have a "return" in them.
+	 */
+	switch (parent->type) {
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_PARALLEL:
+		break;
+
+	default:
+		parent->closed = true;
+		break;
+	}
+
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
+}
+
 static unlang_t *compile_tmpl(unlang_t *parent,
 			      unlang_compile_t *unlang_ctx, CONF_PAIR *cp)
 {
@@ -3208,34 +3227,34 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	return c;
 }
 
-typedef unlang_t *(*unlang_op_compile_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
-typedef struct {
-	char const			*name;
-	unlang_op_compile_t		compile;
-} unlang_compile_table_t;
+typedef unlang_t *(*unlang_op_compile_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci);
 
-static unlang_compile_table_t compile_table[] = {
-	{ "group",		compile_group },
-	{ "redundant",		compile_redundant },
-	{ "load-balance",	compile_load_balance },
-	{ "redundant-load-balance", compile_redundant_load_balance },
-
-	{ "case",		compile_case },
-	{ "foreach",		compile_foreach },
-	{ "if",			compile_if },
-	{ "elsif",		compile_elsif },
-	{ "else",		compile_else },
-	{ "filter",		compile_filter },
-	{ "update",		compile_update },
-	{ "map",		compile_map },
-	{ "switch",		compile_switch },
-	{ "parallel",		compile_parallel },
-	{ "subrequest",		compile_subrequest },
-	{ "call",		compile_call },
-
-	{ NULL, NULL, }
+static fr_table_ptr_sorted_t unlang_section_keywords[] = {
+	{ L("call"),		(void *) compile_call },
+	{ L("case"),		(void *) compile_case },
+	{ L("else"),		(void *) compile_else },
+	{ L("elsif"),		(void *) compile_elsif },
+	{ L("filter"),		(void *) compile_filter },
+	{ L("foreach"),		(void *) compile_foreach },
+	{ L("group"),		(void *) compile_group },
+	{ L("if"),		(void *) compile_if },
+	{ L("load-balance"),	(void *) compile_load_balance },
+	{ L("map"),		(void *) compile_map },
+	{ L("parallel"),	(void *) compile_parallel },
+	{ L("redundant"), 	(void *) compile_redundant },
+	{ L("redundant-load-balance"), (void *) compile_redundant_load_balance },
+	{ L("subrequest"),	(void *) compile_subrequest },
+	{ L("switch"),		(void *) compile_switch },
+	{ L("update"),		(void *) compile_update },
 };
+static int unlang_section_keywords_len = NUM_ELEMENTS(unlang_section_keywords);
 
+static fr_table_ptr_sorted_t unlang_pair_keywords[] = {
+	{ L("break"),		(void *) compile_break },
+	{ L("detach"),		(void *) compile_detach },
+	{ L("return"), 		(void *) compile_return },
+};
+static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
 
 /*
  *	When we switch to a new unlang ctx, we use the new component
@@ -3264,57 +3283,38 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	unlang_compile_t	unlang_ctx2;
 	module_method_t		method;
 	bool			policy;
+	unlang_op_compile_t	compile;
+
+	*modname = NULL;
 
 	if (cf_item_is_section(ci)) {
-		int i;
-		char const *name2;
-
 		cs = cf_item_to_section(ci);
 		modrefname = cf_section_name1(cs);
-		name2 = cf_section_name2(cs);
 
-		for (i = 0; compile_table[i].name != NULL; i++) {
-			if (strcmp(modrefname, compile_table[i].name) == 0) {
-				if (name2) {
-					*modname = name2;
-				} else {
-					*modname = "";
-				}
+		compile = (unlang_op_compile_t) fr_table_value_by_str(unlang_section_keywords, modrefname, NULL);
+		if (compile) return compile(parent, unlang_ctx, ci);
 
-				return compile_table[i].compile(parent, unlang_ctx, cs);
-			}
+		/*
+		 *	Forbid pair keywords as section names, e.g. "break { ... }"
+		 */
+		if (fr_table_value_by_str(unlang_pair_keywords, modrefname, NULL) != NULL) {
+			cf_log_err(ci, "Syntax error after keyword '%s' - unexpected '{'", modrefname);
+			return NULL;
 		}
 
-		if (strcmp(modrefname, "break") == 0) {
-			cf_log_err(ci, "Invalid use of 'break'");
-			return NULL;
+		/* else it's something like sql { fail = 1 ...} */
 
-		} else if (strcmp(modrefname, "detach") == 0) {
-			cf_log_err(ci, "Invalid use of 'detach'");
-			return NULL;
-
-		} else if (strcmp(modrefname, "return") == 0) {
-			cf_log_err(ci, "Invalid use of 'return'");
-			return NULL;
-
-		} /* else it's something like sql { fail = 1 ...} */
-
-	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
-		return NULL;
-
-	} else {
+	} else if (cf_item_is_pair(ci)) {
 		/*
 		 *	Else it's a module reference such as "sql", OR
 		 *	one of the few bare keywords that we allow.
 		 */
-		int i;
 		CONF_PAIR *cp = cf_item_to_pair(ci);
 
 		modrefname = cf_pair_attr(cp);
 
 		/*
-		 *	Actions (ok = 1), etc. are orthogonal to just
-		 *	about everything else.
+		 *	We cannot have assignments or actions here.
 		 */
 		if (cf_pair_value(cp) != NULL) {
 			cf_log_err(ci, "Entry is not a reference to a module");
@@ -3331,43 +3331,18 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
 
-		/*
-		 *	Forbid keywords as module names.
-		 */
-		for (i = 0; compile_table[i].name != NULL; i++) {
-			if (strcmp(modrefname, compile_table[i].name) == 0) {
-				cf_log_err(cp, "Syntax error after keyword '%s' - expected '{'", modrefname);
-			}
-		}
+		compile = fr_table_value_by_str(unlang_pair_keywords, modrefname, NULL);
+		if (compile) return compile(parent, unlang_ctx, ci);
 
 		/*
-		 *	These can't be over-ridden.
+		 *	Forbid section keywords as pair names, e.g. bare "update"
 		 */
-		if (strcmp(modrefname, "break") == 0) {
-			return compile_break(parent, unlang_ctx, ci);
+		if (fr_table_value_by_str(unlang_section_keywords, modrefname, NULL) != NULL) {
+			cf_log_err(ci, "Syntax error after keyword '%s' - expected '{'", modrefname);
+			return NULL;
 		}
-
-		if (strcmp(modrefname, "detach") == 0) {
-			return compile_detach(parent, unlang_ctx, ci);
-		}
-
-		if (strcmp(modrefname, "return") == 0) {
-			/*
-			 *	These types are all parallel, and therefore can have a "return" in them.
-			 */
-			switch (parent->type) {
-			case UNLANG_TYPE_LOAD_BALANCE:
-			case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-			case UNLANG_TYPE_PARALLEL:
-				break;
-
-			default:
-				parent->closed = true;
-				break;
-			}
-
-			return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
-		}
+	} else {
+		return NULL;	/* who knows what it is... */
 	}
 
 	/*
