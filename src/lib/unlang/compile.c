@@ -31,6 +31,17 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "module_priv.h"
 
+/*
+ *	When we switch to a new unlang ctx, we use the new component
+ *	name and number, but we use the CURRENT actions.
+ */
+#define UPDATE_CTX2  \
+	unlang_ctx2.component = component; \
+	unlang_ctx2.actions = unlang_ctx->actions; \
+	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
+	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
+	unlang_ctx2.rules = unlang_ctx->rules
+
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
@@ -3067,6 +3078,69 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 }
 
 
+static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+				  CONF_SECTION *subcs, char const **modname, rlm_components_t component,
+				  bool policy)
+{
+	unlang_compile_t	unlang_ctx2;
+	unlang_t		*c;
+
+	/*
+	 *	module.c takes care of ensuring that this is:
+	 *
+	 *	group foo { ...
+	 *	load-balance foo { ...
+	 *	redundant foo { ...
+	 *	redundant-load-balance foo { ...
+	 *
+	 *	We can just recurse to compile the section as
+	 *	if it was found here.
+	 */
+	if (cf_section_name2(subcs)) {
+		UPDATE_CTX2;
+
+		if (policy) {
+			cf_log_err(subcs, "Unexpected second name in policy");
+			return NULL;
+		}
+
+		c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), modname);
+		if (!c) return NULL;
+
+	} else {
+		UPDATE_CTX2;
+
+		/*
+		 *	We have:
+		 *
+		 *	foo { ...
+		 *
+		 *	So we compile it like it was:
+		 *
+		 *	group foo { ...
+		 */
+		c = compile_section(parent, &unlang_ctx2, subcs,
+				    policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
+		if (!c) return NULL;
+	}
+
+	/*
+	 *	Return the compiled thing if we can.
+	 */
+	if (cf_item_is_pair(ci)) return c;
+
+	/*
+	 *	Else we have a reference to a policy, and that reference
+	 *	over-rides the return codes for the policy!
+	 */
+	if (!compile_action_section(c, ci)) {
+		talloc_free(c);
+		return NULL;
+	}
+
+	return c;
+}
+
 /** Load a named module from "instantiate" or "policy".
  *
  * If it's "foo.method", look for "foo", and return "method" as the method
@@ -3256,16 +3330,6 @@ static fr_table_ptr_sorted_t unlang_pair_keywords[] = {
 };
 static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
 
-/*
- *	When we switch to a new unlang ctx, we use the new component
- *	name and number, but we use the CURRENT actions.
- */
-#define UPDATE_CTX2  \
-	unlang_ctx2.component = component; \
-	unlang_ctx2.actions = unlang_ctx->actions; \
-	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
-	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
-	unlang_ctx2.rules = unlang_ctx->rules
 
 /*
  *	Compile one entry of a module call.
@@ -3274,7 +3338,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			      char const **modname)
 {
 	char const		*modrefname, *p;
-	unlang_t		*c;
 	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
 	CONF_ITEM		*loop;
@@ -3412,70 +3475,17 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	}
 
 	/*
-	 *	We've found the relevant entry.  It MUST be a
-	 *	sub-section.
+	 *	We've found the thing which defines this "function".
+	 *	It MUST be a sub-section.
 	 *
-	 *	However, it can be a "redundant" block, or just
+	 *	i.e. it refers to a a subsection in "policy", or to a
+	 *	named redundant / load-balance subsection defined in
+	 *	"instantiate".
 	 */
-	if (subcs) {
-		/*
-		 *	module.c takes care of ensuring that this is:
-		 *
-		 *	group foo { ...
-		 *	load-balance foo { ...
-		 *	redundant foo { ...
-		 *	redundant-load-balance foo { ...
-		 *
-		 *	We can just recurs to compile the section as
-		 *	if it was found here.
-		 */
-		if (cf_section_name2(subcs)) {
-			UPDATE_CTX2;
-
-			if (policy) {
-				cf_log_err(subcs, "Unexpected second name in policy");
-				return NULL;
-			}
-
-			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), modname);
-			if (!c) return NULL;
-
-		} else {
-			UPDATE_CTX2;
-
-			/*
-			 *	We have:
-			 *
-			 *	foo { ...
-			 *
-			 *	So we compile it like it was:
-			 *
-			 *	group foo { ...
-			 */
-			c = compile_section(parent, &unlang_ctx2, subcs,
-					  policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
-			if (!c) return NULL;
-		}
-
-		/*
-		 *	Return the compiled thing if we can.
-		 */
-		if (cf_item_is_pair(ci)) return c;
-
-		/*
-		 *	Else we have a reference to a policy, and that reference
-		 *	over-rides the return codes for the policy!
-		 */
-		if (!compile_action_section(c, ci)) {
-			talloc_free(c);
-			return NULL;
-		}
-
-		return c;
-	}
+	if (subcs) return compile_function(parent, unlang_ctx, ci, subcs, modname, component, policy);
 
 	/*
-	 *	Not a virtual module.  It must be a real module.
+	 *	Not a function.  It must be a real module.
 	 */
 	modules = cf_section_find(cf_root(ci), "modules", NULL);
 	if (!modules) goto fail;
