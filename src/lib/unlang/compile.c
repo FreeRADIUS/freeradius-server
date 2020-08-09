@@ -1351,8 +1351,6 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 	c = unlang_group_to_generic(g);
 	c->parent = parent;
 	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
 
 	return g;
 }
@@ -1872,12 +1870,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	c = unlang_group_to_generic(g);
 
 	/*
-	 *	Set the default actions for the current group.  An
-	 *	"actions" subsection MAY over-ride these.
-	 */
-	compile_action_defaults(c, unlang_ctx);
-
-	/*
 	 *	Loop over the children of this group.
 	 */
 	while ((ci = cf_item_next(g->cs, ci))) {
@@ -1981,6 +1973,12 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 
 		fr_assert(0);	/* not a known configuration item data type */
 	}
+
+	/*
+	 *	Set the default actions, if they haven't already been
+	 *	set by an "actions" section above.
+	 */
+	compile_action_defaults(c, unlang_ctx);
 
 	return c;
 }
@@ -2390,11 +2388,9 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		return NULL;
 	}
 
-	c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
-	if (!c) return NULL;
-
 	parent->closed = true;
-	return c;
+
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
 }
 
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
@@ -3360,9 +3356,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		if (strcmp(modrefname, "return") == 0) {
-			c = compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
-			if (!c) return NULL;
-
 			/*
 			 *	These types are all parallel, and therefore can have a "return" in them.
 			 */
@@ -3377,7 +3370,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 				break;
 			}
 
-			return c;
+			return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
 		}
 	}
 
