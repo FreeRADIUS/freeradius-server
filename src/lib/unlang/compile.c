@@ -41,7 +41,7 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ L("invalid"),    RLM_MODULE_INVALID      },
 	{ L("noop"),       RLM_MODULE_NOOP		},
 	{ L("notfound"),   RLM_MODULE_NOTFOUND     },
-	{ L("ok"),	 	RLM_MODULE_OK		},
+	{ L("ok"),	   RLM_MODULE_OK		},
 	{ L("reject"),     RLM_MODULE_REJECT       },
 	{ L("updated"),    RLM_MODULE_UPDATED      },
 	{ L("yield"),      RLM_MODULE_YIELD	}
@@ -1930,8 +1930,10 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				return NULL;
 			}
 			add_child(g, single);
+			continue;
+		}
 
-		} else if (cf_item_is_pair(ci)) {
+		if (cf_item_is_pair(ci)) {
 			char const *attr, *value;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
@@ -1967,20 +1969,24 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 				}
 				add_child(g, single);
 
-			} else if (!parent || (parent->type != UNLANG_TYPE_MODULE)) {
-				cf_log_err(cp, "Invalid location for action over-ride");
+			} else {
+				/*
+				 *	compile_module() has already
+				 *	compiled the action subsection
+				 *	for this module.
+				 */
+				if (parent && (parent->type == UNLANG_TYPE_MODULE)) {
+					return c;
+				}
+
+				cf_log_err(cp, "Unknown keyword '%s', or invalid location", attr);
 				talloc_free(c);
 				return NULL;
-
-			} else {
-				if (!compile_action_pair(c, cp)) {
-					talloc_free(c);
-					return NULL;
-				}
 			}
-		} else {
-			fr_assert(0);
-		}
+			continue;
+		} /* was CONF_PAIR */
+
+		fr_assert(0);	/* not a known data type */
 	}
 
 	compile_action_defaults(c, unlang_ctx);
