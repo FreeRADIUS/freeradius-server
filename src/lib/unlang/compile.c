@@ -3146,7 +3146,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
  * If it's "foo.method", look for "foo", and return "method" as the method
  * we wish to use, instead of the input component.
  *
- * @param[in] conf_root		Configuration root.
+ * @param[in] ci		Configuration item to check
  * @param[out] pcomponent	Where to write the method we found, if any.
  *				If no method is specified will be set to MOD_COUNT.
  * @param[in] real_name		Complete name string e.g. foo.authorize.
@@ -3156,15 +3156,17 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
  * @param[out] policy		whether or not this thing was a policy
  * @return the CONF_SECTION specifying the virtual module.
  */
-static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_components_t *pcomponent,
+static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pcomponent,
 					    char const *real_name, char const *virtual_name, char const *method_name,
 					    bool *policy)
 {
-	CONF_SECTION *cs, *subcs;
+	CONF_SECTION *cs, *subcs, *conf_root;
+	CONF_ITEM *loop;
 	rlm_components_t method = *pcomponent;
 	char buffer[256];
 
 	*policy = false;
+	conf_root = cf_root(ci);
 
 	/*
 	 *	Turn the method name into a method enum.
@@ -3199,7 +3201,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 		subcs = cf_section_find(cs, CF_IDENT_ANY, virtual_name);
 		if (subcs) {
 			*pcomponent = method;
-			return subcs;
+			goto check_for_loop;
 		}
 	}
 
@@ -3220,22 +3222,38 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 	 */
 	if (method_name) {
 		subcs = cf_section_find(cs, virtual_name, NULL);
-		if (subcs) *pcomponent = method;
+		if (!subcs) return NULL;
 
-		return subcs;
+		*pcomponent = method;
+		goto check_for_loop;
 	}
 
 	/*
 	 *	"foo" means "look for foo.component" first, to allow
 	 *	method overrides.  If that's not found, just look for
 	 *	a policy "foo".
-	 *
 	 */
 	snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, comp2str[method]);
 	subcs = cf_section_find(cs, buffer, NULL);
-	if (subcs) return subcs;
+	if (!subcs) subcs = cf_section_find(cs, virtual_name, NULL);
+	if (!subcs) return NULL;
 
-	return cf_section_find(cs, virtual_name, NULL);
+check_for_loop:
+	/*
+	 *	Check that we're not creating a loop.  We may
+	 *	be compiling an "sql" module reference inside
+	 *	of an "sql" policy.  If so, we allow the
+	 *	second "sql" to refer to the module.
+	 */
+	for (loop = cf_parent(ci);
+	     loop && subcs;
+	     loop = cf_parent(loop)) {
+		if (loop == cf_section_to_item(subcs)) {
+			return NULL;
+		}
+	}
+
+	return subcs;
 }
 
 
@@ -3340,7 +3358,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const		*modrefname, *p;
 	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
-	CONF_ITEM		*loop;
 	char const		*realname;
 	rlm_components_t	component = unlang_ctx->component;
 	unlang_compile_t	unlang_ctx2;
@@ -3446,32 +3463,17 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	and "policy" is that "instantiate" will cause modules
 	 *	to be instantiated in a particular order.
 	 */
-	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname, modrefname, NULL, &policy);
+		subcs = virtual_module_find_cs(ci, &component, modrefname, modrefname, NULL, &policy);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, modrefname, sizeof(buffer));
 		buffer[p - modrefname] = '\0';
 
-		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname,
+		subcs = virtual_module_find_cs(ci, &component, modrefname,
 					       buffer, buffer + (p - modrefname) + 1, &policy);
-	}
-
-	/*
-	 *	Check that we're not creating a loop.  We may
-	 *	be compiling an "sql" module reference inside
-	 *	of an "sql" policy.  If so, we allow the
-	 *	second "sql" to refer to the module.
-	 */
-	for (loop = cf_parent(ci);
-	     loop && subcs;
-	     loop = cf_parent(loop)) {
-		if (loop == cf_section_to_item(subcs)) {
-			subcs = NULL;
-		}
 	}
 
 	/*
