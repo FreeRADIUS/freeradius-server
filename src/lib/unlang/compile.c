@@ -3577,9 +3577,11 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
 	/*
-	 *	Associate the unlang with the configuration section.
+	 *	Associate the unlang with the configuration section,
+	 *	and free the unlang code when the configuration
+	 *	section is freed.
 	 */
-	cf_data_add(cs, c, NULL, false);
+	cf_data_add(cs, c, NULL, true);
 	if (instruction) *instruction = c;
 
 	dump_tree(c, c->debug_name);
