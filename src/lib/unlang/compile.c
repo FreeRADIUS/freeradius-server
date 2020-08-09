@@ -1820,25 +1820,6 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
 			      char const **modname);
 
-
-/* unlang_group_t is grown by adding a unlang_t to the end */
-static void add_child(unlang_group_t *g, unlang_t *c)
-{
-	fr_assert(c != NULL);
-	fr_assert(g == talloc_parent(c));
-	fr_assert(c->parent == unlang_group_to_generic(g));
-	fr_assert(!c->next);
-
-	if (!g->children) {
-		g->children = g->tail = c;
-	} else {
-		g->tail->next = c;
-		g->tail = c;
-	}
-
-	g->num_children++;
-}
-
 /*
  *	compile 'actions { ... }' inside of another group.
  */
@@ -1876,7 +1857,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx)
 {
 	CONF_ITEM *ci = NULL;
-	unlang_t *c;
+	unlang_t *c, *single;
 
 	c = unlang_group_to_generic(g);
 
@@ -1887,21 +1868,11 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (cf_item_is_data(ci)) continue;
 
 		/*
-		 *	Be generous and skip things which won't be used.
-		 */
-		if (g->self.closed) {
-			cf_log_warn(ci, "Skipping remaining instructions due to previous '%s'",
-				    g->tail->name);
-			break;
-		}
-
-		/*
 		 *	Sections are references to other groups, or
 		 *	to modules with updated return codes.
 		 */
 		if (cf_item_is_section(ci)) {
 			char const *name = NULL;
-			unlang_t *single;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			/*
@@ -1932,13 +1903,12 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				talloc_free(c);
 				return NULL;
 			}
-			add_child(g, single);
-			continue;
+
+			goto add_child;
 		}
 
 		if (cf_item_is_pair(ci)) {
 			char const *attr;
-			unlang_t *single;
 			char const *name = NULL;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
@@ -1978,11 +1948,39 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				talloc_free(c);
 				return NULL;
 			}
-			add_child(g, single);
-			continue;
+
+			goto add_child;
 		} /* was CONF_PAIR */
 
 		fr_assert(0);	/* not a known configuration item data type */
+
+	add_child:
+		/*
+		 *	unlang_group_t is grown by adding a unlang_t to the end
+		 */
+		fr_assert(g == talloc_parent(single));
+		fr_assert(single->parent == unlang_group_to_generic(g));
+		fr_assert(!single->next);
+
+		if (!g->children) {
+			g->children = g->tail = single;
+		} else {
+			g->tail->next = single;
+			g->tail = single;
+		}
+
+		g->num_children++;
+
+		/*
+		 *	If it's not possible to execute statement
+		 *	after the current one, then just stop
+		 *	processing the children.
+		 */
+		if (g->self.closed) {
+			cf_log_warn(ci, "Skipping remaining instructions due to previous '%s'",
+				    single->name);
+			break;
+		}
 	}
 
 	/*
@@ -1990,7 +1988,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 *	set by an "actions" section above.
 	 */
 	compile_action_defaults(c, unlang_ctx);
-
 	return c;
 }
 
