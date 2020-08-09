@@ -2368,7 +2368,6 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *foreach;
-	unlang_t *c;
 
 	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
 		/*
@@ -3308,7 +3307,9 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	Else it's a module reference such as "sql", OR
 		 *	one of the few bare keywords that we allow.
 		 */
+		int i;
 		CONF_PAIR *cp = cf_item_to_pair(ci);
+
 		modrefname = cf_pair_attr(cp);
 
 		/*
@@ -3328,6 +3329,15 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
 			return compile_tmpl(parent, unlang_ctx, cp);
+		}
+
+		/*
+		 *	Forbid keywords as module names.
+		 */
+		for (i = 0; compile_table[i].name != NULL; i++) {
+			if (strcmp(modrefname, compile_table[i].name) == 0) {
+				cf_log_err(cp, "Syntax error after keyword '%s' - expected '{'", modrefname);
+			}
 		}
 
 		/*
