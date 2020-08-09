@@ -3286,20 +3286,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			}
 		}
 
-		/*
-		 *	Allow for named subsections, to change processing method types.
-		 */
-		if (name2 && (virtual_server_section_component(&component, modrefname, name2) == 0)) {
-			UPDATE_CTX2;
-
-			c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_GROUP);
-			if (!c) return NULL;
-
-			c->name = talloc_typed_strdup(c, modrefname);
-			c->debug_name = talloc_typed_asprintf(c, "%s %s", modrefname, name2);
-			return c;
-		}
-
 		if (strcmp(modrefname, "break") == 0) {
 			cf_log_err(ci, "Invalid use of 'break'");
 			return NULL;
