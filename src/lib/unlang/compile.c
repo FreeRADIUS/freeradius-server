@@ -1864,12 +1864,18 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_compile_t *unlang_ctx)
+static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx)
 {
 	CONF_ITEM *ci = NULL;
 	unlang_t *c;
 
 	c = unlang_group_to_generic(g);
+
+	/*
+	 *	Set the default actions for the current group.  An
+	 *	"actions" subsection MAY over-ride these.
+	 */
+	compile_action_defaults(c, unlang_ctx);
 
 	/*
 	 *	Loop over the children of this group.
@@ -1891,7 +1897,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 		 *	to modules with updated return codes.
 		 */
 		if (cf_item_is_section(ci)) {
-			char const *name1 = NULL;
+			char const *name = NULL;
 			unlang_t *single;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
@@ -1904,14 +1910,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 			 *	"actions" apply to the current group.
 			 *	It's not a subgroup.
 			 */
-			name1 = cf_section_name1(subcs);
-			if (strcmp(name1, "actions") == 0) {
-				if (cf_item_next(g->cs, ci) != NULL) {
-					cf_log_err(subcs, "'actions' MUST be the last thing in a subsection");
-					talloc_free(c);
-					return NULL;
-				}
-
+			name = cf_section_name1(subcs);
+			if (strcmp(name, "actions") == 0) {
 				if (!compile_action_subsection(c, g->cs, subcs)) {
 					talloc_free(c);
 					return NULL;
@@ -1923,7 +1923,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 			/*
 			 *	Otherwise it's a real keyword.
 			 */
-			single = compile_item(c, unlang_ctx, ci, &name1);
+			single = compile_item(c, unlang_ctx, ci, &name);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection", cf_section_name1(subcs));
 				talloc_free(c);
@@ -1934,62 +1934,54 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 		}
 
 		if (cf_item_is_pair(ci)) {
-			char const *attr, *value;
+			char const *attr;
+			unlang_t *single;
+			char const *name = NULL;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
 			attr = cf_pair_attr(cp);
-			value = cf_pair_value(cp);
 
 			/*
-			 *	A CONF_PAIR is either a module
-			 *	instance with no actions
-			 *	specified ...
+			 *	Bare "foo = bar" is disallowed.
 			 */
-			if (!value) {
-				unlang_t *single;
-				char const *name = NULL;
-
-				single = compile_item(c, unlang_ctx, ci, &name);
-				if (!single) {
-					/*
-					 *	Skip optional modules, which start with '-'
-					 */
-					name = cf_pair_attr(cp);
-					if (name[0] == '-') {
-						cf_log_warn(cp, "Ignoring \"%s\" as it is commented out",
-							    name + 1);
-						continue;
-					}
-
-					cf_log_err(ci,
-						   "Invalid keyword \"%s\".",
-						   attr);
-					talloc_free(c);
-					return NULL;
-				}
-				add_child(g, single);
-
-			} else {
-				/*
-				 *	compile_module() has already
-				 *	compiled the action subsection
-				 *	for this module.
-				 */
-				if (parent && (parent->type == UNLANG_TYPE_MODULE)) {
-					return c;
-				}
-
+			if (cf_pair_value(cp) != NULL) {
 				cf_log_err(cp, "Unknown keyword '%s', or invalid location", attr);
 				talloc_free(c);
 				return NULL;
 			}
+
+			/*
+			 *	Compile the item as a module
+			 *	reference, or as "break / return /
+			 *	etc."
+			 *
+			 *	On error, check if we have a name for
+			 *	the module.  If so, then we know that
+			 *	the module is conditionally referenced
+			 *	via something like "-ldap",
+			 *
+			 *	Once we fix the compilation API, to
+			 *	return 0/-1, this check can be removed.
+			 */
+			single = compile_item(c, unlang_ctx, ci, &name);
+			if (!single) {
+				if (name) {
+					cf_log_warn(cp, "Ignoring \"%s\" as it is commented out",
+						    name + 1);
+					continue;
+				}
+
+				cf_log_err(ci, "Invalid keyword \"%s\".", attr);
+				talloc_free(c);
+				return NULL;
+			}
+			add_child(g, single);
 			continue;
 		} /* was CONF_PAIR */
 
-		fr_assert(0);	/* not a known data type */
+		fr_assert(0);	/* not a known configuration item data type */
 	}
 
-	compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -2037,7 +2029,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		MEM(c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2));
 	}
 
-	return compile_children(g, parent, unlang_ctx);
+	return compile_children(g, unlang_ctx);
 }
 
 
@@ -2155,7 +2147,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	return compile_children(g, parent, unlang_ctx);
+	return compile_children(g, unlang_ctx);
 }
 
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
