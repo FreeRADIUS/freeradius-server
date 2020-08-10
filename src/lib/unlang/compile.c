@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "module_priv.h"
 
+#define UNLANG_IGNORE ((unlang_t *) -1)
+
 /*
  *	When we switch to a new unlang ctx, we use the new component
  *	name and number, but we use the CURRENT actions.
@@ -1531,7 +1533,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 
 	if (!cf_item_next(cs, NULL)) {
 		talloc_free(vpt);
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_MAP);
+		return UNLANG_IGNORE;
 	}
 
 	/*
@@ -1592,9 +1594,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	tmpl_rules_t		parse_rules;
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_UPDATE);
-	}
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1647,9 +1647,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	tmpl_rules_t		parse_rules;
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FILTER);
-	}
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1976,6 +1974,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		fr_assert(0);	/* not a known configuration item data type */
 
 	add_child:
+		if (single == UNLANG_IGNORE) continue;
+
 		/*
 		 *	Do optimizations for "if" conditions.
 		 */
@@ -2066,9 +2066,9 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	unlang_t *c;
 	char const *name1, *name2;
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, mod_type);
-	}
+	/*
+	 *	We always create a group, even if the section is empty.
+	 */
 
 	g = group_allocate(parent, cs, mod_type);
 	if (!g) return NULL;
@@ -2105,6 +2105,8 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
 	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_GROUP);
 }
 
@@ -2134,9 +2136,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
-	if (!cf_item_next(cs, NULL)) {
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_SWITCH);
-	}
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	g = group_allocate(parent, cs, UNLANG_TYPE_SWITCH);
 	if (!g) return NULL;
@@ -2341,11 +2341,18 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 	} /* else it's a default 'case' statement */
 
+	/*
+	 *	If we were asked to match something, then we MUST
+	 *	match it, even if the section is empty.  Otherwise we
+	 *	will silently skip the match, and then fall through to
+	 *	the "default" statement.
+	 */
 	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CASE);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
 	}
+
 
 	g = unlang_generic_to_group(c);
 	g->vpt = talloc_steal(g, vpt);
@@ -2411,7 +2418,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (!cf_item_next(cs, NULL)) {
 		talloc_free(vpt);
-		return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_FOREACH);
+		return UNLANG_IGNORE;
 	}
 
 	/*
@@ -2619,10 +2626,10 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	them up.
 		 */
 		if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
-
 		c = compile_section(parent, unlang_ctx, cs, mod_type);
 	}
 	if (!c) return NULL;
+	fr_assert(c != UNLANG_IGNORE);
 
 	g = unlang_generic_to_group(c);
 	g->cond = cond;
@@ -2707,6 +2714,8 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 {
 	char const *name2;
 	unlang_t *c;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
 		return NULL;
@@ -2853,6 +2862,8 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	unlang_group_t *g;
 	bool clone = true;
 	bool detach = false;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	/*
 	 *	Parallel sections can create empty children, if the
@@ -3005,6 +3016,8 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		}
 	}
 
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
 	parse_rules = *unlang_ctx->rules;
 	parse_rules.dict_def = dict;
 
@@ -3116,7 +3129,6 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 		}
 
 		c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), modname);
-		if (!c) return NULL;
 
 	} else {
 		UPDATE_CTX2;
@@ -3132,8 +3144,9 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 		 */
 		c = compile_section(parent, &unlang_ctx2, subcs,
 				    policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
-		if (!c) return NULL;
 	}
+	if (!c) return NULL;
+	fr_assert(c != UNLANG_IGNORE);
 
 	/*
 	 *	Return the compiled thing if we can.
