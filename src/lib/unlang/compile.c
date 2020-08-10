@@ -2108,7 +2108,9 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_GROUP);
 }
 
-static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
+
+static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
 	fr_token_t type;
@@ -2164,14 +2166,29 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
+	c = unlang_group_to_generic(g);
+	c->name = "switch";
+	c->debug_name = talloc_typed_asprintf(c, "switch %s", name2);
+
+	/*
+	 *	Fixup the template before compiling the children.
+	 *	This is so that compile_case() can do attribute type
+	 *	checks / casts against us.
+	 */
+	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, unlang_ctx->rules, true)) {
+		talloc_free(g);
+		return NULL;
+	}
+
 	/*
 	 *	Walk through the children of the switch section,
-	 *	ensuring that they're all 'case' statements
+	 *	ensuring that they're all 'case' statements, and then compiling them.
 	 */
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
 		CONF_SECTION *subcs;
+		unlang_t *single;
 
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
@@ -2192,32 +2209,31 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			if (!had_seen_default) {
-				had_seen_default = true;
-				continue;
+			if (had_seen_default) {
+				cf_log_err(ci, "Cannot have two 'default' case statements");
+				talloc_free(g);
+				return NULL;
 			}
 
-			cf_log_err(ci, "Cannot have two 'default' case statements");
+			had_seen_default = true;
+		}
+
+		/*
+		 *	Compile the subsection.
+		 */
+		single = compile_case(c, unlang_ctx, subcs);
+		if (!single) {
 			talloc_free(g);
 			return NULL;
 		}
+
+		*g->tail = single;
+		g->tail = &single->next;
+		g->num_children++;
 	}
 
-	c = unlang_group_to_generic(g);
-	c->name = "switch";
-	c->debug_name = talloc_typed_asprintf(c, "switch %s", cf_section_name2(cs));
-
-	/*
-	 *	Fixup the template before compiling the children.
-	 *	This is so that compile_case() can do attribute type
-	 *	checks / casts against us.
-	 */
-	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, unlang_ctx->rules, true)) {
-		talloc_free(g);
-		return NULL;
-	}
-
-	return compile_children(g, unlang_ctx);
+	compile_action_defaults(c, unlang_ctx);
+	return c;
 }
 
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
