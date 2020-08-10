@@ -1594,8 +1594,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	tmpl_rules_t		parse_rules;
 
-	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
-
 	/*
 	 *	We allow unknown attributes here.
 	 */
@@ -1647,8 +1645,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	tmpl_rules_t		parse_rules;
 
-	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
-
 	/*
 	 *	We allow unknown attributes here.
 	 */
@@ -1661,7 +1657,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
-		cf_log_err(cs, "'update' sections cannot be empty");
+		cf_log_err(cs, "'filter' sections cannot be empty");
 		return NULL;
 	}
 
@@ -2674,9 +2670,10 @@ static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 }
 
 /*
- *	redundant, etc. can refer to modules or groups, but not much else.
+ *	redundant, load-balance and parallel have limits on what can
+ *	go in them.
  */
-static int all_children_are_modules(CONF_SECTION *cs, char const *name)
+static int validate_limited_subsection(CONF_SECTION *cs, char const *name)
 {
 	CONF_ITEM *ci;
 
@@ -2695,15 +2692,14 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 			char const *name1 = cf_section_name1(subcs);
 
 			/*
-			 *	@todo - put this into a list somewhere
+			 *	Allow almost anything except "else"
+			 *	statements.  The normal processing
+			 *	falls through from "if" to "else", and
+			 *	we can't do that for redundant and
+			 *	load-balance sections.
 			 */
-			if ((strcmp(name1, "if") == 0) ||
-			    (strcmp(name1, "else") == 0) ||
-			    (strcmp(name1, "elsif") == 0) ||
-			    (strcmp(name1, "update") == 0) ||
-			    (strcmp(name1, "filter") == 0) ||
-			    (strcmp(name1, "switch") == 0) ||
-			    (strcmp(name1, "case") == 0)) {
+			if ((strcmp(name1, "else") == 0) ||
+			    (strcmp(name1, "elsif") == 0)) {
 				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
 				       name, name1);
 				return 0;
@@ -2714,8 +2710,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 			if (cf_pair_value(cp) != NULL) {
-				cf_log_err(ci,
-					   "Entry with no value is invalid");
+				cf_log_err(cp, "Unknown keyword '%s', or invalid location", cf_pair_attr(cp));
 				return 0;
 			}
 		}
@@ -2732,7 +2727,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
-	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
+	if (!validate_limited_subsection(cs, cf_section_name1(cs))) {
 		return NULL;
 	}
 
@@ -2783,7 +2778,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		return NULL;
 	}
 
-	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
+	if (!validate_limited_subsection(cs, cf_section_name1(cs))) {
 		return NULL;
 	}
 
@@ -2899,6 +2894,14 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 			return NULL;
 		}
 
+	}
+
+	/*
+	 *	We can do "if" in parallel with other "if", but we
+	 *	cannot do "else" in parallel with "if".
+	 */
+	if (!validate_limited_subsection(cs, cf_section_name1(cs))) {
+		return NULL;
 	}
 
 	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_PARALLEL);
