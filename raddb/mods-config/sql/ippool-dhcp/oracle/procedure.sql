@@ -29,7 +29,7 @@
 
 CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
 	v_pool_name IN VARCHAR2,
-	v_gatewayipaddress IN VARCHAR2,
+	v_gateway IN VARCHAR2,
 	v_pool_key IN VARCHAR2,
 	v_lease_duration IN INTEGER
 )
@@ -143,7 +143,6 @@ BEGIN
 				r_address := NULL;
 		END;
 	END IF;
-	
 
 	-- Return nothing if we failed to allocated an address
 	--
@@ -156,7 +155,7 @@ BEGIN
 	--
 	UPDATE dhcpippool
 	SET
-		gatewayipaddress = v_gatewayipaddress,
+		gateway = v_gateway,
 		pool_key = v_pool_key,
 		expiry_time = CURRENT_TIMESTAMP + v_lease_duration * INTERVAL '1' SECOND(1)
 	WHERE framedipaddress = r_address;

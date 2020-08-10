@@ -12,7 +12,7 @@ CREATE TABLE dhcpippool (
 	pool_name		varchar(64) NOT NULL,
 	FramedIPAddress		INET NOT NULL,
 	pool_key		VARCHAR(64) NOT NULL default '0',
-	GatewayIPAddress	VARCHAR(16) NOT NULL default '',
+	gateway			VARCHAR(16) NOT NULL default '',
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default NOW(),
 	status			dhcp_status DEFAULT 'dynamic'
 );

@@ -19,7 +19,7 @@
 -- allocate_find = "\
 --      EXEC fr_dhcp_allocate_previous_or_new_framedipaddress \
 --              @v_pool_name = '%{control:${pool_name}}', \
---              @v_gatewayipaddress = '%{DHCP-Gateway-IP-Address}', \
+--              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
 --              @v_pool_key = '${pool_key}', \
 --              @v_lease_duration = ${lease_duration} \
 --      "
@@ -29,7 +29,7 @@
 
 CREATE OR ALTER PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress
 	@v_pool_name VARCHAR(64),
-	@v_gatewayipaddress VARCHAR(15),
+	@v_gateway VARCHAR(15),
 	@v_pool_key VARCHAR(64),
 	@v_lease_duration INT
 AS
@@ -123,7 +123,7 @@ AS
 		--
 		UPDATE dhcpippool
 		SET
-			GatewayIPAddress = @v_gatewayipaddress,
+			gateway = @v_gateway,
 			pool_key = @v_pool_key,
 			expiry_time = DATEADD(SECOND,@v_lease_duration,CURRENT_TIMESTAMP)
 		WHERE framedipaddress = @r_address;
