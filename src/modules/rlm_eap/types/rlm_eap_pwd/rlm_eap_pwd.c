@@ -473,7 +473,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			return 0;
 		}
 
-		if (compute_password_element(session, session->group_num,
+		if (compute_password_element(request, session, session->group_num,
 			     		     pw->data.strvalue, strlen(pw->data.strvalue),
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
@@ -487,7 +487,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * compute our scalar and element
 		 */
-		if (compute_scalar_element(session, session->bnctx)) {
+		if (compute_scalar_element(request, session, session->bnctx)) {
 			DEBUG2("failed to compute server's scalar and element");
 			return 0;
 		}
@@ -543,7 +543,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(session, in, in_len, session->bnctx)) {
+		if (process_peer_commit(request, session, in, in_len, session->bnctx)) {
 			RDEBUG2("failed to process peer's commit");
 			return 0;
 		}
@@ -551,7 +551,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * compute our confirm blob
 		 */
-		if (compute_server_confirm(session, session->my_confirm, session->bnctx)) {
+		if (compute_server_confirm(request, session, session->my_confirm, session->bnctx)) {
 			ERROR("rlm_eap_pwd: failed to compute confirm!");
 			return 0;
 		}
@@ -582,7 +582,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange is incorrect: not commit!");
 			return 0;
 		}
-		if (compute_peer_confirm(session, peer_confirm, session->bnctx)) {
+		if (compute_peer_confirm(request, session, peer_confirm, session->bnctx)) {
 			RDEBUG2("pwd exchange cannot compute peer's confirm");
 			return 0;
 		}
@@ -590,7 +590,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange fails: peer confirm is incorrect!");
 			return 0;
 		}
-		if (compute_keys(session, peer_confirm, msk, emsk)) {
+		if (compute_keys(request, session, peer_confirm, msk, emsk)) {
 			RDEBUG2("pwd exchange cannot generate (E)MSK!");
 			return 0;
 		}

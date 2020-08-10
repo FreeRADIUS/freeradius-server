@@ -160,15 +160,42 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (tls_session->prf_label) {
+	if (tls_session->label) {
+		uint8_t const *context = NULL;
+		size_t context_size = 0;
+#ifdef TLS1_3_VERSION
+		uint8_t const context_tls13[] = { handler->type };
+#endif
+
+		switch (tls_session->info.version) {
+#ifdef TLS1_3_VERSION
+		case TLS1_3_VERSION:
+			context = context_tls13;
+			context_size = sizeof(context_tls13);
+			tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
+			break;
+#endif
+		case TLS1_2_VERSION:
+		case TLS1_1_VERSION:
+		case TLS1_VERSION:
+			break;
+		case SSL2_VERSION:
+		case SSL3_VERSION:
+		default:
+			/* Should never happen */
+			rad_assert(0);
+			return 0;
+			break;
+		}
 		eaptls_gen_mppe_keys(handler->request,
-				     tls_session->ssl, tls_session->prf_label);
+				     tls_session->ssl, tls_session->label,
+				     context, context_size);
 	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
-	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl,
-			   handler->type);
+	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl, handler->type);
+
 	return 1;
 }
 
@@ -724,6 +751,23 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		return FR_TLS_FAIL;
 	}
 
+#ifdef TLS1_3_VERSION
+	/*
+	 *	draft-ietf-emu-eap-tls13-10 section 2.5
+	 *
+	 *	We need to signal the other end that TLS negotiation
+	 *	is done.  We can't send a zero-length application data
+	 *	message, so we send application data which is one byte
+	 *	of zero.
+	 */
+	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION) &&
+	    (handler->type == PW_EAP_TLS)) {
+		RDEBUG("TLS send Commitment Message");
+		tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+		tls_handshake_send(request, tls_session);
+	}
+#endif
+
 	/*
 	 *	FIXME: return success/fail.
 	 *
@@ -737,8 +781,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	/*
 	 *	If there is no data to send i.e
 	 *	dirty_out.used <=0 and if the SSL
-	 *	handshake is finished, then return a
-	 *	EPTLS_SUCCESS
+	 *	handshake is finished.
 	 */
 
 	if (tls_session->is_init_finished) {

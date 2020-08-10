@@ -17,11 +17,9 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---	SELECT fr_allocate_previous_or_new_framedipaddress( \
+--	SELECT fr_dhcp_allocate_previous_or_new_framedipaddress( \
 --		'%{control:${pool_name}}', \
---		'%{User-Name}', \
---		'%{Calling-Station-Id}', \
---		'%{NAS-IP-Address}', \
+--		'%{DHCP-Gateway-IP-Address}', \
 --		'${pool_key}', \
 --		${lease_duration} \
 --	)"
@@ -29,13 +27,9 @@
 -- allocate_commit = ""
 --
 
-CREATE INDEX radippool_poolname_username_callingstationid ON radippool(pool_name,username,callingstationid);
-
-CREATE OR REPLACE FUNCTION fr_allocate_previous_or_new_framedipaddress (
+CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
 	v_pool_name VARCHAR(64),
-	v_username VARCHAR(64),
-	v_callingstationid VARCHAR(64),
-	v_nasipaddress VARCHAR(16),
+	v_gatewayipaddress VARCHAR(16),
 	v_pool_key VARCHAR(64),
 	v_lease_duration INT
 )
@@ -48,14 +42,16 @@ BEGIN
 
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
-	SELECT framedipaddress INTO r_address
-	FROM radippool
-	WHERE pool_name = v_pool_name
-		AND expiry_time > NOW()
-		AND username = v_username
-		AND callingstationid = v_callingstationid
-	LIMIT 1
-	FOR UPDATE SKIP LOCKED;
+	WITH ips AS (
+		SELECT framedipaddress FROM dhcpippool
+		WHERE pool_name = v_pool_name
+			AND pool_key = v_pool_key
+			AND expiry_time > NOW()
+		LIMIT 1 FOR UPDATE SKIP LOCKED )
+	UPDATE dhcpippool
+	SET expiry_time = NOW() + v_lease_duration * interval '1 sec'
+	FROM ips WHERE dhcpippool.framedipaddress = ips.framedipaddress
+	RETURNING dhcpippool.framedipaddress INTO r_address;
 
 	-- Reissue an user's previous IP address, provided that the lease is
 	-- available (i.e. enable sticky IPs)
@@ -64,45 +60,34 @@ BEGIN
 	-- set allocate_clear = "" in queries.conf to persist the associations
 	-- for expired leases.
 	--
-	-- SELECT framedipaddress INTO r_address
-	-- FROM radippool
-	-- WHERE pool_name = v_pool_name
-	--	 AND username = v_username
-	--	 AND callingstationid = v_callingstationid
-	-- LIMIT 1
-	-- FOR UPDATE SKIP LOCKED;
+	-- WITH ips AS (
+	--	SELECT framedipaddress FROM dhcpippool
+	--	WHERE pool_name = v_pool_name
+	--		AND pool_key = v_pool_key
+	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
+	-- UPDATE dhcpippool
+	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
+	-- FROM ips WHERE dhcpippool.framedipaddress = ips.framedipaddress
+	-- RETURNING dhcpippool.framedipaddress INTO r_address;
 
 	-- If we didn't reallocate a previous address then pick the least
 	-- recently used address from the pool which maximises the likelihood
 	-- of re-assigning the other addresses to their recent user
 	--
 	IF r_address IS NULL THEN
-		SELECT framedipaddress INTO r_address
-		FROM radippool
-		WHERE pool_name = v_pool_name
-		AND expiry_time < NOW()
-		ORDER BY
-		    expiry_time
-		LIMIT 1
-		FOR UPDATE SKIP LOCKED;
+		WITH ips AS (
+			SELECT framedipaddress FROM dhcpippool
+			WHERE pool_name = v_pool_name
+				AND expiry_time < NOW()
+			ORDER BY expiry_time
+			LIMIT 1 FOR UPDATE SKIP LOCKED )
+		UPDATE dhcpippool
+		SET pool_key = v_pool_key,
+			expiry_time = NOW() + v_lease_duration * interval '1 sec',
+			gatewayipaddress = v_gatewayipaddress
+		FROM ips WHERE dhcpippool.framedipaddress = ips.framedipaddress
+		RETURNING dhcpippool.framedipaddress INTO r_address;
 	END IF;
-
-	-- Return nothing if we failed to allocated an address
-	--
-	IF r_address IS NULL THEN
-		RETURN r_address;
-	END IF;
-
-	-- Update the pool having allocated an IP address
-	--
-	UPDATE radippool
-	SET
-		nasipaddress = v_nasipaddress,
-		pool_key = v_pool_key,
-		callingstationid = v_callingstationid,
-		username = v_username,
-		expiry_time = NOW() + v_lease_duration * interval '1 sec'
-	WHERE framedipaddress = r_address;
 
 	-- Return the address that we allocated
 	RETURN r_address;

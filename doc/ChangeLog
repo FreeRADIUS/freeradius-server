@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* Update dictionary.bskyb.  Fixes #3339.
+	* Update alcatel.sr. #3495
 	* Abfab-tls updates from Alejandro Perez.
 	* Allow CoA and Disconnect messages over TLS sockets.
 	  Fixes #3356.
@@ -13,6 +14,14 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
 	  using "show home_server list all".
+	* Support TLS 1.3 in TLS-based EAP methods.  This has been tested
+	  to work with hostap and Windows.  Thanks to Jorge Vergara
+	  for assistance.
+	* The default configuration now replies with EAP-Key-Name, if it
+	  is available, and was requested.
+	* Include extensions in generated certificates.
+	* Many improvements for DHCP IP pools for all SQL dialects.
+	  Patches from Nick Porter.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
@@ -23,14 +32,21 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Note that rlm_replicate can only use UDP, and not TCP or TLS.
 	* DHCP pool lookup is now keyed by Client Identifier (Option 61) when
 	  supplied by client, otherwise the hardware address is used. Compliant
-	  with RFC 2132.
-	  WARNING: Upon upgrade, if this new behaviour is adopted then existing
-	  leases for clients supplying Client Identifiers will not match. This
-	  will lead to a temporary increase in pool utilisation (until the
-	  original leases have expired) and affected clients will be allocated
-	  new IP addresses. To retain the old (RFC incompatible) behaviour
-	  refer to raddb/policy.d/dhcp
+	  with RFC 2132. This change will not affect existing systems on upgrade,
+	  but new installations will use the new behavior.
 	  Patch from Terry Burton.
+	* Fix minor spelling mistakes in man pages.  Patch from
+	  Alexander Scheel.
+	* Don't print invalid tags in rlm_cache, among other places.
+	  Fixes #3491
+	* Do home_server failover immediately when an initial TCP / Radsec
+	  connection fails.
+	* Port EAP-PWD constant time fixes from "master" branch.  The issue
+	  was verified by Mohamed Sabt, and a patch supplied by
+	  Daniel De Almeida Braga.
+	* Clear error on SQLITE_BUSY to prevent memory leak in corner cases.
+	  Patch from Nick Porter.
+	* Properly add SQL clients to virtual servers.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements

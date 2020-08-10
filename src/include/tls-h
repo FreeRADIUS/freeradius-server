@@ -160,7 +160,7 @@ typedef struct _tls_session_t {
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
 
-	char const	*prf_label;
+	char const	*label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 } tls_session_t;
 

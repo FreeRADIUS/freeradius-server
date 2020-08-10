@@ -405,7 +405,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 */
 		if (((vp->da->vendor == 0) && (vp->da->attr == PW_CHAP_CHALLENGE)) ||
 		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == PW_MSCHAP_CHALLENGE))) {
-			uint8_t	challenge[16];
+			uint8_t	challenge[17];
 
 			if ((vp->vp_length < 8) ||
 			    (vp->vp_length > 16)) {
@@ -415,8 +415,11 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				return NULL;
 			}
 
-			eapttls_gen_challenge(ssl, challenge,
-					      sizeof(challenge));
+			/*
+			 *	TLSv1.3 exports a different key depending on the length
+			 *	requested so ask for *exactly* what the spec requires
+			 */
+			eapttls_gen_challenge(ssl, challenge, vp->vp_length + 1);
 
 			if (memcmp(challenge, vp->vp_octets,
 				   vp->vp_length) != 0) {

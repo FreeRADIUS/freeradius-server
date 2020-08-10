@@ -28,7 +28,7 @@ include passwords.mk
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh server ca client
+all: index.txt serial dh ca server client
 
 .PHONY: client
 client: client.pem
@@ -91,7 +91,7 @@ server.csr server.key: server.cnf
 	$(OPENSSL) req -new  -out server.csr -keyout server.key -config ./server.cnf
 	chmod g+r server.key
 
-server.crt: server.csr ca.key ca.pem
+server.crt: ca.key ca.pem server.csr
 	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
 
 server.p12: server.crt
@@ -116,7 +116,7 @@ client.csr client.key: client.cnf
 	$(OPENSSL) req -new  -out client.csr -keyout client.key -config ./client.cnf
 	chmod g+r client.key
 
-client.crt: client.csr ca.pem ca.key
+client.crt: ca.key ca.pem client.csr
 	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 
 client.p12: client.crt
@@ -142,7 +142,7 @@ inner-server.csr inner-server.key: inner-server.cnf
 	$(OPENSSL) req -new  -out inner-server.csr -keyout inner-server.key -config ./inner-server.cnf
 	chmod g+r inner-server.key
 
-inner-server.crt: inner-server.csr ca.key ca.pem
+inner-server.crt: ca.key ca.pem inner-server.csr
 	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in inner-server.csr  -key $(PASSWORD_CA) -out inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 inner-server.p12: inner-server.crt

@@ -17,11 +17,9 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---      EXEC fr_allocate_previous_or_new_framedipaddress \
+--      EXEC fr_dhcp_allocate_previous_or_new_framedipaddress \
 --              @v_pool_name = '%{control:${pool_name}}', \
---              @v_username = '%{User-Name}', \
---              @v_callingstationid = '%{Calling-Station-Id}', \
---              @v_nasipaddress = '%{NAS-IP-Address}', \
+--              @v_gatewayipaddress = '%{DHCP-Gateway-IP-Address}', \
 --              @v_pool_key = '${pool_key}', \
 --              @v_lease_duration = ${lease_duration} \
 --      "
@@ -29,14 +27,9 @@
 -- allocate_commit = ""
 --
 
-CREATE INDEX UserName_CallingStationId ON radippool(pool_name,UserName,CallingStationId)
-GO
-
-CREATE OR ALTER PROCEDURE fr_allocate_previous_or_new_framedipaddress
+CREATE OR ALTER PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress
 	@v_pool_name VARCHAR(64),
-	@v_username VARCHAR(64),
-	@v_callingstationid VARCHAR(64),
-	@v_nasipaddress VARCHAR(15),
+	@v_gatewayipaddress VARCHAR(15),
 	@v_pool_key VARCHAR(64),
 	@v_lease_duration INT
 AS
@@ -61,11 +54,10 @@ AS
 		--
 		WITH cte AS (
 			SELECT TOP(1) FramedIPAddress
-			FROM radippool
+			FROM dhcpippool
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
-				AND UserName = @v_username
-				AND CallingStationId = @v_callingstationid
+				AND pool_key = @v_pool_key
 		)
 		UPDATE cte WITH (rowlock, readpast)
 		SET FramedIPAddress = FramedIPAddress
@@ -81,10 +73,9 @@ AS
 		--
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) FramedIPAddress
-		-- 	FROM radippool
+		-- 	FROM dhcpippool
 		-- 	WHERE pool_name = @v_pool_name
-		-- 		AND UserName = @v_username
-		-- 		AND CallingStationId = @v_callingstationid
+		-- 		AND pool_key = @v_pool_key
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
 		-- SET FramedIPAddress = FramedIPAddress
@@ -99,9 +90,9 @@ AS
 		BEGIN
 			WITH cte AS (
 				SELECT TOP(1) FramedIPAddress
-				FROM radippool
+				FROM dhcpippool
 				WHERE pool_name = @v_pool_name
-					AND ( expiry_time < CURRENT_TIMESTAMP OR expiry_time IS NULL )
+					AND expiry_time < CURRENT_TIMESTAMP
 				ORDER BY
 					expiry_time
 			)
@@ -121,12 +112,10 @@ AS
 
 		-- Update the pool having allocated an IP address
 		--
-		UPDATE radippool
+		UPDATE dhcpippool
 		SET
-			NASIPAddress = @v_nasipaddress,
+			GatewayIPAddress = @v_gatewayipaddress,
 			pool_key = @v_pool_key,
-			CallingStationId = @v_callingstationid,
-			UserName = @v_username,
 			expiry_time = DATEADD(SECOND,@v_lease_duration,CURRENT_TIMESTAMP)
 		WHERE framedipaddress = @r_address;
 

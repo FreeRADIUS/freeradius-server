@@ -102,6 +102,14 @@ listen {
 	#
 	# This will allow the server to set ARP table entries
 	# for newly allocated IPs
+
+	# De-duplicate DHCP packets.  If clients don't receive
+	# a reply within their timeout, most will re-transmit.
+	# A reply to either packet will satisfy, so de-duplicating
+	# helps manage load on a busy server
+	performance {
+		skip_duplicate_checks = no
+	}
 }
 
 #  Packets received on the socket will be processed through one
@@ -136,12 +144,14 @@ dhcp DHCP-Discover {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 
@@ -182,12 +192,14 @@ dhcp DHCP-Request {
 	}
 
 	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = 86400
+		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 

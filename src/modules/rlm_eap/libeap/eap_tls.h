@@ -62,11 +62,11 @@ int	eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
 int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
 
 
-void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
-void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
+void	T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
+void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, size_t context_size);
 void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 void	eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
-void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
+void	eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 
 #define BUFFER_SIZE 1024
 

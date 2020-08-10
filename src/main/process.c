@@ -1644,8 +1644,29 @@ static void request_running(REQUEST *request, int action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
+		retry_proxy:
 			if (request_proxy(request) < 0) {
 				if (request->home_server && request->home_server->server) goto req_finished;
+
+				if (request->home_pool && request->home_server &&
+				    (request->home_server->state >= HOME_STATE_IS_DEAD)) {
+					VALUE_PAIR *vp;
+					REALM *realm = NULL;
+					home_server_t *home = NULL;
+
+					vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
+					if (vp) realm = realm_find2(vp->vp_strvalue);
+
+					/*
+					 *	Since request->home_server is dead,
+					 *	this function won't pick the same home server as before.
+					 */
+					if (realm) home = home_server_ldb(vp->vp_strvalue, request->home_pool, request);
+					if (home) {
+						home_server_update_request(home, request);
+						goto retry_proxy;
+					}
+				}
 
 				(void) setup_post_proxy_fail(request);
 				process_proxy_reply(request, NULL);

@@ -268,22 +268,22 @@ ATTRIBUTE	ERX-Interface-Targeting-Weight		214	integer
 ATTRIBUTE	ERX-Hybrid-Access-DSL-Downstream-Speed	216	integer
 ATTRIBUTE	ERX-Hybrid-Access-LTE-Downstream-Speed	217	integer
 
-ATTRIBUTE	ERX-PON-Access-Type				219	integer
-ATTRIBUTE	ERX-ONT-ONU-Average-Data-Rate-Downstream	220	integer
-ATTRIBUTE	ERX-ONT-ONU-Peak-Data-Rate-Downstream		221	integer
-ATTRIBUTE	ERX-ONT-ONU-Maximum-Data-Rate-Upstream		222	integer
-ATTRIBUTE	ERX-ONT-ONU-Assured-Data-Rate-Upstream		223	integer
-ATTRIBUTE	ERX-PON-Tree-Maximum-Data-Rate-Upstream		224	integer
-ATTRIBUTE	ERX-PON-Tree-Maximum-Data-Rate-Downstream	225	integer
+ATTRIBUTE	ERX-PON-Access-Type			219	integer
+ATTRIBUTE	ERX-ONT-ONU-Average-Data-Rate-Downstream 220	integer
+ATTRIBUTE	ERX-ONT-ONU-Peak-Data-Rate-Downstream	221	integer
+ATTRIBUTE	ERX-ONT-ONU-Maximum-Data-Rate-Upstream	222	integer
+ATTRIBUTE	ERX-ONT-ONU-Assured-Data-Rate-Upstream	223	integer
+ATTRIBUTE	ERX-PON-Tree-Maximum-Data-Rate-Upstream	224	integer
+ATTRIBUTE	ERX-PON-Tree-Maximum-Data-Rate-Downstream 225	integer
 
-ATTRIBUTE	ERX-Expected-Throughput-Upstream		226	integer
-ATTRIBUTE	ERX-Expected-Throughput-Downstream		227	integer
-ATTRIBUTE	ERX-Attainable-Expected-Throughput-Upstream	228	integer
-ATTRIBUTE	ERX-Attainable-Expected-Throughput-Downstream	229	integer
-ATTRIBUTE	ERX-Gamma-Data-Rate-Upstream			230	integer
-ATTRIBUTE	ERX-Gamma-Data-Rate-Downstream			231	integer
-ATTRIBUTE	ERX-Attainable-Gamma-Data-Rate-Upstream		232	integer
-ATTRIBUTE	ERX-Attainable-Gamma-Data-Rate-Downstream	233	integer
+ATTRIBUTE	ERX-Expected-Throughput-Upstream	226	integer
+ATTRIBUTE	ERX-Expected-Throughput-Downstream	227	integer
+ATTRIBUTE	ERX-Attainable-Expected-Throughput-Upstream 228	integer
+ATTRIBUTE	ERX-Attainable-Expected-Throughput-Downstream 229	integer
+ATTRIBUTE	ERX-Gamma-Data-Rate-Upstream		230	integer
+ATTRIBUTE	ERX-Gamma-Data-Rate-Downstream		231	integer
+ATTRIBUTE	ERX-Attainable-Gamma-Data-Rate-Upstream	232	integer
+ATTRIBUTE	ERX-Attainable-Gamma-Data-Rate-Downstream 233	integer
 
 #
 #  Values	Attribute		Name			Number
