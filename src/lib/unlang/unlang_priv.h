@@ -129,7 +129,7 @@ typedef struct {
 	unlang_t		self;
 	unlang_t		*children;	//!< Children beneath this group.  The body of an if
 						//!< section for example.
-	unlang_t		*tail;		//!< of the children list.
+	unlang_t		**tail;		//!< pointer to the tail which gets updated
 	CONF_SECTION		*cs;
 	int			num_children;
 

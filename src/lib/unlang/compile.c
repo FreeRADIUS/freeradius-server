@@ -1357,6 +1357,7 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 	if (!g) return NULL;
 
 	g->children = NULL;
+	g->tail = &g->children;
 	g->cs = cs;
 
 	c = unlang_group_to_generic(g);
@@ -2030,13 +2031,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		fr_assert(single->parent == unlang_group_to_generic(g));
 		fr_assert(!single->next);
 
-		if (!g->children) {
-			g->children = g->tail = single;
-		} else {
-			g->tail->next = single;
-			g->tail = single;
-		}
-
+		*g->tail = single;
+		g->tail = &single->next;
 		g->num_children++;
 
 		/*
