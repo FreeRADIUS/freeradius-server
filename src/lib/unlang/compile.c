@@ -1971,7 +1971,9 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			goto add_child;
 		} /* was CONF_PAIR */
 
-		fr_assert(0);	/* not a known configuration item data type */
+		cf_log_err(ci, "Internal sanity check failed in unlang compile.");
+		talloc_free(c);
+		return NULL;
 
 	add_child:
 		if (single == UNLANG_IGNORE) continue;
