@@ -1858,6 +1858,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 {
 	CONF_ITEM *ci = NULL;
 	unlang_t *c, *single;
+	bool was_if = false;
+	char const *skip_else = NULL;
 
 	c = unlang_group_to_generic(g);
 
@@ -1891,6 +1893,24 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 					return NULL;
 				}
 
+				continue;
+			}
+
+			/*
+			 *	The previous keyword was "if", and it
+			 *	was always taken.  So we skip all
+			 *	subsequent "else" and "elsif"
+			 *	sections, as they will never be
+			 *	executed.
+			 *
+			 *	Note that checks for "'else' without
+			 *	'if'" are done lower down in the
+			 *	"switch" statement.
+			 */
+			if (was_if && skip_else &&
+			    ((strcmp(name, "else") == 0) || (strcmp(name, "elsif") == 0))) {
+				cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous '%s' being always being taken.",
+						    name, skip_else);
 				continue;
 			}
 
@@ -1955,6 +1975,54 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		fr_assert(0);	/* not a known configuration item data type */
 
 	add_child:
+		/*
+		 *	Do optimizations for "if" conditions.
+		 */
+		switch (single->type) {
+		case UNLANG_TYPE_ELSIF:
+			if (!was_if) {
+				cf_log_err(ci, "Invalid location for 'elsif'.  There is no preceding 'if' or 'elsif' statement");
+				talloc_free(c);
+				return NULL;
+			}
+			goto check_condition;
+
+		case UNLANG_TYPE_IF:
+			was_if = true;
+
+		check_condition:
+			{
+				unlang_group_t *f;
+
+				f = unlang_generic_to_group(single);
+				if (f->cond->type == COND_TYPE_TRUE) {
+					skip_else = single->debug_name;
+				}
+
+				/*
+				 *	Don't put this into the run-time tree.
+				 */
+				if (f->cond->type == COND_TYPE_FALSE) {
+					talloc_free(single);
+					continue;
+				}
+			}
+			break;
+
+		case UNLANG_TYPE_ELSE:
+			if (!was_if) {
+				cf_log_err(ci, "Invalid location for 'else'.  There is no preceding 'if' or 'elsif' statement");
+				talloc_free(c);
+				return NULL;
+			}
+			FALL_THROUGH;
+
+		default:
+			was_if = false;
+			skip_else = NULL;
+			break;
+		}
+
 		/*
 		 *	unlang_group_t is grown by adding a unlang_t to the end
 		 */
@@ -2550,50 +2618,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	return c;
 }
 
-static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_type)
-{
-	unlang_group_t *p, *f;
-
-	p = unlang_generic_to_group(parent);
-	if (!p->tail) goto else_fail;
-
-	f = unlang_generic_to_group(p->tail);
-	if ((f->self.type != UNLANG_TYPE_IF) && (f->self.type != UNLANG_TYPE_ELSIF)) {
-	else_fail:
-		cf_log_err(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
-			      unlang_ops[mod_type].name);
-		return -1;
-	}
-
-	/*
-	 *	No condition means that we always skipped the previous
-	 *	"elsif".  Which means that this "elsif" or "else" is
-	 *	always skipped, too.
-	 */
-	if (!f->cond) {
-		fr_assert(f->self.type == UNLANG_TYPE_ELSIF);
-
-		cf_log_debug_prefix(cs, "Skipping contents of '%s' due to previous '%s' being always skipped, too",
-				    unlang_ops[mod_type].name,
-				    unlang_ops[f->self.type].name);
-		return 0;
-	}
-
-	/*
-	 *	The previous "if" or "elsif" is always taken.  So we
-	 *	can skip this "elsif" or "else", along with everything
-	 *	after that.
-	 */
-	if (f->cond->type == COND_TYPE_TRUE) {
-		cf_log_debug_prefix(cs, "Skipping contents of '%s' as previous '%s' is always 'true'",
-				    unlang_ops[mod_type].name,
-				    unlang_ops[f->self.type].name);
-		return 0;
-	}
-
-	return 1;
-}
-
 static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	return compile_if_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_IF);
@@ -2602,37 +2626,15 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 
 static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	int rcode;
-
-	/*
-	 *	This is always a syntax error.
-	 */
-	if (!cf_section_name2(cs)) {
-		cf_log_err(cs, "'elsif' without condition");
-		return NULL;
-	}
-
-	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSIF);
-	if (rcode < 0) return NULL;
-
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF);
-
 	return compile_if_subsection(parent, unlang_ctx, cs, UNLANG_TYPE_ELSIF);
 }
 
 static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	int rcode;
-
 	if (cf_section_name2(cs)) {
 		cf_log_err(cs, "'else' cannot have a condition");
 		return NULL;
 	}
-
-	rcode = previous_if(cs, parent, UNLANG_TYPE_ELSE);
-	if (rcode < 0) return NULL;
-
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 
 	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 }
