@@ -10,7 +10,7 @@ switch <expansion> {
     case <match-2> {
         [ statements-2 ]
     }
-    case {
+    default {
         [ statements-3 ]
     }
 }
@@ -47,11 +47,15 @@ statement, the _expansion_ is evaluated only once.  For the equivalent
 xref:if.adoc[if] statement, the _expansion_ is evaluated again for every
 xref:if.adoc[if].
 
-If a matching xref:case.adoc[case] is found, the statements within that
-xref:case.adoc[case] are evaluated. If no matching xref:case.adoc[case] is
-found, the "default" xref:case.adoc[case] is evaluated. This default is the
-xref:case.adoc[case] with no _match_ text.  If there is no default
-xref:case.adoc[case], then the `switch` statement does nothing.
+If a matching xref:case.adoc[case] is found, the statements within
+that xref:case.adoc[case] are evaluated. If no matching
+xref:case.adoc[case] is found, the `default` section is evaluated. The
+`default` section must not have any _match_ text.  If there is no
+`default`, then the `switch` statement behaves as if the `default`
+section was empty.
+
+For compatibility with version 3, and empty `case` statement can also
+be used instead of `default`.
 
 The _match_ text for the xref:case.adoc[case] statement can be an
 xref:attr.adoc[&Attribute-Name] or xref:type/index.adoc[data].

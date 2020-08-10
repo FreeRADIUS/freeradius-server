@@ -12,20 +12,18 @@ The `case` statement is used to match data inside of a
 xref:switch.adoc[switch] statement.  The `case` statement cannot be used
 outside of a xref:switch.adoc[switch] statement.
 
-The `<match>` text can be omitted, which means that the `case`
-statement is the "default" and will match input that is not
-matched by another `case` statement inside of the same
-xref:switch.adoc[switch].
 
 The `<match>` text can be an attribute reference such as `&User-Name`,
 or it can be a xref:type/string/index.adoc[string].  If the match
 text is a dynamically expanded string, then the match is performed on
 the output of the string expansion.
 
-[WARNING]
-It is _strongly_ recommended to use static text for the `<match>` text.
-Matching dynamically expanded strings, host names, or external
-programs can degrade performance enormously.
+The keyword `default` can be used to specify the default action to
+take inside of a xref:switch.adoc[switch] statement.
+
+If no `<match>` text is given, it means that the `case` statement is
+the "default" and will match all which is not matched by another
+`case` statement inside of the same xref:switch.adoc[switch].
 
 .Example
 [source,unlang]
@@ -35,7 +33,11 @@ switch &User-Name {
         reject
     }
 
-    case {
+    case &Filter-Id {
+        reject
+    }
+
+    default {
         ok
     }
 }
