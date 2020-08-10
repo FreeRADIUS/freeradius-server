@@ -2202,6 +2202,18 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 		name1 = cf_section_name1(subcs);
 
 		if (strcmp(name1, "case") != 0) {
+			/*
+			 *	We finally support "default" sections for "switch".
+			 */
+			if (strcmp(name1, "default") == 0) {
+				if (cf_section_name2(subcs) != 0) {
+					cf_log_err(ci, "\"default\" sections cannot have a match argument");
+					talloc_free(g);
+					return NULL;
+				}
+				goto handle_default;
+			}
+
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
 			talloc_free(g);
 			return NULL;
@@ -2209,6 +2221,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
+		handle_default:
 			if (had_seen_default) {
 				cf_log_err(ci, "Cannot have two 'default' case statements");
 				talloc_free(g);
