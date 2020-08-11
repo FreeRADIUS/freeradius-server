@@ -1864,15 +1864,16 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (cf_item_is_data(ci)) continue;
 
 		/*
-		 *	Sections are references to other groups, or
-		 *	to modules with updated return codes.
+		 *	Sections are keywords, or references to
+		 *	modules with updated return codes.
 		 */
 		if (cf_item_is_section(ci)) {
 			char const *name = NULL;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			/*
-			 *	Skip precompiled blocks.
+			 *	Skip precompiled blocks.  This is
+			 *	mainly for policies.
 			 */
 			if (cf_data_find(subcs, unlang_group_t, NULL)) continue;
 
@@ -2021,7 +2022,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		 *	processing the children.
 		 */
 		if (g->self.closed) {
-			cf_log_warn(ci, "Skipping remaining instructions due to previous '%s'",
+			cf_log_warn(ci, "Skipping remaining instructions due to '%s'",
 				    single->name);
 			break;
 		}
@@ -2057,9 +2058,6 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	/*
 	 *	Remember the name for printing, etc.
-	 *
-	 *	FIXME: We may also want to put the names into a
-	 *	rbtree, so that groups can reference each other...
 	 */
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
