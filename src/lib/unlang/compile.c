@@ -1892,21 +1892,28 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			}
 
 			/*
-			 *	The previous keyword was "if", and it
-			 *	was always taken.  So we skip all
-			 *	subsequent "else" and "elsif"
-			 *	sections, as they will never be
-			 *	executed.
-			 *
-			 *	Note that checks for "'else' without
-			 *	'if'" are done lower down in the
-			 *	"switch" statement.
+			 *	Special checks for "else" and "elsif".
 			 */
-			if (was_if && skip_else &&
-			    ((strcmp(name, "else") == 0) || (strcmp(name, "elsif") == 0))) {
-				cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous '%s' being always being taken.",
-						    name, skip_else);
-				continue;
+			if ((strcmp(name, "else") == 0) || (strcmp(name, "elsif") == 0)) {
+				/*
+				 *	We ran into one without a preceding "if" or "elsif".
+				 *	That's not allowed.
+				 */
+				if (!was_if) {
+					cf_log_err(ci, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement", name);
+					talloc_free(c);
+					return NULL;
+				}
+
+				/*
+				 *	There was a previous "if" or "elsif" which was always taken.
+				 *	So we skip this "elsif" or "else".
+				 */
+				if (skip_else) {
+					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous '%s' being always being taken.",
+							    name, skip_else);
+					continue;
+				}
 			}
 
 			/*
@@ -1975,46 +1982,37 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (single == UNLANG_IGNORE) continue;
 
 		/*
-		 *	Do optimizations for "if" conditions.
+		 *	Do optimizations for "if" and "elsif"
+		 *	conditions.
 		 */
 		switch (single->type) {
 		case UNLANG_TYPE_ELSIF:
-			if (!was_if) {
-				cf_log_err(ci, "Invalid location for 'elsif'.  There is no preceding 'if' or 'elsif' statement");
-				talloc_free(c);
-				return NULL;
-			}
-			goto check_condition;
-
 		case UNLANG_TYPE_IF:
 			was_if = true;
-
-		check_condition:
 			{
 				unlang_group_t *f;
 
 				f = unlang_generic_to_group(single);
-				if (f->cond->type == COND_TYPE_TRUE) {
+				switch (f->cond->type) {
+				case COND_TYPE_TRUE:
 					skip_else = single->debug_name;
-				}
+					break;
 
-				/*
-				 *	Don't put this into the run-time tree.
-				 */
-				if (f->cond->type == COND_TYPE_FALSE) {
+				case COND_TYPE_FALSE:
+					/*
+					 *	The condition never
+					 *	matches, so we can
+					 *	avoid putting it into
+					 *	the unlang tree.
+					 */
 					talloc_free(single);
 					continue;
+
+				default:
+					break;
 				}
 			}
 			break;
-
-		case UNLANG_TYPE_ELSE:
-			if (!was_if) {
-				cf_log_err(ci, "Invalid location for 'else'.  There is no preceding 'if' or 'elsif' statement");
-				talloc_free(c);
-				return NULL;
-			}
-			FALL_THROUGH;
 
 		default:
 			was_if = false;
