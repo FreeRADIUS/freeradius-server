@@ -3618,15 +3618,9 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
  */
 bool unlang_compile_is_keyword(const char *name)
 {
-	int i;
-
 	if (!name || !*name) return false;
 
-	for (i = UNLANG_TYPE_GROUP; i<= UNLANG_TYPE_POLICY; i++) {
-		if (!unlang_ops[i].name) continue;
+	if (fr_table_value_by_str(unlang_section_keywords, name, NULL) != NULL) return true;
 
-		if (strcmp(name, unlang_ops[i].name) == 0) return true;
-	}
-
-	return false;
+	return (fr_table_value_by_str(unlang_pair_keywords, name, NULL) != NULL);
 }
