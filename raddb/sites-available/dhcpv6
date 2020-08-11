@@ -16,7 +16,7 @@
 #
 server dhcpv6 {
 	#
-	#  namespace:: Needs to be "dhcpv6" for DHCPv6 dunctionality.
+	#  namespace:: Needs to be "dhcpv6" for DHCPv6 functionality.
 	#
 	namespace = dhcpv6
 
