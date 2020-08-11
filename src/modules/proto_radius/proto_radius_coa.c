@@ -240,7 +240,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 static virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
-		.name2 = "CoA-Request",\
+		.name2 = "CoA-Request",
 		.component = MOD_AUTHORIZE,
 	},
 	{
