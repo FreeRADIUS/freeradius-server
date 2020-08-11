@@ -26,8 +26,8 @@ server tacacs {
 		#
 		type = Authentication-Start
 		type = Authentication-Continue
-#		type = Authorization-Request
-#		type = Accounting-Request
+		type = Authorization-Request
+		type = Accounting-Request
 
 		#
 		#  transport:: The transport protocol.
@@ -45,11 +45,15 @@ server tacacs {
 		#
 		tcp {
 			#
+			#  NOTE: Don't change anything if you are not sure.
+			#
+
+			#
 			#  port:: The port where we accept packets.
 			#
 			#  The port should be 49 for a production network.
 			#
-			port = 4900
+			port = 49
 
 			#
 			#  ipaddr:: The IP address where we accept packets.
@@ -98,6 +102,12 @@ server tacacs {
 					&User-Password := "%{string:%{TACACS-Data}}"
 					&Cleartext-Password := "%{string:%{TACACS-Data}}"
 				}
+
+				#
+				#  Read what used to be the `users` file. Since v3, this file
+				#  is located in `mods-config/files/authorize`.
+				#
+				files
 
 				#
 				#  Read what used to be the `users` file. Since v3, this file
@@ -226,26 +236,21 @@ server tacacs {
 	#
 	#	### Recv
 	#
- 	recv Accounting-Request {
-		"%{TACACS-Accounting-Flags}"
-		"%{TACACS-Authentication-Method}"
-		"%{TACACS-Privilege-Level}"
-		"%{TACACS-Authentication-Type}"
-		"%{TACACS-Authentication-Service}"
-		"%{TACACS-User-Name}"
-		"%{TACACS-Client-Port}"
-		"%{TACACS-Remote-Address}"
-		"%{TACACS-ArgumentList}"
+	recv Accounting-Request {
+		#
+		#  Create a 'detail'ed log of the packets.
+		#
+		detail
 	}
 
 	#
 	#	### Send
 	#
-	send Accounting-Response {
+	send Accounting-Reply {
 		update reply {
 			&TACACS-Accounting-Status := Success
-			&TACACS-Server-Message := "acct-response-server"
-			&TACACS-Data := "acct-response-data"
+			&TACACS-Server-Message := "Success"
+			&TACACS-Data := 0x00
 		}
 	}
 
