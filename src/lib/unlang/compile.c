@@ -1812,8 +1812,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 }
 
 
-static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-			      char const **modname);
+static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci);
 
 /*
  *	compile 'actions { ... }' inside of another group.
@@ -1919,7 +1918,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			/*
 			 *	Otherwise it's a real keyword.
 			 */
-			single = compile_item(c, unlang_ctx, ci, &name);
+			single = compile_item(c, unlang_ctx, ci);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection", cf_section_name1(subcs));
 				talloc_free(c);
@@ -1931,7 +1930,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 
 		if (cf_item_is_pair(ci)) {
 			char const *attr;
-			char const *name = NULL;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
 			attr = cf_pair_attr(cp);
@@ -1949,23 +1947,9 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	Compile the item as a module
 			 *	reference, or as "break / return /
 			 *	etc."
-			 *
-			 *	On error, check if we have a name for
-			 *	the module.  If so, then we know that
-			 *	the module is conditionally referenced
-			 *	via something like "-ldap",
-			 *
-			 *	Once we fix the compilation API, to
-			 *	return 0/-1, this check can be removed.
 			 */
-			single = compile_item(c, unlang_ctx, ci, &name);
+			single = compile_item(c, unlang_ctx, ci);
 			if (!single) {
-				if (name) {
-					cf_log_warn(cp, "Ignoring \"%s\" as it is commented out",
-						    name + 1);
-					continue;
-				}
-
 				cf_log_err(ci, "Invalid keyword \"%s\".", attr);
 				talloc_free(c);
 				return NULL;
@@ -3119,7 +3103,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 
 static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				  CONF_SECTION *subcs, char const **modname, rlm_components_t component,
+				  CONF_SECTION *subcs, rlm_components_t component,
 				  bool policy)
 {
 	unlang_compile_t	unlang_ctx2;
@@ -3144,7 +3128,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 			return NULL;
 		}
 
-		c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), modname);
+		c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs));
 
 	} else {
 		UPDATE_CTX2;
@@ -3392,8 +3376,7 @@ static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
 /*
  *	Compile one entry of a module call.
  */
-static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-			      char const **modname)
+static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci)
 {
 	char const		*modrefname, *p;
 	module_instance_t	*inst;
@@ -3404,8 +3387,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	module_method_t		method;
 	bool			policy;
 	unlang_op_compile_t	compile;
-
-	*modname = NULL;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);
@@ -3524,7 +3505,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	named redundant / load-balance subsection defined in
 	 *	"instantiate".
 	 */
-	if (subcs) return compile_function(parent, unlang_ctx, ci, subcs, modname, component, policy);
+	if (subcs) return compile_function(parent, unlang_ctx, ci, subcs, component, policy);
 
 	/*
 	 *	Not a function.  It must be a real module.
@@ -3551,7 +3532,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 					 &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					 realname);
 	if (inst) {
-		*modname = inst->module->name;
 		return compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
 	}
 
@@ -3560,15 +3540,14 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	doesn't exist.  Return a soft error.
 	 */
 	if (realname != modrefname) {
-		*modname = modrefname;
-		return NULL;
+		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", modrefname, realname);
+		return UNLANG_IGNORE;
 	}
 
 	/*
 	 *	Can't de-reference it to anything.  Ugh.
 	 */
 fail:
-	*modname = NULL;
 	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
 	cf_log_err(ci, "Please verify that the configuration exists in mods-enabled/%s.", modrefname);
 	return NULL;
