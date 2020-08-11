@@ -1823,7 +1823,7 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		break;
 
 	default:
-		fr_strerror_printf("Failed to find expected value on right hand side");
+		fr_strerror_printf("Failed to find expected value on right hand side in %s", raw->l_opand);
 		return T_INVALID;
 	}
 
