@@ -86,57 +86,8 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
-#if 0
-static char const *action2str(int action)
-{
-	static char buf[32];
-	if(action==MOD_ACTION_RETURN)
-		return "return";
-	if(action==MOD_ACTION_REJECT)
-		return "reject";
-	snprintf(buf, sizeof buf, "%d", action);
-	return buf;
-}
-
-/* If you suspect a bug in the parser, you'll want to use these dump
- * functions. dump_tree should reproduce a whole tree exactly as it was found
- * in radiusd.conf, but in long form (all actions explicitly defined) */
-static void dump_mc(unlang_t *c, int indent)
-{
-	int i;
-
-	if(c->type==UNLANG_TYPE_MODULE) {
-		unlang_module_t *single = unlang_generic_to_module(c);
-		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-			single->module_instance->name);
-	} else if ((c->type > UNLANG_TYPE_MODULE) && (c->type <= UNLANG_TYPE_POLICY)) {
-		unlang_group_t *g = unlang_generic_to_group(c);
-		unlang_t *p;
-		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-		      unlang_ops[c->type].name);
-		for(p = g->children;p;p = p->next)
-			dump_mc(p, indent+1);
-	} /* else ignore it for now */
-
-	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
-		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-		      fr_table_str_by_value(mod_rcode_table, i, "<invalid>"),
-		      action2str(c->actions[i]));
-	}
-
-	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
-}
-
-static void dump_tree(unlang_t *c, char const *name)
-{
-	DEBUG("[%s]", name);
-	dump_mc(c, 0);
-}
-#else
-#define dump_tree(a, b)
-#endif
 static const int
-defaultactions[MOD_COUNT][RLM_MODULE_NUMCODES] =
+default_actions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */
 	{
@@ -872,37 +823,37 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	return pass2_fixup_tmpl(g->map->ci, &g->vpt, rules, false);
 }
 
-static void unlang_dump(unlang_t *mc, int depth)
+static void unlang_dump(unlang_t *instruction, int depth)
 {
-	unlang_t *inst;
+	unlang_t *c;
 	unlang_group_t *g;
 	vp_map_t *map;
 	char buffer[1024];
 
-	for (inst = mc; inst != NULL; inst = inst->next) {
-		switch (inst->type) {
-		default:
+	for (c = instruction; c != NULL; c = c->next) {
+		switch (c->type) {
+		case UNLANG_TYPE_NULL:
+		case UNLANG_TYPE_MAX:
+			fr_assert(0);
+			break;
+
+		case UNLANG_TYPE_FUNCTION:
+			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
 			break;
 
 		case UNLANG_TYPE_MODULE:
 		{
-			unlang_module_t *single = unlang_generic_to_module(inst);
+			unlang_module_t *single = unlang_generic_to_module(c);
 
 			DEBUG("%.*s%s", depth, unlang_spaces, single->module_instance->name);
 		}
 			break;
 
 		case UNLANG_TYPE_MAP:
-			g = unlang_generic_to_group(inst); /* FIXMAP: print option 3, too */
-			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name,
-			      cf_section_name2(g->cs));
-			goto print_map;
-
 		case UNLANG_TYPE_UPDATE:
-			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 
-		print_map:
+			g = unlang_generic_to_group(c);
 			for (map = g->map; map != NULL; map = map->next) {
 				map_snprint(NULL, buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
@@ -911,59 +862,33 @@ static void unlang_dump(unlang_t *mc, int depth)
 			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
-		case UNLANG_TYPE_ELSE:
-			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
-		case UNLANG_TYPE_IF:
-		case UNLANG_TYPE_ELSIF:
-			g = unlang_generic_to_group(inst);
-			cond_snprint(NULL, buffer, sizeof(buffer), g->cond);
-			DEBUG("%.*s%s (%s) {", depth, unlang_spaces, unlang_ops[inst->type].name, buffer);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
-		case UNLANG_TYPE_SWITCH:
+		case UNLANG_TYPE_CALL:
 		case UNLANG_TYPE_CASE:
-			g = unlang_generic_to_group(inst);
-			tmpl_snprint(NULL, buffer, sizeof(buffer), g->vpt);
-			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name, buffer);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
 		case UNLANG_TYPE_FOREACH:
-			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s %s {", depth, unlang_spaces, unlang_ops[inst->type].name, inst->name);
+		case UNLANG_TYPE_ELSE:
+		case UNLANG_TYPE_ELSIF:
+		case UNLANG_TYPE_FILTER:
+		case UNLANG_TYPE_GROUP:
+		case UNLANG_TYPE_IF:
+		case UNLANG_TYPE_LOAD_BALANCE:
+		case UNLANG_TYPE_PARALLEL:
+		case UNLANG_TYPE_POLICY:
+		case UNLANG_TYPE_SUBREQUEST:
+		case UNLANG_TYPE_SWITCH:
+		case UNLANG_TYPE_REDUNDANT:
+		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+			g = unlang_generic_to_group(c);
+			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
 		case UNLANG_TYPE_BREAK:
-			DEBUG("%.*sbreak", depth, unlang_spaces);
-			break;
-
-			/*
-			 *	Policies are just groups with a different way of handling them.
-			 */
-		case UNLANG_TYPE_POLICY:
-		case UNLANG_TYPE_GROUP:
-			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
-		case UNLANG_TYPE_LOAD_BALANCE:
-		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, unlang_spaces, unlang_ops[inst->type].name);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
+		case UNLANG_TYPE_DETACH:
+		case UNLANG_TYPE_RETURN:
+		case UNLANG_TYPE_TMPL:
+		case UNLANG_TYPE_XLAT:
+			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
 			break;
 		}
 	}
@@ -3376,7 +3301,7 @@ static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
  */
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci)
 {
-	char const		*modrefname, *p;
+	char const		*name, *p;
 	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
 	char const		*realname;
@@ -3388,16 +3313,16 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);
-		modrefname = cf_section_name1(cs);
+		name = cf_section_name1(cs);
 
-		compile = (unlang_op_compile_t) fr_table_value_by_str(unlang_section_keywords, modrefname, NULL);
+		compile = (unlang_op_compile_t) fr_table_value_by_str(unlang_section_keywords, name, NULL);
 		if (compile) return compile(parent, unlang_ctx, ci);
 
 		/*
 		 *	Forbid pair keywords as section names, e.g. "break { ... }"
 		 */
-		if (fr_table_value_by_str(unlang_pair_keywords, modrefname, NULL) != NULL) {
-			cf_log_err(ci, "Syntax error after keyword '%s' - unexpected '{'", modrefname);
+		if (fr_table_value_by_str(unlang_pair_keywords, name, NULL) != NULL) {
+			cf_log_err(ci, "Syntax error after keyword '%s' - unexpected '{'", name);
 			return NULL;
 		}
 
@@ -3410,7 +3335,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		CONF_PAIR *cp = cf_item_to_pair(ci);
 
-		modrefname = cf_pair_attr(cp);
+		name = cf_pair_attr(cp);
 
 		/*
 		 *	We cannot have assignments or actions here.
@@ -3425,19 +3350,19 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *
 		 *	This should really be removed from the server.
 		 */
-		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
+		if (((name[0] == '%') && (name[1] == '{')) ||
 		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
 
-		compile = fr_table_value_by_str(unlang_pair_keywords, modrefname, NULL);
+		compile = fr_table_value_by_str(unlang_pair_keywords, name, NULL);
 		if (compile) return compile(parent, unlang_ctx, ci);
 
 		/*
 		 *	Forbid section keywords as pair names, e.g. bare "update"
 		 */
-		if (fr_table_value_by_str(unlang_section_keywords, modrefname, NULL) != NULL) {
-			cf_log_err(ci, "Syntax error after keyword '%s' - expected '{'", modrefname);
+		if (fr_table_value_by_str(unlang_section_keywords, name, NULL) != NULL) {
+			cf_log_err(ci, "Syntax error after keyword '%s' - expected '{'", name);
 			return NULL;
 		}
 	} else {
@@ -3482,17 +3407,17 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	and "policy" is that "instantiate" will cause modules
 	 *	to be instantiated in a particular order.
 	 */
-	p = strrchr(modrefname, '.');
+	p = strrchr(name, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(ci, &component, modrefname, modrefname, NULL, &policy);
+		subcs = virtual_module_find_cs(ci, &component, name, name, NULL, &policy);
 	} else {
 		char buffer[256];
 
-		strlcpy(buffer, modrefname, sizeof(buffer));
-		buffer[p - modrefname] = '\0';
+		strlcpy(buffer, name, sizeof(buffer));
+		buffer[p - name] = '\0';
 
-		subcs = virtual_module_find_cs(ci, &component, modrefname,
-					       buffer, buffer + (p - modrefname) + 1, &policy);
+		subcs = virtual_module_find_cs(ci, &component, name,
+					       buffer, buffer + (p - name) + 1, &policy);
 	}
 
 	/*
@@ -3511,8 +3436,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	modules = cf_section_find(cf_root(ci), "modules", NULL);
 	if (!modules) goto fail;
 
-	inst = NULL;
-	realname = modrefname;
+	realname = name;
 
 	/*
 	 *	Try to load the optional module.
@@ -3537,8 +3461,8 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	We were asked to MAYBE load it and it
 	 *	doesn't exist.  Return a soft error.
 	 */
-	if (realname != modrefname) {
-		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", modrefname, realname);
+	if (realname != name) {
+		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", name, realname);
 		return UNLANG_IGNORE;
 	}
 
@@ -3546,8 +3470,8 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	Can't de-reference it to anything.  Ugh.
 	 */
 fail:
-	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
-	cf_log_err(ci, "Please verify that the configuration exists in mods-enabled/%s.", modrefname);
+	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", name);
+	cf_log_err(ci, "Please verify that the configuration exists in mods-enabled/%s.", name);
 	return NULL;
 }
 
@@ -3588,7 +3512,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 				    .component = component,
 					    .section_name1 = cf_section_name1(cs),
 					    .section_name2 = cf_section_name2(cs),
-					    .actions = &defaultactions[component],
+					    .actions = &default_actions[component],
 					    .rules = rules
 					    },
 			    cs, UNLANG_TYPE_GROUP);
@@ -3604,7 +3528,6 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 	cf_data_add(cs, c, NULL, true);
 	if (instruction) *instruction = c;
 
-	dump_tree(c, c->debug_name);
 	return 0;
 }
 
