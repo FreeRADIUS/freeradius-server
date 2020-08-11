@@ -56,6 +56,7 @@ typedef struct rlm_sqlippool_t {
 	char const	*allocate_begin;	//!< SQL query to begin.
 	char const	*allocate_clear;	//!< SQL query to clear an IP.
 	uint32_t	allocate_clear_timeout; //!< Number of second between two allocate_clear SQL query
+	char const	*allocate_existing;	//!< SQL query to find existing IP.
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
 	char const	*allocate_update;	//!< SQL query to mark an IP as used.
 	char const	*allocate_commit;	//!< SQL query to commit.
@@ -142,6 +143,9 @@ static CONF_PARSER module_config[] = {
 	{ "allocate_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT , rlm_sqlippool_t, allocate_clear), ""  },
 
 	{ "allocate_clear_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlippool_t, allocate_clear_timeout), "1" },
+
+	{ "allocate-existing", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_existing), NULL },
+	{ "allocate_existing", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_existing), ""  },
 
 	{ "allocate-find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_find), NULL },
 	{ "allocate_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), ""  },
@@ -588,10 +592,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	DO_PART(allocate_begin);
 
-	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-					  inst->allocate_find, &handle,
-					  inst, request, (char *) NULL, 0);
-	if (!handle) return RLM_MODULE_FAIL;
+	/*
+	 *	If we have a query to find an existing IP run that first
+	 */
+	if (inst->allocate_existing && *inst->allocate_existing) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->allocate_existing, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	} else {
+		allocation_len = 0;
+	}
+
+	/*
+	 *	If no existing IP found, look for a free one
+	 */
+	if (allocation_len == 0) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->allocate_find, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Nothing found...
