@@ -200,8 +200,6 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
 
-		sbuff_i->shifted += max_shift;
-
 		/*
 		 *	Current position shifts, but stays the same
 		 *	relative to content.
