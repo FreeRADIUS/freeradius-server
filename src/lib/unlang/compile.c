@@ -1456,11 +1456,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		}
 	}
 
-	if (!cf_item_next(cs, NULL)) {
-		talloc_free(vpt);
-		return UNLANG_IGNORE;
-	}
-
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
