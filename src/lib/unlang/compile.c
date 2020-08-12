@@ -3322,8 +3322,11 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		/* else it's something like sql { fail = 1 ...} */
+		goto check_for_module;
 
-	} else if (cf_item_is_pair(ci)) {
+	}
+
+	if (cf_item_is_pair(ci)) {
 		/*
 		 *	Else it's a module reference such as "sql", OR
 		 *	one of the few bare keywords that we allow.
@@ -3360,10 +3363,14 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			cf_log_err(ci, "Syntax error after keyword '%s' - expected '{'", name);
 			return NULL;
 		}
-	} else {
-		return NULL;	/* who knows what it is... */
+
+		goto check_for_module;
 	}
 
+	cf_log_err(ci, "Internal sanity check failed in compile_item()");
+	return NULL;	/* who knows what it is... */
+
+check_for_module:
 	/*
 	 *	We now have a name.  It can be one of two forms.  A
 	 *	bare module name, or a section named for the module,
