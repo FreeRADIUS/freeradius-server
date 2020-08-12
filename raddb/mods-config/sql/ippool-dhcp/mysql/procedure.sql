@@ -31,88 +31,91 @@ DELIMITER $$
 
 DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_framedipaddress;
 CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress (
-        IN v_pool_name VARCHAR(64),
-        IN v_nasipaddress VARCHAR(15),
-        IN v_pool_key VARCHAR(64),
-        IN v_lease_duration INT
+	IN v_pool_name VARCHAR(64),
+	IN v_gateway VARCHAR(15),
+	IN v_pool_key VARCHAR(64),
+	IN v_lease_duration INT
 )
 proc:BEGIN
-        DECLARE r_address VARCHAR(15);
+	DECLARE r_address VARCHAR(15);
 
-        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+	SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
-        START TRANSACTION;
+	START TRANSACTION;
 
-        -- Reissue an existing IP address lease when re-authenticating a session
-        --
-        SELECT framedipaddress INTO r_address
-        FROM radippool
-        WHERE pool_name = v_pool_name
-                AND expiry_time > NOW()
-                AND pool_key = v_pool_key
-        LIMIT 1
-        FOR UPDATE;
+	-- Reissue an existing IP address lease when re-authenticating a session
+	--
+	SELECT framedipaddress INTO r_address
+	FROM radippool
+	WHERE pool_name = v_pool_name
+		AND expiry_time > NOW()
+		AND pool_key = v_pool_key
+		AND `status` IN ('dynamic', 'static')
+	LIMIT 1
+	FOR UPDATE;
 --      FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
 
-        -- NOTE: You should enable SKIP LOCKED here (as well as any other
-        --       instances) if your database server supports it. If it is not
-        --       supported and you are not running a multi-master cluster (e.g.
-        --       Galera or MaxScale) then you should instead consider using the
-        --       SP in procedure-no-skip-locked.sql which will be faster and
-        --       less likely to result in thread starvation under highly
-        --       concurrent load.
+	-- NOTE: You should enable SKIP LOCKED here (as well as any other
+	--       instances) if your database server supports it. If it is not
+	--       supported and you are not running a multi-master cluster (e.g.
+	--       Galera or MaxScale) then you should instead consider using the
+	--       SP in procedure-no-skip-locked.sql which will be faster and
+	--       less likely to result in thread starvation under highly
+	--       concurrent load.
 
-        -- Reissue an user's previous IP address, provided that the lease is
-        -- available (i.e. enable sticky IPs)
-        --
-        -- When using this SELECT you should delete the one above. You must also
-        -- set allocate_clear = "" in queries.conf to persist the associations
-        -- for expired leases.
-        --
-        -- SELECT framedipaddress INTO r_address
-        -- FROM radippool
-        -- WHERE pool_name = v_pool_name
-        --         AND pool_key = v_pool_key
-        -- LIMIT 1
-        -- FOR UPDATE;
-        -- -- FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
+	-- Reissue an user's previous IP address, provided that the lease is
+	-- available (i.e. enable sticky IPs)
+	--
+	-- When using this SELECT you should delete the one above. You must also
+	-- set allocate_clear = "" in queries.conf to persist the associations
+	-- for expired leases.
+	--
+	-- SELECT framedipaddress INTO r_address
+	-- FROM radippool
+	-- WHERE pool_name = v_pool_name
+	--	AND pool_key = v_pool_key
+	--	AND `status` IN ('dynamic', 'static')
+	-- LIMIT 1
+	-- FOR UPDATE;
+	-- -- FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
 
-        -- If we didn't reallocate a previous address then pick the least
-        -- recently used address from the pool which maximises the likelihood
-        -- of re-assigning the other addresses to their recent user
-        --
-        IF r_address IS NULL THEN
-                SELECT framedipaddress INTO r_address
-                FROM radippool
-                WHERE pool_name = v_pool_name
-                        AND expiry_time < NOW()
-                ORDER BY
-                        expiry_time
-                LIMIT 1
-                FOR UPDATE;
---              FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
-        END IF;
+	-- If we didn't reallocate a previous address then pick the least
+	-- recently used address from the pool which maximises the likelihood
+	-- of re-assigning the other addresses to their recent user
+	--
+	IF r_address IS NULL THEN
+		SELECT framedipaddress INTO r_address
+		FROM radippool
+		WHERE pool_name = v_pool_name
+			AND expiry_time < NOW()
+			AND `status` = 'dynamic'
+		ORDER BY
+			expiry_time
+		LIMIT 1
+		FOR UPDATE;
+--		FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
+	END IF;
 
-        -- Return nothing if we failed to allocated an address
-        --
-        IF r_address IS NULL THEN
-                COMMIT;
-                LEAVE proc;
-        END IF;
+	-- Return nothing if we failed to allocated an address
+	--
+	IF r_address IS NULL THEN
+		COMMIT;
+		LEAVE proc;
+	END IF;
 
-        -- Update the pool having allocated an IP address
-        --
-        UPDATE radippool
-        SET
-                nasipaddress = v_nasipaddress,
-                pool_key = v_pool_key,
-                expiry_time = NOW() + INTERVAL v_lease_duration SECOND
-        WHERE framedipaddress = r_address;
+	-- Update the pool having allocated an IP address
+	--
+	UPDATE radippool
+	SET
+		gateway = v_gateway,
+		pool_key = v_pool_key,
+		expiry_time = NOW() + INTERVAL v_lease_duration SECOND
+	WHERE framedipaddress = r_address;
 
-        COMMIT;
+	COMMIT;
 
-        -- Return the address that we allocated
-        SELECT r_address;
+	-- Return the address that we allocated
+	SELECT r_address;
 
 END$$
 
