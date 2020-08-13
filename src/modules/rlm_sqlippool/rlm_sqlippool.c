@@ -50,7 +50,8 @@ typedef struct {
 	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
 	char const	*attribute_name;	//!< name of the IP address attribute
 
-	char const	*allocate_begin;	//!< SQL query to begin.	
+	char const	*allocate_begin;	//!< SQL query to begin.
+	char const	*allocate_existing;	//!< SQL query to find existing IP.
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
 	char const	*allocate_update;	//!< SQL query to mark an IP as used.
 	char const	*allocate_commit;	//!< SQL query to commit.
@@ -116,6 +117,8 @@ static CONF_PARSER module_config[] = {
 
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
+
+	{ FR_CONF_OFFSET("allocate_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_existing), .dflt = "" },
 
 	{ FR_CONF_OFFSET("allocate_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), .dflt = "" },
 
@@ -512,10 +515,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 
 	DO_PART(allocate_begin);
 
-	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-					  inst->allocate_find, &handle,
-					  inst, request, (char *) NULL, 0);
-	if (!handle) return RLM_MODULE_FAIL;
+	/*
+	 *	If there is a query for finding the existing IP
+	 *	run that first
+	 */
+	if (inst->allocate_existing && *inst->allocate_existing) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->allocate_existing, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	} else {
+		allocation_len = 0;
+	}
+
+	/*
+	 *	If no existing IP was found (or no query was run),
+	 *	run the query to find a free IP
+	 */
+	if (allocation_len == 0) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->allocate_find, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Nothing found...
