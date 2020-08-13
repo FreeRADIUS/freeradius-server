@@ -124,7 +124,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t *pkt, uint8_t *body, size_t body_len, 
 	int pad_offset;
 
 	if (!secret) {
-		if (pkt->hdr.flags & TAC_PLUS_UNENCRYPTED_FLAG)
+		if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG)
 			return 0;
 		else {
 			fr_strerror_printf("Packet is encrypted but no secret for the client is set");
@@ -132,7 +132,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t *pkt, uint8_t *body, size_t body_len, 
 		}
 	}
 
-	if (pkt->hdr.flags & TAC_PLUS_UNENCRYPTED_FLAG) {
+	if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) {
 		fr_strerror_printf("Packet is unencrypted but a secret has been set for the client");
 		return -1;
 	}

@@ -184,7 +184,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	/*
 	 *	3.6. Encryption
 	 */
-	if (pkt->hdr.flags == TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
+	if (pkt->hdr.flags == FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
 		uint8_t *body = (our_buffer + sizeof(fr_tacacs_packet_hdr_t));
 
 		fr_assert(secret != NULL);
@@ -199,7 +199,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	}
 
 	switch (pkt->hdr.type) {
-	case TAC_PLUS_AUTHEN:
+	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			/**
 			 * 4.1. The Authentication START Packet Body
@@ -221,7 +221,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Authentication START", 8)
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_START);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_START);
 
 			/*
 			 *	Decode 4 octets of various flags.
@@ -267,7 +267,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Authentication CONTINUE", 5);
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_CONTINUE);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
@@ -295,7 +295,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Authentication REPLY", 6);
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_REPLY);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
 
 			DECODE_GET_FIELD(attr_tacacs_authentication_status, pkt->authen.reply.status);
 			DECODE_GET_FIELD(attr_tacacs_authentication_flags, pkt->authen.reply.flags);
@@ -315,7 +315,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		}
 		break;
 
-	case TAC_PLUS_AUTHOR:
+	case FR_TAC_PLUS_AUTHOR:
 		if (packet_is_author_request(pkt)) {
 			/*
 			 * 5.1. The Authorization REQUEST Packet Body
@@ -348,7 +348,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			vp = fr_pair_afrom_da(ctx, attr_tacacs_packet_body_type);
 			if (!vp) goto oom;
-			vp->vp_uint8 = TACACS_PACKET_BODY_TYPE_REQUEST;
+			vp->vp_uint8 = FR_TACACS_PACKET_BODY_TYPE_REQUEST;
 			fr_cursor_append(&cursor, vp);
 
 			/*
@@ -402,7 +402,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Authorization RESPONSE", 6);
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_RESPONSE);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
 			 *	Decode 1 octets
@@ -430,7 +430,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		}
 		break;
 
-	case TAC_PLUS_ACCT:
+	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(pkt)) {
 			/**
 			 * 6.1. The Account REQUEST Packet Body
@@ -460,7 +460,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Accounting REQUEST", 9);
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_REQUEST);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REQUEST);
 
 			/*
 			 *	Decode 5 octets of various flags.
@@ -504,7 +504,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 
 			PACKET_HEADER_CHECKER("Accounting REPLY", 5);
-			DECODE_GET_FIELD(attr_tacacs_packet_body_type, TACACS_PACKET_BODY_TYPE_REPLY);
+			DECODE_GET_FIELD(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
