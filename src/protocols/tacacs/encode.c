@@ -190,7 +190,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 	 *	Encode 8 octets of various fields not members of STRUCT
 	 */
 	switch (packet->hdr.type) {
-	case TAC_PLUS_AUTHEN:
+	case FR_TAC_PLUS_AUTHEN:
 		/*
 		 * seq_no
 		 *
@@ -354,7 +354,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 
 		break;
 
-	case TAC_PLUS_AUTHOR:
+	case FR_TAC_PLUS_AUTHOR:
 		if (packet_is_author_request(packet)) {
 			/*
 			 * 5.1. The Authorization REQUEST Packet Body
@@ -504,7 +504,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 
 		break;
 
-	case TAC_PLUS_ACCT:
+	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(packet)) {
 			/**
 			 * 6.1. The Account REQUEST Packet Body
@@ -639,7 +639,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 		return -1;
 	}
 
-	fr_assert(length_hdr + length_body < TACACS_MAX_PACKET_SIZE);
+	fr_assert(length_hdr + length_body < FR_TACACS_MAX_PACKET_SIZE);
 
 	packet->hdr.length = htonl(length_hdr - sizeof(fr_tacacs_packet_hdr_t) + length_body);
 	packet_len = (length_hdr + length_body);
@@ -653,7 +653,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 	/*
 	 *	3.6. Encryption
 	 */
-	if (packet->hdr.flags == TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
+	if (packet->hdr.flags == FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
 		uint8_t *body = (buffer + sizeof(fr_tacacs_packet_hdr_t));
 
 		fr_assert(secret != NULL);
