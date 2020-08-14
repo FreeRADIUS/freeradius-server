@@ -58,30 +58,25 @@ typedef struct {
 
 	char const	*pool_check;		//!< Query to check for the existence of the pool.
 
-						/* Start sequence */
-	char const	*start_begin;		//!< SQL query to begin.
-	char const	*start_update;		//!< SQL query to update an IP entry.
-	char const	*start_commit;		//!< SQL query to commit.
+						/* Extend sequence */
+	char const	*extend_begin;		//!< SQL query to begin.
+	char const	*extend_update;		//!< SQL query to update an IP entry.
+	char const	*extend_commit;		//!< SQL query to commit.
 
-						/* Alive sequence */
-	char const	*alive_begin;		//!< SQL query to begin.
-	char const	*alive_update;		//!< SQL query to update an IP entry.
-	char const	*alive_commit;		//!< SQL query to commit.
+						/* Release sequence */
+	char const	*release_begin;		//!< SQL query to begin.
+	char const	*release_clear;       	//!< SQL query to clear an IP entry.
+	char const	*release_commit;	//!< SQL query to commit.
 
-						/* Stop sequence */
-	char const	*stop_begin;		//!< SQL query to begin.
-	char const	*stop_clear;		//!< SQL query to clear an IP.
-	char const	*stop_commit;		//!< SQL query to commit.
+						/* Bulk release sequence */
+	char const	*bulkrelease_begin;	//!< SQL query to begin.
+	char const	*bulkrelease_clear;	//!< SQL query to bulk clear several IPs.
+	char const	*bulkrelease_commit;	//!< SQL query to commit.
 
-						/* On sequence */
-	char const	*on_begin;		//!< SQL query to begin.
-	char const	*on_clear;		//!< SQL query to clear an entire NAS.
-	char const	*on_commit;		//!< SQL query to commit.
-
-						/* Off sequence */
-	char const	*off_begin;		//!< SQL query to begin.
-	char const	*off_clear;		//!< SQL query to clear an entire NAS.
-	char const	*off_commit;		//!< SQL query to commit.
+						/* Mark sequence */
+	char const	*mark_begin;		//!< SQL query to begin.
+	char const	*mark_update;		//!< SQL query to mark an IP.
+	char const	*mark_commit;		//!< SQL query to commit.
 
 						/* Logging Section */
 	char const	*log_exists;		//!< There was an ip address already assigned.
@@ -130,39 +125,33 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check), .dflt = "" },
 
 
-	{ FR_CONF_OFFSET("start_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, start_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin), .dflt = "START TRANSACTION" },
 
-	{ FR_CONF_OFFSET("start_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, start_update), .dflt = "" },
+	{ FR_CONF_OFFSET("extend_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, extend_update), .dflt = "" },
 
-	{ FR_CONF_OFFSET("start_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, start_commit), .dflt = "COMMIT" },
-
-
-	{ FR_CONF_OFFSET("alive_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alive_begin), .dflt = "START TRANSACTION" },
-
-	{ FR_CONF_OFFSET("alive_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, alive_update), .dflt = "" },
-
-	{ FR_CONF_OFFSET("alive_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alive_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit), .dflt = "COMMIT" },
 
 
-	{ FR_CONF_OFFSET("stop_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, stop_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin), .dflt = "START TRANSACTION" },
 
-	{ FR_CONF_OFFSET("stop_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, stop_clear), .dflt = "" },
+	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, release_clear), .dflt = "" },
 
-	{ FR_CONF_OFFSET("stop_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, stop_commit), .dflt = "COMMIT" },
-
-
-	{ FR_CONF_OFFSET("on_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, on_begin), .dflt = "START TRANSACTION" },
-
-	{ FR_CONF_OFFSET("on_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, on_clear), .dflt = "" },
-
-	{ FR_CONF_OFFSET("on_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, on_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit), .dflt = "COMMIT" },
 
 
-	{ FR_CONF_OFFSET("off_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, off_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin), .dflt = "START TRANSACTION" },
 
-	{ FR_CONF_OFFSET("off_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, off_clear), .dflt = "" },
+	{ FR_CONF_OFFSET("bulkrelease_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulkrelease_clear), .dflt = "" },
 
-	{ FR_CONF_OFFSET("off_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, off_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit), .dflt = "COMMIT" },
+
+
+	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin), .dflt = "START TRANSACTION" },
+
+	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, mark_update), .dflt = "" },
+
+	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit), .dflt = "COMMIT" },
+
 
 	{ FR_CONF_POINTER("messages", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
 	CONF_PARSER_TERMINATOR
@@ -625,9 +614,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(start_begin);
-	DO(start_update);
-	DO(start_commit);
+	DO(extend_begin);
+	DO(extend_update);
+	DO(extend_commit);
 
 	return RLM_MODULE_OK;
 }
@@ -635,18 +624,18 @@ static int mod_accounting_start(rlm_sql_handle_t **handle,
 static int mod_accounting_alive(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(alive_begin);
-	DO(alive_update);
-	DO(alive_commit);
+	DO(extend_begin);
+	DO(extend_update);
+	DO(extend_commit);
 	return RLM_MODULE_OK;
 }
 
 static int mod_accounting_stop(rlm_sql_handle_t **handle,
 			       rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(stop_begin);
-	DO(stop_clear);
-	DO(stop_commit);
+	DO(release_begin);
+	DO(release_clear);
+	DO(release_commit);
 
 	return do_logging(inst, request, inst->log_clear, RLM_MODULE_OK);
 }
@@ -654,9 +643,9 @@ static int mod_accounting_stop(rlm_sql_handle_t **handle,
 static int mod_accounting_on(rlm_sql_handle_t **handle,
 			     rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(on_begin);
-	DO(on_clear);
-	DO(on_commit);
+	DO(bulkrelease_begin);
+	DO(bulkrelease_clear);
+	DO(bulkrelease_commit);
 
 	return RLM_MODULE_OK;
 }
@@ -664,9 +653,9 @@ static int mod_accounting_on(rlm_sql_handle_t **handle,
 static int mod_accounting_off(rlm_sql_handle_t **handle,
 			      rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(off_begin);
-	DO(off_clear);
-	DO(off_commit);
+	DO(bulkrelease_begin);
+	DO(bulkrelease_clear);
+	DO(bulkrelease_commit);
 
 	return RLM_MODULE_OK;
 }
