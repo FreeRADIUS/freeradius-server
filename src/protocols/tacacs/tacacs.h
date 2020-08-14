@@ -23,6 +23,32 @@
 #define TAC_PLUS_MINOR_VER_DEFAULT	0
 #define TAC_PLUS_MINOR_VER_ONE		1
 
+/**
+ * 3.4. The TACACS+ Packet Header
+ *
+ * seq_no
+ *
+ * This is the sequence number of the current packet for the current session.
+ * The first packet in a session MUST have the sequence number 1 and each subsequent
+ * packet will increment the sequence number by one. Thus clients only send packets
+ * containing odd sequence numbers, and TACACS+ servers only send packets containing
+ * even sequence numbers.
+ *
+ * The sequence number must never wrap i.e. if the sequence number 2^8-1 is ever reached,
+ * that session must terminate and be restarted with a sequence number of 1.
+ */
+#define packet_is_authen_start_request(p)     (p->hdr.seq_no == 1)
+#define packet_is_authen_continue(p)          ((p->hdr.seq_no % 2) == 1)
+#define packet_is_authen_reply(p)             ((p->hdr.seq_no % 2) == 0)
+
+#define packet_is_author_request(p)           packet_is_authen_continue(p)
+#define packet_is_author_response(p)          packet_is_authen_reply(p)
+
+#define packet_is_acct_request(p)             packet_is_authen_continue(p)
+#define packet_is_acct_reply(p)               packet_is_authen_reply(p)
+
+#define packet_has_valid_seq_no(p)            (p->hdr.seq_no >= 1 && p->hdr.seq_no <= 255)
+
 typedef enum {
 	TAC_PLUS_INVALID		= 0x00,
 	TAC_PLUS_AUTHEN			= 0x01,
