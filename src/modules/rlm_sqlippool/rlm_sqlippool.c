@@ -320,8 +320,9 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  *	Don't repeat yourself
  */
 #undef DO
-#define DO(_x) sqlippool_command(inst->_x, handle, inst, request, NULL, 0)
-#define DO_PART(_x) sqlippool_command(inst->_x, &handle, inst, request, NULL, 0)
+#define DO(_x) if(sqlippool_command(inst->_x, handle, inst, request, NULL, 0) < 0) return RLM_MODULE_FAIL
+#define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, handle, inst, request, NULL, 0); if (_affected < 0) return RLM_MODULE_FAIL
+#define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request, NULL, 0) <0) goto error
 
 /*
  * Query the database expecting a single result row
@@ -604,8 +605,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	/*
 	 *	UPDATE
 	 */
-	sqlippool_command(inst->allocate_update, &handle, inst, request,
-			  allocation, allocation_len);
+	if (sqlippool_command(inst->allocate_update, &handle, inst, request,
+			      allocation, allocation_len) < 0) {
+	error:
+		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		return RLM_MODULE_FAIL;
+	}
 
 	DO_PART(allocate_commit);
 
