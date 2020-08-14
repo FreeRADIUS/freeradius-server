@@ -276,7 +276,7 @@ typedef struct {
 } fr_tacacs_ctx_t;
 
 /* encode.c */
-int fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret, UNUSED size_t secret_len);
+ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const secret, size_t secret_len, VALUE_PAIR *vps);
 
 /* decode.c */
 int fr_tacacs_packet_decode(RADIUS_PACKET * const packet);
