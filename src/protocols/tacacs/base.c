@@ -69,6 +69,7 @@ fr_dict_attr_t const *attr_tacacs_server_message;
 fr_dict_attr_t const *attr_tacacs_session_id;
 fr_dict_attr_t const *attr_tacacs_user_message;
 fr_dict_attr_t const *attr_tacacs_user_name;
+fr_dict_attr_t const *attr_tacacs_version_major;
 fr_dict_attr_t const *attr_tacacs_version_minor;
 
 extern fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[];
@@ -98,6 +99,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_session_id, .name = "TACACS-Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_user_message, .name = "TACACS-User-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_version_major, .name = "TACACS-Version-Major", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_version_minor, .name = "TACACS-Version-Minor", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ NULL }
 };
