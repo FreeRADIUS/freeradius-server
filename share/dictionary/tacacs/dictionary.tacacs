@@ -62,7 +62,7 @@ VALUE	TACACS-Packet-Type		Authorization		2
 VALUE	TACACS-Packet-Type		Accounting		3
 
 VALUE	TACACS-Flags			Encrypted-Multiple-Connections 0
-VALUE	TACACS-Flags			Unecrypted		1
+VALUE	TACACS-Flags			Unencrypted		1
 VALUE	TACACS-Flags			Single-Connect		4
 
 VALUE	TACACS-Action			LOGIN			1
