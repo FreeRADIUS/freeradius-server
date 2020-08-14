@@ -45,6 +45,8 @@ ATTRIBUTE	TACACS-Authorization-Status		18	byte
 ATTRIBUTE	TACACS-Accounting-Status		19	byte
 ATTRIBUTE	TACACS-Accounting-Flags			20	byte
 
+ATTRIBUTE	TACACS-ArgumentList			21	string array
+
 #
 # TACACS+ integer mappings
 #
