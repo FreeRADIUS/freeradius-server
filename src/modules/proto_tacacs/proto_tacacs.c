@@ -241,7 +241,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		rc = fr_tacacs_packet_decode(request->packet);
+		rc = fr_tacacs_packet_decode(request->packet, request->client->secret, talloc_array_length(request->client->secret) - 1);
 		if (rc == -2)	/* client abort no reply */
 			goto done;
 		else if (rc < 0) {
