@@ -473,7 +473,7 @@ static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
@@ -755,6 +755,15 @@ module_t rlm_sqlippool = {
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_post_auth
+		[MOD_POST_AUTH]		= mod_allocate
 	},
+	.method_names = (module_method_names_t[]){
+		{ "recv",	"DHCP-Discover",	mod_allocate },
+//		{ "recv",	"DHCP-Request",		mod_extend },
+//		{ "recv",	"DHCP-Release",		mod_release },
+//		{ "recv",	"DHCP-Decline",		mod_mark },
+
+		MODULE_NAME_TERMINATOR
+	}
+
 };
