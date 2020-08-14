@@ -37,6 +37,7 @@ extern fr_dict_attr_t const *attr_tacacs_authentication_service;
 extern fr_dict_attr_t const *attr_tacacs_authentication_status;
 extern fr_dict_attr_t const *attr_tacacs_authentication_type;
 extern fr_dict_attr_t const *attr_tacacs_authorization_status;
+extern fr_dict_attr_t const *attr_tacacs_argument_list;
 extern fr_dict_attr_t const *attr_tacacs_client_port;
 extern fr_dict_attr_t const *attr_tacacs_data;
 extern fr_dict_attr_t const *attr_tacacs_flags;
