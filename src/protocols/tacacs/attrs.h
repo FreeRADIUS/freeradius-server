@@ -52,4 +52,5 @@ extern fr_dict_attr_t const *attr_tacacs_server_message;
 extern fr_dict_attr_t const *attr_tacacs_session_id;
 extern fr_dict_attr_t const *attr_tacacs_user_message;
 extern fr_dict_attr_t const *attr_tacacs_user_name;
+extern fr_dict_attr_t const *attr_tacacs_version_major;
 extern fr_dict_attr_t const *attr_tacacs_version_minor;
