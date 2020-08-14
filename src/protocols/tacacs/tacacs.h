@@ -18,8 +18,13 @@
  * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
 
-#define FR_TACACS_MAX_PACKET_CODE		(8)
+#include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
+#include <freeradius-devel/protocol/tacacs/dictionary.h>
+
+#define FR_TACACS_HEADER_LENGTH 		sizeof(fr_tacacs_packet_hdr_t)
 #define FR_TACACS_MAX_PACKET_SIZE		4096
+#define FR_TACACS_MAX_ATTRIBUTES 		255
+
 
 #define FR_TAC_PLUS_MAJOR_VER			12
 #define FR_TAC_PLUS_MINOR_VER_DEFAULT		0
@@ -52,10 +57,11 @@
 #define packet_has_valid_seq_no(p)            (p->hdr.seq_no >= 1 && p->hdr.seq_no <= 255)
 
 typedef enum {
-	FR_TAC_PLUS_INVALID			= 0x00,
-	FR_TAC_PLUS_AUTHEN			= 0x01,
-	FR_TAC_PLUS_AUTHOR			= 0x02,
-	FR_TAC_PLUS_ACCT			= 0x03
+	FR_TAC_PLUS_INVALID		= 0x00,
+	FR_TAC_PLUS_AUTHEN		= 0x01,
+	FR_TAC_PLUS_AUTHOR		= 0x02,
+	FR_TAC_PLUS_ACCT		= 0x03,
+	FR_TAC_PLUS_MAX			= 0x04
 } fr_tacacs_type_t;
 
 typedef enum {
@@ -268,6 +274,8 @@ typedef struct CC_HINT(__packed__) {
 		} acct;
 	};
 } fr_tacacs_packet_t;
+
+extern char const *fr_tacacs_packet_codes[];
 
 /** Used as the decoder ctx
  *

@@ -31,6 +31,7 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
+#include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
 
 #include "tacacs.h"
 #include "attrs.h"
@@ -103,6 +104,15 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_version_minor, .name = "TACACS-Version-Minor", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ NULL }
 };
+
+
+char const *fr_tacacs_packet_codes[] = {
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "Authentication-Continue",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "Authorization-Request",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "Accounting-Request",
+};
+
 
 int fr_tacacs_init(void)
 {

@@ -1,10 +1,3 @@
-#TARGETNAME	:= proto_tacacs
-TARGETNAME	:=
+ SUBMAKEFILES := proto_tacacs.mk \
+		proto_tacacs_tcp.mk
 
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_tacacs.c
-
-TGT_PREREQS	:= libfreeradius-tacacs.a
