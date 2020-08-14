@@ -249,20 +249,15 @@ typedef struct {
 	char const           *secret;
 } fr_tacacs_ctx_t;
 
-tacacs_type_t	tacacs_type(RADIUS_PACKET const * const packet);
+/* encode.c */
+int fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret, UNUSED size_t secret_len);
 
-char const	*tacacs_packet_code(RADIUS_PACKET const * const packet);
+/* decode.c */
+int fr_tacacs_packet_decode(RADIUS_PACKET * const packet);
 
-uint32_t	tacacs_session_id(RADIUS_PACKET const * const packet);
-
-int		fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secret, size_t secret_len);
-
-int		fr_tacacs_packet_decode(RADIUS_PACKET * const packet);
-
-int		fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret, size_t secret_len);
-
-int		fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret, size_t secret_len);
-
+/* base.c */
 int		fr_tacacs_init(void);
 
 void		fr_tacacs_free(void);
+
+int fr_tacacs_body_xor(fr_tacacs_packet_t *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len);
