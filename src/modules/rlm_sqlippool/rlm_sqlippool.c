@@ -278,6 +278,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	char *expanded = NULL;
 
 	int ret;
+	int affected;
 
 	/*
 	 *	If we don't have a command, do nothing.
@@ -308,9 +309,11 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	if (!*handle) return -1;
 
+	affected = (data->sql_inst->driver->sql_affected_rows)(*handle, data->sql_inst->config);
+
 	(data->sql_inst->driver->sql_finish_query)(*handle, data->sql_inst->config);
 
-	return 0;
+	return affected;
 }
 
 /*
