@@ -97,7 +97,7 @@ AS
 				SELECT TOP(1) FramedIPAddress
 				FROM radippool
 				WHERE pool_name = @v_pool_name
-					AND ( expiry_time < CURRENT_TIMESTAMP OR expiry_time IS NULL )
+					AND expiry_time < CURRENT_TIMESTAMP
 				ORDER BY
 					expiry_time
 			)
