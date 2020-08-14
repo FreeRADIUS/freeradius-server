@@ -246,7 +246,7 @@ typedef struct CC_HINT(__packed__) {
 	uint16_t			data_len;
 	tacacs_acct_reply_status_t	status:8;
 	uint8_t				body[1];
-} fr_tacacs_packet_acct_res_hdr_t;
+} fr_tacacs_packet_acct_reply_hdr_t;
 
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
@@ -262,7 +262,7 @@ typedef struct CC_HINT(__packed__) {
 		} author;
 		union {
 			fr_tacacs_packet_acct_req_hdr_t		req;
-			fr_tacacs_packet_acct_res_hdr_t		res;
+			fr_tacacs_packet_acct_reply_hdr_t	reply;
 		} acct;
 	};
 } fr_tacacs_packet_t;
