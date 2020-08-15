@@ -89,7 +89,7 @@ proc:BEGIN
                 SELECT framedipaddress INTO r_address
                 FROM radippool
                 WHERE pool_name = v_pool_name
-                        AND ( expiry_time < NOW() OR expiry_time IS NULL )
+                        AND expiry_time < NOW()
                 ORDER BY
                         expiry_time
                 LIMIT 1
