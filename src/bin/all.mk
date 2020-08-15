@@ -38,7 +38,7 @@ endef
 #  command-line options.  See scripts/build/fuzzer for a shell script
 #  wrapper.
 #
-PROTOCOLS = radius dhcpv4 dhcpv6
+PROTOCOLS = radius dhcpv4 dhcpv6 tacacs
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 endif
