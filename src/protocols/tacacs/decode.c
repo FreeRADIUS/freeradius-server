@@ -53,9 +53,10 @@
  *	Decode a TACACS+ 'arg_N' fields.
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
-				uint8_t arg_cnt, uint8_t *arg_body, uint8_t **args_data, uint16_t *remaining)
+			      uint8_t arg_cnt, uint8_t *arg_list, uint8_t **data, uint16_t *remaining)
 {
-	char *p = (char *)*args_data;
+	uint8_t i;
+	char *p = (char *)*data;
 	VALUE_PAIR *vp;
 
 	/*
@@ -63,15 +64,19 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 	 */
 	if (!arg_cnt) return 0;
 
+	if (*remaining < arg_cnt) {
+		fr_strerror_printf("Argument count overflows the remaining data in the packet: %d > %d",
+				   arg_cnt, *remaining);
+		return -1;
+	}
+
 	/*
 	 *	Then, do the dirty job...
 	 */
 	*remaining -= arg_cnt;
 
-	for (uint8_t i = 0; i < arg_cnt; i++) {
-		uint8_t arg_len = *(arg_body + i);
-
-		fr_assert(arg_len <= *remaining);
+	for (i = 0; i < arg_cnt; i++) {
+		uint8_t arg_len = arg_list[i];
 
 		if (arg_len > *remaining) {
 			fr_strerror_printf("'%s' length overflows the remaining data in the packet: %d > %d",
@@ -87,9 +92,9 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 
 		fr_pair_value_bstrndup(vp, p, arg_len, true);
 		fr_cursor_append(cursor, vp);
-		p          += arg_len;
+		p += arg_len;
 		*remaining -= arg_len;
-		*args_data  = (uint8_t *)p;
+		*data  = (uint8_t *)p;
 	}
 
 	return 0;
@@ -246,9 +251,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 						pkt->authen.start.rem_addr_len, &remaining) < 0) return -1;
 
 			if (tacacs_decode_field(ctx, &cursor, attr_tacacs_data, &p,
-						pkt->authen.start.data_len, &remaining) < 0) {
-				return -1;
-			}
+						pkt->authen.start.data_len, &remaining) < 0) return -1;
+
 		} else if (packet_is_authen_continue(pkt)) {
 			/*
 			 * 4.3. The Authentication CONTINUE Packet Body
@@ -280,6 +284,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 					ntohs(pkt->authen.cont.data_len), &remaining) < 0) return -1;
 
 			DECODE_GET_FIELD(attr_tacacs_authentication_flags, pkt->authen.cont.flags);
+
 		} else if (packet_is_authen_reply(pkt)) {
 			/*
 			 * 4.2. The Authentication REPLY Packet Body
@@ -309,9 +314,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			if (tacacs_decode_field(ctx, &cursor, attr_tacacs_data, &p,
 					htons(pkt->authen.reply.data_len), &remaining) < 0) return -1;
+
 		} else {
-			/* Never */
-			fr_assert(1);
+		unknown_packet:
+			fr_strerror_printf("Unknown packet type");
+			return -1;
 		}
 		break;
 
@@ -377,6 +384,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
 					pkt->author.req.arg_cnt, pkt->author.req.body, &p, &remaining) < 0) return -1;
+
 		} else if (packet_is_author_response(pkt)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
@@ -424,9 +432,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
 					pkt->author.res.arg_cnt, pkt->author.res.body, &p, &remaining) < 0) return -1;
+
 		} else {
-			/* never */
-			fr_assert(1);
+			goto unknown_packet;
 		}
 		break;
 
@@ -489,6 +497,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
 					pkt->acct.req.arg_cnt, pkt->acct.req.body, &p, &remaining) < 0) return -1;
+
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
 			 * 6.2. The Accounting REPLY Packet Body
@@ -521,17 +530,15 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			if (!vp) goto oom;
 			vp->vp_uint8 = pkt->acct.reply.status;
 			fr_cursor_append(&cursor, vp);
+
 		} else {
-			/* never */
-			fr_assert(1);
+			goto unknown_packet;
 		}
 		break;
 	default:
 		fr_strerror_printf("decode: Unsupported TACACS+ type %u", pkt->hdr.type);
 		return -1;
 	}
-
-	fr_assert(remaining == 0); /* Good enough */
 
 	return buffer_len;
 }
