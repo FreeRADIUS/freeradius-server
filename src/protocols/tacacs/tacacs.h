@@ -52,7 +52,7 @@
 #define packet_has_valid_seq_no(p)            (p->hdr.seq_no >= 1 && p->hdr.seq_no <= 255)
 
 typedef enum {
-	FR_TAC_PLUS_INVALID		= 0x00,
+	FR_TAC_PLUS_INVALID			= 0x00,
 	FR_TAC_PLUS_AUTHEN			= 0x01,
 	FR_TAC_PLUS_AUTHOR			= 0x02,
 	FR_TAC_PLUS_ACCT			= 0x03
@@ -77,17 +77,17 @@ typedef struct CC_HINT(__packed__) {
 #endif
 		} ver;
 	};
-	fr_tacacs_type_t		type:8;
+	fr_tacacs_type_t	type:8;
 	uint8_t 		seq_no;
-	fr_tacacs_flags_t		flags:8;
+	fr_tacacs_flags_t	flags:8;
 	uint32_t 		session_id;
 	uint32_t 		length;
 } fr_tacacs_packet_hdr_t;
 
 typedef enum {
-	FR_TAC_PLUS_AUTHEN_LOGIN	= 0x01,
-	FR_TAC_PLUS_AUTHEN_CHPASS	= 0x02,
-	FR_TAC_PLUS_AUTHEN_SENDAUTH	= 0x04
+	FR_TAC_PLUS_AUTHEN_LOGIN		= 0x01,
+	FR_TAC_PLUS_AUTHEN_CHPASS		= 0x02,
+	FR_TAC_PLUS_AUTHEN_SENDAUTH		= 0x04
 } fr_tacacs_action_t;
 
 typedef enum {
@@ -107,28 +107,28 @@ typedef enum {
 } fr_tacacs_privlvl_t;
 
 typedef enum {
-	FR_TAC_PLUS_AUTHEN_SVC_NONE	= 0x00,
-	FR_TAC_PLUS_AUTHEN_SVC_LOGIN	= 0x01,
-	FR_TAC_PLUS_AUTHEN_SVC_ENABLE	= 0x02,
-	FR_TAC_PLUS_AUTHEN_SVC_PPP	= 0x03,
-	FR_TAC_PLUS_AUTHEN_SVC_ARAP	= 0x04,
-	FR_TAC_PLUS_AUTHEN_SVC_PT	= 0x05,
-	FR_TAC_PLUS_AUTHEN_SVC_RCMD	= 0x06,
-	FR_TAC_PLUS_AUTHEN_SVC_X25	= 0x07,
-	FR_TAC_PLUS_AUTHEN_SVC_NASI	= 0x08,
-	FR_TAC_PLUS_AUTHEN_SVC_FWPROXY	= 0x09
+	FR_TAC_PLUS_AUTHEN_SVC_NONE		= 0x00,
+	FR_TAC_PLUS_AUTHEN_SVC_LOGIN		= 0x01,
+	FR_TAC_PLUS_AUTHEN_SVC_ENABLE		= 0x02,
+	FR_TAC_PLUS_AUTHEN_SVC_PPP		= 0x03,
+	FR_TAC_PLUS_AUTHEN_SVC_ARAP		= 0x04,
+	FR_TAC_PLUS_AUTHEN_SVC_PT		= 0x05,
+	FR_TAC_PLUS_AUTHEN_SVC_RCMD		= 0x06,
+	FR_TAC_PLUS_AUTHEN_SVC_X25		= 0x07,
+	FR_TAC_PLUS_AUTHEN_SVC_NASI		= 0x08,
+	FR_TAC_PLUS_AUTHEN_SVC_FWPROXY		= 0x09
 } fr_tacacs_authenservice_t;
 
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_action_t		action:8;
-	fr_tacacs_privlvl_t	priv_lvl:8;
-	fr_tacacs_authentype_t	authen_type:8;
+	fr_tacacs_privlvl_t		priv_lvl:8;
+	fr_tacacs_authentype_t		authen_type:8;
 	fr_tacacs_authenservice_t	authen_service:8;
-	uint8_t			user_len;
-	uint8_t			port_len;
-	uint8_t			rem_addr_len;
-	uint8_t			data_len;
-	uint8_t			body[0];
+	uint8_t				user_len;
+	uint8_t				port_len;
+	uint8_t				rem_addr_len;
+	uint8_t				data_len;
+	uint8_t				body[0];
 } fr_tacacs_packet_authen_start_hdr_t;
 
 typedef enum {
@@ -143,8 +143,8 @@ typedef enum {
 } fr_tacacs_authen_reply_status_t;
 
 typedef enum {
-	FR_TAC_PLUS_REPLY_FLAG_UNSET	= 0x00,	/* gdb candy */
-	FR_TAC_PLUS_REPLY_FLAG_NOECHO	= 0x01
+	FR_TAC_PLUS_REPLY_FLAG_UNSET		= 0x00,	/* gdb candy */
+	FR_TAC_PLUS_REPLY_FLAG_NOECHO		= 0x01
 } fr_tacacs_authen_reply_flags_t;
 
 typedef struct CC_HINT(__packed__) {
@@ -210,9 +210,9 @@ typedef struct CC_HINT(__packed__) {
 } fr_tacacs_packet_author_res_hdr_t;
 
 typedef enum {
-	FR_TAC_PLUS_ACCT_FLAG_START	= 0x02,
-	FR_TAC_PLUS_ACCT_FLAG_STOP	= 0x04,
-	FR_TAC_PLUS_ACCT_FLAG_WATCHDOG	= 0x08
+	FR_TAC_PLUS_ACCT_FLAG_START		= 0x02,
+	FR_TAC_PLUS_ACCT_FLAG_STOP		= 0x04,
+	FR_TAC_PLUS_ACCT_FLAG_WATCHDOG		= 0x08
 } fr_tacacs_acct_req_flags_t;
 
 typedef struct CC_HINT(__packed__) {
@@ -229,18 +229,18 @@ typedef struct CC_HINT(__packed__) {
 } fr_tacacs_packet_acct_req_hdr_t;
 
 typedef enum {
-	FR_TACACS_PACKET_BODY_TYPE_UNKNOWN  = 0,
-	FR_TACACS_PACKET_BODY_TYPE_START    = 1,
-	FR_TACACS_PACKET_BODY_TYPE_REPLY    = 2,
-	FR_TACACS_PACKET_BODY_TYPE_CONTINUE = 3,
-	FR_TACACS_PACKET_BODY_TYPE_REQUEST  = 4,
-	FR_TACACS_PACKET_BODY_TYPE_RESPONSE = 5
+	FR_TACACS_PACKET_BODY_TYPE_UNKNOWN  	= 0,
+	FR_TACACS_PACKET_BODY_TYPE_START    	= 1,
+	FR_TACACS_PACKET_BODY_TYPE_REPLY    	= 2,
+	FR_TACACS_PACKET_BODY_TYPE_CONTINUE 	= 3,
+	FR_TACACS_PACKET_BODY_TYPE_REQUEST  	= 4,
+	FR_TACACS_PACKET_BODY_TYPE_RESPONSE 	= 5
 } fr_tacacs_packet_body_type_t;
 
 typedef enum {
-	FR_TAC_PLUS_ACCT_STATUS_SUCCESS	= 0x01,
-	FR_TAC_PLUS_ACCT_STATUS_ERROR	= 0x02,
-	FR_TAC_PLUS_ACCT_STATUS_FOLLOW	= 0x21
+	FR_TAC_PLUS_ACCT_STATUS_SUCCESS		= 0x01,
+	FR_TAC_PLUS_ACCT_STATUS_ERROR		= 0x02,
+	FR_TAC_PLUS_ACCT_STATUS_FOLLOW		= 0x21
 } fr_tacacs_acct_reply_status_t;
 
 typedef struct CC_HINT(__packed__) {
@@ -256,11 +256,11 @@ typedef struct CC_HINT(__packed__) {
 		union {
 			fr_tacacs_packet_authen_start_hdr_t	start;
 			fr_tacacs_packet_authen_reply_hdr_t	reply;
-			fr_tacacs_packet_authen_cont_hdr_t		cont;
+			fr_tacacs_packet_authen_cont_hdr_t	cont;
 		} authen;
 		union {
-			fr_tacacs_packet_author_req_hdr_t		req;
-			fr_tacacs_packet_author_res_hdr_t		res;
+			fr_tacacs_packet_author_req_hdr_t	req;
+			fr_tacacs_packet_author_res_hdr_t	res;
 		} author;
 		union {
 			fr_tacacs_packet_acct_req_hdr_t		req;
