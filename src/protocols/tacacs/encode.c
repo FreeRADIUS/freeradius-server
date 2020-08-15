@@ -39,89 +39,83 @@
 /**
  *	Encode a TACACS+ 'arg_N' fields.
  */
-static size_t tacacs_encode_body_arg_n_len(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body)
+static uint8_t tacacs_encode_body_arg_n_len(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
 {
-	VALUE_PAIR *vp;
-	fr_cursor_t	cursor;
-	size_t 	arg_cnt = 0;
 	uint8_t *p = *body;
+	uint8_t arg_cnt = 0;
+	size_t total = 0;
+	VALUE_PAIR *vp;
+	fr_cursor_t cursor;
 
 	fr_assert(body != NULL);
 
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
+		if (arg_cnt == 255) break;
 
 		if (vp->da != da) continue;
 
-		fr_assert(vp->vp_length <= 0xff);
+		if (vp->vp_length > 0xff) continue;
 
-		if (vp->vp_length > 0xff) {
-			fr_strerror_printf("The TACACS+ attribute %s overflows the values (%ld > 255)",
-				da->name, vp->vp_length);
-			return -1;
-		}
+		if ((p + 1 + vp->vp_length + total) > end) break;
 
 		/* Append the <arg_N_len> fields length */
-		*p++     = vp->vp_length;
-		arg_cnt += 1;
+		*p++ = vp->vp_length;
+		total += vp->vp_length;
+		arg_cnt++;
 	}
-
-	if (!arg_cnt) return 0;
 
 	*body = p;
 
 	return arg_cnt;
 }
 
-static size_t tacacs_encode_body_arg_n(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body)
+static void tacacs_encode_body_arg_n(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
 {
+	uint8_t *p = *body;
+	uint8_t arg_cnt = 0;
 	VALUE_PAIR *vp;
-	fr_cursor_t	cursor;
-	size_t body_args_len = 0;
+	fr_cursor_t cursor;
 
-	fr_assert(*body != NULL);
+	fr_assert(body != NULL);
 
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
+		if (arg_cnt == 255) break;
 
 		if (vp->da != da) continue;
 
-		/* Append the <arg_N> fields */
-		memcpy(*body + body_args_len, vp->vp_strvalue, vp->vp_length);
-		body_args_len += vp->vp_length;
+		if (vp->vp_length > 0xff) continue;
+
+		if ((p + vp->vp_length) > end) break;
+
+		/* Append the <arg_N> field */
+		memcpy(p, vp->vp_strvalue, vp->vp_length);
+		p += vp->vp_length;
 	}
 
-	return body_args_len;
+	*body = p;
 }
 
 /*
  *	Encode a TACACS+ field.
  */
-static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **field_data, uint16_t *body_len, size_t max_len)
+static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **data, uint8_t const *end, size_t max_len)
 {
 	VALUE_PAIR *vp;
+	uint8_t *p = *data;
 
 	vp = fr_pair_find_by_da(vps, da, TAG_ANY);
-	if (!vp) return 0;
+	if (!vp || !vp->vp_length) return 0;
 
-	fr_assert(vp->vp_length <= max_len);
+	if (vp->vp_length > max_len) return 0;
+	if ((p + vp->vp_length) > end) return 0;
 
-	if (vp->vp_length > max_len) {
-		fr_strerror_printf("The TACACS+ attribute %s overflows the values (%ld > %ld)",
-			da->name, vp->vp_length, max_len);
-		return -1;
-	}
-
-	if (vp->vp_length > 0) {
-		uint8_t *p = *field_data;
-
-		memcpy(p, vp->vp_strvalue, vp->vp_length);
-		p          += vp->vp_length;
-		*field_data = p;
-		*body_len  += vp->vp_length;
-	}
+	memcpy(p, vp->vp_strvalue, vp->vp_length);
+	p += vp->vp_length;
+	*data = p;
 
 	return vp->vp_length;
 }
@@ -136,8 +130,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 	fr_cursor_t		cursor;
 	fr_da_stack_t 		da_stack;
 	uint8_t 		*p;
-	uint16_t		length_hdr = 0;
-	uint16_t		length_body = 0;
+	uint8_t const		*end = buffer + buffer_len;
 	ssize_t			len = 0;
 	size_t 			packet_len = 0;
 
@@ -171,13 +164,11 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	length_hdr = fr_struct_to_network(buffer, buffer_len, &da_stack, 0, &cursor, NULL, NULL);
+	len = fr_struct_to_network(buffer, buffer_len, &da_stack, 0, &cursor, NULL, NULL);
 
-	fr_assert(length_hdr == sizeof(fr_tacacs_packet_hdr_t));
-
-	if (length_hdr != sizeof(fr_tacacs_packet_hdr_t)) {
-		fr_strerror_printf("Problems to encode %s using fr_struct_to_network()",
-					attr_tacacs_packet->name);
+	if (len != sizeof(fr_tacacs_packet_hdr_t)) {
+		fr_strerror_printf("Failed encoding %s using fr_struct_to_network()",
+				   attr_tacacs_packet->name);
 		return -1;
 	}
 
@@ -220,8 +211,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_authen_start_hdr_t, body);
-
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
@@ -250,19 +239,19 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 			p = packet->authen.start.body;
 
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, &length_body, 0xff);
+			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xff);
 			if (len < 0) goto invalid_authen_req;
 			packet->authen.start.user_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, &length_body, 0xff);
+			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xff);
 			if (len < 0) goto invalid_authen_req;
 			packet->authen.start.port_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, &length_body, 0xff);
+			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xff);
 			if (len < 0) goto invalid_authen_req;
 			packet->authen.start.rem_addr_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, &length_body, 0xff);
+			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xff);
 			if (len < 0) goto invalid_authen_req;
 			packet->authen.start.data_len = len;
 		} else if (packet_is_authen_continue(packet)) {
@@ -282,14 +271,12 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_authen_cont_hdr_t, body);
-
 			/*
 			 *	Encode 2 fields, based on their 'length'
 			 */
 			p = packet->authen.cont.body;
 
-			len = tacacs_encode_field(vps, attr_tacacs_user_message, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_user_message, &p, end, 0xffff);
 			if (len < 0) {
 			invalid_authen_cont:
 				fr_strerror_printf("Invalid TACACS+ Authentication Continue packet");
@@ -297,7 +284,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			}
 			packet->authen.cont.user_msg_len = htons(len);
 
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
 			if (len < 0) goto invalid_authen_cont;
 			packet->authen.cont.data_len = htons(len);
 
@@ -321,8 +308,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_authen_reply_hdr_t, body);
-
 			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_status, TAG_ANY);
 			if (!vp) {
 			invalid_authen_reply:
@@ -340,16 +325,17 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 			p = packet->authen.reply.body;
 
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
 			if (len < 0) goto invalid_authen_reply;
 			packet->authen.reply.server_msg_len = htons(len);
 
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
 			if (len < 0) goto invalid_authen_reply;
 			packet->authen.reply.data_len = htons(len);
 		} else {
-			/* Never */
-			fr_assert(1);
+		unknown_packet:
+			fr_strerror_printf("Unknown packet type");
+			return -1;
 		}
 
 		break;
@@ -383,8 +369,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_author_req_hdr_t, body);
-
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
@@ -413,22 +397,22 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 			p = packet->author.req.body;
 
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p);
+			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 			if (len < 0) goto invalid_author_req;
 			packet->author.req.arg_cnt = len;
 
 			/*
 			 *	Encode 3 fields, based on their "length"
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xffff);
 			if (len < 0) goto invalid_author_req;
 			packet->author.req.user_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xffff);
 			if (len < 0) goto invalid_author_req;
 			packet->author.req.port_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xffff);
 			if (len < 0) goto invalid_author_req;
 			packet->author.req.rem_addr_len = len;
 
@@ -436,8 +420,9 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.req.arg_cnt > 0) {
-				length_body += (packet->author.req.arg_cnt + tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p));
+				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
+
 		} else if (packet_is_author_response(packet)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
@@ -462,8 +447,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_author_res_hdr_t, body);
-
 			vp = fr_pair_find_by_da(vps, attr_tacacs_authorization_status, TAG_ANY);
 			if (!vp) {
 			invalid_author_res:
@@ -476,18 +459,18 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
 			p = packet->author.res.body;
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p);
+			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 			if (len < 0) goto invalid_author_res;
 			packet->author.res.arg_cnt = len;
 
 			/*
 			 *	Encode 2 fields, based on their "length"
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
 			if (len < 0) goto invalid_author_res;
 			packet->author.res.server_msg_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
 			if (len < 0) goto invalid_author_res;
 			packet->author.res.data_len = len;
 
@@ -495,11 +478,10 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.res.arg_cnt > 0) {
-				length_body += (packet->author.res.arg_cnt + tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p));
+				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
 		} else {
-			/* never */
-			fr_assert(1);
+			goto unknown_packet;
 		}
 
 		break;
@@ -533,8 +515,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_acct_req_hdr_t, body);
-
 			/*
 			 *	Encode 5 octets of various flags.
 			 */
@@ -567,30 +547,30 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 			p = packet->acct.req.body;
 
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p);
+			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 			if (len < 0) goto invalid_acct_req;
 			packet->acct.req.arg_cnt = len;
 
 			/*
 			 *	Encode 3 fields, based on their "length"
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xffff);
 			if (len < 0) goto invalid_acct_req;
 			packet->acct.req.user_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xffff);
 			if (len < 0) goto invalid_acct_req;
 			packet->acct.req.port_len = len;
 
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xffff);
 			if (len < 0) goto invalid_acct_req;
 			packet->acct.req.rem_addr_len = len;
 
 			/*
-			 * Append 'args_body' to the end of buffer
+			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->acct.req.arg_cnt > 0) {
-				length_body += (packet->acct.req.arg_cnt + tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p));
+				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
 		} else if (packet_is_acct_reply(packet)) {
 			/**
@@ -606,14 +586,12 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+
 			 */
 
-			length_hdr += offsetof(fr_tacacs_packet_acct_reply_hdr_t, body);
-
 			/*
 			 *	Encode 2 fields, based on their 'length'
 			 */
 			p = packet->acct.reply.body;
 
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
 			if (len < 0) {
 			invalid_acct_reply:
 				fr_strerror_printf("Invalid TACACS+ Accounting Reply packet");
@@ -621,7 +599,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			}
 			packet->acct.reply.server_msg_len = htons(len);
 
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, &length_body, 0xffff);
+			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
 			if (len < 0) goto invalid_acct_reply;
 			packet->acct.reply.data_len = htons(len);
 
@@ -629,8 +607,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			if (!vp) goto invalid_acct_reply;
 			packet->acct.reply.status = vp->vp_uint8;
 		} else {
-			/* never */
-			fr_assert(1);
+			goto unknown_packet;
 		}
 		break;
 
@@ -639,16 +616,16 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 		return -1;
 	}
 
-	fr_assert(length_hdr + length_body < FR_TACACS_MAX_PACKET_SIZE);
+	fr_assert(p <= end);
 
-	packet->hdr.length = htonl(length_hdr - sizeof(fr_tacacs_packet_hdr_t) + length_body);
-	packet_len = (length_hdr + length_body);
-
-	if (packet_len > buffer_len) {
-		fr_strerror_printf("TACACS+ packet overflows %ld of %ld bytes",
-				(buffer_len - packet_len), buffer_len);
-		return -1;
-	}
+	/*
+	 *	The packet length we store in the header doesn't
+	 *	include the size of the header.  But we tell the
+	 *	caller about the total length of the packet.
+	 */
+	packet_len = p - buffer;
+	fr_assert(packet_len < FR_TACACS_MAX_PACKET_SIZE);
+	packet->hdr.length = htonl(packet_len - sizeof(fr_tacacs_packet_hdr_t));
 
 	/*
 	 *	3.6. Encryption
