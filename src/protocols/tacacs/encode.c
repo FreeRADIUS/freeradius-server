@@ -162,10 +162,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 		if (vp->da->parent == attr_tacacs_packet) break;
 	}
 
-	/*
-	 *	For simplicity, we allow the caller to omit things
-	 *	that they don't care about.
-	 */
 	if (!vp) {
 		fr_strerror_printf("No TACACS+ %s in the attribute list",
 			attr_tacacs_packet->name);
@@ -179,12 +175,18 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 	 *	Call the struct encoder to do the actual work.
 	 */
 	len = fr_struct_to_network(buffer, buffer_len, &da_stack, 0, &cursor, NULL, NULL);
-
 	if (len != sizeof(fr_tacacs_packet_hdr_t)) {
 		fr_strerror_printf("Failed encoding %s using fr_struct_to_network()",
 				   attr_tacacs_packet->name);
 		return -1;
 	}
+
+	/*
+	 *	@todo - have this function take a `uint8_t const
+	 *	*original` argument.  We can then automatically fill
+	 *	in fields such as sequence number and session ID based
+	 *	on the original packet.
+	 */
 
 	/*
 	 *	Handle directly in the allocated buffer
