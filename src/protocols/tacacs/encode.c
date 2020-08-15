@@ -120,10 +120,24 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
 	return vp->vp_length;
 }
 
+/*
+ *	Magic macros to keep things happy.
+ *
+ *	Note that the various fields are optional.  If the caller
+ *	doesn't specify them, then they don't get encoded.
+ */
+#define ENCODE_FIELD_UINT8(_field, _da) do { \
+	vp = fr_pair_find_by_da(vps, _da, TAG_ANY); \
+	if (vp) _field = vp->vp_uint8; \
+} while (0)
+
+#define ENCODE_FIELD_STRING8(_field, _da) _field = tacacs_encode_field(vps, _da, &p, end, 0xff)
+#define ENCODE_FIELD_STRING16(_field, _da) _field = htons(tacacs_encode_field(vps, _da, &p, end, 0xffff))
+
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const secret, size_t secret_len, VALUE_PAIR *vps)
+ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret, size_t secret_len, VALUE_PAIR *vps)
 {
 	VALUE_PAIR		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -214,46 +228,20 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
-			vp = fr_pair_find_by_da(vps, attr_tacacs_action, TAG_ANY);
-			if (!vp) {
-			invalid_authen_req:
-				fr_strerror_printf("Invalid TACACS+ Authentication Request packet");
-				return -1;
-			}
-			packet->authen.start.action = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_privilege_level, TAG_ANY);
-			if (!vp) goto invalid_authen_req;
-			packet->authen.start.priv_lvl = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_type, TAG_ANY);
-			if (!vp) goto invalid_authen_req;
-			packet->authen.start.authen_type = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_service, TAG_ANY);
-			if (!vp) goto invalid_authen_req;
-			packet->authen.start.authen_service = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->authen.start.action, attr_tacacs_action);
+			ENCODE_FIELD_UINT8(packet->authen.start.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->authen.start.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->authen.start.authen_service, attr_tacacs_authentication_service);
 
 			/*
-			 *	Encode 4 fields, based on their "length"
+			 *	Encode 4 mandatory fields.
 			 */
 			p = packet->authen.start.body;
+			ENCODE_FIELD_STRING8(packet->authen.start.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->authen.start.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->authen.start.rem_addr_len, attr_tacacs_remote_address);
+			ENCODE_FIELD_STRING8(packet->authen.start.data_len, attr_tacacs_data);
 
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xff);
-			if (len < 0) goto invalid_authen_req;
-			packet->authen.start.user_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xff);
-			if (len < 0) goto invalid_authen_req;
-			packet->authen.start.port_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xff);
-			if (len < 0) goto invalid_authen_req;
-			packet->authen.start.rem_addr_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xff);
-			if (len < 0) goto invalid_authen_req;
-			packet->authen.start.data_len = len;
 		} else if (packet_is_authen_continue(packet)) {
 			/*
 			 * 4.3. The Authentication CONTINUE Packet Body
@@ -272,28 +260,17 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 
 			/*
-			 *	Encode 2 fields, based on their 'length'
+			 *	Encode 2 mandatory fields.
 			 */
-			p = packet->authen.cont.body;
-
-			len = tacacs_encode_field(vps, attr_tacacs_user_message, &p, end, 0xffff);
-			if (len < 0) {
-			invalid_authen_cont:
-				fr_strerror_printf("Invalid TACACS+ Authentication Continue packet");
-				return -1;
-			}
-			packet->authen.cont.user_msg_len = htons(len);
-
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
-			if (len < 0) goto invalid_authen_cont;
-			packet->authen.cont.data_len = htons(len);
+			ENCODE_FIELD_STRING16(packet->authen.cont.user_msg_len, attr_tacacs_user_message);
+			ENCODE_FIELD_STRING16(packet->authen.cont.data_len, attr_tacacs_data);
 
 			/*
-			 *	Look at the abort flag after decoding the fields.
+			 *	Look at the abort flag after encoding the fields.
 			 */
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_flags, TAG_ANY);
-			if (!vp) goto invalid_authen_cont;
-			packet->authen.cont.flags = vp->vp_uint8;
+			p = packet->authen.cont.body;
+			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_flags);
+
 		} else if (packet_is_authen_reply(packet)) {
 			/*
 			 * 4.2. The Authentication REPLY Packet Body
@@ -308,30 +285,16 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+
 			 */
 
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_status, TAG_ANY);
-			if (!vp) {
-			invalid_authen_reply:
-				fr_strerror_printf("Invalid TACACS+ Authorization Reply packet");
-				return -1;
-			}
-			packet->authen.reply.status = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_flags, TAG_ANY);
-			if (!vp) goto invalid_authen_reply;
-			packet->authen.reply.flags = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->authen.reply.status, attr_tacacs_authentication_status);
+			ENCODE_FIELD_UINT8(packet->authen.reply.flags, attr_tacacs_authentication_flags);
 
 			/*
-			 *	Encode 2 fields, based on their 'length'
+			 *	Encode 2 mandatory fields.
 			 */
 			p = packet->authen.reply.body;
+			ENCODE_FIELD_STRING16(packet->authen.reply.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->authen.reply.data_len, attr_tacacs_data);
 
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
-			if (len < 0) goto invalid_authen_reply;
-			packet->authen.reply.server_msg_len = htons(len);
-
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
-			if (len < 0) goto invalid_authen_reply;
-			packet->authen.reply.data_len = htons(len);
 		} else {
 		unknown_packet:
 			fr_strerror_printf("Unknown packet type");
@@ -372,52 +335,26 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_method, TAG_ANY);
-			if (!vp) {
-			invalid_author_req:
-				fr_strerror_printf("Invalid TACACS+ Authorization REQUEST packet");
-				return -1;
-			}
-			packet->author.req.authen_method = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_privilege_level, TAG_ANY);
-			if (!vp) goto invalid_author_req;
-			packet->author.req.priv_lvl = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_type, TAG_ANY);
-			if (!vp) goto invalid_author_req;
-			packet->author.req.authen_type = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_service, TAG_ANY);
-			if (!vp) goto invalid_author_req;
-			packet->author.req.authen_service = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->author.req.authen_method, attr_tacacs_authentication_method);
+			ENCODE_FIELD_UINT8(packet->author.req.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->author.req.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->author.req.authen_service, attr_tacacs_authentication_service);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
 			p = packet->author.req.body;
-
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
-			if (len < 0) goto invalid_author_req;
-			packet->author.req.arg_cnt = len;
+			packet->author.req.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 
 			/*
-			 *	Encode 3 fields, based on their "length"
+			 *	Encode 3 mandatory fields.
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xffff);
-			if (len < 0) goto invalid_author_req;
-			packet->author.req.user_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xffff);
-			if (len < 0) goto invalid_author_req;
-			packet->author.req.port_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xffff);
-			if (len < 0) goto invalid_author_req;
-			packet->author.req.rem_addr_len = len;
+			ENCODE_FIELD_STRING8(packet->author.req.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->author.req.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->author.req.rem_addr_len, attr_tacacs_remote_address);
 
 			/*
-			 * Append 'args_body' to the end of buffer
+			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.req.arg_cnt > 0) {
 				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
@@ -447,35 +384,22 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authorization_status, TAG_ANY);
-			if (!vp) {
-			invalid_author_res:
-				fr_strerror_printf("Invalid TACACS+ Authorization Response packet");
-				return -1;
-			}
-			packet->author.res.status = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->author.res.status, attr_tacacs_authorization_status);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
 			p = packet->author.res.body;
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
-			if (len < 0) goto invalid_author_res;
-			packet->author.res.arg_cnt = len;
+			packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 
 			/*
-			 *	Encode 2 fields, based on their "length"
+			 *	Encode 2 mandatory fields.
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
-			if (len < 0) goto invalid_author_res;
-			packet->author.res.server_msg_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
-			if (len < 0) goto invalid_author_res;
-			packet->author.res.data_len = len;
+			ENCODE_FIELD_STRING16(packet->author.res.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->author.res.data_len, attr_tacacs_data);
 
 			/*
-			 * Append 'args_body' to the end of buffer
+			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.res.arg_cnt > 0) {
 				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
@@ -518,53 +442,24 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			/*
 			 *	Encode 5 octets of various flags.
 			 */
-			vp = fr_pair_find_by_da(vps, attr_tacacs_accounting_flags, TAG_ANY);
-			if (!vp) {
-			invalid_acct_req:
-				fr_strerror_printf("Invalid TACACS+ Accounting REQUEST packet");
-				return -1;
-			}
-			packet->acct.req.flags = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_method, TAG_ANY);
-			if (!vp) goto invalid_acct_req;
-			packet->acct.req.authen_method = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_privilege_level, TAG_ANY);
-			if (!vp) goto invalid_acct_req;
-			packet->acct.req.priv_lvl = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_type, TAG_ANY);
-			if (!vp) goto invalid_acct_req;
-			packet->acct.req.authen_type = vp->vp_uint8;
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_authentication_service, TAG_ANY);
-			if (!vp) goto invalid_acct_req;
-			packet->acct.req.authen_service = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->acct.req.flags, attr_tacacs_accounting_flags);
+			ENCODE_FIELD_UINT8(packet->acct.req.authen_method, attr_tacacs_authentication_method);
+			ENCODE_FIELD_UINT8(packet->acct.req.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->acct.req.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->acct.req.authen_service, attr_tacacs_authentication_service);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
 			p = packet->acct.req.body;
-
-			len = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
-			if (len < 0) goto invalid_acct_req;
-			packet->acct.req.arg_cnt = len;
+			packet->acct.req.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
 
 			/*
-			 *	Encode 3 fields, based on their "length"
+			 *	Encode 3 mandatory fields.
 			 */
-			len = tacacs_encode_field(vps, attr_tacacs_user_name, &p, end, 0xffff);
-			if (len < 0) goto invalid_acct_req;
-			packet->acct.req.user_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_client_port, &p, end, 0xffff);
-			if (len < 0) goto invalid_acct_req;
-			packet->acct.req.port_len = len;
-
-			len = tacacs_encode_field(vps, attr_tacacs_remote_address, &p, end, 0xffff);
-			if (len < 0) goto invalid_acct_req;
-			packet->acct.req.rem_addr_len = len;
+			ENCODE_FIELD_STRING8(packet->acct.req.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->acct.req.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->acct.req.rem_addr_len, attr_tacacs_remote_address);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
@@ -587,25 +482,13 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 			 */
 
 			/*
-			 *	Encode 2 fields, based on their 'length'
+			 *	Encode 2 mandatory fields.
 			 */
 			p = packet->acct.reply.body;
+			ENCODE_FIELD_STRING16(packet->acct.reply.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->acct.reply.data_len, attr_tacacs_data);
 
-			len = tacacs_encode_field(vps, attr_tacacs_server_message, &p, end, 0xffff);
-			if (len < 0) {
-			invalid_acct_reply:
-				fr_strerror_printf("Invalid TACACS+ Accounting Reply packet");
-				return -1;
-			}
-			packet->acct.reply.server_msg_len = htons(len);
-
-			len = tacacs_encode_field(vps, attr_tacacs_data, &p, end, 0xffff);
-			if (len < 0) goto invalid_acct_reply;
-			packet->acct.reply.data_len = htons(len);
-
-			vp = fr_pair_find_by_da(vps, attr_tacacs_accounting_status, TAG_ANY);
-			if (!vp) goto invalid_acct_reply;
-			packet->acct.reply.status = vp->vp_uint8;
+			ENCODE_FIELD_UINT8(packet->acct.reply.status, attr_tacacs_accounting_status);
 		} else {
 			goto unknown_packet;
 		}
