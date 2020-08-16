@@ -36,6 +36,21 @@
 #include "tacacs.h"
 #include "attrs.h"
 
+#define PACKET_HEADER_CHECK(_msg) do { \
+	if (p > end) { \
+		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - our_buffer, p - our_buffer); \
+		return -1; \
+	} \
+} while (0)
+
+#define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
+	if ((p + _arg_cnt) > end) { \
+		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", _arg_cnt); \
+		return -1; \
+	} \
+	p += _arg_cnt; \
+} while (0)
+
 #define DECODE_FIELD_UINT8(_da, _field) do { \
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto oom; \
@@ -220,8 +235,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * |    data...
 			 * +----------------+----------------+----------------+----------------+
 			 */
+			p = pkt->authen.start.body;
+			PACKET_HEADER_CHECK("Authentication Start");
 
-//			PACKET_HEADER_CHECKER("Authentication START", 8)
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_START);
 
 			/*
@@ -235,7 +251,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 4 fields, based on their "length"
 			 */
-			p = pkt->authen.start.body;
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen.start.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen.start.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen.start.rem_addr_len);
@@ -257,14 +272,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * |    data ...
 			 * +----------------+
 			 */
-
-//			PACKET_HEADER_CHECKER("Authentication CONTINUE", 5);
+			p = pkt->authen.cont.body;
+			PACKET_HEADER_CHECK("Authentication Continue");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			p = pkt->authen.cont.body;
 			DECODE_FIELD_STRING16(attr_tacacs_user_message, pkt->authen.cont.user_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.cont.data_len);
 
@@ -287,7 +301,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+
 			 */
 
-//			PACKET_HEADER_CHECKER("Authentication REPLY", 6);
+			p = pkt->authen.reply.body;
+			PACKET_HEADER_CHECK("Authentication Reply");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
 
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen.reply.status);
@@ -296,7 +311,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			p = pkt->authen.reply.body;
 			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->authen.reply.server_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.reply.data_len);
 
@@ -336,7 +350,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-//			PACKET_HEADER_CHECKER("Authorization REQUEST", 8);
+			p = pkt->author.req.body;
+			PACKET_HEADER_CHECK("Authorization REQUEST");
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -350,7 +366,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
-			p = (pkt->author.req.body + pkt->author.req.arg_cnt);
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author.req.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author.req.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author.req.rem_addr_len);
@@ -385,7 +400,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-//			PACKET_HEADER_CHECKER("Authorization RESPONSE", 6);
+			p = pkt->author.res.body;
+			PACKET_HEADER_CHECK("Authorization RESPONSE");
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.res.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
@@ -396,7 +413,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			p = (pkt->author.res.body + pkt->author.res.arg_cnt);
 			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author.res.server_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author.res.data_len);
 
@@ -440,7 +456,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
-//			PACKET_HEADER_CHECKER("Accounting REQUEST", 9);
+			p = pkt->acct.req.body;
+			PACKET_HEADER_CHECK("Accounting REQUEST");
+			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -455,7 +473,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
-			p = (pkt->acct.req.body + pkt->acct.req.arg_cnt);
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->acct.req.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->acct.req.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->acct.req.rem_addr_len);
@@ -480,13 +497,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+
 			 */
 
-//			PACKET_HEADER_CHECKER("Accounting REPLY", 5);
+			p = pkt->acct.reply.body;
+			PACKET_HEADER_CHECK("Accounting REPLY");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			p = pkt->acct.reply.body;
 			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->acct.reply.server_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->acct.reply.data_len);
 
