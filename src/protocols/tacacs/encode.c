@@ -264,13 +264,13 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
+			p = packet->authen.cont.body;
 			ENCODE_FIELD_STRING16(packet->authen.cont.user_msg_len, attr_tacacs_user_message);
 			ENCODE_FIELD_STRING16(packet->authen.cont.data_len, attr_tacacs_data);
 
 			/*
 			 *	Look at the abort flag after encoding the fields.
 			 */
-			p = packet->authen.cont.body;
 			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_flags);
 
 		} else if (packet_is_authen_reply(packet)) {
