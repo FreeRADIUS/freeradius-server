@@ -869,6 +869,16 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	old = rbtree_finddata(client->table, track);
 	if (!old) goto do_insert;
 
+	fr_assert(old->in_dedup_tree);
+	fr_assert(old->client == client);
+
+	/*
+	 *	It cannot be both in the free list and in the tracking table.
+	 *
+	 *	2020-08-17, this assertion fails randomly in travis.
+	 *	Which means that "track" was in the free list, *and*
+	 *	in the rbtree.
+	 */
 	fr_assert(old != track);
 
 	/*
@@ -914,6 +924,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		track_free(old);
 
 	} else {
+		fr_assert(client == old->client);
 		(void) rbtree_deletebydata(client->table, old);
 		old->in_dedup_tree = false;
 	}
@@ -932,8 +943,20 @@ static void track_free(fr_io_track_t *track)
 	if (track->in_dedup_tree) {
 		fr_assert(track->client->table != NULL);
 		(void) rbtree_deletebydata(track->client->table, track);
+		track->in_dedup_tree = false;
 	}
-	track->in_dedup_tree = false;
+#ifndef NDEBUG
+	else if (track->client->table) {
+		fr_io_track_t *old;
+
+		/*
+		 *	If it's not in the tracking table, then it
+		 *	must not be found in the tracking table.
+		 */
+		old = rbtree_finddata(track->client->table, track);
+		fr_assert(!old);
+	}
+#endif
 	
 	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
