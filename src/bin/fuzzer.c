@@ -98,7 +98,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	}
 
 	if (!proto) {
-		fprintf(stderr, "Failed to find FR_LIBRARY_FUZZ_PROTOCOL\n");
+		fprintf(stderr, "Failed to find protocol for fuzzer\n");
 		fr_exit_now(1);
 	}
 
