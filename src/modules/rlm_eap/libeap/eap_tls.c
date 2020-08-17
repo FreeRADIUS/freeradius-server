@@ -762,9 +762,19 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 */
 	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION) &&
 	    (handler->type == PW_EAP_TLS)) {
-		RDEBUG("TLS send Commitment Message");
-		tls_session->record_plus(&tls_session->clean_in, "\0", 1);
-		tls_handshake_send(request, tls_session);
+		fr_tls_server_conf_t *conf;
+
+		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
+		fr_assert(conf != NULL);
+
+		if (conf->tls13_send_zero) {
+			RDEBUG("TLS send Commitment Message");
+			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+			tls_handshake_send(request, tls_session);
+		} else {
+			RDEBUG("TLS sending close_notify");
+			SSL_shutdown(tls_session->ssl);
+		}
 	}
 #endif
 

@@ -1288,6 +1288,10 @@ static CONF_PARSER tls_server_config[] = {
 
 	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
 
+#ifdef TLS1_3_VERSION
+	{ "tls13_send_zero", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_send_zero), NULL },
+#endif
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
