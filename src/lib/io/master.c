@@ -41,8 +41,6 @@ typedef struct {
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active clients
 
-	fr_dlist_head_t			track_list;			//!< list of free fr_io_track_t
-
 	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child (app_io) IO path
 	fr_schedule_t			*sc;				//!< the scheduler
@@ -148,7 +146,32 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
-static void track_free(fr_io_track_t *track);
+static int track_free(fr_io_track_t *track)
+{
+	if (track->in_dedup_tree) {
+		fr_assert(track->client->table != NULL);
+		(void) rbtree_deletebydata(track->client->table, track);
+		track->in_dedup_tree = false;
+	}
+#ifndef NDEBUG
+	else if (track->client->table) {
+		fr_io_track_t *old;
+
+		/*
+		 *	If it's not in the tracking table, then it
+		 *	must not be found in the tracking table.
+		 */
+		old = rbtree_finddata(track->client->table, track);
+		fr_assert(!old);
+	}
+#endif
+
+	if (track->ev) (void) fr_event_timer_delete(&track->ev);
+
+	talloc_free_children(track);
+
+	return 0;
+}
 
 /*
  *  Return negative numbers to put 'one' at the top of the heap.
@@ -825,14 +848,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	Allocate a new tracking structure.  Most of the time
 	 *	there are no duplicates, so this is fine.
 	 */
-	track = fr_dlist_head(&client->thread->track_list);
-	if (!track) {
-		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
-	} else {
-		fr_dlist_remove(&client->thread->track_list, track);
-		memset(track, 0, sizeof(*track));
-	}
-
+	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 2, sizeof(fr_io_address_t) + 128));
+	talloc_set_destructor(track, track_free);
 	MEM(track->address = talloc_zero(track, fr_io_address_t));
 
 	memcpy(track->address, address, sizeof(*address));
@@ -859,7 +876,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 */
 	track->packet = client->inst->app_io->track(client, packet, packet_len);
 	if (!track->packet) {
-		track_free(track);
+		talloc_free(track);
 		return NULL;
 	}
 
@@ -907,7 +924,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 		*is_dup = true;
 		old->packets++;
-		track_free(track);
+		talloc_free(track);
 		return old;
 	}
 
@@ -921,7 +938,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	and return the new one.
 	 */
 	if (old->reply_len > 0) {
-		track_free(old);
+		talloc_free(old);
 
 	} else {
 		fr_assert(client == old->client);
@@ -933,45 +950,6 @@ do_insert:
 	rbtree_insert(client->table, track);
 	track->in_dedup_tree = true;
 	return track;
-}
-
-
-static void track_free(fr_io_track_t *track)
-{
-	fr_io_thread_t *thread = track->client->thread;
-
-	if (track->in_dedup_tree) {
-		fr_assert(track->client->table != NULL);
-		(void) rbtree_deletebydata(track->client->table, track);
-		track->in_dedup_tree = false;
-	}
-#ifndef NDEBUG
-	else if (track->client->table) {
-		fr_io_track_t *old;
-
-		/*
-		 *	If it's not in the tracking table, then it
-		 *	must not be found in the tracking table.
-		 */
-		old = rbtree_finddata(track->client->table, track);
-		fr_assert(!old);
-	}
-#endif
-	
-	if (track->ev) (void) fr_event_timer_delete(&track->ev);
-
-	talloc_free_children(track);
-
-	/*
-	 *	Keep most recently used elements around.  But
-	 *	limit them to ~1000 entries.
-	 */
-	fr_dlist_insert_head(&thread->track_list, track);
-	if (fr_dlist_num_elements(&thread->track_list) > 1000) {
-		track = fr_dlist_tail(&thread->track_list);
-		fr_dlist_remove(&thread->track_list, track);
-		talloc_free(track);
-	}
 }
 
 
@@ -994,7 +972,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 *	No more packets using this tracking entry,
 	 *	delete it.
 	 */
-	if (track->packets == 0) track_free(track);
+	if (track->packets == 0) talloc_free(track);
 
 	return 0;
 }
@@ -1539,7 +1517,7 @@ have_client:
 				/*
 				 *	@todo - mark things up so that we know to keep 'track' around
 				 *	until the packet is actually written to the network.  OR, add
-				 *	a network API so that the track_free() function can remove
+				 *	a network API so that the talloc_free() function can remove
 				 *	the packet from the queue of packets to be retransmitted.
 				 *
 				 *	Perhaps via having fr_network_listen_write() return a pointer
@@ -2065,7 +2043,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Delete the tracking entry.
 	 */
-	track_free(track);
+	talloc_free(track);
 
 	fr_assert(client->packets > 0);
 	client->packets--;
@@ -2876,7 +2854,6 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	thread = talloc_zero(NULL, fr_io_thread_t);
 	thread->listen = li;
 	thread->sc = sc;
-	fr_dlist_init(&thread->track_list, fr_io_track_t, entry);
 
 	talloc_set_destructor(thread, _thread_io_free);
 
