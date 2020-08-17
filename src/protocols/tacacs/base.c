@@ -213,7 +213,6 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	}
 
 	length = sizeof(pkt->hdr) + ntohl(pkt->hdr.length);
-	want = length;
 
 	if (buffer_len < length) return length;
 
