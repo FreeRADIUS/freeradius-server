@@ -28,19 +28,6 @@ authentication.  When you list root CAs from other organisations in
 the "ca_file", you permit them to masquerade as you, to authenticate
 your users, and to issue client certificates for EAP-TLS.
 
-  If FreeRADIUS was configured to use OpenSSL, then simply starting
-the server in root in debugging mode should also create test
-certificates, i.e.:
-
-$ radiusd -X
-
-  That will cause the EAP-TLS module to run the "bootstrap" script in
-this directory.  The script will be executed only once, the first time
-the server has been installed on a particular machine.  This bootstrap
-script SHOULD be run on installation of any pre-built binary package
-for your OS.  In any case, the script will ensure that it is not run
-twice, and that it does not over-write any existing certificates.
-
   If you already have CA and server certificates, rename (or delete)
 this directory, and create a new "certs" directory containing your
 certificates.  Note that the "make install" command will NOT
