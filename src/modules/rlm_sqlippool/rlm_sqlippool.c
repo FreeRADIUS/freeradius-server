@@ -321,7 +321,6 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  */
 #undef DO
 #define DO(_x) if(sqlippool_command(inst->_x, handle, inst, request, NULL, 0) < 0) return RLM_MODULE_FAIL
-#define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, handle, inst, request, NULL, 0); if (_affected < 0) return RLM_MODULE_FAIL
 #define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request, NULL, 0) <0) goto error
 
 /*
@@ -619,6 +618,52 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 	return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
 }
 
+/*
+ *	Extend a lease.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_extend(module_ctx_t const *mctx, REQUEST *request)
+{
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
+	rlm_sql_handle_t	*handle;
+	int			affected;
+
+	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	if (!handle) {
+		REDEBUG("Failed reserving SQL connection");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	DO_PART(extend_begin);
+
+	affected = sqlippool_command(inst->extend_update, &handle, inst, request, NULL, 0);
+
+	if (affected < 0) {
+	error:
+		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		return RLM_MODULE_FAIL;
+	}
+
+	DO_PART(extend_commit);
+
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+
+	if (affected > 0) {
+		/*
+		 * The lease has been extended - return OK
+		 */
+		return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
+	} else {
+		/*
+		 * The lease could not be extended - return notfound
+		 */
+		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
+	}
+}
+
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
@@ -759,7 +804,7 @@ module_t rlm_sqlippool = {
 	},
 	.method_names = (module_method_names_t[]){
 		{ "recv",	"DHCP-Discover",	mod_allocate },
-//		{ "recv",	"DHCP-Request",		mod_extend },
+		{ "recv",	"DHCP-Request",		mod_extend },
 //		{ "recv",	"DHCP-Release",		mod_release },
 //		{ "recv",	"DHCP-Decline",		mod_mark },
 
