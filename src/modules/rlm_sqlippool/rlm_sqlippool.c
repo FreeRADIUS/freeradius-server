@@ -664,6 +664,67 @@ static rlm_rcode_t CC_HINT(nonnull) mod_extend(module_ctx_t const *mctx, REQUEST
 	}
 }
 
+/*
+ *	Release a lease.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, REQUEST *request)
+{
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
+	rlm_sql_handle_t	*handle;
+
+	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	if (!handle) {
+		REDEBUG("Failed reserving SQL connection");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	DO_PART(release_begin);
+	DO_PART(release_clear);
+	DO_PART(release_commit);
+
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_OK;
+
+	error:
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_FAIL;
+}
+
+/*
+ *	Mark a lease.  Typically for DHCP Decline where IPs need to be marked
+ *	as invalid
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *request)
+{
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
+	rlm_sql_handle_t	*handle;
+
+	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	if (!handle) {
+		REDEBUG("Failed reserving SQL connection");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	DO_PART(mark_begin);
+	DO_PART(mark_update);
+	DO_PART(mark_commit);
+
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_OK;
+
+	error:
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_FAIL;
+}
+
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
@@ -805,8 +866,8 @@ module_t rlm_sqlippool = {
 	.method_names = (module_method_names_t[]){
 		{ "recv",	"DHCP-Discover",	mod_allocate },
 		{ "recv",	"DHCP-Request",		mod_extend },
-//		{ "recv",	"DHCP-Release",		mod_release },
-//		{ "recv",	"DHCP-Decline",		mod_mark },
+		{ "recv",	"DHCP-Release",		mod_release },
+		{ "recv",	"DHCP-Decline",		mod_mark },
 
 		MODULE_NAME_TERMINATOR
 	}
