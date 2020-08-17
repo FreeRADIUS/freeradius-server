@@ -38,34 +38,34 @@
 
 #define PACKET_HEADER_CHECK(_msg) do { \
 	if (p > end) { \
-		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - our_buffer, p - our_buffer); \
-		return -1; \
+		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
+		goto fail; \
 	} \
 } while (0)
 
 #define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
 	if ((p + _arg_cnt) > end) { \
 		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", _arg_cnt); \
-		return -1; \
+		goto fail; \
 	} \
 	p += _arg_cnt; \
 } while (0)
 
 #define DECODE_FIELD_UINT8(_da, _field) do { \
 	vp = fr_pair_afrom_da(ctx, _da); \
-	if (!vp) goto oom; \
+	if (!vp) goto fail; \
 	vp->vp_uint8 = _field; \
 	fr_cursor_append(&cursor, vp); \
 } while (0)
 
 #define DECODE_FIELD_STRING8(_da, _field) do { \
 	if (tacacs_decode_field(ctx, &cursor, _da, &p, \
-	    _field, end) < 0) return -1; \
+	    _field, end) < 0) goto fail; \
 } while (0)
 
 #define DECODE_FIELD_STRING16(_da, _field) do { \
 	if (tacacs_decode_field(ctx, &cursor, _da, &p, \
-	    ntohs(_field), end) < 0) return -1; \
+	    ntohs(_field), end) < 0) goto fail; \
 } while (0)
 
 
@@ -73,10 +73,10 @@
  *	Decode a TACACS+ 'arg_N' fields.
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
-			      uint8_t arg_cnt, uint8_t *arg_list, uint8_t **data, uint8_t const *end)
+			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
 {
 	uint8_t i;
-	uint8_t *p = *data;
+	uint8_t const *p = *data;
 	VALUE_PAIR *vp;
 
 	/*
@@ -105,10 +105,10 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 			return -1;
 		}
 
-		fr_pair_value_bstrndup(vp, (char *) p, arg_list[i], true);
+		fr_pair_value_bstrndup(vp, (char const *) p, arg_list[i], true);
 		fr_cursor_append(cursor, vp);
 		p += arg_list[i];
-		*data  = (uint8_t *)p;
+		*data  = p;
 	}
 
 	return 0;
@@ -118,9 +118,9 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
  *	Decode a TACACS+ field.
  */
 static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
-				uint8_t **field_data, uint16_t field_len, uint8_t const *end)
+				uint8_t const **field_data, uint16_t field_len, uint8_t const *end)
 {
-	uint8_t *p = *field_data;
+	uint8_t const *p = *field_data;
 	VALUE_PAIR *vp;
 
 	if ((p + field_len) > end) {
@@ -152,22 +152,11 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, VALUE_PAIR **vps)
 {
 	fr_dict_attr_t const	*tlv;
-	fr_tacacs_packet_t	*pkt;
+	fr_tacacs_packet_t const *pkt;
 	VALUE_PAIR		*vp;
-	uint8_t			*p;
-	uint8_t const		*end;
-	uint8_t			*our_buffer;
+	uint8_t const  		*p, *end;
+	uint8_t			*decrypted = NULL;
 	fr_cursor_t		cursor;
-
-	/*
-	 *	We need that to decrypt the body content.
-	 */
-	our_buffer = talloc_memdup(ctx, buffer, buffer_len);
-	if (!our_buffer) {
-	oom:
-		fr_strerror_printf("Out of Memory");
-		return -1;
-	}
 
 	/*
 	 * 3.4. The TACACS+ Packet Header
@@ -184,34 +173,93 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	 * |                              length                               |
 	 * +----------------+----------------+----------------+----------------+
 	 */
+	pkt = (fr_tacacs_packet_t const *) buffer;
+	end = buffer + buffer_len;
+
+	/*
+	 *	Check that we have a full TACACS+ header before
+	 *	decoding anything.
+	 */
+	if (buffer_len < sizeof(fr_tacacs_packet_hdr_t)) {
+		fr_strerror_printf("Packet is too small (%zu < 12) to be TACACS+.", buffer_len);
+		return -1;
+	}
+
+	/*
+	 *	There's no reason to accept 64K TACACS+ packets.
+	 */
+	if ((buffer[8] != 0) || (buffer[9] != 0)) {
+		fr_strerror_printf("Packet is too large.  Our limit is 64K");
+		return -1;
+	}
+
+	/*
+	 *	As a stream protocol, the TACACS+ packet MUST fit
+	 *	exactly into however many bytes we read.
+	 *
+	 *	@todo - allow buffers LONGER than this, and return
+	 *	however many bytes we read.  This lets the caller read
+	 *	a large number of bytes into a buffer, and then have
+	 *	us return however many bytes are actually in the
+	 *	packet.  Or, we may want a function
+	 *	fr_tacacs_length(buffer, buffer_len), which returns
+	 *	the size of the TACACS+ packet.
+	 */
+	if ((buffer + sizeof(fr_tacacs_packet_hdr_t) + ntohl(pkt->hdr.length)) != end) {
+		fr_strerror_printf("Packet does not exactly fill buffer");
+		return -1;
+	}
+
+	/*
+	 *	There are only 3 types of packets which are supported.
+	 */
+	if (!((pkt->hdr.type == FR_TAC_PLUS_AUTHEN) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
+		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		return -1;
+	}
+
 	fr_cursor_init(&cursor, vps);
 
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, &cursor, attr_tacacs_packet, our_buffer, buffer_len, &tlv, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, &cursor, attr_tacacs_packet, buffer, buffer_len, &tlv, NULL, NULL) < 0) {
 		fr_strerror_printf("Problems to decode %s using fr_struct_from_network()", attr_tacacs_packet->name);
 		return -1;
 	}
-
-	pkt = (fr_tacacs_packet_t *)our_buffer;
-	end = our_buffer + buffer_len;
 
 	/*
 	 *	3.6. Encryption
 	 */
 	if (pkt->hdr.flags == FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
-		uint8_t *body = (our_buffer + sizeof(fr_tacacs_packet_hdr_t));
-
-		fr_assert(secret != NULL);
-		fr_assert(secret_len > 0);
+		size_t length;
 
 		if (!secret || secret_len < 1) {
 			fr_strerror_printf("Packet is encrypted, but no secret is set.");
 			return -1;
 		}
 
-		if (fr_tacacs_body_xor(pkt, body, ntohl(pkt->hdr.length), secret, secret_len) < 0) return -1;
+		length = ntohl(pkt->hdr.length);
+
+		/*
+		 *	We need that to decrypt the body content.
+		 */
+		decrypted = talloc_memdup(ctx, buffer, buffer_len);
+		if (!decrypted) {
+			fr_strerror_printf("Out of Memory");
+			return -1;
+		}
+
+		pkt = (fr_tacacs_packet_t const *) decrypted;
+		end = decrypted + buffer_len;
+
+		if (fr_tacacs_body_xor(pkt, decrypted + sizeof(pkt->hdr), length, secret, secret_len) < 0) {
+		fail:
+			talloc_free(decrypted);
+			return -1;
+		}
 	}
 
 	switch (pkt->hdr.type) {
@@ -317,7 +365,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		} else {
 		unknown_packet:
 			fr_strerror_printf("Unknown packet type");
-			return -1;
+			goto fail;
 		}
 		break;
 
@@ -374,7 +422,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
-					       pkt->author.req.arg_cnt, pkt->author.req.body, &p, end) < 0) return -1;
+					       pkt->author.req.arg_cnt, pkt->author.req.body, &p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
 			/*
@@ -420,7 +468,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
-					pkt->author.res.arg_cnt, pkt->author.res.body, &p, end) < 0) return -1;
+					pkt->author.res.arg_cnt, pkt->author.res.body, &p, end) < 0) goto fail;
 
 		} else {
 			goto unknown_packet;
@@ -481,7 +529,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
-					pkt->acct.req.arg_cnt, pkt->acct.req.body, &p, end) < 0) return -1;
+					pkt->acct.req.arg_cnt, pkt->acct.req.body, &p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
@@ -515,9 +563,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		break;
 	default:
 		fr_strerror_printf("decode: Unsupported TACACS+ type %u", pkt->hdr.type);
-		return -1;
+		goto fail;
 	}
 
+	talloc_free(decrypted);
 	return buffer_len;
 }
 
