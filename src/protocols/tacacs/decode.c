@@ -180,7 +180,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	 *	Check that we have a full TACACS+ header before
 	 *	decoding anything.
 	 */
-	if (buffer_len < sizeof(fr_tacacs_packet_hdr_t)) {
+	if (buffer_len < sizeof(pkt->hdr)) {
 		fr_strerror_printf("Packet is too small (%zu < 12) to be TACACS+.", buffer_len);
 		return -1;
 	}
@@ -196,16 +196,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	/*
 	 *	As a stream protocol, the TACACS+ packet MUST fit
 	 *	exactly into however many bytes we read.
-	 *
-	 *	@todo - allow buffers LONGER than this, and return
-	 *	however many bytes we read.  This lets the caller read
-	 *	a large number of bytes into a buffer, and then have
-	 *	us return however many bytes are actually in the
-	 *	packet.  Or, we may want a function
-	 *	fr_tacacs_length(buffer, buffer_len), which returns
-	 *	the size of the TACACS+ packet.
 	 */
-	if ((buffer + sizeof(fr_tacacs_packet_hdr_t) + ntohl(pkt->hdr.length)) != end) {
+	if ((buffer + sizeof(pkt->hdr) + ntohl(pkt->hdr.length)) != end) {
 		fr_strerror_printf("Packet does not exactly fill buffer");
 		return -1;
 	}
