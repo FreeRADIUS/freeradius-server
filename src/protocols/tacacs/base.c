@@ -166,3 +166,105 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 
 	return 0;
 }
+
+/**
+ *	Return how long a TACACS+ packet is
+ *
+ *	Note that we only look at the 12 byte packet header.  We don't
+ *	(yet) do validation on authentication / authorization /
+ *	accounting headers.  The packet may still be determined later
+ *	to be invalid.
+ *
+ * @param buffer	to check
+ * @param buffer_len	length of the buffer
+ * @return
+ *	>0		size of the TACACS+ packet.  We want.  MAY be larger than "buffer_len"
+ *	<=0		error, packet should be discarded.
+ */
+ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
+{
+	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
+	size_t length, want;
+
+	/*
+	 *	Check that we have a full TACACS+ header before
+	 *	decoding anything.
+	 */
+	if (buffer_len < sizeof(pkt->hdr)) {
+		return sizeof(pkt->hdr);
+	}
+
+	/*
+	 *	There's no reason to accept 64K TACACS+ packets.
+	 */
+	if ((buffer[8] != 0) || (buffer[9] != 0)) {
+		fr_strerror_printf("Packet is too large.  Our limit is 64K");
+		return -1;
+	}
+
+	/*
+	 *	There are only 3 types of packets which are supported.
+	 */
+	if (!((pkt->hdr.type == FR_TAC_PLUS_AUTHEN) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
+		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		return -1;
+	}
+
+	length = sizeof(pkt->hdr) + ntohl(pkt->hdr.length);
+	want = length;
+
+	if (buffer_len < length) return length;
+
+	/*
+	 *	We want at least the headers for the various packet
+	 *	types.  Note that we do NOT check the lengths in the
+	 *	headers against buffer / buffer_len.  That process is
+	 *	complex and error-prone.  It's best to leave it in one
+	 *	place: fr_tacacs_decode().
+	 */
+	switch (pkt->hdr.type) {
+	default:
+		fr_assert(0);	/* should have been caught above */
+		return -1;
+
+	case FR_TAC_PLUS_AUTHEN:
+		if (packet_is_authen_start_request(pkt)) {
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen.start);
+
+		} else if (packet_is_authen_continue(pkt)) {
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen.cont);
+
+		} else {
+			fr_assert(packet_is_authen_reply(pkt));
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen.reply);
+		}
+		break;
+
+	case FR_TAC_PLUS_AUTHOR:
+		if (packet_is_author_request(pkt)) {
+			want = sizeof(pkt->hdr) + sizeof(pkt->author.req);
+		} else {
+			fr_assert(packet_is_author_response(pkt));
+			want = sizeof(pkt->hdr) + sizeof(pkt->author.res);
+		}
+		break;
+
+	case FR_TAC_PLUS_ACCT:
+		if (packet_is_acct_request(pkt)) {
+			want = sizeof(pkt->hdr) + sizeof(pkt->acct.req);
+		} else {
+			fr_assert(packet_is_acct_reply(pkt));
+			want = sizeof(pkt->hdr) + sizeof(pkt->acct.reply);
+		}
+		break;
+	}
+
+	if (want < length) {
+		fr_strerror_printf("Packet is too small.  Want %zu, got %zu", want, length);
+		return -1;
+	}
+
+	return length;
+}

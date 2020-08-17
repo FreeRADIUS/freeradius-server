@@ -284,6 +284,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const * const 
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, VALUE_PAIR **vps);
 
 /* base.c */
+ssize_t		fr_tacacs_length(uint8_t const *buffer, size_t buffer_len);
+
 int		fr_tacacs_init(void);
 
 void		fr_tacacs_free(void);
