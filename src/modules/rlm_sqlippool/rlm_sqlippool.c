@@ -125,32 +125,32 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check), .dflt = "" },
 
 
-	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin), .dflt = "" },
 
 	{ FR_CONF_OFFSET("extend_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, extend_update), .dflt = "" },
 
-	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit), .dflt = "" },
 
 
-	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin), .dflt = "" },
 
 	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, release_clear), .dflt = "" },
 
-	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit), .dflt = "" },
 
 
-	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin), .dflt = "" },
 
 	{ FR_CONF_OFFSET("bulkrelease_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulkrelease_clear), .dflt = "" },
 
-	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit), .dflt = "" },
 
 
-	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin), .dflt = "" },
 
 	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, mark_update), .dflt = "" },
 
-	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit), .dflt = "" },
 
 
 	{ FR_CONF_POINTER("messages", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
