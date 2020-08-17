@@ -117,7 +117,7 @@ void fr_tacacs_free(void)
 	fr_dict_autofree(libfreeradius_tacacs_dict);
 }
 
-int fr_tacacs_body_xor(fr_tacacs_packet_t *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len)
+int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len)
 {
 	uint8_t pad[MD5_DIGEST_LENGTH];
 	uint8_t *buf;
@@ -147,6 +147,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t *pkt, uint8_t *body, size_t body_len, 
 	memcpy(&buf[sizeof(pkt->hdr.session_id)], secret, secret_len);
 	memcpy(&buf[sizeof(pkt->hdr.session_id) + secret_len], &pkt->hdr.version, sizeof(pkt->hdr.version));
 	memcpy(&buf[sizeof(pkt->hdr.session_id) + secret_len + sizeof(pkt->hdr.version)], &pkt->hdr.seq_no, sizeof(pkt->hdr.seq_no));
+
 	fr_md5_calc(pad, buf, pad_offset);
 
 	size_t pos = 0;
