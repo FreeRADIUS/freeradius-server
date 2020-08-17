@@ -232,8 +232,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 	/*
 	 *	3.6. Encryption
+	 *
+	 *	Packets are encrypted if the unencrypted flag is clear.
 	 */
-	if (pkt->hdr.flags == FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
+	if ((pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
 		size_t length;
 
 		if (!secret || secret_len < 1) {

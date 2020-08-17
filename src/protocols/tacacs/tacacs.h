@@ -59,9 +59,9 @@ typedef enum {
 } fr_tacacs_type_t;
 
 typedef enum {
-	FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG	= 0x00,	/* gdb candy */
-	FR_TAC_PLUS_UNENCRYPTED_FLAG			= 0x01,
-	FR_TAC_PLUS_SINGLE_CONNECT_FLAG			= 0x04
+	FR_TAC_PLUS_FLAGS_NONE			= 0x00,
+	FR_TAC_PLUS_UNENCRYPTED_FLAG		= 0x01,
+	FR_TAC_PLUS_SINGLE_CONNECT_FLAG		= 0x04
 } fr_tacacs_flags_t;
 
 typedef struct CC_HINT(__packed__) {

@@ -514,8 +514,10 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 
 	/*
 	 *	3.6. Encryption
+	 *
+	 *	Packets are encrypted if the unencrypted flag is clear.
 	 */
-	if (packet->hdr.flags == FR_TAC_PLUS_ENCRYPTED_MULTIPLE_CONNECTIONS_FLAG) {
+	if ((packet->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
 		uint8_t *body = (buffer + sizeof(fr_tacacs_packet_hdr_t));
 
 		fr_assert(secret != NULL);
