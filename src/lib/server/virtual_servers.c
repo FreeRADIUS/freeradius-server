@@ -1456,7 +1456,7 @@ done:
 /** Find the component for a section
  *
  */
-virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2)
+virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2)
 {
 	virtual_server_compile_t *entry;
 

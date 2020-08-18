@@ -732,7 +732,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 */
 	mi = module_by_name(NULL, name);
 	if (mi) {
-		virtual_server_method_t *allowed_list;
+		virtual_server_method_t const *allowed_list;
 
 		if (!method) return mi;
 
@@ -817,7 +817,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 */
 		for (j = 0; allowed_list[j].name != NULL; j++) {
 			int k;
-			virtual_server_method_t *allowed = &allowed_list[j];
+			virtual_server_method_t const *allowed = &allowed_list[j];
 
 			for (k = 0; mi->module->method_names[k].name1 != NULL; k++) {
 				methods = &mi->module->method_names[k];

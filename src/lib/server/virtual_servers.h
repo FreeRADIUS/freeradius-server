@@ -117,7 +117,7 @@ typedef struct {
 	rlm_components_t	component;	//!< Sets the default list of actions for this section
 	size_t			offset;		//!< where the CONF_SECTION pointer is written
 	size_t			instruction;	//!< where the instruction pointer is written
-	virtual_server_method_t *methods;	//!< list of module methods which are allowed in this section
+	virtual_server_method_t const *methods;	//!< list of module methods which are allowed in this section
 } virtual_server_compile_t;
 
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
@@ -126,7 +126,7 @@ int		virtual_server_section_register(virtual_server_compile_t const *entry);
 int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
 
 int		virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2);
-virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
+virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
 
 int		virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t *method_p, void **ctx);
 
