@@ -296,12 +296,19 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	return RLM_MODULE_OK;
 }
 
-
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "DHCP-Discover",
 		.component = MOD_POST_AUTH,
+
+		.methods = (const virtual_server_method_t[]) {
+			{
+				.name = "ippool",
+				.name2 = "allocate",
+			},
+			COMPILE_TERMINATOR
+		},
 	},
 	{
 		.name = "send",
@@ -312,6 +319,14 @@ static virtual_server_compile_t compile_list[] = {
 		.name = "recv",
 		.name2 = "DHCP-Request",
 		.component = MOD_POST_AUTH,
+
+		.methods = (const virtual_server_method_t[]) {
+			{
+				.name = "ippool",
+				.name2 = "extend",
+			},
+			COMPILE_TERMINATOR
+		},
 	},
 
 	{
@@ -328,12 +343,28 @@ static virtual_server_compile_t compile_list[] = {
 		.name = "recv",
 		.name2 = "DHCP-Decline",
 		.component = MOD_POST_AUTH,
+
+		.methods = (const virtual_server_method_t[]) {
+			{
+				.name = "ippool",
+				.name2 = "mark",
+			},
+			COMPILE_TERMINATOR
+		},
 	},
 
 	{
 		.name = "recv",
 		.name2 = "DHCP-Release",
 		.component = MOD_POST_AUTH,
+
+		.methods = (const virtual_server_method_t[]) {
+			{
+				.name = "ippool",
+				.name2 = "release",
+			},
+			COMPILE_TERMINATOR
+		},
 	},
 	{
 		.name = "recv",
