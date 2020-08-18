@@ -64,6 +64,9 @@ typedef struct {
 	uint32_t	max_networks;		//!< number of network threads
 	uint32_t	max_workers;		//!< number of network threads
 
+	fr_worker_config_t worker;		//!< configuration for each worker
+	fr_network_config_t network;		//!< configuration for each network;
+
 	fr_time_delta_t	stats_interval;		//!< print channel statistics
 } fr_schedule_config_t;
 
