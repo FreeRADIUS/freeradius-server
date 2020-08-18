@@ -556,6 +556,7 @@ retry:
 					  "In single-threaded mode and worker is blocked");
 		drop:
 			worker->stats.dropped++;
+		done:
 			fr_message_done(&cd->m);
 			return -1;
 		}
@@ -594,7 +595,7 @@ retry:
 		if (!found) {
 			 RATE_LIMIT_GLOBAL(PERROR, "Failed sending packet to worker - Couldn't find active worker, "
 			 		   "%u/%u workers are blocked", nr->num_blocked, nr->num_workers);
-			 goto drop;
+			 goto done;
 		}
 
 		worker = found;
