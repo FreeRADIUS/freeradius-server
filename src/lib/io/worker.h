@@ -56,7 +56,7 @@ extern "C" {
 extern fr_cmd_table_t cmd_worker_table[];
 
 typedef struct {
-	int		max_requests;		//!< max requests this worker will handlex
+	int		max_requests;		//!< max requests this worker will handle
 
 	int		max_channels;		//!< maximum number of channels
 
