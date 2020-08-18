@@ -1327,6 +1327,20 @@ run:
 	return mod_action(inst, request, action);
 }
 
+static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, REQUEST *request)
+{
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	VALUE_PAIR			*vp;
+
+	/*
+	 *	Unless it's overridden the default action is to update
+	 *	when called by DHCP request
+	 */
+
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	static bool			done_hash = false;
@@ -1398,4 +1412,8 @@ module_t rlm_redis_ippool = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
+	.method_names = (module_method_names_t[]) {
+		{ "recv",	"DHCP-Request",	mod_request },
+		MODULE_NAME_TERMINATOR
+	}
 };
