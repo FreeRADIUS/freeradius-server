@@ -1089,7 +1089,7 @@ nomem:
 		if (worker->config._x > _max) worker->config._x = _max; \
        } while (0)
 
-	CHECK_CONFIG(max_requests,0,(1 << 30));
+	CHECK_CONFIG(max_requests,1024,(1 << 30));
 	CHECK_CONFIG(max_channels, 64, 1024);
 	CHECK_CONFIG(talloc_pool_size, 4096, 65536);
 	CHECK_CONFIG(message_set_size, 1024, 8192);
