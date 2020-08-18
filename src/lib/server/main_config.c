@@ -190,6 +190,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET("debug_level", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, main_config_t, debug_level), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_requests", FR_TYPE_UINT32, main_config_t, max_requests), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
