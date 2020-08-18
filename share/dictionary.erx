@@ -261,7 +261,7 @@ ATTRIBUTE	ERX-DHCP-Header				208	octets
 ATTRIBUTE	ERX-DHCPv6-Header			209	octets
 ATTRIBUTE	ERX-Acct-Request-Reason			210	integer
 
-ATTRIBUTE	ERX-Inner-Tag-Protocol-Id		211	octets
+ATTRIBUTE	ERX-Inner-Tag-Protocol-Id		211	string
 ATTRIBUTE	ERX-Routing-Services			212	integer
 ATTRIBUTE	ERX-Interface-Set-Targeting-Weight	213	integer
 ATTRIBUTE	ERX-Interface-Targeting-Weight		214	integer
