@@ -47,6 +47,7 @@ def parse_args():
     parser.add_argument('-d', '--debug', action='store_true', help="enable debugging output")
     parser.add_argument('-v', '--verbose', action='store_true', help="print responses")
     parser.add_argument('-6', '--v6', action='store_true', help="use IPv6 addresses")
+    parser.add_argument('-s', '--session-id', type=int, required=False, help="set session_id")
 
     if not tacacs_key:
         parser.add_argument('-k', '--key', required=False, help="tacacs+ shared encryption key")
@@ -72,7 +73,7 @@ def parse_args():
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
-        log.warn("\033[93mTACACS+ --debug will log raw packet data INCLUDING PASSWORDS;"
+        log.warning("\033[93mTACACS+ --debug will log raw packet data INCLUDING PASSWORDS;"
                  "proceed at your own risk!\033[00m")
 
     if tacacs_key:
@@ -152,7 +153,7 @@ def get_cli(args):
     family = socket.AF_INET
     if args.v6:
         family = family = socket.AF_INET6
-    return TACACSClient(args.host, args.port, args.key, timeout=args.timeout, family=family)
+    return TACACSClient(args.host, args.port, args.key, timeout=args.timeout, session_id=args.session_id, family=family)
 
 
 def main():
