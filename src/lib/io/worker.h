@@ -43,7 +43,6 @@ typedef struct fr_worker_s fr_worker_t;
 
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/log.h>
@@ -85,6 +84,8 @@ void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 fr_channel_t	*fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master) CC_HINT(nonnull);
 
 int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HINT(nonnull);
+
+#include <freeradius-devel/server/module.h>
 
 int		fr_worker_request_add(REQUEST *request, module_method_t process, void *ctx);
 
