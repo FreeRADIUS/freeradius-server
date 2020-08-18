@@ -675,7 +675,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "Access-Request",

@@ -196,7 +196,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "new",
 		.name2 = "client",

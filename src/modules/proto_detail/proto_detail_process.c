@@ -195,7 +195,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{ "recv", NULL,			MOD_AUTHORIZE },
 	{ "send", "ok",			MOD_POST_AUTH },
 	{ "send", "fail",		MOD_POST_AUTH },
