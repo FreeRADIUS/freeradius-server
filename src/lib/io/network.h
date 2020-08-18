@@ -42,6 +42,10 @@ typedef struct fr_network_s fr_network_t;
 extern "C" {
 #endif
 
+typedef struct {
+	uint32_t	max_outstanding;
+} fr_network_config_t;
+
 int		fr_network_listen_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
 
 int		fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li);
@@ -58,7 +62,8 @@ void		fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *
 int		fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
 
 fr_network_t	*fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el,
-				   char const *nr, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,4));
+				   char const *nr, fr_log_t const *logger, fr_log_lvl_t lvl,
+				   fr_network_config_t const *config) CC_HINT(nonnull(2,4));
 
 int		fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
 

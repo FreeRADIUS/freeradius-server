@@ -140,6 +140,7 @@ struct fr_network_s {
 	int			signal_pipe[2];		//!< Pipe for signalling the worker in an orderly way.
 							///< This is more deterministic than using async signals.
 
+	fr_network_config_t	config;			//!< configuration
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
 
@@ -591,7 +592,7 @@ retry:
 		}
 
 		if (!found) {
-			 RATE_LIMIT_GLOBAL(ERROR, "Failed sending packet to worker - Couldn't find active worker, "
+			 RATE_LIMIT_GLOBAL(PERROR, "Failed sending packet to worker - Couldn't find active worker, "
 			 		   "%u/%u workers are blocked", nr->num_blocked, nr->num_workers);
 			 goto drop;
 		}
@@ -600,6 +601,20 @@ retry:
 	}
 
 	(void) talloc_get_type_abort(worker, fr_network_worker_t);
+
+	/*
+	 *	Too many outstanding packets for this worker.  Drop
+	 *	the request.
+	 *
+	 *	@todo - pick another worker?  Or maybe keep a
+	 *	local/temporary set of blacklisted workers.
+	 */
+	fr_assert(worker->stats.in >= worker->stats.out);
+	if (nr->config.max_outstanding &&
+	    ((worker->stats.in - worker->stats.out) >= nr->config.max_outstanding)) {
+		RATE_LIMIT_GLOBAL(PERROR, "max_outstanding reached - dropping packet");
+		goto drop;
+	}
 
 	/*
 	 *	Send the message to the channel.  If we fail, drop the
@@ -1603,12 +1618,14 @@ static int _fr_network_free(fr_network_t *nr)
  * @param[in] name	Networker identifier.
  * @param[in] logger	The destination for all logging messages
  * @param[in] lvl	Log level
+ * @param[in] config	configuration structure.
  * @return
  *	- NULL on error
  *	- fr_network_t on success
  */
 fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *name,
-				fr_log_t const *logger, fr_log_lvl_t lvl)
+				fr_log_t const *logger, fr_log_lvl_t lvl,
+				fr_network_config_t const *config)
 {
 	fr_network_t *nr;
 
@@ -1627,6 +1644,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	nr->num_workers = 0;
 	nr->signal_pipe[0] = -1;
 	nr->signal_pipe[1] = -1;
+	if (config) nr->config = *config;
 
 	nr->aq_control = fr_atomic_queue_alloc(nr, 1024);
 	if (!nr->aq_control) {

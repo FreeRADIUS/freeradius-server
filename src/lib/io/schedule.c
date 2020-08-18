@@ -310,7 +310,7 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->nr = fr_network_create(ctx, el, network_name, sc->log, sc->lvl);
+	sn->nr = fr_network_create(ctx, el, network_name, sc->log, sc->lvl, NULL);
 	if (!sn->nr) {
 		PERROR("%s - Failed creating network", network_name);
 		goto fail;
@@ -438,7 +438,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	If we're single-threaded, create network / worker, and insert them into the event loop.
 	 */
 	if (el) {
-		sc->single_network = fr_network_create(sc, el, "Network", sc->log, sc->lvl);
+		sc->single_network = fr_network_create(sc, el, "Network", sc->log, sc->lvl, NULL);
 		if (!sc->single_network) {
 			PERROR("Failed creating network");
 		pre_instantiate_st_fail:
