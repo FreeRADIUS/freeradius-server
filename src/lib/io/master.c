@@ -874,7 +874,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	We are checking for duplicates, see if there is a dup
 	 *	already in the tree.
 	 */
-	track->packet = client->inst->app_io->track(client, packet, packet_len);
+	track->packet = client->inst->app_io->track(track, packet, packet_len);
 	if (!track->packet) {
 		talloc_free(track);
 		return NULL;
