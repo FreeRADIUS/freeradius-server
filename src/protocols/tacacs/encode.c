@@ -156,6 +156,11 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 	}
 
 	/*
+	 *	Handle directly in the allocated buffer
+	 */
+	packet = (fr_tacacs_packet_t *)buffer;
+
+	/*
 	 *	Find the first attribute which is parented by TACACS-Packet.
 	 */
 	for (vp = fr_cursor_init(&cursor, &vps);
@@ -165,28 +170,35 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 	}
 
 	if (!vp) {
-		fr_strerror_printf("No TACACS+ %s in the attribute list",
-			attr_tacacs_packet->name);
-		return -1;
+		if (!original) {
+			fr_strerror_printf("No TACACS+ %s in the attribute list",
+					   attr_tacacs_packet->name);
+			return -1;
+		}
+
+		/*
+		 *	Initialize the reply from the request.
+		 */
+		memset(buffer, 0, sizeof(packet->hdr));
+		packet->hdr.version = original->version;
+		packet->hdr.type = original->type;
+		packet->hdr.flags = original->flags;
+		packet->hdr.session_id = original->session_id;
+
+	} else {
+		fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
+		FR_PROTO_STACK_PRINT(&da_stack, 0);
+
+		/*
+		 *	Call the struct encoder to do the actual work.
+		 */
+		len = fr_struct_to_network(buffer, buffer_len, &da_stack, 0, &cursor, NULL, NULL);
+		if (len != sizeof(fr_tacacs_packet_hdr_t)) {
+			fr_strerror_printf("Failed encoding %s using fr_struct_to_network()",
+					   attr_tacacs_packet->name);
+			return -1;
+		}
 	}
-
-	fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
-	FR_PROTO_STACK_PRINT(&da_stack, 0);
-
-	/*
-	 *	Call the struct encoder to do the actual work.
-	 */
-	len = fr_struct_to_network(buffer, buffer_len, &da_stack, 0, &cursor, NULL, NULL);
-	if (len != sizeof(fr_tacacs_packet_hdr_t)) {
-		fr_strerror_printf("Failed encoding %s using fr_struct_to_network()",
-				   attr_tacacs_packet->name);
-		return -1;
-	}
-
-	/*
-	 *	Handle directly in the allocated buffer
-	 */
-	packet = (fr_tacacs_packet_t *)buffer;
 
 	/*
 	 *	Encode 8 octets of various fields not members of STRUCT
@@ -564,6 +576,19 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 	packet_len = p - buffer;
 	fr_assert(packet_len < FR_TACACS_MAX_PACKET_SIZE);
 	packet->hdr.length = htonl(packet_len - sizeof(fr_tacacs_packet_hdr_t));
+
+	/*
+	 *	If the original packet is encrypted, then the reply
+	 *	MUST be encrypted too.
+	 *
+	 *	On the other hand, if the request is unencrypted,
+	 *	we're OK with sending an encrypted reply.  Because,
+	 *	whatever.
+	 */
+	if (original &&
+	    ((original->flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)) {
+		packet->hdr.flags &= ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
+	}
 
 	/*
 	 *	3.6. Encryption
