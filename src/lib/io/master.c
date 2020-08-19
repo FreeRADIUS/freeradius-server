@@ -255,7 +255,7 @@ static int8_t address_cmp(void const *one, void const *two)
 static uint32_t connection_hash(void const *ctx)
 {
 	uint32_t hash;
-	fr_io_connection_t const *c = ctx;
+	fr_io_connection_t const *c = talloc_get_type_abort_const(ctx, fr_io_connection_t);
 
 	hash = fr_hash(&c->address->src_ipaddr, sizeof(c->address->src_ipaddr));
 	hash = fr_hash_update(&c->address->src_port, sizeof(c->address->src_port), hash);
@@ -269,8 +269,8 @@ static uint32_t connection_hash(void const *ctx)
 
 static int connection_cmp(void const *one, void const *two)
 {
-	fr_io_connection_t const *a = one;
-	fr_io_connection_t const *b = two;
+	fr_io_connection_t const *a = talloc_get_type_abort_const(one, fr_io_connection_t);
+	fr_io_connection_t const *b = talloc_get_type_abort_const(two, fr_io_connection_t);
 
 	return address_cmp(a->address, b->address);
 }
@@ -278,8 +278,8 @@ static int connection_cmp(void const *one, void const *two)
 
 static int track_cmp(void const *one, void const *two)
 {
-	fr_io_track_t const *a = one;
-	fr_io_track_t const *b = two;
+	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
+	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
 	int rcode;
 
 	fr_assert(a->in_dedup_tree);
