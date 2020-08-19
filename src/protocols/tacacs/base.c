@@ -250,10 +250,8 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			want = sizeof(pkt->hdr) + sizeof(pkt->authen.start);
-
 		} else if (packet_is_authen_continue(pkt)) {
 			want = sizeof(pkt->hdr) + sizeof(pkt->authen.cont);
-
 		} else {
 			fr_assert(packet_is_authen_reply(pkt));
 			want = sizeof(pkt->hdr) + sizeof(pkt->authen.reply);
@@ -280,7 +278,7 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	}
 
 	if (want > length) {
-		fr_strerror_printf("Packet is too small.  Want %zu, got %zu", want, length);
+		fr_strerror_printf("Packet is too small. Want %zu, got %zu", want, length);
 		return -1;
 	}
 
