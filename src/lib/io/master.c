@@ -441,7 +441,7 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t
 
 static int _client_free(fr_io_client_t *client)
 {
-	if (client->pending) TALLOC_FREE(client->pending);
+	TALLOC_FREE(client->pending);
 
 	return 0;
 }
@@ -452,7 +452,8 @@ static int connection_free(fr_io_connection_t *connection)
 	 *	This is it's own talloc context, as there are
 	 *	thousands of packets associated with it.
 	 */
-	talloc_free(connection->client);
+	TALLOC_FREE(connection->client);
+
 	return 0;
 }
 
