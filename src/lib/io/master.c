@@ -277,6 +277,9 @@ static int track_cmp(void const *one, void const *two)
 	fr_io_track_t const *b = two;
 	int rcode;
 
+	fr_assert(a->in_dedup_tree);
+	fr_assert(b->in_dedup_tree);
+
 	/*
 	 *	Connected sockets MUST have all tracking entries use
 	 *	the same client definition.
@@ -296,6 +299,7 @@ static int track_cmp(void const *one, void const *two)
 		return 0;
 	}
 
+	fr_assert(b->client != NULL);
 	fr_assert(!b->client->connection);
 
 	/*
