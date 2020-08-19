@@ -277,7 +277,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t		*address = track->address;
+	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
 
 	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
@@ -400,7 +400,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t		*address = track->address;
+	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
 	RADCLIENT const		*client;
 

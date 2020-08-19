@@ -55,7 +55,7 @@ typedef struct {
 	 *	definition.
 	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
-	fr_io_address_t   		*address;	//!< of this packet.. shared between multiple packets
+	fr_io_address_t const  		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
 
 	union {

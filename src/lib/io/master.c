@@ -150,6 +150,9 @@ static int track_free(fr_io_track_t *track)
 {
 	if (track->in_dedup_tree) {
 		fr_assert(track->client->table != NULL);
+
+		fr_assert(rbtree_finddata(track->client->table, track) != NULL);
+
 		if (!rbtree_deletebydata(track->client->table, track)) {
 			fr_assert(0);
 		}
@@ -849,6 +852,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 {
 	size_t len;
 	fr_io_track_t *track, *old;
+	fr_io_address_t *my_address;
 
 	/*
 	 *	Allocate a new tracking structure.  Most of the time
@@ -856,10 +860,10 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 */
 	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
 	talloc_set_destructor(track, track_free);
-	MEM(track->address = talloc_zero(track, fr_io_address_t));
+	MEM(track->address = my_address = talloc_zero(track, fr_io_address_t));
 
-	memcpy(track->address, address, sizeof(*address));
-	track->address->radclient = client->radclient;
+	memcpy(my_address, address, sizeof(*address));
+	my_address->radclient = client->radclient;
 
 	track->client = client;
 	if (client->connection) {

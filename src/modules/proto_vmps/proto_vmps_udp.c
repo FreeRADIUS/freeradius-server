@@ -206,7 +206,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 {
 	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			*address = track->address;
+	fr_io_address_t const  		*address = track->address;
 
 	int				flags;
 	ssize_t				data_size;
