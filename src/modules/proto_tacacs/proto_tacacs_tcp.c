@@ -295,9 +295,9 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, UNUSED size_t packet_len)
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, UNUSED size_t buffer_len)
 {
-	fr_tacacs_packet_t const *tacacs = (fr_tacacs_packet_t const *)packet;
+	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
 	proto_tacacs_track_t     *track;
 
 	track = talloc_zero(ctx, proto_tacacs_track_t);
@@ -306,8 +306,30 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, UNUSED siz
 
 	talloc_set_name_const(track, "proto_tacacs_track_t");
 
-	track->type       = tacacs->hdr.type;
-	track->session_id = tacacs->hdr.session_id;
+	switch (pkt->hdr.type) {
+	case FR_TAC_PLUS_AUTHEN:
+		if (packet_is_authen_start_request(pkt)) {
+			track->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+		} else {
+			track->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
+		}
+		break;
+
+		case FR_TAC_PLUS_AUTHOR:
+			track->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+			break;
+
+	case FR_TAC_PLUS_ACCT:
+		track->type = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+		break;
+
+	default:
+		talloc_free(track);
+		fr_assert(0);
+		return NULL;
+	}
+
+	track->session_id = pkt->hdr.session_id;
 
 	return track;
 }
@@ -326,12 +348,7 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	if (rcode != 0) return rcode;
 
 	/*
-	 *	Then ordered by 'type'
-	 *
-	 *	@todo - check synthetic packet types?  But
-	 *	realistically, we should probably NOT be tracking
-	 *	duplicates for TCP.  The transport layer ensures that
-	 *	packets are never retransmitted.
+	 *	Then ordered by our synthentic packet type.
 	 */
 	return (a->type < b->type) - (a->type > b->type);
 }
