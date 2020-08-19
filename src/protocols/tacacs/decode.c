@@ -327,7 +327,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	And finally the flags.
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_flags, pkt->authen.cont.flags);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_continue_flags, pkt->authen.cont.flags);
 
 		} else if (packet_is_authen_reply(pkt)) {
 			/*

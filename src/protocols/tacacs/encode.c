@@ -271,7 +271,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			/*
 			 *	Look at the abort flag after encoding the fields.
 			 */
-			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_flags);
+			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_continue_flags);
 
 		} else if (packet_is_authen_reply(packet)) {
 			/*
