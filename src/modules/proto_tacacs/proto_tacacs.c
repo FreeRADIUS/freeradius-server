@@ -45,9 +45,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("Authentication-Start", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Authentication-Start", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
+	{ FR_CONF_OFFSET("Authentication-Continue", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Authorization-Continue", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
+	{ FR_CONF_OFFSET("Authorization-Request", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
