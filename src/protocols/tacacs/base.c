@@ -278,7 +278,7 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 		break;
 	}
 
-	if (want < length) {
+	if (want > length) {
 		fr_strerror_printf("Packet is too small.  Want %zu, got %zu", want, length);
 		return -1;
 	}
