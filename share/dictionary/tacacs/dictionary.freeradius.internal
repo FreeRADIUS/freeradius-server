@@ -15,7 +15,7 @@
 #
 FLAGS	internal
 
-ATTRIBUTE	Packet-Type				65536	integer
+ATTRIBUTE	Packet-Type				65536	uint32
 VALUE	Packet-Type			Authentication-Start		1
 VALUE	Packet-Type			Authentication-Continue		2
 VALUE	Packet-Type			Authentication-Reply		3
