@@ -137,7 +137,8 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret, size_t secret_len, VALUE_PAIR *vps)
+ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *original_packet,
+			 char const *secret, size_t secret_len, VALUE_PAIR *vps)
 {
 	VALUE_PAIR		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -147,6 +148,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 	uint8_t const		*end = buffer + buffer_len;
 	ssize_t			len = 0;
 	size_t 			packet_len = 0;
+	fr_tacacs_packet_hdr_t const *original = (fr_tacacs_packet_hdr_t const *) original_packet;
 
 	if (!vps) {
 		fr_strerror_printf("Cannot encode empty packet");
@@ -180,13 +182,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 				   attr_tacacs_packet->name);
 		return -1;
 	}
-
-	/*
-	 *	@todo - have this function take a `uint8_t const
-	 *	*original` argument.  We can then automatically fill
-	 *	in fields such as sequence number and session ID based
-	 *	on the original packet.
-	 */
 
 	/*
 	 *	Handle directly in the allocated buffer
@@ -244,6 +239,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			ENCODE_FIELD_STRING8(packet->authen.start.rem_addr_len, attr_tacacs_remote_address);
 			ENCODE_FIELD_STRING8(packet->authen.start.data_len, attr_tacacs_data);
 
+			goto check_request;
+
 		} else if (packet_is_authen_continue(packet)) {
 			/*
 			 * 4.3. The Authentication CONTINUE Packet Body
@@ -273,6 +270,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			 */
 			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_continue_flags);
 
+			goto check_request;
+
 		} else if (packet_is_authen_reply(packet)) {
 			/*
 			 * 4.2. The Authentication REPLY Packet Body
@@ -296,6 +295,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			p = packet->authen.reply.body;
 			ENCODE_FIELD_STRING16(packet->authen.reply.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->authen.reply.data_len, attr_tacacs_data);
+
+			goto check_reply;
 
 		} else {
 		unknown_packet:
@@ -362,6 +363,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
 
+			goto check_request;
+
 		} else if (packet_is_author_response(packet)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
@@ -406,6 +409,9 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			if (packet->author.res.arg_cnt > 0) {
 				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
+
+			goto check_reply;
+
 		} else {
 			goto unknown_packet;
 		}
@@ -469,6 +475,22 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			if (packet->acct.req.arg_cnt > 0) {
 				tacacs_encode_body_arg_n(vps, attr_tacacs_argument_list, &p, end);
 			}
+
+		check_request:
+			if (!buffer[0]) buffer[0] = 0xc1; /* version 12.1 */
+			
+			/*
+			 *	If the caller didn't set a session ID, use a random one.
+			 */
+			if (!fr_pair_find_by_da(vps, attr_tacacs_session_id, TAG_ANY)) {
+				packet->hdr.session_id = fr_rand();
+			}
+
+			/*
+			 *	Requests have odd sequence numbers.
+			 */
+			packet->hdr.seq_no |= 0x01;
+
 		} else if (packet_is_acct_reply(packet)) {
 			/**
 			 * 6.2. The Accounting REPLY Packet Body
@@ -491,6 +513,37 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, char const *secret,
 			ENCODE_FIELD_STRING16(packet->acct.reply.data_len, attr_tacacs_data);
 
 			ENCODE_FIELD_UINT8(packet->acct.reply.status, attr_tacacs_accounting_status);
+
+		check_reply:
+			/*
+			 *	fr_struct_to_network() fills the struct fields with 0
+			 *	if there is no matching VP.  In the interest of making
+			 *	things easier for the user, we don't require them to
+			 *	copy all of the fields from the request to the reply.
+			 *
+			 *	Instead, we copy the fields manually, and ensure that
+			 *	they have the correct values.
+			 */
+			if (original) {
+				if (!buffer[0]) {
+					packet->hdr.ver.major = original->ver.major;
+					packet->hdr.ver.minor = original->ver.minor;
+				}
+
+				if (!packet->hdr.seq_no) {
+					packet->hdr.seq_no = original->seq_no + 1; /* uint8_t */
+				}
+
+				if (!packet->hdr.session_id) {
+					packet->hdr.session_id = original->session_id;
+				}
+			}
+
+			/*
+			 *	Replies have even sequence numbers.
+			 */
+			packet->hdr.seq_no &= 0xfe;
+
 		} else {
 			goto unknown_packet;
 		}
@@ -543,7 +596,7 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
-	return fr_tacacs_encode(data, data_len, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), vps);
+	return fr_tacacs_encode(data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), vps);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
