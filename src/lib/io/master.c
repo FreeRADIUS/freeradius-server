@@ -848,7 +848,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	Allocate a new tracking structure.  Most of the time
 	 *	there are no duplicates, so this is fine.
 	 */
-	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64);
+	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
 	talloc_set_destructor(track, track_free);
 	MEM(track->address = talloc_zero(track, fr_io_address_t));
 
