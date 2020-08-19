@@ -106,7 +106,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	proto_radius_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
-	size_t				packet_len;
+	size_t				packet_len, in_buffer;
 	decode_fail_t			reason;
 
 	/*
@@ -141,11 +141,13 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
+	in_buffer = data_size + *leftover;
+
 	/*
 	 *	Not enough for one packet.  Tell the caller that we need to read more.
 	 */
-	if (data_size < 20) {
-		*leftover = data_size;
+	if (in_buffer < 20) {
+		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -158,8 +160,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	We don't have a complete RADIUS packet.  Tell the
 	 *	caller that we need to read more.
 	 */
-	if ((size_t) data_size < packet_len) {
-		*leftover = data_size;
+	if (in_buffer < packet_len) {
+		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -167,8 +169,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	We've read more than one packet.  Tell the caller that
 	 *	there's more data available, and return only one packet.
 	 */
-	if ((size_t) data_size > packet_len) {
-		*leftover = data_size - packet_len;
+	if (in_buffer > packet_len) {
+		*leftover = in_buffer - packet_len;
 	}
 
 	/*
