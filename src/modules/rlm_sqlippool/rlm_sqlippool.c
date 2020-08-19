@@ -104,7 +104,7 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
-	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "" },
+	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name) },
 
 	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
 
@@ -113,44 +113,44 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
 
-	{ FR_CONF_OFFSET("allocate_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_existing), .dflt = "" },
+	{ FR_CONF_OFFSET("allocate_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_existing) },
 
-	{ FR_CONF_OFFSET("allocate_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), .dflt = "" },
+	{ FR_CONF_OFFSET("allocate_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find) },
 
-	{ FR_CONF_OFFSET("allocate_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, allocate_update), .dflt = "" },
+	{ FR_CONF_OFFSET("allocate_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, allocate_update) },
 
 	{ FR_CONF_OFFSET("allocate_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_commit), .dflt = "COMMIT" },
 
 
-	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check), .dflt = "" },
+	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check) },
 
 
-	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin), .dflt = "" },
+	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin) },
 
-	{ FR_CONF_OFFSET("extend_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, extend_update), .dflt = "" },
+	{ FR_CONF_OFFSET("extend_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, extend_update) },
 
-	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit), .dflt = "" },
-
-
-	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin), .dflt = "" },
-
-	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, release_clear), .dflt = "" },
-
-	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit), .dflt = "" },
+	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit) },
 
 
-	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin), .dflt = "" },
+	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin) },
 
-	{ FR_CONF_OFFSET("bulkrelease_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulkrelease_clear), .dflt = "" },
+	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, release_clear) },
 
-	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit), .dflt = "" },
+	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit) },
 
 
-	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin), .dflt = "" },
+	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin) },
 
-	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, mark_update), .dflt = "" },
+	{ FR_CONF_OFFSET("bulkrelease_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulkrelease_clear) },
 
-	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit), .dflt = "" },
+	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit) },
+
+
+	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin) },
+
+	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, mark_update) },
+
+	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit) },
 
 
 	{ FR_CONF_POINTER("messages", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
