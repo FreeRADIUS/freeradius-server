@@ -150,7 +150,9 @@ static int track_free(fr_io_track_t *track)
 {
 	if (track->in_dedup_tree) {
 		fr_assert(track->client->table != NULL);
-		(void) rbtree_deletebydata(track->client->table, track);
+		if (!rbtree_deletebydata(track->client->table, track)) {
+			fr_assert(0);
+		}
 		track->in_dedup_tree = false;
 	}
 #ifndef NDEBUG
@@ -884,10 +886,19 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		return NULL;
 	}
 
+#ifndef NDEBUG
+	track->in_dedup_tree = true; /* not true, but useful for testing */
+#endif
+
 	/*
 	 *	No existing duplicate.  Return the new tracking entry.
 	 */
 	old = rbtree_finddata(client->table, track);
+
+#ifndef NDEBUG
+	track->in_dedup_tree = false; /* now true  */
+#endif
+
 	if (!old) goto do_insert;
 
 	fr_assert(old->in_dedup_tree);
@@ -951,8 +962,10 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	}
 
 do_insert:
-	rbtree_insert(client->table, track);
 	track->in_dedup_tree = true;
+	if (!rbtree_insert(client->table, track)) {
+		fr_assert(0);
+	}
 	return track;
 }
 
