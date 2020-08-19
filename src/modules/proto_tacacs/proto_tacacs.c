@@ -120,7 +120,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	CONF_SECTION		*process_app_cs;
-	proto_tacacs_t		*inst;
+//	proto_tacacs_t		*inst;
 	dl_module_inst_t	*parent_inst;
 	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
@@ -169,7 +169,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	 *	Set the allowed codes so that we can compile them as
 	 *	necessary.
 	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_tacacs_t);
+//	inst = talloc_get_type_abort(parent_inst->data, proto_tacacs_t);
 	
 	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
 
