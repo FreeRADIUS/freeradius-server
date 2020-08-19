@@ -195,6 +195,14 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	}
 
 	/*
+	 *	TACACS major / minor version MUST be 12.0 or 12.1
+	 */
+	if (!((buffer[0] == 0xc0) || (buffer[0] == 0xc1))) {
+		fr_strerror_printf("Unsupported TACACS+ version %02x", buffer[0]);
+		return -1;
+	}
+
+	/*
 	 *	There's no reason to accept 64K TACACS+ packets.
 	 */
 	if ((buffer[8] != 0) || (buffer[9] != 0)) {
