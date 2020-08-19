@@ -161,6 +161,17 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 	packet = (fr_tacacs_packet_t *)buffer;
 
 	/*
+	 *	Initialize the reply from the request.
+	 */
+	if (original) {
+		memset(buffer, 0, sizeof(packet->hdr));
+		packet->hdr.version = original->version;
+		packet->hdr.type = original->type;
+		packet->hdr.flags = original->flags;
+		packet->hdr.session_id = original->session_id;
+	}
+
+	/*
 	 *	Find the first attribute which is parented by TACACS-Packet.
 	 */
 	for (vp = fr_cursor_init(&cursor, &vps);
@@ -175,16 +186,6 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 					   attr_tacacs_packet->name);
 			return -1;
 		}
-
-		/*
-		 *	Initialize the reply from the request.
-		 */
-		memset(buffer, 0, sizeof(packet->hdr));
-		packet->hdr.version = original->version;
-		packet->hdr.type = original->type;
-		packet->hdr.flags = original->flags;
-		packet->hdr.session_id = original->session_id;
-
 	} else {
 		fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
@@ -538,8 +539,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 			 */
 			if (original) {
 				if (!buffer[0]) {
-					packet->hdr.ver.major = original->ver.major;
-					packet->hdr.ver.minor = original->ver.minor;
+					packet->hdr.version = original->version;
 				}
 
 				if (!packet->hdr.seq_no) {
