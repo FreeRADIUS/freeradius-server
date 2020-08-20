@@ -172,7 +172,6 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
-	// fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	ssize_t				data_size;
 
 	/*
@@ -183,26 +182,12 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 	thread->stats.total_responses++;
 
 	/*
-	 *	This handles the race condition where we get a DUP,
-	 *	but the original packet replies before we're run.
-	 *	i.e. this packet isn't marked DUP, so we have to
-	 *	discover it's a dup later...
-	 *
-	 *	As such, if there's already a reply, then we ignore
-	 *	the encoded reply (which is probably going to be a
-	 *	NAK), and instead just ignore the DUP and don't reply.
-	 */
-	// if (track->reply_len) {
-	// 	return buffer_len;
-	// }
-
-	/*
 	 *	We only write TACACS packets.
 	 *
 	 *	@todo - if buffer_len ==1, it means "do not respond".
 	 *	Which should be suppressed somewhere.  Maybe here...
 	 */
-	fr_assert(buffer_len >= 12);
+	fr_assert(buffer_len >= sizeof(fr_tacacs_packet_hdr_t));
 	fr_assert(written < buffer_len);
 
 	/*
@@ -315,9 +300,9 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, UNUSED siz
 		}
 		break;
 
-		case FR_TAC_PLUS_AUTHOR:
-			track->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
-			break;
+	case FR_TAC_PLUS_AUTHOR:
+		track->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+		break;
 
 	case FR_TAC_PLUS_ACCT:
 		track->type = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
@@ -338,8 +323,8 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 		       void const *one, void const *two)
 {
 	int rcode;
-	proto_tacacs_track_t const *a = one;
-	proto_tacacs_track_t const *b = two;
+	proto_tacacs_track_t const *a = talloc_get_type_abort_const(one, proto_tacacs_track_t);
+	proto_tacacs_track_t const *b = talloc_get_type_abort_const(two, proto_tacacs_track_t);
 
 	/*
 	 *	Session IDs SHOULD be random 32-bit integers.
