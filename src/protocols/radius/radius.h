@@ -28,6 +28,7 @@
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/dbuff.h>
 
 #define RADIUS_AUTH_VECTOR_OFFSET      		4
 #define RADIUS_HEADER_LENGTH			20
@@ -102,6 +103,9 @@ bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			     uint32_t max_attributes, bool require_ma, decode_fail_t *reason) CC_HINT(nonnull (1,2));
 
 ssize_t		fr_radius_ascend_secret(uint8_t *out, size_t outlen, uint8_t const *in, size_t inlen,
+					char const *secret, uint8_t const *vector);
+
+ssize_t		fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 					char const *secret, uint8_t const *vector);
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
