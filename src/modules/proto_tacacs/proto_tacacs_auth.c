@@ -158,17 +158,17 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 
 	REQUEST_VERIFY(request);
 
+	/*
+	 *	Wrapper to distinguish between Authentication Start & Continue.
+	 */
+	if (request->packet->code == FR_PACKET_TYPE_VALUE_AUTHENTICATION_START) {
+		auth_ctx = &inst->start;
+	} else {
+		auth_ctx = &inst->cont;
+	}
+
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		/*
-		 *	Wrapper to distinguish between Authentication Start & Continue.
-		 */
-		if (request->packet->code == FR_PACKET_TYPE_VALUE_AUTHENTICATION_START) {
-			auth_ctx = &inst->start;
-		} else {
-			auth_ctx = &inst->cont;
-		}
-
 		request->component = "tacacs";
 
 		/*
@@ -339,11 +339,8 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		}
 
 	setup_send:
-		unlang = auth_ctx->send_reply;
-		instruction = auth_ctx->unlang_reply;
-
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_instruction(request, instruction, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(auth_ctx->send_reply), cf_filename(auth_ctx->send_reply));
+		unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
