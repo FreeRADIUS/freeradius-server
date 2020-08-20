@@ -195,6 +195,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 	/*
 	 *	There's no reason to accept 64K TACACS+ packets.
+	 *
+	 *	In any case, the largest possible packet has the
+	 *	header, plus 2 16-bit fields, plus 255 8-bit fields,
+	 *	which is a bit under 2^18.
 	 */
 	if ((buffer[8] != 0) || (buffer[9] != 0)) {
 		fr_strerror_printf("Packet is too large.  Our limit is 64K");
