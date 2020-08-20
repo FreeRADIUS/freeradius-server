@@ -537,9 +537,11 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	if (certs) SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)certs);
-	SSL_set_fd(ssn->ssl, fd);
-	ret = SSL_connect(ssn->ssl);
 
+	fr_nonblock(fd);
+	SSL_set_fd(ssn->ssl, fd);
+
+	ret = SSL_connect(ssn->ssl);
 	if (ret < 0) {
 		switch (SSL_get_error(ssn->ssl, ret)) {
 			default:
@@ -1355,6 +1357,23 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	BIO *bio;
 
 	if (!file) return 0;
+
+	/*
+	 * Prior to trying to load the file, check what OpenSSL will do with it.
+	 *
+	 * Certain downstreams (such as RHEL) will ignore user-provided dhparams
+	 * in FIPS mode, unless the specified parameters are FIPS-approved.
+	 * However, since OpenSSL >= 1.1.1 will automatically select parameters
+	 * anyways, there's no point in attempting to load them.
+	 *
+	 * Change suggested by @t8m
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (FIPS_mode() > 0) {
+		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
+		return 0;
+	}
+#endif
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		ERROR(LOG_PREFIX ": Unable to open DH file - %s", file);
