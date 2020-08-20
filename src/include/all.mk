@@ -48,6 +48,7 @@ DICT += $(wildcard $(addsuffix /dictionary,$(addprefix share/dictionary/,$(PROTO
 
 # Add in protocol specific dictionaries (should be done in proto_* modules?)
 DICT += share/dictionary/vmps/dictionary.vmps
+DICT += share/dictionary/tacacs/dictionary.tacacs
 
 NORMALIZE	:= tr -- '[:lower:]/+.-' '[:upper:]____' | sed 's/241_//;'
 HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
