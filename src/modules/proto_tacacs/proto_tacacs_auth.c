@@ -153,7 +153,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv = NULL;
 	fr_cursor_t			cursor;
-	void				*instruction;
 	fr_tacacs_auth_request_ctx_t const *auth_ctx;
 
 	REQUEST_VERIFY(request);
