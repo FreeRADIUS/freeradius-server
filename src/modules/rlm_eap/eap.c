@@ -425,6 +425,13 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			handler->opaque = NULL;
 		}
 
+		/*
+		 *	We got a NAK after the peer started doing a
+		 *	particular EAP type.  That's rude, tell the
+		 *	peer to go away.
+		 */
+		if (handler->started) return EAP_INVALID;
+
 		next = eap_process_nak(inst, handler->request,
 				       handler->type, type);
 
@@ -440,28 +447,29 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		/*
 		 *	Key off of the configured sub-modules.
 		 */
-		default:
-			/*
-			 *	We haven't configured it, it doesn't exit.
-			 */
-			if (!inst->methods[type->num]) {
-				REDEBUG2("Client asked for unsupported EAP type %s (%d)",
-					 eap_type2name(type->num),
-					 type->num);
+	default:
+		/*
+		 *	We haven't configured it, it doesn't exist.
+		 */
+		if (!inst->methods[type->num]) {
+			REDEBUG2("Client asked for unsupported EAP type %s (%d)",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
 
-			rad_assert(handler->stage == PROCESS);
-			handler->type = type->num;
-			if (eap_module_call(inst->methods[type->num],
-					    handler) == 0) {
-				REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
-					 eap_type2name(type->num),
-					 type->num);
+		rad_assert(handler->stage == PROCESS);
+		handler->type = type->num;
+		if (eap_module_call(inst->methods[type->num],
+				    handler) == 0) {
+			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
+		handler->started = true;
 		break;
 	}
 
