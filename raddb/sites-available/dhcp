@@ -242,6 +242,14 @@ dhcp DHCP-Request {
 #  not defined here will be responded to with a DHCP-NAK.
 
 dhcp DHCP-Decline {
+
+	#  If using IPs from a DHCP pool in SQL then you may need to set the
+	#  pool name here if you haven't set it elsewhere and release the IP.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool_decline
+
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
