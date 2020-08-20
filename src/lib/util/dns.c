@@ -658,6 +658,16 @@ done:
 	return data - where;
 }
 
+ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value)
+{
+	ssize_t			slen;
+
+	slen = fr_dns_label_from_value_box(NULL, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value);
+	if (slen <= 0) return slen;
+	fr_dbuff_advance(dbuff, slen);
+	return slen;
+}
+
 /** Get the *uncompressed* length of a DNS label in a network buffer.
  *
  *  i.e. how bytes are required to store the uncompressed version of
