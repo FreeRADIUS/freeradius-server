@@ -25,7 +25,7 @@
  */
 
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/protocol/tacacs/dictionary.h>
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/base.h>
@@ -406,9 +406,24 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
+			 *
+			 *	For ERRORs, we don't encode arguments.
+			 *
+			 *	5.2
+			 *
+			 *	   A status of TAC_PLUS_AUTHOR_STATUS_ERROR indicates an error occurred
+			 *	   on the server.  For the differences between ERROR and FAIL, refer to
+			 *	   section Session Completion (Section 3.4) . None of the arg values
+			 *	   have any relevance if an ERROR is set, and must be ignored.
+			 *
+			 *	   When the status equals TAC_PLUS_AUTHOR_STATUS_FOLLOW, then the
+			 *	   arg_cnt MUST be 0.
 			 */
 			p = packet->author.res.body;
-			packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
+			if (!((packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_ERROR) ||
+			      (packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
+				packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
+			}
 
 			/*
 			 *	Encode 2 mandatory fields.
