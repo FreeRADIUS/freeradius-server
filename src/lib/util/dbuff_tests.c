@@ -1,6 +1,7 @@
 #include <freeradius-devel/util/acutest.h>
 
 #include "dbuff.h"
+#include <string.h>
 
 
 //#include <gperftools/profiler.h>
@@ -260,6 +261,58 @@ static void test_dbuff_move(void)
 	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789HIJKLMtuWXYZ", 26) == 0);
 }
 
+/** Test extensible dbuffs
+ *
+ */
+
+static void test_dbuff_talloc_extend(void)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+	fr_dbuff_marker_t	marker;
+	uint8_t const		value[] = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0};
+
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 14) == &dbuff);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 4);
+	fr_dbuff_marker(&marker, &dbuff);
+	TEST_CASE("Extension");
+	TEST_CHECK(fr_dbuff_in(&dbuff, 0x123456789abcdef0) == sizeof(uint64_t));
+	TEST_CASE("Markers track extended buffer");
+	TEST_CHECK(marker.p == dbuff.start);
+	TEST_CASE("Already-written content stays with the buffer");
+	TEST_CHECK(memcmp(fr_dbuff_marker_current(&marker), value, sizeof(value)) == 0);
+	TEST_CASE("Refuse to extend past specified maximum");
+	TEST_CHECK(fr_dbuff_in(&dbuff, 0x123456789abcdef0) == -2);
+}
+
+static void test_dbuff_talloc_extend_multi_level(void)
+{
+	fr_dbuff_t		dbuff1, dbuff2;
+	fr_dbuff_uctx_talloc_t	tctx;
+
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx, 0, 32) == &dbuff1);
+	TEST_CHECK(fr_dbuff_used(&dbuff1) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff1) == 0);
+
+	dbuff2 = FR_DBUFF_NO_ADVANCE(&dbuff1);
+	TEST_CASE("Check that dbuff2 inherits extend fields");
+	TEST_CHECK(dbuff2.extend == dbuff1.extend);
+	TEST_CHECK(dbuff2.uctx == dbuff1.uctx);
+	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff2) == 0);
+
+	dbuff2 = FR_DBUFF_MAX(&dbuff1, 8);
+	TEST_CASE("Check that FR_DBUFF_MAX() is not extensible");
+	TEST_CHECK(dbuff2.extend == NULL);
+	TEST_CHECK(dbuff2.uctx == NULL);
+	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff2) == 0);
+	TEST_CHECK(fr_dbuff_in(&dbuff2, 0x123456789abcdef0) == -8);
+}
+
 
 TEST_LIST = {
 	/*
@@ -270,6 +323,9 @@ TEST_LIST = {
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
 	{ "fr_dbuff_move",				test_dbuff_move },
+	{ "fr_dbuff_talloc_extend",			test_dbuff_talloc_extend },
+	{ "fr_dbuff_talloc_extend_multi_level",		test_dbuff_talloc_extend_multi_level },
+
 
 	{ NULL }
 };
