@@ -87,7 +87,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_argument_list, .name = "TACACS-ArgumentList", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_client_port, .name = "TACACS-Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_flags, .name = "TACACS-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_length, .name = "TACACS-Length", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_packet, .name = "TACACS-Packet", .type = FR_TYPE_STRUCT, .dict = &dict_tacacs },

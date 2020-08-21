@@ -136,7 +136,13 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 	}
 
 	if (field_len) {
-		fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
+		if (da->type == FR_TYPE_STRING) {
+			fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
+		} else if (da->type == FR_TYPE_OCTETS) {
+			fr_pair_value_memdup(vp, p, field_len, true);
+		} else {
+			fr_assert(0);
+		}
 		p += field_len;
 		*field_data = p;
 	}

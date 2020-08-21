@@ -95,8 +95,8 @@ server tacacs {
 			case PAP {
 				update request {
 					&User-Name := &TACACS-User-Name
-					&User-Password := &TACACS-Data
-					&Cleartext-Password := &TACACS-Data
+					&User-Password := "%{string:%{TACACS-Data}}"
+					&Cleartext-Password := "%{string:%{TACACS-Data}}"
 				}
 
 				#
