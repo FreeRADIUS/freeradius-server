@@ -750,10 +750,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			if (!array) {
 				entry = NULL;
-			} else if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
+			} else if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
 				entry = &array[i];
 			} else {
-				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
+				entry = ((uint8_t *) array) + (i * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
 			}
 
 			/*
