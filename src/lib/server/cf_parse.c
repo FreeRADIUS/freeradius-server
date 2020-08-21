@@ -187,26 +187,35 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	xlat strings.
 		 */
 		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cp->value,
+			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cf_pair_value(cp),
 						   &(tmpl_rules_t){
 							.allow_unknown = true,
 							.allow_unparsed = true
 						   });
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
-
-				cf_log_err(cp, "Failed parsing attribute reference:");
-				cf_log_err(cp, "%s", text);
-				cf_log_perr(cp, "%s^", spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
-				goto error;
-			}
-			*(tmpl_t **)out = vpt;
+		} else {
+			slen = tmpl_afrom_str(cp, &vpt, cf_pair_value(cp), strlen(cf_pair_value(cp)),
+					      cf_pair_value_quote(cp),
+					      &(tmpl_rules_t){
+							.allow_unknown = true,
+							.allow_unparsed = true
+					      }, false);
 		}
+
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
+
+			cf_log_err(cp, "Failed parsing attribute reference:");
+			cf_log_err(cp, "%s", text);
+			cf_log_perr(cp, "%s^", spaces);
+
+			talloc_free(spaces);
+			talloc_free(text);
+			goto error;
+		}
+		*(tmpl_t **)out = vpt;
+
 		goto finish;
 	}
 
