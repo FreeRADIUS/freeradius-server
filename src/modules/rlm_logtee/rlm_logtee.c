@@ -94,7 +94,7 @@ typedef struct {
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_t		escape_func;		//!< Escape function.
+		xlat_escape_legacy_t		escape_func;		//!< Escape function.
 	} file;
 
 	struct {

@@ -210,7 +210,7 @@ typedef struct {
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	xlat_escape_t	sql_escape_func;
+	xlat_escape_legacy_t	sql_escape_func;
 } rlm_sql_driver_t;
 
 struct sql_inst {
@@ -227,7 +227,7 @@ struct sql_inst {
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
 	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);
-	xlat_escape_t sql_escape_func;
+	xlat_escape_legacy_t sql_escape_func;
 	sql_rcode_t (*sql_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);

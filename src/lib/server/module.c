@@ -1690,7 +1690,7 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 	/*
 	 *	Register a redundant xlat
 	 */
-	if (all_same && (xlat_register_redundant(vm_cs) < 0)) return -1;
+	if (all_same && (xlat_register_legacy_redundant(vm_cs) < 0)) return -1;
 
 	return 0;
 }

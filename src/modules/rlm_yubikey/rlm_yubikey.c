@@ -171,7 +171,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (!cf_section_name2(conf)) return 0;
 
-	xlat_register(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

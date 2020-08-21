@@ -237,7 +237,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->xlat_name = name;
 	if (!inst->xlat_name) return -1;
 
-	xlat_register(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

@@ -2953,7 +2953,7 @@ int main(int argc, char *argv[])
 	 */
 	if (unlang_init() < 0) return -1;
 
-	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
+	if (xlat_register_legacy(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}

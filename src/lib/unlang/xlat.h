@@ -76,8 +76,6 @@ typedef struct xlat_s xlat_t;
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
-typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
-
 /** A callback when the the timeout occurs
  *
  * Used when a xlat needs wait for an event.
@@ -113,31 +111,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst,
 
 /** xlat callback function
  *
- * Should write the result of expanding the fmt string to the output buffer.
- *
- * If a outlen > 0 was provided to #xlat_register, out will point to a talloced
- * buffer of that size, which the result should be written to.
- *
- * If outlen is 0, then the function should allocate its own buffer, in the
- * context of the request.
- *
- * @param[in] ctx		to allocate any dynamic buffers in.
- * @param[in,out] out		Where to write either a pointer to a new buffer,
- *				or data to an existing buffer.
- * @param[in] outlen		Length of pre-allocated buffer, or 0 if function should
- *				allocate its own buffer.
- * @param[in] mod_inst		Instance data provided by the xlat that registered the xlat.
- * @param[in] xlat_inst		Instance data created by the xlat instantiation function.
- * @param[in] request		The current request.
- * @param[in] fmt		string to expand.
- */
-typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
-				    void const *mod_inst, void const *xlat_inst,
-				    REQUEST *request, char const *fmt);
-
-/** Async xlat callback function
- *
- * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
+ * Ingests a list of value boxes as arguments.
  *
  * @param[in] ctx		to allocate any fr_value_box_t in.
  * @param[out] out		Where to append #fr_value_box_t containing the output of
@@ -153,11 +127,11 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
-					   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
-					   fr_value_box_t **in);
+typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+				     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				     fr_value_box_t **in);
 
-/** Async xlat callback function
+/** xlat callback resumption function
  *
  * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
  *
@@ -249,30 +223,58 @@ typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
  */
 typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
 
+/** legacy xlat callback function
+ *
+ * Should write the result of expanding the fmt string to the output buffer.
+ *
+ * If a outlen > 0 was provided to #xlat_register_legacy, out will point to a talloced
+ * buffer of that size, which the result should be written to.
+ *
+ * If outlen is 0, then the function should allocate its own buffer, in the
+ * context of the request.
+ *
+ * @param[in] ctx		to allocate any dynamic buffers in.
+ * @param[in,out] out		Where to write either a pointer to a new buffer,
+ *				or data to an existing buffer.
+ * @param[in] outlen		Length of pre-allocated buffer, or 0 if function should
+ *				allocate its own buffer.
+ * @param[in] mod_inst		Instance data provided by the xlat that registered the xlat.
+ * @param[in] xlat_inst		Instance data created by the xlat instantiation function.
+ * @param[in] request		The current request.
+ * @param[in] fmt		string to expand.
+ */
+typedef ssize_t (*xlat_func_legacy_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
+				      void const *mod_inst, void const *xlat_inst,
+				      REQUEST *request, char const *fmt);
+
+typedef size_t (*xlat_escape_legacy_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+
+
+
 int		xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);
 
 int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 				   bool *tainted, REQUEST *requst, char const *fmt);
 
-ssize_t		xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
+ssize_t		xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_legacy_t escape,
 			  void const *escape_ctx)
 			  CC_HINT(nonnull (1 ,3 ,4));
 
 ssize_t		xlat_eval_compiled(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat,
-				   xlat_escape_t escape, void const *escape_ctx)
+				   xlat_escape_legacy_t escape, void const *escape_ctx)
 				   CC_HINT(nonnull (1 ,3 ,4));
 
 ssize_t		xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request,
-			   char const *fmt, xlat_escape_t escape, void const *escape_ctx)
+			   char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
 			   CC_HINT(nonnull (2, 3, 4));
 
 ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
-				    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
+				    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 				    CC_HINT(nonnull (2, 3, 4));
 
 int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
-					 xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx);
+					 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx);
 
 int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat);
 
@@ -292,15 +294,23 @@ size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 
-int		xlat_register(void *mod_inst, char const *name,
-			      xlat_func_sync_t func, xlat_escape_t escape,
-			      xlat_instantiate_t instantiate, size_t inst_size,
-			      size_t buf_len, bool async_safe);
+int		xlat_register_legacy(void *mod_inst, char const *name,
+				     xlat_func_legacy_t func, xlat_escape_legacy_t escape,
+				     xlat_instantiate_t instantiate, size_t inst_size,
+				     size_t buf_len);
 
-xlat_t const	*xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func);
+xlat_t const	*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async);
 
 int		xlat_internal(char const *name);
 
+/** Set a callback for global instantiation of xlat functions
+ *
+ * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
+ * @param[in] _instantiate	A instantiation callback.
+ * @param[in] _inst_struct	The instance struct to pre-allocate.
+ * @param[in] _detach		A destructor callback.
+ * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
+ */
 #define	xlat_async_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
 	_xlat_async_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
 void _xlat_async_instantiate_set(xlat_t const *xlat,
@@ -308,6 +318,14 @@ void _xlat_async_instantiate_set(xlat_t const *xlat,
 				        xlat_detach_t detach,
 				        void *uctx);
 
+/** Set a callback for thread-specific instantiation of xlat functions
+ *
+ * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
+ * @param[in] _instantiate	A instantiation callback.
+ * @param[in] _inst_struct	The instance struct to pre-allocate.
+ * @param[in] _detach		A destructor callback.
+ * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
+ */
 #define	xlat_async_thread_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
 	_xlat_async_thread_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
 void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
@@ -318,7 +336,7 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
 
 void		xlat_unregister(char const *name);
 void		xlat_unregister_module(void *instance);
-int		xlat_register_redundant(CONF_SECTION *cs);
+int		xlat_register_legacy_redundant(CONF_SECTION *cs);
 int		xlat_init(void);
 void		xlat_free(void);
 

@@ -499,18 +499,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register_legacy(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
 	 *	%{redis_node:<key>[ idx]}
 	 */
 	name = talloc_asprintf(NULL, "%s_node", inst->name);
-	xlat = xlat_async_register(inst, name, redis_node_xlat);
+	xlat = xlat_register(inst, name, redis_node_xlat, false);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", inst->name);
-	xlat = xlat_async_register(inst, name, redis_remap_xlat);
+	xlat = xlat_register(inst, name, redis_remap_xlat, false);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 

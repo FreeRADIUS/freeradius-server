@@ -60,7 +60,7 @@
  * #tmpl_expand will return a pointer to the raw #VALUE_PAIR buffer. This can be very
  * useful when using the #FR_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
- * format specific #xlat_escape_t function, or to operate on the raw value.
+ * format specific #xlat_escape_legacy_t function, or to operate on the raw value.
  *
  * @see tmpl_expand
  * @see tmpl_aexpand
@@ -666,14 +666,14 @@ ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
 				      REQUEST *request,
 				      tmpl_t const *vpt,
-				      xlat_escape_t escape, void const *escape_ctx,
+				      xlat_escape_legacy_t escape, void const *escape_ctx,
 				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 
 ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       		       REQUEST *request,
 				       tmpl_t const *vpt,
-				       xlat_escape_t escape, void const *escape_ctx,
+				       xlat_escape_legacy_t escape, void const *escape_ctx,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 

@@ -193,8 +193,8 @@ static int dhcp_load(void)
 		return -1;
 	}
 
-	xlat_async_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat);
-	xlat_async_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat);
+	xlat_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, false);
+	xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
 
 	return 0;
 }

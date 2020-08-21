@@ -40,18 +40,18 @@ extern "C" {
  *
  */
 typedef enum {
-	XLAT_FUNC_SYNC,						//!< Ingests and excretes strings.
-	XLAT_FUNC_ASYNC						//!< Ingests and excretes value boxes (and may yield)
-} xlat_func_sync_type_t;
+	XLAT_FUNC_LEGACY,					//!< Ingests and excretes strings.
+	XLAT_FUNC_NORMAL					//!< Ingests and excretes value boxes (and may yield)
+} xlat_func_legacy_type_t;
 
 typedef struct xlat_s {
 	char const		*name;				//!< Name of xlat function.
 
 	union {
-		xlat_func_sync_t	sync;			//!< synchronous xlat function (async safe).
-		xlat_func_async_t	async;			//!< async xlat function (async unsafe).
+		xlat_func_legacy_t	sync;			//!< synchronous xlat function (async safe).
+		xlat_func_t	async;				//!< async xlat function (async unsafe).
 	} func;
-	xlat_func_sync_type_t	type;				//!< Type of xlat function.
+	xlat_func_legacy_type_t	type;				//!< Type of xlat function.
 
 	xlat_instantiate_t	instantiate;			//!< Instantiation function.
 	xlat_thread_instantiate_t thread_instantiate;		//!< Thread instantiation function.
@@ -74,7 +74,7 @@ typedef struct xlat_s {
 
 	size_t			buf_len;			//!< Length of output buffer to pre-allocate.
 	void			*mod_inst;			//!< Module instance passed to xlat
-	xlat_escape_t		escape;				//!< Escape function to apply to dynamic input to func.
+	xlat_escape_legacy_t		escape;				//!< Escape function to apply to dynamic input to func.
 } xlat_t;
 
 

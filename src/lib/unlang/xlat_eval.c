@@ -92,7 +92,7 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
-			   xlat_escape_t escape, void  const *escape_ctx);
+			   xlat_escape_legacy_t escape, void  const *escape_ctx);
 
 /** Check to see if the expansion consists entirely of literal elements
  *
@@ -767,7 +767,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	switch (node->type) {
 	case XLAT_FUNC:
 		switch (node->xlat->type) {
-		case XLAT_FUNC_SYNC:
+		case XLAT_FUNC_LEGACY:
 		{
 			fr_value_box_t	*value;
 			char		*str = NULL;
@@ -821,7 +821,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		}
 			break;
 
-		case XLAT_FUNC_ASYNC:
+		case XLAT_FUNC_NORMAL:
 		{
 			xlat_action_t		xa;
 			xlat_thread_inst_t	*thread_inst;
@@ -1151,7 +1151,7 @@ finish:
 }
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_t escape, void const *escape_ctx,
+			 xlat_escape_legacy_t escape, void const *escape_ctx,
 #ifndef DEBUG_XLAT
 			 UNUSED
 #endif
@@ -1260,7 +1260,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *
 		 *	Will not handle yields.
 		 */
-		if (node->xlat->type == XLAT_FUNC_ASYNC) {
+		if (node->xlat->type == XLAT_FUNC_NORMAL) {
 			fr_value_box_t	*result = NULL;
 			TALLOC_CTX	*pool = talloc_new(NULL);
 
@@ -1431,7 +1431,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
-			   xlat_escape_t escape, void const *escape_ctx)
+			   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int i, j, list;
 	size_t total;
@@ -1489,7 +1489,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 		 *	Break here to avoid nodes being evaluated multiple times
 		 *      and parts of strings being duplicated.
 		 */
-		if ((node->type == XLAT_FUNC) && (node->xlat->type == XLAT_FUNC_ASYNC)) {
+		if ((node->type == XLAT_FUNC) && (node->xlat->type == XLAT_FUNC_NORMAL)) {
 			i++;
 			break;
 		}
@@ -1538,7 +1538,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
-				   xlat_exp_t const *node, xlat_escape_t escape, void const *escape_ctx)
+				   xlat_exp_t const *node, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	char *buff;
 	ssize_t len;
@@ -1572,7 +1572,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, R
 }
 
 static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			  xlat_escape_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
+			  xlat_escape_legacy_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
 
 /** Replace %whatever in a string.
  *
@@ -1588,7 +1588,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			  xlat_escape_t escape, void const *escape_ctx)
+			  xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
@@ -1627,7 +1627,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 }
 
 ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
-		  char const *fmt, xlat_escape_t escape, void const *escape_ctx)
+		  char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1635,7 +1635,7 @@ ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
 }
 
 ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
-			   xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
+			   xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1643,7 +1643,7 @@ ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 }
 
 ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
-		   xlat_escape_t escape, void const *escape_ctx)
+		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1652,7 +1652,7 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fm
 }
 
 ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
-			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
+			    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1676,7 +1676,7 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
  *	- >0 on success	which is argc to the corresponding argv
  */
 int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
-				 xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
+				 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int i;
 	ssize_t slen;

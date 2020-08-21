@@ -276,7 +276,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (!xlat_async_register(NULL, "chap_password", xlat_func_chap_password)) return -1;
+	if (!xlat_register(NULL, "chap_password", xlat_func_chap_password, false)) return -1;
 
 	return 0;
 }

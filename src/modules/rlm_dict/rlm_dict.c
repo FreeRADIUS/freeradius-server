@@ -173,12 +173,12 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr", xlat_attr, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr", xlat_attr, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0);
 
 	return 0;
 }
