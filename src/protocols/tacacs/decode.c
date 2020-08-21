@@ -25,7 +25,7 @@
  */
 
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/protocol/tacacs/dictionary.h>
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/base.h>
@@ -271,6 +271,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
+			uint8_t want;
+
 			/**
 			 * 4.1. The Authentication START Packet Body
 			 *
@@ -308,7 +310,43 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen.start.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen.start.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen.start.rem_addr_len);
-			DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+
+			/*
+			 *	Check the length on the various
+			 *	authentication types.
+			 */
+			switch (pkt->authen.start.authen_type) {
+			default:
+				want = 255;
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_CHAP:
+				want = 1 + 8 + 16; /* id + 8 octets of challenge + 16 hash */
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				want = 1 + 8 + 49; /* id + 8 octets of challenge + 49 MS-CHAP stuff */
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+				want = 1 + 16 + 49; /* id + 16 octets of challenge + 49 MS-CHAP stuff */
+				break;
+			}
+
+			/*
+			 *	If we have enough data, decode it as
+			 *	the claimed authentication type.
+			 *	Otherwise, decode it as an unknown
+			 *	attribute.
+			 */
+			if (pkt->authen.start.data_len >= want) {
+				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+			} else {
+				fr_dict_attr_t *da;
+
+				da = fr_dict_unknown_acopy(ctx, attr_tacacs_data);
+				if (da) DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
+			}
 
 		} else if (packet_is_authen_continue(pkt)) {
 			/*
