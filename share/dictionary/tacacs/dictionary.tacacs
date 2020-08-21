@@ -32,7 +32,7 @@ ATTRIBUTE	TACACS-Authentication-Type		9	byte
 ATTRIBUTE	TACACS-User-Name			10	string
 ATTRIBUTE	TACACS-Client-Port			11	string
 ATTRIBUTE	TACACS-Remote-Address			12	string
-ATTRIBUTE	TACACS-Data				13	string
+ATTRIBUTE	TACACS-Data				13	octets
 
 ATTRIBUTE	TACACS-Server-Message			14	string
 ATTRIBUTE	TACACS-User-Message			15	string
