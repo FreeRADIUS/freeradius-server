@@ -1262,7 +1262,7 @@ do_read:
 		 *	function has done any complaining, if
 		 *	necessary.
 		 */
-		value = inst->app->priority(inst, buffer, packet_len);
+		value = inst->app->priority(inst->app_instance, buffer, packet_len);
 		if (value <= 0) {
 
 			/*
