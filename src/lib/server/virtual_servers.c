@@ -1314,6 +1314,13 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 		}
 
 		/*
+		 *	Reset this so that we start from the beginning
+		 *	again, instead of starting from the last "send
+		 *	foo" block.
+		 */
+		subcs = NULL;
+
+		/*
 		 *	Find all subsections with the given first name
 		 *	and compile them.
 		 */
