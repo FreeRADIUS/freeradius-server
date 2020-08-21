@@ -513,9 +513,6 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
 {
-	// FIXME: the ./src/lib/io/master.c has some issue with TCP connections comming here
-	// with a invalid 'inst'. take a look soon.
-#if 0
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
 	fr_assert(buffer[1] != FR_TAC_PLUS_INVALID);
@@ -539,9 +536,6 @@ static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *b
 	 *	Return the configured priority.
 	 */
 	return inst->priorities[buffer[1]];
-#else
-	return PRIORITY_NORMAL;
-#endif
 }
 
 /** Open listen sockets/connect to external event source
