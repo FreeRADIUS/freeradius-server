@@ -65,7 +65,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(n, parent, da->attr, da->type, &flags);
+	dict_attr_init(n, parent, da->attr, FR_TYPE_OCTETS, &flags);
 
 	DA_VERIFY(n);
 
