@@ -35,9 +35,13 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	fr_dict_attr_flags_t	flags = da->flags;
 
 	/*
-	 *	Set the unknown flag.
+	 *	Set the unknown flag, and clear other flags which are
+	 *	no longer relevant.
 	 */
 	flags.is_unknown = 1;
+	flags.has_tag = 0;
+	flags.array = 0;
+	flags.has_value = 0;
 
 	/*
 	 *	Allocate an attribute.
