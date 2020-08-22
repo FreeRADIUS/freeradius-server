@@ -2042,7 +2042,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Insert the timer if requested.
 	 */
 	if (el && !now && inst->cleanup_delay) {
-		if (fr_event_timer_in(client, el, &track->ev,
+		if (fr_event_timer_in(track, el, &track->ev,
 				      inst->cleanup_delay,
 				      packet_expiry_timer, track) == 0) {
 			return;
