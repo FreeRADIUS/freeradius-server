@@ -284,28 +284,18 @@ static int track_cmp(void const *one, void const *two)
 
 	fr_assert(a->in_dedup_tree);
 	fr_assert(b->in_dedup_tree);
+	fr_assert(a->client != NULL);
+	fr_assert(b->client != NULL);
+
+	fr_assert(!a->client->connection);
+	fr_assert(!b->client->connection);
 
 	/*
-	 *	Connected sockets MUST have all tracking entries use
-	 *	the same client definition.
+	 *	Check client structures, this gets much of a full
+	 *	address comparison, without the extra work.
 	 */
-	if (a->client->connection) {
-		fr_assert(a->client == b->client);
-
-		/*
-		 *	Note that we pass the connection "client", as
-		 *	we may do negotiation specific to this connection.
-		 */
-		rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-							 a->client->connection->child->thread_instance,
-							 a->client->connection->client->radclient,
-							 a->packet, b->packet);
-		if (rcode != 0) return rcode;
-		return 0;
-	}
-
-	fr_assert(b->client != NULL);
-	fr_assert(!b->client->connection);
+	rcode = (a->client > b->client) - (a->client < b->client);
+	if (rcode != 0) return rcode;
 
 	/*
 	 *	Unconnected sockets must check src/dst ip/port.
@@ -319,6 +309,32 @@ static int track_cmp(void const *one, void const *two)
 	return a->client->inst->app_io->compare(a->client->inst->app_io_instance,
 						a->client->thread->child->thread_instance,
 						a->client->radclient,
+						a->packet, b->packet);
+}
+
+
+static int track_connected_cmp(void const *one, void const *two)
+{
+	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
+	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
+
+	fr_assert(a->in_dedup_tree);
+	fr_assert(b->in_dedup_tree);
+	fr_assert(a->client != NULL);
+	fr_assert(b->client != NULL);
+
+	fr_assert(a->client->connection);
+	fr_assert(b->client->connection);
+	fr_assert(a->client == b->client);
+	fr_assert(a->client->connection == b->client->connection);
+
+	/*
+	 *	Note that we pass the connection "client", as
+	 *	we may do negotiation specific to this connection.
+	 */
+	return a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+						a->client->connection->child->thread_instance,
+						a->client->connection->client->radclient,
 						a->packet, b->packet);
 }
 
@@ -535,8 +551,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = rbtree_talloc_alloc(client, track_cmp, fr_io_track_t,
-								     NULL, RBTREE_FLAG_NONE));
+		MEM(connection->client->table = rbtree_talloc_alloc(client, track_connected_cmp, fr_io_track_t,
+								    NULL, RBTREE_FLAG_NONE));
 	}
 
 	/*
@@ -1438,7 +1454,7 @@ do_read:
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
 			MEM(client->table = rbtree_talloc_alloc(client, track_cmp, fr_io_track_t,
-								 NULL, RBTREE_FLAG_NONE));
+								NULL, RBTREE_FLAG_NONE));
 		}
 
 		/*
@@ -2042,6 +2058,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Insert the timer if requested.
 	 */
 	if (el && !now && inst->cleanup_delay) {
+		fr_assert(track->in_dedup_tree);
 		if (fr_event_timer_in(track, el, &track->ev,
 				      inst->cleanup_delay,
 				      packet_expiry_timer, track) == 0) {
