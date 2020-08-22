@@ -156,7 +156,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_eap_aka_sim;
+fr_dict_t const *dict_eap_aka_sim;
 
 /*
  *	UMTS vector
