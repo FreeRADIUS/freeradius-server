@@ -300,6 +300,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->authen.start.body;
 			PACKET_HEADER_CHECK("Authentication Start");
 
+			if ((pkt->hdr.ver.minor == 0) &&
+			    (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+				fr_strerror_printf("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
+				goto fail;
+			}
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_START);
 
 			/*
@@ -373,8 +379,24 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * |    data ...
 			 * +----------------+
 			 */
+
+			if (pkt->hdr.ver.minor != 0) {
+			invalid_version:
+				fr_strerror_printf("Invalid TACACS+ version");
+				goto fail;
+			}
+
 			p = pkt->authen.cont.body;
 			PACKET_HEADER_CHECK("Authentication Continue");
+
+			/*
+			 *	We don't care about versions here.
+			 */
+			if (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII) {
+				fr_strerror_printf("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
+				goto fail;
+			}
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
@@ -400,6 +422,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |           data ...
 			 * +----------------+----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->authen.reply.body;
@@ -451,6 +478,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
+
 			p = pkt->author.req.body;
 			PACKET_HEADER_CHECK("Authorization REQUEST");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
@@ -499,6 +528,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |   arg_N ...
 			 * +----------------+----------------+----------------+----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->author.res.body;
@@ -557,6 +591,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
+
 			p = pkt->acct.req.body;
 			PACKET_HEADER_CHECK("Accounting REQUEST");
 			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
@@ -596,6 +632,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |     data ...
 			 * +----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->acct.reply.body;
