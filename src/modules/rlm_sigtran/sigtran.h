@@ -236,6 +236,11 @@ typedef struct rlm_sigtran {
 	tmpl_t		*imsi;					//!< Subscriber identifier.
 } rlm_sigtran_t;
 
+typedef struct rlm_sigtran_thread {
+        rlm_sigtran_t const     *inst;                                  //!< Instance of rlm_sigtran
+        int                     fd;                                     //!< File descriptor
+} rlm_sigtran_thread_t;
+
 extern int ctrl_pipe[2];
 extern uint8_t const ascii_to_tbcd[];
 extern uint8_t const is_char_tbcd[];
