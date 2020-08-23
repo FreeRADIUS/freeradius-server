@@ -38,6 +38,8 @@
 #include <signal.h>
 #include <pthread.h>
 
+#include <freeradius-devel/util/debug.h>
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
