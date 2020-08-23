@@ -506,11 +506,6 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.
 	 *	Do so now.
-	 *
-	 *	LEAP requires the Id to be incremented on EAP-Success
-	 *	in Stage 4, so that we can carry on the conversation
-	 *	where the client asks us to authenticate ourselves
-	 *	in stage 5.
 	 */
 	if (!eap_ds->set_request_id) {
 		/*
@@ -598,8 +593,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
-		request->reply->code = PW_CODE_ACCESS_ACCEPT;
-		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+		rcode = RLM_MODULE_REJECT
 		break;
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
@@ -1230,6 +1225,6 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	}
 
 	handler->timestamp = request->timestamp;
-	handler->request = request; /* LEAP needs this */
+	handler->request = request;
 	return handler;
 }
