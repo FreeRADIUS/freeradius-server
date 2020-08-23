@@ -76,20 +76,10 @@ fr_dict_autoload_t proto_tacacs_dict[] = {
 
 
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_tacacs_accounting_status;
-static fr_dict_attr_t const *attr_tacacs_authentication_status;
-static fr_dict_attr_t const *attr_tacacs_authorization_status;
-static fr_dict_attr_t const *attr_tacacs_packet_type;
-static fr_dict_attr_t const *attr_tacacs_sequence_number;
 
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
-	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_packet_type, .name = "TACACS-Packet-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_sequence_number, .name = "TACACS-Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ NULL }
 };
 
@@ -109,7 +99,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[] = {
+	static char const *type_lib_table[FR_PACKET_TYPE_MAX] = {
 		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "auth",
 		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "auth",
  		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
@@ -120,7 +110,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	CONF_SECTION		*process_app_cs;
-//	proto_tacacs_t		*inst;
 	dl_module_inst_t	*parent_inst;
 	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
@@ -165,12 +154,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_tacacs"));
 	fr_assert(parent_inst);
 
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-//	inst = talloc_get_type_abort(parent_inst->data, proto_tacacs_t);
-	
 	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
 
 	/*

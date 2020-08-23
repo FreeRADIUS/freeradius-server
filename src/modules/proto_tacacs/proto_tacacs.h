@@ -32,11 +32,6 @@
  *
  */
 typedef struct {
-	uint32_t		session_timeout;		//!< Maximum time between rounds.
-	uint32_t		max_sessions;			//!< Maximum ongoing sessions.
-
-	fr_state_tree_t		*state_tree;
-
 	fr_io_instance_t	io;				//!< wrapper for IO abstraction
 
 	dl_module_inst_t	**type_submodule;		//!< Instance of the various types
