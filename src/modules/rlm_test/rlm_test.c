@@ -263,7 +263,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	}
 
 	if (inst->tmpl_m) {
-		talloc_foreach(inst->tmpl_m, tmpl_t *, item) INFO("%s", item->name);
+		talloc_foreach(inst->tmpl_m,  item) INFO("%s", item->name);
 	} else {
 		INFO("inst->tmpl_m is NULL");
 	}

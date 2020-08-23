@@ -39,7 +39,7 @@ extern "C" {
 /** Iterate over a talloced array of elements
  *
 @verbatim
-talloc_foreach(vpt_m, tmpl_t *, vpt) {
+talloc_foreach(vpt_m, vpt) {
 	tmpl_debug(vpt);
 }
 @endverbatim
