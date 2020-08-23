@@ -36,6 +36,34 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+/** Iterate over a talloced array of elements
+ *
+@verbatim
+talloc_foreach(vpt_m, tmpl_t *, vpt) {
+	tmpl_debug(vpt);
+}
+@endverbatim
+ *
+ * There seems to be a limitation in for loop initialiser arguments where they all
+ * must be the same type, though we can control the number of layers of pointer
+ * indirection on a per variable basis.
+ *
+ * We declare _p to be a pointer of the specified _type, and initialise it to the
+ * start of the array.  We declare _end to be a pointer of the specified type and
+ * initialise it to point to the end of the array using talloc_array_length().
+ *
+ * _iter is only updated in the condition to avoid de-referencing invalid memory.
+ *
+ * @param[in] _array	to iterate over.  May contain zero elements.
+ * @param[in] _iter	Name of iteration variable.
+ *			Will be declared in the scope of the loop.
+ */
+#define talloc_foreach(_array, _iter) \
+	for (__typeof__(_array[0]) _iter, *_p = (void *)(_array), *_end = (void *)((_array) + talloc_array_length(_array)); \
+	     (_p < _end) && (_iter = *((void **)(_p))); \
+	     _p = (__typeof__(_p))((__typeof__(_array))_p) + 1)
+
+
 typedef int(* fr_talloc_free_func_t)(void *fire_ctx, void *uctx);
 
 typedef struct fr_talloc_destructor_s fr_talloc_destructor_t;

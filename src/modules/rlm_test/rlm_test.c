@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/debug.h>
 
 /*
@@ -251,6 +252,21 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	DEBUG2("Debug2 message");
 	DEBUG3("Debug3 message");
 	DEBUG4("Debug4 message");
+
+	/*
+	 *	Output parsed tmpls
+	 */
+	if (inst->tmpl) {
+		INFO("%s", inst->tmpl->name);
+	} else {
+		INFO("inst->tmpl is NULL");
+	}
+
+	if (inst->tmpl_m) {
+		talloc_foreach(inst->tmpl_m, tmpl_t *, item) INFO("%s", item->name);
+	} else {
+		INFO("inst->tmpl_m is NULL");
+	}
 
 	return 0;
 }
