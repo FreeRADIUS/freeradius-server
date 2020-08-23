@@ -380,6 +380,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+
 			 */
 
+			/*
+			 *	Version 1 is ONLY used for PAP / CHAP
+			 *	/ MS-CHAP start and reply packets.
+			 */
 			if (pkt->hdr.ver.minor != 0) {
 			invalid_version:
 				fr_strerror_printf("Invalid TACACS+ version");
@@ -389,9 +393,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->authen.cont.body;
 			PACKET_HEADER_CHECK("Authentication Continue");
 
-			/*
-			 *	We don't care about versions here.
-			 */
 			if (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII) {
 				fr_strerror_printf("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
 				goto fail;
