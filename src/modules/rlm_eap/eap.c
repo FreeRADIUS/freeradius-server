@@ -594,7 +594,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	if (!request->reply->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-		rcode = RLM_MODULE_REJECT
+		rcode = RLM_MODULE_REJECT;
 		break;
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
@@ -908,10 +908,50 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	/*
 	 *	High level EAP packet checks
 	 */
-	if ((len <= EAP_HEADER_LEN) ||
-	    ((eap_packet->code != PW_EAP_RESPONSE) &&
-	     (eap_packet->code != PW_EAP_REQUEST))) {
-		RAUTH("Badly formatted EAP Message: Ignoring the packet");
+	if (len <= EAP_HEADER_LEN) {
+		RAUTH("EAP packet is too small: Ignoring it.");
+		return EAP_INVALID;
+	}
+
+	if (eap_packet->code == PW_EAP_REQUEST) {
+		VALUE_PAIR *vp;
+		RAUTH("Unexpected EAP-Request.  NAKing it.");
+
+		vp = pair_make_reply("EAP-Message", "123456", T_OP_SET);
+		if (vp) {
+			uint8_t buffer[6];
+
+			buffer[0] = PW_EAP_RESPONSE;
+			buffer[1] = eap_packet->id;
+			buffer[2] = 0;
+			buffer[3] = 6;
+			buffer[4] = PW_EAP_NAK;
+			buffer[5] = 0; /* no overlapping EAP types */
+
+			fr_pair_value_memcpy(vp, buffer, 6);
+		}
+
+		/*
+		 *	Ensure that the Access-Reject has a Message-Authenticator
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+		if (!vp) {
+			vp = fr_pair_afrom_num(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
+			vp->vp_length = AUTH_VECTOR_LEN;
+			vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
+			fr_pair_add(&(request->reply->vps), vp);
+		}
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+
+		return EAP_INVALID;
+	}
+
+	/*
+	 *	We only allow responses from the peer.  The peer
+	 *	CANNOT ask us to authenticate outselves.
+	 */
+	if (eap_packet->code != PW_EAP_RESPONSE) {
+		RAUTH("Unexpected packet code %02x: Ignoring it.", eap_packet->code);
 		return EAP_INVALID;
 	}
 
