@@ -101,6 +101,7 @@ static fr_dict_attr_t const *attr_tacacs_remote_address;
 static fr_dict_attr_t const *attr_tacacs_server_message;
 static fr_dict_attr_t const *attr_tacacs_session_id;
 static fr_dict_attr_t const *attr_tacacs_user_name;
+static fr_dict_attr_t const *attr_tacacs_state;
 
 extern fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
@@ -154,6 +155,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	fr_dict_enum_t const		*dv = NULL;
 	fr_cursor_t			cursor;
 	fr_tacacs_auth_request_ctx_t const *auth_ctx;
+	fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 	REQUEST_VERIFY(request);
 
@@ -176,9 +178,28 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		request->reply->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY;
 
 		/*
-		 *	Grab the VPS and data associated with the State attribute.
+		 *	Grab the VPS and data associated with the
+		 *	TACACS-State attribute.  This is a synthetic /
+		 *	internal attribute, which is composed of the
+		 *	listener followed by the session ID
+		 *
+		 *	The session ID is unique per listener.
 		 */
-		if (!request->parent) fr_state_to_request(inst->state_tree, request);
+		if (!request->parent) {
+			uint8_t buffer[sizeof(request->async->listen) + sizeof(pkt->session_id)];
+
+			fr_assert(request->async->listen);
+			memcpy(buffer, &request->async->listen, sizeof(request->async->listen));
+			memcpy(buffer + sizeof(request->async->listen), &pkt->session_id, sizeof(pkt->session_id));
+
+			vp = fr_pair_afrom_da(&request->packet, attr_tacacs_state);
+			if (vp) {
+				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
+				fr_pair_add(&request->packet->vps, vp);
+			}
+
+			fr_state_to_request(inst->state_tree, request);
+		}
 
 		/*
 		 *	Push the conf section into the unlang stack.
@@ -377,18 +398,20 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	for "Continue".
 		 */
 		if (!request->parent) {
-			if (request->packet->code == FR_PACKET_TYPE_VALUE_AUTHENTICATION_START) {
+			/*
+			 *	Keep the state around for
+			 *	authorization and accounting packets.
+			 */
+			if (pkt->seq_no >= 254) {
+				fr_state_discard(inst->state_tree, request);
+
 				/*
 				 *	We can't create a valid response
 				 */
-				if (fr_request_to_state(inst->state_tree, request) < 0) {
-					request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
-					return RLM_MODULE_OK;
-				}
-			} else {
-				fr_state_discard(inst->state_tree, request);
+			} else if (fr_request_to_state(inst->state_tree, request) < 0) {
+				RWDEBUG("Failed saving state");
+				request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
 			}
-
 		}
 
 		/*
@@ -396,6 +419,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 */
 		if (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
+			fr_state_discard(inst->state_tree, request);
 			break;
 		}
 		break;
@@ -461,19 +485,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 
 	/*
 	 *	Usually we use the 'State' attribute. But, in this
-	 *	case we are using the TACACS-Session-ID as the state
-	 *	id.  It is 32-bits of (allegedly) random value.  It
-	 *	MUST be unique per TCP connection.
-	 *
-	 *	@todo - we probably want to just use a synthetic
-	 *	"state" internally, which is composed of the TACACS
-	 *	session ID, followed by some identifying information
-	 *	about the TCP connection.  Right now, we use one state
-	 *	tree, which means that if two TCP connections use the
-	 *	same session ID, then they will be treated as the same
-	 *	session.  This is wrong...
+	 *	case we are using the listener followed by the
+	 *	TACACS-Session-ID as the state id.  It is 32-bits of
+	 *	(allegedly) random value.  It MUST be unique per TCP
+	 *	connection.
 	 */
-	inst->state_tree = fr_state_tree_init(inst, attr_tacacs_session_id, main_config->spawn_workers, inst->max_session,
+	inst->state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->max_session,
 					      inst->session_timeout, inst->state_server_id);
 
 	return 0;
@@ -491,6 +508,22 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
+
+	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
+	if (!attr_tacacs_state) {
+		fr_dict_attr_flags_t	flags;
+
+		memset(&flags, 0, sizeof(flags));
+		flags.internal = true;
+
+		if (fr_dict_attr_add(fr_dict_unconst(dict_tacacs), fr_dict_root(dict_tacacs),
+				     "TACACS-State", -1, FR_TYPE_OCTETS, &flags) < 0) {
+			cf_log_err(listen_cs, "Failed creating TACACS-State: %s", fr_strerror());
+			return -1;
+		}
+
+		attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
+	}
 
 	return 0;
 }
