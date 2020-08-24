@@ -1507,9 +1507,22 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		/*
 		 *	Parse the pair into a template
 		 */
-		} else if (is_tmpl) {
+		} else if (is_tmpl && !multi) {
 			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, attribute) < 0) {
 				return -1;
+			}
+
+		} else if (is_tmpl) {
+			size_t i;
+			char const *name = cp->attr;
+			tmpl_t **array = *(tmpl_t ***) data;
+
+			for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
+				if (!cp) break;
+
+				if (cf_parse_tmpl_pass2(cs, &array[i], cp, attribute) < 0) {
+					return -1;
+				}
 			}
 		}
 	}
