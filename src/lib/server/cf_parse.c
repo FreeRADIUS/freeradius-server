@@ -1300,6 +1300,75 @@ finish:
 	return ret;
 }
 
+/*
+ *	Pass2 fixups on tmpl_t
+ *
+ *	We don't have (or need yet) cf_pair_parse_pass2(), so we just
+ *	do it for tmpls.
+ */
+static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, bool attribute)
+{
+	ssize_t	slen;
+	tmpl_t *vpt;
+
+	slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
+			      cf_pair_value_quote(cp),
+			      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
+			      true);
+	if (slen < 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(vpt, &spaces, &text, slen, cp->value);
+
+		cf_log_err(cp, "%s", text);
+		cf_log_perr(cp, "%s^", spaces);
+
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	if (attribute && !tmpl_is_attr(vpt)) {
+		cf_log_err(cp, "Expected attr got %s",
+			   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+		return -1;
+	}
+
+	switch (vpt->type) {
+		/*
+		 *	All attributes should have been defined by this point.
+		 */
+	case TMPL_TYPE_ATTR_UNPARSED:
+		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unparsed(vpt));
+		talloc_free(vpt);	/* Free last (vpt needed for log) */
+		return -1;
+
+	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT:
+		break;
+
+	case TMPL_TYPE_UNINITIALISED:
+	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_MAX:
+		fr_assert(0);
+		/* Don't add default */
+	}
+
+	/*
+	 *	Free the old value if we're overwriting
+	 */
+	TALLOC_FREE(*out);
+	*out = vpt;
+	return 0;
+}
+
 /** Fixup xlat expansions and attributes
  *
  * @param[out] base start of structure to write #tmpl_t s to.
@@ -1439,66 +1508,9 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Parse the pair into a template
 		 */
 		} else if (is_tmpl) {
-			ssize_t	slen;
-
-			tmpl_t **out = (tmpl_t **)data;
-			tmpl_t *vpt;
-
-			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
-					      cf_pair_value_quote(cp),
-					      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
-					      true);
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(vpt, &spaces, &text, slen, cp->value);
-
-				cf_log_err(cp, "%s", text);
-				cf_log_perr(cp, "%s^", spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
+			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, attribute) < 0) {
 				return -1;
 			}
-
-			if (attribute && !tmpl_is_attr(vpt)) {
-				cf_log_err(cp, "Expected attr got %s",
-					   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
-				return -1;
-			}
-
-			switch (vpt->type) {
-			/*
-			 *	All attributes should have been defined by this point.
-			 */
-			case TMPL_TYPE_ATTR_UNPARSED:
-				cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unparsed(vpt));
-				talloc_free(vpt);	/* Free last (vpt needed for log) */
-				return -1;
-
-			case TMPL_TYPE_UNPARSED:
-			case TMPL_TYPE_ATTR:
-			case TMPL_TYPE_LIST:
-			case TMPL_TYPE_DATA:
-			case TMPL_TYPE_EXEC:
-			case TMPL_TYPE_XLAT_UNPARSED:
-			case TMPL_TYPE_XLAT:
-				break;
-
-			case TMPL_TYPE_UNINITIALISED:
-			case TMPL_TYPE_REGEX_UNPARSED:
-			case TMPL_TYPE_REGEX:
-			case TMPL_TYPE_NULL:
-			case TMPL_TYPE_MAX:
-				fr_assert(0);
-			/* Don't add default */
-			}
-
-			/*
-			 *	Free the old value if we're overwriting
-			 */
-			TALLOC_FREE(*out);
-			*(tmpl_t **)out = vpt;
 		}
 	}
 
