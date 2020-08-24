@@ -523,8 +523,6 @@ static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *b
 	 */
 	if (!inst->priorities[buffer[1]]) return 0;
 
-	if (!inst->type_submodule_by_code[buffer[1]]) return -1;
-
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
 	 *	is a bad packet".  But that's really only for
