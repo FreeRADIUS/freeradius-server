@@ -71,7 +71,7 @@ BuildRequires: freeradius-openssl, freeradius-openssl-devel
 BuildRequires: openssl, openssl-devel
 %endif
 
-BuildRequires: libcurl-devel
+BuildRequires: libcurl-devel >= 7.45.0
 BuildRequires: libkqueue-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
