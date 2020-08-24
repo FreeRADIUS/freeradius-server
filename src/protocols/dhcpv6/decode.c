@@ -365,7 +365,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	 *	types.  It's just easier that way.
 	 */
 	if (!parent->flags.array) {
-		rcode = fr_dns_label_length(data, data_len, &next);
+		rcode = fr_dns_label_uncompressed_length(data, data_len, &next);
 		if (rcode <= 0) goto raw;
 
 		/*

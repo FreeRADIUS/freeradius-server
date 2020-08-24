@@ -482,7 +482,6 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	return false;
 }
 
-
 /** Encode a single value box of type string, serializing its contents to a dns label
  *
  * This functions takes a large buffer and encodes the label in part
@@ -676,7 +675,7 @@ done:
  *	- <=0 on error, offset from buf where the invalid label is located.
  *	- > 0 decoded size of this particular DNS label
  */
-ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
+ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
 {
 	uint8_t const *p, *q, *end;
 	uint8_t const *current, *start;
@@ -861,7 +860,7 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 	uint8_t const *end = buf + buf_len;
 
 	for (label = buf; label < end; /* nothing */) {
-		slen = fr_dns_label_length(buf, buf_len, &label);
+		slen = fr_dns_label_uncompressed_length(buf, buf_len, &label);
 		if (slen <= 0) return slen; /* already is offset from 'buf' and not 'label' */
 	}
 
@@ -932,7 +931,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Get the uncompressed length of the label, and the
 	 *	label after this one.
 	 */
-	slen = fr_dns_label_length(src, len, &after);
+	slen = fr_dns_label_uncompressed_length(src, len, &after);
 	if (slen <= 0) return slen;
 
 	fr_value_box_init(dst, FR_TYPE_STRING, NULL, tainted);
