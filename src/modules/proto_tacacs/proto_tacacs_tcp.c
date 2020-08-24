@@ -372,7 +372,7 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	if (rcode != 0) return rcode;
 
 	/*
-	 *	Then ordered by our synthentic packet type.
+	 *	Then ordered by our synthetic packet type.
 	 */
 	return (a->type < b->type) - (a->type > b->type);
 }
