@@ -252,7 +252,7 @@ static void _xlat_func_tree_free(void *xlat)
 }
 
 
-/** Register an xlat function.
+/** Register an old style xlat function
  *
  * @param[in] mod_inst		Instance of module that's registering the xlat function.
  * @param[in] name		xlat name.
@@ -262,15 +262,14 @@ static void _xlat_func_tree_free(void *xlat)
  * @param[in] inst_size		sizeof() this xlat's instance data.
  * @param[in] buf_len		Size of the output buffer to allocate when calling the function.
  *				May be 0 if the function allocates its own buffer.
- * @param[in] async_safe	whether or not the function is async-safe.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_register(void *mod_inst, char const *name,
-		  xlat_func_sync_t func, xlat_escape_t escape,
-		  xlat_instantiate_t instantiate, size_t inst_size,
-		  size_t buf_len, bool async_safe)
+int xlat_register_legacy(void *mod_inst, char const *name,
+			 xlat_func_legacy_t func, xlat_escape_legacy_t escape,
+			 xlat_instantiate_t instantiate, size_t inst_size,
+			 size_t buf_len)
 {
 	xlat_t	*c;
 	bool	is_new = false;
@@ -291,12 +290,6 @@ int xlat_register(void *mod_inst, char const *name,
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
 			return -1;
 		}
-
-		if (c->async_safe != async_safe) {
-			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
-			return -1;
-		}
-
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
@@ -308,13 +301,13 @@ int xlat_register(void *mod_inst, char const *name,
 	}
 
 	c->func.sync = func;
-	c->type = XLAT_FUNC_SYNC;
+	c->type = XLAT_FUNC_LEGACY;
 	c->buf_len = buf_len;
 	c->escape = escape;
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
-	c->async_safe = async_safe;
+	c->async_safe = true;
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
@@ -329,18 +322,17 @@ int xlat_register(void *mod_inst, char const *name,
 }
 
 
-/** Register an async xlat
- *
- * All functions registered must be async_safe.
+/** Register an xlat function
  *
  * @param[in] ctx		Used to automate deregistration of the xlat fnction.
  * @param[in] name		of the xlat.
  * @param[in] func		to register.
+ * @param[in] needs_async	Requires asynchronous evaluation.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func)
+xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async)
 {
 	xlat_t	*c;
 
@@ -361,7 +353,7 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 			return NULL;
 		}
 
-		if ((c->type != XLAT_FUNC_ASYNC) || c->async_safe) {
+		if ((c->type != XLAT_FUNC_NORMAL) || c->async_safe) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
@@ -382,8 +374,8 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 	talloc_set_destructor(c, _xlat_func_talloc_free);
 
 	c->func.async = func;
-	c->type = XLAT_FUNC_ASYNC;
-	c->async_safe = false;	/* this function may yield */
+	c->type = XLAT_FUNC_NORMAL;
+	c->async_safe = !needs_async;	/* this function may yield */
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
@@ -698,7 +690,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
  * These xlats wrap the xlat methods of the modules in a redundant section,
  * emulating the behaviour of a redundant section, but over xlats.
  *
- * @todo - make xlat_register() take ASYNC / SYNC / UNKNOWN.  We may
+ * @todo - make xlat_register_legacy() take ASYNC / SYNC / UNKNOWN.  We may
  * need "unknown" here in order to properly handle the children, which
  * we don't know are async-safe or not.  For now, it's best to assume
  * that all xlat's in a redundant block are module calls, and are not async-safe
@@ -708,7 +700,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
  *	- -1 on error.
  *	- 1 if the modules in the section do not have an xlat method.
  */
-int xlat_register_redundant(CONF_SECTION *cs)
+int xlat_register_legacy_redundant(CONF_SECTION *cs)
 {
 	char const *name1, *name2;
 	xlat_redundant_t *xr;
@@ -739,7 +731,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0, false) < 0) {
+		if (xlat_register_legacy(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
 			ERROR("Registering xlat for redundant section failed");
 			talloc_free(xr);
 			return -1;
@@ -767,7 +759,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0, false) < 0) {
+		if (xlat_register_legacy(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
 			ERROR("Registering xlat for load-balance section failed");
 			talloc_free(xr);
 			return -1;
@@ -3339,69 +3331,69 @@ int xlat_init(void)
 		return -1;
 	}
 
-#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
+#define XLAT_REGISTER(_x) xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(STRINGIFY(_x));
 
-	xlat_register(NULL, "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(NULL, "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_internal("debug");
 	XLAT_REGISTER(debug_attr);
-	xlat_register(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
-	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0);
 	XLAT_REGISTER(map);
-	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0, false);	/* On behalf of trigger.c */
+	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register_legacy(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
 	XLAT_REGISTER(xlat);
 
 
-	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
-	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
-	xlat_async_register(NULL, "bin", xlat_func_bin);
-	xlat_async_register(NULL, "concat", xlat_func_concat);
-	xlat_async_register(NULL, "hex", xlat_func_hex);
-	xlat_async_register(NULL, "hmacmd5", xlat_func_hmac_md5);
-	xlat_async_register(NULL, "hmacsha1", xlat_func_hmac_sha1);
-	xlat_async_register(NULL, "length", xlat_func_length);
-	xlat_async_register(NULL, "md4", xlat_func_md4);
-	xlat_async_register(NULL, "md5", xlat_func_md5);
-	xlat_async_register(NULL, "module", xlat_func_module);
-	xlat_async_register(NULL, "pack", xlat_func_pack);
-	xlat_async_register(NULL, "pairs", xlat_func_pairs);
-	xlat_async_register(NULL, "rand", xlat_func_rand);
-	xlat_async_register(NULL, "randstr", xlat_func_randstr);
+	xlat_register(NULL, "base64", xlat_func_base64_encode, false);
+	xlat_register(NULL, "base64decode", xlat_func_base64_decode, false);
+	xlat_register(NULL, "bin", xlat_func_bin, false);
+	xlat_register(NULL, "concat", xlat_func_concat, false);
+	xlat_register(NULL, "hex", xlat_func_hex, false);
+	xlat_register(NULL, "hmacmd5", xlat_func_hmac_md5, false);
+	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
+	xlat_register(NULL, "length", xlat_func_length, false);
+	xlat_register(NULL, "md4", xlat_func_md4, false);
+	xlat_register(NULL, "md5", xlat_func_md5, false);
+	xlat_register(NULL, "module", xlat_func_module, false);
+	xlat_register(NULL, "pack", xlat_func_pack, false);
+	xlat_register(NULL, "pairs", xlat_func_pairs, false);
+	xlat_register(NULL, "rand", xlat_func_rand, false);
+	xlat_register(NULL, "randstr", xlat_func_randstr, false);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat_async_register(NULL, "regex", xlat_func_regex);
+	xlat_register(NULL, "regex", xlat_func_regex, false);
 #endif
-	xlat_async_register(NULL, "sha1", xlat_func_sha1);
+	xlat_register(NULL, "sha1", xlat_func_sha1, false);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_async_register(NULL, "sha2_224", xlat_func_sha2_224);
-	xlat_async_register(NULL, "sha2_256", xlat_func_sha2_256);
-	xlat_async_register(NULL, "sha2_384", xlat_func_sha2_384);
-	xlat_async_register(NULL, "sha2_512", xlat_func_sha2_512);
+	xlat_register(NULL, "sha2_224", xlat_func_sha2_224, false);
+	xlat_register(NULL, "sha2_256", xlat_func_sha2_256, false);
+	xlat_register(NULL, "sha2_384", xlat_func_sha2_384, false);
+	xlat_register(NULL, "sha2_512", xlat_func_sha2_512, false);
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	xlat_async_register(NULL, "blake2s_256", xlat_func_blake2s_256);
-	xlat_async_register(NULL, "blake2b_512", xlat_func_blake2b_512);
+	xlat_register(NULL, "blake2s_256", xlat_func_blake2s_256, false);
+	xlat_register(NULL, "blake2b_512", xlat_func_blake2b_512, false);
 #  endif
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	xlat_async_register(NULL, "sha3_224", xlat_func_sha3_224);
-	xlat_async_register(NULL, "sha3_256", xlat_func_sha3_256);
-	xlat_async_register(NULL, "sha3_384", xlat_func_sha3_384);
-	xlat_async_register(NULL, "sha3_512", xlat_func_sha3_512);
+	xlat_register(NULL, "sha3_224", xlat_func_sha3_224, false);
+	xlat_register(NULL, "sha3_256", xlat_func_sha3_256, false);
+	xlat_register(NULL, "sha3_384", xlat_func_sha3_384, false);
+	xlat_register(NULL, "sha3_512", xlat_func_sha3_512, false);
 #  endif
 #endif
 
-	xlat_async_register(NULL, "string", xlat_func_string);
-	xlat_async_register(NULL, "strlen", xlat_func_strlen);
-	xlat_async_register(NULL, "sub", xlat_func_sub);
-	xlat_async_register(NULL, "tag", xlat_func_tag);
-	xlat_async_register(NULL, "tolower", xlat_func_tolower);
-	xlat_async_register(NULL, "toupper", xlat_func_toupper);
-	xlat_async_register(NULL, "urlquote", xlat_func_urlquote);
-	xlat_async_register(NULL, "urlunquote", xlat_func_urlunquote);
+	xlat_register(NULL, "string", xlat_func_string, false);
+	xlat_register(NULL, "strlen", xlat_func_strlen, false);
+	xlat_register(NULL, "sub", xlat_func_sub, false);
+	xlat_register(NULL, "tag", xlat_func_tag, false);
+	xlat_register(NULL, "tolower", xlat_func_tolower, false);
+	xlat_register(NULL, "toupper", xlat_func_toupper, false);
+	xlat_register(NULL, "urlquote", xlat_func_urlquote, false);
+	xlat_register(NULL, "urlunquote", xlat_func_urlunquote, false);
 
 	return 0;
 }

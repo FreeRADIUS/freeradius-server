@@ -16,7 +16,7 @@ proto-dictionary tacacs
 #	Authentication: Start Request: (Client -> Server)
 #
 decode-proto c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 1, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3071264782, TACACS-Length = 34, TACACS-Packet-Body-Type = Start, TACACS-Action = LOGIN, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "tapioca/0", TACACS-Remote-Address = "localhost", TACACS-Data = "hello"
+match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 1, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3071264782, TACACS-Length = 34, TACACS-Packet-Body-Type = Start, TACACS-Action = LOGIN, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "tapioca/0", TACACS-Remote-Address = "localhost", TACACS-Data = 0x68656c6c6f
 
 encode-proto -
 match c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
@@ -25,7 +25,7 @@ match c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb
 #	Authentication: Reply: (Client <- Server)
 #
 decode-proto c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3071264782, TACACS-Length = 6, TACACS-Packet-Body-Type = Reply, TACACS-Authentication-Status = Pass, TACACS-Authentication-Flags = 0, TACACS-Server-Message = "", TACACS-Data = ""
+match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3071264782, TACACS-Length = 6, TACACS-Packet-Body-Type = Reply, TACACS-Authentication-Status = Pass, TACACS-Authentication-Flags = 0, TACACS-Server-Message = "", TACACS-Data = 0x
 
 encode-proto -
 match c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
@@ -43,7 +43,7 @@ match c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f
 #  Authorization - Response: (Client <- Server)
 #
 decode-proto c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3781589222, TACACS-Length = 19, TACACS-Packet-Body-Type = Response, TACACS-Authorization-Status = Pass-Add, TACACS-Server-Message = "", TACACS-Data = "", TACACS-ArgumentList = "addr=1.2.3.4"
+match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 3781589222, TACACS-Length = 19, TACACS-Packet-Body-Type = Response, TACACS-Authorization-Status = Pass-Add, TACACS-Server-Message = "", TACACS-Data = 0x, TACACS-ArgumentList = "addr=1.2.3.4"
 
 encode-proto -
 match c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
@@ -61,7 +61,7 @@ match c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89
 #  Accounting - Response: (Client <- Server)
 #
 decode-proto c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 127612377, TACACS-Length = 5, TACACS-Packet-Body-Type = Reply, TACACS-Server-Message = "", TACACS-Data = "", TACACS-Accounting-Status = Success
+match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 2, TACACS-Flags = Encrypted-Multiple-Connections, TACACS-Session-Id = 127612377, TACACS-Length = 5, TACACS-Packet-Body-Type = Reply, TACACS-Server-Message = "", TACACS-Data = 0x, TACACS-Accounting-Status = Success
 
 encode-proto -
 match c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73

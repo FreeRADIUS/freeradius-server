@@ -33,11 +33,16 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*parent;
 	fr_dict_attr_flags_t	flags = da->flags;
+	fr_type_t		type = da->type;
 
 	/*
-	 *	Set the unknown flag.
+	 *	Set the unknown flag, and clear other flags which are
+	 *	no longer relevant.
 	 */
 	flags.is_unknown = 1;
+	flags.has_tag = 0;
+	flags.array = 0;
+	flags.has_value = 0;
 
 	/*
 	 *	Allocate an attribute.
@@ -63,9 +68,25 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	}
 
 	/*
+	 *	VENDOR and TLV are structural, and can have unknown
+	 *	children.  But they're left alone.  All other base
+	 *	types are mangled to OCTETs.
+	 */
+	switch (type) {
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+		break;
+
+	default:
+		type = FR_TYPE_OCTETS;
+		break;
+	}	
+
+	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(n, parent, da->attr, da->type, &flags);
+	dict_attr_init(n, parent, da->attr, type, &flags);
 
 	DA_VERIFY(n);
 

@@ -26,7 +26,7 @@ RCSIDH(rlm_sigtran_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_eap_aka_sim;
+extern fr_dict_t const *dict_eap_aka_sim;
 
 extern fr_dict_attr_t const *attr_eap_aka_sim_autn;
 extern fr_dict_attr_t const *attr_eap_aka_sim_ck;

@@ -547,11 +547,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_async_register(instance, "jsonquote", json_quote_xlat);
-	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(instance, "jsonquote", json_quote_xlat, false);
+	xlat_register_legacy(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	name = talloc_asprintf(inst, "%s_encode", inst->name);
-	xlat = xlat_async_register(instance, name, json_encode_xlat);
+	xlat = xlat_register(instance, name, json_encode_xlat, false);
 	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
 				   rlm_json_t *, NULL, inst);
 	talloc_free(name);

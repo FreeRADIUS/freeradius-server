@@ -538,14 +538,14 @@ void fr_aka_sim_xlat_register(void)
 		return;
 	}
 
-	xlat_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_key_index",
-		      aka_sim_3gpp_pseudonym_key_index_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_decrypt",
-		      aka_sim_3gpp_pseudonym_decrypt_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_encrypt",
-		      aka_sim_3gpp_pseudonym_encrypt_xlat, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_key_index",
+		      aka_sim_3gpp_pseudonym_key_index_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_decrypt",
+		      aka_sim_3gpp_pseudonym_decrypt_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_encrypt",
+		      aka_sim_3gpp_pseudonym_encrypt_xlat, NULL, NULL, 0, 0);
 	aka_sim_xlat_refs = 1;
 }
 

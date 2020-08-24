@@ -43,6 +43,9 @@ typedef struct {
 	char const			*name;			//!< socket name
 	int				sockfd;
 
+	bool				seen_first_packet;
+	bool				single_connection;
+
 	fr_io_address_t			*connection;		//!< for connected sockets.
 
 	fr_stats_t			stats;			//!< statistics for this socket
@@ -100,7 +103,13 @@ static const CONF_PARSER tcp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static const char *packet_name[] = {
+	[FR_TAC_PLUS_AUTHEN] = "Authentication",
+	[FR_TAC_PLUS_AUTHOR] = "Authorization",
+	[FR_TAC_PLUS_ACCT] = "Accounting",
+};
+
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
@@ -151,6 +160,18 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_tim
 	}
 
 	*recv_time_p = fr_time();
+	thread->stats.total_requests++;
+
+	/*
+	 *	See if we negotiated multiple sessions on a single
+	 *	connection.
+	 */
+	if (!thread->seen_first_packet) {
+		fr_tacacs_packet_t *pkt = (fr_tacacs_packet_t *) buffer;
+
+		thread->seen_first_packet = true;
+		thread->single_connection = ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT) != 0);
+	}
 
 	/*
 	 *	proto_tacacs sets the priority
@@ -162,24 +183,18 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_tim
 	FR_PROTO_HEX_DUMP(buffer, packet_len, "tacacs_tcp_recv");
 
 	DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %d %s",
-	       fr_tacacs_packet_codes[buffer[1]], buffer[2],
+	       packet_name[buffer[1]], buffer[2],
 	       (int) packet_len, thread->name);
 
 	return packet_len;
 }
 
-static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
-			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
+static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size;
-
-	/*
-	 *	@todo - share a stats interface with the parent?  or
-	 *	put the stats in the listener, so that proto_tacacs
-	 *	can update them, too.. <sigh>
-	 */
-	thread->stats.total_responses++;
+	fr_tacacs_packet_t		*pkt;
 
 	/*
 	 *	We only write TACACS packets.
@@ -191,11 +206,35 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 	fr_assert(written < buffer_len);
 
 	/*
+	 *	@todo - share a stats interface with the parent?  or
+	 *	put the stats in the listener, so that proto_tacacs
+	 *	can update them, too.. <sigh>
+	 */
+	pkt = (fr_tacacs_packet_t *) buffer;
+	if (written == 0) {
+		thread->stats.total_responses++;
+		if (thread->single_connection) pkt->hdr.flags |= FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT;
+	}
+
+	/*
 	 *	Only write replies if they're TACACS+ packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
 	data_size = write(thread->sockfd, buffer + written, buffer_len - written);
 	if (data_size <= 0) return data_size;
+
+	/*
+	 *	If the "use single connection" flag is clear, then we
+	 *	are only doing a single session.  In which case,
+	 *	return 0, which tells the caller to close the socket.
+	 */
+	if (((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT) == 0) &&
+	    (data_size + written) >= buffer_len) {
+		// @todo - check status for pass / fail / error, which
+		// cause the connection to be closed.  Everything else
+		// leaves it open.
+		return 0;
+	}
 
 	return data_size + written;
 }

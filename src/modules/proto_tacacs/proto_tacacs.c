@@ -76,20 +76,12 @@ fr_dict_autoload_t proto_tacacs_dict[] = {
 
 
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_tacacs_accounting_status;
-static fr_dict_attr_t const *attr_tacacs_authentication_status;
-static fr_dict_attr_t const *attr_tacacs_authorization_status;
-static fr_dict_attr_t const *attr_tacacs_packet_type;
-static fr_dict_attr_t const *attr_tacacs_sequence_number;
+static fr_dict_attr_t const *attr_tacacs_user_name;
 
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
-	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_packet_type, .name = "TACACS-Packet-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_sequence_number, .name = "TACACS-Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ NULL }
 };
 
@@ -109,7 +101,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[] = {
+	static char const *type_lib_table[FR_PACKET_TYPE_MAX] = {
 		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "auth",
 		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "auth",
  		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
@@ -120,7 +112,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	CONF_SECTION		*process_app_cs;
-//	proto_tacacs_t		*inst;
 	dl_module_inst_t	*parent_inst;
 	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
@@ -165,12 +156,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_tacacs"));
 	fr_assert(parent_inst);
 
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-//	inst = talloc_get_type_abort(parent_inst->data, proto_tacacs_t);
-	
 	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
 
 	/*
@@ -361,6 +346,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	if (RDEBUG_ENABLED) {
+		VALUE_PAIR *vp;
+
 		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_tacacs_packet_codes[request->packet->code],
 		       request->packet->id,
@@ -372,6 +359,19 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		       request->async->listen->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+
+		/*
+		 *	Maybe the shared secret is wrong?
+		 */
+		if (client->active &&
+		    ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
+		    RDEBUG_ENABLED2 &&
+		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
+		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+			RWDEBUG("Unprintable characters in the %s. "
+				"Double-check the shared secret on the server "
+				"and the TACACS+ Client!", attr_tacacs_user_name->name);
+		}
 	}
 
 	if (!inst->io.app_io->decode) return 0;
@@ -513,9 +513,6 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
 {
-	// FIXME: the ./src/lib/io/master.c has some issue with TCP connections comming here
-	// with a invalid 'inst'. take a look soon.
-#if 0
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
 	fr_assert(buffer[1] != FR_TAC_PLUS_INVALID);
@@ -525,8 +522,6 @@ static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *b
 	 *	Disallowed packet
 	 */
 	if (!inst->priorities[buffer[1]]) return 0;
-
-	if (!inst->type_submodule_by_code[buffer[1]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -539,9 +534,6 @@ static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *b
 	 *	Return the configured priority.
 	 */
 	return inst->priorities[buffer[1]];
-#else
-	return PRIORITY_NORMAL;
-#endif
 }
 
 /** Open listen sockets/connect to external event source

@@ -155,7 +155,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register_legacy(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (inst->input) {
 		p = inst->input;

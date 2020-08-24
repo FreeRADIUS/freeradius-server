@@ -49,6 +49,7 @@
 
 #include "libosmo-m3ua/include/cellmgr_debug.h"
 #include "libosmo-m3ua/include/mtp_data.h"
+#include "libosmo-m3ua/include/sctp_m3ua.h"
 
 static uint32_t	last_txn_id = 0;	//!< Global transaction ID
 static rbtree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.

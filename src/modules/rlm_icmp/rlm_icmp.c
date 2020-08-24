@@ -526,7 +526,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 	inst->name = inst->xlat_name;
 
-	xlat = xlat_async_register(inst, inst->xlat_name, xlat_icmp);
+	xlat = xlat_register(inst, inst->xlat_name, xlat_icmp, true);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
 

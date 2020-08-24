@@ -2088,7 +2088,7 @@ ssize_t _tmpl_to_type(void *out,
 		      uint8_t *buff, size_t bufflen,
 		      REQUEST *request,
 		      tmpl_t const *vpt,
-		      xlat_escape_t escape, void const *escape_ctx,
+		      xlat_escape_legacy_t escape, void const *escape_ctx,
 		      fr_type_t dst_type)
 {
 	fr_value_box_t		value_to_cast;
@@ -2397,7 +2397,7 @@ ssize_t _tmpl_to_type(void *out,
 ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       REQUEST *request,
 		       tmpl_t const *vpt,
-		       xlat_escape_t escape, void const *escape_ctx,
+		       xlat_escape_legacy_t escape, void const *escape_ctx,
 		       fr_type_t dst_type)
 {
 	fr_value_box_t const	*to_cast = NULL;

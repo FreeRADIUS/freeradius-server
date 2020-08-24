@@ -225,7 +225,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

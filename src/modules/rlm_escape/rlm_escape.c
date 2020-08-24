@@ -184,8 +184,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->xlat_name));
-	xlat_register(inst, inst->xlat_name, escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register_legacy(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	talloc_free(unescape);
 
 	return 0;

@@ -221,7 +221,8 @@ void unlang_foreach_init(void)
 	size_t	i;
 
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
-		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], unlang_foreach_xlat, NULL, NULL, 0, 0, true);
+		xlat_register_legacy(&xlat_foreach_inst[i], xlat_foreach_names[i],
+				     unlang_foreach_xlat, NULL, NULL, 0, 0);
 		xlat_internal(xlat_foreach_names[i]);
 	}
 

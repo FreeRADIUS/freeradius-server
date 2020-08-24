@@ -436,7 +436,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 	fr_value_box_t		lhs_cast = { .type = FR_TYPE_INVALID };
 	fr_value_box_t		rhs_cast = { .type = FR_TYPE_INVALID };
 
-	xlat_escape_t		escape = NULL;
+	xlat_escape_legacy_t		escape = NULL;
 
 	/*
 	 *	Cast operand to correct type.

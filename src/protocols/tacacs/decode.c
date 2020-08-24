@@ -25,7 +25,7 @@
  */
 
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/protocol/tacacs/dictionary.h>
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/base.h>
@@ -136,7 +136,13 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 	}
 
 	if (field_len) {
-		fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
+		if (da->type == FR_TYPE_STRING) {
+			fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
+		} else if (da->type == FR_TYPE_OCTETS) {
+			fr_pair_value_memdup(vp, p, field_len, true);
+		} else {
+			fr_assert(0);
+		}
 		p += field_len;
 		*field_data = p;
 	}
@@ -271,6 +277,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
+			uint8_t want;
+
 			/**
 			 * 4.1. The Authentication START Packet Body
 			 *
@@ -292,6 +300,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->authen.start.body;
 			PACKET_HEADER_CHECK("Authentication Start");
 
+			if ((pkt->hdr.ver.minor == 0) &&
+			    (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+				fr_strerror_printf("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
+				goto fail;
+			}
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_START);
 
 			/*
@@ -308,7 +322,46 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen.start.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen.start.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen.start.rem_addr_len);
-			DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+
+			/*
+			 *	Check the length on the various
+			 *	authentication types.
+			 */
+			switch (pkt->authen.start.authen_type) {
+			default:
+				want = 255;
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_CHAP:
+				want = 1 + 8 + 16; /* id + 8 octets of challenge + 16 hash */
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				want = 1 + 8 + 49; /* id + 8 octets of challenge + 49 MS-CHAP stuff */
+				break;
+
+			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+				want = 1 + 16 + 49; /* id + 16 octets of challenge + 49 MS-CHAP stuff */
+				break;
+			}
+
+			/*
+			 *	If we have enough data, decode it as
+			 *	the claimed authentication type.
+			 *	Otherwise, decode it as an unknown
+			 *	attribute.
+			 */
+			if (pkt->authen.start.data_len <= want) {
+				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+			} else {
+				fr_dict_attr_t *da;
+
+				da = fr_dict_unknown_acopy(ctx, attr_tacacs_data);
+				if (da) {
+					DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
+					talloc_free(da); /* the VP makes it's own copy */
+				}
+			}
 
 		} else if (packet_is_authen_continue(pkt)) {
 			/*
@@ -326,8 +379,25 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * |    data ...
 			 * +----------------+
 			 */
+
+			/*
+			 *	Version 1 is ONLY used for PAP / CHAP
+			 *	/ MS-CHAP start and reply packets.
+			 */
+			if (pkt->hdr.ver.minor != 0) {
+			invalid_version:
+				fr_strerror_printf("Invalid TACACS+ version");
+				goto fail;
+			}
+
 			p = pkt->authen.cont.body;
 			PACKET_HEADER_CHECK("Authentication Continue");
+
+			if (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII) {
+				fr_strerror_printf("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
+				goto fail;
+			}
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
@@ -353,6 +423,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |           data ...
 			 * +----------------+----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->authen.reply.body;
@@ -404,6 +479,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
+
 			p = pkt->author.req.body;
 			PACKET_HEADER_CHECK("Authorization REQUEST");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
@@ -452,6 +529,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |   arg_N ...
 			 * +----------------+----------------+----------------+----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->author.res.body;
@@ -510,6 +592,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 */
 
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
+
 			p = pkt->acct.req.body;
 			PACKET_HEADER_CHECK("Accounting REQUEST");
 			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
@@ -549,6 +633,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * +----------------+----------------+----------------+----------------+
 			 * |     data ...
 			 * +----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
 			 */
 
 			p = pkt->acct.reply.body;

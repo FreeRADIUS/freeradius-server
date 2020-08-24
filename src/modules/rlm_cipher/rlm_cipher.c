@@ -1121,7 +1121,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 *	Register decrypt xlat
 			 */
 			decrypt_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
-			xlat = xlat_async_register(inst, decrypt_name, cipher_rsa_decrypt_xlat);
+			xlat = xlat_register(inst, decrypt_name, cipher_rsa_decrypt_xlat, false);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1137,7 +1137,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 *	Verify sign xlat
 			 */
 			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
-			xlat = xlat_async_register(inst, verify_name, cipher_rsa_verify_xlat);
+			xlat = xlat_register(inst, verify_name, cipher_rsa_verify_xlat, false);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1159,7 +1159,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 *	Register encrypt xlat
 			 */
 			encrypt_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
-			xlat = xlat_async_register(inst, encrypt_name, cipher_rsa_encrypt_xlat);
+			xlat = xlat_register(inst, encrypt_name, cipher_rsa_encrypt_xlat, false);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1174,7 +1174,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 *	Register sign xlat
 			 */
 			sign_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
-			xlat = xlat_async_register(inst, sign_name, cipher_rsa_sign_xlat);
+			xlat = xlat_register(inst, sign_name, cipher_rsa_sign_xlat, false);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,

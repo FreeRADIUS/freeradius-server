@@ -133,7 +133,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat = xlat_async_register(inst, inst->xlat_name, always_xlat);
+	xlat = xlat_register(inst, inst->xlat_name, always_xlat, false);
 	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 
 	return 0;
