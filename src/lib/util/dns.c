@@ -482,6 +482,32 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 	return false;
 }
 
+
+/** Encode a single value box of type string, serializing its contents to a dns label
+ *  in a dbuff
+ *
+ * @param[in] dbuff	Buffer where labels are written
+ * @param[in] compression Whether or not to do DNS label compression.
+ * @param[in] value	to encode.
+ * @return
+ *	- >0 the number of bytes written to the dbuff
+ *	- 0 could not encode anything, an error has occurred.
+ *	- <0 the number of bytes the dbuff should have had, instead of "remaining".
+ */
+ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value)
+{
+	ssize_t			slen;
+	size_t			need;
+
+	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value);
+	if (slen < 0) return 0;
+
+	if (slen == 0) return -need;
+
+	fr_dbuff_advance(dbuff, slen);
+	return slen;
+}
+
 /** Encode a single value box of type string, serializing its contents to a dns label
  *
  * This functions takes a large buffer and encodes the label in part

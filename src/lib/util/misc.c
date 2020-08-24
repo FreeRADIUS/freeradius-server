@@ -583,7 +583,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	char		*f[4];
 	char		*tail = NULL;
 	fr_time_delta_t	gmtoff = 0;
-
+	
 	/*
 	 *	Test for unix timestamp, which is just a number and
 	 *	nothing else.
@@ -687,7 +687,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		if (*tail == '-') tz *= -1;
 
 	done:
-		t = timegm(tm);
+		t = fr_time_from_utc(tm);
 		if (t == (time_t) -1) {
 			fr_strerror_printf("Failed calling system function to parse time - %s",
 					   fr_syserror(errno));
@@ -834,7 +834,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	/*
 	 *  Returns -1 on failure.
 	 */
-	t = timegm(tm);
+	t = fr_time_from_utc(tm);
 	if (t == (time_t) -1) {
 		fr_strerror_printf("Failed calling system function to parse time - %s",
 				   fr_syserror(errno));
