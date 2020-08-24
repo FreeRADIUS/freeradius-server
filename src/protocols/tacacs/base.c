@@ -105,7 +105,6 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ NULL }
 };
 
-
 char const *fr_tacacs_packet_codes[] = {
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "Authentication-Continue",
@@ -115,7 +114,6 @@ char const *fr_tacacs_packet_codes[] = {
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "Accounting-Request",
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY] = "Accounting-Reply",
 };
-
 
 int fr_tacacs_init(void)
 {
@@ -287,4 +285,13 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	}
 
 	return length;
+}
+
+char const *fr_tacacs_get_type_name(fr_tacacs_type_t type) {
+	switch (type) {
+		case FR_TAC_PLUS_AUTHEN: return "Authentication";
+		case FR_TAC_PLUS_AUTHOR: return "Authorization";
+		case FR_TAC_PLUS_ACCT: return "Accounting";
+		default: return "Unknown";
+	}
 }

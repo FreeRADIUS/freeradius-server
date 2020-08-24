@@ -177,7 +177,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_tim
 	FR_PROTO_HEX_DUMP(buffer, packet_len, "tacacs_tcp_recv");
 
 	DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %d %s",
-	       fr_tacacs_packet_codes[buffer[1]], buffer[2],
+	       fr_tacacs_get_type_name(buffer[1]), buffer[2],
 	       (int) packet_len, thread->name);
 
 	return packet_len;

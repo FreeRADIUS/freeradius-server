@@ -299,3 +299,5 @@ int		fr_tacacs_init(void);
 void		fr_tacacs_free(void);
 
 int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len);
+
+char const *fr_tacacs_get_type_name(fr_tacacs_type_t type);
