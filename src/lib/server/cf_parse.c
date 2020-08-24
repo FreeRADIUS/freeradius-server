@@ -1306,7 +1306,7 @@ finish:
  *	We don't have (or need yet) cf_pair_parse_pass2(), so we just
  *	do it for tmpls.
  */
-static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, bool attribute)
+static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
 {
 	ssize_t	slen;
 	tmpl_t *vpt;
@@ -1340,10 +1340,22 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, bo
 		 */
 	case TMPL_TYPE_ATTR_UNPARSED:
 		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unparsed(vpt));
-		talloc_free(vpt);	/* Free last (vpt needed for log) */
+		talloc_free(vpt);
 		return -1;
 
 	case TMPL_TYPE_UNPARSED:
+		/*
+		 *	Try to realize the underlying type, if at all possible.
+		 */
+		if (!attribute && type &&
+		    (tmpl_cast_in_place(vpt, type, NULL) < 0)) {
+			cf_log_err(cp, "Failed parsing '%s': %s",
+				   cp->attr, fr_strerror());
+			talloc_free(vpt);
+			return -1;
+		}
+		break;
+
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_DATA:
@@ -1508,7 +1520,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Parse the pair into a template
 		 */
 		} else if (is_tmpl && !multi) {
-			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, attribute) < 0) {
+			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute) < 0) {
 				return -1;
 			}
 
@@ -1520,7 +1532,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
 				if (!cp) break;
 
-				if (cf_parse_tmpl_pass2(cs, &array[i], cp, attribute) < 0) {
+				if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute) < 0) {
 					return -1;
 				}
 			}
