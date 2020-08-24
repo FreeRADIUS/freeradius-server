@@ -331,7 +331,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			 */
 			if (RDEBUG_ENABLED2 &&
 			    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
-			    (fr_utf8_char((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+			    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
 				RWDEBUG("Unprintable characters in the %s. "
 					"Double-check the shared secret on the server "
 					"and the NAS!", attr_tacacs_user_name->name);
