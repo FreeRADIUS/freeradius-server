@@ -489,8 +489,8 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
  * of the buffer.  This API is necessary in order to allow DNS label
  * compression.
  *
- * @param[out] need	if not NULL, how many bytes are required to serialize
- *			the remainder of the boxed data.
+ * @param[out] need	if not NULL, how long "buf_len" should be to
+ *			serialize the rest of the data.
  *			Note: Only variable length types will be partially
  *			encoded. Fixed length types will not be partially encoded.
  * @param[out] buf	Buffer where labels are stored
@@ -507,10 +507,9 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 				    fr_value_box_t const *value)
 {
 	uint8_t *label;
-	uint8_t *end = buf + buf_len;
-	uint8_t const *q, *strend;
+	uint8_t const *end = buf + buf_len;
+	uint8_t const *q, *strend, *last;
 	uint8_t *data;
-	int namelen = 0;
 
 	if (!buf || !buf_len || !where || !value) {
 		fr_strerror_printf("Invalid input");
@@ -521,7 +520,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	Don't allow stupidities
 	 */
 	if (!((where >= buf) && (where < (buf + buf_len)))) {
-		fr_strerror_printf("Label is outside of buffer");
+		fr_strerror_printf("Label to write is outside of buffer");
 		return -1;
 	}
 
@@ -530,11 +529,6 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 */
 	if (value->type != FR_TYPE_STRING) {
 		fr_strerror_printf("Asked to encode non-string type");
-		return -1;
-	}
-
-	if (value->vb_length > 255) {
-		fr_strerror_printf("Label is too long");
 		return -1;
 	}
 
@@ -551,6 +545,57 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	}
 
 	/*
+	 *	Sanity check the name before writing anything to the
+	 *	buffer.
+	 *
+	 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
+	 *	Dots at the start are forbidden.  Double dots are
+	 *	forbidden.
+	 */
+	q = (uint8_t const *) value->vb_strvalue;
+	strend = q + value->vb_length;
+	last = q;
+
+	if (*q == '.') {
+		fr_strerror_printf("Empty labels are invalid");
+		return -1;
+	}
+
+	while (q < strend) {
+		if (*q == '.') {
+			/*
+			 *	Don't count final dot as an
+			 *	intermediate dot, and don't bother
+			 *	encoding it.
+			 */
+			if ((q + 1) == strend) {
+				strend--;
+				break;
+			}
+
+			if (q[1] == '.') {
+				fr_strerror_printf("Double dots '..' are forbidden");
+				return -1;
+			}
+			last = q;
+
+		} else if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
+			     ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
+			fr_strerror_printf("Invalid character %02x in label", *q);
+			return -1;
+		}
+
+		q++;
+
+		if ((q - last) > 63) {
+			fr_strerror_printf("Label is larger than 63 characters");
+			return -1;
+		}
+	}
+
+	q = (uint8_t const *) value->vb_strvalue;
+
+	/*
 	 *	For now, just encode the value as-is.  We do
 	 *	compression as a second step.
 	 *
@@ -558,14 +603,11 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	+ trailing zero.  Intermediate '.' are converted to
 	 *	length bytes.
 	 */
-	if ((where + value->vb_length + 2) > end) {
-	need_more:
-		if (need) *need = value->vb_length + 2;
+	if ((where + (strend - q) + 2) > end) {
+		if (need) *need = (where + (strend - q) + 2) - buf;
 		return 0;
 	}
 
-	q = (uint8_t const *) value->vb_strvalue;
-	strend = q + value->vb_length;
 	label = where;
 	*label = 0;
 	data = label + 1;
@@ -576,32 +618,19 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	the output buffer can be a little bit smaller.
 	 */
 	while (q < strend) {
-		/*
-		 *	Just for pairanoia
-		 */
-		if (data >= end) goto need_more;
+		fr_assert(data < end);
+		fr_assert((data - where) < 255);
 
 		/*
 		 *	'.' is a label delimiter.
 		 *
-		 *	'..' is disallowed.  '.' at the start of a
-		 *	string is disallowed.
+		 *	We've already checked above for '.' at the
+		 *	start, for double dots, and have already
+		 *	suppressed '.' at the end of the string.
+		 *
+		 *	Start a new label.
 		 */
 		if (*q == '.') {
-			if (*label == 0) {
-				fr_strerror_printf("Empty labels are invalid");
-				return -1;
-			}
-
-			/*
-			 *	'.' at the end of a non-zero label is
-			 *	allowed.
-			 */
-			if ((q + 1) == strend) break;
-
-			/*
-			 *	Start a new label.
-			 */
 			label = data;
 			*label = 0;
 			data = label + 1;
@@ -610,34 +639,9 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 			continue;
 		}
 
-		/*
-		 *	Label lengths can be 1..63
-		 */
-		if (*label >= 63) {
-			fr_strerror_printf("Label is larger than 63 characters");
-			return -1;
-		}
-
-		/*
-		 *	Name lengths can be 1..255
-		 */
-		if (namelen >= 255) {
-			fr_strerror_printf("Name is larger than 255 characters");
-			return -1;
-		}
-
-		/*
-		 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
-		 */
-		if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
-		      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
-			fr_strerror_printf("Invalid character %02x in label", *q);
-			return -1;
-		}
-
 		*(data++) = *(q++);
 		(*label)++;
-		namelen++;
+		fr_assert(*label <= 63);
 	}
 
 	*(data++) = 0;		/* end of label */
@@ -654,7 +658,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	(void) dns_label_compress(buf, where, NULL, where, &data);
 
 done:
-	if (need) *need = 0;
+	fr_assert(data > where);
 	return data - where;
 }
 
