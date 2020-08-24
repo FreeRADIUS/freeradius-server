@@ -591,7 +591,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 
 	MEM(request->state_ctx = talloc_init_const("session-state"));
 
-	RDEBUG3("RADIUS State - discarded");
+	RDEBUG3("%s - discarded", state->da->name);
 
 	return;
 }
@@ -655,7 +655,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	 */
 	if (old_ctx) talloc_free(old_ctx);
 
-	RDEBUG3("RADIUS State - restored");
+	RDEBUG3("%s - restored", state->da->name);
 
 	REQUEST_VERIFY(request);
 	return;
@@ -711,7 +711,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	RDEBUG3("RADIUS State - saved");
+	RDEBUG3("%s - saved", state->da->name);
 	REQUEST_VERIFY(request);
 
 	return 0;
