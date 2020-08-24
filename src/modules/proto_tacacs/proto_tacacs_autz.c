@@ -37,6 +37,8 @@
 #include "proto_tacacs.h"
 
 typedef struct {
+	int		nothing;		// so the next fields don't have offset 0
+
 	CONF_SECTION	*recv_request;
 	void		*unlang_request;
 
