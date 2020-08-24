@@ -351,7 +351,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Otherwise, decode it as an unknown
 			 *	attribute.
 			 */
-			if (pkt->authen.start.data_len >= want) {
+			if (pkt->authen.start.data_len <= want) {
 				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
 			} else {
 				fr_dict_attr_t *da;
