@@ -76,10 +76,12 @@ fr_dict_autoload_t proto_tacacs_dict[] = {
 
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_tacacs_user_name;
 
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
+	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ NULL }
 };
 
@@ -344,6 +346,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	if (RDEBUG_ENABLED) {
+		VALUE_PAIR *vp;
+
 		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_tacacs_packet_codes[request->packet->code],
 		       request->packet->id,
@@ -355,6 +359,19 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		       request->async->listen->name);
 
 		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+
+		/*
+		 *	Maybe the shared secret is wrong?
+		 */
+		if (client->active &&
+		    ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
+		    RDEBUG_ENABLED2 &&
+		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
+		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+			RWDEBUG("Unprintable characters in the %s. "
+				"Double-check the shared secret on the server "
+				"and the TACACS+ Client!", attr_tacacs_user_name->name);
+		}
 	}
 
 	if (!inst->io.app_io->decode) return 0;

@@ -59,7 +59,6 @@ static fr_dict_attr_t const *attr_tacacs_authentication_service;
 static fr_dict_attr_t const *attr_tacacs_authorization_status;
 static fr_dict_attr_t const *attr_tacacs_data;
 static fr_dict_attr_t const *attr_tacacs_server_message;
-static fr_dict_attr_t const *attr_tacacs_user_name;
 
 extern fr_dict_attr_autoload_t proto_tacacs_autz_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_autz_dict_attr[] = {
@@ -70,7 +69,6 @@ fr_dict_attr_autoload_t proto_tacacs_autz_dict_attr[] = {
 	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -101,8 +99,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
 	proto_tacacs_autz_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_autz_t);
 	rlm_rcode_t			rcode;
-	fr_tacacs_packet_t const	*pkt = (fr_tacacs_packet_t const *) request->packet->data;
-	VALUE_PAIR			*vp;
 
 	REQUEST_VERIFY(request);
 
@@ -114,18 +110,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	We always reply, unless specifically set to "Do not respond"
 		 */
 		request->reply->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY;
-
-		/*
-		 *	Maybe the shared secret is wrong?
-		 */
-		if (((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
-		    RDEBUG_ENABLED2 &&
-		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
-		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
-			RWDEBUG("Unprintable characters in the %s. "
-				"Double-check the shared secret on the server "
-				"and the NAS!", attr_tacacs_user_name->name);
-		}
 
 		/*
 		 *	Push the conf section into the unlang stack.
