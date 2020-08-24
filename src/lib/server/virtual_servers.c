@@ -1301,10 +1301,10 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			 *	Cache the CONF_SECTION which was found.
 			 */
 			if (uctx) {
-				if (list[i].offset > 0) {
+				if (list[i].offset >= 0) {
 					*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = subcs;
 				}
-				if (list[i].instruction > 0) {
+				if (list[i].instruction >= 0) {
 					*(void **) (((uint8_t *) uctx) + list[i].instruction) = instruction;
 				}
 			}
