@@ -90,8 +90,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
 	proto_tacacs_acct_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_acct_t);
 	rlm_rcode_t			rcode;
-	fr_tacacs_packet_t const	*pkt = (fr_tacacs_packet_t const *) request->packet->data;
-	VALUE_PAIR			*vp;
 
 	REQUEST_VERIFY(request);
 
