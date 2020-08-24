@@ -192,7 +192,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			memcpy(buffer, &request->async->listen, sizeof(request->async->listen));
 			memcpy(buffer + sizeof(request->async->listen), &pkt->session_id, sizeof(pkt->session_id));
 
-			vp = fr_pair_afrom_da(&request->packet, attr_tacacs_state);
+			vp = fr_pair_afrom_da(request->packet, attr_tacacs_state);
 			if (vp) {
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 				fr_pair_add(&request->packet->vps, vp);
