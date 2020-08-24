@@ -329,25 +329,12 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			/*
 			 *	Maybe the shared secret is wrong?
 			 */
-			vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY);
-			if (vp) {
-				if (RDEBUG_ENABLED2) {
-					uint8_t const *p;
-
-					p = (uint8_t const *) vp->vp_strvalue;
-					while (*p) {
-						int size;
-
-						size = fr_utf8_char(p, -1);
-						if (!size) {
-							RWDEBUG("Unprintable characters in the %s. "
-								"Double-check the shared secret on the server "
-								"and the NAS!", attr_tacacs_user_name->name);
-							break;
-						}
-						p += size;
-					}
-				}
+			if (RDEBUG_ENABLED2 &&
+			    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
+			    (fr_utf8_char((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+				RWDEBUG("Unprintable characters in the %s. "
+					"Double-check the shared secret on the server "
+					"and the NAS!", attr_tacacs_user_name->name);
 			}
 			goto setup_send;
 
