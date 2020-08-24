@@ -260,7 +260,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		request->packet->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
 		break;
 
-
 	default:
 		fr_assert(0);
 		return -1;
