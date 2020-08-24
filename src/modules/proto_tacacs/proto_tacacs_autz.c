@@ -101,6 +101,8 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
 	proto_tacacs_autz_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_autz_t);
 	rlm_rcode_t			rcode;
+	fr_tacacs_packet_t const	*pkt = (fr_tacacs_packet_t const *) request->packet->data;
+	VALUE_PAIR			*vp;
 
 	REQUEST_VERIFY(request);
 
@@ -112,6 +114,18 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	We always reply, unless specifically set to "Do not respond"
 		 */
 		request->reply->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY;
+
+		/*
+		 *	Maybe the shared secret is wrong?
+		 */
+		if (((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
+		    RDEBUG_ENABLED2 &&
+		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
+		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+			RWDEBUG("Unprintable characters in the %s. "
+				"Double-check the shared secret on the server "
+				"and the NAS!", attr_tacacs_user_name->name);
+		}
 
 		/*
 		 *	Push the conf section into the unlang stack.
