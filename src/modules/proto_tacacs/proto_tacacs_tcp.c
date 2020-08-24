@@ -103,6 +103,12 @@ static const CONF_PARSER tcp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const char *packet_name[] = {
+	[FR_TAC_PLUS_AUTHEN] = "Authentication",
+	[FR_TAC_PLUS_AUTHOR] = "Authorization",
+	[FR_TAC_PLUS_ACCT] = "Accounting",
+};
+
 static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
@@ -177,7 +183,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_tim
 	FR_PROTO_HEX_DUMP(buffer, packet_len, "tacacs_tcp_recv");
 
 	DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %d %s",
-	       fr_tacacs_packet_codes[buffer[1]], buffer[2],
+	       packet_name[buffer[1]], buffer[2],
 	       (int) packet_len, thread->name);
 
 	return packet_len;
