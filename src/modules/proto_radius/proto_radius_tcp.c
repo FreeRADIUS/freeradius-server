@@ -186,6 +186,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	}
 
 	*recv_time_p = fr_time();
+	thread->stats.total_requests++;
 
 	/*
 	 *	proto_radius sets the priority
@@ -214,7 +215,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	put the stats in the listener, so that proto_radius
 	 *	can update them, too.. <sigh>
 	 */
-	thread->stats.total_responses++;
+	if (!written) thread->stats.total_responses++;
 
 	/*
 	 *	This handles the race condition where we get a DUP,

@@ -182,6 +182,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	proto_radius sets the priority
 	 */
+	thread->stats.total_requests++;
 
 	/*
 	 *	Print out what we received.
