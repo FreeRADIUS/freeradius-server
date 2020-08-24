@@ -497,7 +497,7 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value)
 {
 	ssize_t			slen;
-	size_t			need;
+	size_t			need = 0;
 
 	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value);
 	if (slen < 0) return 0;
