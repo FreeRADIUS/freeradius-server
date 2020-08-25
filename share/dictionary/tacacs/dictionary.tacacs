@@ -63,9 +63,10 @@ VALUE	TACACS-Packet-Type		Authentication		1
 VALUE	TACACS-Packet-Type		Authorization		2
 VALUE	TACACS-Packet-Type		Accounting		3
 
-VALUE	TACACS-Flags			Encrypted-Multiple-Connections 0
+VALUE	TACACS-Flags			None			0
 VALUE	TACACS-Flags			Unencrypted		1
 VALUE	TACACS-Flags			Single-Connect		4
+VALUE	TACACS-Flags			Unencrypred-Single-Connect 5
 
 VALUE	TACACS-Action			LOGIN			1
 VALUE	TACACS-Action			CHPASS			2
@@ -133,3 +134,4 @@ VALUE	TACACS-Authentication-Continue-Flags Abort		1
 VALUE	TACACS-Accounting-Flags		Start			2
 VALUE	TACACS-Accounting-Flags		Stop			4
 VALUE	TACACS-Accounting-Flags		Watchdog		8
+VALUE	TACACS-Accounting-Flags		Watchdog-Update		10
