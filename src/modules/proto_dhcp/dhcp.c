@@ -992,7 +992,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	for (i = 0; i < 14; i++) {
 
-		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
+		vp = fr_pair_afrom_num(packet, 256 + i, DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			char buffer[256];
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
