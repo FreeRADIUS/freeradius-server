@@ -50,11 +50,12 @@ typedef struct {
 	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
 	char const	*attribute_name;	//!< name of the IP address attribute
 
-	char const	*allocate_begin;	//!< SQL query to begin.
-	char const	*allocate_existing;	//!< SQL query to find existing IP.
-	char const	*allocate_find;		//!< SQL query to find an unused IP.
-	char const	*allocate_update;	//!< SQL query to mark an IP as used.
-	char const	*allocate_commit;	//!< SQL query to commit.
+						/* Alloc sequence */
+	char const	*alloc_begin;		//!< SQL query to begin.
+	char const	*alloc_existing;	//!< SQL query to find existing IP.
+	char const	*alloc_find;		//!< SQL query to find an unused IP.
+	char const	*alloc_update;		//!< SQL query to mark an IP as used.
+	char const	*alloc_commit;		//!< SQL query to commit.
 
 	char const	*pool_check;		//!< Query to check for the existence of the pool.
 
@@ -111,15 +112,15 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
 
-	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
+	{ FR_CONF_OFFSET("alloc_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
 
-	{ FR_CONF_OFFSET("allocate_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_existing) },
+	{ FR_CONF_OFFSET("alloc_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_existing) },
 
-	{ FR_CONF_OFFSET("allocate_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find) },
+	{ FR_CONF_OFFSET("alloc_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, alloc_find) },
 
-	{ FR_CONF_OFFSET("allocate_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, allocate_update) },
+	{ FR_CONF_OFFSET("alloc_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, alloc_update) },
 
-	{ FR_CONF_OFFSET("allocate_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("alloc_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_commit), .dflt = "COMMIT" },
 
 
 	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check) },
@@ -472,7 +473,7 @@ static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
@@ -505,15 +506,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 		return RLM_MODULE_FAIL;
 	}
 
-	DO_PART(allocate_begin);
+	DO_PART(alloc_begin);
 
 	/*
 	 *	If there is a query for finding the existing IP
 	 *	run that first
 	 */
-	if (inst->allocate_existing && *inst->allocate_existing) {
+	if (inst->alloc_existing && *inst->alloc_existing) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->allocate_existing, &handle,
+						  inst->alloc_existing, &handle,
 						  inst, request, (char *) NULL, 0);
 		if (!handle) return RLM_MODULE_FAIL;
 	} else {
@@ -526,7 +527,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 	 */
 	if (allocation_len == 0) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->allocate_find, &handle,
+						  inst->alloc_find, &handle,
 						  inst, request, (char *) NULL, 0);
 		if (!handle) return RLM_MODULE_FAIL;
 	}
@@ -535,7 +536,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 	 *	Nothing found...
 	 */
 	if (allocation_len == 0) {
-		DO_PART(allocate_commit);
+		DO_PART(alloc_commit);
 
 		/*
 		 *Should we perform pool-check ?
@@ -591,7 +592,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 	 */
 	MEM(vp = fr_pair_afrom_da(request->reply, inst->framed_ip_address));
 	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
-		DO_PART(allocate_commit);
+		DO_PART(alloc_commit);
 
 		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
@@ -604,14 +605,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_allocate(module_ctx_t const *mctx, REQUE
 	/*
 	 *	UPDATE
 	 */
-	if (sqlippool_command(inst->allocate_update, &handle, inst, request,
+	if (sqlippool_command(inst->alloc_update, &handle, inst, request,
 			      allocation, allocation_len) < 0) {
 	error:
 		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 		return RLM_MODULE_FAIL;
 	}
 
-	DO_PART(allocate_commit);
+	DO_PART(alloc_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
@@ -861,10 +862,10 @@ module_t rlm_sqlippool = {
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_allocate
+		[MOD_POST_AUTH]		= mod_alloc
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"DHCP-Discover",	mod_allocate },
+		{ "recv",	"DHCP-Discover",	mod_alloc },
 		{ "recv",	"DHCP-Request",		mod_extend },
 		{ "recv",	"DHCP-Release",		mod_release },
 		{ "recv",	"DHCP-Decline",		mod_mark },
