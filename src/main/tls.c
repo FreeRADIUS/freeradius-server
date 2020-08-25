@@ -672,6 +672,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	just too much.
 	 */
 	state->mtu = conf->fragment_size;
+#define EAP_TLS_MAGIC_OVERHEAD (63)
 
 	/*
 	 *	If the packet contains an MTU, then use that.  We
@@ -691,8 +692,8 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		 *	+ TLS inside of EAP + TLS.
 		 */
 		vp = fr_pair_find_by_num(request->parent->state, PW_FRAMED_MTU, 0, TAG_ANY);
-		if (vp && (vp->vp_integer > 100) && (vp->vp_integer <= state->mtu)) {
-			state->mtu = vp->vp_integer - 63;
+		if (vp && (vp->vp_integer > (100 + EAP_TLS_MAGIC_OVERHEAD)) && (vp->vp_integer <= state->mtu)) {
+			state->mtu = vp->vp_integer - EAP_TLS_MAGIC_OVERHEAD;
 		}
 	}
 
