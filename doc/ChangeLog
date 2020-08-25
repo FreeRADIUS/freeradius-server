@@ -22,6 +22,11 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Include extensions in generated certificates.
 	* Many improvements for DHCP IP pools for all SQL dialects.
 	  Patches from Nick Porter.
+	* Ignore user-provided dhparams in FIPS mode.
+	  Patch from Alexander Scheel.
+	* Add support for DHCP-Decline.
+	* Remove native support for Cisco LEAP.  It is insecure, and
+	  should not be used.  Proxying LEAP is still supported.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
@@ -47,6 +52,9 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Clear error on SQLITE_BUSY to prevent memory leak in corner cases.
 	  Patch from Nick Porter.
 	* Properly add SQL clients to virtual servers.
+	* Update documentation for cert generation.  Patch from Alexander Scheel.
+	* Use better API when decoding DHCP packets, to avoid unnecessary work.
+	  This improves performance noticably.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
