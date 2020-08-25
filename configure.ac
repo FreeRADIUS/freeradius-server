@@ -188,6 +188,22 @@ if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
 fi
 
+dnl #
+dnl #  The developer option WITH_VERIFY_PTR significantly scews profiling so
+dnl #  we allow it to be disabled.
+dnl #
+AC_ARG_ENABLE(verify-ptr,
+[  --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.],
+[ case "$enableval" in
+  no)
+    verify_ptr=""
+    ;;
+  *)
+    verify_ptr="-DWITH_VERIFY_PTR=1"
+  esac ],
+[ verify_ptr="-DWITH_VERIFY_PTR=1" ],
+)
+
 dnl #############################################################
 dnl #
 dnl #  0. Checks for compiler
@@ -1676,7 +1692,6 @@ if test "x$developer" = "xyes"; then
 	-W \
 	-Weverything \
 	-Wformat=2 \
-	-DWITH_VERIFY_PTR=1 \
 	-Wno-disabled-macro-expansion \
 	-Wno-missing-field-initializers \
 	-Wno-date-time \
@@ -1693,7 +1708,8 @@ if test "x$developer" = "xyes"; then
     	-Wno-covered-switch-default \
     	-Wno-packed \
     	-Wno-reserved-id-macro \
-    	-Wno-format-pedantic"
+	-Wno-format-pedantic \
+        $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
@@ -1717,7 +1733,7 @@ if test "x$developer" = "xyes"; then
       	-Wformat-nonliteral \
       	-Wformat-security \
       	-Wformat=2 \
-      	-DWITH_VERIFY_PTR=1"
+	$verify_ptr"
       INSTALLSTRIP=""
     fi
   fi

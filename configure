@@ -743,6 +743,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_developer
+enable_verify_ptr
 enable_largefile
 enable_strict_dependencies
 enable_werror
@@ -1421,6 +1422,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-developer      enables features of interest to developers.
+  --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
@@ -3017,6 +3019,20 @@ fi
 if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
 fi
+
+# Check whether --enable-verify-ptr was given.
+if test "${enable_verify_ptr+set}" = set; then :
+  enableval=$enable_verify_ptr;  case "$enableval" in
+  no)
+    verify_ptr=""
+    ;;
+  *)
+    verify_ptr="-DWITH_VERIFY_PTR=1"
+  esac
+else
+   verify_ptr="-DWITH_VERIFY_PTR=1"
+fi
+
 
 
 ac_aux_dir=
@@ -13131,7 +13147,6 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 	-W \
 	-Weverything \
 	-Wformat=2 \
-	-DWITH_VERIFY_PTR=1 \
 	-Wno-disabled-macro-expansion \
 	-Wno-missing-field-initializers \
 	-Wno-date-time \
@@ -13148,7 +13163,8 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
     	-Wno-covered-switch-default \
     	-Wno-packed \
     	-Wno-reserved-id-macro \
-    	-Wno-format-pedantic"
+	-Wno-format-pedantic \
+        $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
@@ -13172,7 +13188,7 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
       	-Wformat-nonliteral \
       	-Wformat-security \
       	-Wformat=2 \
-      	-DWITH_VERIFY_PTR=1"
+	$verify_ptr"
       INSTALLSTRIP=""
     fi
   fi
