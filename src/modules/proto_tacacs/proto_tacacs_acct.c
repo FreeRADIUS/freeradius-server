@@ -37,7 +37,14 @@
 #include "proto_tacacs.h"
 
 typedef struct {
-	int		nothing;		// so the next fields don't have offset 0
+	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
+	uint32_t	max_session;			//!< Maximum ongoing session allowed.
+
+	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
+							//!< authenticating server to be identified in packet
+							//!< captures.
+
+	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
 
 	CONF_SECTION	*recv_request;
 	void		*unlang_request;
@@ -45,6 +52,20 @@ typedef struct {
 	CONF_SECTION	*send_reply;
 	void		*unlang_reply;
 } proto_tacacs_acct_t;
+
+static const CONF_PARSER session_config[] = {
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_tacacs_acct_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_tacacs_acct_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, proto_tacacs_acct_t, state_server_id) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER proto_tacacs_acct_config[] = {
+	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
+
+	CONF_PARSER_TERMINATOR
+};
 
 static fr_dict_t const *dict_tacacs;
 
@@ -58,6 +79,7 @@ static fr_dict_attr_t const *attr_tacacs_accounting_status;
 static fr_dict_attr_t const *attr_tacacs_accounting_flags;
 static fr_dict_attr_t const *attr_tacacs_data;
 static fr_dict_attr_t const *attr_tacacs_server_message;
+static fr_dict_attr_t const *attr_tacacs_state;
 
 extern fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
@@ -97,6 +119,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv;
 	VALUE_PAIR			*vp;
+	fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 	REQUEST_VERIFY(request);
 
@@ -108,6 +131,30 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	We always reply, unless specifically set to "Do not respond"
 		 */
 		request->reply->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY;
+
+		/*
+		 *	Grab the VPS and data associated with the
+		 *	TACACS-State attribute.  This is a synthetic /
+		 *	internal attribute, which is composed of the
+		 *	listener followed by the session ID
+		 *
+		 *	The session ID is unique per listener.
+		 */
+		if (!request->parent) {
+			uint8_t buffer[sizeof(request->async->listen) + sizeof(pkt->session_id)];
+
+			fr_assert(request->async->listen);
+			memcpy(buffer, &request->async->listen, sizeof(request->async->listen));
+			memcpy(buffer + sizeof(request->async->listen), &pkt->session_id, sizeof(pkt->session_id));
+
+			vp = fr_pair_afrom_da(request->packet, attr_tacacs_state);
+			if (vp) {
+				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
+				fr_pair_add(&request->packet->vps, vp);
+			}
+
+			fr_state_to_request(inst->state_tree, request);
+		}
 
 		/*
 		 *	Push the conf section into the unlang stack.
@@ -233,10 +280,32 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		request->reply->timestamp = fr_time();
 
 		/*
+		 *	Save session-state list on Start discard it
+		 *	for "Continue".
+		 */
+		if (!request->parent) {
+			/*
+			 *	Keep the state around for
+			 *	authorization and accounting packets.
+			 */
+			if (pkt->seq_no >= 254) {
+				fr_state_discard(inst->state_tree, request);
+
+				/*
+				 *	We can't create a valid response
+				 */
+			} else if (fr_request_to_state(inst->state_tree, request) < 0) {
+				RWDEBUG("Failed saving state");
+				request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
+			}
+		}
+
+		/*
 		 *	Check for "do not respond".
 		 */
 		if (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
+			fr_state_discard(inst->state_tree, request);
 			break;
 		}
 
@@ -247,6 +316,53 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	}
 
 	return RLM_MODULE_OK;
+}
+
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
+{
+	proto_tacacs_acct_t	*inst = instance;
+
+	/*
+	 *	Usually we use the 'State' attribute. But, in this
+	 *	case we are using the listener followed by the
+	 *	TACACS-Session-ID as the state id.  It is 32-bits of
+	 *	(allegedly) random value.  It MUST be unique per TCP
+	 *	connection.
+	 */
+	inst->state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->max_session,
+					      inst->session_timeout, inst->state_server_id);
+
+	return 0;
+}
+
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+
+	fr_assert(process_app_cs);
+	fr_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
+	if (!attr_tacacs_state) {
+		fr_dict_attr_flags_t	flags;
+
+		memset(&flags, 0, sizeof(flags));
+		flags.internal = true;
+
+		if (fr_dict_attr_add(fr_dict_unconst(dict_tacacs), fr_dict_root(dict_tacacs),
+				     "TACACS-State", -1, FR_TYPE_OCTETS, &flags) < 0) {
+			cf_log_err(listen_cs, "Failed creating TACACS-State: %s", fr_strerror());
+			return -1;
+		}
+
+		attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
+	}
+
+	return 0;
 }
 
 static virtual_server_compile_t compile_list[] = {
@@ -277,8 +393,11 @@ extern fr_app_worker_t proto_tacacs_acct;
 fr_app_worker_t proto_tacacs_acct = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "tacacs_acct",
+	.config		= proto_tacacs_acct_config,
 	.inst_size	= sizeof(proto_tacacs_acct_t),
 
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 	.compile_list	= compile_list,
 };
