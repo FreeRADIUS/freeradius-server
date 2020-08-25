@@ -726,35 +726,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *
 	return RLM_MODULE_FAIL;
 }
 
-static int mod_accounting_start(rlm_sql_handle_t **handle,
-				rlm_sqlippool_t const *inst, REQUEST *request)
-{
-	DO(update_begin);
-	DO(update_update);
-	DO(update_commit);
-
-	return RLM_MODULE_OK;
-}
-
-static int mod_accounting_alive(rlm_sql_handle_t **handle,
-				rlm_sqlippool_t const *inst, REQUEST *request)
-{
-	DO(update_begin);
-	DO(update_update);
-	DO(update_commit);
-	return RLM_MODULE_OK;
-}
-
-static int mod_accounting_stop(rlm_sql_handle_t **handle,
-			       rlm_sqlippool_t const *inst, REQUEST *request)
-{
-	DO(release_begin);
-	DO(release_clear);
-	DO(release_commit);
-
-	return do_logging(inst, request, inst->log_clear, RLM_MODULE_OK);
-}
-
 static int mod_accounting_on(rlm_sql_handle_t **handle,
 			     rlm_sqlippool_t const *inst, REQUEST *request)
 {
@@ -776,9 +747,8 @@ static int mod_accounting_off(rlm_sql_handle_t **handle,
 }
 
 /*
- *	Check for an Accounting-Stop
- *	If we find one and we have allocated an IP to this nas/port
- *	combination, then deallocate it.
+ *	Check Accounting packets for their accoutning status
+ *	Call the relevant module based on the status
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
@@ -824,7 +794,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 		break;
 
 	case FR_STATUS_STOP:
-		rcode = mod_accounting_stop(&handle, inst, request);
+		rcode = mod_release(mctx, request);
 		break;
 
 	case FR_STATUS_ACCOUNTING_ON:
