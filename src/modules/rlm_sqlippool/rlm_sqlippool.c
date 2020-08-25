@@ -59,10 +59,10 @@ typedef struct {
 
 	char const	*pool_check;		//!< Query to check for the existence of the pool.
 
-						/* Extend sequence */
-	char const	*extend_begin;		//!< SQL query to begin.
-	char const	*extend_update;		//!< SQL query to update an IP entry.
-	char const	*extend_commit;		//!< SQL query to commit.
+						/* Update sequence */
+	char const	*update_begin;		//!< SQL query to begin.
+	char const	*update_update;		//!< SQL query to update an IP entry.
+	char const	*update_commit;		//!< SQL query to commit.
 
 						/* Release sequence */
 	char const	*release_begin;		//!< SQL query to begin.
@@ -126,11 +126,11 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check) },
 
 
-	{ FR_CONF_OFFSET("extend_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_begin) },
+	{ FR_CONF_OFFSET("update_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_begin) },
 
-	{ FR_CONF_OFFSET("extend_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, extend_update) },
+	{ FR_CONF_OFFSET("update_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, update_update) },
 
-	{ FR_CONF_OFFSET("extend_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, extend_commit) },
+	{ FR_CONF_OFFSET("update_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_commit) },
 
 
 	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin) },
@@ -620,9 +620,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 }
 
 /*
- *	Extend a lease.
+ *	Update a lease.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_extend(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -638,9 +638,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_extend(module_ctx_t const *mctx, REQUEST
 		return RLM_MODULE_FAIL;
 	}
 
-	DO_PART(extend_begin);
+	DO_PART(update_begin);
 
-	affected = sqlippool_command(inst->extend_update, &handle, inst, request, NULL, 0);
+	affected = sqlippool_command(inst->update_update, &handle, inst, request, NULL, 0);
 
 	if (affected < 0) {
 	error:
@@ -648,18 +648,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_extend(module_ctx_t const *mctx, REQUEST
 		return RLM_MODULE_FAIL;
 	}
 
-	DO_PART(extend_commit);
+	DO_PART(update_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 	if (affected > 0) {
 		/*
-		 * The lease has been extended - return OK
+		 * The lease has been updated - return OK
 		 */
 		return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
 	} else {
 		/*
-		 * The lease could not be extended - return notfound
+		 * The lease could not be updated - return notfound
 		 */
 		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 	}
@@ -729,9 +729,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(extend_begin);
-	DO(extend_update);
-	DO(extend_commit);
+	DO(update_begin);
+	DO(update_update);
+	DO(update_commit);
 
 	return RLM_MODULE_OK;
 }
@@ -739,9 +739,9 @@ static int mod_accounting_start(rlm_sql_handle_t **handle,
 static int mod_accounting_alive(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t const *inst, REQUEST *request)
 {
-	DO(extend_begin);
-	DO(extend_update);
-	DO(extend_commit);
+	DO(update_begin);
+	DO(update_update);
+	DO(update_commit);
 	return RLM_MODULE_OK;
 }
 
@@ -819,11 +819,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 
 	switch (acct_status_type) {
 	case FR_STATUS_START:
-		rcode = mod_accounting_start(&handle, inst, request);
-		break;
-
 	case FR_STATUS_ALIVE:
-		rcode = mod_accounting_alive(&handle, inst, request);
+		rcode = mod_update(mctx, request);
 		break;
 
 	case FR_STATUS_STOP:
@@ -866,7 +863,7 @@ module_t rlm_sqlippool = {
 	},
 	.method_names = (module_method_names_t[]){
 		{ "recv",	"DHCP-Discover",	mod_alloc },
-		{ "recv",	"DHCP-Request",		mod_extend },
+		{ "recv",	"DHCP-Request",		mod_update },
 		{ "recv",	"DHCP-Release",		mod_release },
 		{ "recv",	"DHCP-Decline",		mod_mark },
 
