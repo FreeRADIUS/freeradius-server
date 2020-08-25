@@ -243,6 +243,22 @@ server tacacs {
 		detail
 	}
 
+	# First packet for a session
+	accounting Start {
+	}
+
+	#  Updates a previous start
+	accounting Watchdog-Update {
+	}
+
+	# Updates a session
+	accounting Watchdog {
+	}
+
+	#  Stops a session
+	accounting Stop {
+	}
+
 	#
 	#	### Send
 	#

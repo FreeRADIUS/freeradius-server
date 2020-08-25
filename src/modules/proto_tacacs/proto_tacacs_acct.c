@@ -55,12 +55,14 @@ fr_dict_autoload_t proto_tacacs_acct_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_tacacs_accounting_status;
+static fr_dict_attr_t const *attr_tacacs_accounting_flags;
 static fr_dict_attr_t const *attr_tacacs_data;
 static fr_dict_attr_t const *attr_tacacs_server_message;
 
 extern fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
 	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 
@@ -92,6 +94,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
 	proto_tacacs_acct_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_acct_t);
 	rlm_rcode_t			rcode;
+	CONF_SECTION			*unlang;
+	fr_dict_enum_t const		*dv;
+	VALUE_PAIR			*vp;
 
 	REQUEST_VERIFY(request);
 
@@ -139,6 +144,60 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			break;
 		}
 
+		/*
+		 *	Run accounting foo { ... }
+		 */
+		vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_accounting_flags, TAG_ANY);
+		if (!vp) goto setup_send;
+
+		dv = fr_dict_enum_by_value(vp->da, &vp->data);
+		if (!dv) goto setup_send;
+
+		unlang = cf_section_find(request->server_cs, "accounting", dv->name);
+		if (!unlang) {
+			RDEBUG2("No 'accounting %s { ... }' section found - skipping...", dv->name);
+			goto setup_send;
+		}
+
+		RDEBUG("Running 'accounting %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+
+		request->request_state = REQUEST_PROCESS;
+		FALL_THROUGH;
+
+	case REQUEST_PROCESS:
+		rcode = unlang_interpret(request);
+
+		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+
+		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+
+		fr_assert(request->log.unlang_indent == 0);
+
+		switch (rcode) {
+		/*
+		 *	The module has a number of OK return codes.
+		 */
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_HANDLED:
+			break;
+
+		/*
+		 *	The module failed, or said the request is
+		 *	invalid, therefore we stop here.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_DISALLOW:
+		default:
+			break;
+		}
+
+	setup_send:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(inst->send_reply), cf_filename(inst->send_reply));
 		unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
@@ -204,6 +263,11 @@ static virtual_server_compile_t compile_list[] = {
 		.component = MOD_POST_AUTH,
 		.offset = offsetof(proto_tacacs_acct_t, send_reply),
 		.instruction = offsetof(proto_tacacs_acct_t, unlang_reply),
+	},
+	{
+		.name = "accounting",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_ACCOUNTING,
 	},
 
 	COMPILE_TERMINATOR
