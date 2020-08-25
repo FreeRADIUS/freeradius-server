@@ -32,14 +32,12 @@ server tacacs {
 		#
 		#  transport:: The transport protocol.
 		#
-		#  Only `tcp` is allowed.
+		#  Only `tcp` is allowed.  TACACS+ does not use UDP or TLS.
 		#
 		transport = tcp
 
 		#
 		#  ## Protocols
-		#
-		#  For now, only TCP is supported.
 		#
 		#  tcp { ... }:: TCP is configured here.
 		#
@@ -95,85 +93,54 @@ server tacacs {
 	#  ### Recv
 	#
  	recv Authentication-Start {
-		switch &TACACS-Authentication-Type {
-			case PAP {
-				update request {
-					&User-Name := &TACACS-User-Name
-					&User-Password := "%{string:%{TACACS-Data}}"
-					&Cleartext-Password := "%{string:%{TACACS-Data}}"
-				}
-
-				#
-				#  Read what used to be the `users` file. Since v3, this file
-				#  is located in `mods-config/files/authorize`.
-				#
-				files
-
-				#
-				#  Read what used to be the `users` file. Since v3, this file
-				#  is located in `mods-config/files/authorize`.
-				#
-				files
-
-				#
-				#  Look in an SQL database. The schema of the database is
-				#  meant to mirror the `users` file.  For a full description
-				#  of the module behavior, please see
-				#  https://wiki.freeradius.org/modules/Rlm_sql
-				#
-				-sql
-
-				#
-				#  The `pap` module will set `TACACS-Authentication-Type := PAP` if the
-				#  packet contains a `User-Password` attribute.  The module
-				#  does this only if the `Auth-Type` attribute has not already
-				#  been set.
-				#
-				#  The `pap` module is also responsible for "normalizing" the
-				#  various kinds of "known good" passwords.
-				#  e.g. `NT-Password` may come as a 16 byte blob, or as a
-				#  32-byte hex string, or as a base-64 encoded string.  The
-				#  `pap` module will look for common variations of password
-				#  encoding, and convert them all to a normal form.
-				#
-				#  This module should be listed last, so that the other
-				#  modules get a chance to set TACACS-Authentication-Type for themselves.
-				#
-				pap
-			}
-
-			#
-			#	For now the 'chap' is only supported with RADIUS
-			#
-#			case CHAP {
-#				chap
-#			}
-		}
-
 		-sql
+
+		#
+		#  Set _our_ authentication method to the _requested_ one.
+		#
+		update control {
+			&Auth-Type := &TACACS-Authentication-Type
+		}
 	}
 
 	authenticate PAP {
-		pap
+		tacacs_pap
 	}
 
 	authenticate CHAP {
-		chap
+		tacacs_chap
+	}
+
+	authenticate MSCHAP {
+		tacacs_mschap
+	}
+
+	authenticate MSCHAPv2 {
+		tacacs_mschap
+	}
+
+	#
+	#  Do challenge-response here.
+	#
+	authenticate ASCII {
+		fail
 	}
 
 	#
 	#  ### Send
 	#
 	send Authentication-Start-Reply {
-#		if (&TACACS-Authentication-Status == Pass) {
-#			update reply {
-#				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
-#			}
-#		}
+		if (&TACACS-Authentication-Status == Pass) {
+			update reply {
+				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
+			}
+		}
 	}
 
 	#
 	#  ## Authentication-Continue
+	#
+	#  This should handle ASCII methods as PAP with challenge-response.
 	#
 
 	#
@@ -192,11 +159,11 @@ server tacacs {
 	#  ### Send
 	#
 	send Authentication-Continue-Reply {
-#		if (&TACACS-Authentication-Status == Pass) {
-#			update reply {
-#				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
-#			}
-#		}
+		if (&TACACS-Authentication-Status == Pass) {
+			update reply {
+				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
+			}
+		}
 	}
 
 	#
