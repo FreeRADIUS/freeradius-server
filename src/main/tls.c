@@ -672,10 +672,40 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	just too much.
 	 */
 	state->mtu = conf->fragment_size;
+
+	/*
+	 *	If the packet contains an MTU, then use that.  We
+	 *	trust the admin!
+	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
-		state->mtu = vp->vp_integer;
+	if (vp) {
+		if ((vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
+			state->mtu = vp->vp_integer;
+		}
+
+	} else if (request->parent) {
+		/*
+		 *	If there's a parent request, we look for what
+		 *	MTU was set there.  Then, we use an MTU which
+		 *	accounts for the extra overhead of nesting EAP
+		 *	+ TLS inside of EAP + TLS.
+		 */
+		vp = fr_pair_find_by_num(request->parent->state, PW_FRAMED_MTU, 0, TAG_ANY);
+		if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
+			state->mtu = vp->vp_integer - 40;
+		}
 	}
+
+	/*
+	 *	Cache / update the Framed-MTU in the session-state
+	 *	list.
+	 */
+	vp = fr_pair_find_by_num(request->state, PW_FRAMED_MTU, 0, TAG_ANY);
+	if (!vp) {
+		vp = fr_pair_afrom_num(request, PW_FRAMED_MTU, 0);
+		fr_pair_add(&request->state, vp);
+	}
+	if (vp) vp->vp_integer = state->mtu;
 
 	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
 
