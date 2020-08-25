@@ -70,9 +70,9 @@ typedef struct {
 	char const	*release_commit;	//!< SQL query to commit.
 
 						/* Bulk release sequence */
-	char const	*bulkrelease_begin;	//!< SQL query to begin.
-	char const	*bulkrelease_clear;	//!< SQL query to bulk clear several IPs.
-	char const	*bulkrelease_commit;	//!< SQL query to commit.
+	char const	*bulk_release_begin;	//!< SQL query to begin.
+	char const	*bulk_release_clear;	//!< SQL query to bulk clear several IPs.
+	char const	*bulk_release_commit;	//!< SQL query to commit.
 
 						/* Mark sequence */
 	char const	*mark_begin;		//!< SQL query to begin.
@@ -140,11 +140,11 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit) },
 
 
-	{ FR_CONF_OFFSET("bulkrelease_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_begin) },
+	{ FR_CONF_OFFSET("bulk_release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulk_release_begin) },
 
-	{ FR_CONF_OFFSET("bulkrelease_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulkrelease_clear) },
+	{ FR_CONF_OFFSET("bulk_release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulk_release_clear) },
 
-	{ FR_CONF_OFFSET("bulkrelease_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulkrelease_commit) },
+	{ FR_CONF_OFFSET("bulk_release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulk_release_commit) },
 
 
 	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin) },
@@ -696,6 +696,36 @@ static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, REQUES
 }
 
 /*
+ *	Release a collection of leases.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, REQUEST *request)
+{
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
+	rlm_sql_handle_t	*handle;
+
+	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	if (!handle) {
+		REDEBUG("Failed reserving SQL connection");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	DO_PART(bulk_release_begin);
+	DO_PART(bulk_release_clear);
+	DO_PART(bulk_release_commit);
+
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_OK;
+
+	error:
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	return RLM_MODULE_FAIL;
+}
+
+/*
  *	Mark a lease.  Typically for DHCP Decline where IPs need to be marked
  *	as invalid
  */
@@ -726,38 +756,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *
 	return RLM_MODULE_FAIL;
 }
 
-static int mod_accounting_on(rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t const *inst, REQUEST *request)
-{
-	DO(bulkrelease_begin);
-	DO(bulkrelease_clear);
-	DO(bulkrelease_commit);
-
-	return RLM_MODULE_OK;
-}
-
-static int mod_accounting_off(rlm_sql_handle_t **handle,
-			      rlm_sqlippool_t const *inst, REQUEST *request)
-{
-	DO(bulkrelease_begin);
-	DO(bulkrelease_clear);
-	DO(bulkrelease_commit);
-
-	return RLM_MODULE_OK;
-}
-
 /*
  *	Check Accounting packets for their accoutning status
  *	Call the relevant module based on the status
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_sqlippool_t	const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_sqlippool_t);
 	int			rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*vp;
 
 	int			acct_status_type;
-	rlm_sql_handle_t	*handle;
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
@@ -766,26 +774,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	}
 	acct_status_type = vp->vp_uint32;
 
-	switch (acct_status_type) {
-	case FR_STATUS_START:
-	case FR_STATUS_ALIVE:
-	case FR_STATUS_STOP:
-	case FR_STATUS_ACCOUNTING_ON:
-	case FR_STATUS_ACCOUNTING_OFF:
-		break;		/* continue through to the next section */
-
-	default:
-		/* We don't care about any other accounting packet */
-		return RLM_MODULE_NOOP;
-	}
-
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
-	if (!handle) {
-		RDEBUG2("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
-	}
-
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) return RLM_MODULE_FAIL;
 
 	switch (acct_status_type) {
 	case FR_STATUS_START:
@@ -798,14 +786,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 		break;
 
 	case FR_STATUS_ACCOUNTING_ON:
-		rcode = mod_accounting_on(&handle, inst, request);
+	case FR_STATUS_ACCOUNTING_OFF:
+		rcode = mod_bulk_release(mctx, request);
 		break;
 
-	case FR_STATUS_ACCOUNTING_OFF:
-		rcode = mod_accounting_off(&handle, inst, request);
-		break;
+        default:
+		/* We don't care about any other accounting packet */
+		return RLM_MODULE_NOOP;
 	}
-	fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 	return rcode;
 }
