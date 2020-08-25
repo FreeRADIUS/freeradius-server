@@ -702,7 +702,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 */
 	vp = fr_pair_find_by_num(request->state, PW_FRAMED_MTU, 0, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(request, PW_FRAMED_MTU, 0);
+		vp = fr_pair_afrom_num(request->state_ctx, PW_FRAMED_MTU, 0);
 		fr_pair_add(&request->state, vp);
 	}
 	if (vp) vp->vp_integer = state->mtu;
