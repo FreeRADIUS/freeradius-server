@@ -256,11 +256,22 @@ dhcp DHCP-Decline {
 	reject
 }
 
+#
+#  A dummy config for Inform packets - this should match the
+#  options set in the Request section above, except Inform replies
+#  must not set Your-IP-Address or IP-Address-Lease-Time
+#
 dhcp DHCP-Inform {
+	#  The contents here are invented.  Change them!
 	update reply {
-	       &DHCP-Message-Type = DHCP-Do-Not-Respond
+		&DHCP-Message-Type = DHCP-Ack
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
-	reject
+	ok
 }
 
 #
