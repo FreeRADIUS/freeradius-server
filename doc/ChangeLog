@@ -27,6 +27,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add support for DHCP-Decline.
 	* Remove native support for Cisco LEAP.  It is insecure, and
 	  should not be used.  Proxying LEAP is still supported.
+	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
+	  works, and no longer requires manual changes to the configuration.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
