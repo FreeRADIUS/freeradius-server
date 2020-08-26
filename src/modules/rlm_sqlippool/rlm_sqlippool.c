@@ -825,6 +825,12 @@ module_t rlm_sqlippool = {
 		{ "recv",	"DHCP-Release",		mod_release },
 		{ "recv",	"DHCP-Decline",		mod_mark },
 
+		{ "ippool",	"alloc",		mod_alloc },
+		{ "ippool",	"update",		mod_update },
+		{ "ippool",	"release",		mod_release },
+		{ "ippool",	"bulk-release",		mod_bulk_release },
+		{ "ippool",	"mark",			mod_mark },
+
 		MODULE_NAME_TERMINATOR
 	}
 
