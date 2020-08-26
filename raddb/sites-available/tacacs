@@ -187,7 +187,7 @@ server tacacs {
 	#
 	#	### Send
 	#
-	send Authorization-Response {
+	send Authorization-Reply {
 		update reply {
 			&TACACS-Authorization-Status := Pass-Add
 			&TACACS-Server-Message := "authorization-response-server"
