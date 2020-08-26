@@ -1819,13 +1819,9 @@ int modules_bootstrap(CONF_SECTION *root)
 	 */
 	cs = cf_section_find(root, "policy", NULL);
 	if (cs) {
-		bool fail = false;
-
-		/*
-		 *  Loop over the items in the 'instantiate' section.
-		 */
 		while ((ci = cf_item_next(cs, ci))) {
 			CONF_SECTION *subcs, *problemcs;
+			char const *name1;
 
 			/*
 			 *	Skip anything that isn't a section.
@@ -1833,16 +1829,25 @@ int modules_bootstrap(CONF_SECTION *root)
 			if (!cf_item_is_section(ci)) continue;
 
 			subcs = cf_item_to_section(ci);
-			problemcs = cf_section_find_next(cs, subcs,
-							 cf_section_name1(subcs), CF_IDENT_ANY);
+			name1 = cf_section_name1(subcs);
+
+			if (unlang_compile_is_keyword(name1)) {
+				cf_log_err(subcs, "Policy name '%s' cannot be an unlang keyword", name1);
+				return -1;
+			}
+
+			if (cf_section_name2(subcs)) {
+				cf_log_err(subcs, "Policies cannot have two names");
+				return -1;
+			}
+
+			problemcs = cf_section_find_next(cs, subcs, name1, CF_IDENT_ANY);
 			if (!problemcs) continue;
 
 			cf_log_err(problemcs, "Duplicate policy '%s' is forbidden.",
 				   cf_section_name1(subcs));
-			fail = true;
+			return -1;
 		}
-
-		if (fail) return -1;
 	}
 
 	return 0;
