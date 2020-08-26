@@ -435,7 +435,7 @@ error:
  */
 static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t keylen, void *data)
 {
-	fr_io_client_t *client = data;
+	fr_io_client_t *client = talloc_get_type_abort(data, fr_io_client_t);
 	int connections;
 
 	/*
@@ -1106,6 +1106,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_track_t *track;
 	fr_listen_t *child;
 	int value, accept_fd = -1;
+
+	fr_assert(is_dup != NULL);
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
@@ -1845,7 +1847,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 
 static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	fr_io_client_t		*client = uctx;
+	fr_io_client_t		*client = talloc_get_type_abort(uctx, fr_io_client_t);
 	fr_io_instance_t const	*inst;
 	fr_io_connection_t	*connection;
 	fr_time_delta_t		delay;
@@ -2110,7 +2112,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_io_instance_t const *inst;
 	fr_io_thread_t *thread;
 	fr_io_connection_t *connection;
-	fr_io_track_t *track = packet_ctx;
+	fr_io_track_t *track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_client_t *client;
 	RADCLIENT *radclient;
 	fr_listen_t *child;
