@@ -1,0 +1,3 @@
+status: PASS
+data: b'Authentication-Data'
+server_msg: b'Authentication-Start accepted'
