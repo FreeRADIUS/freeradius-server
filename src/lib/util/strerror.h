@@ -33,12 +33,20 @@ extern "C" {
 
 #include <string.h>
 
-void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_printf(char const *fmt, ...) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+
 void		fr_strerror_printf_push(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
+void		fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 
 char const	*fr_strerror(void);
+char const	*fr_strerror_marker(char const **subject, size_t *offset);
+
 char const	*fr_strerror_peek(void);
+char const	*fr_strerror_marker_peek(char const **subject, size_t *offset);
+
 char const	*fr_strerror_pop(void);
+char const	*fr_strerror_marker_pop(char const **subject, size_t *offset);
 
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 

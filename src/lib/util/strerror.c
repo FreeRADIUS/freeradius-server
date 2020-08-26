@@ -35,6 +35,10 @@ RCSID("$Id$")
 typedef struct fr_log_entry_s fr_log_entry_t;
 struct fr_log_entry_s {
 	char		*msg;		//!< Log message.
+
+	char		*subject;	//!< Subject for error markers.
+	size_t		offset;		//!< Where to place the msg marker relative to the subject.
+
 	fr_log_entry_t	*next;		//!< Next log message.
 };
 
@@ -119,14 +123,14 @@ static inline fr_log_buffer_t *fr_strerror_init(void)
 	return buffer;
 }
 
-static void fr_strerror_vprintf(char const *fmt, va_list ap)
+static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (!buffer) return NULL;
 
 	/*
 	 *	Clear any existing log messages
@@ -135,7 +139,7 @@ static void fr_strerror_vprintf(char const *fmt, va_list ap)
 		talloc_free_children(buffer->pool);
 		fr_strerror_clear(buffer);
 
-		return;
+		return NULL;
 	}
 
 	/*
@@ -146,7 +150,7 @@ static void fr_strerror_vprintf(char const *fmt, va_list ap)
 		if (!entry) {
 		oom:
 			fr_perror("Failed allocating memory for libradius error buffer");
-			return;
+			return NULL;
 		}
 
 		va_copy(ap_p, ap);
@@ -158,7 +162,9 @@ static void fr_strerror_vprintf(char const *fmt, va_list ap)
 		buffer->pool = buffer->pool_b;
 	/*
 	 *	...and vice versa.  This prevents the pools
-	 *	from leaking due to non-contiguous allocations.
+	 *	from leaking due to non-contiguous allocations
+	 *	when we're using fr_strerror as an argument
+	 *	for another message.
 	 */
 	} else {
 		entry = talloc_zero(buffer->pool_a, fr_log_entry_t);
@@ -175,6 +181,8 @@ static void fr_strerror_vprintf(char const *fmt, va_list ap)
 
 	fr_strerror_clear(buffer);
 	fr_cursor_prepend(&buffer->cursor, entry);	/* It's a LIFO (not that it matters here) */
+
+	return entry;
 }
 
 /** Log to thread local error buffer
@@ -192,20 +200,43 @@ void fr_strerror_printf(char const *fmt, ...)
 	va_end(ap);
 }
 
+/** Add an error marker to an existing stack of messages
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ */
+void fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list		ap;
+	fr_log_entry_t	*entry;
+
+	va_start(ap, fmt);
+	entry = fr_strerror_vprintf(fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	entry->subject = talloc_strdup(entry, subject);
+	entry->offset = offset;
+}
+
 /** Add a message to an existing stack of messages
  *
  * @param[in] fmt	printf style format string.
  */
-static void fr_strerror_vprintf_push(char const *fmt, va_list ap)
+static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
 
-	if (!fmt) return;
+	if (!fmt) return NULL;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (!buffer) return NULL;
 
 	/*
 	 *	Address pathological case where we could leak memory
@@ -218,7 +249,7 @@ static void fr_strerror_vprintf_push(char const *fmt, va_list ap)
 	if (!entry) {
 	oom:
 		fr_perror("Failed allocating memory for libradius error buffer");
-		return;
+		return NULL;
 	}
 
 	va_copy(ap_p, ap);
@@ -228,6 +259,8 @@ static void fr_strerror_vprintf_push(char const *fmt, va_list ap)
 
 	fr_cursor_prepend(&buffer->cursor, entry);	/* It's a LIFO */
 	fr_cursor_head(&buffer->cursor);		/* Reset current to first */
+
+	return entry;
 }
 
 /** Add a message to an existing stack of messages
@@ -243,6 +276,29 @@ void fr_strerror_printf_push(char const *fmt, ...)
 	va_start(ap, fmt);
 	fr_strerror_vprintf_push(fmt, ap);
 	va_end(ap);
+}
+
+/** Add an error marker to an existing stack of messages
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ */
+void fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list		ap;
+	fr_log_entry_t	*entry;
+
+	va_start(ap, fmt);
+	entry = fr_strerror_vprintf_push(fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	entry->subject = talloc_strdup(entry, subject);
+	entry->offset = offset;
 }
 
 /** Get the last library error
@@ -273,6 +329,38 @@ char const *fr_strerror(void)
 	return entry->msg;
 }
 
+/** Get the last library error marker
+ *
+ * @param[out] subject	The subject string the error relates to.
+ * @param[out] offset	Where to place the marker.
+ * @return
+ *	- NULL if there are no pending errors.
+ *	- The error message if there was an error.
+ */
+char const *fr_strerror_marker(char const **subject, size_t *offset)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_buffer;
+	if (!buffer) return "";
+
+	fr_cursor_head(&buffer->cursor);
+	entry = fr_cursor_remove(&buffer->cursor);
+	if (!entry) return "";
+
+	/*
+	 *	Memory gets freed on next call to
+	 *	fr_strerror_printf or fr_strerror_printf_push.
+	 */
+	fr_strerror_clear(buffer);
+
+	*subject = entry->subject;
+	*offset = entry->offset;
+
+	return entry->msg;
+}
+
 /** Get the last library error
  *
  * @return library error or zero length string.
@@ -287,6 +375,31 @@ char const *fr_strerror_peek(void)
 
 	entry = fr_cursor_head(&buffer->cursor);
 	if (!entry) return "";
+
+	return entry->msg;
+}
+
+/** Get the last library error marker
+ *
+ * @param[out] subject	The subject string the error relates to.
+ * @param[out] offset	Where to place the marker.
+ * @return
+ *	- NULL if there are no pending errors.
+ *	- The error message if there was an error.
+ */
+char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_buffer;
+	if (!buffer) return "";
+
+	entry = fr_cursor_head(&buffer->cursor);
+	if (!entry) return "";
+
+	*subject = entry->subject;
+	*offset = entry->offset;
 
 	return entry->msg;
 }
@@ -317,6 +430,33 @@ char const *fr_strerror_pop(void)
 	return entry->msg;
 }
 
+/** Pop the last library error with marker information
+ *
+ * Return the first message added to the error stack using #fr_strerror_printf
+ * or #fr_strerror_printf_push.
+ *
+ * @return
+ *	- A library error.
+ *	- NULL if no errors are pending.
+ */
+char const *fr_strerror_marker_pop(char const **subject, size_t *offset)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_buffer;
+	if (!buffer) return NULL;
+
+	fr_cursor_head(&buffer->cursor);
+	entry = fr_cursor_remove(&buffer->cursor);
+	if (!entry) return NULL;
+
+	*subject = entry->subject;
+	*offset = entry->offset;
+
+	return entry->msg;
+}
+
 /** Print the current error to stderr with a prefix
  *
  * Used by utility functions lacking their own logging infrastructure
@@ -324,6 +464,8 @@ char const *fr_strerror_pop(void)
 void fr_perror(char const *fmt, ...)
 {
 	char const	*error;
+	char const	*subject;
+	size_t		offset;
 	char		*prefix;
 	va_list		ap;
 
@@ -331,8 +473,8 @@ void fr_perror(char const *fmt, ...)
 	prefix = talloc_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	error = fr_strerror_pop();
-	if (error && (error[0] != '\0')) {
+	error = fr_strerror_marker_pop(&subject, &offset);
+	if (error) {
 		fprintf(stderr, "%s: %s\n", prefix, error);
 	} else {
 		fprintf(stderr, "%s\n", prefix);
@@ -340,7 +482,7 @@ void fr_perror(char const *fmt, ...)
 		return;
 	}
 
-	while ((error = fr_strerror_pop())) {
+	while ((error = fr_strerror_marker_pop(&subject, &offset))) {
 		if (error && (error[0] != '\0')) {
 			fprintf(stderr, "%s: %s\n", prefix, error);
 		}
