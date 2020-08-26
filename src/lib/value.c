@@ -863,8 +863,23 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	intermediary variable to handle the conversions.
 		 */
 		time_t date;
+		struct tm tm = { 0 };
+		char *end;
 
-		if (fr_get_time(src, &date) < 0) {
+		/*
+		 *	Try to parse dates via locale-specific names,
+		 *	using the same format string as strftime(),
+		 *	below.
+		 *
+		 *	If that fails (e.g. unix dates as integer),
+		 *	then we fall back to our parsing routine,
+		 *	which is much more forgiving.
+		 */
+		end = strptime(src, "%b %e %Y %H:%M:%S %Z", &tm);
+		if (end && (*end == '\0')) {
+			date = mktime(&tm);
+
+		} else if (fr_get_time(src, &date) < 0) {
 			fr_strerror_printf("failed to parse time string \"%s\"", src);
 			return -1;
 		}
