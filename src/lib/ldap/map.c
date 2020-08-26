@@ -98,7 +98,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 
 			talloc_free(attr_str);
 
-			if (tmpl_is_unparsed(attr->lhs)) {
+			if (tmpl_is_unresolved(attr->lhs)) {
 			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				talloc_free(attr);
@@ -191,8 +191,8 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_ATTR:
 		break;
 
-	case TMPL_TYPE_ATTR_UNPARSED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unparsed(map->lhs));
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->lhs));
 		return -1;
 
 	default:
@@ -206,14 +206,14 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 	 *	we're retrieving from LDAP.
 	 */
 	switch (map->rhs->type) {
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		break;
 
-	case TMPL_TYPE_ATTR_UNPARSED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unparsed(map->rhs));
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->rhs));
 		return -1;
 
 	default:

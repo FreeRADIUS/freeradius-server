@@ -179,7 +179,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
 		/*
-		 *	This is so we produce TMPL_TYPE_ATTR_UNPARSED template that
+		 *	This is so we produce TMPL_TYPE_ATTR_UNRESOLVED template that
 		 *	the bootstrap functions can use to create an attribute.
 		 *
 		 *	For other types of template such as xlats, we don't bother.
@@ -190,14 +190,14 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cf_pair_value(cp),
 						   &(tmpl_rules_t){
 							.allow_unknown = true,
-							.allow_unparsed = true
+							.allow_unresolved = true
 						   });
 		} else {
 			slen = tmpl_afrom_str(cp, &vpt, cf_pair_value(cp), strlen(cf_pair_value(cp)),
 					      cf_pair_value_quote(cp),
 					      &(tmpl_rules_t){
 							.allow_unknown = true,
-							.allow_unparsed = true
+							.allow_unresolved = true
 					      }, false);
 		}
 
@@ -1313,7 +1313,7 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 
 	slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
 			      cf_pair_value_quote(cp),
-			      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true },
+			      &(tmpl_rules_t){ .allow_unknown = true, .allow_unresolved = true },
 			      true);
 	if (slen < 0) {
 		char *spaces, *text;
@@ -1338,12 +1338,12 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 		/*
 		 *	All attributes should have been defined by this point.
 		 */
-	case TMPL_TYPE_ATTR_UNPARSED:
-		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unparsed(vpt));
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unresolved(vpt));
 		talloc_free(vpt);
 		return -1;
 
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		/*
 		 *	Try to realize the underlying type, if at all possible.
 		 */
@@ -1360,12 +1360,12 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_REGEX_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:

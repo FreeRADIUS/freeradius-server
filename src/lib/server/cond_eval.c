@@ -137,7 +137,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t con
 	int modcode;
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		modcode = fr_table_value_by_str(rcode_table, vpt->name, RLM_MODULE_UNKNOWN);
 		if (modcode != RLM_MODULE_UNKNOWN) {
 			rcode = (modcode == modreturn);
@@ -166,7 +166,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t con
 		break;
 
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
 	{
 		char	*p;
@@ -188,7 +188,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t con
 	/*
 	 *	Can't have a bare ... (/foo/) ...
 	 */
-	case TMPL_TYPE_REGEX_UNPARSED:
+	case TMPL_TYPE_REGEX_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 		fr_assert(0 == 1);
 		FALL_THROUGH;
@@ -565,15 +565,15 @@ do {\
 	 *	Expanded types start as strings, then get converted
 	 *	to the type of the attribute or the explicit cast.
 	 */
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	{
 		ssize_t ret;
 		fr_value_box_t data;
 
-		if (!tmpl_is_unparsed(map->rhs)) {
+		if (!tmpl_is_unresolved(map->rhs)) {
 			char *p;
 
 			ret = tmpl_aexpand(request, &p, request, map->rhs, escape, NULL);
@@ -593,7 +593,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs, rhs);
-		if (!tmpl_is_unparsed(map->rhs)) talloc_free(data.datum.ptr);
+		if (!tmpl_is_unresolved(map->rhs)) talloc_free(data.datum.ptr);
 
 		break;
 	}
@@ -611,8 +611,8 @@ do {\
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_ATTR_UNPARSED:
-	case TMPL_TYPE_REGEX_UNPARSED:	/* Should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+	case TMPL_TYPE_REGEX_UNRESOLVED:	/* Should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		rcode = -1;
@@ -688,16 +688,16 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		rcode = cond_normalise_and_cmp(request, c, tmpl_value(map->lhs));
 		break;
 
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	{
 		char		*p = NULL;
 		ssize_t		ret;
 		fr_value_box_t	data;
 
-		if (!tmpl_is_unparsed(map->lhs)) {
+		if (!tmpl_is_unresolved(map->lhs)) {
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
@@ -718,9 +718,9 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_ATTR_UNPARSED:
+	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_REGEX_UNPARSED:		/* should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_REGEX_UNRESOLVED:		/* should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
 	case TMPL_TYPE_REGEX:	/* not allowed as LHS */
 	case TMPL_TYPE_MAX:
 		fr_assert(0);

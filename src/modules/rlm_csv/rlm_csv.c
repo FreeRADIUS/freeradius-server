@@ -308,8 +308,8 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	case TMPL_TYPE_LIST:
 		break;
 
-	case TMPL_TYPE_ATTR_UNPARSED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unparsed(map->lhs));
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->lhs));
 		return -1;
 
 	default:
@@ -323,7 +323,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	 *	we're retrieving from LDAP.
 	 */
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		offset = -1;
 		if (fieldname2offset(inst, map->rhs->name, &offset) < 0) {
 			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
@@ -349,8 +349,8 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 
 		break;
 
-	case TMPL_TYPE_ATTR_UNPARSED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unparsed(map->rhs));
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->rhs));
 		return -1;
 
 	default:
@@ -814,7 +814,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
 		/*
 		 *	Avoid memory allocations if possible.
 		 */
-		if (!tmpl_is_unparsed(map->rhs)) {
+		if (!tmpl_is_unresolved(map->rhs)) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
 				REXDENT();
 				REDEBUG("Failed expanding RHS at %s", map->lhs->name);

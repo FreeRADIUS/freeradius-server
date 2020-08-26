@@ -25,7 +25,7 @@
  *
  * #tmpl_t (VPTs) specify either a data source, or a data sink.
  *
- * Examples of sources are #TMPL_TYPE_XLAT_UNPARSED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
+ * Examples of sources are #TMPL_TYPE_XLAT_UNRESOLVED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
  * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
  *
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT_UNPARSED or a #TMPL_TYPE_UNPARSED (depending if the string
+ * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_UNRESOLVED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_str
@@ -131,17 +131,17 @@ typedef enum tmpl_type_e {
 	 *
 	 * @{
 	 */
-	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.  May be an intermediary phase
+	TMPL_TYPE_UNRESOLVED,		//!< Unparsed literal string.  May be an intermediary phase
 					///< where the tmpl is created as a temporary structure
 					///< during parsing.
 
-	TMPL_TYPE_ATTR_UNPARSED,	//!< An attribute reference that we couldn't resolve.
+	TMPL_TYPE_ATTR_UNRESOLVED,	//!< An attribute reference that we couldn't resolve.
 					///< May be resolvable later once more attributes are
 					///< defined.
 
-	TMPL_TYPE_XLAT_UNPARSED,	//!< Unparsed xlat expansion.  May have a dynamic element.
+	TMPL_TYPE_XLAT_UNRESOLVED,	//!< Unparsed xlat expansion.  May have a dynamic element.
 
-	TMPL_TYPE_REGEX_UNPARSED,	//!< Unparsed regular expression.  May have a dynamic element.
+	TMPL_TYPE_REGEX_UNRESOLVED,	//!< Unparsed regular expression.  May have a dynamic element.
 	/** @} */
 
 	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
@@ -162,10 +162,10 @@ typedef enum tmpl_type_e {
 
 #define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
 
-#define tmpl_is_unparsed(vpt) 		(vpt->type == TMPL_TYPE_UNPARSED)
-#define tmpl_is_attr_unparsed(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNPARSED)
-#define tmpl_is_xlat_unparsed(vpt) 	(vpt->type == TMPL_TYPE_XLAT_UNPARSED)
-#define tmpl_is_regex_unparsed(vpt) 	(vpt->type == TMPL_TYPE_REGEX_UNPARSED)
+#define tmpl_is_unresolved(vpt) 		(vpt->type == TMPL_TYPE_UNRESOLVED)
+#define tmpl_is_attr_unresolved(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
+#define tmpl_is_xlat_unresolved(vpt) 	(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
+#define tmpl_is_regex_unresolved(vpt) 	(vpt->type == TMPL_TYPE_REGEX_UNRESOLVED)
 
 extern fr_table_num_sorted_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
@@ -214,7 +214,7 @@ struct tmpl_rules_s {
 	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	bool			allow_unparsed;		//!< Allow attributes that look valid but were
+	bool			allow_unresolved;		//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
@@ -236,7 +236,7 @@ typedef enum {
 							///< dictionary, or isn't a child of
 							///< the previous ref.  May be resolved
 							///< later.
-	TMPL_ATTR_TYPE_UNPARSED				//!< We have a name, but nothing else
+	TMPL_ATTR_TYPE_UNRESOLVED				//!< We have a name, but nothing else
 							///< to identify the attribute.
 							///< may be resolved later.
 } tmpl_attr_type_t;
@@ -282,7 +282,7 @@ typedef struct {
  */
 #define ar_da				da
 #define ar_unknown			unknown.da
-#define ar_unparsed			unknown.name
+#define ar_unresolved			unknown.name
 #define ar_num				num
 #define ar_tag				tag
 /** @} */
@@ -298,8 +298,8 @@ typedef struct {
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
- * - #TMPL_TYPE_UNPARSED
- * - #TMPL_TYPE_XLAT_UNPARSED
+ * - #TMPL_TYPE_UNRESOLVED
+ * - #TMPL_TYPE_XLAT_UNRESOLVED
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
  * - #TMPL_TYPE_EXEC
@@ -353,14 +353,14 @@ struct tmpl_s {
 	fr_assert_msg(_cond, "Unexpected tmpl type '%s'", \
 		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"))
 
-/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNPARSED, #TMPL_TYPE_LIST
+/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED, #TMPL_TYPE_LIST
  *
  * @{
  */
 static inline request_ref_t tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unparsed(vpt) ||
+			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
 	return ((tmpl_request_t *)fr_dlist_tail(&vpt->data.attribute.rr))->request;
@@ -380,17 +380,17 @@ static inline fr_dict_attr_t const *tmpl_unknown(tmpl_t const *vpt)
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unknown;
 }
 
-static inline char const *tmpl_attr_unparsed(tmpl_t const *vpt)
+static inline char const *tmpl_attr_unresolved(tmpl_t const *vpt)
 {
-	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNPARSED);
+	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED);
 
-	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unparsed;
+	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unresolved;
 }
 
 static inline int16_t tmpl_num(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unparsed(vpt) ||
+			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
@@ -399,7 +399,7 @@ static inline int16_t tmpl_num(tmpl_t const *vpt)
 static inline int8_t tmpl_tag(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once tags are part of ar dlist */
+			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once tags are part of ar dlist */
 			 tmpl_is_list(vpt));
 
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_tag;
@@ -408,7 +408,7 @@ static inline int8_t tmpl_tag(tmpl_t const *vpt)
 static inline pair_list_t tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unparsed(vpt) ||			/* Remove once list is part of ar dlist */
+			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once list is part of ar dlist */
 			 tmpl_is_list(vpt));
 
 	return vpt->data.attribute.list;
@@ -437,7 +437,7 @@ static inline pair_list_t tmpl_list(tmpl_t const *vpt)
 #define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_UNPARSED
+/** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_UNRESOLVED
  *
  * @{
  */
@@ -624,9 +624,9 @@ void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
-int			tmpl_attr_resolve_unparsed(tmpl_t *vpt, tmpl_rules_t const *rules) CC_HINT(nonnull);
+int			tmpl_attr_resolve_unresolved(tmpl_t *vpt, tmpl_rules_t const *rules) CC_HINT(nonnull);
 
-void			tmpl_attr_set_unparsed(tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
+void			tmpl_attr_set_unresolved(tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
 
 int			tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
@@ -689,7 +689,7 @@ int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
 
 int			tmpl_unknown_attr_add(tmpl_t *vpt);
 
-int			tmpl_unparsed_attr_add(fr_dict_t *dict, tmpl_t *vpt,
+int			tmpl_unresolved_attr_add(fr_dict_t *dict, tmpl_t *vpt,
 						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,

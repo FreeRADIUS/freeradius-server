@@ -81,7 +81,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	statement.
 	 */
 	if (tmpl_is_xlat(g->vpt) ||
-	    tmpl_is_xlat_unparsed(g->vpt) ||
+	    tmpl_is_xlat_unresolved(g->vpt) ||
 	    tmpl_is_exec(g->vpt)) {
 		char *p;
 		ssize_t len;
@@ -89,7 +89,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
 		data.vb_strvalue = p;
-		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.vb_strvalue, len, T_SINGLE_QUOTED_STRING);
+		tmpl_init(&vpt, TMPL_TYPE_UNRESOLVED, data.vb_strvalue, len, T_SINGLE_QUOTED_STRING);
 	}
 
 	/*
@@ -133,7 +133,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 			 *	Use the pre-expanded string.
 			 */
 		} else if (tmpl_is_xlat(g->vpt) ||
-			   tmpl_is_xlat_unparsed(g->vpt) ||
+			   tmpl_is_xlat_unresolved(g->vpt) ||
 			   tmpl_is_exec(g->vpt)) {
 			map.rhs = h->vpt;
 			map.lhs = &vpt;

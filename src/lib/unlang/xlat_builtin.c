@@ -1365,7 +1365,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 		break;
 
 	default:
@@ -1379,9 +1379,9 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_REGEX_UNPARSED:
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_REGEX_UNRESOLVED:
+	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 		break;
 
 	default:

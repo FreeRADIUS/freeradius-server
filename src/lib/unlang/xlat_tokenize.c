@@ -364,7 +364,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 
 	p = in + 2;
 
-	our_rules.allow_unparsed = true;		/* So we can check for virtual attributes later */
+	our_rules.allow_unresolved = true;		/* So we can check for virtual attributes later */
   	our_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
 	slen = tmpl_afrom_attr_substr(NULL, &err, &vpt, p, inlen - 2, &our_rules);
 	if (slen <= 0) {
@@ -394,11 +394,11 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	to a normal function but called without an argument
 	 *	list.
 	 */
-	if (tmpl_is_attr_unparsed(vpt)) {
-		func = xlat_func_find(tmpl_attr_unparsed(vpt), -1);
+	if (tmpl_is_attr_unresolved(vpt)) {
+		func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
 		if (func && (func->type == XLAT_FUNC_LEGACY)) {
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL,
-					      tmpl_attr_unparsed(vpt), talloc_array_length(tmpl_attr_unparsed(vpt)) - 1);
+					      tmpl_attr_unresolved(vpt), talloc_array_length(tmpl_attr_unresolved(vpt)) - 1);
 			talloc_free(vpt);	/* Free the tmpl, we don't need it */
 
 			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);

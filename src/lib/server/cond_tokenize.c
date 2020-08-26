@@ -256,7 +256,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	}
 
 #ifdef HAVE_REGEX
-	if (tmpl_is_regex_unparsed(c->data.map->rhs)) {
+	if (tmpl_is_regex_unresolved(c->data.map->rhs)) {
 		*error = "Cannot use cast with regex comparison";
 		return -(rhs - start);
 	}
@@ -266,7 +266,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	 *	The LHS is a literal which has been cast to a data type.
 	 *	Cast it to the appropriate data type.
 	 */
-	if (tmpl_is_unparsed(c->data.map->lhs) &&
+	if (tmpl_is_unresolved(c->data.map->lhs) &&
 	    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
 		*error = "Failed to parse field";
 		return -(lhs - start);
@@ -277,7 +277,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	 *	type.
 	 */
 	if ((tmpl_is_data(c->data.map->lhs)) &&
-	    (tmpl_is_unparsed(c->data.map->rhs)) &&
+	    (tmpl_is_unresolved(c->data.map->rhs)) &&
 	    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 		*error = "Failed to parse field";
 		return -(rhs - start);
@@ -425,7 +425,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	 *	The LHS has been cast to a data type, and the RHS is a
 	 *	literal.  Cast the RHS to the type of the cast.
 	 */
-	if (c->cast && tmpl_is_unparsed(c->data.map->rhs) &&
+	if (c->cast && tmpl_is_unresolved(c->data.map->rhs) &&
 	    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 		return_rhs("Failed to parse field");
 	}
@@ -440,7 +440,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	 *	This allows Framed-IP-Address < 192.168.0.0./24
 	 */
 	if (tmpl_is_attr(c->data.map->lhs) &&
-	    (tmpl_is_unparsed(c->data.map->rhs) ||
+	    (tmpl_is_unresolved(c->data.map->rhs) ||
 	     tmpl_is_data(c->data.map->rhs))) {
 		fr_type_t type = tmpl_da(c->data.map->lhs)->type;
 
@@ -517,7 +517,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	 *	there, too.
 	 */
 	if (tmpl_is_attr(c->data.map->lhs) &&
-	    (tmpl_is_xlat_unparsed(c->data.map->rhs) ||
+	    (tmpl_is_xlat_unresolved(c->data.map->rhs) ||
 	     tmpl_is_xlat(c->data.map->rhs) ||
 	     tmpl_is_exec(c->data.map->rhs))) {
 		if (tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV4_ADDR) {
@@ -541,7 +541,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 	 *	and do no parsing until after all of the modules
 	 *	are loaded.  But that has issues, too.
 	 */
-	if (tmpl_is_unparsed(c->data.map->lhs) && (lhs_type == T_BARE_WORD)) {
+	if (tmpl_is_unresolved(c->data.map->lhs) && (lhs_type == T_BARE_WORD)) {
 		int hyphens = 0;
 		bool may_be_attr = true;
 		size_t i;
@@ -568,7 +568,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, char const *start,
 			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
 							&(tmpl_rules_t){
 								.allow_unknown = true,
-								.allow_unparsed = true
+								.allow_unresolved = true
 							});
 			if ((attr_slen > 0) && (vpt->len == c->data.map->lhs->len)) {
 				talloc_free(c->data.map->lhs);
@@ -684,7 +684,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	 */
 	parse_rules = *rules;
 	parse_rules.allow_unknown = true;
-	parse_rules.allow_unparsed = true;
+	parse_rules.allow_unresolved = true;
 
 	c = talloc_zero(ctx, fr_cond_t);
 
@@ -820,14 +820,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 			return_P(fr_strerror());
 		}
 
-		fr_assert(!tmpl_is_regex_unparsed(c->data.vpt));
+		fr_assert(!tmpl_is_regex_unresolved(c->data.vpt));
 
 		if (tmpl_unknown_attr_add(c->data.vpt) < 0) {
 			p = lhs - tlen;
 			return_P("Failed defining attribute");
 		}
 
-		if (tmpl_is_attr_unparsed(c->data.vpt)) {
+		if (tmpl_is_attr_unresolved(c->data.vpt)) {
 			c->pass2_fixup = PASS2_FIXUP_ATTR;
 		}
 
@@ -1009,8 +1009,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		/*
 		 *	Unknown attributes get marked up for pass2.
 		 */
-		if (tmpl_is_attr_unparsed(c->data.map->lhs) ||
-		    tmpl_is_attr_unparsed(c->data.map->rhs)) {
+		if (tmpl_is_attr_unresolved(c->data.map->lhs) ||
+		    tmpl_is_attr_unresolved(c->data.map->rhs)) {
 			c->pass2_fixup = PASS2_FIXUP_ATTR;
 		}
 
@@ -1025,7 +1025,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_SECTION *cs,
 
 			memset(&regex_flags, 0, sizeof(regex_flags));
 
-			if (!tmpl_is_regex_unparsed(c->data.map->rhs)) {
+			if (!tmpl_is_regex_unresolved(c->data.map->rhs)) {
 				return_rhs("Expected regex");
 			}
 
@@ -1335,8 +1335,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if (tmpl_is_unparsed(c->data.map->rhs) &&
-		    tmpl_is_unparsed(c->data.map->lhs) &&
+		if (tmpl_is_unresolved(c->data.map->rhs) &&
+		    tmpl_is_unresolved(c->data.map->lhs) &&
 		    !c->pass2_fixup) {
 			int rcode;
 
@@ -1405,7 +1405,7 @@ done:
 			/*
 			 *	This must have been parsed into TMPL_TYPE_DATA.
 			 */
-			fr_assert(!tmpl_is_unparsed(c->data.map->rhs));
+			fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
 		}
 
 	} while (0);
@@ -1421,9 +1421,9 @@ done:
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		switch (c->data.vpt->type) {
-		case TMPL_TYPE_XLAT_UNPARSED:
+		case TMPL_TYPE_XLAT_UNRESOLVED:
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_ATTR_UNPARSED:
+		case TMPL_TYPE_ATTR_UNRESOLVED:
 		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;
@@ -1439,7 +1439,7 @@ done:
 			 *	'foo' and "foo" are true.
 			 *
 			 *	The str2tmpl function takes care of
-			 *	marking "%{foo}" as TMPL_TYPE_XLAT_UNPARSED, so
+			 *	marking "%{foo}" as TMPL_TYPE_XLAT_UNRESOLVED, so
 			 *	the strings here are fixed at compile
 			 *	time.
 			 *
@@ -1448,7 +1448,7 @@ done:
 			 *	Bare words must be module return
 			 *	codes.
 			 */
-		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_UNRESOLVED:
 			if ((strcmp(c->data.vpt->name, "true") == 0) ||
 			    (strcmp(c->data.vpt->name, "1") == 0)) {
 				c->type = COND_TYPE_TRUE;

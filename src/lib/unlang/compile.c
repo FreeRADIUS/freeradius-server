@@ -160,7 +160,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, tmpl_t **pvpt, bool convert,
 
 	vpt = *pvpt;
 
-	fr_assert(tmpl_is_xlat_unparsed(vpt));
+	fr_assert(tmpl_is_xlat_unresolved(vpt));
 
 	slen = xlat_tokenize(vpt, &head, vpt->name, talloc_array_length(vpt->name) - 1, rules);
 
@@ -239,7 +239,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t con
 	ssize_t slen;
 	regex_t *preg;
 
-	fr_assert(tmpl_is_regex_unparsed(vpt));
+	fr_assert(tmpl_is_regex_unresolved(vpt));
 
 	/*
 	 *	It's a dynamic expansion.  We can't expand the string,
@@ -253,7 +253,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t con
 	 *	XLAT instead of a REGEX.
 	 */
 	if (strchr(vpt->name, '%')) {
-		vpt->type = TMPL_TYPE_XLAT_UNPARSED;
+		vpt->type = TMPL_TYPE_XLAT_UNRESOLVED;
 		return pass2_fixup_xlat(ci, &vpt, false, NULL, rules);
 	}
 
@@ -282,9 +282,9 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t con
 
 static bool pass2_fixup_undefined(CONF_ITEM const *ci, tmpl_t *vpt, tmpl_rules_t const *rules)
 {
-	fr_assert(tmpl_is_attr_unparsed(vpt));
+	fr_assert(tmpl_is_attr_unresolved(vpt));
 
-	if (tmpl_attr_resolve_unparsed(vpt, rules) < 0) {
+	if (tmpl_attr_resolve_unresolved(vpt, rules) < 0) {
 		cf_log_perr(ci, "Failed resolving undefined attribute");
 		return false;
 	}
@@ -297,7 +297,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, tmpl_t **pvpt, tmpl_rules_t co
 {
 	tmpl_t *vpt = *pvpt;
 
-	if (tmpl_is_xlat_unparsed(vpt)) {
+	if (tmpl_is_xlat_unresolved(vpt)) {
 		return pass2_fixup_xlat(ci, pvpt, convert, NULL, rules);
 	}
 
@@ -305,7 +305,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, tmpl_t **pvpt, tmpl_rules_t co
 	 *	The existence check might have been &Foo-Bar,
 	 *	where Foo-Bar is defined by a module.
 	 */
-	if (tmpl_is_attr_unparsed(vpt)) {
+	if (tmpl_is_attr_unresolved(vpt)) {
 		return pass2_fixup_undefined(ci, vpt, rules);
 	}
 
@@ -360,12 +360,12 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 		/*
 		 *	Resolve the attribute references first
 		 */
-		if (tmpl_is_attr_unparsed(map->lhs)) {
+		if (tmpl_is_attr_unresolved(map->lhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 			if (!cast) cast = tmpl_da(map->lhs);
 		}
 
-		if (tmpl_is_attr_unparsed(map->rhs)) {
+		if (tmpl_is_attr_unresolved(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 			if (!cast) cast = tmpl_da(map->rhs);
 		}
@@ -373,7 +373,7 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 		/*
 		 *	Then fixup the other side if it was unparsed
 		 */
-		if (tmpl_is_unparsed(map->lhs)) {
+		if (tmpl_is_unresolved(map->lhs)) {
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
@@ -400,7 +400,7 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 
 				return false;
 			}
-		} else if (tmpl_is_unparsed(map->rhs)) {
+		} else if (tmpl_is_unresolved(map->rhs)) {
 			switch (cast->type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
@@ -440,14 +440,14 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 	/*
 	 *	Precompile xlat's
 	 */
-	if (tmpl_is_xlat_unparsed(map->lhs)) {
+	if (tmpl_is_xlat_unresolved(map->lhs)) {
 		/*
 		 *	Compile the LHS to an attribute reference only
 		 *	if the RHS is a literal.
 		 *
 		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if (!tmpl_is_unparsed(map->rhs)) {
+		if (!tmpl_is_unresolved(map->rhs)) {
 			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
 				return false;
 			}
@@ -509,7 +509,7 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 		}
 	}
 
-	if (tmpl_is_xlat_unparsed(map->rhs)) {
+	if (tmpl_is_xlat_unresolved(map->rhs)) {
 		/*
 		 *	Convert the RHS to an attribute reference only
 		 *	if the LHS is an attribute reference, AND is
@@ -551,7 +551,7 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
-	if (tmpl_is_unparsed(map->lhs) &&
+	if (tmpl_is_unresolved(map->lhs) &&
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		ssize_t slen;
@@ -579,12 +579,12 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 	}
 
 #ifdef HAVE_REGEX
-	if (tmpl_is_regex_unparsed(map->rhs)) {
+	if (tmpl_is_regex_unresolved(map->rhs)) {
 		if (!pass2_fixup_regex(map->ci, map->rhs, rules)) {
 			return false;
 		}
 	}
-	fr_assert(!tmpl_is_regex_unparsed(map->lhs));
+	fr_assert(!tmpl_is_regex_unresolved(map->lhs));
 #endif
 
 	/*
@@ -617,7 +617,7 @@ static bool pass2_fixup_map(fr_cond_t *c, tmpl_rules_t const *rules)
 
 	if (!paircmp_find(tmpl_da(map->lhs))) return true;
 
-	if (tmpl_is_regex_unparsed(map->rhs)) {
+	if (tmpl_is_regex_unresolved(map->rhs)) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
 		return false;
 	}
@@ -663,7 +663,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 	 *	Fix up the template.
 	 */
 	case COND_TYPE_EXISTS:
-		fr_assert(!tmpl_is_regex_unparsed(c->data.vpt));
+		fr_assert(!tmpl_is_regex_unresolved(c->data.vpt));
 		return pass2_fixup_tmpl(c->ci, &c->data.vpt, unlang_ctx->rules, true);
 
 	/*
@@ -683,7 +683,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
-	if (tmpl_is_xlat_unparsed(map->lhs)) {
+	if (tmpl_is_xlat_unresolved(map->lhs)) {
 		fr_assert(tmpl_xlat(map->lhs) == NULL);
 
 		/*
@@ -704,7 +704,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
 	/*
 	 *	Deal with undefined attributes now.
 	 */
-	if (tmpl_is_attr_unparsed(map->lhs)) {
+	if (tmpl_is_attr_unresolved(map->lhs)) {
 		if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 	}
 
@@ -745,7 +745,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_xlat_unparsed(map->rhs)) {
+		if (tmpl_is_xlat_unresolved(map->rhs)) {
 			fr_assert(tmpl_xlat(map->rhs) == NULL);
 
 			/*
@@ -757,9 +757,9 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
 			}
 		}
 
-		fr_assert(!tmpl_is_regex_unparsed(map->rhs));
+		fr_assert(!tmpl_is_regex_unresolved(map->rhs));
 
-		if (tmpl_is_attr_unparsed(map->rhs)) {
+		if (tmpl_is_attr_unresolved(map->rhs)) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 		}
 
@@ -921,7 +921,7 @@ static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 		break;
 
@@ -933,8 +933,8 @@ static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	}
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
@@ -1015,7 +1015,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if (map->op == T_OP_CMP_FALSE) {
-		if (!tmpl_is_unparsed(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
 		}
@@ -1064,8 +1064,8 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	operator like !*.
 		 */
 		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT_UNPARSED:
-		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_XLAT_UNRESOLVED:
+		case TMPL_TYPE_UNRESOLVED:
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
 			return -1;
 
@@ -1128,7 +1128,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unparsed(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
@@ -1209,7 +1209,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if (map->op == T_OP_CMP_FALSE) {
-		if (!tmpl_is_unparsed(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
 		}
@@ -1246,7 +1246,7 @@ static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unparsed(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
@@ -1442,10 +1442,10 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		 *	Limit the allowed template types.
 		 */
 		switch (vpt->type) {
-		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_UNRESOLVED:
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_XLAT_UNPARSED:
-		case TMPL_TYPE_ATTR_UNPARSED:
+		case TMPL_TYPE_XLAT_UNRESOLVED:
+		case TMPL_TYPE_ATTR_UNRESOLVED:
 		case TMPL_TYPE_EXEC:
 			break;
 
@@ -2195,7 +2195,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-		if (tmpl_is_attr_unparsed(vpt)) {
+		if (tmpl_is_attr_unresolved(vpt)) {
 			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;
@@ -2214,7 +2214,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	attribute.  Check that the
 		 *	values match.
 		 */
-		if (tmpl_is_unparsed(vpt) &&
+		if (tmpl_is_unresolved(vpt) &&
 		    tmpl_is_attr(f->vpt)) {
 			fr_assert(tmpl_da(f->vpt) != NULL);
 
@@ -2229,7 +2229,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	Compile and sanity check xlat
 		 *	expansions.
 		 */
-		if (tmpl_is_xlat_unparsed(vpt)) {
+		if (tmpl_is_xlat_unresolved(vpt)) {
 			fr_dict_attr_t const *da = NULL;
 
 			if (tmpl_is_attr(f->vpt)) da = tmpl_da(f->vpt);

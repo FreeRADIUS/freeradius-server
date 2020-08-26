@@ -510,7 +510,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		tmpl_str = cf_pair_value(cp);
 		if (!tmpl_str || (tmpl_str[0] == '\0')) {
 			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
-			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNPARSED, "", 0, T_DOUBLE_QUOTED_STRING);
+			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNRESOLVED, "", 0, T_DOUBLE_QUOTED_STRING);
 			goto build_vector;
 		}
 
@@ -520,7 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      cf_pair_value_quote(cp),
-				      &(tmpl_rules_t){ .allow_unknown = true, .allow_unparsed = true }, true);
+				      &(tmpl_rules_t){ .allow_unknown = true, .allow_unresolved = true }, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			return RLM_MODULE_FAIL;

@@ -987,7 +987,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		*out = n;
 		break;
 
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
 
@@ -1012,7 +1012,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		*out = n;
 		break;
 
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
 
@@ -1202,7 +1202,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	This allows the syntax like:
 	 *	- "Attr-%{number}" := "value"
 	 */
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
 	{
@@ -1622,7 +1622,7 @@ size_t map_snprint(size_t *need, char *out, size_t outlen, vp_map_t const *map)
 
 	if (tmpl_is_attr(map->lhs) &&
 	    (tmpl_da(map->lhs)->type == FR_TYPE_STRING) &&
-	    tmpl_is_unparsed(map->rhs)) {
+	    tmpl_is_unresolved(map->rhs)) {
 	    	RETURN_IF_NO_SPACE(need, 1, p, out, end);
 		*(p++) = '\'';
 
@@ -1661,11 +1661,11 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 *	Just print the value being assigned
 	 */
 	default:
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_UNRESOLVED:
 		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 
-	case TMPL_TYPE_XLAT_UNPARSED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
