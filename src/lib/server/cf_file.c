@@ -1364,8 +1364,22 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	buff[2] = stack->buff[2];
 
 	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
+	invalid_syntax:
 		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
 		return NULL;
+	}
+
+	/*
+	 *	map { ... } is allowed inside of a module configuration.
+	 */
+	if (*ptr == '{') {
+		CONF_SECTION *modules;
+
+		modules = cf_item_to_section(parent->item.parent);
+		if (!modules || (strcmp(modules->name1, "modules") != 0)) goto invalid_syntax;
+
+		ptr++;
+		goto alloc_section;
 	}
 
 	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
