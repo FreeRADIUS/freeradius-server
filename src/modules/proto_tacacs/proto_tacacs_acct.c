@@ -338,13 +338,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 {
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-	CONF_SECTION		*server_cs;
 
 	fr_assert(process_app_cs);
 	fr_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
 	if (!attr_tacacs_state) {
