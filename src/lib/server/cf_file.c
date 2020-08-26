@@ -1339,6 +1339,15 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	}
 	mod = buff[1];
 
+        /*
+	 *      Maps without an expansion string are allowed, though
+	 *      it's not clear why.
+	 */
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
 	/*
 	 *	Now get the expansion string.
 	 */
@@ -1363,6 +1372,7 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	/*
 	 *	Allocate the section
 	 */
+alloc_section:
 	css = cf_section_alloc(parent, parent, "map", mod);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section",
