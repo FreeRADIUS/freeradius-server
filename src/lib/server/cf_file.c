@@ -787,39 +787,6 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
-static bool invalid_location(CONF_SECTION *parent, char const *name, char const *filename, int lineno)
-{
-	bool modules;
-
-	/*
-	 *	if / elsif MUST be inside of a
-	 *	processing section, which MUST in turn
-	 *	be inside of a "server" directive.
-	 */
-	if (!parent || !parent->item.parent) goto invalid_location;
-
-	modules = (strcmp(name, "map") == 0);
-
-	/*
-	 *	Can only have if / elseif / map in a few named sections.
-	 */
-	for (parent = cf_item_to_section(parent->item.parent);
-	     parent != NULL;
-	     parent = cf_item_to_section(parent->item.parent)) {
-		if (strcmp(parent->name1, "instantiate") == 0) return false;
-		if (strcmp(parent->name1, "policy") == 0) return false;
-		if (strcmp(parent->name1, "server") == 0) return false;
-
-		if (!modules) continue;
-		if (strcmp(parent->name1, "modules") == 0) return false;
-	}
-
-invalid_location:
-	ERROR("%s[%d]: Invalid location for '%s'", filename, lineno, name);
-	return true;
-}
-
-
 /*
  *	Like gettoken(), but uses the new API which seems better for a
  *	host of reasons.
@@ -1220,11 +1187,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 
-	/*
-	 *	if / elsif
-	 */
-	if (invalid_location(parent, buff[1], frame->filename, frame->lineno)) return NULL;
-
 	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
 	if (!cd) {
 		dict = fr_dict_internal();	/* HACK - To fix policy sections */
@@ -1343,6 +1305,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 */
 	cf_data_add(cs, cond, NULL, false);
 	stack->ptr = ptr;
+
+	cs->allow_unlang = true;
 	return cf_section_to_item(cs);
 }
 
@@ -1363,25 +1327,6 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 
-	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
-	invalid_syntax:
-		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
-		return NULL;
-	}
-
-	/*
-	 *	map { ... } is allowed inside of a module configuration.
-	 */
-	if (*ptr == '{') {
-		CONF_SECTION *modules;
-
-		modules = cf_item_to_section(parent->item.parent);
-		if (!modules || (strcmp(modules->name1, "modules") != 0)) goto invalid_syntax;
-
-		ptr++;
-		goto alloc_section;
-	}
-
 	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
 		return NULL;
@@ -1393,15 +1338,6 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 		return NULL;
 	}
 	mod = buff[1];
-
-	/*
-	 *	Maps without an expansion string are allowed, tho I
-	 *	don't know why.
-	 */
-	if (*ptr == '{') {
-		ptr++;
-		goto alloc_section;
-	}
 
 	/*
 	 *	Now get the expansion string.
@@ -1424,7 +1360,6 @@ static CONF_ITEM *process_map(cf_stack_t *stack)
 	ptr++;
 	value = buff[2];
 
-alloc_section:
 	/*
 	 *	Allocate the section
 	 */
@@ -1569,6 +1504,7 @@ static int parse_input(cf_stack_t *stack)
 		if (parent == frame->special) frame->special = NULL;
 
 		frame->current = cf_item_to_section(parent->item.parent);
+
 		ptr++;
 		stack->ptr = ptr;
 		return 1;
@@ -1585,24 +1521,39 @@ static int parse_input(cf_stack_t *stack)
 
 	/*
 	 *	See which unlang keywords are allowed
+	 *
+	 *	0 - no unlang keywords are allowed.
+	 *	1 - unlang keywords are allowed
+	 *	2 - unlang keywords are allowed only in sub-sections
+	 *	  i.e. policy { ... } doesn't allow "if".  But the "if"
+	 *	  keyword is allowed in children of "policy".
 	 */
-	process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
-	if (process) {
-		CONF_ITEM *ci;
-
-		stack->ptr = ptr;
-		ci = process(stack);
-		ptr = stack->ptr;
-		if (!ci) return -1;
-		if (cf_item_is_section(ci)) {
-			css = cf_item_to_section(ci);
-			goto add_section;
+	if (parent->allow_unlang != 1) {
+		if ((strcmp(buff[1], "if") == 0) ||
+		    (strcmp(buff[1], "elsif") == 0)) {
+			ERROR("%s[%d]: Invalid location for '%s'",
+			      frame->filename, frame->lineno, buff[1]);
+			return -1;
 		}
+	} else {
+		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
+		if (process) {
+			CONF_ITEM *ci;
 
-		/*
-		 *	Else the item is a pair, and it's already added to the section.
-		 */
-		goto added_pair;
+			stack->ptr = ptr;
+			ci = process(stack);
+			ptr = stack->ptr;
+			if (!ci) return -1;
+			if (cf_item_is_section(ci)) {
+				css = cf_item_to_section(ci);
+				goto add_section;
+			}
+
+			/*
+			 *	Else the item is a pair, and it's already added to the section.
+			 */
+			goto added_pair;
+		}
 	}
 
 	/*
@@ -1675,6 +1626,27 @@ static int parse_input(cf_stack_t *stack)
 		if (!frame->special && ((strcmp(css->name1, "update") == 0) ||
 					(strcmp(css->name1, "filter") == 0))) {
 			frame->special = css;
+		}
+
+		/*
+		 *	Only a few top-level sections allow "unlang"
+		 *	statements.  And for those, "unlang"
+		 *	statements are only allowed in child
+		 *	subsection.
+		 *
+		 *	This isn't _strictly_ true for "instantiate",
+		 *	as we allow "group", "redundant", and a few
+		 *	more things there.  But only allow "if" as a
+		 *	keyword when it's inside of another grouping
+		 *	section.
+		 */
+		if (!parent->allow_unlang && !parent->item.parent) {
+			if (strcmp(css->name1, "instantiate") == 0) css->allow_unlang = 2;
+			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
+			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
+
+		} else if (parent->allow_unlang) {
+			css->allow_unlang = 1;
 		}
 
 	add_section:

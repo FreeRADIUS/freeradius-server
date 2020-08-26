@@ -95,6 +95,7 @@ struct cf_section {
 
 	void			*base;
 	int			depth;
+	int			allow_unlang;
 
 	CONF_SECTION		*template;
 };
