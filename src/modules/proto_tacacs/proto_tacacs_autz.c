@@ -93,7 +93,7 @@ static void authorization_failed(REQUEST *request, char const *msg)
 	 *	Set the status.
 	 */
 	MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-	vp->vp_uint8 = FR_TAC_PLUS_AUTHEN_STATUS_FAIL;
+	vp->vp_uint8 = FR_TAC_PLUS_AUTHOR_STATUS_FAIL;
 }
 
 
@@ -216,7 +216,6 @@ static virtual_server_compile_t compile_list[] = {
 
 	COMPILE_TERMINATOR
 };
-
 
 extern fr_app_worker_t proto_tacacs_autz;
 fr_app_worker_t proto_tacacs_autz = {
