@@ -830,7 +830,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			thread_inst = xlat_thread_instance_find(node);
 
 			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}", unlang_interpret_stack_depth(request), __FUNCTION__,
-				   node->fmt, result);
+				   node->fmt, *result);
 
 			/*
 			 *	Need to copy the input list in case
