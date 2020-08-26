@@ -594,7 +594,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	root = fr_dict_root(dict_dhcpv6);
 
 	if (!msg_type) {
-		vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(vps, attr_packet_type);
 		if (vp) msg_type = vp->vp_uint32;
 	}
 
@@ -614,7 +614,7 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		/*
 		 *	We can set an XID, or we can pick a random one.
 		 */
-		vp = fr_pair_find_by_da(vps, attr_transaction_id, TAG_ANY);
+		vp = fr_pair_find_by_da(vps, attr_transaction_id);
 		if (vp && (vp->vp_length >= 3)) {
 			memcpy(packet + 1, vp->vp_octets, 3);
 		} else {
@@ -711,11 +711,6 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 {
 	if (type == FR_TYPE_EXTENDED) {
 		fr_strerror_printf("Attributes of type 'extended' cannot be used with DHCP");
-		return false;
-	}
-
-	if (flags->has_tag) {
-		fr_strerror_printf("Tagged attributes cannot be used with DHCP");
 		return false;
 	}
 

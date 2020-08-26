@@ -99,8 +99,8 @@ do { \
 		goto finish; \
 	} \
 	_p += (size_t)_slen;\
-	_slen = fr_pair_value_snprint((char *)_p, sizeof(_buff) - (_p - _buff), _ip, '\0'); \
-	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
+	_slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT((char *)_p, sizeof(_buff) - (_p - _buff)), _ip, T_BARE_WORD); \
+	if (_slen < 0) { \
 		REDEBUG("IP key too long"); \
 		ret = IPPOOL_RCODE_FAIL; \
 		goto finish; \

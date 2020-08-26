@@ -32,9 +32,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/tmpl.h>
-
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/types.h>
@@ -174,7 +174,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	}
 
 	if (tmpl) {
-		tmpl_t *vpt;
+		tmpl_t			*vpt;
+		static tmpl_rules_t	rules = {
+						.allow_unknown = true,
+						.allow_unresolved = true,
+						.allow_foreign = true
+					};
 
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
@@ -187,18 +192,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	xlat strings.
 		 */
 		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cf_pair_value(cp),
-						   &(tmpl_rules_t){
-							.allow_unknown = true,
-							.allow_unresolved = true
-						   });
+			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cf_pair_value(cp), &rules);
 		} else {
-			slen = tmpl_afrom_str(cp, &vpt, cf_pair_value(cp), strlen(cf_pair_value(cp)),
-					      cf_pair_value_quote(cp),
-					      &(tmpl_rules_t){
-							.allow_unknown = true,
-							.allow_unresolved = true
-					      }, false);
+			slen = tmpl_afrom_substr(cp, &vpt, &FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp))),
+						 cf_pair_value_quote(cp),
+						 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
+						 &rules);
 		}
 
 		if (slen < 0) {
@@ -464,7 +463,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (!cp->printed) {
 			char *p;
-			p = fr_value_box_asprint(NULL, fr_box_time_delta(delta), 0);
+			fr_value_box_aprint(NULL, &p, fr_box_time_delta(delta), NULL);
 			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), p);
 			talloc_free(p);
 		}
@@ -885,7 +884,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *			Should be one of the following ``data`` types,
  *			and one or more of the following ``flag`` types or'd together:
  *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
- *					  	  Feeds the value into #tmpl_afrom_str. Value can be
+ *					  	  Feeds the value into #tmpl_afrom_substr. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
  *	- ``data`` #FR_TYPE_BOOL		- @copybrief FR_TYPE_BOOL
  *	- ``data`` #FR_TYPE_UINT32		- @copybrief FR_TYPE_UINT32
@@ -1311,10 +1310,15 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 	ssize_t	slen;
 	tmpl_t *vpt;
 
-	slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
-			      cf_pair_value_quote(cp),
-			      &(tmpl_rules_t){ .allow_unknown = true, .allow_unresolved = true },
-			      true);
+	slen = tmpl_afrom_substr(cs, &vpt,
+				 &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1),
+				 cf_pair_value_quote(cp),
+				 tmpl_parse_rules_quoted[cf_pair_value_quote(cp)],
+				 &(tmpl_rules_t){
+				 	.allow_unknown = true,
+				 	.allow_unresolved = true,
+				 	.allow_foreign = true
+				 });
 	if (slen < 0) {
 		char *spaces, *text;
 
@@ -1360,13 +1364,16 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_REGEX_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNCOMPILED:
+	case TMPL_TYPE_REGEX_XLAT:
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
@@ -1399,6 +1406,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		CONF_PARSER	*rule;
 		void		*data;
 		int		type;
+		fr_dict_t const	*dict = NULL;
 
 		rule = cf_data_value(rule_cd);
 
@@ -1474,6 +1482,12 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		}
 
 		/*
+		 *	Search for dictionary data somewhere in the virtual
+		 *      server.
+		 */
+		dict = virtual_server_namespace_by_ci(cf_section_to_item(cs));
+
+		/*
 		 *	Parse (and throw away) the xlat string (for validation).
 		 *
 		 *	FIXME: All of these should be converted from FR_TYPE_XLAT
@@ -1489,7 +1503,14 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			/*
 			 *	xlat expansions should be parseable.
 			 */
-			slen = xlat_tokenize(cs, &xlat, cp->value, talloc_array_length(cp->value) - 1, NULL);
+			slen = xlat_tokenize(cs, &xlat, NULL,
+					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
+					     &(tmpl_rules_t){
+						.dict_def = dict,
+						.allow_unknown = false,
+						.allow_unresolved = false,
+						.allow_foreign = (dict == NULL)
+					     });
 			if (slen < 0) {
 				char *spaces, *text;
 

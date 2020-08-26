@@ -225,7 +225,7 @@ recv DHCP-Request {
 
 	if (ok) {
 		update reply {
-			&DHCP-Your-IP-Address := "%{%{request:DHCP-Requested-IP-Address}:-{request:DHCP-Client-IP-Address}}"
+			&DHCP-Your-IP-Address := "%{%{request.DHCP-Requested-IP-Address}:-{request:DHCP-Client-IP-Address}}"
 		}
 	}
 

@@ -36,14 +36,14 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	unlang_t		*this, *found, *null_case;
 	unlang_group_t		*g, *h;
 	fr_cond_t		cond;
-	fr_value_box_t		data;
 	vp_map_t		map;
-	tmpl_t		vpt;
+	tmpl_t			vpt;
 
 	g = unlang_generic_to_group(instruction);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
+	memset(&vpt, 0, sizeof(vpt));
 
 	cond.type = COND_TYPE_MAP;
 	cond.data.map = &map;
@@ -54,7 +54,6 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	fr_assert(g->vpt != NULL);
 
 	null_case = found = NULL;
-	data.datum.ptr = NULL;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
@@ -88,8 +87,9 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 
 		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
-		data.vb_strvalue = p;
-		tmpl_init(&vpt, TMPL_TYPE_UNRESOLVED, data.vb_strvalue, len, T_SINGLE_QUOTED_STRING);
+
+		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
+		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
 	}
 
 	/*
@@ -148,8 +148,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 			cond.cast = NULL;
 		}
 
-		if (cond_eval_map(request, RLM_MODULE_UNKNOWN, 0,
-					&cond) == 1) {
+		if (cond_eval_map(request, 0, &cond) == 1) {
 			found = this;
 			break;
 		}
@@ -158,7 +157,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	if (!found) found = null_case;
 
 do_null_case:
-	talloc_free(data.datum.ptr);
+	if (vpt.type == TMPL_TYPE_DATA) fr_value_box_clear_value(&vpt.data.literal);
 
 	/*
 	 *	Nothing found.  Just continue, and ignore the "switch"

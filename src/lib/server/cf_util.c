@@ -1862,16 +1862,20 @@ void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int
 	{
 		char const	*e, *p;
 		int		len;
-		char		*msg;
+		char		*msg = NULL;
 
 		truncate_filename(&e, &p, &len, ci->filename);
 
-		va_start(ap, fmt);
-		msg = fr_vasprintf(NULL, fmt, ap);
-		va_end(ap);
+		if (fmt) {
+			va_start(ap, fmt);
+			msg = fr_vasprintf(NULL, fmt, ap);
+			va_end(ap);
+		}
 
-		fr_log_perror(LOG_DST, type, file, line, "%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
-		talloc_free(msg);
+		fr_log_perror(LOG_DST, type, file, line, "%s%.*s[%d]%s%s", e, len, p, ci->lineno,
+			      msg ? ": " : "", msg ? msg : "");
+
+		if (fmt) talloc_free(msg);
 	}
 }
 

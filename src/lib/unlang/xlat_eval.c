@@ -84,35 +84,15 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 };
 
 fr_table_num_sorted_t const xlat_action_table[] = {
-	{ L("done"),	XLAT_ACTION_DONE	},
-	{ L("fail"),	XLAT_ACTION_FAIL	},
+	{ L("done"),		XLAT_ACTION_DONE	},
+	{ L("fail"),		XLAT_ACTION_FAIL	},
 	{ L("push-child"),	XLAT_ACTION_PUSH_CHILD	},
-	{ L("yield"),	XLAT_ACTION_YIELD	}
+	{ L("yield"),		XLAT_ACTION_YIELD	}
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
 			   xlat_escape_legacy_t escape, void  const *escape_ctx);
-
-/** Check to see if the expansion consists entirely of literal elements
- *
- * @param[in] exp	to check.
- * @return
- *	- true if expansion contains only literal elements.
- *	- false if expansion contains expandable elements.
- */
-static inline bool xlat_is_literal(xlat_exp_t const *exp)
-{
-	xlat_exp_t const *node;
-
-	for (node = exp;
-	     node;
-	     node = node->next) {
-		if (node->type != XLAT_LITERAL) return false;
-	}
-
-	return true;
-}
 
 /** Reconstruct the original expansion string from an xlat tree
  *
@@ -126,7 +106,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 {
 	switch (node->type) {
 	case XLAT_LITERAL:
-	case XLAT_CHILD:
+	case XLAT_GROUP:
 		return talloc_asprintf(ctx, "%s", node->fmt);
 
 	case XLAT_ONE_LETTER:
@@ -136,7 +116,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		return talloc_asprintf(ctx, "%%{%s}", node->fmt);
 
 	case XLAT_VIRTUAL:
-		return talloc_asprintf(ctx, "%%{%s}", node->xlat->name);;
+		return talloc_asprintf(ctx, "%%{%s}", node->call.func->name);;
 
 	case XLAT_FUNC:
 	{
@@ -144,9 +124,9 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		char		 	*out, *n_out;
 		TALLOC_CTX		*pool;
 
-		if (!child) return talloc_asprintf(ctx, "%%{%s:}", node->xlat->name);
+		if (!child) return talloc_asprintf(ctx, "%%{%s:}", node->call.func->name);
 
-		out = talloc_asprintf(ctx, "%%{%s:", node->xlat->name);
+		out = talloc_asprintf(ctx, "%%{%s:", node->call.func->name);
 		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
 		do {
 			char *child_str;
@@ -213,7 +193,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
-		RDEBUG2("      (%%{%s:%pM})", node->xlat->name, args);
+		RDEBUG2("      (%%{%s:%pM})", node->call.func->name, args);
 	}
 	talloc_free(str);
 }
@@ -687,7 +667,7 @@ static const char xlat_spaces[] = "                                             
 void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 		 REQUEST *request, void *rctx, fr_state_signal_t action)
 {
-	signal(request, exp->inst, xlat_thread_instance_find(exp)->data, rctx, action);
+	signal(request, exp->call.inst, xlat_thread_instance_find(exp)->data, rctx, action);
 }
 
 /** Call an xlat's resumption method
@@ -715,10 +695,10 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	and don't remove them from the list.
 	 */
 	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
-	xa = resume(ctx, out, request, exp->inst, thread_inst->data, result, rctx);
+	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
 	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
-	RDEBUG2("EXPAND %%{%s:...}", exp->xlat->name);
+	RDEBUG2("EXPAND %%{%s:...}", exp->call.func->name);
 	switch (xa) {
 	default:
 		break;
@@ -766,7 +746,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	switch (node->type) {
 	case XLAT_FUNC:
-		switch (node->xlat->type) {
+		switch (node->call.func->type) {
 		case XLAT_FUNC_LEGACY:
 		{
 			fr_value_box_t	*value;
@@ -776,23 +756,23 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			if (*result) {
 				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
-				result_str = fr_value_box_list_asprint(NULL, *result, NULL, '\0');
+				result_str = fr_value_box_list_aprint(NULL, *result, NULL, NULL);
 				if (!result_str) return XLAT_ACTION_FAIL;
 			} else {
 				result_str = talloc_typed_strdup(NULL, "");
 			}
 
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (node->xlat->buf_len > 0) {
-				fr_value_box_bstr_alloc(value, &str, value, NULL, node->xlat->buf_len, false);
+			if (node->call.func->buf_len > 0) {
+				fr_value_box_bstr_alloc(value, &str, value, NULL, node->call.func->buf_len, false);
 			}
 
 			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pV}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt,
 				   fr_box_strvalue_len(result_str, talloc_array_length(result_str) - 1));
 
-			slen = node->xlat->func.sync(value, &str, node->xlat->buf_len,
-						     node->xlat->mod_inst, NULL, request, result_str);
+			slen = node->call.func->func.sync(value, &str, node->call.func->buf_len,
+						     node->call.func->mod_inst, NULL, request, result_str);
 			xlat_debug_log_expansion(request, *in, *result);
 			if (slen < 0) {
 				talloc_free(value);
@@ -809,7 +789,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			/*
 			 *	Shrink the buffer
 			 */
-			if (node->xlat->buf_len > 0) {
+			if (node->call.func->buf_len > 0) {
 				if (slen > 0) fr_value_box_bstr_realloc(value, &str, value, slen);
 			} else {
 				fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
@@ -839,7 +819,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, *result);
 
 			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
-			xa = node->xlat->func.async(ctx, out, request, node->inst->data, thread_inst->data, result);
+			xa = node->call.func->func.async(ctx, out, request, node->call.inst->data, thread_inst->data, result);
 			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
 			if (RDEBUG_ENABLED2) {
@@ -911,7 +891,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 		break;
 
-	case XLAT_CHILD:
+	case XLAT_GROUP:
 	{
 		fr_value_box_t	*value;
 		fr_cursor_t from;
@@ -935,7 +915,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			if (*result) {
 				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
-				str = fr_value_box_list_asprint(value, *result, NULL, '\0');
+				str = fr_value_box_list_aprint(value, *result, NULL, NULL);
 				if (!str) return XLAT_ACTION_FAIL;
 			} else {
 				str = talloc_typed_strdup(value, "");
@@ -1018,6 +998,15 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_interpret_stack_depth(request), __FUNCTION__, node->fmt);
 
 			/*
+			 *	Empty literals are only allowed if
+			 *      they're the only node in the expansion.
+			 *
+			 *	If they're found anywhere else the xlat
+			 *	parser has an error.
+			 */
+			fr_assert(((node == *in) && !node->next) || (talloc_array_length(node->fmt) > 1));
+
+			/*
 			 *	We unfortunately need to dup the buffer
 			 *	because references aren't threadsafe.
 			 */
@@ -1059,7 +1048,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 			xlat_debug_log_expansion(request, node, NULL);
 			MEM(value = fr_value_box_alloc_null(ctx));
-			slen = node->xlat->func.sync(value, &str, node->xlat->buf_len, node->xlat->mod_inst,
+			slen = node->call.func->func.sync(value, &str, node->call.func->buf_len, node->call.func->mod_inst,
 						     NULL, request, NULL);
 			if (slen < 0) {
 				talloc_free(value);
@@ -1129,7 +1118,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
 
-		case XLAT_CHILD:
+		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
@@ -1140,7 +1129,17 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			*child = node->child;
 			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
+
+		/*
+		 *	Should have been fixed up during pass2
+		 */
+		case XLAT_INVALID:
+		case XLAT_FUNC_UNRESOLVED:
+		case XLAT_VIRTUAL_UNRESOLVED:
+			fr_assert(0);
+			return XLAT_ACTION_FAIL;
 		}
+
 	}
 
 finish:
@@ -1150,8 +1149,8 @@ finish:
 	return xa;
 }
 
-static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_legacy_t escape, void const *escape_ctx,
+static char *xlat_sync_eval(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
+			    xlat_escape_legacy_t escape, void const *escape_ctx,
 #ifndef DEBUG_XLAT
 			 UNUSED
 #endif
@@ -1168,20 +1167,20 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
 
 	switch (node->type) {
-		/*
-		 *	Don't escape this.
-		 */
+	/*
+	 *	Don't escape this.
+	 */
 	case XLAT_LITERAL:
-		XLAT_DEBUG("%.*sxlat_aprint LITERAL", lvl, xlat_spaces);
+		XLAT_DEBUG("%.*sxlat_sync_eval LITERAL", lvl, xlat_spaces);
 		return talloc_typed_strdup(ctx, node->fmt);
 
-	case XLAT_CHILD:
-		XLAT_DEBUG("%.*sxlat_aprint CHILD", lvl, xlat_spaces);
+	case XLAT_GROUP:
+		XLAT_DEBUG("%.*sxlat_sync_eval CHILD", lvl, xlat_spaces);
 		return talloc_typed_strdup(ctx, node->fmt);
 
-		/*
-		 *	Do a one-character expansion.
-		 */
+	/*
+	 *	Do a one-character expansion.
+	 */
 	case XLAT_ONE_LETTER:
 		if (xlat_eval_one_letter(ctx, &cursor, request, node->fmt[0]) == XLAT_ACTION_FAIL) return NULL;
 
@@ -1200,7 +1199,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
-		XLAT_DEBUG("xlat_aprint ATTR");
+		XLAT_DEBUG("xlat_sync_eval ATTR");
 		if (xlat_eval_pair_real(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
 		value = fr_cursor_head(&cursor);
@@ -1211,7 +1210,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	cast to a string until we're actually doing
 		 *	the concatenation.
 		 */
-		str = fr_value_box_asprint(ctx, value, '"');
+		fr_value_box_aprint(ctx, &str, value, &fr_value_escape_double);
 		if (!str) {
 		attr_error:
 			RPERROR("Printing box to string failed");
@@ -1227,7 +1226,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		while ((value = fr_cursor_next(&cursor))) {
 			char *more;
 
-			more = fr_value_box_asprint(ctx, value, '"');
+			fr_value_box_aprint(ctx, &more, value, &fr_value_escape_double);
 			if (!more) goto attr_error;
 			str = talloc_strdup_append_buffer(str, ",");
 			str = talloc_strdup_append_buffer(str, more);
@@ -1237,30 +1236,30 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_VIRTUAL:
-		XLAT_DEBUG("xlat_aprint VIRTUAL");
+		XLAT_DEBUG("xlat_sync_eval VIRTUAL");
 
-		if (node->xlat->buf_len > 0) {
-			str = talloc_array(ctx, char, node->xlat->buf_len);
+		if (node->call.func->buf_len > 0) {
+			str = talloc_array(ctx, char, node->call.func->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
+		slen = node->call.func->func.sync(ctx, &str, node->call.func->buf_len, node->call.func->mod_inst, NULL, request, NULL);
 		if (slen < 0) {
 			talloc_free(str);
 			return NULL;
 		}
-		RDEBUG2("EXPAND X %s", node->xlat->name);
+		RDEBUG2("EXPAND X %s", node->call.func->name);
 		RDEBUG2("   --> %s", str);
 		break;
 
 	case XLAT_FUNC:
-		XLAT_DEBUG("xlat_aprint MODULE");
+		XLAT_DEBUG("xlat_sync_eval MODULE");
 
 		/*
 		 *	Temporary hack to use the new API.
 		 *
 		 *	Will not handle yields.
 		 */
-		if (node->xlat->type == XLAT_FUNC_NORMAL) {
+		if (node->call.func->type == XLAT_FUNC_NORMAL) {
 			fr_value_box_t	*result = NULL;
 			TALLOC_CTX	*pool = talloc_new(NULL);
 
@@ -1288,7 +1287,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			}
 
 			if (result) {
-				str = fr_value_box_list_asprint(ctx, result, NULL, '"');
+				str = fr_value_box_list_aprint(ctx, result, NULL, &fr_value_escape_double);
 				if (!str) {
 					RPEDEBUG("Failed concatenating xlat result string");
 					talloc_free(pool);
@@ -1301,7 +1300,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			return str;
 		} else if (node->child) {
 			if (xlat_process(ctx, &child, request,
-					 node->child, node->xlat->escape, node->xlat->mod_inst) == 0) {
+					 node->child, node->call.func->escape, node->call.func->mod_inst) == 0) {
 				return NULL;
 			}
 
@@ -1361,11 +1360,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			*q = '\0';
 		}
 
-		if (node->xlat->buf_len > 0) {
-			str = talloc_array(ctx, char, node->xlat->buf_len);
+		if (node->call.func->buf_len > 0) {
+			str = talloc_array(ctx, char, node->call.func->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
+		slen = node->call.func->func.sync(ctx, &str, node->call.func->buf_len, node->call.func->mod_inst, NULL, request, child);
 		talloc_free(child);
 		if (slen < 0) {
 			talloc_free(str);
@@ -1375,14 +1374,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
-		XLAT_DEBUG("%.*sxlat_aprint REGEX", lvl, xlat_spaces);
+		XLAT_DEBUG("%.*sxlat_sync_eval REGEX", lvl, xlat_spaces);
 		if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) return NULL;
 
 		break;
 #endif
 
 	case XLAT_ALTERNATE:
-		XLAT_DEBUG("%.*sxlat_aprint ALTERNATE", lvl, xlat_spaces);
+		XLAT_DEBUG("%.*sxlat_sync_eval ALTERNATE", lvl, xlat_spaces);
 		fr_assert(node->child != NULL);
 		fr_assert(node->alternate != NULL);
 
@@ -1398,6 +1397,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
 		}
 		break;
+
+	/*
+	 *	Should have been caught by pass2
+	 */
+	case XLAT_FUNC_UNRESOLVED:
+	case XLAT_VIRTUAL_UNRESOLVED:
+	case XLAT_INVALID:
+		fr_assert(0);
+		return NULL;
 	}
 
 	/*
@@ -1460,7 +1468,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 		 *	calls will call node-specific escape
 		 *	functions.
 		 */
-		answer = xlat_aprint(ctx, request, head, escape, escape_ctx, 0);
+		answer = xlat_sync_eval(ctx, request, head, escape, escape_ctx, 0);
 		if (!answer) {
 			*out = talloc_zero_array(ctx, char, 1);
 			return 0;
@@ -1478,7 +1486,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 	if (!array) return -1;
 
 	for (node = head, i = 0; node != NULL; node = node->next, i++) {
-		array[i] = xlat_aprint(array, request, node, escape, escape_ctx, 0); /* may be NULL */
+		array[i] = xlat_sync_eval(array, request, node, escape, escape_ctx, 0); /* may be NULL */
 
 		/*
 		 *	Nasty temporary hack
@@ -1489,7 +1497,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 		 *	Break here to avoid nodes being evaluated multiple times
 		 *      and parts of strings being duplicated.
 		 */
-		if ((node->type == XLAT_FUNC) && (node->xlat->type == XLAT_FUNC_NORMAL)) {
+		if ((node->type == XLAT_FUNC) && (node->call.func->type == XLAT_FUNC_NORMAL)) {
 			i++;
 			break;
 		}
@@ -1599,7 +1607,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, &node, request, fmt, NULL);
+	len = xlat_tokenize_ephemeral(ctx, &node, NULL, request, &FR_SBUFF_IN(fmt, strlen(fmt)), NULL, NULL);
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';
@@ -1678,14 +1686,17 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
 				 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	int i;
-	ssize_t slen;
-	char **my_argv;
-	xlat_exp_t const *node;
+	int			i;
+	ssize_t			slen;
+	char			**my_argv;
+	size_t			count;
+	xlat_exp_t const	*node;
 
-	if (xlat->type != XLAT_CHILD) return -1;
+	if (xlat->type != XLAT_GROUP) return -1;
 
-	MEM(my_argv = talloc_zero_array(ctx, char *, xlat->count + 1));
+	for (count = 0, node = xlat; node != NULL; node = node->next) count++;
+
+	MEM(my_argv = talloc_zero_array(ctx, char *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
@@ -1697,7 +1708,7 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
 		if (slen < 0) return -i;
 	}
 
-	return xlat->count;
+	return count;
 }
 
 /** Turn xlat_tokenize_argv() into an argv[] array
@@ -1706,13 +1717,16 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
  */
 int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat)
 {
-	int i;
-	xlat_exp_t const **my_argv;
-	xlat_exp_t const *node;
+	int			i;
+	xlat_exp_t const	**my_argv;
+	xlat_exp_t const	*node;
+	size_t			count;
 
-	if (xlat->type != XLAT_CHILD) return -1;
+	if (xlat->type != XLAT_GROUP) return -1;
 
-	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, xlat->count + 1));
+	for (count = 0, node = xlat; node != NULL; node = node->next) count++;
+
+	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
@@ -1721,7 +1735,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
 		my_argv[i] = node->child;
 	}
 
-	return xlat->count;
+	return count;
 }
 
 
@@ -1828,8 +1842,8 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			if (ret < 0) return ret;
 			break;
 
-		case XLAT_CHILD:
-			if (!type || (type & XLAT_CHILD)) {
+		case XLAT_GROUP:
+			if (!type || (type & XLAT_GROUP)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
 			}
@@ -1881,8 +1895,8 @@ void xlat_eval_free(void)
 
 /** Return whether or not async is required for this xlat.
  *
- *	If the xlat is async_safe, then it will never yield.
- *	If the xlat is not async_safe, then it may yield.
+ *	If the xlat is needs_async, then it will never yield.
+ *	If the xlat is not needs_async, then it may yield.
  *
  *	If the xlat yields, then async is required.
  */
@@ -1890,15 +1904,15 @@ bool xlat_async_required(xlat_exp_t const *xlat)
 {
 	xlat_exp_t const *node;
 
-	if (xlat->type != XLAT_CHILD) {
-		return !xlat->async_safe;
+	if (xlat->type != XLAT_GROUP) {
+		return !xlat->flags.needs_async;
 	}
 
 	/*
-	 *	Set async_safe on the entire list.
+	 *	Set needs_async on the entire list.
 	 */
 	for (node = xlat; node != NULL; node = node->next) {
-		if (!node->async_safe) return true;
+		if (!node->flags.needs_async) return true;
 	}
 
 	return false;

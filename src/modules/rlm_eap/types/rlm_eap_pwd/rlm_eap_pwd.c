@@ -505,7 +505,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_da(request->packet->vps, attr_framed_mtu, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_framed_mtu);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP

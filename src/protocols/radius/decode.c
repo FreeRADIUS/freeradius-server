@@ -1003,7 +1003,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 				    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 				    void *decoder_ctx)
 {
-	int8_t			tag = TAG_NONE;
+//	int8_t			tag = 0;
 	size_t			data_len;
 	ssize_t			rcode;
 	uint32_t		vendor;
@@ -1067,12 +1067,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 			if (parent->type == FR_TYPE_STRING) {
 				memcpy(buffer, p + 1, data_len - 1);
-				tag = p[0];
+				//tag = p[0];
 				data_len -= 1;
 
 			} else if (parent->type == FR_TYPE_UINT32) {
 				memcpy(buffer, p, attr_len);
-				tag = buffer[0];
+				//tag = buffer[0];
 				buffer[0] = 0;
 			}
 
@@ -1421,7 +1421,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			return -1;
 		}
-		tag = TAG_NONE;
+		//tag = 0;
 #ifndef NDEBUG
 		/*
 		 *	Fix for Coverity.
@@ -1440,7 +1440,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 */
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
-	vp->tag = tag;
+//	vp->tag = tag;
 
 	switch (parent->type) {
 	case FR_TYPE_OCTETS:

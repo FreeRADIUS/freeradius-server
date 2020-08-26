@@ -44,6 +44,18 @@ typedef struct vp_list_mod_s vp_list_mod_t;
 extern "C" {
 #endif
 
+/** Single character tokens used as terminals for the LHS operand
+ *
+ */
+#define MAP_LHS_TERMINALS \
+	['-'] = true, \
+	[':'] = true, \
+	['+'] = true, \
+	['<'] = true, \
+	['='] = true, \
+	['>'] = true, \
+	['~'] = true
+
 /** Value pair map
  *
  * Value pair maps contain a pair of templates, that describe a src attribute
@@ -130,7 +142,7 @@ int		map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 int		map_to_request(REQUEST *request, vp_map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);
 
-size_t		map_snprint(size_t *need, char *out, size_t outlen, vp_map_t const *map);
+ssize_t		map_print(fr_sbuff_t *out, vp_map_t const *map);
 
 void		map_debug_log(REQUEST *request, vp_map_t const *map,
 			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));

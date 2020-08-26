@@ -161,9 +161,9 @@ static char *auth_name(char *buf, size_t buflen, REQUEST *request)
 	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
 	char const	*tls = "";
 
-	cli = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id, TAG_ANY);
+	cli = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id);
 
-	pair = fr_pair_find_by_da(request->packet->vps, attr_nas_port, TAG_ANY);
+	pair = fr_pair_find_by_da(request->packet->vps, attr_nas_port);
 	if (pair != NULL) port = pair->vp_uint32;
 
 	if (request->packet->dst_port == 0) tls = " via proxy to virtual server";
@@ -207,21 +207,21 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	 * Get the correct username based on the configured value
 	 */
 	if (!inst->log_stripped_names) {
-		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+		username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	} else {
-		username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
-		if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+		username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name);
+		if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	}
 
 	/*
 	 *	Clean up the password
 	 */
 	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
-		password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+		password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
 		if (!password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
+			auth_type = fr_pair_find_by_da(request->control, attr_auth_type);
 			if (auth_type) {
 				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
 					 fr_dict_enum_name_by_value(auth_type->da, &auth_type->data));
@@ -229,7 +229,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 			} else {
 				password_str = "<no User-Password attribute>";
 			}
-		} else if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) {
+		} else if (fr_pair_find_by_da(request->packet->vps, attr_chap_password)) {
 			password_str = "<CHAP-Password>";
 		}
 	}
@@ -334,7 +334,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		case RLM_MODULE_DISALLOW:
 		default:
 			if ((vp = fr_pair_find_by_da(request->packet->vps,
-						     attr_module_failure_message, TAG_ANY)) != NULL) {
+						     attr_module_failure_message)) != NULL) {
 				auth_message(inst, request, false, "Invalid user (%pV)", &vp->data);
 			} else {
 				auth_message(inst, request, false, "Invalid user");
@@ -370,7 +370,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			 *	the "recv Access-Request" section
 			 *	should have returned reject.
 			 */
-			vp = fr_pair_find_by_da(request->packet->vps, attr_service_type, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_service_type);
 			if (vp && (vp->vp_uint32 == FR_SERVICE_TYPE_VALUE_AUTHORIZE_ONLY)) {
 				RDEBUG("Skipping authenticate as we have found %pP", vp);
 				request->reply->code = FR_CODE_ACCESS_ACCEPT;
@@ -380,7 +380,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			/*
 			 *	Allow for over-ride of reply code.
 			 */
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 				goto setup_send;
@@ -460,7 +460,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			/*
 			 *	Maybe the shared secret is wrong?
 			 */
-			vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_user_password);
 			if (vp) {
 				if (RDEBUG_ENABLED2) {
 					uint8_t const *p;
@@ -493,12 +493,12 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 	setup_send:
 		if (!request->reply->code) {
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 			} else {
@@ -515,7 +515,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	"send Access-Challenge" section.
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
-		    !(vp = fr_pair_find_by_da(request->reply->vps, attr_state, TAG_ANY))) {
+		    !(vp = fr_pair_find_by_da(request->reply->vps, attr_state))) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
@@ -648,14 +648,14 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	we're sending an accept.
 		 */
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message);
 			if (vp){
 				auth_message(inst, request, true, "Login OK (%pV)", &vp->data);
 			} else {
 				auth_message(inst, request, true, "Login OK");
 			}
 		} else if (request->reply->code == FR_CODE_ACCESS_REJECT) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message);
 			if (vp) {
 				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
 			} else {

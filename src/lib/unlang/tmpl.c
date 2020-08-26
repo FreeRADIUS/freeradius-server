@@ -526,7 +526,7 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	}
 
 	if (ut->tmpl->type == TMPL_TYPE_XLAT_UNRESOLVED) {
-		REDEBUG("Xlat expansions MUST be compiled before being run asynchronously");
+		REDEBUG("Xlat expansions MUST be fully resolved before being run asynchronously");
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -536,36 +536,12 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	if (ut->tmpl->type != TMPL_TYPE_EXEC) {
 		REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
-	fail:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	xlat = tmpl_xlat(ut->tmpl);
-
-	/*
-	 *	No pre-parsed xlat, do that now.
-	 */
-	if (!xlat) {
-		ssize_t slen;
-		xlat_exp_t *head = NULL;
-
-		slen = xlat_tokenize_argv(state->ctx, &head, ut->tmpl->name, talloc_array_length(ut->tmpl->name) - 1, NULL);
-		if (slen <= 0) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(state->ctx, &spaces, &text, slen, ut->tmpl->name);
-			REDEBUG("Failed parsing expansion string:");
-			REDEBUG("%s", text);
-			RPEDEBUG("%s^", spaces);
-
-			talloc_free(spaces);
-			talloc_free(text);
-			goto fail;
-		}
-
-		xlat = head;	/* const issues */
-	}
+	fr_assert(xlat);
 
 	/*
 	 *	Expand the arguments to the program we're executing.
@@ -573,11 +549,12 @@ static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
 	frame->interpret = unlang_tmpl_exec_wait_resume;
 	repeatable_set(frame);
 	unlang_xlat_push(state->ctx, &state->box, request, xlat, false);
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
-void unlang_tmpl_init(void)
+void unlang_tmpl_init_shallow(void)
 {
 	unlang_register(UNLANG_TYPE_TMPL,
 			   &(unlang_op_t){

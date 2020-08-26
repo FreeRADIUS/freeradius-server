@@ -1,6 +1,6 @@
 #
 #  PRE: update if
 #
-if (&request:Packet-Type == Access-Request) {
+if (&Packet-Type == Access-Request) {
 	success
 }

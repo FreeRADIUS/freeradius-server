@@ -66,6 +66,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	char *data_name, *data_size, *data_type;
 	char *p;
 	size_t len, input_len;
+	ssize_t slen;
 	int offset;
 	fr_type_t type;
 	fr_dict_attr_t const *da;
@@ -207,14 +208,14 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 	}
 
-	len = fr_pair_value_snprint(*out, outlen, cast, 0);
+	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(*out, outlen), cast, T_BARE_WORD);
 	talloc_free(cast);
-	if (is_truncated(len, outlen)) {
+	if (slen < 0) {
 		REDEBUG("Insufficient buffer space to unpack data");
 		goto nothing;
 	}
 
-	return len;
+	return slen;
 }
 
 

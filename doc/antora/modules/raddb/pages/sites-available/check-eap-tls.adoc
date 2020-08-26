@@ -62,7 +62,7 @@ basedn = "dc=example, dc=com"
 filter = "(servicePrincipalName=%{User-Name})"
 base_filter = "(objectClass=computer)"
 groupname_attribute = cn
-groupmembership_filter = "(&(objectClass=group)(member=%{control:Ldap-UserDn}))"
+groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
 
 
 Now let's test membership of an LDAP group (the ldap bind user will
@@ -98,7 +98,7 @@ recv Access-Request {
 	update config {
 		&Auth-Type := Accept
 	}
-#	if ("%{session-state:TLS-Client-Cert-Common-Name}" == 'client.example.com') {
+#	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
 #		update config {
 #			&Auth-Type := Accept
 #		}
@@ -111,7 +111,7 @@ recv Access-Request {
 #			&Reply-Message := "Your certificate is not valid."
 #		}
 #	}
-#	if (&User-Name == "host/%{session-state:TLS-Client-Cert-Common-Name}") {
+#	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
 #		update config {
 #			&Auth-Type := Accept
 #		}

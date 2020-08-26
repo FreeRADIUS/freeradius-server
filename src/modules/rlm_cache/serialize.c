@@ -46,7 +46,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	char		*to_store = NULL;
 
-	to_store = talloc_typed_asprintf(ctx, "&Cache-Expires = %pV\n&Cache-Created = %pV\n",
+	to_store = talloc_typed_asprintf(ctx, "Cache-Expires = %pV\nCache-Created = %pV\n",
 					 fr_box_date(c->expires), fr_box_date(c->created));
 	if (!to_store) return -1;
 
@@ -65,16 +65,16 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	for (map = c->maps; map; map = map->next) {
 		char	*value;
-		size_t	len;
+		ssize_t	slen;
 
-		len = tmpl_snprint(NULL, attr, sizeof(attr), map->lhs);
-		if (is_truncated(len, sizeof(attr))) {
+		slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+		if (slen < 0) {
 			fr_strerror_printf("Serialized attribute too long.  Must be < " STRINGIFY(sizeof(attr)) " "
-					   "bytes, got %zu bytes", len);
+					   "bytes, needed %zu additional bytes", (size_t)(slen * -1));
 			goto error;
 		}
 
-		value = fr_value_box_asprint(value_pool, tmpl_value(map->rhs), '\'');
+		fr_value_box_aprint(value_pool, &value, tmpl_value(map->rhs), &fr_value_escape_single);
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
@@ -112,7 +112,8 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		vp_map_t	*map = NULL;
 		tmpl_rules_t parse_rules = {
-					.dict_def = dict
+					.dict_def = dict,
+					.prefix = TMPL_ATTR_REF_PREFIX_NO
 				};
 
 		q = strchr(p, '\n');

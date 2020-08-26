@@ -17,21 +17,21 @@ update control {
 }
 
 #  Hashes to Redis cluster node master 1 (1)
-if ("%{redis:SET b '%{control:Tmp-String-0}'}" == 'OK') {
+if ("%{redis:SET b '%{control.Tmp-String-0}'}" == 'OK') {
 	test_pass
 } else {
 	test_fail
 }
 
 #  Hashes to Redis cluster node master 3 (2)
-if ("%{redis:SET c '%{control:Tmp-String-1}'}" == 'OK') {
+if ("%{redis:SET c '%{control.Tmp-String-1}'}" == 'OK') {
 	test_pass
 } else {
 	test_fail
 }
 
 #  Hashes to Redis cluster node master 2 (3)
-if ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK') {
+if ("%{redis:SET d '%{control.Tmp-String-2}'}" == 'OK') {
 	test_pass
 } else {
 	test_fail
@@ -40,19 +40,19 @@ if ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK') {
 #
 #  Now check they are where we expect
 #
-if ("%{redis:@%{redis_node:b 0} GET b}" == "%{control:Tmp-String-0}") {
+if ("%{redis:@%{redis_node:b 0} GET b}" == "%{control.Tmp-String-0}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:@%{redis_node:c 0} GET c}" == "%{control:Tmp-String-1}") {
+if ("%{redis:@%{redis_node:c 0} GET c}" == "%{control.Tmp-String-1}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:@%{redis_node:d 0} GET d}" == "%{control:Tmp-String-2}") {
+if ("%{redis:@%{redis_node:d 0} GET d}" == "%{control.Tmp-String-2}") {
 	test_pass
 } else {
 	test_fail

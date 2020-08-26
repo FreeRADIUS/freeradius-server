@@ -587,7 +587,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 		/* debug */
 		RDEBUG3("assigning unhandled '%s' as string", vp->da->name);
 		/* get standard value */
-		fr_pair_value_snprint(value, sizeof(value), vp, 0);
+		fr_pair_print_value_quoted(&FR_SBUFF_OUT(value, sizeof(value)), vp, T_BARE_WORD);
 		/* return string value from above */
 		return json_object_new_string(value);
 	}
@@ -627,7 +627,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp)) != NULL) {
 		/* get seconds value from attribute */
 		ts = fr_time_to_sec(vp->vp_date);
 	} else {
@@ -641,7 +641,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_uint32);
 		/* calculate start time */

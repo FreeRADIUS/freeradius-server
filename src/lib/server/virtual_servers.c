@@ -902,6 +902,26 @@ fr_dict_t const *virtual_server_namespace(char const *virtual_server)
 	return dict->dict;
 }
 
+/** Return the namespace for a given virtual server specified by a CONF_ITEM within the virtual server
+ *
+ * @param[in] ci		to look for namespace in.
+ * @return
+ *	- NULL on error.
+ *	- Namespace on success.
+ */
+fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci)
+{
+	CONF_DATA const *cd;
+	virtual_server_dict_t *dict;
+
+	cd = cf_data_find_in_parent(ci, virtual_server_dict_t, "dictionary");
+	if (!cd) return NULL;
+
+	dict = (virtual_server_dict_t *) cf_data_value(cd);
+
+	return dict->dict;
+}
+
 /** Verify that a given virtual_server exists and is of a particular namespace
  *
  * Mostly used by modules to check virtual servers specified by their configs.
@@ -1069,7 +1089,7 @@ rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_
 	CONF_SECTION	*auth_cs = NULL;
 	char const	*auth_name;
 
-	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_auth_type);
 	if (!vp) {
 		RDEBUG2("No &control:Auth-Type found");
 	fail:

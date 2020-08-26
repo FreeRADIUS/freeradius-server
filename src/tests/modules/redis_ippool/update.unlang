@@ -11,7 +11,7 @@ update control {
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 192.168.0.0`
 }
 
 # 1. Check allocation
@@ -37,7 +37,7 @@ if (&reply:Session-Timeout == 30) {
 }
 
 # 4. Verify the gateway was set
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} gateway}" == '127.0.0.1') {
+if ("%{redis:HGET {%{control.Pool-Name}%}:ip:%{reply.Framed-IP-Address} gateway}" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
@@ -45,7 +45,7 @@ if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} gateway}
 
 # 5. Add another IP addresses
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.1.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.1.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.1.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 192.168.1.0`
 }
 
 # 6. Verify that the lease time is extended
@@ -73,35 +73,35 @@ update request {
 	&Tmp-Date-0 := "%l"
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 50) {
+if ("%{expr:%{redis:ZSCORE '{%{control.Pool-Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 50) {
 	test_pass
 } else {
 	test_fail
 }
 
 # 9.
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 70) {
+if ("%{expr:%{redis:ZSCORE '{%{control.Pool-Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 70) {
 	test_pass
 } else {
 	test_fail
 }
 
 # 10. Verify the lease is still associated with the device
-if (&reply:Framed-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}") {
+if (&reply:Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:%{Calling-Station-ID}'}") {
 	test_pass
 } else {
 	test_fail
 }
 
 # 11. And that the device object will expire a suitable number of seconds into the future
-if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 60) {
+if ("%{redis:TTL '{%{control.Pool-Name}%}:device:%{Calling-Station-ID}'}" == 60) {
 	test_pass
 } else {
 	test_fail
 }
 
 # 12. Verify the gateway was updated
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{request:Framed-IP-Address} gateway}" == '127.0.0.2') {
+if ("%{redis:HGET {%{control.Pool-Name}%}:ip:%{request.Framed-IP-Address} gateway}" == '127.0.0.2') {
 	test_pass
 } else {
 	test_fail
@@ -145,7 +145,7 @@ if (invalid) {
 }
 
 # 16. Verify the lease is still associated with the previous device
-if (&reply:Framed-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:00:11:22:33:44:55'}") {
+if (&reply:Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:00:11:22:33:44:55'}") {
 	test_pass
 } else {
 	test_fail

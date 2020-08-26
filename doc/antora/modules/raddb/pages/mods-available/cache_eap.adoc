@@ -68,7 +68,7 @@ update <section> { ... }::
 
 ```
 cache cache_eap {
-	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
+	key = "%{%{control.State}:-%{%{reply.State}:-%{State}}}"
 	ttl = 15
 	update reply {
 		&reply: += &reply:

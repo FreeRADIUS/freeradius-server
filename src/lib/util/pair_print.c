@@ -20,76 +20,95 @@
  *
  * @copyright 2020 The FreeRADIUS server project
  */
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
 
-char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
+/** Print the value of an attribute to a string
+ *
+ * @param[in] out	Where to write the string.
+ * @param[in] vp	to print.
+ * @param[in] quote	Char to add before and after printed value,
+ *			if 0 no char will be added, if < 0 raw string
+ *			will be added.
+ * @return
+ *	- >= 0 length of data written to out.
+ *	- <0 the number of bytes we would have needed to write
+ *	  the complete string to out.
+ */
+ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, VALUE_PAIR const *vp, fr_token_t quote)
 {
-	switch (type) {
-	case FR_TYPE_STRING :
-		return talloc_typed_strdup(ctx, "_");
+	fr_sbuff_t	our_out;
+	VALUE_PAIR	*child, *head;
+	fr_cursor_t	cursor;
 
-	case FR_TYPE_UINT64:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_INT32:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_DATE:
-		return talloc_typed_strdup(ctx, "0");
+	VP_VERIFY(vp);
 
-	case FR_TYPE_IPV4_ADDR:
-		return talloc_typed_strdup(ctx, "?.?.?.?");
+	/*
+	 *	Legacy crap that needs to be removed
+	 */
+	if (vp->type == VT_XLAT) {
+		char const *quote_str = fr_table_str_by_value(fr_token_quotes_table, quote, "");
 
-	case FR_TYPE_IPV4_PREFIX:
-		return talloc_typed_strdup(ctx, "?.?.?.?/?");
-
-	case FR_TYPE_IPV6_ADDR:
-		return talloc_typed_strdup(ctx, "[:?:]");
-
-	case FR_TYPE_IPV6_PREFIX:
-		return talloc_typed_strdup(ctx, "[:?:]/?");
-
-	case FR_TYPE_OCTETS:
-		return talloc_typed_strdup(ctx, "??");
-
-	case FR_TYPE_ETHERNET:
-		return talloc_typed_strdup(ctx, "??:??:??:??:??:??:??:??");
-
-	case FR_TYPE_ABINARY:
-		return talloc_typed_strdup(ctx, "??");
-
-	case FR_TYPE_GROUP:
-		return talloc_typed_strdup(ctx, "{ ? }");
-
-	default :
-		break;
+		return fr_sbuff_in_sprintf(out, "%s%s%s", quote_str, vp->xlat, quote_str);
 	}
 
-	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
+	/*
+	 *	For simple types just print the box
+	 */
+	if (vp->da->type != FR_TYPE_GROUP) {
+		return fr_value_box_print_quoted(out, &vp->data, quote);
+	}
+
+	/*
+	 *	Serialize all child VPs as full quoted
+	 *	<pair> = ["]<child>["]
+	 */
+	our_out = FR_SBUFF_NO_ADVANCE(out);
+
+	head = vp->vp_ptr;
+	if (!fr_cond_assert(head != NULL)) return 0;
+
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
+	for (child = fr_cursor_init(&cursor, &head);
+	     child != NULL;
+	     child = fr_cursor_next(&cursor)) {
+		VP_VERIFY(child);
+
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, child);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
+	}
+
+	if (fr_sbuff_used(&our_out)) {
+		fr_sbuff_set(&our_out, fr_sbuff_current(&our_out) - 2);
+		*fr_sbuff_current(&our_out) = '\0';
+	}
+
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Print one attribute and value to a string
  *
  * Print a VALUE_PAIR in the format:
 @verbatim
-	<attribute_name>[:tag] <op> <value>
+	<attribute_name>[:tag] <op> [q]<value>[q]
 @endverbatim
  * to a string.
  *
- * @param out Where to write the string.
- * @param outlen Length of output buffer.
- * @param vp to print.
+ * @param[in] out	Where to write the string.
+ * @param[in] vp	to print.
  * @return
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
+ssize_t fr_pair_print(fr_sbuff_t *out, VALUE_PAIR const *vp)
 {
 	char const	*token = NULL;
-	size_t		len, freespace = outlen;
+	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
 
 	if (!out) return 0;
 
-	*out = '\0';
 	if (!vp || !vp->da) return 0;
 
 	VP_VERIFY(vp);
@@ -100,21 +119,10 @@ size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
 		token = "<INVALID-TOKEN>";
 	}
 
-	if (vp->da->flags.has_tag && (vp->tag != 0) && (vp->tag != TAG_ANY)) {
-		len = snprintf(out, freespace, "%s:%d %s ", vp->da->name, vp->tag, token);
-	} else {
-		len = snprintf(out, freespace, "%s %s ", vp->da->name, token);
-	}
+	FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%s %s ", vp->da->name, token);
+	FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
 
-	if (is_truncated(len, freespace)) return len;
-	out += len;
-	freespace -= len;
-
-	len = fr_pair_value_snprint(out, freespace, vp, '"');
-	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-	freespace -= len;
-
-	return (outlen - freespace);
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Print one attribute and value to FP
@@ -127,31 +135,17 @@ size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
  */
 void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 {
-	char	buf[1024];
-	char	*p = buf;
-	size_t	len;
+	char		buff[1024];
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
 
 	if (!fp) return;
 	VP_VERIFY(vp);
 
-	*p++ = '\t';
-	len = fr_pair_snprint(p, sizeof(buf) - 1, vp);
-	if (!len) {
-		return;
-	}
-	p += len;
+	fr_sbuff_in_char(&sbuff, '\t');
+	fr_pair_print(&sbuff, vp);
+	fr_sbuff_in_char(&sbuff, '\n');
 
-	/*
-	 *	Deal with truncation gracefully
-	 */
-	if (((size_t) (p - buf)) >= (sizeof(buf) - 2)) {
-		p = buf + (sizeof(buf) - 2);
-	}
-
-	*p++ = '\n';
-	*p = '\0';
-
-	fputs(buf, fp);
+	fputs(buff, fp);
 }
 
 
@@ -173,108 +167,3 @@ void _fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *fi
 		fr_log(log, L_DBG, file, line, "\t%pP", vp);
 	}
 }
-
-/** Print one attribute and value to a string
- *
- * Print a VALUE_PAIR in the format:
-@verbatim
-	<attribute_name>[:tag] <op> <value>
-@endverbatim
- * to a string.
- *
- * @param ctx to allocate string in.
- * @param vp to print.
- * @param[in] quote the quotation character
- * @return a talloced buffer with the attribute operator and value.
- */
-char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
-{
-	char const	*token = NULL;
-	char 		*str, *value;
-
-	if (!vp || !vp->da) return 0;
-
-	VP_VERIFY(vp);
-
-	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
-		token = fr_tokens[vp->op];
-	} else {
-		token = "<INVALID-TOKEN>";
-	}
-
-	value = fr_pair_value_asprint(ctx, vp, quote);
-
-	if (vp->da->flags.has_tag) {
-		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_typed_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
-		} else {
-			str = talloc_typed_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
-		}
-	} else {
-		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_typed_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
-		} else {
-			str = talloc_typed_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
-		}
-	}
-
-	talloc_free(value);
-
-	return str;
-}
-
-/** Print the attribute portion of a pair (only)
- *
- * @param[out] out	Where to write the output attribute.
- * @param[in] end	of the output buffer.
- * @param[in] vp	to print the attribute name for.
- * @return
- *	- >= 0 number of bytes written to out on success.
- *	- < 0 number of bytes we need to write out the value.
- */
-static inline ssize_t fr_pair_snprint_attr(char * const out, char const * const end, VALUE_PAIR const *vp)
-{
-	char	*p = out;
-	size_t	len = strlen(vp->da->name);
-
-	RETURN_SLEN_IF_NO_SPACE(len, p, end);
-	memcpy(p, vp->da->name, len);
-	p += len;
-
-	if (vp->tag) {
-		size_t ret;
-
-		RETURN_SLEN_IF_NO_SPACE(1, p, end);
-		*p++ = ':';
-
-		ret = snprintf(p, end - p, "%u", vp->tag);
-		RETURN_SLEN_IF_TRUNCATED(ret, p, end);
-
-		p += ret;
-	}
-
-	return p - out;
-}
-
-/** Print a leaf attribute pair i.e. <attr> <op> <value>
- *
- * @param[out] out	Where to write the output attribute.
- * @param[in] end	of the output buffer.
- * @param[in] vp	to print.
- * @param[in] str_quote	to use when printing quoted string values.
- */
-static inline ssize_t fr_pair_snprintf_leaf(char * const out, char const * const end,
-					    VALUE_PAIR const *vp, char str_quote)
-{
-	char *p = out;
-
-	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
-		token = fr_tokens[vp->op];
-	} else {
-		token = "<INVALID-TOKEN>";
-	}
-
-	fr_value_box_snprint(out, )
-}
-
-

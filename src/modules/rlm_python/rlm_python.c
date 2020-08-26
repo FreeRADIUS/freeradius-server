@@ -391,12 +391,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	PyObject *value = NULL;
 
 	/* Look at the fr_pair_fprint_name? */
-	if (vp->da->flags.has_tag) {
-		attribute = PyUnicode_FromFormat("%s:%d", vp->da->name, vp->tag);
-	} else {
-		attribute = PyUnicode_FromString(vp->da->name);
-	}
-
+	attribute = PyUnicode_FromString(vp->da->name);
 	if (!attribute) return -1;
 
 	switch (vp->vp_type) {
@@ -466,11 +461,18 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		size_t len;
+		size_t slen;
 		char buffer[256];
 
-		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		value = PyUnicode_FromStringAndSize(buffer, len);
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
+		if (slen < 0) {
+		error:
+			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
+			python_error_log(inst, request);
+			Py_XDECREF(attribute);
+			return -1;
+		}
+		value = PyUnicode_FromStringAndSize(buffer, (size_t)slen);
 	}
 		break;
 
@@ -479,12 +481,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 		return -1;
 	}
 
-	if (value == NULL) {
-		ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
-		python_error_log(inst, request);
-		Py_XDECREF(attribute);
-		return -1;
-	}
+	if (value == NULL) goto error;
 
 	PyTuple_SET_ITEM(pp, 0, attribute);
 	PyTuple_SET_ITEM(pp, 1, value);

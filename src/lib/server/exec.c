@@ -91,7 +91,8 @@ static void fr_exec_pair_to_env(REQUEST *request, VALUE_PAIR *input_pairs, char 
 		}
 
 		n = strlen(buffer);
-		fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
+		fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer + n, sizeof(buffer) - n), vp,
+					   shell_escape ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 		DEBUG3("export %s", buffer);
 		envp[i++] = talloc_typed_strdup(envp, buffer);

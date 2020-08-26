@@ -45,10 +45,10 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 			strlcpy(dst_buf, "::", sizeof(dst_buf));
 		}
 	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(*dst_ipaddr), 0);
+		fr_value_box_print(&FR_SBUFF_OUT(dst_buf, sizeof(dst_buf)), fr_box_ipaddr(*dst_ipaddr), NULL);
 	}
 
-	if (src_ipaddr) fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(*src_ipaddr), 0);
+	if (src_ipaddr) fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(*src_ipaddr), NULL);
 
 	if (!interface) {
 		if (!src_ipaddr) {

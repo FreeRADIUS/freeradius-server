@@ -821,11 +821,13 @@ static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_threa
 
 static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
 {
-	RADCLIENT *radclient;
+	RADCLIENT	*radclient;
+	char		*shortname;
 
 	MEM(radclient = talloc_zero(ctx, RADCLIENT));
 
-	radclient->longname = radclient->shortname = fr_value_box_asprint(radclient, fr_box_ipaddr(address->src_ipaddr), '\0');
+	fr_value_box_aprint(radclient, &shortname, fr_box_ipaddr(address->src_ipaddr), NULL);
+	radclient->longname = radclient->shortname = shortname;
 
 	radclient->secret = radclient->nas_type = talloc_strdup(radclient, "");
 

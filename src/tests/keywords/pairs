@@ -6,7 +6,6 @@ update {
 	&request:Tmp-String-0 += "This is another one"
 	&request:Tmp-Octets-0 := 0x000504030201
 	&request:Tmp-Integer-0 := 7331
-	&request:Tunnel-Private-Group-Id:5 = 127.0.0.1
 }
 
 update {
@@ -17,7 +16,7 @@ update {
 	&request:Tmp-String-5 := "%{pairs:control:User-Name}"
 }
 
-if (&request:Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331, Tunnel-Private-Group-Id:5 = \"127.0.0.1\"") {
+if (&request:Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
 	test_fail
 }
 

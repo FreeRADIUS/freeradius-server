@@ -157,7 +157,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	VALUE_PAIR		*ends, *vp;
 	int32_t			left;
 
-	ends = fr_pair_find_by_da(request->control, attr_login_time, TAG_ANY);
+	ends = fr_pair_find_by_da(request->control, attr_login_time);
 	if (!ends) return RLM_MODULE_NOOP;
 
 	/*

@@ -18,7 +18,7 @@
 -- allocate_begin = ""
 -- allocate_find = "\
 --      EXEC fr_allocate_previous_or_new_framedipaddress \
---              @v_pool_name = '%{control:${pool_name}}', \
+--              @v_pool_name = '%{control.${pool_name}}', \
 --              @v_username = '%{User-Name}', \
 --              @v_callingstationid = '%{Calling-Station-Id}', \
 --              @v_nasipaddress = '%{NAS-IP-Address}', \

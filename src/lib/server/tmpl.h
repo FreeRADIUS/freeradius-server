@@ -32,13 +32,13 @@
  * where values or #VALUE_PAIR should be copied to.
  *
  * To create new #tmpl_t use one of the tmpl_*from_* functions.  These parse
- * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
+ * strings into VPTs. The main parsing function is #tmpl_afrom_substr, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
  * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_UNRESOLVED (depending if the string
  * contained a non-literal expansion).
  *
- * @see tmpl_afrom_str
+ * @see tmpl_afrom_substr
  * @see tmpl_afrom_attr_str
  *
  * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
@@ -105,42 +105,108 @@ typedef enum requests_ref_e {
 extern fr_table_num_sorted_t const request_ref_table[];
 extern size_t request_ref_table_len;
 
+/** Base data type is an attribute reference
+ *
+ */
+#define TMPL_FLAG_ATTR		0x01000000
+
+/** Base data type is an xlat expansion
+ *
+ */
+#define TMPL_FLAG_XLAT		0x02000000
+
+/** Is a type of regular expression
+ *
+ */
+#define TMPL_FLAG_REGEX		0x04000000
+
+/** Needs resolution
+ *
+ */
+#define TMPL_FLAG_UNRESOLVED	0x08000000
+
 /** Types of #tmpl_t
+ *
+ * Types may be compound types made up of multiple other types.
+ *
+ * Types which are used as part of compound types are:
+ * - XLAT_TYPE_XLAT		- #tmpl_t contains xlat expansion.
+ * - XLAT_TYPE_UNRESOLVED	- #tmpl_t contains unresolved elements such as xlat functions or other expansions.
  */
 typedef enum tmpl_type_e {
-	TMPL_TYPE_UNINITIALISED = 0,	//!< Uninitialised.
+	/** Uninitialised
+	 */
+	TMPL_TYPE_UNINITIALISED 	= 0x0000,
 
-	TMPL_TYPE_NULL,			//!< Has no value.  Usually a placeholder in a binary
-					///< expression that's really a unary expression.
-	TMPL_TYPE_DATA,			//!< Value in native boxed format.
+	/** Has no value.  Usually a placeholder in a binary expression that's really a unary expression
+	 */
+	TMPL_TYPE_NULL			= 0x0001,
 
-	TMPL_TYPE_LIST,			//!< Reference to an attribute list.
-	TMPL_TYPE_ATTR,			//!< Reference to one or more attributes.
+	/** Value in native boxed format
+	 */
+	TMPL_TYPE_DATA			= 0x0002,
 
-	TMPL_TYPE_EXEC,			//!< Callout to an external script or program.
-	TMPL_TYPE_XLAT,	      		//!< Pre-parsed xlat expansion.
+	/** Reference to an attribute list
+	 */
+	TMPL_TYPE_LIST			= 0x0004 | TMPL_FLAG_ATTR,
 
-	TMPL_TYPE_REGEX,	      	//!< Compiled (and possibly JIT'd) regular expression.
+	/** Reference to one or more attributes
+	 */
+	TMPL_TYPE_ATTR			= 0x0008 | TMPL_FLAG_ATTR,
 
-	/** @name Unparsed types
+	/** Pre-parsed xlat expansion
+	 */
+	TMPL_TYPE_XLAT			= 0x0010 | TMPL_FLAG_XLAT,
+
+	/** Callout to an external script or program
+	 */
+	TMPL_TYPE_EXEC			= 0x0020 | TMPL_FLAG_XLAT,
+
+	/** Compiled (and possibly JIT'd) regular expression
+	 */
+	TMPL_TYPE_REGEX			= 0x0040 | TMPL_FLAG_REGEX,
+
+	/** Regex where compilation is possible but hasn't been performed yet
+	 */
+	TMPL_TYPE_REGEX_UNCOMPILED	= 0x0080 | TMPL_FLAG_REGEX,
+
+	/** A regex containing xlat expansions.  Cannot be pre-compiled
+	 */
+	TMPL_TYPE_REGEX_XLAT		= 0x0100 | TMPL_FLAG_REGEX | TMPL_FLAG_XLAT,
+
+	/** @name unresolved types
 	 *
 	 * These are tmpls which could not immediately be transformed into
-	 * their "parsed" or "compiled" form due to missing references,
-	 * or because the tmpl is "dynamic".
+	 * their "resolved" form due to missing references or because
+	 * additional parsing is required.
 	 *
 	 * @{
 	 */
-	TMPL_TYPE_UNRESOLVED,		//!< Unparsed literal string.  May be an intermediary phase
-					///< where the tmpl is created as a temporary structure
-					///< during parsing.
 
-	TMPL_TYPE_ATTR_UNRESOLVED,	//!< An attribute reference that we couldn't resolve.
-					///< May be resolvable later once more attributes are
-					///< defined.
+	/** Unparsed literal string
+	 *
+	 * May be an intermediary phase where the tmpl is created as a
+	 * temporary structure during parsing.
+	 */
+	TMPL_TYPE_UNRESOLVED		= 0x0200 | TMPL_FLAG_UNRESOLVED,
 
-	TMPL_TYPE_XLAT_UNRESOLVED,	//!< Unparsed xlat expansion.  May have a dynamic element.
+	/** An attribute reference that we couldn't resolve but looked valid
+	 *
+	 * May be resolvable later once more attributes are defined.
+	 */
+	TMPL_TYPE_ATTR_UNRESOLVED	= TMPL_TYPE_ATTR | TMPL_FLAG_UNRESOLVED,
 
-	TMPL_TYPE_REGEX_UNRESOLVED,	//!< Unparsed regular expression.  May have a dynamic element.
+	/** An exec with unresolved xlat function or attribute references
+	 */
+	TMPL_TYPE_EXEC_UNRESOLVED	= TMPL_TYPE_EXEC | TMPL_FLAG_UNRESOLVED,
+
+	/** A xlat expansion with unresolved xlat functions or attribute references
+	 */
+	TMPL_TYPE_XLAT_UNRESOLVED	= TMPL_TYPE_XLAT | TMPL_FLAG_UNRESOLVED,
+
+	/** A regular expression with unresolved xlat functions or attribute references
+	 */
+	TMPL_TYPE_REGEX_XLAT_UNRESOLVED = TMPL_TYPE_REGEX_XLAT | TMPL_FLAG_UNRESOLVED,
 	/** @} */
 
 	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
@@ -148,29 +214,38 @@ typedef enum tmpl_type_e {
 
 /** Helpers to verify the type of #tmpl_t
  */
-#define tmpl_is_uninitialised(vpt) 	(vpt->type == TMPL_TYPE_UNINITIALISED)
+#define tmpl_is_uninitialised(vpt) 		(vpt->type == TMPL_TYPE_UNINITIALISED)
 
-#define tmpl_is_null(vpt) 		(vpt->type == TMPL_TYPE_NULL)
-#define tmpl_is_data(vpt) 		(vpt->type == TMPL_TYPE_DATA)
+#define tmpl_is_null(vpt) 			(vpt->type == TMPL_TYPE_NULL)
+#define tmpl_is_data(vpt) 			(vpt->type == TMPL_TYPE_DATA)
 
-#define tmpl_is_attr(vpt) 		(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_list(vpt) 		(vpt->type == TMPL_TYPE_LIST)
+#define tmpl_is_attr(vpt) 			(vpt->type == TMPL_TYPE_ATTR)
+#define tmpl_is_list(vpt) 			(vpt->type == TMPL_TYPE_LIST)
 
-#define tmpl_is_xlat(vpt) 		(vpt->type == TMPL_TYPE_XLAT)
-#define tmpl_is_exec(vpt) 		(vpt->type == TMPL_TYPE_EXEC)
+#define tmpl_is_xlat(vpt) 			(vpt->type == TMPL_TYPE_XLAT)
+#define tmpl_is_exec(vpt) 			(vpt->type == TMPL_TYPE_EXEC)
 
-#define tmpl_is_regex(vpt) 		(vpt->type == TMPL_TYPE_REGEX)
+#define tmpl_is_regex(vpt) 			(vpt->type == TMPL_TYPE_REGEX)
+#define tmpl_is_regex_uncompiled(vpt)		(vpt->type == TMPL_TYPE_REGEX_UNCOMPILED)
+#define tmpl_is_regex_xlat(vpt) 		(vpt->type == TMPL_TYPE_REGEX_XLAT)
 
 #define tmpl_is_unresolved(vpt) 		(vpt->type == TMPL_TYPE_UNRESOLVED)
-#define tmpl_is_attr_unresolved(vpt) 	(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
-#define tmpl_is_xlat_unresolved(vpt) 	(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
-#define tmpl_is_regex_unresolved(vpt) 	(vpt->type == TMPL_TYPE_REGEX_UNRESOLVED)
+#define tmpl_is_exec_unresolved(vpt) 		(vpt->type == TMPL_TYPE_EXEC_UNRESOLVED)
+#define tmpl_is_attr_unresolved(vpt) 		(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
+#define tmpl_is_xlat_unresolved(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
+#define tmpl_is_regex_xlat_unresolved(vpt) 	(vpt->type == TMPL_TYPE_REGEX_XLAT_UNRESOLVED)
 
-extern fr_table_num_sorted_t const tmpl_type_table[];
+#define tmpl_needs_resolving(vpt)		(vpt->type & TMPL_FLAG_UNRESOLVED)
+#define tmpl_contains_attr(vpt)			(vpt->type & TMPL_FLAG_ATTR)
+#define tmpl_contains_regex(vpt)		(vpt->type & TMPL_FLAG_REGEX)
+#define tmpl_contains_xlat(vpt)			(vpt->type & TMPL_FLAG_XLAT)
+
+extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
 
-typedef struct tmpl_s tmpl_t;
+
 typedef struct tmpl_rules_s tmpl_rules_t;
+typedef struct tmpl_s tmpl_t;
 
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/packet.h>
@@ -193,7 +268,7 @@ typedef struct tmpl_rules_s tmpl_rules_t;
  */
 typedef enum {
 	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
-	TMPL_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
+	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_ref_prefix_t;
 
@@ -235,10 +310,12 @@ typedef enum {
 							///< dictionary, or isn't a child of
 							///< the previous ref.  May be resolved
 							///< later.
-	TMPL_ATTR_TYPE_UNRESOLVED				//!< We have a name, but nothing else
+	TMPL_ATTR_TYPE_UNRESOLVED			//!< We have a name, but nothing else
 							///< to identify the attribute.
 							///< may be resolved later.
 } tmpl_attr_type_t;
+
+#define TMPL_MAX_REQUEST_REF_NESTING	20
 
 #define NUM_ANY			INT16_MIN
 #define NUM_ALL			(INT16_MIN + 1)
@@ -255,13 +332,17 @@ typedef struct {
 	fr_dict_attr_t const	* _CONST da;		//!< Resolved dictionary attribute.
 
 	union {
-		fr_dict_attr_t		* _CONST da;		//!< Unknown dictionary attribute.
-		char			* _CONST name;		//!< Undefined attr ref type.
-	} unknown;
+		struct {
+			fr_dict_attr_t		* _CONST da;		//!< Unknown dictionary attribute.
+		} unknown;
+
+		struct {
+			char			* _CONST name;		//!< Undefined  ref type.
+			bool			is_raw;			//!< User wants the leaf to be raw.
+		} unresolved;
+	};
 
 	int16_t			_CONST num;		//!< For array references.
-	int8_t			_CONST tag;		//!< For tag references.
-
 	tmpl_attr_type_t	_CONST type;
 } tmpl_attr_t;
 
@@ -279,11 +360,12 @@ typedef struct {
  *
  * @{
  */
+#define ar_type				type
 #define ar_da				da
 #define ar_unknown			unknown.da
-#define ar_unresolved			unknown.name
+#define ar_unresolved			unresolved.name
+#define ar_unresolved_raw		unresolved.is_raw
 #define ar_num				num
-#define ar_tag				tag
 /** @} */
 
 /** A source or sink of value data.
@@ -312,22 +394,31 @@ typedef struct {
  * @see vp_map_t
  */
 struct tmpl_s {
-	tmpl_type_t	type;		//!< What type of value tmpl refers to.
+	tmpl_type_t	_CONST type;		//!< What type of value tmpl refers to.
 
 	char const	* _CONST name;		//!< Raw string used to create the template.
+						///< this string will have any escape sequences left intact.
 	size_t		_CONST len;		//!< Length of the raw string used to create the template.
 	fr_token_t	_CONST quote;		//!< What type of quoting was around the raw string.
 
 	union {
+		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_UNRESOLVED
+						///< and TMPL_TYPE_REGEX_UNCOMPILED.
+
 		_CONST struct {
-			fr_dlist_head_t		rr;	//!< Request to search or insert in.
+			bool			ref_prefix;	//!< true if the reference was prefixed
+								///< with a '&'.
 
-			pair_list_t		list;	//!< List to search or insert in.
-							///< deprecated.
+			fr_dlist_head_t		rr;		//!< Request to search or insert in.
 
-			fr_dlist_head_t		ar;	//!< Head of the attribute reference list.
+			bool			old_list_sep;	//!< Print ':'
 
-			bool			was_oid;
+			pair_list_t		list;		//!< List to search or insert in.
+								///< deprecated.
+
+			fr_dlist_head_t		ar;		//!< Head of the attribute reference list.
+
+			bool			was_oid;	//!< Was originally a numeric OID.
 		} attribute;
 
 		/*
@@ -335,16 +426,36 @@ struct tmpl_s {
 		 */
 		fr_value_box_t	literal;			 //!< Value data.
 
-		xlat_exp_t	*xlat;	 			//!< pre-parsed xlat_exp_t
-
+		_CONST struct {
+			xlat_exp_t		*ex;	 	//!< pre-parsed xlat_exp_t
+			xlat_flags_t		flags;		//!< Flags controlling evaluation
+								///< and expansion.
+		} xlat;
 #ifdef HAVE_REGEX
-		struct {
-			regex_t			*preg;		//!< pre-parsed regex_t
-			fr_regex_flags_t	regex_flags;	//!< Flags for regular expressions.
-		};
+		_CONST struct {
+			regex_t			*ex;		//!< pre-parsed regex_t
+			fr_regex_flags_t	flags;		//!< Flags for regular expressions.
+		} reg;
 #endif
 	} data;
+
+	fr_type_t	_CONST cast;
+	tmpl_rules_t	_CONST rules;
 };
+
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_unquoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_unquoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_single_unquoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_unquoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_unquoted;
+extern fr_sbuff_parse_rules_t const *tmpl_parse_rules_unquoted[T_TOKEN_LAST];
+
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_quoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_quoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_single_quoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_quoted;
+extern fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_quoted;
+extern fr_sbuff_parse_rules_t const *tmpl_parse_rules_quoted[T_TOKEN_LAST];
 
 /** Convenience macro for printing a meaningful assert message when we get a bad tmpl type
  */
@@ -363,6 +474,18 @@ static inline request_ref_t tmpl_request(tmpl_t const *vpt)
 			 tmpl_is_list(vpt));
 
 	return ((tmpl_request_t *)fr_dlist_tail(&vpt->data.attribute.rr))->request;
+}
+
+/** The number of request references contained within a tmpl
+ *
+ */
+static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unresolved(vpt) ||
+			 tmpl_is_list(vpt));
+
+	return fr_dlist_num_elements(&vpt->data.attribute.rr);
 }
 
 static inline fr_dict_attr_t const *tmpl_da(tmpl_t const *vpt)
@@ -386,22 +509,26 @@ static inline char const *tmpl_attr_unresolved(tmpl_t const *vpt)
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_unresolved;
 }
 
+/** The number of attribute references contained within a tmpl
+ *
+ */
+static inline size_t tmpl_attr_ref_count(tmpl_t const *vpt)
+{
+	tmpl_assert_type(tmpl_is_attr(vpt) ||
+			 tmpl_is_attr_unresolved(vpt));
+
+	return fr_dlist_num_elements(&vpt->data.attribute.ar);
+}
+
 static inline int16_t tmpl_num(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
+	if (tmpl_is_list(vpt) && (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0)) return NUM_ALL;
+
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
-}
-
-static inline int8_t tmpl_tag(tmpl_t const *vpt)
-{
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once tags are part of ar dlist */
-			 tmpl_is_list(vpt));
-
-	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_tag;
 }
 
 static inline pair_list_t tmpl_list(tmpl_t const *vpt)
@@ -418,16 +545,18 @@ static inline pair_list_t tmpl_list(tmpl_t const *vpt)
  *
  * @{
  */
-#define tmpl_xlat(_tmpl)		(_tmpl)->data.xlat
+#define tmpl_xlat(_tmpl)			(_tmpl)->data.xlat.ex
+#define tmpl_xlat_flags(_tmpl)			(&(_tmpl)->data.xlat.flags)
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_DATA
  *
  * @{
  */
-#define tmpl_value(_tmpl)		(&(_tmpl)->data.literal)
-#define tmpl_value_length(_tmpl)	(_tmpl)->data.literal.datum.length
-#define tmpl_value_type(_tmpl)		(_tmpl)->data.literal.type
+#define tmpl_value(_tmpl)			(&(_tmpl)->data.literal)
+#define tmpl_value_length(_tmpl)		(_tmpl)->data.literal.datum.length
+#define tmpl_value_type(_tmpl)			(_tmpl)->data.literal.type
+#define tmpl_value_enumv(_tmpl)			(_tmpl)->data.literal.enumv
 
 /*
  *	Temporary macros to track where we do assignments
@@ -436,13 +565,13 @@ static inline pair_list_t tmpl_list(tmpl_t const *vpt)
 #define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_UNRESOLVED
+/** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_XLAT_UNRESOLVED
  *
  * @{
  */
 #ifdef HAVE_REGEX
-#  define tmpl_preg(_tmpl)		(_tmpl)->data.preg	//!< #TMPL_TYPE_REGEX only.
-#  define tmpl_regex_flags(_tmpl)	(_tmpl)->data.regex_flags
+#  define tmpl_regex(_tmpl)			(_tmpl)->data.reg.ex		//!< #TMPL_TYPE_REGEX only.
+#  define tmpl_regex_flags(_tmpl)		(&(_tmpl)->data.reg.flags)
 #endif
 /** @} */
 
@@ -460,7 +589,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  *
  * Example:
  @code{.c}
-   static tmpl_t list = tmpl_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   static tmpl_t list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
    fr_cursor_t cursor;
    VALUE_PAIR *vp;
 
@@ -477,7 +606,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  * @see tmpl_cursor_init
  * @see tmpl_cursor_next
  */
-#define	tmpl_initialiser_list(_request, _list)\
+#define	tmpl_init_initialiser_list(_request, _list)\
 { \
 	.name = "static", \
 	.len = sizeof("static"), \
@@ -535,7 +664,8 @@ typedef enum {
 							///< found in the dictionaries, and is disallowed
 							///< because 'disallow_internal' in tmpl_rules_t
 							///< is trie.
-	ATTR_REF_ERROR_UNDEFINED_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute couldn't be found in the dictionaries.
+	ATTR_REF_ERROR_UNRESOLVED_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute couldn't be found in the dictionaries.
+	ATTR_REF_ERROR_UNQUALIFIED_ATTRIBUTE_NOT_ALLOWED,//!< Attribute must be qualified to be used here.
 	ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME,		//!< Attribute ref length is zero, or longer than
 							///< the maximum.
 	ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute resolved to an internal attribute
@@ -543,8 +673,9 @@ typedef enum {
 	ATTR_REF_ERROR_FOREIGN_ATTRIBUTES_NOT_ALLOWED,	//!< Attribute resolved in a dictionary different
 							///< to the one specified.
 	ATTR_REF_ERROR_TAGGED_ATTRIBUTE_NOT_ALLOWED,	//!< Tagged attributes not allowed here.
-	ATTR_REF_ERROR_INVALID_TAG,			//!< Invalid tag value.
-	ATTR_REF_ERROR_INVALID_ARRAY_INDEX		//!< Invalid array index.
+	ATTR_REF_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
+	ATTR_REF_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
+	ATTR_REF_ERROR_MISSING_TERMINATOR		//!< Unexpected text found after attribute reference
 } attr_ref_error_t;
 
 /** Map ptr type to a boxed type
@@ -591,6 +722,8 @@ typedef enum {
 #define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
 			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
 
+void			tmpl_debug(tmpl_t const *vpt);
+
 VALUE_PAIR		**radius_list(REQUEST *request, pair_list_t list);
 
 RADIUS_PACKET		*radius_packet(REQUEST *request, pair_list_t list_name);
@@ -603,13 +736,20 @@ int			radius_request(REQUEST **request, request_ref_t name);
 
 size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
 
-tmpl_t		*tmpl_init(tmpl_t *vpt, tmpl_type_t type,
-				   char const *name, ssize_t len, fr_token_t quote);
+tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...);
 
-tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
-				    ssize_t len, fr_token_t quote);
+tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type,
+					   fr_token_t quote, char const *name, ssize_t len);
 
-void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
+tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
+
+tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
+
+void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
+
+void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
+
+void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal);
 
@@ -617,13 +757,7 @@ void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
-int			tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);
-
-void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
-
 int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
-
-int			tmpl_attr_resolve_unresolved(tmpl_t *vpt, tmpl_rules_t const *rules) CC_HINT(nonnull);
 
 void			tmpl_attr_set_unresolved(tmpl_t *vpt, char const *name, size_t len) CC_HINT(nonnull);
 
@@ -635,31 +769,77 @@ void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT
 
 void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_set_leaf_tag(tmpl_t *vpt, int8_t tag) CC_HINT(nonnull);
-
 void			tmpl_attr_set_request(tmpl_t *vpt, request_ref_t request) CC_HINT(nonnull);
 
 void			tmpl_attr_set_list(tmpl_t *vpt, pair_list_t list) CC_HINT(nonnull);
 
 int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
-					     fr_dict_attr_t const *da, int8_t tag);
+					     fr_dict_attr_t const *da);
 
+/** @name Produce a #tmpl_t from a string or substring
+ *
+ * @{
+ */
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
-					       tmpl_t **out, char const *name, ssize_t name_len,
-					       tmpl_rules_t const *rules);
+					       tmpl_t **out, fr_sbuff_t *name,
+					       fr_sbuff_parse_rules_t const *p_rules,
+					       tmpl_rules_t const *ar_rules);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 					    tmpl_t **out, char const *name,
 					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
-ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, tmpl_t **out, char const *name, size_t inlen,
-				       fr_token_t type, tmpl_rules_t const *rules, bool do_escape);
+ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
+					  fr_sbuff_t *in,
+					  fr_token_t quote,
+					  fr_sbuff_parse_rules_t const *p_rules,
+					  tmpl_rules_t const *ar_rules);
 
+ssize_t			tmpl_cast_from_substr(fr_type_t *vpt, fr_sbuff_t *in);	/* Parses cast string */
+
+int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type);		/* Sets cast type */
+
+#ifdef HAVE_REGEX
+ssize_t			tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in,
+						fr_sbuff_term_t const *terminals);
+#endif
+/** @} */
+
+/** @name Change a #tmpl_t type, usually by casting or resolving a reference
+ * @{
+ */
 int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
-size_t			tmpl_snprint_attr_str(size_t *need, char *out, size_t outlen, tmpl_t const *vpt);
+int			tmpl_resolve(tmpl_t *vpt) CC_HINT(nonnull);
 
-size_t			tmpl_snprint(size_t *need, char *out, size_t outlen, tmpl_t const *vpt);
+void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
+
+int			tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p);
+
+void			tmpl_attr_to_raw(tmpl_t *vpt);
+
+int			tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type);
+
+int			tmpl_attr_unknown_add(tmpl_t *vpt);
+
+int			tmpl_attr_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,
+						 fr_type_t type, fr_dict_attr_flags_t const *flags);
+
+#ifdef HAVE_REGEX
+ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures, bool runtime);
+#endif
+/** @} */
+
+/** @name Print the contents of a #tmpl_t
+ * @{
+ */
+ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix);
+
+ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+				   tmpl_attr_ref_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules);
+
+ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix);
+/** @} */
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
@@ -686,10 +866,6 @@ int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_unknown_attr_add(tmpl_t *vpt);
-
-int			tmpl_unresolved_attr_add(fr_dict_t *dict, tmpl_t *vpt,
-						   fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
 				      fr_token_t *type, char const **error,

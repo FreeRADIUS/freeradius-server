@@ -27,8 +27,8 @@ update control {
 }
 
 update reply {
-    &Reply-Message := "The length of %{control:Tmp-String-0} is %{length:&control:Tmp-String-0}"
-    &Reply-Message += "The length of %{control:Framed-IP-Address} is %{length:&control:Framed-IP-Address}"
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control:Tmp-String-0}"
+    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control:Framed-IP-Address}"
 }
 ----
 
@@ -122,7 +122,7 @@ update request {
 }
 
 update reply {
-    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request:Tunnel-Server-Endpoint[1]}"
+    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request.Tunnel-Server-Endpoint[1]}"
 }
 ----
 
@@ -153,7 +153,7 @@ update control {
     &Tmp-Octets-0 := 0x7465737431
 }
 update reply {
-    &Reply-Message := "The string value of %{control:Tmp-Octets-0} is %{string:%{control:Tmp-Octets-0}}"
+    &Reply-Message := "The string value of %{control.Tmp-Octets-0} is %{string:%{control.Tmp-Octets-0}}"
 }
 ----
 ====
@@ -328,8 +328,8 @@ update {
 }
 
 update reply {
-    &Reply-Message += "%{concat:, %{control:Tmp-String-0[*]}}"
-    &Reply-Message += "%{concat:,%{control:Tmp-String-0[*]}}"
+    &Reply-Message += "%{concat:, %{control.Tmp-String-0[*]}}"
+    &Reply-Message += "%{concat:,%{control.Tmp-String-0[*]}}"
 }
 ----
 
@@ -361,7 +361,7 @@ update control {
 "%{explode:&control:Tmp-String-0 @}"
 
 update reply {
-    &Reply-Message := "Welcome %{control:Tmp-String-0[0]}"
+    &Reply-Message := "Welcome %{control.Tmp-String-0[0]}"
 }
 ----
 
@@ -480,7 +480,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The length of %{control:Tmp-String-0} is %{strlen:&control:Tmp-String-0}"
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control:Tmp-String-0}"
 }
 ----
 
@@ -505,7 +505,7 @@ update control {
     &Tmp-String-0 := "CAIPIRINHA"
 }
 update reply {
-    &Reply-Message := "tolower of %{control:Tmp-String-0} is %{tolower:%{control:Tmp-String-0}}"
+    &Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -530,7 +530,7 @@ update control {
     &Tmp-String-0 := "caipirinha"
 }
 update reply {
-    &Reply-Message := "toupper of %{control:Tmp-String-0} is %{toupper:%{control:Tmp-String-0}}"
+    &Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -556,7 +556,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The base64 of %{control:Tmp-String-0} is %{base64:%{control:Tmp-String-0}}"
+    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %{base64:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -580,7 +580,7 @@ update control {
     &Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
 }
 update reply {
-    &Reply-Message := "The base64decode of %{control:Tmp-String-0} is %{base64decode:%{control:Tmp-String-0}}"
+    &Reply-Message := "The base64decode of %{control.Tmp-String-0} is %{base64decode:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -604,7 +604,7 @@ update control {
     &Tmp-String-0 := "10"
 }
 update reply {
-    &Reply-Message := "The %{control:Tmp-String-0} in binary is %{bin:%{control:Tmp-String-0}}"
+    &Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -628,7 +628,7 @@ update control {
     &Tmp-String-0 := "12345"
 }
 update reply {
-    &Reply-Message := "The value of %{control:Tmp-String-0} in hex is %{hex:%{control:Tmp-String-0}}"
+    &Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -652,7 +652,7 @@ update {
     &control:Tmp-String-0 := "http://example.org/"
 }
 update reply {
-    &Reply-Message += "The urlquote of %{control:Tmp-String-0} is %{urlquote:%{control:Tmp-String-0}}"
+    &Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -676,7 +676,7 @@ update {
     &control:Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
 }
 update reply {
-    &Reply-Message += "The urlunquote of %{control:Tmp-String-0} is %{urlunquote:%{control:Tmp-String-0}}"
+    &Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -703,12 +703,12 @@ update {
     &control:Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control:Tmp-Octets-0 := "%{hmacmd5:%{control:Tmp-String-0} %{control:Tmp-String-1}}"
+    &control:Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
 }
 
 update reply {
-    &Reply-Message := "The HMAC-MD5 of %{control:Tmp-String-1} in octets is %{control:Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-MD5 of %{control:Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
+    &Reply-Message := "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
 }
 ----
 
@@ -734,12 +734,12 @@ update {
     &control:Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control:Tmp-Octets-0 := "%{hmacsha1:%{control:Tmp-String-0} %{control:Tmp-String-1}}"
+    &control:Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
 }
 
 update reply {
-    &Reply-Message := "The HMAC-SHA1 of %{control:Tmp-String-1} in octets is %{control:Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-SHA1 of %{control:Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
+    &Reply-Message := "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
 }
 ----
 
@@ -765,8 +765,8 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "md5 of %{control:Tmp-String-0} is octal=%{md5:%{control:Tmp-String-0}}"
-    &Reply-Message := "md5 of %{control:Tmp-String-0} is hex=%{hex:%{md5:%{control:Tmp-String-0}}}"
+    &Reply-Message := "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
+    &Reply-Message := "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
 }
 ----
 
@@ -815,8 +815,8 @@ update {
     &control:Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The md5 of %{control:Tmp-String-0} in octal is %{md5:%{control:Tmp-String-0}}"
-    &Reply-Message += "The md5 of %{control:Tmp-String-0} in hex is %{hex:%{md5:%{control:Tmp-String-0}}}"
+    &Reply-Message := "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
+    &Reply-Message += "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
 }
 ----
 
@@ -905,7 +905,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 [source,unlang]
 ----
 update reply {
-    &Class := "%{pack:%{reply:Framed-IP-Address}%{NAS-IP-Address}}"
+    &Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
 }
 ----
 
@@ -950,7 +950,7 @@ update control {
 
 if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
     update reply {
-        &Reply-Message := "The %{control:Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
+        &Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
     }
 }
 ----
@@ -975,7 +975,7 @@ update control {
     &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
 }
 update reply {
-    &Reply-Message := "%{sub:/ / , %{control:Tmp-String-0}}"
+    &Reply-Message := "%{sub:/ / , %{control.Tmp-String-0}}"
 }
 ----
 

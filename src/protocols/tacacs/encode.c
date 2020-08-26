@@ -107,7 +107,7 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
 	VALUE_PAIR *vp;
 	uint8_t *p = *data;
 
-	vp = fr_pair_find_by_da(vps, da, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, da);
 	if (!vp || !vp->vp_length) return 0;
 
 	if (vp->vp_length > max_len) return 0;
@@ -127,7 +127,7 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
  *	doesn't specify them, then they don't get encoded.
  */
 #define ENCODE_FIELD_UINT8(_field, _da) do { \
-	vp = fr_pair_find_by_da(vps, _da, TAG_ANY); \
+	vp = fr_pair_find_by_da(vps, _da); \
 	_field = (vp) ? vp->vp_uint8 : 0; \
 } while (0)
 
@@ -508,11 +508,11 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 
 		check_request:
 			if (!buffer[0]) buffer[0] = 0xc1; /* version 12.1 */
-			
+
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
 			 */
-			if (!fr_pair_find_by_da(vps, attr_tacacs_session_id, TAG_ANY)) {
+			if (!fr_pair_find_by_da(vps, attr_tacacs_session_id)) {
 				packet->hdr.session_id = fr_rand();
 			}
 

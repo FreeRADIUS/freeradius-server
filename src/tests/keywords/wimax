@@ -9,7 +9,7 @@ if (&WiMAX-PFDv2-Src-Port != 6809) {
 #
 #  This is known, and should be renamed
 update request {
-	&Attr-26.24757.84.9.5.7 = 0x01
+	&26.24757.84.9.5.7 = 0x01
 }
 
 if (&WiMAX-PFDv2-Src-Assigned != 1) {

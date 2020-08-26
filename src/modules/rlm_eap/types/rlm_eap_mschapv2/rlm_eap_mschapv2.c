@@ -720,7 +720,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY)) != NULL) &&
+		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name)) != NULL) &&
 		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -786,13 +786,13 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	 */
 	if (!fr_cond_assert(parent)) return RLM_MODULE_FAIL;
 
-	auth_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_challenge, TAG_ANY);
+	auth_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control:MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge, TAG_ANY);
+	peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
@@ -801,7 +801,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	if (auth_challenge) {
 		created_auth_challenge = false;
 
-		peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge, TAG_ANY);
+		peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge);
 		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 			RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 			peer_challenge = NULL;

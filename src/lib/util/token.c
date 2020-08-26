@@ -61,6 +61,7 @@ size_t fr_tokens_table_len = NUM_ELEMENTS(fr_tokens_table);
 fr_table_num_sorted_t const fr_token_quotes_table[] = {
 	{ L(""),	T_BARE_WORD		},
 	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("/"),	T_SOLIDUS_QUOTED_STRING	},
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},
 	{ L("`"),	T_BACK_QUOTED_STRING	}
 };

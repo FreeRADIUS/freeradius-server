@@ -282,14 +282,14 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 	}
 
 	/* If the 'code' exist in the VP's, use it. */
-	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_packet_type);
 	if (vp) our_code = vp->vp_uint8;
 
 	/* fill up */
 	buffer[0] = FR_VQP_VERSION;	/* Version */
 	buffer[1] = our_code;		/* Opcode */
 
-	vp = fr_pair_find_by_da(vps, attr_error_code, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_error_code);
 	buffer[2] = (vp) ? vp->vp_uint8 : FR_ERROR_CODE_VALUE_NO_ERROR;	/* Response Code */
 
 	buffer[3] = 0;			/* Data Count */
@@ -301,7 +301,7 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		uint32_t our_seq_no = seq_no;
 		uint32_t sequence;
 
-		vp = fr_pair_find_by_da(vps, attr_sequence_number, TAG_ANY);
+		vp = fr_pair_find_by_da(vps, attr_sequence_number);
 		if (vp) our_seq_no = vp->vp_uint32;
 
 		sequence = htonl(our_seq_no);

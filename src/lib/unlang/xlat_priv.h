@@ -40,56 +40,68 @@ extern "C" {
  *
  */
 typedef enum {
-	XLAT_FUNC_LEGACY,					//!< Ingests and excretes strings.
-	XLAT_FUNC_NORMAL					//!< Ingests and excretes value boxes (and may yield)
+	XLAT_FUNC_LEGACY,				//!< Ingests and excretes strings.
+	XLAT_FUNC_NORMAL				//!< Ingests and excretes value boxes (and may yield)
 } xlat_func_legacy_type_t;
 
 typedef struct xlat_s {
-	char const		*name;				//!< Name of xlat function.
+	char const		*name;			//!< Name of xlat function.
 
 	union {
-		xlat_func_legacy_t	sync;			//!< synchronous xlat function (async safe).
-		xlat_func_t	async;				//!< async xlat function (async unsafe).
+		xlat_func_legacy_t	sync;		//!< synchronous xlat function (async safe).
+		xlat_func_t		async;		//!< async xlat function (async unsafe).
 	} func;
-	xlat_func_legacy_type_t	type;				//!< Type of xlat function.
+	xlat_func_legacy_type_t	type;			//!< Type of xlat function.
 
-	xlat_instantiate_t	instantiate;			//!< Instantiation function.
-	xlat_thread_instantiate_t thread_instantiate;		//!< Thread instantiation function.
+	bool			internal;		//!< If true, cannot be redefined.
 
-	xlat_detach_t		detach;				//!< Destructor for when xlat instances are freed.
-	xlat_thread_detach_t	thread_detach;			//!< Destructor for when xlat thread instance data
-								///< is freed.
+	xlat_instantiate_t	instantiate;		//!< Instantiation function.
+	xlat_detach_t		detach;			//!< Destructor for when xlat instances are freed.
+	char const		*inst_type;		//!< C type of instance structure.
+	size_t			inst_size;		//!< Size of instance data to pre-allocate.
+	void			*uctx;			//!< uctx to pass to instantiation functions.
 
-	bool			internal;			//!< If true, cannot be redefined.
+	xlat_thread_instantiate_t thread_instantiate;	//!< Thread instantiation function.
+	xlat_thread_detach_t	thread_detach;		//!< Destructor for when xlat thread instance data
+							///< is freed.
+	char const		*thread_inst_type;	//!< C type of thread instance structure.
+	size_t			thread_inst_size;	//!< Size of the thread instance data to pre-allocate.
+	void			*thread_uctx;		//!< uctx to pass to instantiation functions.
 
-	char const		*inst_type;			//!< C name of instance structure.
-	size_t			inst_size;			//!< Size of instance data to pre-allocate.
-	void			*uctx;				//!< uctx to pass to instantiation functions.
+	bool			needs_async;		//!< If true, is async safe
 
-	char const		*thread_inst_type;		//!< C name of thread instance structure.
-	size_t			thread_inst_size;		//!< Size of the thread instance data to pre-allocate.
-	void			*thread_uctx;			//!< uctx to pass to instantiation functions.
-
-	bool			async_safe;			//!< If true, is async safe
-
-	size_t			buf_len;			//!< Length of output buffer to pre-allocate.
-	void			*mod_inst;			//!< Module instance passed to xlat
-	xlat_escape_legacy_t		escape;				//!< Escape function to apply to dynamic input to func.
+	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
+	void			*mod_inst;		//!< Module instance passed to xlat
+	xlat_escape_legacy_t	escape;			//!< Escape function to apply to dynamic input to func.
 } xlat_t;
 
-
 typedef enum {
-	XLAT_LITERAL		= 0x01,		//!< Literal string
-	XLAT_ONE_LETTER		= 0x02,		//!< Literal string with %v
-	XLAT_FUNC		= 0x04,		//!< xlat module
-	XLAT_VIRTUAL		= 0x08,		//!< virtual attribute
-	XLAT_ATTRIBUTE		= 0x10,		//!< xlat attribute
+	XLAT_INVALID		= 0x0000,		//!< Bad expansion
+	XLAT_LITERAL		= 0x0001,		//!< Literal string
+	XLAT_ONE_LETTER		= 0x0002,		//!< Special "one-letter" expansion
+	XLAT_FUNC		= 0x0004,		//!< xlat module
+	XLAT_FUNC_UNRESOLVED	= 0x0008,		//!< func needs resolution during pass2.
+	XLAT_VIRTUAL		= 0x0010,		//!< virtual attribute
+	XLAT_VIRTUAL_UNRESOLVED = 0x0020,		//!< virtual attribute needs resolution during pass2.
+	XLAT_ATTRIBUTE		= 0x0040,		//!< xlat attribute
 #ifdef HAVE_REGEX
-	XLAT_REGEX		= 0x20,		//!< regex reference
+	XLAT_REGEX		= 0x0080,		//!< regex reference
 #endif
-	XLAT_ALTERNATE		= 0x40,		//!< xlat conditional syntax :-
-	XLAT_CHILD		= 0x80		//!< encapsulated string of xlats
+	XLAT_ALTERNATE		= 0x0100,		//!< xlat conditional syntax :-
+	XLAT_GROUP		= 0x0200		//!< encapsulated string of xlats
 } xlat_type_t;
+
+/** An xlat function call
+ *
+ */
+typedef struct {
+	xlat_t const		*func;			//!< The xlat expansion to expand format with.
+	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
+							///< into the instance tree.
+	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
+	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
+							///< ONLY USED FOR EPHEMERAL XLATS.
+} xlat_call_t;
 
 /** An xlat expansion node
  *
@@ -98,35 +110,29 @@ typedef enum {
 struct xlat_exp {
 	char const	*fmt;		//!< The original format string.
 	size_t		len;		//!< Length of the format string.
+	fr_token_t	quote;		//!< Type of quoting around XLAT_GROUP types.
 
-	bool		async_safe;	//!< carried from all of the children
+	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
 
 	xlat_type_t	type;		//!< type of this expansion.
 	xlat_exp_t	*next;		//!< Next in the list.
 
-	xlat_exp_t	*child;		//!< Nested expansion.
+	xlat_exp_t	*child;		//!< Nested expansion, i.e. arguments for an xlat function.
+	xlat_exp_t	*alternate;	//!< Alternative expansion if this expansion produced no values.
 
-	union {
-		xlat_exp_t	*alternate;	//!< Alternative expansion if this one expanded to a zero length string.
-
-		tmpl_t	*attr;		//!< An attribute template.
-
-		int		regex_index;	//!< for %{1} and friends.
-
-		int		count;		//!< for XLAT_CHILD
-	};
-
-	/*
-	 *	An xlat function
+	/** An attribute reference
+	 *
+	 * May be an attribute to expand, or provide context for a call.
 	 */
-	struct {
-		xlat_t const		*xlat;		//!< The xlat expansion to expand format with.
-		bool			ephemeral;	//!< Instance data is ephemeral (not inserted)
-							///< into the instance tree.
-		xlat_inst_t		*inst;		//!< Instance data for the #xlat_t.
-		xlat_thread_inst_t	*thread_inst;	//!< Thread specific instance.
-							///< ONLY USED FOR EPHEMERAL XLATS.
-	};
+	tmpl_t		*attr;
+
+	/** A capture group, i.e. for %{1} and friends
+	 */
+	int		regex_index;
+
+	/** An xlat function call
+	 */
+	xlat_call_t	call;
 };
 
 typedef struct {

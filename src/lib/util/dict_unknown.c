@@ -81,7 +81,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	default:
 		type = FR_TYPE_OCTETS;
 		break;
-	}	
+	}
 
 	/*
 	 *	Initialize the rest of the fields.
@@ -135,8 +135,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	}
 
 	memcpy(&flags, &old->flags, sizeof(flags));
-	flags.is_unknown = false;
-	flags.is_raw = true;
+	flags.is_unknown = 0;
 
 	/*
 	 *	If this is a vendor, we skip most of the sanity
@@ -246,10 +245,9 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				     fr_dict_attr_t const *parent, unsigned int vendor)
 {
 	fr_dict_attr_flags_t	flags = {
-					.is_unknown = true,
-					.is_raw = true,
-					.type_size = true,
-					.length = true
+					.is_unknown = 1,
+					.type_size = 1,
+					.length = 1
 				};
 
 	if (!fr_cond_assert(parent)) {
@@ -301,8 +299,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t		*new_parent = NULL;
 	fr_dict_attr_flags_t	flags = {
-		.is_unknown	= true,
-		.is_raw		= true,
+		.is_unknown	= 1
 	};
 
 	if (!fr_cond_assert(parent)) {
@@ -388,7 +385,6 @@ int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	fr_dict_attr_t		*da;
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
-					.is_raw = true,
 				};
 
 	if (!fr_cond_assert(parent)) {
@@ -435,9 +431,8 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	fr_dict_attr_t const	*our_parent = parent;
 	fr_dict_attr_t		*n = NULL, *our_da;
 	fr_dict_attr_flags_t	flags = {
-		.is_unknown = true,
-		.is_raw = true,
-	};
+					.is_unknown = true
+				};
 
 	if (!fr_cond_assert(parent)) {
 		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);

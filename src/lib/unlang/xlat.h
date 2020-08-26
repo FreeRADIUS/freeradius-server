@@ -51,6 +51,7 @@ typedef struct xlat_exp xlat_exp_t;
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/sbuff.h>
 
 /** Instance data for an xlat expansion node
  *
@@ -72,6 +73,15 @@ struct xlat_thread_inst {
 };
 
 typedef struct xlat_s xlat_t;
+
+/** Flags that control resolution and evaluation
+ *
+ */
+typedef struct {
+	bool			needs_resolving;	//!< Needs pass2 resolution.
+	bool			needs_async;	//!< Node and all child nodes are guaranteed to not
+						///< require asynchronous expansion.
+} xlat_flags_t;
 
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
@@ -282,15 +292,29 @@ int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
-ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
-					char const *fmt, tmpl_rules_t const *rules);
+ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, REQUEST *request,
+					fr_sbuff_t *in,
+					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
 
-ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, ssize_t inlen, tmpl_rules_t const *rules);
+ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
 
-ssize_t		xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, char const *in, size_t inlen,
-				   tmpl_rules_t const *rules);
+ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
 
-size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
+ssize_t		xlat_print(fr_sbuff_t *in, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
+
+static inline size_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules)
+		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(xlat_print, node, e_rules);
+
+void		xlat_debug(xlat_exp_t const *node);
+
+bool		xlat_is_literal(xlat_exp_t const *head);
+
+bool		xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
+
+int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved);
+
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 
@@ -343,9 +367,11 @@ void		xlat_free(void);
 /*
  *	xlat_tokenize.c
  */
-tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+void 		xlat_exp_free(xlat_exp_t **head);
 
-xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, tmpl_t *vpt);
+tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+
+int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, tmpl_t **vpt_p);
 
 /*
  *	xlat_inst.c
@@ -359,6 +385,8 @@ int		xlat_thread_instantiate(TALLOC_CTX *ctx);
 int		xlat_instantiate(void);
 
 void		xlat_thread_detach(void);
+
+int		xlat_bootstrap_func(xlat_exp_t *node);
 
 int		xlat_bootstrap(xlat_exp_t *root);
 

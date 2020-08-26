@@ -165,7 +165,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
-	ev->inst = state->exp->inst;
+	ev->inst = state->exp->call.inst;
 	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->ctx = ctx;
 

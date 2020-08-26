@@ -173,6 +173,7 @@ typedef struct {
 	unlang_t		self;
 	tmpl_t const		*tmpl;
 	bool			inline_exec;
+	xlat_flags_t		flags;
 } unlang_tmpl_t;
 
 /** State of a redundant operation
@@ -379,7 +380,7 @@ void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
 
-void		unlang_tmpl_init(void);
+void		unlang_tmpl_init_shallow(void);
  /** @} */
 
 #ifdef __cplusplus

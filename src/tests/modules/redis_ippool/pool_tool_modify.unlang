@@ -11,13 +11,13 @@ update control {
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 192.168.0.0`
 }
 
 #
 #  Verify the range was set OK
 #
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:192.168.0.1 range}" == '192.168.0.0') {
+if ("%{redis:HGET {%{control.Pool-Name}%}:ip:192.168.0.1 range}" == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -27,13 +27,13 @@ if ("%{redis:HGET {%{control:Pool-Name}%}:ip:192.168.0.1 range}" == '192.168.0.0
 #  Modify the range
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -m 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 10.0.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -m 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 10.0.0.0`
 }
 
 #
 #  Check it was updated
 #
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:192.168.0.1 range}" == '10.0.0.0') {
+if ("%{redis:HGET {%{control.Pool-Name}%}:ip:192.168.0.1 range}" == '10.0.0.0') {
 	test_pass
 } else {
 	test_fail

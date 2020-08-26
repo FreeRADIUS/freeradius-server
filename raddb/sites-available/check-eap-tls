@@ -50,7 +50,7 @@ recv Access-Request {
 	#  Check the client certificate matches a string, and reject otherwise
 	#
 
-#	if ("%{session-state:TLS-Client-Cert-Common-Name}" == 'client.example.com') {
+#	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
 #		update config {
 #			&Auth-Type := Accept
 #		}
@@ -68,7 +68,7 @@ recv Access-Request {
 	#
 	#  Check the client certificate common name against the supplied User-Name
 	#
-#	if (&User-Name == "host/%{session-state:TLS-Client-Cert-Common-Name}") {
+#	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
 #		update config {
 #			&Auth-Type := Accept
 #		}
@@ -95,7 +95,7 @@ recv Access-Request {
 	#  filter = "(servicePrincipalName=%{User-Name})"
 	#  base_filter = "(objectClass=computer)"
 	#  groupname_attribute = cn
-	#  groupmembership_filter = "(&(objectClass=group)(member=%{control:Ldap-UserDn}))"
+	#  groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
 
 #	ldap
 

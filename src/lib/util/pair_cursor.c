@@ -189,13 +189,11 @@ void fr_pair_cursor_end(vp_cursor_t *cursor)
  * @param cursor to operate on.
  * @param attr number to match.
  * @param vendor number to match (0 for none vendor attribute).
- * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
- *	  untagged attribute, TAG_NONE to match attributes without tags.
  * @return
  *	- The next matching #VALUE_PAIR.
  *	- NULL if no #VALUE_PAIR (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag)
+VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr)
 {
 	VALUE_PAIR *i;
 
@@ -209,9 +207,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		     i != NULL;
 		     i = i->next) {
 			VP_VERIFY(i);
-			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr) && ATTR_TAG_MATCH(i, tag)) {
-				break;
-			}
+			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr)) break;
 		}
 	} else {
 		for (i = cursor->found ? cursor->found->next : cursor->current;
@@ -219,10 +215,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		     i = i->next) {
 			VP_VERIFY(i);
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
-			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor) &&
-			    ATTR_TAG_MATCH(i, tag)) {
-				break;
-			}
+			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor)) break;
 		}
 	}
 
@@ -242,14 +235,12 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
  * @param cursor	to operate on.
  * @param parent	to search for attr in.
  * @param attr		number to match.
- * @param tag		to match. Either a tag number or TAG_ANY to match any tagged or
- *	  		untagged attribute, TAG_NONE to match attributes without tags.
  * @return
  *	- The next matching #VALUE_PAIR.
 	- NULL if no #VALUE_PAIR (s) match (or attr doesn't exist).
  */
 VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
-					fr_dict_attr_t const *parent, unsigned int attr, int8_t tag)
+					fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
 	VALUE_PAIR *i;
@@ -263,9 +254,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
-			break;
-		}
+		if (i->da == da) break;
 	}
 
 	return fr_pair_cursor_update(cursor, i);
@@ -283,13 +272,11 @@ VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
  *
  * @param cursor to operate on.
  * @param da to match.
- * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
- *	  untagged attribute, TAG_NONE to match attributes without tags.
  * @return
  *	- Next matching #VALUE_PAIR.
  *	- NULL if no #VALUE_PAIR (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag)
+VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da)
 {
 	VALUE_PAIR *i;
 
@@ -299,9 +286,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const 
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
-			break;
-		}
+		if (i->da == da) break;
 	}
 
 	return fr_pair_cursor_update(cursor, i);
@@ -317,13 +302,11 @@ VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const 
  *
  * @param cursor to operate on.
  * @param ancestor attribute to match on.
- * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
- *	  untagged attribute, TAG_NONE to match attributes without tags.
  * @return
  *	- Next matching #VALUE_PAIR.
  *	- NULL if no #VALUE_PAIR (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
+VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor)
 {
 	VALUE_PAIR *i;
 
@@ -333,10 +316,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t 
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if (fr_dict_attr_common_parent(ancestor, i->da, true) &&
-		    ATTR_TAG_MATCH(i, tag)) {
-			break;
-		}
+		if (fr_dict_attr_common_parent(ancestor, i->da, true)) break;
 	}
 
 	return fr_pair_cursor_update(cursor, i);

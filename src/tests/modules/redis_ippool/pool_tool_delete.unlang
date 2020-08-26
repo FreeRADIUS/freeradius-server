@@ -11,7 +11,7 @@ update control {
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 192.168.0.0`
 }
 
 #
@@ -36,13 +36,13 @@ if (&reply:Framed-IP-Address == 192.168.0.1) {
 #  Delete the IP address
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -d 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -d 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.Pool-Name} 192.168.0.0`
 }
 
 #
 #  Verify the association with the device has been removed
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%{redis:EXISTS '{%{control.Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
 	test_pass
 } else {
 	test_fail
@@ -51,14 +51,14 @@ if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 
 #
 #  Verify the hash information is removed
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address}'}" == '0') {
+if ("%{redis:EXISTS '{%{control.Pool-Name}%}:ip:%{reply.Framed-IP-Address}'}" == '0') {
 	test_pass
 } else {
 	test_fail
 }
 
 # Check the ZSCORE
-if ("%{redis:ZCOUNT '{%{control:Pool-Name}%}:pool' -inf +inf}" == 0) {
+if ("%{redis:ZCOUNT '{%{control.Pool-Name}%}:pool' -inf +inf}" == 0) {
 	test_pass
 } else {
 	test_fail

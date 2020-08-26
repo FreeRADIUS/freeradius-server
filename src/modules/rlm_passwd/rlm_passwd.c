@@ -300,7 +300,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
 	int h;
 	struct mypasswd * hashentry;
 
-	if (!ht || !name || *name == '\0') return NULL;
+	if (!ht || !name || (*name == '\0')) return NULL;
 	*last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 	fr_cursor_t		cursor;
 	int			found = 0;
 
-	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
+	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr);
 	if (!key) return RLM_MODULE_NOTFOUND;
 
 	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
@@ -551,7 +551,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-		fr_pair_value_snprint(buffer, sizeof(buffer), i, 0);
+#ifdef __clang_analyzer__
+		/*
+		 *	clang scan misses that fr_pair_print_value_quoted
+		 *	always terminates the buffer.
+		 */
+		buffer[0] = '\0';
+#endif
+		fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), i, T_BARE_WORD);
 		pw = get_pw_nam(buffer, inst->ht, &last_found);
 		if (!pw) continue;
 

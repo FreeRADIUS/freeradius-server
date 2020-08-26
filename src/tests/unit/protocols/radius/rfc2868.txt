@@ -45,15 +45,15 @@ match 40 06 00 00 00 01
 decode-pair -
 match Tunnel-Type = PPTP
 
-encode-pair Tunnel-Type:1 = PPTP
-match 40 06 01 00 00 01
+#encode-pair Tunnel-Type:1 = PPTP
+#match 40 06 01 00 00 01
 
-decode-pair -
-match Tunnel-Type:1 = PPTP
+#decode-pair -
+#match Tunnel-Type:1 = PPTP
 
 # Invalid tag on encoding
-encode-pair Tunnel-Type:32 = PPTP
-match Invalid tag for attribute Tunnel-Type:32
+#encode-pair Tunnel-Type:32 = PPTP
+#match Invalid tag for attribute Tunnel-Type:32
 
 # Invalid tag on decoding
 decode-pair 40 06 20 00 00 01
@@ -72,11 +72,11 @@ match Tunnel-Client-Endpoint = "foo"
 # The first byte of the string looks like a tag.  In order to avoid
 # confusion, we encode a zero tag.
 #
-encode-pair Tunnel-Client-Endpoint = "\001\002\003"
-match 42 06 00 01 02 03
+#encode-pair Tunnel-Client-Endpoint = "\001\002\003"
+#match 42 06 00 01 02 03
 
-decode-pair -
-match Tunnel-Client-Endpoint = "\001\002\003"
+#decode-pair -
+#match Tunnel-Client-Endpoint = "\001\002\003"
 
 count
-match 34
+match 24

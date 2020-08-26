@@ -196,10 +196,10 @@ static VALUE_PAIR *mschap_identity_find(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	if (vp) return vp;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_eap_identity, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_eap_identity);
 	if (vp) return vp;
 
 	REDEBUG("No user identity found in current request");
@@ -311,7 +311,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
 	if (strncasecmp(fmt, "Challenge", 9) == 0) {
-		chap_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
+		chap_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge);
 		if (!chap_challenge) {
 			REDEBUG("No MS-CHAP-Challenge in the request");
 			return -1;
@@ -336,7 +336,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			char const	*username_str;
 			size_t		username_len;
 
-			response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
+			response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response);
 			if (!response) {
 				REDEBUG("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge");
 				return -1;
@@ -368,7 +368,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 *	We prefer this to the User-Name in the
 			 *	packet.
 			 */
-			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
+			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name);
 			if (response_name) {
 				name_vp = response_name;
 			} else {
@@ -418,8 +418,8 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	response.
 	 */
 	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
-		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY);
-		if (!response) response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
+		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response);
+		if (!response) response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response or MS-CHAP2-Response was found in the request");
 			return -1;
@@ -447,7 +447,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	in MS-CHAPv1, and not often there.
 	 */
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
-		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY);
+		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response was found in the request");
 			return -1;
@@ -1375,12 +1375,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
 	VALUE_PAIR		*challenge = NULL;
 
-	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
+	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge);
 	if (!challenge) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw)) {
 		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP response or Change-Password");
 		return RLM_MODULE_NOOP;
 	}
@@ -1813,7 +1813,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 		 *	We prefer this to the User-Name in the
 		 *	packet.
 		 */
-		response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
+		response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name);
 		name_vp = response_name ? response_name : user_name;
 
 		/*
@@ -1853,7 +1853,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 #endif
 		peer_challenge = response->vp_octets + 2;
 
-		peer_challenge_attr = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge, TAG_ANY);
+		peer_challenge_attr = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge);
 		if (peer_challenge_attr) {
 			RDEBUG2("Overriding peer challenge");
 			peer_challenge = peer_challenge_attr->vp_octets;
@@ -1885,7 +1885,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 
 #ifdef WITH_AUTH_WINBIND
 		if (inst->wb_retry_with_normalised_username) {
-			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
+			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name);
 			if (response_name) {
 				if (strcmp(username_str, response_name->vp_strvalue)) {
 					RDEBUG2("Normalising username %pV -> %pV",
@@ -1950,7 +1950,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	want to suppress it.
 	 */
 	if (method != AUTH_INTERNAL) {
-		VALUE_PAIR *vp = fr_pair_find_by_da(request->control, attr_ms_chap_use_ntlm_auth, TAG_ANY);
+		VALUE_PAIR *vp = fr_pair_find_by_da(request->control, attr_ms_chap_use_ntlm_auth);
 		if (vp && vp->vp_bool == false) method = AUTH_INTERNAL;
 	}
 
@@ -1958,11 +1958,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = fr_pair_find_by_da(request->control, attr_smb_account_ctrl, TAG_ANY);
+	smb_ctrl = fr_pair_find_by_da(request->control, attr_smb_account_ctrl);
 	if (!smb_ctrl) {
 		VALUE_PAIR *smb_account_ctrl_text;
 
-		smb_account_ctrl_text = fr_pair_find_by_da(request->control, attr_smb_account_ctrl_text, TAG_ANY);
+		smb_account_ctrl_text = fr_pair_find_by_da(request->control, attr_smb_account_ctrl_text);
 		if (smb_account_ctrl_text) {
 			MEM(pair_add_control(&smb_ctrl, attr_smb_account_ctrl) >= 0);
 			smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(smb_account_ctrl_text->vp_strvalue);
@@ -1996,7 +1996,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	Check to see if this is a change password request, and process
 	 *	it accordingly if so.
 	 */
-	cpw = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw, TAG_ANY);
+	cpw = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw);
 	if (cpw) {
 		uint8_t		*p;
 
@@ -2028,7 +2028,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 		memcpy(p + 2, cpw->vp_octets + 18, 48);
 	}
 
-	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
+	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge);
 	if (!challenge) {
 		REDEBUG("&control:Auth-Type = %s set for a request that does not contain &%s",
 			inst->name, attr_ms_chap_challenge->name);
@@ -2039,14 +2039,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	/*
 	 *	We also require an MS-CHAP-Response.
 	 */
-	if ((response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY))) {
+	if ((response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response))) {
 		rcode = mschap_process_response(&mschap_version, nthashhash,
 						inst, request,
 						smb_ctrl, nt_password,
 						challenge, response,
 						method);
 		if (rcode != RLM_MODULE_OK) goto finish;
-	} else if ((response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY))) {
+	} else if ((response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response))) {
 		rcode = mschap_process_v2_response(&mschap_version, nthashhash,
 						   inst, request,
 						   smb_ctrl, nt_password,

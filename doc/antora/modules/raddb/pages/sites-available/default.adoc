@@ -1499,22 +1499,22 @@ send Access-Accept {
 #	}
 #	update reply {
 #		&WiMAX-FA-RK-Key = 0x00
-#		&WiMAX-MSK = "%{reply:EAP-MSK}"
+#		&WiMAX-MSK = "%{reply.EAP-MSK}"
 #	}
 #	wimax
 #	update reply {
-#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 #	insert_acct_class
 #	if (&reply:EAP-Session-Id) {

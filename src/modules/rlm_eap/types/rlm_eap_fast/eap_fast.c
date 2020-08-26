@@ -669,7 +669,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
+		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;

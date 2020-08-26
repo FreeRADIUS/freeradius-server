@@ -212,8 +212,7 @@ static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t ou
 	pvp = (VALUE_PAIR **) request_data_reference(request, FOREACH_REQUEST_DATA, *(int const *) mod_inst);
 	if (!pvp || !*pvp) return 0;
 
-	*out = fr_pair_value_asprint(ctx, *pvp, '\0');
-	return 	talloc_array_length(*out) - 1;
+	return fr_value_box_aprint(ctx, out, &(*pvp)->data, NULL);
 }
 
 void unlang_foreach_init(void)

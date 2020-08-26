@@ -742,7 +742,7 @@ update control {
     &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 }
 update reply {
-    &Reply-Message := "The LDAP url is %{ldap_escape:%{control:Tmp-String-0}}"
+    &Reply-Message := "The LDAP url is %{ldap_escape:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -766,7 +766,7 @@ update control {
     &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 }
 update reply {
-    &Reply-Message := "The LDAP url is %{ldap_unescape:%{control:Tmp-String-0}}"
+    &Reply-Message := "The LDAP url is %{ldap_unescape:%{control.Tmp-String-0}}"
 }
 ----
 
@@ -830,7 +830,7 @@ ldap {
 		filter = '(objectClass=posixGroup)'
 #		scope = 'sub'
 #		name_attribute = cn
-#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 		membership_attribute = 'memberOf'
 #		cacheable_name = 'no'
 #		cacheable_dn = 'no'

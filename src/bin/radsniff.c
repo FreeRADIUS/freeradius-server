@@ -308,14 +308,12 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 				UNUSED struct timeval *elapsed, struct timeval *latency, UNUSED bool response,
 				bool body)
 {
-	char const *status_str;
-	char buffer[2048];
-	char *p = buffer;
+	char const	*status_str;
+	char		buffer[1024];
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 	char src[INET6_ADDRSTRLEN];
 	char dst[INET6_ADDRSTRLEN];
-
-	ssize_t len, s = sizeof(buffer);
 
 	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
@@ -323,79 +321,59 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	status_str = fr_table_str_by_value(rs_events, status, NULL);
 	RS_ASSERT(status_str);
 
-	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
-	p += len;
-	s -= len;
-
-	if (s <= 0) return;
+	if (fr_sbuff_in_sprintf(&sbuff, "%s,%" PRIu64 ",%s,", status_str, count, timestr) < 0) return;
 
 	if (latency) {
-		len = snprintf(p, s, "%u.%03u,",
-			       (unsigned int) latency->tv_sec, ((unsigned int) latency->tv_usec / 1000));
-		p += len;
-		s -= len;
+		if (fr_sbuff_in_sprintf(&sbuff, "%u.%03u,",
+			       		(unsigned int) latency->tv_sec,
+			       		((unsigned int) latency->tv_usec / 1000)) < 0) return;
 	} else {
-		*p = ',';
-		p += 1;
-		s -= 1;
+		if (fr_sbuff_in_char(&sbuff, ',') < 0) return;
 	}
-
-	if (s <= 0) return;
 
 	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
 	if (is_radius_code(packet->code)) {
-		len = snprintf(p, s, "%s,%s,%s,%i,%s,%i,%i,", fr_packet_codes[packet->code], handle->name,
-			       src, packet->src_port, dst, packet->dst_port, packet->id);
+		if (fr_sbuff_in_sprintf(&sbuff, "%s,%s,%s,%i,%s,%i,%i,",
+					fr_packet_codes[packet->code], handle->name,
+					src, packet->src_port, dst, packet->dst_port, packet->id) < 0) return;
 	} else {
-		len = snprintf(p, s, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
-			       src, packet->src_port, dst, packet->dst_port, packet->id);
+		if (fr_sbuff_in_sprintf(&sbuff, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
+					src, packet->src_port, dst, packet->dst_port, packet->id) < 0) return;
 	}
-	p += len;
-	s -= len;
-
-	if (s <= 0) return;
 
 	if (body) {
 		int i;
 		VALUE_PAIR *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = fr_pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
+			vp = fr_pair_find_by_da(packet->vps, conf->list_da[i]);
 			if (vp && (vp->vp_length > 0)) {
 				if (conf->list_da[i]->type == FR_TYPE_STRING) {
-					*p++ = '"';
-					s--;
-					if (s <= 0) return;
+					ssize_t slen;
 
-					len = rs_snprint_csv(p, s, vp->vp_strvalue, vp->vp_length);
-					p += len;
-					s -= len;
-					if (s <= 0) return;
+					if (fr_sbuff_in_char(&sbuff, '"') < 0) return;
 
-					*p++ = '"';
-					s--;
-					if (s <= 0) return;
+					slen = rs_snprint_csv(fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
+							      vp->vp_strvalue, vp->vp_length);
+					if (slen < 0) return;
+					fr_sbuff_advance(&sbuff, (size_t)slen);
+
+					if (fr_sbuff_in_char(&sbuff, '"') < 0) return;
 				} else {
-					len = fr_pair_value_snprint(p, s, vp, 0);
-					p += len;
-					s -= len;
-					if (s <= 0) return;
+					if (fr_pair_print_value_quoted(&sbuff, vp, T_BARE_WORD) < 0) return;
 				}
 			}
 
-			*p++ = ',';
-			s -= 1;
-			if (s <= 0) return;
+			if (fr_sbuff_in_char(&sbuff, ',') < 0) return;
 		}
 	} else {
-		s -= conf->list_da_num;
-		if (s <= 0) return;
+		if (fr_sbuff_remaining(&sbuff) < (size_t)conf->list_da_num) return;
 
-		memset(p, ',', conf->list_da_num);
-		p += conf->list_da_num;
+		memset(fr_sbuff_current(&sbuff), ',', conf->list_da_num);
+		fr_sbuff_advance(&sbuff, conf->list_da_num);
+		*fr_sbuff_current(&sbuff) = '\0';
 	}
 
-	*--p = '\0';
 	fprintf(stdout , "%s\n", buffer);
 }
 
@@ -483,7 +461,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
 
 			if (packet->vps) {
-				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
+				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da);
 				fr_pair_list_log(&default_log, packet->vps);
 			}
 
@@ -970,7 +948,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_d
 	fr_pair_cursor_init(&list_cursor, &last_match);
 	fr_pair_cursor_init(&out_cursor, out);
 	for (i = 0; i < num; i++) {
-		match = fr_pair_cursor_next_by_da(&list_cursor, da[i], TAG_ANY);
+		match = fr_pair_cursor_next_by_da(&list_cursor, da[i]);
 		if (!match) {
 			fr_pair_cursor_init(&list_cursor, &last_match);
 			continue;
@@ -986,7 +964,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_d
 			last_match = match;
 
 			count++;
-		} while ((match = fr_pair_cursor_next_by_da(&list_cursor, da[i], TAG_ANY)));
+		} while ((match = fr_pair_cursor_next_by_da(&list_cursor, da[i])));
 	}
 
 	return count;
@@ -1445,7 +1423,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Now verify the packet passes the attribute filter
 			 */
 			if (conf->filter_response_vps) {
-				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
+				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da);
 				if (!fr_pair_validate_relaxed(NULL, conf->filter_response_vps, packet->vps)) {
 					goto drop_response;
 				}
@@ -1570,7 +1548,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				return;
 			}
 
-			fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
+			fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da);
 		}
 
 		/*
@@ -2032,7 +2010,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	/*
 	 *	This allows efficient list comparisons later
 	 */
-	fr_pair_list_sort(out, fr_pair_cmp_by_da_tag);
+	fr_pair_list_sort(out, fr_pair_cmp_by_da);
 
 	return 0;
 }

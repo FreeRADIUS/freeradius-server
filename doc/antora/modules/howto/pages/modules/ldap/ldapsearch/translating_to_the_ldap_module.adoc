@@ -69,7 +69,7 @@ Group objects reference users using DNs.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<group_membership_dn_attribute>=%{control:Ldap-UserDn})"```
+| Specify how to find group objects referencing a user by DN. | ```membership_filter = "(<group_membership_dn_attribute>=%{control.Ldap-UserDn})"```
 |===
 
 == Groups - variant 4
@@ -95,6 +95,6 @@ both on user DN and user name e.g.
 
 [source,config]
 ----
-membership_filter = "(|(<group_membership_filter_by_uid>=%{control:Ldap-UserDn})(<group_membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}}))"
+membership_filter = "(|(<group_membership_filter_by_uid>=%{control.Ldap-UserDn})(<group_membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}}))"
 ----
 ****

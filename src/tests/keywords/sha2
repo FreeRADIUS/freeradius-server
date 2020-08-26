@@ -9,9 +9,9 @@ update {
 update {
 	&request:Tmp-Octets-1 := "%{sha2_256:This is a string\n}"
 	&request:Tmp-Octets-2 := "%{sha2_256:%{Tmp-String-0}}"
-	&request:Tmp-Octets-3 := "%{sha2_256:%{request:Tmp-String-0}}"
-	&request:Tmp-Octets-4 := "%{sha2_256:%{request:Tmp-Octets-0}}"
-	&request:Tmp-Octets-5 := "%{sha2_256:%{request:Tmp-Octets-9}}"
+	&request:Tmp-Octets-3 := "%{sha2_256:%{request.Tmp-String-0}}"
+	&request:Tmp-Octets-4 := "%{sha2_256:%{request.Tmp-Octets-0}}"
+	&request:Tmp-Octets-5 := "%{sha2_256:%{request.Tmp-Octets-9}}"
 }
 
 #
@@ -51,7 +51,7 @@ if (&request:Tmp-Octets-5 != 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca
 update {
 	&request:Tmp-Octets-1 := "%{sha2_512:This is a string\n}"
 	&request:Tmp-Octets-2 := "%{sha2_512:%{Tmp-String-0}}"
-	&request:Tmp-Octets-3 := "%{sha2_512:%{request:Tmp-Octets-0}}"
+	&request:Tmp-Octets-3 := "%{sha2_512:%{request.Tmp-Octets-0}}"
 }
 
 if (&request:Tmp-Octets-1 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f) {

@@ -18,7 +18,7 @@
 -- allocate_begin = ""
 -- allocate_find = "\
 --	SELECT fr_allocate_previous_or_new_framedipaddress( \
---		'%{control:${pool_name}}', \
+--		'%{control.${pool_name}}', \
 --		'%{User-Name}', \
 --		'%{Calling-Station-Id}', \
 --		'%{NAS-IP-Address}', \

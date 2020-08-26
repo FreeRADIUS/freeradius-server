@@ -14,14 +14,14 @@ if ('${feature.tls}' != 'yes') {
 
 update {
 	&control: !* ANY
-	&request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+	&Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 }
 
 #
 #  Hex encoded SSHA2-512 password
 #
 update {
-	&control:Password-With-Header += "{ssha512}%{hex:%{sha2_512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Password-With-Header += "{ssha512}%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
 }
 
 pap.authorize
@@ -40,21 +40,21 @@ update {
 #  Base64 encoded SSHA2-512 password
 #
 update {
-	&control:Tmp-String-1 := "%{hex:%{sha2_512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
 }
 
 # To Binary
 update {
-	&control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
+	&control:Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	&control:Tmp-String-1 := "%{base64:%{control:Tmp-Octets-0}}"
+	&control:Tmp-String-1 := "%{base64:%{control.Tmp-Octets-0}}"
 }
 
 update {
-	&control:Password-With-Header += "{ssha512}%{control:Tmp-String-1}"
+	&control:Password-With-Header += "{ssha512}%{control.Tmp-String-1}"
 }
 
 pap.authorize
@@ -73,21 +73,21 @@ update {
 #  Base64 of Base64 encoded SSHA2-512 password
 #
 update {
-	&control:Tmp-String-1 := "%{hex:%{sha2_512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
 }
 
 # To Binary
 update {
-	&control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
+	&control:Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	&control:Tmp-String-1 := "{ssha512}%{base64:%{control:Tmp-Octets-0}}"
+	&control:Tmp-String-1 := "{ssha512}%{base64:%{control.Tmp-Octets-0}}"
 }
 
 update {
-	&control:Password-With-Header += "%{base64:%{control:Tmp-String-1}}"
+	&control:Password-With-Header += "%{base64:%{control.Tmp-String-1}}"
 }
 
 pap.authorize
@@ -106,7 +106,7 @@ update {
 #  Base64 of SHA2-384 password (in SHA2-Password)
 #
 update control {
-	&control:SHA2-Password := "%{hex:%{sha2_384:%{request:User-Password}}}"
+	&control:SHA2-Password := "%{hex:%{sha2_384:%{User-Password}}}"
 }
 
 pap.authorize
@@ -129,7 +129,7 @@ update control {
 #  Base64 of SHA2-256 password (in SHA2-256-Password)
 #
 update control {
-	&control:SHA2-256-Password := "%{hex:%{sha2_256:%{request:User-Password}}}"
+	&control:SHA2-256-Password := "%{hex:%{sha2_256:%{User-Password}}}"
 }
 
 pap.authorize
@@ -148,7 +148,7 @@ update {
 #  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
 #
 update control {
-	&control:SHA2-224-Password := "%{sha2_224:%{request:User-Password}}"
+	&control:SHA2-224-Password := "%{sha2_224:%{User-Password}}"
 }
 
 pap.authorize

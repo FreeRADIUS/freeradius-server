@@ -33,11 +33,11 @@ match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 #  @todo - ensure that unknown attributes still have the WiMAX
 #  "continuation" flag.
 #
-#encode-pair Attr-26.24757.84.9.4 = 0x01
+#encode-pair 26.24757.84.9.4 = 0x01
 #data 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # and parsing the OID should parse LHS / RHS into the known attribute.
-#attribute Attr-26.24757.84.9.4 = 0x01
+#attribute 26.24757.84.9.4 = 0x01
 #data WiMAX-PFDv2-Classifier-Direction = 1
 
 encode-pair WiMAX-PFDv2-Classifier-Direction = 1, WiMAX-PFDv2-Src-Port = 6809

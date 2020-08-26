@@ -44,27 +44,20 @@ RCSID("$Id$")
 /** Map keywords to #pair_list_t values
  */
 static fr_table_num_sorted_t const cond_type_table[] = {
-	{ L("child"),	COND_TYPE_CHILD			},
-	{ L("exists"),	COND_TYPE_EXISTS		},
-	{ L("false"),	COND_TYPE_FALSE			},
-	{ L("invalid"),	COND_TYPE_INVALID		},
-	{ L("map"),	COND_TYPE_MAP			},
-	{ L("true"),	COND_TYPE_TRUE			},
+	{ L("child"),		COND_TYPE_CHILD		},
+	{ L("exists"),		COND_TYPE_EXISTS	},
+	{ L("false"),		COND_TYPE_FALSE		},
+	{ L("invalid"),		COND_TYPE_INVALID	},
+	{ L("map"),		COND_TYPE_MAP		},
+	{ L("true"),		COND_TYPE_TRUE		},
 };
 static size_t cond_type_table_len = NUM_ELEMENTS(cond_type_table);
 
-static fr_table_num_sorted_t const cond_op_table[] = {
-	{ L("none"),	COND_NONE			},
-	{ L("&&"),		COND_AND			},
-	{ L("||"),		COND_OR				},
-};
-static size_t cond_op_table_len = NUM_ELEMENTS(cond_op_table);
-
 static fr_table_num_sorted_t const cond_pass2_table[] = {
-	{ L("none"),	PASS2_FIXUP_NONE		},
-	{ L("attr"),	PASS2_FIXUP_ATTR		},
-	{ L("type"),	PASS2_FIXUP_TYPE		},
-	{ L("paircompre"),	PASS2_PAIRCOMPARE		},
+	{ L("none"),		PASS2_FIXUP_NONE	},
+	{ L("attr"),		PASS2_FIXUP_ATTR	},
+	{ L("type"),		PASS2_FIXUP_TYPE	},
+	{ L("paircompre"),	PASS2_PAIRCOMPARE	},
 };
 static size_t cond_pass2_table_len = NUM_ELEMENTS(cond_pass2_table);
 
@@ -88,28 +81,38 @@ static bool all_digits(char const *string)
  */
 void cond_debug(fr_cond_t const *cond)
 {
-	fr_cond_t const *next;
+	fr_cond_t const *c;
 
-	for (next = cond; next; next = next->next) {
-		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, cond->type, "<INVALID>"), cond);
-		INFO("\tnegate : %s", cond->negate ? "true" : "false");
-		INFO("\tcast   : %s", cond->cast ? fr_table_str_by_value(fr_value_box_type_table,
-									 cond->cast->type, "<INVALID>") : "none");
-		INFO("\top     : %s", fr_table_str_by_value(cond_op_table, cond->next_op, "<INVALID>"));
-		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, cond->pass2_fixup, "<INVALID>"));
+	for (c = cond; c; c =c->next) {
+		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, c->type, "<INVALID>"), cond);
+		INFO("\tnegate : %s", c->negate ? "true" : "false");
+		INFO("\tcast   : %s", c->cast ? fr_table_str_by_value(fr_value_box_type_table,
+								      c->cast->type, "<INVALID>") : "none");
+		INFO("\top     : %s", fr_table_str_by_value(cond_logical_op_table, c->next_op, "<INVALID>"));
+		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, c->pass2_fixup, "<INVALID>"));
 
-		switch (cond->type) {
+		switch (c->type) {
 		case COND_TYPE_MAP:
-			tmpl_attr_debug(cond->data.map->lhs);
-			tmpl_attr_debug(cond->data.map->rhs);
+			INFO("lhs (");
+			tmpl_debug(c->data.map->lhs);
+			INFO(")");
+			INFO("rhs (");
+			tmpl_debug(c->data.map->rhs);
+			INFO(")");
+			break;
+
+		case COND_TYPE_RCODE:
+			INFO("\trcode  : %s", fr_table_str_by_value(rcode_table, c->data.rcode, ""));
 			break;
 
 		case COND_TYPE_EXISTS:
-			tmpl_attr_debug(cond->data.vpt);
+			tmpl_debug(c->data.vpt);
 			break;
 
 		case COND_TYPE_CHILD:
-			cond_debug(cond->next);
+			INFO("child (");
+			cond_debug(c->data.child);
+			INFO(")");
 			break;
 
 		default:
@@ -123,7 +126,6 @@ void cond_debug(fr_cond_t const *cond)
  * Converts a tmpl_t to a boolean value.
  *
  * @param[in] request the REQUEST
- * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] vpt the template to evaluate
  * @return
@@ -131,29 +133,19 @@ void cond_debug(fr_cond_t const *cond)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t const *vpt)
+int cond_eval_tmpl(REQUEST *request, UNUSED int depth, tmpl_t const *vpt)
 {
 	int rcode = -1;
-	int modcode;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNRESOLVED:
-		modcode = fr_table_value_by_str(rcode_table, vpt->name, RLM_MODULE_UNKNOWN);
-		if (modcode != RLM_MODULE_UNKNOWN) {
-			rcode = (modcode == modreturn);
-			break;
-		}
-
 		/*
-		 *	Else it's a literal string.  Empty string is
-		 *	false, non-empty string is true.
+		 *	Empty string is false, non-empty string
+		 *	is true.
 		 *
 		 *	@todo: Maybe also check for digits?
-		 *
-		 *	The VPT *doesn't* have a "bare word" type,
-		 *	which arguably it should.
 		 */
-		rcode = (*vpt->name != '\0');
+		rcode = (*vpt->data.unescaped != '\0');
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -166,13 +158,10 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t con
 		break;
 
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
 	{
 		char	*p;
 		ssize_t	slen;
-
-		if (!*vpt->name) return false;
 
 		slen = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
 		if (slen < 0) {
@@ -188,8 +177,10 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, tmpl_t con
 	/*
 	 *	Can't have a bare ... (/foo/) ...
 	 */
-	case TMPL_TYPE_REGEX_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNCOMPILED:
+	case TMPL_TYPE_REGEX_XLAT:
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 		fr_assert(0 == 1);
 		FALL_THROUGH;
 
@@ -230,14 +221,14 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX: /* pre-compiled to a regex */
-		preg = tmpl_preg(map->rhs);
+		preg = tmpl_regex(map->rhs);
 		break;
 
 	default:
 		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
 		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->datum.length,
-				     &tmpl_regex_flags(map->rhs), true, true);
+				     tmpl_regex_flags(map->rhs), true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);
@@ -436,15 +427,10 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 	fr_value_box_t		lhs_cast = { .type = FR_TYPE_INVALID };
 	fr_value_box_t		rhs_cast = { .type = FR_TYPE_INVALID };
 
-	xlat_escape_legacy_t		escape = NULL;
+	xlat_escape_legacy_t	escape = NULL;
 
 	/*
 	 *	Cast operand to correct type.
-	 *
-	 *	With hack for strings that look like integers, to cast them
-	 *	to 64 bit unsigned integers.
-	 *
-	 * @fixme For things like this it'd be useful to have a 64bit signed type.
 	 */
 #define CAST(_s) \
 do {\
@@ -453,7 +439,7 @@ do {\
 			   fr_table_str_by_value(fr_value_box_type_table, _s->type, "<INVALID>"),\
 			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));\
 		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
-			RPEDEBUG("Failed casting " #_s " operand");\
+			if (request) RPEDEBUG("Failed casting " #_s " operand");\
 			rcode = -1;\
 			goto finish;\
 		}\
@@ -567,8 +553,8 @@ do {\
 	 */
 	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_REGEX_XLAT:
 	{
 		ssize_t ret;
 		fr_value_box_t data;
@@ -584,7 +570,7 @@ do {\
 			}
 			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		} else {
-			fr_value_box_bstrndup_shallow(&data, NULL, map->rhs->name, map->rhs->len, false);
+			fr_value_box_bstrdup_buffer_shallow(NULL, &data, NULL, map->rhs->data.unescaped, false);
 		}
 		rhs = &data;
 
@@ -612,7 +598,10 @@ do {\
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-	case TMPL_TYPE_REGEX_UNRESOLVED:	/* Should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
+	case TMPL_TYPE_XLAT_UNRESOLVED:		/* should now be a TMPL_TYPE_XLAT */
+	case TMPL_TYPE_EXEC_UNRESOLVED:		/* should now be a TMPL_TYPE_EXEC */
+	case TMPL_TYPE_REGEX_UNCOMPILED:	/* should now be a TMPL_TYPE_REGEX */
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:	/* Should now be a TMPL_TYPE_REGEX_XLAT */
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		rcode = -1;
@@ -630,7 +619,6 @@ finish:
 /** Evaluate a map
  *
  * @param[in] request the REQUEST
- * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
  * @return
@@ -638,7 +626,7 @@ finish:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
+int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
@@ -690,7 +678,6 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 
 	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	{
 		char		*p = NULL;
@@ -706,7 +693,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 
 			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		} else {
-			fr_value_box_bstrndup_shallow(&data, NULL, map->lhs->name, map->lhs->len, false);
+			fr_value_box_bstrdup_buffer_shallow(NULL, &data, NULL, map->lhs->data.unescaped, false);
 		}
 
 		rcode = cond_normalise_and_cmp(request, c, &data);
@@ -720,8 +707,12 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_REGEX_UNRESOLVED:		/* should now be a TMPL_TYPE_REGEX or TMPL_TYPE_XLAT */
-	case TMPL_TYPE_REGEX:	/* not allowed as LHS */
+	case TMPL_TYPE_EXEC_UNRESOLVED:		/* should now be a TMPL_TYPE_EXEC */
+	case TMPL_TYPE_XLAT_UNRESOLVED:		/* should now be a TMPL_TYPE_XLAT */
+	case TMPL_TYPE_REGEX_UNCOMPILED:	/* should now be a TMPL_TYPE_REGEX */
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:	/* should now be a TMPL_TYPE_REGEX_XLAT */
+	case TMPL_TYPE_REGEX:			/* not allowed as LHS */
+	case TMPL_TYPE_REGEX_XLAT:		/* not allowed as LHS */
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		rcode = -1;
@@ -745,26 +736,30 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
+int cond_eval(REQUEST *request, rlm_rcode_t modreturn, int depth, fr_cond_t const *c)
 {
 	int rcode = -1;
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	cond_snprint(NULL, buffer, sizeof(buffer), c);
+	cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 
 	while (c) {
 		switch (c->type) {
 		case COND_TYPE_EXISTS:
-			rcode = cond_eval_tmpl(request, modreturn, depth, c->data.vpt);
+			rcode = cond_eval_tmpl(request, depth, c->data.vpt);
 			/* Existence checks are special, because we expect them to fail */
 			if (rcode < 0) rcode = 0;
 			break;
 
+		case COND_TYPE_RCODE:
+			rcode = (c->data.rcode == modreturn);
+			break;
+
 		case COND_TYPE_MAP:
-			rcode = cond_eval_map(request, modreturn, depth, c);
+			rcode = cond_eval_map(request, depth, c);
 			break;
 
 		case COND_TYPE_CHILD:

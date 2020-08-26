@@ -259,7 +259,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_eap_type, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_eap_type);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -540,7 +540,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_type, TAG_ANY);
+		vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_type);
 		if (vp) {
 			RDEBUG2("Using method from &control:EAP-Type");
 			next = vp->vp_uint32;
@@ -670,7 +670,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 	eap_packet_raw_t	*eap_packet;
 	rlm_rcode_t		rcode;
 
-	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -863,7 +863,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 			eap_session_destroy(&eap_session);
 		}
 
-		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+		username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 
 		/*
 		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
@@ -901,12 +901,12 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply, username);
 			fr_pair_add(&request->reply->vps, vp);
@@ -931,12 +931,12 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 	 */
 	if (request->reply->code != FR_CODE_ACCESS_REJECT) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(request->reply->vps, attr_eap_message, TAG_ANY)) {
+	if (fr_pair_find_by_da(request->reply->vps, attr_eap_message)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}

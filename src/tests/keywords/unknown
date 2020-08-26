@@ -9,10 +9,10 @@ update request {
 #  Check that a known but malformed attr is malformed
 #
 update request {
-	&Attr-26.24757.84.9.5.7 = 0xab
+	&26.24757.84.9.5.7 = 0xab
 }
 
-if (&Attr-26.24757.84.9.5.7 != 0xab) {
+if (&26.24757.84.9.5.7 != 0xab) {
 	test_fail
 }
 
@@ -20,10 +20,10 @@ if (&Attr-26.24757.84.9.5.7 != 0xab) {
 #  Check that an unknown attr is OK
 #
 update request {
-	&Attr-26.24757.84.9.5.15 = 0xabcdef
+	&26.24757.84.9.5.15 = 0xabcdef
 }
 
-if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
+if (&26.24757.84.9.5.15 != 0xabcdef) {
 	test_fail
 }
 
@@ -31,16 +31,16 @@ if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
 #  Check that unknown attributes which are defined
 #  get automatically resolved to the real attribute.
 #
-if (&Attr-26.11344.1 == 127.0.0.1) {
+if (&26.11344.1 == 127.0.0.1) {
 	test_fail
 }
 
-if (&Attr-26.11344.1 != 127.0.0.2) {
+if (&26.11344.1 != 127.0.0.2) {
 	test_fail
 }
 
 update request {
-	&Attr-26.11344.1 := 0x7f000001
+	&26.11344.1 := 0x7f000001
 }
 
 if (&FreeRADIUS-Proxied-To == 127.0.0.2) {
@@ -51,19 +51,19 @@ if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
 	test_fail
 }
 
-if (&Attr-26.11344.1 == 127.0.0.2) {
+if (&26.11344.1 == 127.0.0.2) {
 	test_fail
 }
 
-if (&Attr-26.11344.1 != 127.0.0.1) {
+if (&26.11344.1 != 127.0.0.1) {
 	test_fail
 }
 
 update request {
-	&Attr-26.66.1 = 0x01020304
+	&26.66.1 = 0x01020304
 }
 
-if (&Attr-26.66.1 != 0x01020304) {
+if (&26.66.1 != 0x01020304) {
 	test_fail
 }
 

@@ -32,12 +32,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/util.h>
-
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -1169,13 +1169,11 @@ static int cf_file_fill(cf_stack_t *stack);
 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
-	ssize_t slen = 0;
-	char const *error = NULL;
-	fr_cond_t *cond = NULL;
-	CONF_DATA const *cd;
-	fr_dict_t const *dict = NULL;
-	CONF_SECTION *cs;
-	char *p;
+	ssize_t		slen = 0;
+	fr_cond_t	*cond = NULL;
+	fr_dict_t const	*dict = NULL;
+	CONF_SECTION	*cs;
+	char		*p;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
@@ -1187,12 +1185,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 
-	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
-	if (!cd) {
-		dict = fr_dict_internal();	/* HACK - To fix policy sections */
-	} else {
-		dict = *((fr_dict_t **)cf_data_value(cd));
-	}
+	dict = virtual_server_namespace_by_ci(cf_section_to_item(parent));
 
 	/*
 	 *	fr_cond_tokenize needs the current section, so we
@@ -1211,7 +1204,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Skip (...) to find the {
 	 */
 	while (true) {
-		slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr, strlen(ptr));
+		slen = fr_cond_tokenize(cs, &cond, dict, &FR_SBUFF_IN(ptr, strlen(ptr)));
 		if (slen < 0) {
 			ssize_t end = -slen;
 
@@ -1255,7 +1248,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 		cf_log_err(cs, "Parse error in condition");
 		cf_log_err(cs, "%s", text);
-		cf_log_err(cs, "%s^ %s", spaces, error);
+		cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -2370,7 +2363,7 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 		if (c) {
 			char buffer[1024];
 
-			cond_snprint(NULL, buffer, sizeof(buffer), c);
+			cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 			fprintf(fp, "(%s)", buffer);
 
 		} else {	/* dump the string as-is */

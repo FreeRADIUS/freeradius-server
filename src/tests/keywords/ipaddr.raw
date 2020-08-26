@@ -6,18 +6,20 @@
 #  Malformed NAS-IP-Address
 #
 update request {
-	&raw.Attr-4 = 0x010203
+	&raw.4 = 0x010203
 }
 
-if (!&raw.Attr-4) {
+debug_request
+
+if (!&raw.4) {
 	update reply {
 		&Filter-Id := "Cannot find newly added raw attribute"
 	}
 }
 else {
-	if (&raw.Attr-4 != 0x010203) {
+	if (&raw.4 != 0x010203) {
 		update reply {
-			&Filter-Id := "Attr-4 is not 0x0120203"
+			&Filter-Id := "raw.4 is not 0x0120203"
 		}
 	}
 }

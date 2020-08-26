@@ -105,7 +105,6 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ NULL }
 };
 
-
 char const *fr_tacacs_packet_codes[] = {
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "Authentication-Continue",

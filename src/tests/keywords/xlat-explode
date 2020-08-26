@@ -27,17 +27,17 @@ if (&Class[3]) {
 	test_fail
 }
 
-if ("%{explode:&control:Calling-Station-Id |}" != 0) {
+if ("%{explode:&control.Calling-Station-Id |}" != 0) {
 	update reply {
 		&Filter-Id += 'Fail 4'
 	}
 }
 
-if ("%{explode:&control:User-Name[*] |}" != 5) {
+if ("%{explode:&control.User-Name[*] |}" != 5) {
 	test_fail
 }
 
-if ("%{control:User-Name[#]}" != 5) {
+if ("%{control.User-Name[#]}" != 5) {
 	test_fail
 }
 
@@ -57,7 +57,7 @@ if ("%{explode:&control:Reply-Message |}" != 0) {
 	test_fail
 }
 
-if ("%{control:Reply-Message[#]}" != 1) {
+if ("%{control.Reply-Message[#]}" != 1) {
 	test_fail
 }
 

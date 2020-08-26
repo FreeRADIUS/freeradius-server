@@ -8,11 +8,7 @@ update {
 	&reply:Reply-Message := 'hello'
 	&reply:Reply-Message += 'goodbye'
 
-	&reply:Tmp-String-Tagged-0:1 := 'tagged1'
-	&reply:Tmp-String-Tagged-0:2 := 'tagged2'
-
 	# Request attributes
-	&Tmp-String-Tagged-0:1 := 'tagged1'
 	&Tmp-Integer-0 += 10
 	&Tmp-Integer-0 += 20
 	&Tmp-Integer-0 += 30
@@ -43,7 +39,7 @@ else {
 }
 
 # session-state should now contain all the reply attributes
-if ("%{session-state:[#]}" == 4) {
+if ("%{session-state[#]}" == 2) {
 	test_pass
 }
 else {
@@ -58,20 +54,6 @@ else {
 }
 
 if (&session-state:Reply-Message[1] == 'goodbye') {
-	test_pass
-}
-else {
-	test_fail
-}
-
-if (&session-state:Tmp-String-Tagged-0:1 == 'tagged1') {
-	test_pass
-}
-else {
-	test_fail
-}
-
-if (&session-state:Tmp-String-Tagged-0:2 == 'tagged2') {
 	test_pass
 }
 else {
@@ -111,21 +93,6 @@ else {
 }
 
 if (&Tmp-String-2[2] == 'baz') {
-	test_pass
-}
-else {
-	test_fail
-}
-
-# Test some tag copying
-if (&Tmp-String-Tagged-0:10 == 'foo') {
-	test_pass
-}
-else {
-	test_fail
-}
-
-if (&Tmp-String-Tagged-0:11 == 'tagged1') {
 	test_pass
 }
 else {

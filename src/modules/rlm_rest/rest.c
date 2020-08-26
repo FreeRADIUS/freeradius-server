@@ -227,8 +227,6 @@ typedef struct {
 				// (multiple values not supported).
 	fr_token_t op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens_table
-
-	int8_t tag;		//!< Tag to assign to VP.
 } json_flags_t;
 #endif
 
@@ -368,6 +366,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	char			*escaped;	/* Pointer to current URL escaped data */
 
 	size_t			len = 0;
+	ssize_t			slen;
 	size_t			freespace = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
@@ -436,14 +435,14 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  Write out single attribute string.
 		 */
-		len = fr_pair_value_snprint(p, freespace, vp, 0);
-		if (is_truncated(len, freespace)) goto no_space;
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(p, freespace), vp, T_BARE_WORD);
+		if (slen < 0) return 0;
 
 		RINDENT();
-		RDEBUG3("Length : %zd", len);
+		RDEBUG3("Length : %zd", (size_t)slen);
 		REXDENT();
-		if (len > 0) {
-			escaped = curl_escape(p, len);
+		if (slen > 0) {
+			escaped = curl_escape(p, (size_t)slen);
 			if (!escaped) {
 				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
 				return 0;
@@ -930,7 +929,6 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
 	}
 
 	vp->op = flags->op;
-	vp->tag = flags->tag;
 
 	return vp;
 }
@@ -1038,8 +1036,6 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;
 		}
-
-		flags.tag = tmpl_tag(dst);
 
 		if (radius_request(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");

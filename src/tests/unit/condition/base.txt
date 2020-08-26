@@ -16,33 +16,30 @@ match &User-Name == &reply:User-Name
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
-match ERROR offset 6 End of string after escape
+match ERROR offset 2 Unterminated string
 
 condition ("foo
 match ERROR offset 2 Unterminated string
 
 condition ()
-
-match ERROR offset 1 Empty string is invalid
+match ERROR offset 1 Empty bareword is invalid
 
 condition (!)
-match ERROR offset 2 Empty string is invalid
+match ERROR offset 2 Empty bareword is invalid
 
-condition (foo == bar
-match ERROR offset 11 No closing brace at end of string
 
 condition (|| b)
-match ERROR offset 1 Empty string is invalid
+match ERROR offset 1 Empty bareword is invalid
 
 condition ((ok || handled) foo)
 match ERROR offset 17 Unexpected text after condition
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 3 Unexpected escape
+match ERROR offset 5 Invalid operator
 
 condition (ok FOO handled)
-match ERROR offset 4 Invalid text. Expected comparison operator
+match ERROR offset 4 Invalid operator
 
 condition (ok !x handled)
 match ERROR offset 4 Invalid operator
@@ -50,8 +47,11 @@ match ERROR offset 4 Invalid operator
 condition (ok =x handled)
 match ERROR offset 4 Invalid operator
 
-condition (ok == handled"foo")
-match ERROR offset 14 Unexpected start of string
+#
+# Re-enable when we have proper bareword xlat tokenization
+#
+#condition (ok == handled"foo")
+#match ERROR offset 14 Unexpected text after condition
 
 # And now we have a bunch of VALID conditions we want to parse.
 
@@ -145,7 +145,7 @@ condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
 match ERROR offset 22 Unexpected cast
 
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 22 Unexpected cast
+match ERROR offset 23 Unknown data type
 
 condition <blerg>&Filter-Id == "foo"
 match ERROR offset 1 Unknown data type
@@ -153,9 +153,6 @@ match ERROR offset 1 Unknown data type
 #
 #  Normalize things
 #
-condition <ipaddr>&Filter-Id == "127.0.0.1"
-match <ipaddr>&Filter-Id == '127.0.0.1'
-
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
 match &Framed-IP-Address > 127.0.0.1
 
@@ -207,8 +204,9 @@ match ERROR offset 14 Comparison value must be a quoted string
 condition &Session-Timeout == 10
 match &Session-Timeout == 10
 
+# Automatic type inference means this is fine
 condition &Session-Timeout == '10'
-match ERROR offset 21 Comparison value must be an unquoted string
+match &Session-Timeout == 10
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
@@ -233,26 +231,24 @@ match ERROR offset 13 Failed to parse value for attribute
 condition <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
-condition <ipaddr>127.0.0.1 == "%{sql: 127.0.0.1}"
-match <ipaddr>127.0.0.1 == "%{sql: 127.0.0.1}"
+condition <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
+match <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
 
 #
 #  Bare %{...} is allowed.
 #
-condition <ipaddr>127.0.0.1 == %{sql:127.0.0.1}
-match <ipaddr>127.0.0.1 == "%{sql:127.0.0.1}"
+condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
+match <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
 
-condition <ipaddr>127.0.0.1 == %{sql: SELECT user FROM table WHERE user='%{User-Name}'}
-match <ipaddr>127.0.0.1 == "%{sql: SELECT user FROM table WHERE user='%{User-Name}'}"
+condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+match <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-condition <ether> 00:11:22:33:44:55 == "ff:11:22:33:44:55"
-match false
 
-condition <ether> 00:11:22:33:44:55 == "%{sql:00:11:22:33:44:55}"
-match <ether>00:11:22:33:44:55 == "%{sql:00:11:22:33:44:55}"
+condition <ether> 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+match <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 8 Failed to parse field
@@ -305,11 +301,11 @@ match true
 condition ('foo' == 'foo')
 match true
 
-condition ("foo" == "%{sql: foo}")
-match "foo" == "%{sql: foo}"
+condition ("foo" == "%{md4: foo}")
+match "foo" == "%{md4: foo}"
 
-condition ("foo bar" == "%{sql: foo}")
-match "foo bar" == "%{sql: foo}"
+condition ("foo bar" == "%{md4: foo}")
+match "foo bar" == "%{md4: foo}"
 
 condition ("foo" == "bar")
 match false
@@ -325,8 +321,8 @@ match false
 condition (&User-Name == "bob")
 match &User-Name == "bob"
 
-condition (&User-Name == "%{sql: blah}")
-match &User-Name == "%{sql: blah}"
+condition (&User-Name == "%{md4: blah}")
+match &User-Name == "%{md4: blah}"
 
 condition <ipaddr>127.0.0.1 == 2130706433
 match true
@@ -412,14 +408,15 @@ match ERROR offset 2 Forbidden data type in cast
 condition <string>"foo" == &User-Name
 match &User-Name == "foo"
 
-condition <integer>"%{expr: 1 + 1}" < &NAS-Port
-match &NAS-Port > "%{expr: 1 + 1}"
+# This used to be expr, but expr isn't a builtin, so it failed...
+condition <integer>"%{md4: 1 + 1}" < &NAS-Port
+match &NAS-Port > "%{md4: 1 + 1}"
 
 condition &Filter-Id == &Framed-IP-Address
-match ERROR offset 0 Attribute comparisons must be of the same data type
+match ERROR offset 0 Cannot compare attributes of type 'string' and 'ipaddr'
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
-match ERROR offset 0 Attribute comparisons must be of the same data type
+match ERROR offset 0 Cannot compare types 'ipaddr' (cast) and 'string' (attr)
 
 condition &Tmp-Integer64-0 == &request:Foo-Stuff-Bar
 match &Tmp-Integer64-0 == &Foo-Stuff-Bar
@@ -447,21 +444,6 @@ condition <ipaddr>&Class == &Framed-IP-Address
 match <ipaddr>&Class == &Framed-IP-Address
 
 #
-#  Tags of zero mean there's no tag
-#
-condition &Tunnel-Password:0 == "Hello"
-match &Tunnel-Password == "Hello"
-
-condition &Tunnel-Password:1 == "Hello"
-match &Tunnel-Password:1 == "Hello"
-
-#
-# Single quoted strings are left as-is
-#
-condition &Tunnel-Password:1 == 'Hello'
-match &Tunnel-Password:1 == 'Hello'
-
-#
 #  zero offset into arrays get parsed and ignored
 #
 condition &User-Name[0] == "bob"
@@ -472,12 +454,6 @@ match &User-Name[1] == "bob"
 
 condition &User-Name[n] == "bob"
 match &User-Name[n] == "bob"
-
-condition &Tunnel-Password:1[0] == "Hello"
-match &Tunnel-Password:1[0] == "Hello"
-
-condition &Tunnel-Password:1[3] == "Hello"
-match &Tunnel-Password:1[3] == "Hello"
 
 #
 #  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
@@ -504,7 +480,7 @@ match &Acct-Input-Octets-64 > "%{Session-Timeout}"
 #
 #  Parse OIDs into known attributes, where possible.
 #
-condition &Attr-26.24757.84.9.5.4 == 0x1a99
+condition &26.24757.84.9.5.4 == 0x1a99
 match &WiMAX-PFDv2-Src-Port == 6809
 
 #
@@ -512,8 +488,8 @@ match &WiMAX-PFDv2-Src-Port == 6809
 #  Allow it so that we can look for malformed attributes
 #  in packets.
 #
-condition &Attr-26.24757.84.9.5.7 == 0x1a99
-match &Attr-26.24757.84.9.5.7 == 0x1a99
+condition &raw.26.24757.84.9.5.7 == 0x1a99
+match &raw.WiMAX-PFDv2-Classifier-Source-Spec.7 == 0x1a99
 
 #  This one is really unknown
 condition &Attr-26.24757.84.9.5.15 == 0x1a99
@@ -523,49 +499,28 @@ match &Attr-26.24757.84.9.5.15 == 0x1a99
 #  Invalid array references.
 #
 condition &User-Name[a] == 'bob'
-match ERROR offset 11 Array index is not an integer
+match ERROR offset 11 Invalid array index
 
 condition &User-Name == &Filter-Id[a]
-match ERROR offset 25 Array index is not an integer
+match ERROR offset 25 Invalid array index
 
 #
-#  This one is still wrong.
+#  Attributes without an '&' prefix are
+#  just barewords.  So this is a comparison
+#  of 'User-Name[a]' == 'bob' which is
+#  false.T
 #
 condition User-Name[a] == 'bob'
-match ERROR offset 9 Invalid text. Expected comparison operator
+match false
 
 #
 #  Bounds checks...
 #
 condition &User-Name[1001] == 'bob'
-match ERROR offset 11 Invalid array reference '1001' (should be between 0-1000)
+match ERROR offset 11 Invalid array index '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-match ERROR offset 11 Array index is not an integer
-
-#
-#  Tags
-#
-condition &Tunnel-Private-Group-Id:10 == 'test'
-match &Tunnel-Private-Group-Id:10 == 'test'
-
-condition &User-Name:10 == 'test'
-match ERROR offset 10 Attribute 'User-Name' cannot have a tag
-
-#
-#  Tags are always wrong for attributes which aren't tagged.
-#
-condition &User-Name:0 == 'test'
-match ERROR offset 10 Attribute 'User-Name' cannot have a tag
-
-#
-#  Bounds checks...
-#
-condition &Tunnel-Private-Group-Id:32 == 'test'
-match ERROR offset 25 Invalid tag value '32' (should be between 0-31)
-
-condition &request:Tunnel-Private-Group-Id:-1 == 'test'
-match ERROR offset 33 Invalid tag value '-1' (should be between 0-31)
+match ERROR offset 11 Invalid array index '-1' (should be between 0-1000)
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
@@ -573,28 +528,29 @@ match ERROR offset 33 Invalid tag value '-1' (should be between 0-31)
 condition request:Foo == 'request:Foo'
 match true
 
+# Bareword compared with bareword is true
 condition request:Foo+Bar == request:Foo+Bar
-match ERROR offset 11 Invalid text. Expected comparison operator
+match true
 
 condition &request:Foo+Bar == 'request:Foo+Bar'
-match ERROR offset 12 Invalid text. Expected comparison operator
+match ERROR offset 12 Unexpected text after attribute reference
 
 condition 'request:Foo+d' == &request:Foo+Bar
-match ERROR offset 31 Unexpected text after condition
+match ERROR offset 31 Unexpected text after attribute reference
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request:FooBar:0 == &request:FooBar
-match ERROR offset 15 Unexpected text after attribute name
+match ERROR offset 15 Unexpected text after attribute reference
 
 condition &not-a-list:User-Name == &not-a-list:User-Name
-match ERROR offset 1 Invalid list qualifier
+match ERROR offset 11 Unexpected text after attribute reference
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition &not-a-packet.User-Name == &not-a-packet.User-Name
 match &not-a-packet.User-Name == &not-a-packet.User-Name
 
 #
-#  The LHS is a string with ASCII 5C 30 30 30 inside of it.
+#  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
 #
 condition ('i have scary embedded things\000 inside me' == "i have scary embedded things\000 inside me")
 match false
@@ -602,10 +558,10 @@ match false
 #
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
-condition &Attr-1 == 0x616263
+condition &1 == 0x616263
 match &User-Name == 'abc'
 
-condition &Attr-26.11344.1 == 0x7f000001
+condition &26.11344.1 == 0x7f000001
 match &FreeRADIUS-Proxied-To == 127.0.0.1
 
 #
@@ -622,10 +578,11 @@ condition &User-Name != "foo\nbar"
 match !&User-Name == "foo\nbar"
 
 #
-#  We require explicit casts
+#  We infer that the LHS is a prefix and the RHS is
+#  and ipaddr without requiring an explicit cast.
 #
 condition 192.168.0.0/16 > 192.168.1.2
-match false
+match true
 
 condition <ipv4prefix>192.168.0.0/16 > 192.168.1.2
 match true
@@ -645,8 +602,8 @@ match <ipv4prefix>&NAS-IP-Address < &PMIP6-Home-IPv4-HoA
 condition &NAS-IP-Address < 192.168/16
 match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/16
 
-condition &NAS-IP-Address < "%{echo: 192.168/16}"
-match <ipv4prefix>&NAS-IP-Address < "%{echo: 192.168/16}"
+condition &NAS-IP-Address < "%{string: 192.168/16}"
+match <ipv4prefix>&NAS-IP-Address < "%{string: 192.168/16}"
 
 condition &NAS-IP-Address < `/bin/echo 192.168/16`
 match <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
@@ -665,4 +622,4 @@ condition ("$ENV{SOMETHING_OR_OTHER}" == '')
 match true
 
 count
-match 334
+match 306

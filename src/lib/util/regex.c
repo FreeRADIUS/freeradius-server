@@ -1229,26 +1229,29 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
  * @param[out] out		Flag structure to populate.  Must be initialised to zero
  *				if this is the first call to regex_flags_parse.
  * @param[in] in		Flag string to parse.
- * @param[in] len		Length of input string.
+ * @param[in] terminals		Terminal characters. If parsing ends before the buffer
+ *				is exhausted, and is pointing to one of these chars
+ *				it's not considered an error.
  * @param[in] err_on_dup	Error if the flag is already set.
  * @return
  *      - > 0 on success.  The number of flag bytes parsed.
  *	- <= 0 on failure.  Negative offset of first unrecognised flag.
  */
-ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_t len, bool err_on_dup)
+ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
+			  fr_sbuff_term_t const *terminals, bool err_on_dup)
 {
-	char const *p = in, *end = p + len;
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 
 	if (err) *err = 0;
 
-	while (p < end) {
-		switch (*p) {
+	while (fr_sbuff_extend(&our_in)) {
+		switch (*our_in.p) {
 #define DO_REGEX_FLAG(_f, _c) \
 		case _c: \
 			if (err_on_dup && out->_f) { \
-				fr_strerror_printf("Duplicate regex flag '%c'", *p); \
+				fr_strerror_printf("Duplicate regex flag '%c'", *our_in.p); \
 				if (err) *err = -2; \
-				return -(p - in); \
+				return -fr_sbuff_used(&our_in); \
 			} \
 			out->_f = 1; \
 			break
@@ -1262,38 +1265,31 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_
 #undef DO_REGEX_FLAG
 
 		default:
-			fr_strerror_printf("Unsupported regex flag '%c'", *p);
+			if (fr_sbuff_is_terminal(&our_in, terminals)) return fr_sbuff_set(in, &our_in);
+
+			fr_strerror_printf("Unsupported regex flag '%c'", *our_in.p);
 			if (err) *err = -1;
-			return -(p - in);
+			return -(fr_sbuff_used_total(&our_in));
 		}
-		p++;
+		fr_sbuff_advance(&our_in, 1);
 	}
-	return len;
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Print the flags
  *
- * @param[out] out	where to write flags.
- * @param[in] outlen	Space in output buffer.
+ * @param[out] sbuff	where to write flags.
  * @param[in] flags	to print.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
+ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
 {
-	char *p = out, *end = p + outlen;
+	fr_sbuff_t our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 
 #define DO_REGEX_FLAG(_f, _c) \
-	do { \
-		if (flags->_f) { \
-			if ((end - p) <= 1) { \
-				*end = '\0'; \
-				return outlen + 1; \
-			} \
-			*p++ = _c; \
-		} \
-	} while(0)
+	if (flags->_f) FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, _c)
 
 	DO_REGEX_FLAG(global, 'g');
 	DO_REGEX_FLAG(ignore_case, 'i');
@@ -1303,6 +1299,6 @@ size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const flag
 	DO_REGEX_FLAG(extended, 'x');
 #undef DO_REGEX_FLAG
 
-	return p - out;
+	return fr_sbuff_set(sbuff, &our_sbuff);
 }
 #endif

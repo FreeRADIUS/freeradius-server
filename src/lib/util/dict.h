@@ -67,9 +67,16 @@ typedef struct fr_dict fr_dict_t;
  */
 typedef struct {
 	unsigned int		is_root : 1;			//!< Is root of a dictionary.
-	unsigned int 		is_unknown : 1;			//!< &Attr-1.2.3.4 taken from a packet
-	unsigned int		is_raw : 1;			//!< &Attr-1.2.3.4 taken from the config,
-								//!< and added (along with parents) to the dictionionaries
+
+	unsigned int 		is_unknown : 1;			//!< This dictionary attribute is ephemeral
+								///< and not part of the main dictionary.
+
+	unsigned int		is_raw : 1;			//!< This dictionary attribute was constructed
+								///< from a known attribute to allow the user
+								///< to assign octets values directly.
+								///< See .is_unknown to determine if it is
+								///< ephemeral.
+
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		has_tag : 1;			//!< Tagged attribute.

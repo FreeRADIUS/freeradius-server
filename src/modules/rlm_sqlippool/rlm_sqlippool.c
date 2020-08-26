@@ -514,13 +514,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address) != NULL) {
 		RDEBUG2("%s already exists", inst->framed_ip_address->name);
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_da(request->control, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -556,7 +556,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	 *	and a query to find whether it is available then try that
 	 */
 	if (allocation_len == 0 && inst->alloc_requested && *inst->alloc_requested &&
-	    fr_pair_find_by_da(request->packet->vps, inst->req_framed_ip_address, TAG_ANY) != NULL) {
+	    fr_pair_find_by_da(request->packet->vps, inst->req_framed_ip_address) != NULL) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_requested, &handle,
 						  inst, request, (char *) NULL, 0);
@@ -817,7 +817,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 
 	int			acct_status_type;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

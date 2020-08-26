@@ -123,7 +123,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 
 		if (!*dhcp_header_attrs[i]) continue;
 
-		vp = fr_pair_find_by_da(packet->vps, *dhcp_header_attrs[i], TAG_ANY);
+		vp = fr_pair_find_by_da(packet->vps, *dhcp_header_attrs[i]);
 		if (!vp) continue;
 		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
 	}
@@ -185,7 +185,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_message_type, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_message_type);
 		if (vp) {
 			request->reply->code = vp->vp_uint8;
 		} else switch (rcode) {
@@ -217,7 +217,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		 *	Offer and ACK MUST have YIADDR.
 		 */
 		if ((request->reply->code == FR_DHCP_OFFER) || (request->reply->code == FR_DHCP_ACK)) {
-			vp = fr_pair_find_by_da(request->reply->vps, attr_yiaddr, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_yiaddr);
 			if (!vp) {
 				REDEBUG("%s packet does not have YIADDR.  The client will not receive an IP address.",
 					dhcp_message_types[request->reply->code]);

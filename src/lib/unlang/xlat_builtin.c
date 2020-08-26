@@ -58,6 +58,10 @@ static rbtree_t *xlat_root = NULL;
 
 static char const hextab[] = "0123456789abcdef";
 
+static fr_sbuff_parse_rules_t const xlat_arg_parse_rules = {
+	.terminals = &FR_SBUFF_TERM(" ")
+};
+
 
 /** Return a VP from the specified request.
  *
@@ -307,7 +311,7 @@ int xlat_register_legacy(void *mod_inst, char const *name,
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
-	c->async_safe = true;
+	c->needs_async = false;
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
@@ -353,7 +357,7 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 			return NULL;
 		}
 
-		if ((c->type != XLAT_FUNC_NORMAL) || c->async_safe) {
+		if ((c->type != XLAT_FUNC_NORMAL) || (c->needs_async != needs_async)) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
@@ -375,7 +379,7 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 
 	c->func.async = func;
 	c->type = XLAT_FUNC_NORMAL;
-	c->async_safe = !needs_async;	/* this function may yield */
+	c->needs_async = needs_async;	/* this function may yield */
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
@@ -411,7 +415,7 @@ int xlat_internal(char const *name)
 
 /** Set global instantiation/detach callbacks
  *
- * All functions registered must be async_safe.
+ * All functions registered must be needs_async.
  *
  * @param[in] xlat		to set instantiation callbacks for.
  * @param[in] instantiate	Instantiation function. Called whenever a xlat is
@@ -442,7 +446,7 @@ void _xlat_async_instantiate_set(xlat_t const *xlat,
 
 /** Register an async xlat
  *
- * All functions registered must be async_safe.
+ * All functions registered must be needs_async.
  *
  * @param[in] xlat			to set instantiation callbacks for.
  * @param[in] thread_instantiate	Instantiation function. Called for every compiled xlat
@@ -516,7 +520,7 @@ void xlat_unregister_module(void *instance)
  *	Internal redundant handler for xlats
  */
 typedef enum xlat_redundant_type_t {
-	XLAT_INVALID = 0,
+	XLAT_REDUNDANT_INVALID = 0,
 	XLAT_REDUNDANT,
 	XLAT_LOAD_BALANCE,
 	XLAT_REDUNDANT_LOAD_BALANCE,
@@ -863,30 +867,31 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 		fr_table_num_ordered_t const	*type;
 		size_t				i;
 
-		if (vp->da->flags.has_tag) {
-			RIDEBUG2("&%s:%s:%i %s %pV",
-				fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-				vp->da->name,
-				vp->tag,
-				fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
-				&vp->data);
-		} else {
-			RIDEBUG2("&%s:%s %s %pV",
-				fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-				vp->da->name,
-				fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
-				&vp->data);
-		}
+		RIDEBUG2("&%s:%s %s %pV",
+			fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+			vp->da->name,
+			fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
+			&vp->data);
 
 		if (!RDEBUG_ENABLED3) continue;
 
+		RIDEBUG3("da         : %p", vp->da);
+		RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
+		RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
+
+		if (RDEBUG_ENABLED3) {
+			RIDEBUG3("parent     : %s (%p)", vp->da->parent->name, vp->da->parent);
+		} else {
+			RIDEBUG2("parent     : %s", vp->da->parent->name);
+		}
+		RIDEBUG3("attr       : %u", vp->da->attr);
 		vendor = fr_dict_vendor_by_da(vp->da);
-		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->pen, vendor->name);
-		RIDEBUG2("Type   : %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+		if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
+		RIDEBUG3("type       : %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {
 		case FR_TYPE_VARIABLE_SIZE:
-			RIDEBUG2("Length : %zu", vp->vp_length);
+			RIDEBUG3("length     : %zu", vp->vp_length);
 			break;
 
 		default:
@@ -921,7 +926,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 			if ((pad = (11 - type->name.len)) < 0) pad = 0;
 
 			RINDENT();
-			RDEBUG2("as %s%*s: %pV", type->name.str, pad, " ", dst);
+			RDEBUG4("as %s%*s: %pV", type->name.str, pad, " ", dst);
 			REXDENT();
 
 		next_type:
@@ -980,7 +985,10 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1, &(tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
+				      &FR_SBUFF_IN(p, strlen(p)),
+				      &xlat_arg_parse_rules,
+				      &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1037,8 +1045,6 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 			}
 
 			MEM(nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da));
-			nvp->tag = vp->tag;
-
 			switch (vp->vp_type) {
 			case FR_TYPE_OCTETS:
 				MEM(fr_pair_value_memdup(nvp, (uint8_t const *)p, q - p, vp->vp_tainted) == 0);
@@ -1205,11 +1211,12 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
  */
 static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
 {
-	ssize_t		slen;
-	unsigned long	pad_len;
-	char const	*p;
-	char		*end;
-	tmpl_t	*vpt;
+	ssize_t			slen;
+	unsigned long		pad_len;
+	char const		*p;
+	char			*end;
+	tmpl_t			*vpt;
+
 
 	*pad_char_p = ' ';		/* the default */
 
@@ -1223,7 +1230,10 @@ static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, RE
 		return 0;
 	}
 
-	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
+				      &FR_SBUFF_IN(p, strlen(p)),
+				      &xlat_arg_parse_rules,
+				      &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Failed parsing input string");
 		return slen;
@@ -1352,12 +1362,12 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	vp_map_t	*map = NULL;
 	int		ret;
 
-	tmpl_rules_t parse_rules = {
+	tmpl_rules_t	attr_rules = {
 		.dict_def = request->dict,
 		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 	};
 
-	if (map_afrom_attr_str(request, &map, fmt, &parse_rules, &parse_rules) < 0) {
+	if (map_afrom_attr_str(request, &map, fmt, &attr_rules, &attr_rules) < 0) {
 		RPEDEBUG("Failed parsing \"%s\" as map", fmt);
 		return -1;
 	}
@@ -1365,7 +1375,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_XLAT:
 		break;
 
 	default:
@@ -1379,9 +1389,9 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_REGEX_UNRESOLVED:
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 	case TMPL_TYPE_UNRESOLVED:
-	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_XLAT:
 		break;
 
 	default:
@@ -1567,9 +1577,8 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	If it's not a string, treat it as a literal
 	 */
 	} else {
-		*out = fr_pair_value_asprint(ctx, vp, '\0');
+		slen = fr_value_box_aprint(ctx, out, &vp->data, NULL);
 		if (!*out) return -1;
-		slen = talloc_array_length(*out) - 1;
 	}
 
 	REXDENT();
@@ -1708,7 +1717,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 */
 	if (!*in) return XLAT_ACTION_DONE;
 
-	buff = fr_value_box_list_asprint(NULL, *in, NULL, '\0');
+	buff = fr_value_box_list_aprint(NULL, *in, NULL, NULL);
 	if (!buff) return XLAT_ACTION_FAIL;
 
 	len = talloc_array_length(buff) - 1;
@@ -1753,7 +1762,7 @@ finish:
  * Example:
 @verbatim
 "%{concat:, %{User-Name}%{Calling-Station-Id}" == "bob, aa:bb:cc:dd:ee:ff"
-"%{concat:, %{request:[*]}" == "<attr1value>, <attr2value>, <attr3value>, ..."
+"%{concat:, %{request[*]}" == "<attr1value>, <attr2value>, <attr3value>, ..."
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1791,7 +1800,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_asprint(result, (*in)->next, sep, '\0');
+	buff = fr_value_box_list_aprint(result, (*in)->next, sep, NULL);
 	if (!buff) goto error;
 
 	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
@@ -1826,7 +1835,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
-	 * Concatenate all input
+	 *	Concatenate all input
 	 */
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
@@ -2194,7 +2203,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 
 		vp->op = T_OP_EQ;
-		buff = fr_pair_asprint(vb, vp, '"');
+		fr_pair_aprint(vb, &buff, vp);
 		vp->op = op;
 
 		vb->vb_strvalue = buff;
@@ -2826,7 +2835,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	memset(&flags, 0, sizeof(flags));
 
-	slen = regex_flags_parse(NULL, &flags, p, q - p, true);
+	slen = regex_flags_parse(NULL, &flags, &FR_SBUFF_IN(p, q), NULL, true);
 	if (slen < 0) {
 		RPEDEBUG("Failed parsing regex flags");
 		return XLAT_ACTION_FAIL;
@@ -3003,54 +3012,6 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
-
-/** Return the tag of an attribute reference
- *
- * Example (Tunnel-Server-Endpoint:1 = "192.0.2.1"):
-@verbatim
-"%{tag:Tunnel-Server-Endpoint}" == "1"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst,
-				   UNUSED void *xlat_thread_inst, fr_value_box_t **in)
-{
-	fr_value_box_t	*vb;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	*cursor;
-
-	if (!*in) {
-		REDEBUG("Missing attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (xlat_fmt_to_cursor(NULL, &cursor, NULL, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
-
-	for (vp = fr_cursor_head(cursor);
-	     vp;
-	     vp = fr_cursor_next(cursor)) {
-		if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) continue;
-
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		vb->vb_int8 = vp->tag;
-		fr_cursor_append(out, vb);
-	}
-	talloc_free(cursor);
-
-	return XLAT_ACTION_DONE;
-}
-
 
 /** Change case of a string
  *
@@ -3389,7 +3350,6 @@ int xlat_init(void)
 	xlat_register(NULL, "string", xlat_func_string, false);
 	xlat_register(NULL, "strlen", xlat_func_strlen, false);
 	xlat_register(NULL, "sub", xlat_func_sub, false);
-	xlat_register(NULL, "tag", xlat_func_tag, false);
 	xlat_register(NULL, "tolower", xlat_func_tolower, false);
 	xlat_register(NULL, "toupper", xlat_func_toupper, false);
 	xlat_register(NULL, "urlquote", xlat_func_urlquote, false);

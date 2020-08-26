@@ -157,6 +157,8 @@ typedef struct {
  *
  */
 typedef struct {
+	char const	*name;				//!< Name for rule set to aid we debugging.
+
 	char		chr;				//!< Character at the start of an escape sequence.
 	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
 							///< Indexed by the printable representation i.e.
@@ -176,6 +178,8 @@ typedef struct {
  *
  */
 typedef struct {
+	char const	*name;				//!< Name for rule set to aid we debugging.
+
 	char		chr;				//!< Character at the start of an escape sequence.
 
 	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
@@ -304,19 +308,8 @@ extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 	[0x01] = true, [0x02] = true, [0x03] = true, [0x04] = true, [0x05] = true, [0x06] = true, [0x07] = true, [0x08] = true, \
 	[0x09] = true, [0x0a] = true, [0x0b] = true, [0x0c] = true, [0x0d] = true, [0x0e] = true, [0x0f] = true, [0x10] = true, \
 	[0x11] = true, [0x12] = true, [0x13] = true, [0x14] = true, [0x15] = true, [0x16] = true, [0x17] = true, [0x18] = true, \
-	[0x19] = true, [0x1a] = true, [0x1b] = true, [0x1c] = true, [0x1d] = true, [0x1e] = true, [0x1f] = true, [0x20] = true, \
-	[0x21] = true, [0x22] = true, [0x23] = true, [0x24] = true, [0x25] = true, [0x26] = true, [0x27] = true, [0x28] = true, \
-	[0x29] = true, [0x2a] = true, [0x2b] = true, [0x2c] = true, [0x2d] = true, [0x2e] = true, [0x2f] = true, [0x30] = true, \
-	[0x31] = true, [0x32] = true, [0x33] = true, [0x34] = true, [0x35] = true, [0x36] = true, [0x37] = true, [0x38] = true, \
-	[0x39] = true, [0x3a] = true, [0x3b] = true, [0x3c] = true, [0x3d] = true, [0x3e] = true, [0x3f] = true, [0x40] = true, \
-	[0x41] = true, [0x42] = true, [0x43] = true, [0x44] = true, [0x45] = true, [0x46] = true, [0x47] = true, [0x48] = true, \
-	[0x49] = true, [0x4a] = true, [0x4b] = true, [0x4c] = true, [0x4d] = true, [0x4e] = true, [0x4f] = true, [0x50] = true, \
-	[0x51] = true, [0x52] = true, [0x53] = true, [0x54] = true, [0x55] = true, [0x56] = true, [0x57] = true, [0x58] = true, \
-	[0x59] = true, [0x5a] = true, [0x5b] = true, [0x5c] = true, [0x5d] = true, [0x5e] = true, [0x5f] = true, [0x60] = true, \
-	[0x61] = true, [0x62] = true, [0x63] = true, [0x64] = true, [0x65] = true, [0x66] = true, [0x67] = true, [0x68] = true, \
-	[0x69] = true, [0x6a] = true, [0x6b] = true, [0x6c] = true, [0x6d] = true, [0x6e] = true, [0x6f] = true, [0x70] = true, \
-	[0x71] = true, [0x72] = true, [0x73] = true, [0x74] = true, [0x75] = true, [0x76] = true, [0x77] = true, [0x78] = true, \
-	[0x79] = true, [0x7a] = true, [0x7b] = true, [0x7c] = true, [0x7d] = true, [0x7e] = true, [0x7f] = true,
+	[0x19] = true, [0x1a] = true, [0x1b] = true, [0x1c] = true, [0x1d] = true, [0x1e] = true, [0x1f] = true, \
+	[0x7f] = true
 
 /** Unprintables (extended range)
  *
@@ -340,7 +333,7 @@ extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 	[0xe1] = true, [0xe2] = true, [0xe3] = true, [0xe4] = true, [0xe5] = true, [0xe6] = true, [0xe7] = true, [0xe8] = true, \
 	[0xe9] = true, [0xea] = true, [0xeb] = true, [0xec] = true, [0xed] = true, [0xee] = true, [0xef] = true, [0xf0] = true, \
 	[0xf1] = true, [0xf2] = true, [0xf3] = true, [0xf4] = true, [0xf5] = true, [0xf6] = true, [0xf7] = true, [0xf8] = true, \
-	[0xf9] = true, [0xfa] = true, [0xfb] = true, [0xfc] = true, [0xfd] = true, [0xfe] = true, [0xff] = true,
+	[0xf9] = true, [0xfa] = true, [0xfb] = true, [0xfc] = true, [0xfd] = true, [0xfe] = true, [0xff] = true
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -525,7 +518,7 @@ static inline fr_sbuff_t *fr_sbuff_init_file(fr_sbuff_t *sbuff, fr_sbuff_uctx_fi
  * @param[in] ctx	to allocate buffer in.
  * @param[out] sbuff	to initialise.
  * @param[out] tctx	to initialise.  Must have a lifetime >= to the sbuff.
- * @param[in] init	The length of the initial buffer.
+ * @param[in] init	The length of the initial buffer, excluding \0 byte.
  * @param[in] max	The maximum length of the buffer.
  * @return
  *	- The passed sbuff on success.
@@ -1250,8 +1243,6 @@ do { \
 /** Build a talloc wrapper function for a fr_sbuff_out_* function
  *
  * @param[in] _func	to call.
- * @param[in] _in	input sbuff arg.
- * @param[in] _len	expected output len.
  * @param[in] ...	additional arguments to pass to _func.
  */
 #define SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(_func, ...) \

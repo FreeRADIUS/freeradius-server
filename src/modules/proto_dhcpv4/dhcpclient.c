@@ -363,11 +363,9 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (reply->code == FR_DHCP_OFFER) {
 				VALUE_PAIR *vp1 = fr_pair_find_by_da(reply->vps,
-								     attr_dhcp_dhcp_server_identifier,
-								     TAG_ANY);
+								     attr_dhcp_dhcp_server_identifier);
 				VALUE_PAIR *vp2 = fr_pair_find_by_da(reply->vps,
-								     attr_dhcp_your_ip_address,
-								     TAG_ANY);
+								     attr_dhcp_your_ip_address);
 
 				if (vp1 && vp2) {
 					nb_offer++;
@@ -589,7 +587,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
-		fr_pair_snprint(buffer, sizeof(buffer), vp);
+		fr_pair_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp);
 		printf("\t%s\n", buffer);
 	}
 }

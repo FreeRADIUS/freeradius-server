@@ -53,7 +53,7 @@ the resulting `Packet-Type` back to the parent request.
 ----
 call inner-tunnel {
     update parent.reply {
-        &Packet-Type := "%{reply:Packet-Type}"
+        &Packet-Type := "%{reply.Packet-Type}"
     }
 }
 ----

@@ -10,31 +10,31 @@ update control {
 	&Tmp-IP-Address-0 += 192.0.2.2
 }
 
-if ("%{control:[#]}" != 2) {
+if ("%{control[#]}" != 2) {
 	test_fail
 }
 
 debug_control
 
-if (("%{control:[0]}" != 192.0.2.1) || ("%{control:[1]}" != 192.0.2.2)) {
+if (("%{control[0]}" != 192.0.2.1) || ("%{control[1]}" != 192.0.2.2)) {
 	test_fail
 }
 
-if (("%{control:[n]}" != 192.0.2.2)) {
+if (("%{control[n]}" != 192.0.2.2)) {
 	test_fail
 }
 
-if ("%{control:[*]}" != '192.0.2.1,192.0.2.2') {
+if ("%{control[*]}" != '192.0.2.1,192.0.2.2') {
 	test_fail
 }
 
 # Try calling these xlats in mapping too, they may get optimised to VPTs which is a
 # different code path.
 update request {
-	&Tmp-IP-Address-1 += "%{control:[1]}"
-	&Tmp-IP-Address-1 += "%{control:[0]}"
-	&Tmp-String-0 = "%{concat:,%{control:[*]}}"
-	&Tmp-Integer-0 = "%{control:[#]}"
+	&Tmp-IP-Address-1 += "%{control[1]}"
+	&Tmp-IP-Address-1 += "%{control[0]}"
+	&Tmp-String-0 = "%{concat:,%{control[*]}}"
+	&Tmp-Integer-0 = "%{control[#]}"
 }
 
 if (&Tmp-String-0 != '192.0.2.1,192.0.2.2') {

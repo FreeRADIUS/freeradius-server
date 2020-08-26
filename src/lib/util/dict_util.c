@@ -1331,7 +1331,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
 	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 
-	if (!dict_gctx || !name || !fr_sbuff_remaining(name) || !out) return 0;
+	if (!dict_gctx || !name || !out) return 0;
 
 	memset(&root, 0, sizeof(root));
 
@@ -1762,7 +1762,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return (size_t)fr_sbuff_set(name, &our_name);
+	return fr_sbuff_set(name, &our_name);
 }
 
 /* Internal version of fr_dict_attr_by_name
@@ -2386,7 +2386,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
-
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.
@@ -2399,6 +2398,26 @@ int fr_dict_free(fr_dict_t **dict)
 	if (!*dict) return 0;
 
 	ret = talloc_decrease_ref_count(*dict);
+	*dict = NULL;
+
+	return ret;
+}
+
+/** Decrement the reference count on a previously loaded dictionary
+ *
+ * @param[in] dict	to free.
+ * @return how many references to the dictionary remain.
+ */
+int fr_dict_const_free(fr_dict_t const **dict)
+{
+	int ret;
+	fr_dict_t *our_dict;
+
+	if (!*dict) return 0;
+
+	memcpy(&our_dict, dict, sizeof(our_dict));
+
+	ret = talloc_decrease_ref_count(our_dict);
 	*dict = NULL;
 
 	return ret;

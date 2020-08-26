@@ -419,8 +419,8 @@ static void radius_fixups(rlm_radius_t const *inst, REQUEST *request)
 
 	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
 
-	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY)) {
+	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge)) {
 	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);
 		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}

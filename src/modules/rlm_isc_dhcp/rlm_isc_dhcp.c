@@ -1429,7 +1429,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	The 'host' entry might not have a client identifier option.
 	 */
-	vp = fr_pair_find_by_da(info->options, attr_client_identifier, TAG_ANY);
+	vp = fr_pair_find_by_da(info->options, attr_client_identifier);
 	if (vp) {
 		my_uid = talloc_zero(info, isc_host_uid_t);
 		my_uid->client = &vp->data;
@@ -1620,7 +1620,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier);
 	if (vp) {
 		isc_host_uid_t *client, my_client;
 
@@ -1634,7 +1634,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	}
 
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address);
 	if (!vp) return NULL;
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
@@ -1758,7 +1758,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 	/*
 	 *	If there's already a fixed IP, don't do anything
 	 */
-	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
+	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address);
 	if (yiaddr) return 0;
 
 	host = get_host(request, inst->hosts_by_ether, inst->hosts_by_uid);
@@ -1812,7 +1812,7 @@ static int apply(rlm_isc_dhcp_t const *inst, REQUEST *request, rlm_isc_dhcp_info
 	VALUE_PAIR *yiaddr;
 
 	rcode = 0;
-	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
+	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address);
 
 	/*
 	 *	First, apply any "host" options
@@ -1894,7 +1894,7 @@ recurse:
 		     vp = fr_cursor_next(&option_cursor)) {
 			VALUE_PAIR *reply;
 
-			reply = fr_pair_find_by_da(request->reply->vps, vp->da, TAG_ANY);
+			reply = fr_pair_find_by_da(request->reply->vps, vp->da);
 			if (reply) continue;
 
 			/*

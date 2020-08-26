@@ -18,7 +18,7 @@
 -- allocate_begin = ""
 -- allocate_find = "\
 --	SELECT fr_dhcp_allocate_previous_or_new_framedipaddress( \
---		'%{control:${pool_name}}', \
+--		'%{control.${pool_name}}', \
 --		'%{DHCP-Gateway-IP-Address}', \
 --		'${pool_key}', \
 --		${offer_duration}, \

@@ -193,7 +193,7 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	if (a_82 && !b_82) return +1;
 	if (!a_82 && !b_82) return -1;
 
-	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
+	return fr_pair_cmp_by_parent_num(my_a, my_b);
 }
 
 /** Check received DHCP request is valid and build RADIUS_PACKET structure if it is
@@ -310,7 +310,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	 */
 
 	/* DHCP-DHCP-Maximum-Msg-Size */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_dhcp_maximum_msg_size, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_dhcp_maximum_msg_size);
 	if (vp && (vp->vp_uint32 > mms)) {
 		mms = vp->vp_uint32;
 
@@ -318,7 +318,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	}
 #endif
 
-	vp = fr_pair_find_by_da(vps, attr_dhcp_opcode, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_opcode);
 	if (vp) {
 		*p++ = vp->vp_uint32 & 0xff;
 	} else {
@@ -326,7 +326,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	}
 
 	/* DHCP-Hardware-Type */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_type, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_type);
 	if (vp) {
 		*p = vp->vp_uint8;
 
@@ -337,7 +337,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 1;
 
 	/* DHCP-Hardware-Address-len */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_address_length, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_address_length);
 	if (vp) {
 		*p = vp->vp_uint8;
 
@@ -348,7 +348,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 1;
 
 	/* DHCP-Hop-Count */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hop_count, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_hop_count);
 	if (vp) {
 		*p = vp->vp_uint8;
 
@@ -364,7 +364,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 4;
 
 	/* DHCP-Number-of-Seconds */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_number_of_seconds, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_number_of_seconds);
 	if (vp) {
 		svalue = htons(vp->vp_uint16);
 		memcpy(p, &svalue, 2);
@@ -372,7 +372,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 2;
 
 	/* DHCP-Flags */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_flags, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_flags);
 	if (vp) {
 		svalue = htons(vp->vp_uint16);
 		memcpy(p, &svalue, 2);
@@ -380,12 +380,12 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 2;
 
 	/* DHCP-Client-IP-Address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_client_ip_address, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_client_ip_address);
 	if (vp) memcpy(p, &vp->vp_ipv4addr, 4);
 	p += 4;
 
 	/* DHCP-Your-IP-address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_your_ip_address, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_your_ip_address);
 	if (vp) {
 		lvalue = vp->vp_ipv4addr;
 	} else {
@@ -395,7 +395,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 4;
 
 	/* DHCP-Server-IP-Address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_server_ip_address, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_server_ip_address);
 	if (vp) {
 		lvalue = vp->vp_ipv4addr;
 	} else {
@@ -407,7 +407,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	/*
 	 *	DHCP-Gateway-IP-Address
 	 */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_gateway_ip_address, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_gateway_ip_address);
 	if (vp) {
 		lvalue = vp->vp_ipv4addr;
 		memcpy(p, &lvalue, 4);
@@ -422,7 +422,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += 4;
 
 	/* DHCP-Client-Hardware-Address */
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_client_hardware_address, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_client_hardware_address))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) {
 			/*
 			 *	Ensure that we mark the packet as being Ethernet.
@@ -440,7 +440,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	p += DHCP_CHADDR_LEN;
 
 	/* DHCP-Server-Host-Name */
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_server_host_name, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_server_host_name))) {
 		if (vp->vp_length > DHCP_SNAME_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_SNAME_LEN);
 		} else {
@@ -460,7 +460,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	 */
 
 	/* DHCP-Boot-Filename */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_boot_filename, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_dhcp_boot_filename);
 	if (vp) {
 		if (vp->vp_length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
@@ -664,11 +664,6 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 {
 	if (type == FR_TYPE_EXTENDED) {
 		fr_strerror_printf("Attributes of type 'extended' cannot be used with DHCP");
-		return false;
-	}
-
-	if (flags->has_tag) {
-		fr_strerror_printf("Tagged attributes cannot be used with DHCP");
 		return false;
 	}
 

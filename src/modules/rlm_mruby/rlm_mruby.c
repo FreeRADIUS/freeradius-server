@@ -219,16 +219,9 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 	res = mrb_ary_new(mrb);
 	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
 		mrb_value	tmp, key, val, to_cast;
-		char		*str;
 
 		tmp = mrb_ary_new_capa(mrb, 2);
-		if (vp->da->flags.has_tag) {
-			str = talloc_typed_asprintf(request, "%s:%d", vp->da->name, vp->tag);
-			key = mrb_str_new(mrb, str, talloc_array_length(str) - 1);
-			talloc_free(str);
-		} else {
-			key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
-		}
+		key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
 
 		/*
 		 *	The only way to create floats, doubles, bools etc,
@@ -249,10 +242,11 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 
 		default:
 		{
-			char *in;
+			char	*in;
+			size_t	len;
 
-			in = fr_value_box_asprint(request, &vp->data, '\0');
-			to_cast = mrb_str_new(mrb, in, talloc_array_length(in) - 1);
+			len = fr_value_box_aprint(request, &in, &vp->data, NULL);
+			to_cast = mrb_str_new(mrb, in, len);
 			talloc_free(in);
 		}
 			break;

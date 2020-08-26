@@ -118,7 +118,7 @@ match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xecfe3d2fe44
 #    |  value     = c6d195032fdc30240f7313b231ef1d77
 #
 decode-proto 0b 05 00 6d f0 50 64 91 84 62 5d 36 f1 4c 90 75 b7 a4 8b 83 08 06 ff ff ff fe 0c 06 00 00 02 40 06 06 00 00 00 02 12 0b 48 65 6c 6c 6f 2c 20 25 75 4f 18 01 01 00 16 04 10 26 6b 0e 9a 58 32 2f 4d 01 ab 25 b3 5f 87 94 64 50 12 11 b5 04 3c 8a 28 87 58 17 31 33 a5 e0 74 34 cf 18 12 c6 d1 95 03 2f dc 30 24 0f 73 13 b2 31 ef 1d 77
-match Packet-Type = Access-Challenge, Packet-Authentication-Vector = 0xf050649184625d36f14c9075b7a48b83, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = Framed-User, Reply-Message = "Hello, %u", EAP-Message = 0x010100160410266b0e9a58322f4d01ab25b35f879464, Message-Authenticator = 0x11b5043c8a288758173133a5e07434cf, State = 0xc6d195032fdc30240f7313b231ef1d77
+match Packet-Type = Access-Challenge, Packet-Authentication-Vector = 0xf050649184625d36f14c9075b7a48b83, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = Framed-User, Reply-Message = "Hello, \%u", EAP-Message = 0x010100160410266b0e9a58322f4d01ab25b35f879464, Message-Authenticator = 0x11b5043c8a288758173133a5e07434cf, State = 0xc6d195032fdc30240f7313b231ef1d77
 
 #
 #  3.

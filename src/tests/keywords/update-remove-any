@@ -31,7 +31,7 @@ if (&Tmp-IP-Address-0 || ("%{Tmp-IP-Address-0[1]}" != '')) {
 }
 
 # But there should still be some in the control list
-if ((&control:Tmp-IP-Address-0 != 192.0.2.1) || ("%{control:Tmp-IP-Address-0[1]}" != 192.0.2.3)) {
+if ((&control.Tmp-IP-Address-0 != 192.0.2.1) || ("%{control.Tmp-IP-Address-0[1]}" != 192.0.2.3)) {
 	test_fail
 }
 

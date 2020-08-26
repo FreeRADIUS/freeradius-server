@@ -247,7 +247,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
-		} else {	
+		} else {
 			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
 		}
 		break;
@@ -365,7 +365,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		if (client->active &&
 		    ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
 		    RDEBUG_ENABLED2 &&
-		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name, TAG_ANY)) != NULL) &&
+		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name)) != NULL) &&
 		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
 			RWDEBUG("Unprintable characters in the %s. "
 				"Double-check the shared secret on the server "
@@ -680,7 +680,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_tacacs = {
-	.magic			= RLM_MODULE_INIT,	
+	.magic			= RLM_MODULE_INIT,
 	.name			= "tacacs",
 	.config			= proto_tacacs_config,
 	.inst_size		= sizeof(proto_tacacs_t),

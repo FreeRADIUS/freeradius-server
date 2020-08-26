@@ -13,8 +13,8 @@ update {
 update request {
         &Tmp-Octets-1           := "%{md4:This is a string\n}"
         &Tmp-Octets-2           := "%{md4:%{Tmp-String-0}}"
-        &Tmp-Octets-3           := "%{md4:%{request:Tmp-String-0}}"
-        &Tmp-Octets-4           := "%{md4:%{request:Tmp-Octets-0}}"
+        &Tmp-Octets-3           := "%{md4:%{request.Tmp-String-0}}"
+        &Tmp-Octets-4           := "%{md4:%{request.Tmp-Octets-0}}"
         &Tmp-Octets-5           := "%{md4:%{Tmp-String-9}}"
 }
 

@@ -158,11 +158,26 @@ static bool get_expression(REQUEST *request, char const **string, int64_t *answe
 
 static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 {
-	int64_t x;
-	bool invert = false;
-	bool negative = false;
-	char const *p = *string;
-	tmpl_t *vpt = NULL;
+	fr_sbuff_term_t const 		bareword_terminals =
+					FR_SBUFF_TERMS(
+						L("\t"),
+						L("\n"),
+						L(" "),
+						L("%"),
+						L("&"),
+						L(")"),
+						L("+"),
+						L("-"),
+						L("/"),
+						L("^"),
+						L("|")
+					);
+	fr_sbuff_parse_rules_t const	p_rules = { .terminals = &bareword_terminals };
+	int64_t				x;
+	bool				invert = false;
+	bool				negative = false;
+	char const			*p = *string;
+	tmpl_t				*vpt = NULL;
 
 	/*
 	 *	Look for a number.
@@ -205,7 +220,10 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		VALUE_PAIR	*vp;
 		fr_cursor_t	cursor;
 
-		slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(tmpl_rules_t){ .dict_def = request->dict });
+		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
+					      &FR_SBUFF_IN(p, strlen(p)),
+					      &p_rules,
+					      &(tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Failed parsing attribute name '%s'", p);
 			return false;

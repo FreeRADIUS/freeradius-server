@@ -229,13 +229,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (!inst->program) return 0;
 
-	/*
-	 *	Parse the program to execute into a template.
-	 */
-	MEM(inst->tmpl = tmpl_alloc(inst, TMPL_TYPE_EXEC, inst->program, strlen(inst->program), T_BACK_QUOTED_STRING));
-
-	slen = xlat_tokenize_argv(inst->tmpl, &tmpl_xlat(inst->tmpl), inst->program, strlen(inst->program),
-				  &(tmpl_rules_t) { .dict_def = fr_dict_internal() });
+	slen = tmpl_afrom_substr(inst, &inst->tmpl, &FR_SBUFF_IN(inst->program, strlen(inst->program)),
+				 T_BACK_QUOTED_STRING, NULL, &(tmpl_rules_t) { .dict_def = fr_dict_internal() });
 	if (slen <= 0) {
 		char *spaces, *text;
 

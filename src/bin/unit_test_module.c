@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/tls/base.h>
 
@@ -380,20 +381,23 @@ static bool do_xlats(char const *filename, FILE *fp)
 		 *	Look for "xlat"
 		 */
 		if (strncmp(input, "xlat ", 5) == 0) {
-			ssize_t slen;
-			char *fmt = talloc_typed_strdup(NULL, input + 5);
-			xlat_exp_t *head;
+			ssize_t			slen;
+			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
+			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 5);
+			xlat_exp_t		*head = NULL;
+			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-			slen = xlat_tokenize_ephemeral(fmt, &head, request, fmt, NULL);
+			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, NULL, request,
+						       &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1), &p_rules, NULL);
 			if (slen <= 0) {
-				talloc_free(fmt);
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen,
 					 fr_strerror());
 				continue;
 			}
 
 			if (input[slen + 5] != '\0') {
-				talloc_free(fmt);
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::",
 					 (int) slen, input + slen + 5);
 				continue;
@@ -401,11 +405,12 @@ static bool do_xlats(char const *filename, FILE *fp)
 
 			len = xlat_eval_compiled(output, sizeof(output), request, head, NULL, NULL);
 			if (len < 0) {
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR expanding xlat: %s", fr_strerror());
 				continue;
 			}
 
-			TALLOC_FREE(fmt); /* also frees 'head' */
+			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
 			continue;
 		}
 
@@ -796,6 +801,11 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	/*
+	 *	Initialise the interpreter, registering operations.
+	 */
+	if (unlang_init() < 0) return -1;
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init(config) < 0) {
 		EXIT_WITH_FAILURE;
@@ -820,11 +830,6 @@ int main(int argc, char *argv[])
 		client = client_alloc(NULL, "127.0.0.1", "test");
 		client_add(NULL, client);
 	}
-
-	/*
-	 *	Initialise the interpreter, registering operations.
-	 */
-	if (unlang_init() < 0) return -1;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 

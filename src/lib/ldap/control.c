@@ -196,7 +196,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		case FR_NAS_IP_ADDRESS:
 		case FR_NAS_IPV6_ADDRESS:
-			fr_pair_value_snprint(ipaddress, sizeof(ipaddress), vp, '\0');
+			fr_pair_print_value_quoted(&FR_SBUFF_OUT(ipaddress, sizeof(ipaddress)), vp, T_BARE_WORD);
 			break;
 
 		case FR_USER_NAME:

@@ -14,35 +14,35 @@ update request {
 	&Tmp-String-7 := 'Œ=C4=8Cÿ'
 }
 
-if (<string>"%{escape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
+if (<string>"%{escape:%{Tmp-String-0}}" != &Tmp-String-0) {
 	test_fail
 }
 
-if (<string>"%{escape:%{request:Tmp-String-1}}" != &Tmp-String-3) {
+if (<string>"%{escape:%{Tmp-String-1}}" != &Tmp-String-3) {
 	test_fail
 }
 
-if (<string>"%{escape:%{request:Tmp-String-2}}" != &Tmp-String-4) {
+if (<string>"%{escape:%{Tmp-String-2}}" != &Tmp-String-4) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
+if (<string>"%{unescape:%{Tmp-String-0}}" != &Tmp-String-0) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{request:Tmp-String-3}}" != "%{Tmp-String-1}") {
+if (<string>"%{unescape:%{Tmp-String-3}}" != "%{Tmp-String-1}") {
 	test_fail
 }
 
-if (<string>"%{unescape:%{request:Tmp-String-4}}" != &Tmp-String-2) {
+if (<string>"%{unescape:%{Tmp-String-4}}" != &Tmp-String-2) {
 	test_fail
 }
 
-if (<string>"%{escape:%{request:Tmp-String-6}}" != &Tmp-String-7) {
+if (<string>"%{escape:%{Tmp-String-6}}" != &Tmp-String-7) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{request:Tmp-String-7}}" != &Tmp-String-6) {
+if (<string>"%{unescape:%{Tmp-String-7}}" != &Tmp-String-6) {
 	test_fail
 }
 

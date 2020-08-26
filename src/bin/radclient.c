@@ -466,7 +466,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			/*
 			 *	This allows efficient list comparisons later
 			 */
-			fr_pair_list_sort(&request->filter, fr_pair_cmp_by_da_tag);
+			fr_pair_list_sort(&request->filter, fr_pair_cmp_by_da);
 		}
 
 		/*
@@ -834,11 +834,11 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			VALUE_PAIR *vp;
 
-			if ((vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_da(request->packet->vps, attr_user_password)) != NULL) {
 				fr_pair_value_strdup(vp, request->password->vp_strvalue);
 
 			} else if ((vp = fr_pair_find_by_da(request->packet->vps,
-							    attr_chap_password, TAG_ANY)) != NULL) {
+							    attr_chap_password)) != NULL) {
 				uint8_t buffer[17];
 
 				fr_radius_encode_chap_password(buffer, request->packet,
@@ -847,7 +847,7 @@ static int send_one_packet(rc_request_t *request)
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-			} else if (fr_pair_find_by_da(request->packet->vps, attr_ms_chap_password, TAG_ANY) != NULL) {
+			} else if (fr_pair_find_by_da(request->packet->vps, attr_ms_chap_password) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
 
 			} else {
@@ -1075,7 +1075,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	} else {
 		VALUE_PAIR const *failed[2];
 
-		fr_pair_list_sort(&request->reply->vps, fr_pair_cmp_by_da_tag);
+		fr_pair_list_sort(&request->reply->vps, fr_pair_cmp_by_da);
 		if (fr_pair_validate(failed, request->filter, request->reply->vps)) {
 			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;

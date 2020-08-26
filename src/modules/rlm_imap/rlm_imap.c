@@ -126,8 +126,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 		return RLM_MODULE_FAIL;
 	}
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
 
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");

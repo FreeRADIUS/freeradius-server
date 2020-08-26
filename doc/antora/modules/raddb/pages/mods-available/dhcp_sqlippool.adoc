@@ -51,10 +51,10 @@ sqlippool dhcp_sqlippool {
 	attribute_name = DHCP-Your-IP-Address
 	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
 #	$INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
-	sqlippool_log_exists = "DHCP: Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-	sqlippool_log_success = "DHCP: Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_exists = "DHCP: Existing IP: %{reply.${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_success = "DHCP: Allocated IP: %{reply.${..attribute_name}} from %{control.Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	sqlippool_log_clear = "DHCP: Released IP %{${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
-	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control.Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	sqlippool_log_nopool = "DHCP: No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 }
 ```

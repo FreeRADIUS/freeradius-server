@@ -788,7 +788,7 @@ allocate_begin = ""
 
 alloc_find = "\
       CALL fr_allocate_previous_or_new_framedipaddress( \
-              '%{control:${pool_name}}', \
+              '%{control.${pool_name}}', \
               '%{User-Name}', \
               '%{Calling-Station-Id}', \
               '%{NAS-IP-Address}', \
@@ -860,7 +860,7 @@ any RADIUS attribute that is available during authentication can be used.
 alloc_begin = ""
 alloc_find = "\
         CALL fr_allocate_previous_or_new_framedipaddress( \
-                '%{control:${pool_name}}', \
+                '%{control.${pool_name}}', \
                 '%{User-Name}', \
                 '%{Calling-Station-Id}', \
                 '%{NAS-IP-Address}', \

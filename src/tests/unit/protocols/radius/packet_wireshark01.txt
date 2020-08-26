@@ -646,7 +646,7 @@ match Packet-Type = Access-Reject, Packet-Authentication-Vector = 0x42d5fe68699d
 #    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
 #
 decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
-match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142\%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
 
 #
 #  16.
@@ -679,7 +679,7 @@ match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0
 #    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
 #
 decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
-match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142\%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
 
 #
 #  17.
@@ -712,7 +712,7 @@ match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0
 #    |  value     = c8f4e9e54928fbaec3bb91f76a43684c
 #
 decode-proto 01 b8 00 4b 00 ef a0 45 6c 07 55 d2 c0 50 93 38 be ff 48 40 01 07 73 74 65 76 65 02 12 46 b9 07 61 ed 64 b6 28 35 c1 66 d0 70 fb 53 eb 04 06 c0 a8 00 1c 05 06 00 00 00 7b 50 12 c8 f4 e9 e5 49 28 fb ae c3 bb 91 f7 6a 43 68 4c
-match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00efa0456c0755d2c0509338beff4840, User-Name = "steve", User-Password = "\320W\016\253\231\231\3142\%\207a\364p\357\321`", NAS-IP-Address = 192.168.0.28, NAS-Port = 123, Message-Authenticator = 0xc8f4e9e54928fbaec3bb91f76a43684c
 
 #
 #  18.

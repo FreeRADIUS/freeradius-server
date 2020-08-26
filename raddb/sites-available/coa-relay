@@ -257,7 +257,7 @@ server coa {
 		#
 		if (&control:Tmp-Integer-0) {
 			update reply {
-				&Reply-Message += "Sent updates for %{control:Tmp-Integer-0} active sessions"
+				&Reply-Message += "Sent updates for %{control.Tmp-Integer-0} active sessions"
 			}
 			ok
 		} else {

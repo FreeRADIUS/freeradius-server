@@ -842,7 +842,7 @@ as the separator. Use the %{pairs:} xlat to get a list of attributes and
 values.
 
 e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
-the expansion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
+the expansion of "%{reply.Reply-Message[*]} will yield "Hello\\nbob"
 .RE
 .PP
 Other built in expansions

@@ -448,7 +448,7 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_linelog_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
 	linelog_conn_t			*conn;
 	fr_time_delta_t			timeout = 0;
 	char				buff[4096];
@@ -510,7 +510,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		tmpl_str = cf_pair_value(cp);
 		if (!tmpl_str || (tmpl_str[0] == '\0')) {
 			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
-			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNRESOLVED, "", 0, T_DOUBLE_QUOTED_STRING);
+			vpt_p = tmpl_init_shallow(&empty, TMPL_TYPE_UNRESOLVED, T_DOUBLE_QUOTED_STRING, "", 0);
 			goto build_vector;
 		}
 
@@ -518,9 +518,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		 *	Alloc a template from the value of the CONF_PAIR
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
-		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      cf_pair_value_quote(cp),
-				      &(tmpl_rules_t){ .allow_unknown = true, .allow_unresolved = true }, true);
+		slen = tmpl_afrom_substr(request, &vpt,
+					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
+					 cf_pair_value_quote(cp),
+					 NULL,
+					 &(tmpl_rules_t){
+					 	.allow_unknown = true,
+					 	.allow_unresolved = true
+					 });
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			return RLM_MODULE_FAIL;
@@ -571,14 +576,13 @@ build_vector:
 			switch (vp->vp_type) {
 			case FR_TYPE_OCTETS:
 			case FR_TYPE_STRING:
-				vector[i].iov_base = vp->vp_ptr;
 				vector[i].iov_len = vp->vp_length;
+				vector[i].iov_base = vp->vp_ptr;
 				break;
 
 			default:
-				p = fr_pair_value_asprint(vector, vp, '\0');
+				vector[i].iov_len = fr_value_box_aprint(vector, &p, &vp->data, NULL);
 				vector[i].iov_base = p;
-				vector[i].iov_len = talloc_array_length(p) - 1;
 				break;
 			}
 

@@ -105,7 +105,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	VALUE_PAIR		*vp;
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
@@ -114,7 +114,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	This case means the warnings below won't be printed
 	 *	unless there's a CHAP-Password in the request.
 	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password)) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.
@@ -122,7 +122,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	This is so that the rest of the code does not need to
 	 *	understand CHAP.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge);
 	if (!vp) {
 		RDEBUG2("Creating &%s from request authenticator", attr_chap_challenge->name);
 
@@ -159,13 +159,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	if (!username) {
 		REDEBUG("&User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY);
+	chap = fr_pair_find_by_da(request->packet->vps, attr_chap_password);
 	if (!chap) {
 		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
@@ -212,7 +212,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		size_t		length;
 		VALUE_PAIR	*vp;
 
-		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge);
 		if (vp) {
 			RDEBUG2("Using challenge from &request:CHAP-Challenge");
 			p = vp->vp_octets;

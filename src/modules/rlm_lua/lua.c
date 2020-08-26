@@ -95,16 +95,16 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_ABINARY:
 	{
 		char	buff[128];
-		size_t	len;
+		size_t	slen;
 
-		len = fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
-		if (is_truncated(len, sizeof(buff))) {
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, sizeof(buff)), vp, T_BARE_WORD);
+		if (slen < 0) {
 			REDEBUG("Cannot convert %s to Lua type, insufficient buffer space",
 				fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 			return -1;
 		}
 
-		lua_pushlstring(L, buff, len);
+		lua_pushlstring(L, buff, (size_t)slen);
 	}
 		break;
 
@@ -717,7 +717,7 @@ static void _lua_fr_request_register(lua_State *L, REQUEST *request)
 		fr_cursor_t 	cursor;
 
 		/* Attribute list table */
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
+		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da);
 		fr_cursor_init(&cursor, &request->packet->vps);
 
 		/*

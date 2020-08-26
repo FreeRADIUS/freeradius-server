@@ -226,8 +226,10 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 		}
 
 		/* Decode next attr template */
-		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, -1,
-			&(tmpl_rules_t){ .dict_def = request->dict });
+		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
+					      &FR_SBUFF_IN(p, strlen(p)),
+					      NULL,
+					      &(tmpl_rules_t){ .dict_def = request->dict });
 
 		if (slen <= 0) {
 			REMARKER(start, (p-start) + (-slen), "Invalid input");

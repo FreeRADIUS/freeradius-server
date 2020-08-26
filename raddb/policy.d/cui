@@ -83,7 +83,7 @@ cui-inner.post-auth {
 	if (&outer.request:Chargeable-User-Identity && \
 	    (&outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
 		update reply {
-			&Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{outer.request:Operator-Name}:-}}}"
+			&Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{outer.request.Operator-Name}:-}}}"
 		}
 	}
 }

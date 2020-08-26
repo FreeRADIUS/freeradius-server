@@ -4,12 +4,6 @@
 condition "bob" == 0x626f62
 match true
 
-condition 0x == '0x'
-match ERROR offset 0 Empty octet string is invalid
-
-condition 'foo' == 0x
-match ERROR offset 9 Empty octet string is invalid
-
 # \n gets escaped in double quoted strings
 condition "\n" == 0x0a
 match true
@@ -67,11 +61,11 @@ match true
 condition  0x626f62 == bob
 match true
 
-condition  \n == 0x0a
-match ERROR offset 0 Unexpected escape
+condition  \n == 0x5c6e
+match true
 
-condition  a\n == 0x610a
-match ERROR offset 1 Unexpected escape
+condition  a\n == 0x615c6e
+match true
 
 count
-match 44
+match 40

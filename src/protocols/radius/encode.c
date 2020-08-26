@@ -32,6 +32,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
+#define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
+#define TAG_VALID_ZERO(x)      	((x) >= 0 && (x) < 0x20)
+
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx);
@@ -72,7 +75,7 @@ void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge, TAG_ANY);
+	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge);
 	if (challenge) {
 		fr_md5_update(md5_ctx, challenge->vp_octets, challenge->vp_length);
 	} else {
@@ -457,9 +460,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
 	 */
-	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag && (TAG_VALID(vp->tag) || TAG_VALID_ZERO(vp->vp_strvalue[0]))) {
+	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag) {
 		CHECK_FREESPACE(out_end - out_p, 1);
-		*out_p++ = vp->tag;
+//		*out_p++ = vp->tag;
 		value_start = out_p;
 	}
 
@@ -628,7 +631,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *
 		 *	Not sure why we do this, but the old code did...
 		 */
-		if (vp->da->flags.has_tag && !TAG_VALID(vp->tag)) out_p++;
+		if (vp->da->flags.has_tag) out_p++;
 
 		slen = encode_tunnel_password(out_p, out_end - out_p,
 					      value_start, value_end - value_start, packet_ctx);
@@ -647,7 +650,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *	Do this after so we don't mess up the input
 		 *	value.
 		 */
-		if (vp->da->flags.has_tag && !TAG_VALID(vp->tag)) *value_start = 0x00;
+		if (vp->da->flags.has_tag) *value_start = 0x00;
 
 		out_p += slen;
 	}
@@ -690,7 +693,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			fr_strerror_printf("Integer overflow for tagged uint32 attribute");
 			return PAIR_ENCODE_SKIPPED;
 		}
-		value_start[0] = vp->tag;
+//		value_start[0] = vp->tag;
 	}
 
 	FR_PROTO_HEX_DUMP(out, out_p - out, "value %s",
@@ -1499,7 +1502,7 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 	VALUE_PAIR *vp;
 	ssize_t slen;
 
-	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {

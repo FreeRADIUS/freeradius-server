@@ -62,7 +62,7 @@ typedef struct {
 	rbtree_t	*tree;
 	fr_trie_t	*trie;
 
-	tmpl_t	*key;
+	tmpl_t		*key;
 	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 

@@ -8,7 +8,7 @@ update {
 }
 
 update {
-	&request:Tmp-String-1 := "%{concat:, %{request:[*]}}"
+	&request:Tmp-String-1 := "%{concat:, %{request[*]}}"
 	&request:Tmp-String-2 := "%{concat:, %{Tmp-String-0[*]}}"
 }
 

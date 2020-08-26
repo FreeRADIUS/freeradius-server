@@ -406,7 +406,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, cha
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
-	vp = fr_pair_find_by_da(request->control, attr_virtual_server, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_virtual_server);
 	request->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
 	if (request->server_cs) {

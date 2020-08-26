@@ -1243,7 +1243,7 @@ send Access-Accept {
 	#
 #	update reply {
 #		&WiMAX-FA-RK-Key = 0x00
-#		&WiMAX-MSK = "%{reply:EAP-MSK}"
+#		&WiMAX-MSK = "%{reply.EAP-MSK}"
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the
@@ -1268,19 +1268,19 @@ send Access-Accept {
 	#  available).
 	#
 #	update reply {
-#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
 #
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
 	#

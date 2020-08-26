@@ -59,7 +59,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_da(request->control, attr_expiration, TAG_ANY);
+	check_item = fr_pair_find_by_da(request->control, attr_expiration);
 	if (check_item != NULL) {
 		uint32_t left;
 

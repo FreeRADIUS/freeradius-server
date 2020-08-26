@@ -224,10 +224,10 @@ char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, cha
  * @note Return value should be checked with is_truncated
  * @note Will always \0 terminate unless outlen == 0.
  *
- * @param[in] in	string to escape.
- * @param[in] inlen	length of string to escape (lets us deal with embedded NULs)
  * @param[out] out	where to write the escaped string.
  * @param[out] outlen	the length of the buffer pointed to by out.
+ * @param[in] in	string to escape.
+ * @param[in] inlen	length of string to escape (lets us deal with embedded NULs)
  * @param[in] quote	the quotation character
  * @return
  *	- The number of bytes written to the out buffer.
@@ -665,8 +665,12 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			 */
 			switch (*(p + 1)) {
 			case 'V':
+			case 'R':
 			{
 				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
+				fr_sbuff_escape_rules_t const *e_rules = NULL;
+
+				if (*(p + 1) == 'V') e_rules = &fr_value_escape_double;
 
 				/*
 				 *	Allocations that are not part of the output
@@ -674,7 +678,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	any pool associated with it.
 				 */
 				if (in) {
-					subst = fr_value_box_asprint(NULL, in, '"');
+					fr_value_box_aprint(NULL, &subst, in, e_rules);
 					if (!subst) {
 						talloc_free(out);
 						va_end(ap_p);
@@ -780,7 +784,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					goto do_splice;
 				}
 
-				subst = fr_value_box_list_asprint(NULL, in, NULL, '"');
+				subst = fr_value_box_list_aprint(NULL, in, NULL, &fr_value_escape_double);
 			}
 				goto do_splice;
 
@@ -794,7 +798,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				}
 
 				VP_VERIFY(in);
-				subst = fr_pair_asprint(NULL, in, '"');
+				fr_pair_aprint(NULL, &subst, in);
 			}
 				goto do_splice;
 

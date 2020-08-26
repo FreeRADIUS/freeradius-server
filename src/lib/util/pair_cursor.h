@@ -35,16 +35,15 @@ void		fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
 VALUE_PAIR	*fr_pair_cursor_head(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_tail(vp_cursor_t *cursor);
 void		fr_pair_cursor_end(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
+VALUE_PAIR	*fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr);
 
-VALUE_PAIR	*fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag)
+VALUE_PAIR	*fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da)
 		CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
-					     fr_dict_attr_t const *parent, unsigned int attr,
-					     int8_t tag);
+					     fr_dict_attr_t const *parent, unsigned int attr);
 
-VALUE_PAIR	*fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
+VALUE_PAIR	*fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor)
 		CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_pair_cursor_next(vp_cursor_t *cursor);

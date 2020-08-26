@@ -726,7 +726,8 @@ int		fr_value_box_list_concat(TALLOC_CTX *ctx,
 					 fr_value_box_t *out, fr_value_box_t **list,
 					 fr_type_t type, bool free_input);
 
-char		*fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote);
+char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
+					 fr_sbuff_escape_rules_t const *e_rules);
 
 int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in);
 
@@ -740,9 +741,17 @@ int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_bo
 /*
  *	Printing
  */
-char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
+ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules);
 
-size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
+ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote);
+
+static inline size_t fr_value_box_aprint(TALLOC_CTX *ctx, char **out,
+					 fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
+SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print, data, e_rules)
+
+static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
+					        fr_value_box_t const *data, fr_token_t quote)
+SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
 
 /** @name Hashing
  *

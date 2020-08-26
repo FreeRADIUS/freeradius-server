@@ -31,7 +31,7 @@ if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || 
 
 # Verify we haven't acquired any extra..
 
-if ("%{control:Reply-Message[#]}" != 3) {
+if ("%{control.Reply-Message[#]}" != 3) {
 	test_fail
 }
 

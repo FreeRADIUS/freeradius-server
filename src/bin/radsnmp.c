@@ -494,7 +494,10 @@ static int radsnmp_get_response(int fd,
 			fr_strerror_printf("No %s found in response, or occurred out of order", type->name);
 			return -1;
 		}
-		type_len = fr_pair_value_snprint(type_buff, sizeof(type_buff), type_vp, '\0');
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(type_buff, sizeof(type_buff)), type_vp, T_BARE_WORD);
+		if (slen < 0) return -1;
+
+		type_len = (size_t)slen;
 
 		/*
 		 *	Build up the vector
@@ -523,17 +526,17 @@ static int radsnmp_get_response(int fd,
 
 		default:
 			/*
-			 *	We call fr_value_box_snprint with a NULL da pointer
+			 *	We call fr_value_box_print with a NULL da pointer
 			 *	because we always need return integer values not
 			 *	value aliases.
 			 */
-			len = fr_value_box_snprint(value_buff, sizeof(value_buff), &vp->data, '\0');
-			if (is_truncated(len, sizeof(value_buff))) {
+			slen = fr_value_box_print(&FR_SBUFF_OUT(value_buff, sizeof(value_buff)), &vp->data, NULL);
+			if (slen < 0) {
 				fr_strerror_printf("Insufficient fixed value buffer");
 				return -1;
 			}
 			io_vector[4].iov_base = value_buff;
-			io_vector[4].iov_len = len;
+			io_vector[4].iov_len = (size_t)slen;
 			break;
 		}
 		io_vector[5].iov_base = newline;
@@ -581,11 +584,11 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR 
 {
 	VALUE_PAIR	*vp;
 	char		buffer[64];
-	size_t		len;
+	ssize_t		slen;
 	struct iovec	io_vector[2];
 	char		newline[] = "\n";
 
-	vp = fr_pair_find_by_da(head, error, TAG_NONE);
+	vp = fr_pair_find_by_da(head, error);
 	if (!vp) {
 		if (write(fd, "DONE\n", 5) < 0) {
 			fr_strerror_printf("Failed writing set response: %s", fr_syserror(errno));
@@ -594,14 +597,14 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR 
 		return 0;
 	}
 
-	len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-	if (is_truncated(len, sizeof(buffer))) {
+	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
+	if (slen < 0) {
 		assert(0);
 		return -1;
 	}
 
 	io_vector[0].iov_base = buffer;
-	io_vector[0].iov_len = len;
+	io_vector[0].iov_len = (size_t)slen;
 	io_vector[1].iov_base = newline;
 	io_vector[1].iov_len = 1;
 

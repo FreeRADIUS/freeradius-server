@@ -955,7 +955,7 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 	 *	It might be too big for putting into an
 	 *	EAP packet.
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SUBTYPE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SUBTYPE);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
 		return PAIR_ENCODE_FATAL_ERROR;
@@ -965,13 +965,13 @@ ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_
 	/*
 	 *	Group attributes with similar lineages together
 	 */
-	fr_pair_list_sort(&to_encode, fr_pair_cmp_by_parent_num_tag);
+	fr_pair_list_sort(&to_encode, fr_pair_cmp_by_parent_num);
 	if (fr_cursor_init(&cursor, &to_encode) == vp) fr_cursor_next(&cursor);	/* Skip subtype if it came out first */
 
 	/*
 	 *	Will we need to generate a HMAC?
 	 */
-	if (fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_MAC, TAG_ANY)) do_hmac = true;
+	if (fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_MAC)) do_hmac = true;
 
 	/*
 	 *	Fast path, we just need to encode a subtype

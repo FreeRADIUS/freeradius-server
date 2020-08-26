@@ -204,66 +204,15 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vps,
 			 char const *attribute, char const *value, fr_token_t op)
 {
-	fr_dict_attr_t const *da;
-	VALUE_PAIR	*vp;
-	char		*p;
-	int8_t		tag;
-	char const	*attrname = attribute;
-	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 32];
-
-	/*
-	 *    Check for tags in 'Attribute:Tag' format.
-	 */
-	tag = TAG_NONE;
-
-	p = strchr(attribute, ':');
-	if (p) {
-		char *end;
-
-		if (!p[1]) {
-			fr_strerror_printf("Invalid tag for attribute %s", attribute);
-			return NULL;
-		}
-
-		strlcpy(buffer, attribute, sizeof(buffer));
-
-		p = buffer + (p - attrname);
-		attrname = buffer;
-
-		/* Colon found with something behind it */
-		if ((p[1] == '*') && !p[2]) {
-			/* Wildcard tag for check items */
-			tag = TAG_ANY;
-		} else {
-			/* It's not a wild card tag */
-			tag = strtol(p + 1, &end, 10);
-			if (*end) {
-				fr_strerror_printf("Unexpected text after tag for attribute %s", attribute);
-				return NULL;
-			}
-
-			if (!TAG_VALID_ZERO(tag)) {
-				fr_strerror_printf("Invalid tag for attribute %s", attribute);
-				return NULL;
-			}
-		}
-
-		/*
-		 *	Leave only the attribute name in the buffer.
-		 */
-		*p = '\0';
-	}
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp;
+	char const		*attrname = attribute;
 
 	/*
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
 	if (fr_dict_attr_by_qualified_name(&da, dict, attrname, true) != FR_DICT_ATTR_OK) {
-		if (tag != TAG_NONE) {
-			fr_strerror_printf("Invalid tag for attribute %s", attribute);
-			return NULL;
-		}
-
 		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
@@ -275,14 +224,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 	if (!da) return NULL;
 #endif
 
-	/*
-	 *	Untagged attributes can't have a tag.
-	 */
-	if (!da->flags.has_tag && (tag != TAG_NONE)) {
-		fr_strerror_printf("Invalid tag for attribute %s", attribute);
-		return NULL;
-	}
-
 	if (da->type == FR_TYPE_GROUP) {
 		fr_strerror_printf("Attributes of type 'group' are not supported");
 		return NULL;
@@ -291,7 +232,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return NULL;
 	vp->op = (op == 0) ? T_OP_EQ : op;
-	vp->tag = tag;
 
 	switch (vp->op) {
 	case T_OP_CMP_TRUE:
@@ -435,14 +375,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 
 		next = p + slen;
 
-		/*
-		 *	Allow tags if the attribute supports them.
-		 */
-		if (da->flags.has_tag && (*next == ':') && isdigit((int) next[1])) {
-			next += 2;
-			while (isdigit((int) *next)) next++;
-		}
-
 		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
 			fr_dict_unknown_free(&da);
 			fr_strerror_printf("Attribute name too long");
@@ -563,8 +495,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			} else {
 				/*
 				 *	All other attributes get the name
-				 *	parsed, which also includes parsing
-				 *	the tag.
+				 *	parsed.
 				 */
 				vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
 				if (!vp) goto error;
@@ -733,8 +664,6 @@ error:
  * @note fr_pair_list_free should be called on the head of the source list to free
  *	 unmoved attributes (if they're no longer needed).
  *
- * @note Does not respect tags when matching.
- *
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  *
@@ -796,7 +725,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = fr_pair_find_by_da(*to, i->da, TAG_ANY);
+			found = fr_pair_find_by_da(*to, i->da);
 			if (!found) goto do_add;
 
 			tail_from = &(i->next);
@@ -807,7 +736,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = fr_pair_find_by_da(*to, i->da, TAG_ANY);
+			found = fr_pair_find_by_da(*to, i->da);
 			if (!found) goto do_add;
 
 			switch (found->vp_type) {
@@ -825,7 +754,6 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 			case FR_TYPE_STRING:
 				fr_pair_value_bstrdup_buffer(found, i->vp_strvalue, i->vp_tainted);
 				fr_pair_value_clear(i);
-				found->tag = i->tag;
 				break;
 			}
 

@@ -111,7 +111,7 @@ if (&request:Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
 #
 #  XLAT virtual comparisons
 #
-if (&control:Tmp-Integer-0[*] != "%{control:Tmp-Integer-0[#]}") {
+if (&control:Tmp-Integer-0[*] != "%{control.Tmp-Integer-0[#]}") {
 	test_fail
 }
 

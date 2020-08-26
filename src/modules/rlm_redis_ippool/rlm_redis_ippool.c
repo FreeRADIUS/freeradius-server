@@ -668,7 +668,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			.rhs = &ip_rhs
 		};
 
-		tmpl_init(&ip_rhs, TMPL_TYPE_DATA, "", 0, T_BARE_WORD);
+		tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0);
 		switch (reply->element[1]->type) {
 		/*
 		 *	Destination attribute may not be IPv4, in which case
@@ -731,7 +731,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				.rhs = &range_rhs
 			};
 
-			tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+			tmpl_init_shallow(&range_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 			fr_value_box_bstrndup_shallow(&range_map.rhs->data.literal,
 						      NULL, reply->element[2]->str, reply->element[2]->len, true);
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
@@ -763,7 +763,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			.rhs = &expiry_rhs
 		};
 
-		tmpl_init(&expiry_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
 			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
 				fr_table_str_by_value(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
@@ -801,7 +801,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	tmpl_t		range_rhs;
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
-	tmpl_init(&range_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+	tmpl_init_shallow(&range_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 
 	now = fr_time_to_timeval(fr_time());
 
@@ -909,7 +909,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		};
 
 
-		tmpl_init(&expiry_rhs, TMPL_TYPE_DATA, "", 0, T_DOUBLE_QUOTED_STRING);
+		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 
 		fr_value_box_shallow(&expiry_map.rhs->data.literal, expires, false);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
@@ -1254,13 +1254,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	Pool-Action override
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action);
 	if (vp) return mod_action(inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request:Acct-Status-Type or &control:Pool-Action, doing nothing...");
 		return RLM_MODULE_NOOP;
@@ -1292,7 +1292,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1306,7 +1306,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action);
 	if (vp) {
 		if ((vp->vp_uint32 > 0) && (vp->vp_uint32 <= POOL_ACTION_BULK_RELEASE)) {
 			action = vp->vp_uint32;
@@ -1317,7 +1317,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		}
 
 	} else if (request->dict == dict_dhcpv4) {
-		vp = fr_pair_find_by_da(request->control, attr_message_type, TAG_ANY);
+		vp = fr_pair_find_by_da(request->control, attr_message_type);
 		if (!vp) goto run;
 
 		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
@@ -1337,7 +1337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, REQUES
 	 *	when called by DHCP request
 	 */
 
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
 }
 

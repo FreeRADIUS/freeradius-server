@@ -239,7 +239,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 		return RLM_MODULE_NOOP;
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_type, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_type);
 	if (!vp) {
 		stats_type = FR_FREERADIUS_STATS4_TYPE_VALUE_GLOBAL;
 	} else {
@@ -273,8 +273,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 		break;
 
 	case FR_FREERADIUS_STATS4_TYPE_VALUE_CLIENT:			/* src */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address);
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
@@ -282,8 +282,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 		break;
 
 	case FR_FREERADIUS_STATS4_TYPE_VALUE_LISTENER:			/* dst */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address);
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;

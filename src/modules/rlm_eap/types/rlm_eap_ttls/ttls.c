@@ -649,14 +649,14 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 	/*
 	 *	No User-Name, try to create one from stored data.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
 	if (!username) {
 		/*
 		 *	No User-Name in the stored data, look for
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_eap_message);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&

@@ -89,14 +89,13 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(head, da, TAG_ANY);
+	vp = fr_pair_find_by_da(head, da);
 	if (!vp) {
 		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
 		return -1;
 	}
-	*out = fr_pair_value_asprint(request, vp, '\0');
 
-	return talloc_array_length(*out) - 1;
+	return fr_value_box_aprint(request, out, &vp->data, NULL);
 }
 
 static int _mutex_free(pthread_mutex_t *mutex)
@@ -407,7 +406,8 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 		fake->log.lvl = fr_debug_lvl;
 	}
 
-	slen = xlat_tokenize_argv(ctx, &ctx->xlat, ctx->name, talloc_array_length(ctx->name) - 1, NULL);
+	slen = xlat_tokenize_argv(ctx, &ctx->xlat, NULL,
+				  &FR_SBUFF_IN(ctx->name, talloc_array_length(ctx->name) - 1), NULL, NULL);
 	if (slen <= 0) {
 		char *spaces, *text;
 
