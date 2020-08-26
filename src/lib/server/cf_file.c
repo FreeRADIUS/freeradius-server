@@ -789,30 +789,34 @@ static char const *cf_local_file(char const *base, char const *filename,
 
 static bool invalid_location(CONF_SECTION *parent, char const *name, char const *filename, int lineno)
 {
+	bool modules;
+
 	/*
 	 *	if / elsif MUST be inside of a
 	 *	processing section, which MUST in turn
 	 *	be inside of a "server" directive.
 	 */
-	if (!parent || !parent->item.parent) {
-	invalid_location:
-		ERROR("%s[%d]: Invalid location for '%s'",
-		      filename, lineno, name);
-		return true;
-	}
+	if (!parent || !parent->item.parent) goto invalid_location;
+
+	modules = (strcmp(name, "map") == 0);
 
 	/*
-	 *	Can only have "if" in 3 named sections.
+	 *	Can only have if / elseif / map in a few named sections.
 	 */
-	parent = cf_item_to_section(parent->item.parent);
-	while ((strcmp(parent->name1, "server") != 0) &&
-	       (strcmp(parent->name1, "policy") != 0) &&
-	       (strcmp(parent->name1, "instantiate") != 0)) {
-		parent = cf_item_to_section(parent->item.parent);
-		if (!parent) goto invalid_location;
+	for (parent = cf_item_to_section(parent->item.parent);
+	     parent != NULL;
+	     parent = cf_item_to_section(parent->item.parent)) {
+		if (strcmp(parent->name1, "instantiate") == 0) return false;
+		if (strcmp(parent->name1, "policy") == 0) return false;
+		if (strcmp(parent->name1, "server") == 0) return false;
+
+		if (!modules) continue;
+		if (strcmp(parent->name1, "modules") == 0) return false;
 	}
 
-	return false;
+invalid_location:
+	ERROR("%s[%d]: Invalid location for '%s'", filename, lineno, name);
+	return true;
 }
 
 
