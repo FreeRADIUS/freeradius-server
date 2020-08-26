@@ -183,7 +183,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Not necessarily the same as the config item
 	 */
 	DEBUG("Using service principal \"%s\"", princ_name);
-	krb5_free_unresolved_name(inst->context, princ_name);
+	krb5_free_unparsed_name(inst->context, princ_name);
 
 	/*
 	 *	Setup options for getting credentials and verifying them
@@ -272,7 +272,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
 #ifdef HEIMDAL_KRB5
 	free(princ_name);
 #else
-	krb5_free_unresolved_name(context, princ_name);
+	krb5_free_unparsed_name(context, princ_name);
 #endif
 	return RLM_MODULE_OK;
 }
