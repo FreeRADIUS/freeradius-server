@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument('-v', '--verbose', action='store_true', help="print responses")
     parser.add_argument('-6', '--v6', action='store_true', help="use IPv6 addresses")
     parser.add_argument('-s', '--session-id', type=int, required=False, help="set session_id")
+    parser.add_argument('-e', '--return-0-if-failed', action='store_true', help="If failed, don't change the exit code.")
 
     if not tacacs_key:
         parser.add_argument('-k', '--key', required=False, help="tacacs+ shared encryption key")
@@ -160,12 +161,19 @@ def main():
     args = parse_args()
     try:
         cli = get_cli(args)
+        ret = 0
+
         if args.action == 'authenticate':
-            sys.exit(authenticate(cli, args))
+            ret = authenticate(cli, args)
         elif args.action == 'authorize':
-            sys.exit(authorize(cli, args))
+            ret = authorize(cli, args)
         elif args.action == 'account':
-            sys.exit(account(cli, args))
+            ret = account(cli, args)
+
+        if args.return_0_if_failed:
+            ret = 0
+
+        sys.exit(ret)
     except Exception as e:
         log.exception("error: %s", e)
         sys.exit(1)
