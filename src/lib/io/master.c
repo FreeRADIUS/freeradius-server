@@ -1108,6 +1108,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	int value, accept_fd = -1;
 
 	fr_assert(is_dup != NULL);
+	*is_dup = false;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
@@ -1540,7 +1541,7 @@ have_client:
 			/*
 			 *	If there's a cached reply, just send that and don't do anything else.
 			 */
-			if (track->reply_len) {
+			if (*is_dup && (track->reply_len > 1)) {
 				fr_network_t *nr;
 
 				if (!track->reply) {
