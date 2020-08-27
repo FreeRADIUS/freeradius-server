@@ -184,8 +184,8 @@ static int track_free(fr_io_track_t *track)
  */
 static int8_t pending_packet_cmp(void const *one, void const *two)
 {
-	fr_io_pending_packet_t const *a = one;
-	fr_io_pending_packet_t const *b = two;
+	fr_io_pending_packet_t const *a = talloc_get_type_abort_const(one, fr_io_pending_packet_t);
+	fr_io_pending_packet_t const *b = talloc_get_type_abort_const(two, fr_io_pending_packet_t);
 	int rcode;
 
 	/*
@@ -218,8 +218,8 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 	fr_io_pending_packet_t const *a;
 	fr_io_pending_packet_t const *b;
 
-	fr_io_client_t const *c1 = one;
-	fr_io_client_t const *c2 = two;
+	fr_io_client_t const *c1 = talloc_get_type_abort_const(one, fr_io_client_t);
+	fr_io_client_t const *c2 = talloc_get_type_abort_const(two, fr_io_client_t);
 
 	a = fr_heap_peek(c1->pending);
 	b = fr_heap_peek(c2->pending);
@@ -234,8 +234,8 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 static int8_t address_cmp(void const *one, void const *two)
 {
 	int rcode;
-	fr_io_address_t const *a = one;
-	fr_io_address_t const *b = two;
+	fr_io_address_t const *a = talloc_get_type_abort(one, fr_io_address_t);
+	fr_io_address_t const *b = talloc_get_type_abort(two, fr_io_address_t);;
 
 	rcode = (a->src_port - b->src_port);
 	if (rcode != 0) return rcode;
@@ -1062,8 +1062,8 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
  */
 static int8_t alive_client_cmp(void const *one, void const *two)
 {
-	fr_io_client_t const *a = one;
-	fr_io_client_t const *b = two;
+	fr_io_client_t const *a = talloc_get_type_abort_const(one, fr_io_client_t);
+	fr_io_client_t const *b = talloc_get_type_abort_const(two, fr_io_client_t);
 
 	return fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
 }
