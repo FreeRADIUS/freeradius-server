@@ -12,4 +12,4 @@ SRC_CFLAGS	:= @mod_cflags@
 # the including module also needs to link against libcurl
 TGT_LDLIBS	+= @mod_ldflags@
 
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.a
+TGT_PREREQS	+= $(LIBFREERADIUS_SERVER) libfreeradius-util.a
