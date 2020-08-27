@@ -1529,11 +1529,16 @@ have_client:
 			/*
 			 *	If there's a cached reply, just send that and don't do anything else.
 			 */
-			if (*is_dup && (track->reply_len > 1)) {
+			if (*is_dup) {
 				fr_network_t *nr;
 
 				if (!track->reply) {
-					DEBUG("Ignoring retransmit from client %s", client->radclient->shortname);
+					DEBUG("Ignoring retransmit from client %s - we are still processing the request", client->radclient->shortname);
+					return 0;
+				}
+
+				if (track->reply_len == 1) {
+					DEBUG("Ignoring retransmit from client %s - we are not responding to this request ", client->radclient->shortname);
 					return 0;
 				}
 
