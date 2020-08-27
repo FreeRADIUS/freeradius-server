@@ -222,8 +222,8 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 static int8_t address_cmp(void const *one, void const *two)
 {
 	int rcode;
-	fr_io_address_t const *a = talloc_get_type_abort(one, fr_io_address_t);
-	fr_io_address_t const *b = talloc_get_type_abort(two, fr_io_address_t);;
+	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
+	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
 
 	rcode = (a->src_port - b->src_port);
 	if (rcode != 0) return rcode;
