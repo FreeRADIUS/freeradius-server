@@ -954,7 +954,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (talloc_link_ctx(ctx, pool) < 0) {
+	if (ctx && (talloc_link_ctx(ctx, pool) < 0)) {
 		PERROR("%s: Failed linking pool ctx", __FUNCTION__);
 		talloc_free(pool);
 
