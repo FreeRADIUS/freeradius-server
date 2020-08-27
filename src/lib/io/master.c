@@ -158,18 +158,6 @@ static int track_free(fr_io_track_t *track)
 		}
 		track->in_dedup_tree = false;
 	}
-#ifndef NDEBUG
-	else if (track->client->table) {
-		fr_io_track_t *old;
-
-		/*
-		 *	If it's not in the tracking table, then it
-		 *	must not be found in the tracking table.
-		 */
-		old = rbtree_finddata(track->client->table, track);
-		fr_assert(!old);
-	}
-#endif
 
 	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
