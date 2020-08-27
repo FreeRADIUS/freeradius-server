@@ -91,10 +91,17 @@ fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *
 {
 	fr_talloc_destructor_t *d;
 
-	if (!fire_ctx) return NULL;
+	if (!fire_ctx) {
+		fr_strerror_printf("No firing ctx provided when setting destructor");
+		return NULL;
+	}
 
 	d = talloc(fire_ctx, fr_talloc_destructor_t);
-	if (!d) return NULL;
+	if (!d) {
+	oom:
+		fr_strerror_printf("Out of Memory");
+		return NULL;
+	}
 
 	d->fire = fire_ctx;
 	d->func = func;
@@ -106,7 +113,7 @@ fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *
 		ds = talloc(disarm_ctx, fr_talloc_destructor_disarm_t);
 		if (!ds) {
 			talloc_free(d);
-			return NULL;
+			goto oom;
 		}
 		ds->d = d;
 		d->ds = ds;
