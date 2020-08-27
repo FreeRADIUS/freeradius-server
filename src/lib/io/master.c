@@ -148,22 +148,23 @@ static fr_event_update_t resume_read[] = {
 
 static int track_free(fr_io_track_t *track)
 {
-	if (track->in_dedup_tree) {
-		fr_assert(track->client->table != NULL);
-
-		fr_assert(rbtree_finddata(track->client->table, track) != NULL);
-
-		if (!rbtree_deletebydata(track->client->table, track)) {
-			fr_assert(0);
-		}
-		track->in_dedup_tree = false;
-	}
-
 	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
 	talloc_free_children(track);
 
 	return 0;
+}
+
+static int track_dedup_free(fr_io_track_t *track)
+{
+	fr_assert(track->client->table != NULL);
+	fr_assert(rbtree_finddata(track->client->table, track) != NULL);
+
+	if (!rbtree_deletebydata(track->client->table, track)) {
+		fr_assert(0);
+	}
+
+	return track_free(track);
 }
 
 /*
@@ -270,8 +271,6 @@ static int track_cmp(void const *one, void const *two)
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
 	int rcode;
 
-	fr_assert(a->in_dedup_tree);
-	fr_assert(b->in_dedup_tree);
 	fr_assert(a->client != NULL);
 	fr_assert(b->client != NULL);
 
@@ -306,8 +305,6 @@ static int track_connected_cmp(void const *one, void const *two)
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
 
-	fr_assert(a->in_dedup_tree);
-	fr_assert(b->in_dedup_tree);
 	fr_assert(a->client != NULL);
 	fr_assert(b->client != NULL);
 
@@ -864,7 +861,6 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	there are no duplicates, so this is fine.
 	 */
 	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
-	talloc_set_destructor(track, track_free);
 	MEM(track->address = my_address = talloc_zero(track, fr_io_address_t));
 
 	memcpy(my_address, address, sizeof(*address));
@@ -883,7 +879,10 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	tracking entry.  This tracks src/dst IP/port, client,
 	 *	receive time, etc.
 	 */
-	if (!client->inst->app_io->track_duplicates) return track;
+	if (!client->inst->app_io->track_duplicates) {
+		talloc_set_destructor(track, track_free);
+		return track;
+	}
 
 	/*
 	 *	We are checking for duplicates, see if there is a dup
@@ -895,22 +894,12 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		return NULL;
 	}
 
-#ifndef NDEBUG
-	track->in_dedup_tree = true; /* not true, but useful for testing */
-#endif
-
 	/*
 	 *	No existing duplicate.  Return the new tracking entry.
 	 */
 	old = rbtree_finddata(client->table, track);
-
-#ifndef NDEBUG
-	track->in_dedup_tree = false; /* now true  */
-#endif
-
 	if (!old) goto do_insert;
 
-	fr_assert(old->in_dedup_tree);
 	fr_assert(old->client == client);
 
 	/*
@@ -967,14 +956,14 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	} else {
 		fr_assert(client == old->client);
 		(void) rbtree_deletebydata(client->table, old);
-		old->in_dedup_tree = false;
 	}
 
 do_insert:
-	track->in_dedup_tree = true;
 	if (!rbtree_insert(client->table, track)) {
 		fr_assert(0);
 	}
+
+	talloc_set_destructor(track, track_dedup_free);
 	return track;
 }
 
@@ -2053,16 +2042,13 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Insert the timer if requested.
 	 */
-	if (el && !now && inst->cleanup_delay) {
-		fr_assert(track->in_dedup_tree);
-		if (fr_event_timer_in(track, el, &track->ev,
-				      inst->cleanup_delay,
-				      packet_expiry_timer, track) == 0) {
-			return;
-		}
-
+	if (el && !now && inst->cleanup_delay &&
+	    (fr_event_timer_in(track, el, &track->ev,
+			       inst->cleanup_delay, packet_expiry_timer, track) == 0)) {
 		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
 			inst->app_io->name);
+		talloc_free(track);
+		return;
 	}
 
 	/*
