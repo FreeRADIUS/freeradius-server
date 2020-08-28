@@ -273,16 +273,10 @@ static int track_cmp(void const *one, void const *two)
 
 	fr_assert(a->client != NULL);
 	fr_assert(b->client != NULL);
+	fr_assert(a->client == b->client); /* tables are per-client */
 
 	fr_assert(!a->client->connection);
 	fr_assert(!b->client->connection);
-
-	/*
-	 *	Check client structures, this gets much of a full
-	 *	address comparison, without the extra work.
-	 */
-	rcode = (a->client > b->client) - (a->client < b->client);
-	if (rcode != 0) return rcode;
 
 	/*
 	 *	Unconnected sockets must check src/dst ip/port.
