@@ -2036,12 +2036,13 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Insert the timer if requested.
 	 */
-	if (el && !now && inst->cleanup_delay &&
-	    (fr_event_timer_in(track, el, &track->ev,
-			       inst->cleanup_delay, packet_expiry_timer, track) == 0)) {
-		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
-			inst->app_io->name);
-		talloc_free(track);
+	if (!now && inst->cleanup_delay) {
+		if (fr_event_timer_in(track, el, &track->ev,
+				      inst->cleanup_delay, packet_expiry_timer, track) < 0) {
+			DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
+			      inst->app_io->name);
+			talloc_free(track);
+		}
 		return;
 	}
 
