@@ -289,6 +289,7 @@ struct fr_event_fd {
 struct fr_event_pid {
 	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	pid_t			pid;			//!< child to wait for
+	fr_event_pid_t const	**parent;
 
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
@@ -1384,6 +1385,8 @@ static int _event_pid_free(fr_event_pid_t *ev)
 {
 	struct kevent evset;
 
+	if (ev->parent) *ev->parent = NULL;
+
 	if (ev->pid == 0) return 0; /* already deleted from kevent */
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
@@ -1405,7 +1408,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
  *				in a temporal sense, not in a memory structure or dependency sense.
  * @param[in] pid		child PID to wait for
- * @param[in] wait_fn		function to execute if the event fires.
+ * @param[in] callback		function to execute if the event fires.
  * @param[in] uctx		user data to pass to the event.
  * @return
  *	- 0 on success.
@@ -1413,15 +1416,16 @@ static int _event_pid_free(fr_event_pid_t *ev)
  */
 int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
-		       pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
+		       pid_t pid, fr_event_pid_cb_t callback, void *uctx)
 {
 	fr_event_pid_t *ev;
 	struct kevent evset;
 
 	ev = talloc(ctx, fr_event_pid_t);
 	ev->pid = pid;
-	ev->callback = wait_fn;
+	ev->callback = callback;
 	ev->uctx = uctx;
+	ev->parent = ev_p;
 #ifndef NDEBUG
 	ev->file = file;
 	ev->line = line;
@@ -1446,7 +1450,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 */
 		child = waitpid(pid, &status, WNOHANG);
 		if (child == pid) {
-			wait_fn(el, pid, status, uctx);
+			if (callback) callback(el, pid, status, uctx);
 			return 0;
 		}
 
@@ -1460,7 +1464,12 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	}
 	talloc_set_destructor(ev, _event_pid_free);
 
-	*ev_p = ev;
+	/*
+	 *	Sometimes the caller doesn't care about getting the
+	 *	PID.  But we still want to clean it up.
+	 */
+	if (ev_p) *ev_p = ev;
+
 	return 0;
 }
 
@@ -1853,6 +1862,8 @@ void fr_event_service(fr_event_list_t *el)
 		{
 			pid_t pid;
 			fr_event_pid_t *pev;
+			fr_event_pid_cb_t callback;
+			void *uctx;
 
 			pev = talloc_get_type_abort((void *)el->events[i].udata, fr_event_pid_t);
 
@@ -1860,8 +1871,13 @@ void fr_event_service(fr_event_list_t *el)
 			fr_assert((el->events[i].fflags & NOTE_EXIT) != 0);
 
 			pid = pev->pid;
+			callback = pev->callback;
+			uctx = pev->uctx;
+
 			pev->pid = 0; /* so we won't hit kevent again when it's freed */
-			pev->callback(el, pid, (int) el->events[i].data, pev->uctx);
+			talloc_free(pev); /* delete the event before calling it */
+
+			if (callback) callback(el, pid, (int) el->events[i].data, uctx);
 		}
 			continue;
 

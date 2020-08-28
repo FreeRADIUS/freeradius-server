@@ -248,7 +248,7 @@ int		fr_event_timer_delete(fr_event_timer_t const **ev);
 int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
 				   pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
-				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2),NDEBUG_LOCATION_NONNULL(5)));
+				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2)));
 #define		fr_event_pid_wait(...) _fr_event_pid_wait(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
