@@ -30,7 +30,7 @@
 #  this file that fall within the range, prior to the remainder of the range
 #  being populated with random address in the range.
 #
-#    rlm_sql_gen_ippool -p <pool_name> -s <range_start> -e <range_end> \
+#    rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> \
 #            -d <sql_dialect> -t <table_name> [ -c <capacity> ] \
 #            [ -x <existing_ips_file> ]
 #
@@ -49,7 +49,7 @@
 #  containing a set of one or more ranges. The first argument in this case is
 #  always "yaml":
 #
-#    rlm_sql_gen_ippool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> \
+#    rlm_sqlippool_tool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> \
 #            [ -x <existing_ips_file> ]
 #
 #  The format for the YAML file is demonstrated by the following example:
@@ -105,13 +105,13 @@
 #  Examples
 #  --------
 #
-#    rlm_sql_gen_ippool -p main_pool -s 192.0.2.3 -e 192.0.2.249 \
+#    rlm_sqlippool_tool -p main_pool -s 192.0.2.3 -e 192.0.2.249 \
 #            -d postgresql -t radippool
 #
 #      Will create a pool from a full populated IPv4 range, i.e. all IPs in the
 #      range available for allocation, with SQL output suitable for PostgreSQL
 #
-#    rlm_sql_gen_ippool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 10000 \
+#    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 10000 \
 #            -d mysql -t radippool
 #
 #      Will create a pool from a sparsely populated IPv4 range for a /16
@@ -120,20 +120,20 @@
 #      The effective size of the pool can be increased in future by increasing
 #      the capacity of the range with:
 #
-#    rlm_sql_gen_ippool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 20000 \
+#    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 20000 \
 #            -d mysql -t radippool
 #
 #      This generates the same initial set of 10,000 addresses as the previous
 #      example but will create 20,000 addresses overall, unless the random seed
 #      has been amended since the initial run.
 #
-#    rlm_sql_gen_ippool -p main_pool -s 2001:db8:1:2:: \
+#    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
 #            -e 2001:db8:1:2:ffff:ffff:ffff:ffff -d mssql -t radippool
 #
 #      Will create a pool from the IPv6 range 2001:db8:1:2::/64, initially
 #      populating the range with 65536 (by default) addresses.
 #
-#    rlm_sql_gen_ippool -p main_pool -s 2001:db8:1:2:: \
+#    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
 #            -e 2001:db8:1:2:ffff:ffff:ffff:ffff \
 #            -c 10000 -x existing_ips.txt -d mysql -t radippool
 #
@@ -142,7 +142,7 @@
 #      will be populated using lines extracted from the `existing_ips.txt` file
 #      that represent IPs which fall within range.
 #
-#    rlm_sql_gen_ippool -y pool_defs.yml -d postgresql -t radippool \
+#    rlm_sqlippool_tool -y pool_defs.yml -d postgresql -t radippool \
 #            -x existing_ips.txt
 #
 #      Will create one of more pools using the definitions found in the
@@ -241,9 +241,9 @@ exit 0;
 sub usage {
 	print STDERR <<'EOF'
 Usage:
-  rlm_sql_gen_ippool -p <pool_name> -s <range_start> -e <range_end> -d <sql_dialect> -t <table_name> [ -c <capacity> ] [ -x <existing_ips_file> ]
+  rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> -d <sql_dialect> -t <table_name> [ -c <capacity> ] [ -x <existing_ips_file> ]
 or:
-  rlm_sql_gen_ippool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> [ -x <existing_ips_file> ]
+  rlm_sqlippool_tool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> [ -x <existing_ips_file> ]
 
 EOF
 }
