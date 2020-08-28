@@ -17,6 +17,6 @@ $(R)$(bindir)/radcrypt: scripts/cryptpasswd
 	@mkdir -p $(dir $@)
 	@$(INSTALL) -m 755 $< $@
 
-$(R)$(bindir)/rlm_sql_gen_ippool: scripts/sql/rlm_sqlippool_tool
+$(R)$(bindir)/rlm_sqlippool_tool: scripts/sql/rlm_sqlippool_tool
 	@mkdir -p $(dir $@)
 	@$(INSTALL) -m 755 $< $@
