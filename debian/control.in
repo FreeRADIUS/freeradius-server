@@ -74,8 +74,8 @@ Package: freeradius-utils
 Architecture: any
 Replaces: freeradius (<< 3)
 Conflicts: radiusd-livingston, yardradius
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version})
-Recommends: libdbi-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), libtemplate-perl, libnet-ip-perl
+Recommends: libdbi-perl, libyaml-libyaml-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
  the FreeRADIUS Server project, including:
@@ -88,6 +88,7 @@ Description: FreeRADIUS client utilities
   - radwho
   - radzap
   - rlm_ippool_tool
+  - rlm_sqlippool_tool
   - smbencrypt
 
 Package: libfreeradius3
