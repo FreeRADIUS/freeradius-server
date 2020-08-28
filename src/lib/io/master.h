@@ -45,8 +45,6 @@ typedef struct {
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
 
-	bool				in_dedup_tree;	//!< like it says
-
 	/*
 	 *	We can't set the "process" function here, because a
 	 *	second (conflicting) packet may arrive while we're
@@ -57,11 +55,7 @@ typedef struct {
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
 	fr_io_address_t const  		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
-
-	union {
-		uint8_t			*packet;	//!< really a tracking structure, not a packet
-		fr_dlist_t		entry;
-	};
+	uint8_t				*packet;	//!< really a tracking structure, not a packet
 } fr_io_track_t;
 
 /** The master IO instance
