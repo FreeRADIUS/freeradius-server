@@ -10,24 +10,16 @@
 #
 #  Helper script for populating IP pools with address entries.
 #
-#  This script generates output that is useful for populating an IP pool for
-#  use with FreeRADIUS (and possibly other purposes). The pool may be
-#  implemented as an SQL IP Pool (rlm_sqlippool) or any other backing store
-#  that has one entry per IP address.
-#
-#  This script output a list of address to add, retain and remove in order to
-#  align a pool to a specification. It is likely that you will want to
-#  process the output to generate the actual commands (e.g. SQL statements)
-#  that make changes to the datastore. For example:
-#
-#    generate_pool_addresses.pl ... | align_sql_pools.pl postgresql
+#  This script generates SQL output that is useful for populating an IP pool
+#  for use with FreeRADIUS (and possibly other purposes).
 #
 #
 #  Use with a single address range
 #  -------------------------------
 #
 #  For basic use, arguments can be provided to this script that denote the ends
-#  of a single IP (v4 or v6) address range together with the pool_name.
+#  of a single IP (v4 or v6) address range together with the pool_name and
+#  SQL dialect.
 #
 #  Optionally the number of IPs to sparsely populate the range with can be
 #  provided. If the range is wider than a /16 then the population of the range
@@ -95,37 +87,32 @@
 #  Output
 #  ------
 #
-#  The script returns line-based output beginning with "+", "=" or "-", and
-#  includes the pool_name and an IP address.
+#  The script returns SQL formatted appropriately for one of a number of
+#  different SQL dialects.
 #
-#    + pool_name 192.0.2.10
+#  The SQL first creates a temporary table to insert the new pools into,
+#  inserts the addresses, then removes any exisitng entries from the pool
+#  table that do not exist in the new pool.  Finally any new entries that
+#  don't exist in the existing pool table are copied from the temporary
+#  table.
 #
-#      A new address to be added to the corresponding range in the pool.
-#
-#    = pool_name 192.0.2.20
-#
-#      A pre-existing address that is to be retained in the pool. (Only if a
-#      pre-existing pool entries file is given.)
-#
-#    - pool_name 192.0.2.30
-#
-#      A pre-existing address that is to be removed from the corresponding
-#      range in the pool. (Only if a pre-existing pool entries file is given.)
-#
-#    # main_pool: 192.0.10.3 - 192.0.12.250 (500)
-#
-#      Lines beginning with "#" are comments
+#  The SQL templates assume that the pool name will be in a field called
+#  "pool_name" and the IP address in a field named "framedipaddress",
+#  matching the default schema for ippools and DHCP ippools as shipped with
+#  FreeRADIUS.
 #
 #
 #  Examples
 #  --------
 #
-#    rlm_sql_gen_ippool main_pool 192.0.2.3 192.0.2.249 postgresql
+#    rlm_sql_gen_ippool -p main_pool -s 192.0.2.3 -e 192.0.2.249 \
+#            -d postgresql -t radippool
 #
 #      Will create a pool from a full populated IPv4 range, i.e. all IPs in the
 #      range available for allocation, with SQL output suitable for PostgreSQL
 #
-#    rlm_sql_gen_ippool main_pool 10.66.0.0 10.66.255.255 mysql 10000
+#    rlm_sql_gen_ippool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 10000 \
+#            -d mysql -t radippool
 #
 #      Will create a pool from a sparsely populated IPv4 range for a /16
 #      network (maximum of 65.536 addresses), populating the range with 10,000
@@ -133,28 +120,30 @@
 #      The effective size of the pool can be increased in future by increasing
 #      the capacity of the range with:
 #
-#    rlm_sql_gen_ippool main_pool 10.66.0.0 10.66.255.255 mysql 20000
+#    rlm_sql_gen_ippool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 20000 \
+#            -d mysql -t radippool
 #
 #      This generates the same initial set of 10,000 addresses as the previous
 #      example but will create 20,000 addresses overall, unless the random seed
 #      has been amended since the initial run.
 #
-#    rlm_sql_gen_ippool main_pool 2001:db8:1:2:: \
-#            2001:db8:1:2:ffff:ffff:ffff:ffff mssql
+#    rlm_sql_gen_ippool -p main_pool -s 2001:db8:1:2:: \
+#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff -d mssql -t radippool
 #
 #      Will create a pool from the IPv6 range 2001:db8:1:2::/64, initially
 #      populating the range with 65536 (by default) addresses.
 #
-#    rlm_sql_gen_ippool main_pool 2001:db8:1:2:: \
-#            2001:db8:1:2:ffff:ffff:ffff:ffff \
-#            mssql 10000 existing_ips.txt
+#    rlm_sql_gen_ippool -p main_pool -s 2001:db8:1:2:: \
+#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff \
+#            -c 10000 -x existing_ips.txt -d mysql -t radippool
 #
 #      Will create a pool using the same range as the previous example, but
 #      this time the range will be populated with 10,000 addresses.  The range
 #      will be populated using lines extracted from the `existing_ips.txt` file
 #      that represent IPs which fall within range.
 #
-#    rlm_sql_gen_ippool yaml pool_defs.yml postgresql existing_ips.txt
+#    rlm_sql_gen_ippool -y pool_defs.yml -d postgresql -t radippool \
+#            -x existing_ips.txt
 #
 #      Will create one of more pools using the definitions found in the
 #      pool_defs.yml YAML file. The pools will contain one or more ranges with
