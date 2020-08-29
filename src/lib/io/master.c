@@ -178,24 +178,25 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	int rcode;
 
 	/*
-	 *	Larger numbers mean higher priority
+	 *	The returns -1 if b>a, and +1 if b<a
+	 *
+	 *	Higher priority elements are larger than lower
+	 *	priority elements.  So if "a" is larger than "b", we
+	 *	wish to prefer "a".
 	 */
-	rcode = (a->priority < b->priority) - (a->priority > b->priority);
+	rcode = STABLE_COMPARE(b->priority, a->priority);
 	if (rcode != 0) return rcode;
 
 	/*
 	 *	Smaller numbers mean packets were received earlier.
-	 *	We want to process packets in time order.
-	 */
-	rcode = (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
-	if (rcode != 0) return rcode;
-
-	/*
+	 *	We want to process packets in time order.  So if "a"
+	 *	is smaller than "b", we wish to prefer "a".
+	 *
 	 *	After that, it doesn't really matter what order the
 	 *	packets go in.  Since we'll never have two identical
 	 *	"recv_time" values, the code should never get here.
 	 */
-	return 0;
+	return STABLE_COMPARE(a->recv_time, b->recv_time);
 }
 
 /*
@@ -226,13 +227,13 @@ static int8_t address_cmp(void const *one, void const *two)
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
 
-	rcode = (a->src_port - b->src_port);
+	rcode = STABLE_COMPARE(a->src_port, b->src_port);
 	if (rcode != 0) return rcode;
 
-	rcode = (a->dst_port - b->dst_port);
+	rcode = STABLE_COMPARE(a->dst_port, b->dst_port);
 	if (rcode != 0) return rcode;
 
-	rcode = (a->if_index - b->if_index);
+	rcode = STABLE_COMPARE(a->if_index, b->if_index);
 	if (rcode != 0) return rcode;
 
 	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
@@ -2066,16 +2067,6 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Delete the tracking entry.
 	 */
-	fr_assert(track->client->table != NULL);
-	fr_assert(rbtree_finddata(track->client->table, track) != NULL);
-
-	if (!rbtree_deletebydata(track->client->table, track)) {
-		fr_assert(0);
-	}
-	fr_assert(rbtree_finddata(track->client->table, track) == NULL);
-	if (track->ev) (void) fr_event_timer_delete(&track->ev);
-
-	talloc_set_destructor(track, NULL);
 	talloc_free(track);
 
 	fr_assert(client->packets > 0);
