@@ -343,7 +343,9 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	lm = fr_message_localize(nr, &cd.m, sizeof(cd));
 	if (!lm) return;
 
-	(void) fr_heap_insert(nr->replies, lm);
+	if (fr_heap_insert(nr->replies, lm) < 0) {
+		fr_message_done(lm);
+	}
 }
 
 
@@ -1321,8 +1323,10 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 			continue;
 		}
 
-		fr_assert(s->outstanding > 0);
-		s->outstanding--;
+		if (cd->m.status != FR_MESSAGE_LOCALIZED) {
+			fr_assert(s->outstanding > 0);
+			s->outstanding--;
+		}
 
 		/*
 		 *	Just mark the message done, and skip it.
@@ -1414,7 +1418,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 			if (li->app_io->error) li->app_io->error(li);
 
 			/*
-			 *	Don't close the socket.  The write may
+			 *	Don't close the socket.  The write error may
 			 *	be temporary.
 			 */
 //			fr_network_socket_dead(nr, s);
