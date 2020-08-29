@@ -2072,7 +2072,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (!rbtree_deletebydata(track->client->table, track)) {
 		fr_assert(0);
 	}
-	fr_assert(rbtree_finddata(track->client->table, track) = NULL);
+	fr_assert(rbtree_finddata(track->client->table, track) == NULL);
 	if (track->ev) (void) fr_event_timer_delete(&track->ev);
 
 	talloc_set_destructor(track, NULL);
