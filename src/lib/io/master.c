@@ -850,6 +850,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	fr_io_track_t *track, *old;
 	fr_io_address_t *my_address;
 
+	*is_dup = false;
+
 	/*
 	 *	Allocate a new tracking structure.  Most of the time
 	 *	there are no duplicates, so this is fine.
@@ -919,6 +921,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	len = talloc_array_length(old->packet);
 	if ((len == talloc_array_length(track->packet)) &&
 	    (memcmp(old->packet, track->packet, len) == 0)) {
+		fr_assert(old != track);
+
 		/*
 		 *	Ignore duplicates while the client is
 		 *	still pending.
@@ -1543,7 +1547,7 @@ have_client:
 				 *	structure.
 				 */
 				DEBUG("Sending duplicate reply to client %s", client->radclient->shortname);
-				fr_network_listen_write(nr, child, track->reply, track->reply_len,
+				fr_network_listen_write(nr, li, track->reply, track->reply_len,
 							track, track->timestamp);
 				return 0;
 			}
@@ -2036,6 +2040,8 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	/*
 	 *	Insert the timer if requested.
+	 *
+	 *	On duplicates this also extends the expiry timer.
 	 */
 	if (!now && inst->cleanup_delay) {
 		if (fr_event_timer_in(track, el, &track->ev,
@@ -2136,8 +2142,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			return buffer_len;
 		}
 
-		fr_assert(track->reply == NULL);
-
 		/*
 		 *	We have a NAK packet, or the request
 		 *	has timed out, and we don't respond.
@@ -2159,11 +2163,14 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			fr_assert(buffer_len == (size_t) packet_len);
 
 			/*
-			 *	No need to stash the reply if we're
-			 *	not tracking duplicates.
+			 *	On send duplicate reply, there's
+			 *	already a reply, so we leave well
+			 *	enough alone.
+			 *
+			 *	Otherwise we cache the reply if we're
+			 *	doing dedup.
 			 */
-			if (inst->app_io->track_duplicates) {
-				fr_assert(!track->reply);
+			if (!track->reply && inst->app_io->track_duplicates) {
 				MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
 				track->reply_len = buffer_len;
 			}
