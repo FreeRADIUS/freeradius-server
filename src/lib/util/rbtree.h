@@ -54,6 +54,13 @@ typedef int (*rb_comparator_t)(void const *one, void const *two);
 typedef int (*rb_walker_t)(void *data, void *uctx);
 typedef void (*rb_free_t)(void *data);
 
+#ifndef STABLE_COMPARE
+/*
+ *	This comparison returns +1 for a>b, and -1 for a<b
+ */
+#define STABLE_COMPARE(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
+#endif
+
 /** Creates a red black that verifies elements are of a specific talloc type
  *
  * @param[in] _ctx		to tie tree lifetime to.
