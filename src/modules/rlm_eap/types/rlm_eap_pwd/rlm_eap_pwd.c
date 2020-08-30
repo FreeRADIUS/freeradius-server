@@ -275,7 +275,7 @@ static int fetch_and_process_password(pwd_session_t *session, REQUEST *request, 
 	uint8_t nthash[MD4_DIGEST_LENGTH];
 	uint8_t nthashash[MD4_DIGEST_LENGTH];
 	int ret = -1;
-	eap_type_t old_eap_type;
+	eap_type_t old_eap_type = 0;
 
 	if ((fake = request_alloc_fake(request)) == NULL) {
 		RDEBUG("pwd unable to create fake request!");
@@ -342,7 +342,7 @@ static int fetch_and_process_password(pwd_session_t *session, REQUEST *request, 
 	RDEBUG("Got tunneled reply code %d", fake->reply->code);
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
-	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
+	if (old_eap_type && (vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
 		vp->vp_integer = old_eap_type;
 	}
 
