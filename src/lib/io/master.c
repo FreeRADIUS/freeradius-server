@@ -178,13 +178,11 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	int rcode;
 
 	/*
-	 *	The returns -1 if b>a, and +1 if b<a
-	 *
 	 *	Higher priority elements are larger than lower
 	 *	priority elements.  So if "a" is larger than "b", we
 	 *	wish to prefer "a".
 	 */
-	rcode = STABLE_COMPARE(b->priority, a->priority);
+	rcode = COMPARE_PREFER_LARGER(a->priority, b->priority);
 	if (rcode != 0) return rcode;
 
 	/*
@@ -196,7 +194,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	 *	packets go in.  Since we'll never have two identical
 	 *	"recv_time" values, the code should never get here.
 	 */
-	return STABLE_COMPARE(a->recv_time, b->recv_time);
+	return COMPARE_PREFER_SMALLER(a->recv_time, b->recv_time);
 }
 
 /*
