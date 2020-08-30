@@ -56,9 +56,15 @@ typedef void (*rb_free_t)(void *data);
 
 #ifndef STABLE_COMPARE
 /*
- *	This comparison returns +1 for a>b, and -1 for a<b
+ *	The first comparison returns +1 for a>b, and -1 for a<b
+ *	The second comparison returns -1 for a>b, and +1 for a<b
+ *
+ *	Use STABLE_COMPARE when you don't really care about ordering,
+ *	you just want _an_ ordering.
  */
-#define STABLE_COMPARE(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
+#define COMPARE_PREFER_SMALLER(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
+#define COMPARE_PREFER_LARGER(_a,_b) (((_a) < (_b)) - ((_a) > (_b)))
+#define STABLE_COMPARE COMPARE_PREFER_SMALLER
 #endif
 
 /** Creates a red black that verifies elements are of a specific talloc type
