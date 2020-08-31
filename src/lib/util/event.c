@@ -286,6 +286,10 @@ struct fr_event_fd {
 #endif
 };
 
+#ifdef __linux__
+#define LOCAL_PID (1)
+#endif
+
 struct fr_event_pid {
 	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	pid_t			pid;			//!< child to wait for
@@ -293,6 +297,10 @@ struct fr_event_pid {
 
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+
+#ifdef LOCAL_PID
+	int32_t			heap_id;
+#endif
 
 #ifndef NDEBUG
 	char const		*file;			//!< Source file this event was last updated in.
@@ -328,12 +336,16 @@ typedef struct {
 	void			*uctx;			//!< Context for the callback.
 } fr_event_user_t;
 
+
 /** Stores all information relating to an event list
  *
  */
 struct fr_event_list {
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
+#ifdef LOCAL_PID
+	fr_heap_t		*pids;			//!< PIDs to wait for
+#endif
 
 	int			will_exit;		//!< Will exit on next call to fr_event_corral.
 	int			exit;			//!< If non-zero event loop will prevent the addition
@@ -400,6 +412,15 @@ static int fr_event_fd_cmp(void const *a, void const *b)
 
 	return (ev_a->filter > ev_b->filter) - (ev_a->filter < ev_b->filter);
 }
+
+#ifdef LOCAL_PID
+static int8_t fr_event_pid_cmp(void const *a, void const *b)
+{
+	fr_event_pid_t const	*ev_a = a, *ev_b = b;
+
+	return STABLE_COMPARE(ev_a->pid, ev_b->pid);
+}
+#endif
 
 /** Return the number of file descriptors is_registered with this event loop
  *
@@ -1383,15 +1404,21 @@ int fr_event_timer_delete(fr_event_timer_t const **ev_p)
  */
 static int _event_pid_free(fr_event_pid_t *ev)
 {
+#ifndef LOCAL_PID
 	struct kevent evset;
+#endif
 
 	if (ev->parent) *ev->parent = NULL;
 
+#ifndef LOCAL_PID
 	if (ev->pid == 0) return 0; /* already deleted from kevent */
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
 	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
+#else
+	(void) fr_heap_extract(ev->el->pids, ev);
+#endif
 
 	return 0;
 }
@@ -1419,7 +1446,9 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		       pid_t pid, fr_event_pid_cb_t callback, void *uctx)
 {
 	fr_event_pid_t *ev;
+#ifndef LOCAL_PID
 	struct kevent evset;
+#endif
 
 	ev = talloc(ctx, fr_event_pid_t);
 	ev->pid = pid;
@@ -1430,6 +1459,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	ev->file = file;
 	ev->line = line;
 #endif
+
+#ifndef LOCAL_PID
 
 #ifndef NOTE_EXITSTATUS
 #define NOTE_EXITSTATUS (0)
@@ -1462,6 +1493,16 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 
 		return -1;
 	}
+#else  /* LOCAL_PID */
+
+	if (unlikely(fr_heap_insert(el->pids, ev) < 0)) {
+		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
+		talloc_free(ev);
+		return -1;
+	}
+
+#endif
+
 	talloc_set_destructor(ev, _event_pid_free);
 
 	/*
@@ -1700,6 +1741,12 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	int			num_fd_events;
 	bool			timer_event_ready = false;
 	fr_event_timer_t	*ev;
+#ifdef LOCAL_PID
+	fr_event_pid_t		*pid;
+	fr_heap_iter_t		iter;
+	int			num_pid_events;
+#endif
+
 
 	el->num_fd_events = 0;
 
@@ -1777,6 +1824,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	that occurred since this function was last called
 	 *	or wait for the next timer event.
 	 */
+#ifndef LOCAL_PID
 	num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
 
 	/*
@@ -1790,6 +1838,71 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 			return -1;
 		}
 	}
+
+#else  /* LOCAL_PID */
+	num_pid_events = 0;
+
+	/*
+	 *	Brute-force wait for all open PIDs
+	 */
+	for (pid = fr_heap_iter_init(el->pids, &iter);
+	     pid != NULL;
+	     pid = fr_heap_iter_next(el->pids, &iter)) {
+		int status;
+
+		if (waitpid(pid->pid, &status, WNOHANG) != pid->pid) continue;
+
+		/*
+		 *	Synthesize a kevent for the exit status.
+		 */
+		el->events[num_pid_events].filter = EVFILT_PROC;
+		el->events[num_pid_events].ident = pid->pid;
+		el->events[num_pid_events].flags = 0;
+		el->events[num_pid_events].fflags = NOTE_EXIT;
+		el->events[num_pid_events].data = status;
+		el->events[num_pid_events].udata = pid;
+
+		num_pid_events++;
+
+		/*
+		 *	Limit the number of PID events to no
+		 *	more than half of events.  This should
+		 *	be more than enough for most exec
+		 *	scenarios.  And, it allows us to still
+		 *	service FD events.
+		 */
+		if (num_pid_events >= (FR_EV_BATCH_FDS / 2)) break;
+	}
+
+	/*
+	 *	Wake up NOW, in order to service the PID events.
+	 */
+	if (num_pid_events > 0) {
+		ts_when.tv_sec = 0;
+		ts_when.tv_nsec = 0;
+		ts_wake = &ts_when;
+	}
+
+	num_fd_events = kevent(el->kq, NULL, 0, &el->events[num_pid_events], FR_EV_BATCH_FDS - num_pid_events, ts_wake);
+
+	/*
+	 *	Interrupt is different from timeout / FD events.
+	 */
+	if (unlikely(num_fd_events < 0)) {
+		if (errno != EINTR) {
+			fr_strerror_printf("Failed calling kevent: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (num_pid_events == 0) {
+			return 0;
+		}
+
+		num_fd_events = 0; /* still service the PID events */
+	}
+
+	num_fd_events += num_pid_events;
+#endif	/* LOCAL_PID */
 
 	el->num_fd_events = num_fd_events;
 
@@ -2175,6 +2288,14 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		fr_strerror_printf("Failed allocating FD tree");
 		goto error;
 	}
+
+#ifdef LOCAL_PID
+	el->pids = fr_heap_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, heap_id);
+	if (!el->pids) {
+		fr_strerror_printf("Failed allocating PID heap");
+		goto error;
+	}
+#endif
 
 	el->kq = kqueue();
 	if (el->kq < 0) {
