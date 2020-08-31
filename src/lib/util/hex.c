@@ -44,11 +44,11 @@ ssize_t fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_dbuff_t	our_out = FR_DBUFF_NO_ADVANCE(out);
 
-	while (!FR_SBUFF_CANT_EXTEND_LOWAT(&our_in, 2)) {
+	while (fr_sbuff_extend_lowat(NULL, &our_in, 2) >= 2) {
 		char *c1, *c2 = NULL;
 
-		if(!(c1 = memchr(hextab, tolower((int) *our_in.p), sizeof(hextab))) ||
-		   !(c2 = memchr(hextab, tolower((int) *(our_in.p + 1)), sizeof(hextab)))) {
+		if(!(c1 = memchr(hextab, tolower((int) *fr_sbuff_current(&our_in)), sizeof(hextab))) ||
+		   !(c2 = memchr(hextab, tolower((int) *(fr_sbuff_current(&our_in) + 1)), sizeof(hextab)))) {
 			if (!c2 && no_trailing) {
 			got_trailing:
 		   		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;

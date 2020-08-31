@@ -645,37 +645,49 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
  *
  */
 #define FR_SBUFF_CHECK_REMAINING_RETURN(_sbuff, _len) \
-do { \
-	if ((_len) > fr_sbuff_remaining(_sbuff)) { \
-		return -((_len) - fr_sbuff_remaining(_sbuff));	\
-	}\
-} while (0)
+	if ((_len) > fr_sbuff_remaining(_sbuff)) return -((_len) - fr_sbuff_remaining(_sbuff))
 
 /** Check if _len bytes are available in the sbuff and extend the buffer if possible
  *
+ * @param[in] _sbuff
  */
-#define FR_SBUFF_EXTEND_OR_RETURN(_sbuff, _len) \
+#define FR_SBUFF_EXTEND_LOWAT_OR_RETURN(_sbuff, _len) \
 do { \
-	if (fr_sbuff_remaining(_sbuff) < (_len)) { \
-		if (!(_sbuff)->extend || ((_sbuff)->extend(_sbuff, _len) < _len)) { \
-			return -(((_sbuff)->p + (_len)) - ((_sbuff)->end)); \
-		} \
-	} \
+	size_t _remaining = fr_sbuff_extend_lowat(NULL, _sbuff, _len); \
+	if (_remaining < _len) return -(_len - _remaining); \
 } while (0)
 
 /** Extend a buffer if we're below the low water mark
  *
- * @param[in] _sbuff	to extend.
- * @param[in] _lowat	If bytes remaining are below the amount, extend.
+ * @param[out] extended		Will be set to true if the buffer was extended.
+ *				This way the caller can track EOF.
+ * @param[in] in		to extend.
+ * @param[in] lowat		If bytes remaining are below the amount, extend.
+ * @return
+ *	- 0 if there are no bytes left in the buffer and we couldn't extend.
+ *	- >0 the number of bytes in the buffer after extending.
  */
-#define FR_SBUFF_CANT_EXTEND_LOWAT(_sbuff, _lowat) \
-((fr_sbuff_remaining(_sbuff) < (_lowat)) && (!(_sbuff)->extend || !(_sbuff)->extend(_sbuff, (_lowat) - fr_sbuff_remaining(_sbuff))))
+static inline size_t fr_sbuff_extend_lowat(bool *extended, fr_sbuff_t *in, size_t lowat)
+{
+	size_t remaining = fr_sbuff_remaining(in);
+
+	if ((remaining >= lowat) || !in->extend || !in->extend(in, lowat - remaining)) {
+		if (extended) *extended = false;
+		return remaining;
+	}
+	if (extended) *extended = true;
+
+	return fr_sbuff_remaining(in);
+}
 
 /** Extend a buffer if no space remains
  *
  * @param[in] _sbuff	to extend.
+ * @return
+ *	- 0 if there are no bytes left in the buffer and we couldn't extend.
+ *	- >0 the number of bytes in the buffer after extending.
  */
-#define FR_SBUFF_CANT_EXTEND(_sbuff) FR_SBUFF_CANT_EXTEND_LOWAT(_sbuff, 1)
+#define fr_sbuff_extend(_sbuff) fr_sbuff_extend_lowat(NULL, _sbuff, 1)
 
 /** @} */
 
@@ -1155,7 +1167,7 @@ bool	fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c);
  */
 static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return '\0';
+	if (!fr_sbuff_extend(sbuff)) return '\0';
 	return *(sbuff->p++);
 }
 /** @} */
@@ -1170,57 +1182,57 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
 static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return chars[(uint8_t)*sbuff->p];
 }
 
 static inline bool fr_sbuff_is_str(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
 	if (len == SIZE_MAX) len = strlen(str);
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, len)) return false;
+	if (!fr_sbuff_extend_lowat(NULL, sbuff, len)) return false;
 	return memcmp(sbuff->p, str, len) == 0;
 }
 #define fr_sbuff_is_str_literal(_sbuff, _str) fr_sbuff_is_str(_sbuff, _str, sizeof(_str) - 1)
 
 static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return *sbuff->p == c;
 }
 
 static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return isdigit(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_upper(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return isupper(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_lower(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return islower(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_alpha(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return isalpha(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return isspace(*sbuff->p);
 }
 
 static inline bool fr_sbuff_is_hex(fr_sbuff_t *sbuff)
 {
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 	return (isdigit(*sbuff->p) || ((tolower(*sbuff->p) >= 'a') && (tolower(*sbuff->p) <= 'f')));
 }
 /** @} */

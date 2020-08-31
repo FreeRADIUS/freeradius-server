@@ -2727,7 +2727,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	command_line_range_t	*lr;
 	fr_sbuff_parse_error_t	err;
 
-	while (!FR_SBUFF_CANT_EXTEND(in)) {
+	while (fr_sbuff_extend(in)) {
 		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
 
 		MEM(lr = talloc_zero(ctx, command_line_range_t));
@@ -2750,7 +2750,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
 
 	again:
-		if (FR_SBUFF_CANT_EXTEND(in)) break;
+		if (!fr_sbuff_extend(in)) break;
 		if (!fr_sbuff_is_in_charset(in, tokens)) {
 			ERROR("Unexpected text \"%pV\"",
 			      fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -2778,7 +2778,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 			 *	A bare '-' with no number means
 			 *	run all remaining lines.
 			 */
-			if (FR_SBUFF_CANT_EXTEND(in)) {
+			if (fr_sbuff_extend(in)) {
 				lr->end = UINT32_MAX;
 				return 0;
 			}

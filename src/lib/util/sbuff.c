@@ -588,7 +588,7 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
 
-		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
+		if (!fr_sbuff_extend(&our_in)) break;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -629,7 +629,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		ssize_t copied;
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
-		if (remaining && FR_SBUFF_CANT_EXTEND(&our_in)) return 0;
+		if (remaining && !fr_sbuff_extend(&our_in)) return 0;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -676,9 +676,9 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 		char	*p;
 		char	*end;
 
-		if (FR_SBUFF_CANT_EXTEND(&our_in)) break;
+		if (!fr_sbuff_extend(&our_in)) break;
 
-		p = our_in.p;
+		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
 		while ((p < end) && allowed[(uint8_t)*p]) p++;
@@ -731,9 +731,9 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		char	*p;
 		char	*end;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) break;
+		if (fr_sbuff_extend_lowat(NULL, in, needle_len) == 0) break;
 
-		p = our_in.p;
+		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
 		if (escape_chr == '\0') {
@@ -811,9 +811,9 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		char	*p;
 		char	*end;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) break;
+		if (fr_sbuff_extend_lowat(NULL, in, needle_len) == 0) break;
 
-		p = our_in.p;
+		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
 		while (p < end) {
@@ -842,7 +842,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 						fr_sbuff_marker_release(&m);
 						goto done;
 					}
-					p = our_in.p;
+					p = fr_sbuff_current(&our_in);
 					continue;
 				}
 
@@ -868,7 +868,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 						fr_sbuff_marker_release(&m);
 						goto done;
 					}
-					p = our_in.p;
+					p = fr_sbuff_current(&our_in);
 					continue;
 				}
 
@@ -946,7 +946,7 @@ size_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 		['n'] = true, ['N'] = true	/* no */
 	};
 
-#define IS_TOKEN(_t) (!FR_SBUFF_CANT_EXTEND_LOWAT(in, sizeof(_t) - 1) && \
+#define IS_TOKEN(_t) ((fr_sbuff_extend_lowat(NULL, in, sizeof(_t) - 1) >= (sizeof(_t) - 1)) && \
 		      (strncasecmp(in->p, _t, sizeof(_t) - 1) == 0))
 
 	if (fr_sbuff_is_in_charset(in, bool_prefix)) {
@@ -1161,7 +1161,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 	if (unlikely(sbuff->is_const)) return 0;
 
 	len = strlen(str);
-	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
 	safecpy(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
@@ -1184,7 +1184,7 @@ ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 
 	if (unlikely(sbuff->is_const)) return 0;
 
-	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
 	safecpy(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
@@ -1210,7 +1210,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 
 	len = talloc_array_length(str) - 1;
 
-	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
 	safecpy(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
@@ -1306,8 +1306,8 @@ ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
  * @param[in] sbuff	to print into.
  * @param[in] in	to escape.
  * @param[in] inlen	of string to escape.
- * @param[in] quote	Which quoting character to escape.  Also controls
- *			which characters are escaped.
+ * @param[in] quote	Escaping rules.  Used to escape special characters
+ *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
  *	- <0 the number of bytes required to complete the print operation.
@@ -1321,7 +1321,7 @@ ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, cha
 	if (unlikely(sbuff->is_const)) return 0;
 
 	len = fr_snprint_len(in, inlen, quote);
-	FR_SBUFF_EXTEND_OR_RETURN(sbuff, len);
+	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
 	len = fr_snprint(fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff) + 1, in, inlen, quote);
 	fr_sbuff_advance(sbuff, len);
@@ -1333,8 +1333,8 @@ ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, cha
  *
  * @param[in] sbuff	to print into.
  * @param[in] in	to escape.
- * @param[in] quote	Which quoting character to escape.  Also controls
- *			which characters are escaped.
+ * @param[in] quote	Escaping rules.  Used to escape special characters
+ *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
  *	- <0 the number of bytes required to complete the print operation.
@@ -1369,7 +1369,7 @@ size_t fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t needl
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len)) return 0;
+	if (fr_sbuff_extend_lowat(NULL, sbuff, needle_len) < needle_len) return 0;
 
 	found = memmem(sbuff->p, needle_len, needle, needle_len);	/* sbuff needle_len and needle needle_len ensures match must be next */
 	if (!found) return 0;
@@ -1401,7 +1401,7 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 	 *	buffer currently, try to extend it,
 	 *	returning if we can't.
 	 */
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len)) return 0;
+	if (fr_sbuff_extend_lowat(NULL, sbuff, needle_len) < needle_len) return 0;
 
 	p = sbuff->p;
 	end = p + needle_len;
@@ -1429,7 +1429,7 @@ size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len)
 	while (total < len) {
 		char *end;
 
-		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+		if (!fr_sbuff_extend(sbuff)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
@@ -1459,7 +1459,7 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allow
 	while (total < len) {
 		char *end;
 
-		if (FR_SBUFF_CANT_EXTEND(sbuff)) break;
+		if (!fr_sbuff_extend(sbuff)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
@@ -1501,7 +1501,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
 	while (total < len) {
 		char *end;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(sbuff, needle_len) && (fr_sbuff_remaining(sbuff) < 1)) break;
+		if (fr_sbuff_extend_lowat(NULL, sbuff, needle_len) == 0) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
@@ -1560,7 +1560,7 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
 		 *	Ensure we have enough chars to match
 		 *	the needle.
 		 */
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, clen)) break;
+		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, clen) < clen) break;
 
 		end = CONSTRAINED_END(&our_sbuff, len, total);
 
@@ -1595,7 +1595,7 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 		char const	*found;
 		char		*end;
 
-		if (FR_SBUFF_CANT_EXTEND(&our_sbuff)) break;
+		if (!fr_sbuff_extend(&our_sbuff)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
@@ -1639,7 +1639,11 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, siz
 		char const	*found;
 		char		*end;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, needle_len)) break;
+		/*
+		 *	If the needle is longer than
+		 *	the remaining buffer, return.
+		 */
+		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, needle_len) < needle_len) break;
 
 		end = CONSTRAINED_END(&our_sbuff, len, total);
 		found = memmem(our_sbuff.p, end - our_sbuff.p, needle, needle_len);
@@ -1688,7 +1692,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle,
 		char *p, *end;
 		char const *n_p;
 
-		if (FR_SBUFF_CANT_EXTEND_LOWAT(&our_sbuff, needle_len)) break;
+		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, needle_len) < needle_len) break;
 
 		for (p = our_sbuff.p, n_p = needle, end = our_sbuff.p + needle_len;
 		     (p < end) && (tolower(*p) == tolower(*n_p));
@@ -1716,7 +1720,7 @@ bool fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c)
 {
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 
 	if (*sbuff->p != c) return false;
 
@@ -1737,7 +1741,7 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 {
 	CHECK_SBUFF_INIT(sbuff);
 
-	if (FR_SBUFF_CANT_EXTEND(sbuff)) return false;
+	if (!fr_sbuff_extend(sbuff)) return false;
 
 	if (*sbuff->p == c) return false;
 
@@ -1771,7 +1775,7 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
-	if (FR_SBUFF_CANT_EXTEND_LOWAT(in, needle_len) && (fr_sbuff_remaining(in) < 1)) return false;
+	if (!fr_sbuff_extend_lowat(NULL, in, needle_len)) return false;
 
 	return fr_sbuff_terminal_search(in, in->p, idx, tt);
 }
