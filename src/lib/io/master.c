@@ -952,7 +952,9 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	} else {
 		fr_assert(client == old->client);
+		fr_assert(track->ev == NULL);
 		(void) rbtree_deletebydata(client->table, old);
+		track->address = NULL; /* don't send any reply, there's nowhere for it to go */
 		talloc_set_destructor(track, track_free);
 	}
 
@@ -2043,13 +2045,18 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	On duplicates this also extends the expiry timer.
 	 */
 	if (!now && inst->cleanup_delay) {
+		/*
+		 *	if the timer succeeds, then "track"
+		 *	will be cleaned up when the timer
+		 *	fires.
+		 */
 		if (fr_event_timer_in(track, el, &track->ev,
-				      inst->cleanup_delay, packet_expiry_timer, track) < 0) {
-			DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
-			      inst->app_io->name);
-			talloc_free(track);
+				      inst->cleanup_delay, packet_expiry_timer, track) == 0) {
+			return;
 		}
-		return;
+
+		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
+		      inst->app_io->name);
 	}
 
 	/*
@@ -2122,7 +2129,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	The request later received a conflicting
 		 *	packet, so we discard this one.
 		 */
-		if (track->timestamp != request_time) {
+		if ((track->timestamp != request_time) || !track->address) {
 			fr_assert(track->packets > 0);
 			fr_assert(client->packets > 0);
 			track->packets--;
@@ -2138,6 +2145,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
 				client_expiry_timer(el, 0, client);
 			}
+
 			return buffer_len;
 		}
 
@@ -2155,7 +2163,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	We have a real packet, write it to the network
 		 *	via the underlying transport write.
 		 */
-
 		packet_len = inst->app_io->write(child, track, request_time,
 						 buffer, buffer_len, written);
 		if (packet_len > 0) {
