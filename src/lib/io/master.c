@@ -952,6 +952,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	} else {
 		fr_assert(client == old->client);
+
+		if (old->ev) (void) fr_event_timer_delete(&old->ev);
 		(void) rbtree_deletebydata(client->table, old);
 		talloc_set_destructor(track, track_free);
 	}
