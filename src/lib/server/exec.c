@@ -54,53 +54,6 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-typedef struct {
-	fr_dlist_t	entry;
-	pid_t		pid;
-} fr_child_t;
-
-static _Thread_local fr_dlist_head_t *fr_children;
-
-static void _fr_children_free(void *arg)
-{
-	talloc_free(arg);
-}
-
-
-static void fr_reap_children(void)
-{
-	fr_dlist_head_t *list;
-	fr_child_t *child, *next;
-
-	list = fr_children;
-	if (!list) {
-		MEM(list = talloc_zero(NULL, fr_dlist_head_t));
-
-		fr_dlist_init(list, fr_child_t, entry);
-
-		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
-		return;		/* no children, so no reaping */
-	}
-
-	/*
-	 *	Clean up the children.  ALL of them.  This is
-	 *	slow as heck, but correct. :(
-	 */
-	for (child = fr_dlist_head(fr_children);
-	     child != NULL;
-	     child = next) {
-		int status;
-		pid_t pid;
-
-		next = fr_dlist_next(fr_children, child);
-		pid = waitpid(child->pid, &status, WNOHANG);
-		if (pid != 0) {
-			fr_dlist_remove(fr_children, child);
-			talloc_free(child);
-		}
-	}
-}
-
 static void fr_exec_pair_to_env(REQUEST *request, VALUE_PAIR *input_pairs, char **envp, size_t envlen, bool shell_escape)
 {
 	char			*p;
@@ -301,8 +254,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
 	}
 
-	fr_reap_children();
-
 	/*
 	 *	Open a pipe for child/parent communication, if necessary.
 	 */
@@ -372,11 +323,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		}
 
 	} else {
-		fr_child_t *child;
-
-		MEM(child = talloc_zero(fr_children, fr_child_t));
-		fr_dlist_insert_tail(fr_children, child);
-		child->pid = pid;
+		(void) fr_event_pid_wait(request->el, request->el, NULL, pid, NULL, NULL);
 	}
 
 	return pid;
@@ -664,13 +611,7 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	char		**envp;
 	char		**argv;
 	pid_t		pid;
-	fr_child_t	*child;
 	fr_value_box_t	*first;
-
-	/*
-	 *	Clean up any previous child processes.
-	 */
-	fr_reap_children();
 
 	/*
 	 *	Ensure that we don't do anything stupid.
@@ -731,9 +672,7 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
 	 *	Ensure that we can clean up any child processes.  We
 	 *	don't want them left over as zombies.
 	 */
-	MEM(child = talloc_zero(fr_children, fr_child_t));
-	fr_dlist_insert_tail(fr_children, child);
-	child->pid = pid;
+	if (fr_event_pid_wait(request->el, request->el, NULL, pid, NULL, NULL) < 0) return -1;
 
 	return 0;
 }
@@ -768,11 +707,6 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	fr_value_box_t	*first;
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
-
-	/*
-	 *	Clean up any previous child processes.
-	 */
-	fr_reap_children();
 
 	/*
 	 *	Ensure that we don't do anything stupid.
@@ -873,20 +807,4 @@ int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pai
 	}
 
 	return 0;
-}
-
-/** Remember child processes.
- *
- *  This function exists mainly so that other portions of the server
- *  don't need to clean up child PIDs when something goes wrong.
- */
-void fr_exec_waitpid(pid_t pid)
-{
-	fr_child_t	*child;
-
-	fr_reap_children();
-
-	MEM(child = talloc_zero(fr_children, fr_child_t));
-	fr_dlist_insert_tail(fr_children, child);
-	child->pid = pid;
 }

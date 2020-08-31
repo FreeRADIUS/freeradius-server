@@ -55,8 +55,13 @@ static void unlang_tmpl_exec_cleanup(REQUEST *request)
 		state->fd = -1;
 	}
 
+	/*
+	 *	It still hasn't exited.  Tell the event loop that we
+	 *	need to wait as long as necessary for the PID to exit,
+	 *	and that we don't care about the exit status.
+	 */
 	if (state->pid) {
-		fr_exec_waitpid(state->pid);
+		(void) fr_event_pid_wait(request->el, request->el, NULL, state->pid, NULL, NULL);
 		state->pid = 0;
 	}
 
@@ -443,6 +448,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 	 */
 	if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
 			      unlang_tmpl_exec_waitpid, request) < 0) {
+		state->pid = 0;
 		RPEDEBUG("Failed adding watcher for child process");
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
