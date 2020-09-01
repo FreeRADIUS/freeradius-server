@@ -2044,7 +2044,9 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *
 	 *	On duplicates this also extends the expiry timer.
 	 */
-	if (!now && inst->cleanup_delay) {
+	if (!now && track->address && inst->app_io->track_duplicates) {
+		fr_assert(inst->cleanup_delay > 0);
+
 		/*
 		 *	if the timer succeeds, then "track"
 		 *	will be cleaned up when the timer
@@ -2110,17 +2112,14 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	get_inst(li, &inst, &thread, &connection, &child);
 
 	client = track->client;
-	packets = client->packets;
 	if (connection) {
 		el = connection->el;
 	} else {
 		el = thread->el;
 	}
 
-	if (client->pending) packets += fr_heap_num_elements(client->pending);
-
 	/*
-	 *	A well-defined client means just send the reply.
+	 *	A fully defined client means that we just send the reply.
 	 */
 	if (client->state != PR_CLIENT_PENDING) {
 		ssize_t packet_len;
@@ -2133,27 +2132,20 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			fr_assert(track->packets > 0);
 			fr_assert(client->packets > 0);
 			track->packets--;
-			client->packets--;
-			packets--;
 
 			DEBUG3("Suppressing reply as we have a newer packet");
 
-			/*
-			 *	No packets left for this client, reset
-			 *	idle timeouts.
-			 */
-			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
-				client_expiry_timer(el, 0, client);
-			}
-
+			packet_expiry_timer(el, 0, track);
 			return buffer_len;
 		}
 
 		/*
-		 *	We have a NAK packet, or the request
-		 *	has timed out, and we don't respond.
+		 *	We have a NAK packet, or the request has timed
+		 *	out, or it was discarded due to a conflicting
+		 *	packet.  We don't respond.
 		 */
 		if (buffer_len == 1) {
+		do_not_respond:
 			track->reply_len = 1; /* don't respond */
 			packet_expiry_timer(el, 0, track);
 			return buffer_len;
@@ -2165,31 +2157,44 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		packet_len = inst->app_io->write(child, track, request_time,
 						 buffer, buffer_len, written);
-		if (packet_len > 0) {
-			fr_assert(buffer_len == (size_t) packet_len);
+		if (packet_len <= 0) goto do_not_respond;
 
-			/*
-			 *	On send duplicate reply, there's
-			 *	already a reply, so we leave well
-			 *	enough alone.
-			 *
-			 *	Otherwise we cache the reply if we're
-			 *	doing dedup.
-			 */
-			if (!track->reply && inst->app_io->track_duplicates) {
-				MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
-				track->reply_len = buffer_len;
-			}
-		} else {
-			track->reply_len = 1; /* don't respond */
+		/*
+		 *	Only a partial write.  The network code will
+		 *	take care of calling us again, and we will set
+		 *	the expiry timer at that point.
+		 */
+		if ((size_t) packet_len < buffer_len) {
+			return packet_len;
 		}
 
 		/*
-		 *	Expire the packet (if necessary).
+		 *	We're not tracking duplicates, so just expire
+		 *	the packet now.
+		 */
+		if (!inst->app_io->track_duplicates) {
+			packet_expiry_timer(el, 0, track);
+			return packet_len;
+		}
+
+		/*
+		 *	Cache the reply packet if we're doing dedup.
+		 *
+		 *	On resend duplicate reply, the reply is
+		 *	already filled out.  So we don't do that twice.
+		 */
+		if (!track->reply) {
+			MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
+			track->reply_len = buffer_len;
+		}
+
+		/*
+		 *	Set the timer to expire the packet.
+		 *
+		 *	On dedup this also extends the timer.
 		 */
 		packet_expiry_timer(el, 0, track);
-
-		return packet_len;
+		return buffer_len;
 	}
 
 	/*
@@ -2199,6 +2204,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *	client state is set to CONNECTED when the client is created.
 	 */
 	fr_assert(inst->dynamic_clients);
+	fr_assert(client->pending != NULL);
+
+	packets = client->packets + fr_heap_num_elements(client->pending);
+
 
 	/*
 	 *	The request has timed out trying to define the dynamic
@@ -2246,7 +2255,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	expiry timer, which will close and free the
 		 *	connection.
 		 */
-
 		client_expiry_timer(el, 0, client);
 		return buffer_len;
 	}
