@@ -2135,6 +2135,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 			DEBUG3("Suppressing reply as we have a newer packet");
 
+			track->address = NULL; /* clean it up now */
 			packet_expiry_timer(el, 0, track);
 			return buffer_len;
 		}
