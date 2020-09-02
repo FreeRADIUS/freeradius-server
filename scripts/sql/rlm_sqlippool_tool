@@ -21,7 +21,11 @@
 #
 #  For basic use, arguments can be provided to this script that denote the ends
 #  of a single IP (v4 or v6) address range together with the pool_name and
-#  SQL dialect.
+#  SQL dialect or a raddb directory from which the database config will be
+#  read.
+#
+#  If a raddb directory is specified, then the instance of the FreeRADIUS sql
+#  module to be found in the config can be specified.  It defaults to "sql".
 #
 #  Optionally the number of IPs to sparsely populate the range with can be
 #  provided. If the range is wider than a /16 then the population of the range
@@ -48,10 +52,10 @@
 #
 #  For more complex us, the script allows a set of pool definitions to be
 #  provided in a YAML file which describes a set of one or more pools, each
-#  containing a set of one or more ranges. The first argument in this case is
-#  always "yaml":
+#  containing a set of one or more ranges.
 #
-#    rlm_sqlippool_tool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> \
+#    rlm_sqlippool_tool -y <pool_defs_yaml_file> -t <table_name> \
+#            ( -d <dialect> | -f <raddb_dir> [ -i <instance> ] ) \
 #            [ -x <existing_ips_file> ]
 #
 #  The format for the YAML file is demonstrated by the following example:
@@ -312,7 +316,7 @@ sub usage {
 Usage:
   rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) [ -c <capacity> ] [ -x <existing_ips_file> ]
 or:
-  rlm_sqlippool_tool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> [ -x <existing_ips_file> ]
+  rlm_sqlippool_tool -y <pool_defs_yaml_file> -t <table_name> (-d <dialect> | -f <raddb_dir> [ -i <instance> ]) [ -x <existing_ips_file> ]
 
 EOF
 }
