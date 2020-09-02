@@ -11,7 +11,9 @@
 #  Helper script for populating IP pools with address entries.
 #
 #  This script generates SQL output that is useful for populating an IP pool
-#  for use with FreeRADIUS (and possibly other purposes).
+#  for use with FreeRADIUS (and possibly other purposes).  Alternatively,
+#  if called with the -f option will directly operate on the database configured
+#  within the FreeRADIUS configuration to update the IP pool table specified
 #
 #
 #  Use with a single address range
@@ -31,8 +33,8 @@
 #  being populated with random address in the range.
 #
 #    rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> \
-#            -d <sql_dialect> -t <table_name> [ -c <capacity> ] \
-#            [ -x <existing_ips_file> ]
+#            -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) \
+#            [ -c <capacity> ] [ -x <existing_ips_file> ]
 #
 #  Note: Sparse ranges are populated using a deterministic, pseudo-random
 #        function. This allows pools to be trivially extended without having to
@@ -156,7 +158,13 @@ use strict;
 use Net::IP qw/ip_bintoip ip_iptobin ip_bincomp ip_binadd ip_is_ipv4 ip_is_ipv6/;
 use Template;
 
-my $opts;
+#
+#  Option defaults
+#
+my $opts = {
+	instance => 'sql',
+	capacity => 65536
+};
 
 #
 #  Parse the command line arguments
@@ -180,6 +188,10 @@ for (my $i = 0; $i <= $#ARGV; $i++) {
 			$opt = 'yaml';
 		} elsif ($1 eq 'x') {
 			$opt = 'entries';
+		} elsif ($1 eq 'f') {
+			$opt = 'raddb_dir';
+		} elsif ($1 eq 'i') {
+			$opt = 'instance';
 		} else {
 			usage();
 			exit 1;
@@ -189,13 +201,70 @@ for (my $i = 0; $i <= $#ARGV; $i++) {
 			usage();
 			exit 1;
 		} else {
-			if (!($opts->{$opt})) {
-				$opts->{$opt} = $ARGV[$i]
-			} else {
-				usage();
-				exit 1;
+			$opts->{$opt} = $ARGV[$i]
+		}
+	}
+}
+
+#
+#  If a raddb dir is set then we parse the mods-enabled config
+#
+
+if ($opts->{raddb_dir}) {
+	my $found = 0;
+	if (-d $opts->{raddb_dir}.'/mods-enabled') {
+		opendir(my $dh, $opts->{raddb_dir}.'/mods-enabled') || die 'ERROR: Could not open directory '.$opts->{raddb_dir}.'/mods-enabled';
+		my @dir = grep { -f  "$opts->{raddb_dir}/mods-enabled/$_" } readdir($dh);
+		closedir($dh);
+		my $instance = $opts->{instance};
+		foreach my $file (@dir) {
+			open (my $fh, $opts->{raddb_dir}.'/mods-enabled/'.$file);
+			my $level = 0;
+			my $section = '';
+			my $subsection = '';
+			while (<$fh>) {
+				if ($found) {
+					$_ =~ s/#.*//;  # Remove comments
+					if ($_ =~ m/\s*([a-z_]+)\s*=\s*(.*)/) {
+						my $param = $1;
+						my $value = $2;
+						$value =~ s/^"//;
+						$value =~ s/"\s*$//;
+						if ($level == 1) {
+							$opts->{$param} = $value;
+						} elsif ($level == 2) {
+							$opts->{$section}->{$param} = $value;
+						} elsif ($level == 3) {
+							$opts->{$section}->{$subsection}->{$param} = $value;
+						}
+					}
+					if ($_ =~ m/([a-z_]*)\s+\{/) { # Find nested sectinos
+						$level++ ;
+						if ($level == 2) {
+							$section = $1;
+						} elsif ($level == 3) {
+							$subsection = $1;
+						}
+					}
+					$level-- if ($_ =~ m/\s+\}/); # Close of nesting
+#					last if ($level == 0); # We've got to the end of the instance
+				}
+				if ($_ =~ m/\b$instance\s+\{/) {
+					print "$file contains instance\n";
+					$found = 1;
+					$level = 1;
+				}
+			}
+			close ($fh);
+			if ($found) {
+				last;
 			}
 		}
+	} else {
+		die 'ERROR: Specified FreeRADIUS config directory does not contain mods-enabled';
+	}
+	if ($found == 0) {
+		die 'ERROR: SQL instance not found in FreeRADIUS config';
 	}
 }
 
@@ -241,7 +310,7 @@ exit 0;
 sub usage {
 	print STDERR <<'EOF'
 Usage:
-  rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> -d <sql_dialect> -t <table_name> [ -c <capacity> ] [ -x <existing_ips_file> ]
+  rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) [ -c <capacity> ] [ -x <existing_ips_file> ]
 or:
   rlm_sqlippool_tool -y <pool_defs_yaml_file> -d <dialect> -t <table_name> [ -x <existing_ips_file> ]
 
@@ -254,11 +323,11 @@ sub process_commandline {
 	my $opts = shift;
 	$SIG{__DIE__} = sub { usage(); die(@_); };
 
-	my %template=load_templates();
+	(my $template, my $queries)=load_templates($opts->{table_name});
 
-	unless (defined $template{$opts->{dialect}}) {
+	unless (defined $template->{$opts->{dialect}}) {
 		print STDERR "Unknown dialect. Pick one of: ";
-		print STDERR "$_ " foreach sort keys %template;
+		print STDERR "$_ " foreach sort keys %{$template};
 		print STDERR "\n";
 		exit 1;
 	}
@@ -268,9 +337,12 @@ sub process_commandline {
 
 	@entries = handle_range($opts->{range_start}, $opts->{range_end}, $opts->{capacity}, @entries);
 
-	my $tt=Template->new();
-	$tt->process(\$template{$opts->{dialect}}, {ranges => [{pool_name => $opts->{pool_name}, ips => \@entries}], batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
-
+	if ($opts->{server}) {
+		&call_database($opts, $queries, @entries);
+	} else {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {ranges => [{pool_name => $opts->{pool_name}, ips => \@entries}], batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+	}
 }
 
 
@@ -284,11 +356,11 @@ sub process_yaml_file {
 
 	my %pool_defs = %{LoadFile($opts->{yaml})};
 
-	my %template=load_templates();
+	(my $template, my $queries)=load_templates($opts->{table_name});
 
-	unless (defined $template{$opts->{dialect}}) {
+	unless (defined $template->{$opts->{dialect}}) {
 		print STDERR "Unknown dialect. Pick one of: ";
-		print STDERR "$_ " foreach sort keys %template;
+		print STDERR "$_ " foreach sort keys %{$template};
 		print STDERR "\n";
 		exit 1;
 	}
@@ -307,11 +379,72 @@ sub process_yaml_file {
 		}
 	}
 
-	my $tt=Template->new();
-	$tt->process(\$template{$opts->{dialect}}, {ranges => \@ranges, batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
-
+	if ($opts->{server}) {
+		&call_database($opts, $queries, @entries);
+	} else {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {ranges => \@ranges, batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+	}
 }
 
+sub call_database {
+
+	my $opts = shift;
+	my $queries = shift;
+	my @entries = @_;
+
+	my $dbi_avail = 0;
+	eval {
+		require DBI;
+		$dbi_avail = 1;
+	};
+	unless($dbi_avail) {
+		die "ERROR: DBI is not available. Install the DBI Perl module.";
+	}
+
+	my $dsn;
+	if ($opts->{dialect} eq 'oracle') {
+		# Extract data from Oracle connection string as used by FreeRADIUS
+		if ($opts->{radius_db} =~ m/HOST=(.+\))/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/PORT=(.+\))/) {
+			$opts->{port} =$1;
+		}
+		if ($opts->{radius_db} =~ m/SID=(.+\))/) {
+			$opts->{sid} = $1;
+		}
+		$dsn = "DBI:Oracle:host=$opts->{server};sid=$opts->{sid}";
+	} elsif ($opts->{dialect} eq 'postgresql') {
+		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
+	} elsif ($opts->{dialect} eq 'sqlite') {
+		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
+	} elsif ($opts->{dialect} eq 'mssql') {
+		$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+	} else {
+		$dsn = "DBI:$opts->{dialect}:database=$opts->{radius_db};host=$opts->{server}";
+	}
+	$dsn .= ";port=$opts->{port}" if $opts->{port};
+
+	# Read the results by running our query against the database
+	my $dbh = DBI->connect($dsn, $opts->{login}, $opts->{password}) || die "Unable to connect to database";
+
+	foreach my $query (@{$queries->{$opts->{dialect}}->{pre}}) {
+		$dbh->do($query);
+	}
+
+	my $sth = $dbh->prepare($queries->{$opts->{dialect}}->{insert});
+	foreach my $ip (@entries) {
+		$sth->execute($opts->{pool_name}, $ip);
+	}
+	$sth->finish();
+
+	foreach my $query (@{$queries->{$opts->{dialect}}->{post}}) {
+		$dbh->do($query);
+	}
+
+	$dbh->disconnect();
+}
 
 sub load_entries {
 
@@ -356,11 +489,10 @@ sub handle_range {
 	}
 
 	my $range_size = $ip_range->size;
-	$capacity = $range_size < 65536 ? "$range_size" : 65536 unless defined $capacity;
 
 	if ($range_size < $capacity) {
 		$capacity = "$range_size";
-		warn 'WARNING: Insufficent IPs in the range. Will create $capacity entries.';
+		warn 'WARNING: Insufficent IPs in the range. Will create '.$capacity.' entries.';
 	}
 
 	# Prune the entries to only those within the specified range
@@ -558,22 +690,38 @@ sub walk_fill {
 
 sub load_templates {
 
-	my %template;
+	my $tablename = shift;
 
+	my $template;
+	my $queries;
 #
 #  MySQL / MariaDB
 #
-	$template{'mysql'} = <<'END_mysql';
--- Temporary table holds the provided IP pools
-DROP TEMPORARY TABLE IF EXISTS [% tablename %]_temp;
-CREATE TEMPORARY TABLE [% tablename %]_temp (
+	$queries->{'mysql'}->{pre} = [
+		'DROP TEMPORARY TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
   id                    int(11) unsigned NOT NULL auto_increment,
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL,
   PRIMARY KEY (id),
   KEY pool_name_framedipaddress (pool_name,framedipaddress)
-);
-
+);'
+	    ];
+	$queries->{'mysql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'mysql'}->{post} = [
+		'START TRANSACTION;',
+		'DELETE r FROM '.$tablename.' r
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+      WHERE t.id IS NULL;',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;'
+	    ];
+	$template->{'mysql'} = join("\n", @{$queries->{'mysql'}->{pre}});
+	$template->{'mysql'} .= <<'END_mysql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
@@ -585,36 +733,36 @@ CREATE TEMPORARY TABLE [% tablename %]_temp (
 [%-     END %]
 [%-   END %]
 [%- END %]
-
-START TRANSACTION;
-
--- Delete old pools that have been removed
-DELETE r FROM [% tablename %] r
-  LEFT JOIN [% tablename %]_temp t USING (pool_name,framedipaddress)
-      WHERE t.id IS NULL;
-
--- Add new pools that have been created
-INSERT INTO [% tablename %] (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM [% tablename %]_temp t WHERE NOT EXISTS (
-    SELECT * FROM [% tablename %] r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );
-
-COMMIT;
 END_mysql
+	$template->{'mysql'} .= join("\n", @{$queries->{'mysql'}->{post}});
 
 #
 #  PostgreSQL
 #
-	$template{'postgresql'} = <<'END_postgresql';
--- Temporary table holds the provided IP pools
-DROP TABLE IF EXISTS [% tablename %]_temp;
-CREATE TEMPORARY TABLE [% tablename %]_temp (
+	$queries->{'postgresql'}->{pre} = [
+		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
   pool_name               varchar(64) NOT NULL,
   FramedIPAddress         INET NOT NULL
-);
-CREATE INDEX [% tablename %]_temp_idx ON [% tablename %]_temp USING btree (pool_name,FramedIPAddress);
-
+);',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp USING btree (pool_name,FramedIPAddress);'
+	    ];
+	$queries->{'postgresql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'postgresql'}->{post} = [
+		'START TRANSACTION;',
+		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS (
+  SELECT FROM '.$tablename.'_temp t
+  WHERE t.pool_name = r.pool_name AND t.framedipaddress = r.framedipaddress
+);',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;'
+	    ];
+	$template->{'postgresql'} = join("\n", @{$queries->{'postgresql'}->{pre}});
+	$template->{'postgresql'} .= <<'END_postgresql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
@@ -626,71 +774,70 @@ CREATE INDEX [% tablename %]_temp_idx ON [% tablename %]_temp USING btree (pool_
 [%-     END %]
 [%-   END %]
 [%- END %]
-
-START TRANSACTION;
-
--- Delete old pools that have been removed
-DELETE FROM [% tablename %] r WHERE NOT EXISTS (
-  SELECT FROM [% tablename %]_temp t
-  WHERE t.pool_name = r.pool_name AND t.framedipaddress = r.framedipaddress
-);
-
--- Add new pools that have been created
-INSERT INTO [% tablename %] (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM [% tablename %]_temp t WHERE NOT EXISTS (
-    SELECT * FROM [% tablename %] r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );
-
-COMMIT;
 END_postgresql
-
+	$template->{'postgresql'} .= join("\n", @{$queries->{'postgresql'}->{post}});
 #
 #  Oracle
 #
-	$template{'oracle'} = <<'END_oracle';
--- Temporary table holds the provided IP pools
-CREATE GLOBAL TEMPORARY TABLE [% tablename %]_temp (
+	$queries->{'oracle'}->{pre} = [
+		'CREATE GLOBAL TEMPORARY TABLE '.$tablename.'_temp (
   pool_name               VARCHAR(30) NOT NULL,
   FramedIPAddress         VARCHAR(15) NOT NULL
-) ON COMMIT DELETE ROWS;
-CREATE INDEX [% tablename %]_temp_idx ON [% tablename %]_temp (pool_name,FramedIPAddress);
+) ON COMMIT DELETE ROWS;',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress);'
+	    ];
+	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.' (pool_name,FramedIPAddress) VALUES (?, ?)';
+	$queries->{'oracle'}->{post} = [
+		'DELETE FROM '.$tablename.' WHERE (pool_name, framedipaddress)
+  NOT IN (SELECT pool_name, framedipaddress FROM '.$tablename.'_temp);',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;'
+	    ];
 
+	$template->{'oracle'} = join("\n", @{$queries->{'oracle'}->{pre}});
+	$template->{'oracle'} .= <<'END_oracle';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
 [%- "\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES " %]('[% r.pool_name %]','[% i %]');
 [%-   END %]
 [%- END %]
-
--- Delete old pools that have been removed
-DELETE FROM [% tablename %] WHERE (pool_name, framedipaddress)
-  NOT IN (SELECT pool_name, framedipaddress FROM [% tablename %]_temp);
-
--- Add new pools that have been created
-INSERT INTO [% tablename %] (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM [% tablename %]_temp t WHERE NOT EXISTS (
-    SELECT * FROM [% tablename %] r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );
-
-COMMIT;
 END_oracle
+	$template->{'oracle'} .= join("\n", @{$queries->{'oracle'}->{post}});
 
 #
 #  SQLite
 #
-
-	$template{'sqlite'} = <<'END_sqlite';
--- Temporary table holds the provided IP pools
-DROP TABLE IF EXISTS [% tablename %]_temp;
-CREATE TABLE [% tablename %]_temp (
+	$queries->{'sqlite'}->{pre} = [
+		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TABLE '.$tablename.'_temp (
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL
-);
+);',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress);'
+	    ];
+	$queries->{'sqlite'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'sqlite'}->{post} = [
+		'BEGIN TRANSACTION;',
+		'DELETE FROM '.$tablename.' WHERE rowid IN (
+  SELECT r.rowid FROM '.$tablename.' r
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+      WHERE t.rowid IS NULL);',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;',
+		'DROP TABLE '.$tablename.'_temp;'
+	    ];
 
-CREATE INDEX [% tablename %]_temp_idx ON [% tablename %]_temp (pool_name,FramedIPAddress);
-
+	$template->{'sqlite'} = join("\n", @{$queries->{'sqlite'}->{pre}});
+	$template->{'sqlite'} .= <<'END_sqlite';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
@@ -702,46 +849,41 @@ CREATE INDEX [% tablename %]_temp_idx ON [% tablename %]_temp (pool_name,FramedI
 [%-     END %]
 [%-   END %]
 [%- END %]
-
-BEGIN TRANSACTION;
-
--- Delete old pools that have been removed
-DELETE FROM [% tablename %] WHERE rowid IN (
-  SELECT r.rowid FROM [% tablename %] r
-  LEFT JOIN [% tablename %]_temp t USING (pool_name,framedipaddress)
-      WHERE t.rowid IS NULL);
-
--- Add new pools that have been created
-INSERT INTO [% tablename %] (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM [% tablename %]_temp t WHERE NOT EXISTS (
-    SELECT * FROM [% tablename %] r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );
-
-COMMIT;
-
-DROP TABLE [% tablename %]_temp;
 END_sqlite
+	$template->{'sqlite'} .= join("\n", @{$queries->{'sqlite'}->{post}});
 
 #
 #  MS SQL
 #
-	$template{'mssql'} = <<'END_mssql';
--- Temporary table holds the provided IP pools
-DROP TABLE IF EXISTS #[% tablename %]_temp;
-GO
-
-CREATE TABLE #[% tablename %]_temp (
+	$queries->{'mssql'}->{pre} = [
+		'DROP TABLE IF EXISTS #'.$tablename.'_temp;',
+		'GO',
+		'CREATE TABLE #'.$tablename.'_temp (
   id                    int identity(1, 1) NOT NULL,
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL,
   PRIMARY KEY (id),
-);
-GO
+);',
+		'GO',
+		'CREATE INDEX pool_name_framedipaddress ON #'.$tablename.'_temp(pool_name, framedipaddress);',
+		'GO'
+	    ];
+	$queries->{'mssql'}->{insert} = 'INSERT INTO #'.$tablename.'_temp (pool_name, framedipaddress) VALUES (?, ?)';
+	$queries->{'mssql'}->{post} = [
+		'BEGIN TRAN;',
+		'DELETE r FROM '.$tablename.' r
+  LEFT JOIN #'.$tablename.'_temp t ON r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress
+      WHERE t.id IS NULL;',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM #'.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+		);',
+		'COMMIT TRAN;'
+	    ];
 
-CREATE INDEX pool_name_framedipaddress ON #[% tablename %]_temp(pool_name, framedipaddress);
-GO
-
+	$template->{'mssql'} = join("\n", @{$queries->{'mssql'}->{pre}});
+	$template->{'mssql'} .= <<'END_mssql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
@@ -754,25 +896,10 @@ GO
 [%-     END %]
 [%-   END %]
 [% END %]
-
-BEGIN TRAN;
-
--- Delete old pools that have been removed
-DELETE r FROM [% tablename %] r
-  LEFT JOIN #[% tablename %]_temp t ON r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress
-      WHERE t.id IS NULL;
-
--- Add new pools that have been created
-INSERT INTO [% tablename %] (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM #[% tablename %]_temp t WHERE NOT EXISTS (
-    SELECT * FROM [% tablename %] r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );
-
-COMMIT TRAN;
 END_mssql
+	$template->{'mssql'} .= join("\n", @{$queries->{'mssql'}->{post}});
 
-    return %template;
+	return ($template, $queries);
 
 }
 
