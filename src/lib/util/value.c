@@ -1740,7 +1740,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 		str = fr_value_box_asprint(ctx, src, '\0');
 		if (unlikely(!str)) return -1;
 
-		return fr_value_box_bstrdup_buffer_shallow(ctx, dst, dst_enumv, str, src->tainted);
+		return fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, str, src->tainted);
 	}
 	}
 }
