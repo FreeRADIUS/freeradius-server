@@ -230,15 +230,6 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 		state->failed = true;
 
 	close_pipe:
-		/*
-		 *	libkqueue does not implement waiting for PIDs.
-		 *
-		 *	We just mark the request as resumable, and
-		 *	hope that we beat the race condition in
-		 *	waipid().
-		 */
-		unlang_interpret_resumable(request);
-
 		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
 		close(state->fd);
 		state->fd = -1;
