@@ -46,6 +46,7 @@ typedef struct {
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
 
 	bool				discard;	//!< whether or not we discard the packet
+	bool				do_not_respond;	//!< don't respond
 
 	/*
 	 *	We can't set the "process" function here, because a

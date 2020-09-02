@@ -947,7 +947,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	"live".  Delete the old one from the tracking tree,
 	 *	and return the new one.
 	 */
-	if (old->reply_len > 0) {
+	if (old->reply_len || old->do_not_respond) {
 		talloc_free(old);
 
 	} else {
@@ -1526,7 +1526,7 @@ have_client:
 					return 0;
 				}
 
-				if (track->reply_len == 1) {
+				if (track->do_not_respond) {
 					DEBUG("Ignoring retransmit from client %s - we are not responding to this request ", client->radclient->shortname);
 					return 0;
 				}
@@ -2046,6 +2046,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	if (!now && !track->discard && inst->app_io->track_duplicates) {
 		fr_assert(inst->cleanup_delay > 0);
+		fr_assert(track->do_not_respond || track->reply_len);
 
 		/*
 		 *	if the timer succeeds, then "track"
@@ -2130,26 +2131,24 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if ((track->timestamp != request_time) || track->discard) {
 			fr_assert(track->packets > 0);
-			fr_assert(client->packets > 0);
 			track->packets--;
 
 			DEBUG3("Suppressing reply as we have a newer packet");
 
 			track->discard = true;
-			packet_expiry_timer(el, 0, track);
-			return buffer_len;
+			goto setup_timer;
 		}
 
 		/*
 		 *	We have a NAK packet, or the request has timed
 		 *	out, or it was discarded due to a conflicting
-		 *	packet.  We don't respond.
+		 *	packet.  We don't respond, but we do cache the
+		 *	"do not respond" reply for a period of time.
 		 */
 		if (buffer_len == 1) {
-		do_not_respond:
-			track->reply_len = 1; /* don't respond */
+			track->do_not_respond = true;
 			packet_expiry_timer(el, 0, track);
-			return buffer_len;
+			goto setup_timer;
 		}
 
 		/*
@@ -2158,7 +2157,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		packet_len = inst->app_io->write(child, track, request_time,
 						 buffer, buffer_len, written);
-		if (packet_len <= 0) goto do_not_respond;
+		if (packet_len <= 0) {
+			track->discard = true;
+			packet_expiry_timer(el, 0, track);
+			return packet_len;
+		}
 
 		/*
 		 *	Only a partial write.  The network code will
@@ -2173,10 +2176,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	We're not tracking duplicates, so just expire
 		 *	the packet now.
 		 */
-		if (!inst->app_io->track_duplicates) {
-			packet_expiry_timer(el, 0, track);
-			return packet_len;
-		}
+		if (!inst->app_io->track_duplicates) goto setup_timer;
 
 		/*
 		 *	Cache the reply packet if we're doing dedup.
@@ -2194,6 +2194,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *
 		 *	On dedup this also extends the timer.
 		 */
+	setup_timer:
 		packet_expiry_timer(el, 0, track);
 		return buffer_len;
 	}
