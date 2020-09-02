@@ -1451,6 +1451,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 #endif
 
 	ev = talloc(ctx, fr_event_pid_t);
+	ev->el = el;
 	ev->pid = pid;
 	ev->callback = callback;
 	ev->uctx = uctx;
