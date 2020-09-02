@@ -167,7 +167,15 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 	state->status = status;
 	state->pid = 0;
 
-	fr_assert(state->fd < 0);
+	/*
+	 *	We may receive the "child exited" signal before the
+	 *	"pipe has been closed" signal.
+	 */
+	if (state->fd >= 0) {
+		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
+		close(state->fd);
+		state->fd = -1;
+	}
 
 	if (state->ev) fr_event_timer_delete(&state->ev);
 
