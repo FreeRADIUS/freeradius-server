@@ -80,6 +80,7 @@ typedef struct {
 	fr_event_filter_t	filter;			//!< what type of filter it is
 
 	bool			dead;			//!< is it dead?
+	bool			blocked;		//!< is it blocked?
 
 	size_t			outstanding;		//!< number of outstanding packets sent to the worker
 	fr_listen_t		*listen;		//!< I/O ctx and functions.
@@ -912,36 +913,71 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	fr_assert(s->pending != NULL);
-
-	/*
-	 *	@todo - this code is much the same as in
-	 *	fr_network_post_event().  Fix it so we only have one
-	 *	copy!
-	 */
-
 	/*
 	 *	Start with the currently pending message, and then
 	 *	work through the priority heap.
 	 */
-	cd = s->pending;
-	if (!cd) cd = fr_heap_pop(s->waiting);
+	if (s->pending) {
+		cd = s->pending;
+		s->pending = NULL;
+
+	} else {
+		cd = fr_heap_pop(s->waiting);
+	}
+
 	while (cd != NULL) {
 		int rcode;
 
 		fr_assert(li == cd->listen);
-		fr_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
-
 		rcode = li->app_io->write(li, cd->packet_ctx,
 					  cd->reply.request_time,
-					  cd->m.data, cd->m.data_size, 0);
-		if (rcode < 0) {
+					  cd->m.data, cd->m.data_size, s->written);
 
+		/*
+		 *	As a special case, allow write() to return
+		 *	"0", which means "close the socket".
+		 */
+		if (rcode == 0) goto dead;
+
+		/*
+		 *	Or we have a write error.
+		 */
+		if (rcode < 0) {
 			/*
 			 *	Stop processing the heap, and set the
 			 *	pending message to the current one.
 			 */
 			if (errno == EWOULDBLOCK) {
+			save_pending:
+				fr_assert(!s->pending);
+
+				if (cd->m.status != FR_MESSAGE_LOCALIZED) {
+					fr_message_t *lm;
+
+					lm = fr_message_localize(s, &cd->m, sizeof(*cd));
+					fr_message_done(&cd->m);
+
+					if (!lm) {
+						ERROR("Failed saving pending packet");
+						goto dead;
+					}
+
+					cd = (fr_channel_data_t *) lm;
+				}
+
+				if (!s->blocked) {
+					if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
+							       fr_network_read,
+							       fr_network_write,
+							       fr_network_error,
+							       s) < 0) {
+						PERROR("Failed adding write callback to event loop");
+						goto dead;
+					}
+
+					s->blocked = true;
+				}
+
 				s->pending = cd;
 				return;
 			}
@@ -953,12 +989,13 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 *	signals to us that we have to close
 			 *	the socket, but NOT complain about it.
 			 */
-			if (errno == ECONNREFUSED) {
-				fr_network_socket_dead(nr, s);
-				return;
-			}
+			if (errno == ECONNREFUSED) goto dead;
 
-			PERROR("Closing socket %d due to failed write", s->listen->fd);
+			PERROR("Failed writing to socket %s", s->listen->name);
+			if (li->app_io->error) li->app_io->error(li);
+
+		dead:
+			fr_message_done(&cd->m);
 			fr_network_socket_dead(nr, s);
 			return;
 		}
@@ -966,13 +1003,11 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		/*
 		 *	If we've done a partial write, localize the message and continue.
 		 */
-		if ((rcode > 0) && ((size_t) rcode < cd->m.data_size)) {
+		if ((size_t) rcode < cd->m.data_size) {
 			s->written = rcode;
-			s->pending = cd;
-			return;
+			goto save_pending;
 		}
 
-		s->pending = NULL;
 		s->written = 0;
 
 		/*
@@ -981,15 +1016,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		fr_message_done(&cd->m);
 		nr->stats.out++;
 		s->stats.out++;
-
-		/*
-		 *	As a special case, allow write() to return
-		 *	"0", which means "close the socket".
-		 */
-		if (rcode == 0) {
-			fr_network_socket_dead(nr, s);
-			return;
-		}
 
 		/*
 		 *	Grab the net entry.
@@ -1006,9 +1032,11 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			       NULL,
 			       fr_network_error,
 			       s) < 0) {
-		PERROR("Failed removing \"read\" callback from event loop");
+		PERROR("Failed removing write callback from event loop");
 		fr_network_socket_dead(nr, s);
 	}
+
+	s->blocked = false;
 }
 
 static int _network_socket_free(fr_network_socket_t *s)
@@ -1302,8 +1330,11 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	fr_channel_data_t *cd;
 	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
 
+	/*
+	 *	Pull the replies off of our global heap, and try to
+	 *	push them to the individual sockets.
+	 */
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
-		ssize_t rcode;
 		fr_listen_t *li;
 		fr_network_socket_t *s;
 
@@ -1338,15 +1369,13 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 			 *	No more packets, it's safe to delete
 			 *	the socket.
 			 */
-			if (!s->outstanding) {
-				talloc_free(s);
-			}
+			if (!s->outstanding) talloc_free(s);
 
 			continue;
 		}
 
 		/*
-		 *	No data to write to the socket, so we skip it.
+		 *	No data to write to the socket, so we skip the message.
 		 */
 		if (!cd->m.data_size) {
 			fr_message_done(&cd->m);
@@ -1354,96 +1383,16 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		}
 
 		/*
-		 *	There are queued entries for this socket.
-		 *	Append the packet into the list of packets to
-		 *	write.
+		 *	No pending message, let's try writing it.
 		 *
-		 *	For sanity, we localize the message first.
-		 *	Doing so ensures that the worker has it's
-		 *	message buffers cleaned up quickly.
+		 *	If there is a pending message, then we're
+		 *	waiting for IO write to become ready.
 		 */
-		if (s->pending) {
-		insert_waiting:
-			if (cd->m.status != FR_MESSAGE_LOCALIZED) {
-				fr_message_t *lm;
-
-				lm = fr_message_localize(s, &cd->m, sizeof(*cd));
-				fr_message_done(&cd->m);
-
-				if (!lm) {
-					ERROR("Failed copying packet.  Discarding it.");
-					continue;
-				}
-
-				cd = (fr_channel_data_t *) lm;
-			}
-
+		if (!s->pending) {
+			fr_assert(!s->blocked);
 			(void) fr_heap_insert(s->waiting, cd);
-			continue;
+			fr_network_write(nr->el, s->listen->fd, 0, s);
 		}
-
-		/*
-		 *	The write function is responsible for ensuring
-		 *	that NAKs are not written to the network.
-		 */
-		rcode = li->app_io->write(li, cd->packet_ctx,
-					  cd->reply.request_time,
-					  cd->m.data, cd->m.data_size, 0);
-		if (rcode < 0) {
-			s->pending = 0;
-
-			if (errno == EWOULDBLOCK) {
-			save_pending:
-				if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
-						       fr_network_read,
-						       fr_network_write,
-						       fr_network_error,
-						       s) < 0) {
-					PERROR("Failed adding write callback to event loop");
-					goto error;
-				}
-
-				goto insert_waiting;
-			}
-
-			/*
-			 *	Tell the socket that there was an error.
-			 *
-			 *	Don't call close, as that will be done
-			 *	in the destructor.
-			 */
-			PERROR("Failed writing to socket %d", s->listen->fd);
-		error:
-			fr_message_done(&cd->m);
-			if (li->app_io->error) li->app_io->error(li);
-
-			/*
-			 *	Don't close the socket.  The write error may
-			 *	be temporary.
-			 */
-//			fr_network_socket_dead(nr, s);
-			continue;
-		}
-
-		/*
-		 *	If there's a partial write, save the write
-		 *	callback for later.
-		 */
-		if ((rcode > 0) && ((size_t) rcode < cd->m.data_size)) {
-			s->written = rcode;
-			goto save_pending;
-		}
-
-		DEBUG3("Sending reply on FD %u", s->listen->fd);
-		fr_message_done(&cd->m);
-		s->pending = NULL;
-		s->written = 0;
-
-		/*
-		 *	As a special case, allow write() to return
-		 *	"0", which means "close the socket".
-		 */
-		if (rcode == 0) fr_network_socket_dead(nr, s);
 	}
 }
 
