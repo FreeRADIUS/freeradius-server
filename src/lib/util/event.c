@@ -1496,8 +1496,9 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	}
 #else  /* LOCAL_PID */
 
+	ev->heap_id = -1;
 	if (unlikely(fr_heap_insert(el->pids, ev) < 0)) {
-		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
+		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_strerror());
 		talloc_free(ev);
 		return -1;
 	}
