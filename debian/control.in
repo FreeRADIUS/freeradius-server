@@ -75,7 +75,7 @@ Architecture: any
 Replaces: freeradius (<< 3)
 Conflicts: radiusd-livingston, yardradius
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), libtemplate-perl, libnet-ip-perl
-Recommends: libdbi-perl, libyaml-libyaml-perl
+Recommends: libdbi-perl, libyaml-libyaml-perl, libdbd-pg-perl, libdbd-mysql-perl, libdbd-sqlite3-perl, libdbd-sybase-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
  the FreeRADIUS Server project, including:
