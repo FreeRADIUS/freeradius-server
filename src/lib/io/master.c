@@ -935,6 +935,14 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		*is_dup = true;
 		old->packets++;
 		talloc_free(track);
+
+		/*
+		 *	Retransmits can sit in the outbound queue for
+		 *	a while.  We don't want to time out this
+		 *	struct while the packet is in the outbound
+		 *	queue.
+		 */
+		if (old->ev) (void) fr_event_timer_delete(&old->ev);
 		return old;
 	}
 
