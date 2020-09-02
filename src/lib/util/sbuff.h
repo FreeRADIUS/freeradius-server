@@ -165,6 +165,12 @@ typedef struct {
 							///< sequences for parsing, but where the string will
 							///< be passed off to a 3rd party library which will
 							///< need to interpret the same sequences.
+
+	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
+							///< octal escape sequences.
+	bool		do_utf8;			//!< Process utf8 multi-byte sequences before applying
+							///< escaping rules.
+
 	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
 	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
 } fr_sbuff_escape_rules_t;
@@ -187,6 +193,22 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -3,		//!< Integer type would overflow.
 	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -4		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
+
+#define FR_SBUFF_FLAG_EXTENDABLE		0x01
+#define FR_SBUFF_FLAG_EXTENDED			0x02
+
+/** Whether the buffer is currently extendable and whether it was extended
+ *
+ */
+typedef enum {
+	FR_SBUFF_NOT_EXTENDABLE			= 0x00,
+	FR_SBUFF_EXTENDABLE			= FR_SBUFF_FLAG_EXTENDABLE,
+	FR_SBUFF_EXTENDABLE_EXTENDED		= FR_SBUFF_FLAG_EXTENDABLE | FR_SBUFF_FLAG_EXTENDED,
+	FR_SBUFF_EXTENDED			= FR_SBUFF_FLAG_EXTENDED
+} fr_sbuff_extend_status_t;
+
+#define fr_sbuff_is_extendable(_status)		((_status) & FR_SBUFF_FLAG_EXTENDABLE)
+#define fr_sbuff_was_extended(_status)		((_status) & FR_SBUFF_FLAG_EXTENDED)
 
 extern fr_table_num_ordered_t const sbuff_parse_error_table[];
 extern size_t sbuff_parse_error_table_len;
@@ -234,6 +256,53 @@ extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true, \
 	['F'] = true
 
+/** Unprintables (ascii range)
+ *
+ * We don't include characters in the extended range (128-255) as they're
+ * likely part of a multi-byte sequence and we don't want to break UTF8 strings.
+ */
+#define SBUFF_CHAR_UNPRINTABLES_LOW \
+	[000] = true, [001] = true, [002] = true, [003] = true, [004] = true, \
+	[005] = true, [006] = true, [007] = true, [008] = true, [009] = true, \
+	[010] = true, [011] = true, [012] = true, [013] = true, [014] = true, \
+	[015] = true, [016] = true, [017] = true, [018] = true, [019] = true, \
+	[020] = true, [021] = true, [022] = true, [023] = true, [024] = true, \
+	[025] = true, [026] = true, [027] = true, [028] = true, [029] = true, \
+	[030] = true, [031] = true, [127] = true
+
+/** Unprintables (extended range)
+ *
+ * If these characters are being escaped, the function should also be passed
+ * the 'do_utf8' flag.
+ */
+#define SBUFF_CHAR_UNPRINTABLES_EXTENDED \
+	[128] = true, [129] = true, \
+	[130] = true, [131] = true, [132] = true, [133] = true, [134] = true, \
+	[135] = true, [136] = true, [137] = true, [138] = true, [139] = true, \
+	[140] = true, [141] = true, [142] = true, [143] = true, [144] = true, \
+	[145] = true, [146] = true, [147] = true, [148] = true, [149] = true, \
+	[150] = true, [151] = true, [152] = true, [153] = true, [154] = true, \
+	[155] = true, [156] = true, [157] = true, [158] = true, [159] = true, \
+	[160] = true, [161] = true, [162] = true, [163] = true, [164] = true, \
+	[165] = true, [166] = true, [167] = true, [168] = true, [169] = true, \
+	[170] = true, [171] = true, [172] = true, [173] = true, [174] = true, \
+	[175] = true, [176] = true, [177] = true, [178] = true, [179] = true, \
+	[180] = true, [181] = true, [182] = true, [183] = true, [184] = true, \
+	[185] = true, [186] = true, [187] = true, [188] = true, [189] = true, \
+	[190] = true, [191] = true, [192] = true, [193] = true, [194] = true, \
+	[195] = true, [196] = true, [197] = true, [198] = true, [199] = true, \
+	[200] = true, [201] = true, [202] = true, [203] = true, [204] = true, \
+	[205] = true, [206] = true, [207] = true, [208] = true, [209] = true, \
+	[210] = true, [211] = true, [212] = true, [213] = true, [214] = true, \
+	[215] = true, [216] = true, [217] = true, [218] = true, [219] = true, \
+	[220] = true, [221] = true, [222] = true, [223] = true, [224] = true, \
+	[225] = true, [226] = true, [227] = true, [228] = true, [229] = true, \
+	[230] = true, [231] = true, [232] = true, [233] = true, [234] = true, \
+	[235] = true, [236] = true, [237] = true, [238] = true, [239] = true, \
+	[240] = true, [241] = true, [242] = true, [243] = true, [244] = true, \
+	[245] = true, [246] = true, [247] = true, [248] = true, [249] = true, \
+	[250] = true, [251] = true, [252] = true, [253] = true, [254] = true, \
+	[255] = true
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -649,7 +718,11 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 
 /** Check if _len bytes are available in the sbuff and extend the buffer if possible
  *
- * @param[in] _sbuff
+ * If we do not have _len bytes in the sbuff after extending, then return.
+ *
+ * @param[in] _sbuff	to extend.
+ * @param[in] _len	The minimum amount the sbuff should be extended by.
+ * @return The number of bytes we would need to satisfy _len as a negative integer.
  */
 #define FR_SBUFF_EXTEND_LOWAT_OR_RETURN(_sbuff, _len) \
 do { \
@@ -659,23 +732,36 @@ do { \
 
 /** Extend a buffer if we're below the low water mark
  *
- * @param[out] extended		Will be set to true if the buffer was extended.
- *				This way the caller can track EOF.
+ * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
+ *				for the first call to this function if used
+ *				as a loop condition.
+ *				Will be filled with the result of the previous
+ *				call, and can be used to determine if the buffer
+ *				was extended.
  * @param[in] in		to extend.
  * @param[in] lowat		If bytes remaining are below the amount, extend.
  * @return
  *	- 0 if there are no bytes left in the buffer and we couldn't extend.
  *	- >0 the number of bytes in the buffer after extending.
  */
-static inline size_t fr_sbuff_extend_lowat(bool *extended, fr_sbuff_t *in, size_t lowat)
+static inline size_t fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in, size_t lowat)
 {
 	size_t remaining = fr_sbuff_remaining(in);
 
-	if ((remaining >= lowat) || !in->extend || !in->extend(in, lowat - remaining)) {
-		if (extended) *extended = false;
+	if (status && !(*status & FR_SBUFF_EXTENDABLE)) {
+	not_extendable:
+		if (status) *status = FR_SBUFF_NOT_EXTENDABLE;
 		return remaining;
 	}
-	if (extended) *extended = true;
+
+	if (remaining >= lowat) {
+		if (status) *status = FR_SBUFF_EXTENDABLE;
+		return remaining;
+	}
+
+	if (!in->extend || !in->extend(in, lowat - remaining)) goto not_extendable;
+
+	if (status) *status = FR_SBUFF_EXTENDABLE_EXTENDED;
 
 	return fr_sbuff_remaining(in);
 }
@@ -726,7 +812,6 @@ static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p)
 
 	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
 	if (unlikely(p < sbuff->start)) return 0;
-	if (p == sbuff->p) return 0;
 
 	c = sbuff->p;
 	_fr_sbuff_set_recurse(sbuff, p);
@@ -822,6 +907,36 @@ static inline char *fr_sbuff_marker(fr_sbuff_marker_t *m, fr_sbuff_t *sbuff)
 	sbuff->m = m;
 
 	return sbuff->p;
+}
+
+/** Used to update the position of an 'end' position marker
+ *
+ * Updates a marker so that it represents a 'constrained' end.
+ * If max > fr_sbuff_remaining() + fr_sbuff_used_total(), then the marker will
+ * be set to the end of the sbuff.
+ *
+ * Otherwise the marker will be set to the position indicated by
+ * start + (max - fr_sbuff_used_total()).
+ *
+ * This is used to add a constraint on the amount data that can be copied from
+ * an extendable buffer.
+ *
+ * @param[in] m		Marker created with #fr_sbuff_marker.
+ * @param[in] max 	amount of data we allow to be read from
+ *			the sbuff.  May be SIZE_MAX in which
+ *			case there is no constraint imposed
+ *			and the marker is set to the end of the buffer.
+ */
+static inline char *fr_sbuff_marker_update_end(fr_sbuff_marker_t *m, size_t max)
+{
+	fr_sbuff_t	*sbuff = m->parent;
+	size_t		used = fr_sbuff_used_total(sbuff);
+
+	m->p = (((max) - (used)) > fr_sbuff_remaining(sbuff) ?
+	       fr_sbuff_end(sbuff) :
+	       fr_sbuff_current(sbuff) + ((max) - (used)));
+
+	return m->p;
 }
 
 /** Trims the linked list back to the specified pointer
@@ -1168,7 +1283,7 @@ bool	fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c);
 static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
 {
 	if (!fr_sbuff_extend(sbuff)) return '\0';
-	return *(sbuff->p++);
+	return fr_sbuff_advance(sbuff, 1);
 }
 /** @} */
 

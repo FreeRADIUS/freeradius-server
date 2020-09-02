@@ -391,7 +391,8 @@ do { \
 
 /** Populate a terminal index
  *
- * @param[out] needle_len	the longest needle.
+ * @param[out] needle_len	the longest needle.  Will not be set
+ *				if the terminal array is empty.
  * @param[out] idx		to populate.
  * @param[in] term		Terminals to populate the index with.
  */
@@ -404,7 +405,6 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
 	if (!term) return;
 
 	memset(idx, 0, UINT8_MAX + 1);
-	*needle_len = 0;
 
 	for (i = 0; i < term->len; i++) {
 		len = term->elem[i].len;
@@ -413,7 +413,7 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
 		idx[(uint8_t)term->elem[i].str[0]] = i + 1;
 	}
 
-	*needle_len = max;
+	if (i > 0) *needle_len = max;
 }
 
 /** Efficient terminal string search
@@ -774,31 +774,43 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] tt		Token terminal strings in the encompassing grammar.
- * @param[in] rules		for processing escape sequences.
+ * @param[in] e_rules		for processing escape sequences.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes written to out.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_escape_rules_t const *rules)
+				   fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_sbuff_t 		our_in;
-	bool			do_escape = false;		/* Track state across extensions */
-	fr_sbuff_marker_t	o_s;
+	fr_sbuff_t 			our_in;
+	bool				do_escape = false;			/* Track state across extensions */
+	fr_sbuff_marker_t		o_s;
+	fr_sbuff_marker_t		c_s;
+	fr_sbuff_marker_t		end;
 
-	uint8_t			idx[UINT8_MAX + 1];		/* Fast path index */
-	size_t			needle_len = 1;
+	uint8_t				idx[UINT8_MAX + 1];			/* Fast path index */
+	size_t				needle_len = 1;
+
+	fr_sbuff_extend_status_t	status = FR_SBUFF_EXTENDABLE;		/* Tracks if we can extend */
 
 	/*
 	 *	If we don't need to do unescaping
 	 *	call a more suitable function.
 	 */
-	if (!rules || (rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
+	if (!e_rules || (e_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
 
 	CHECK_SBUFF_INIT(in);
 
-	our_in = FR_SBUFF_COPY(in);
+	our_in = FR_SBUFF_NO_ADVANCE(in);
+
+	/*
+	 *	Chunk tracking...
+	 */
+	fr_sbuff_marker(&c_s, &our_in);
+	fr_sbuff_marker(&end, &our_in);
+	fr_sbuff_marker_update_end(&end, len);
+
 	fr_sbuff_marker(&o_s, out);
 
 	/*
@@ -807,77 +819,79 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
-	while (fr_sbuff_used_total(&our_in) < len) {
-		char	*p;
-		char	*end;
+	/*
+	 *	...while we have remaining data
+	 */
+	while (fr_sbuff_extend_lowat(&status, &our_in, needle_len) > 0) {
+		if (fr_sbuff_was_extended(status)) fr_sbuff_marker_update_end(&end, len);
+		if (!fr_sbuff_diff(&our_in, &end)) break;	/* Reached the end */
 
-		if (fr_sbuff_extend_lowat(NULL, in, needle_len) == 0) break;
+		if (do_escape) {
+			do_escape = false;
 
-		p = fr_sbuff_current(&our_in);
-		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
+			/*
+			 *	Check for \x<hex><hex>
+			 */
+			if (e_rules->do_hex && fr_sbuff_is_char(&our_in, 'x')) {
+				uint8_t			escape;
+				fr_sbuff_marker_t	m;
 
-		while (p < end) {
-			if (do_escape) {
-				do_escape = false;
+				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 
-				/*
-				 *	Check for \x<hex><hex>
-				 */
-				if (rules->do_hex && (*p == 'x')) {
-					uint8_t			escape;
-					fr_sbuff_marker_t	m;
+				fr_sbuff_advance(&our_in, 1);
 
-					fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
-					fr_sbuff_set(&our_in, ++p);		/* sync sbuff */
-
-					if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
-						fr_sbuff_set(&our_in, &m);	/* backtrack */
-						p = m.p + 1;			/* skip escape char */
-						fr_sbuff_marker_release(&m);
-						goto check_subs;
-					}
-
-					if (fr_sbuff_in_char(out, escape) <= 0) {
-						fr_sbuff_set(&our_in, &m);	/* backtrack */
-						fr_sbuff_marker_release(&m);
-						goto done;
-					}
-					p = fr_sbuff_current(&our_in);
-					continue;
+				if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
+					fr_sbuff_set(&our_in, &m);	/* backtrack */
+					fr_sbuff_marker_release(&m);
+					goto check_subs;		/* allow sub for \x */
 				}
 
-				/*
-				 *	Check for \<oct><oct><oct>
-				 */
-				if (rules->do_oct && isdigit(*p)) {
-					uint8_t 		escape;
-					fr_sbuff_marker_t	m;
+				if (fr_sbuff_in_char(out, escape) <= 0) {
+					fr_sbuff_set(&our_in, &m);	/* backtrack */
+					fr_sbuff_marker_release(&m);
+					break;
+				}
+				fr_sbuff_marker_release(&m);
+				fr_sbuff_set(&c_s, &our_in);
+				continue;
+			}
 
-					fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
-					fr_sbuff_set(&our_in, p);		/* sync sbuff */
+			/*
+			 *	Check for \<oct><oct><oct>
+			 */
+			if (e_rules->do_oct && fr_sbuff_is_digit(&our_in)) {
+				uint8_t 		escape;
+				fr_sbuff_marker_t	m;
 
-					if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
-						fr_sbuff_set(&our_in, &m);	/* backtrack */
-						p = m.p + 1;			/* skip escape char */
-						fr_sbuff_marker_release(&m);
-						goto check_subs;
-					}
+				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
 
-					if (fr_sbuff_in_char(out, escape) <= 0) {
-						fr_sbuff_set(&our_in, &m);	/* backtrack */
-						fr_sbuff_marker_release(&m);
-						goto done;
-					}
-					p = fr_sbuff_current(&our_in);
-					continue;
+				if (fr_sbuff_out_uint8_oct(NULL, &escape, &our_in, false) != 3) {
+					fr_sbuff_set(&our_in, &m);	/* backtrack */
+					fr_sbuff_marker_release(&m);
+					goto check_subs;		/* allow sub for \<oct> */
 				}
 
-			check_subs:
-				/*
-				 *	Not a recognised escape sequence.
-				 */
-				if (rules->subs[(uint8_t)*p] == '\0') {
-					if (rules->skip[(uint8_t)*p] == true) goto next;
+				if (fr_sbuff_in_char(out, escape) <= 0) {
+					fr_sbuff_set(&our_in, &m);	/* backtrack */
+					fr_sbuff_marker_release(&m);
+					break;
+				}
+				fr_sbuff_marker_release(&m);
+				fr_sbuff_set(&c_s, &our_in);
+				continue;
+			}
+
+		check_subs:
+			/*
+			 *	Not a recognised hex or octal escape sequence
+			 *	may be a substitution or a sequence that
+			 *	should be copied to the output buffer.
+			 */
+			{
+				uint8_t c = *fr_sbuff_current(&our_in);
+
+				if (e_rules->subs[c] == '\0') {
+					if (e_rules->skip[c] == true) goto next;
 					goto next_esc;
 				}
 
@@ -887,45 +901,49 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				 *	write the substituted char to
 				 *	the output buffer.
 				 */
-				if (fr_sbuff_in_char(out, rules->subs[(uint8_t)*p++]) <= 0) goto done;
+				if (fr_sbuff_in_char(out, e_rules->subs[c]) <= 0) break;
 
 				/*
 				 *	...and advance past the entire
 				 *	escape seq in the input buffer.
 				 */
-				fr_sbuff_advance(&our_in, 2);
+				fr_sbuff_advance(&our_in, 1);
+				fr_sbuff_set(&c_s, &our_in);
 				continue;
 			}
-
-		next_esc:
-			if (*p == rules->chr) {
-				/*
-				 *	Copy out any data we got before
-				 *	we hit the escape char.
-				 *
-				 *	We need to do this before we
-				 *	can write the escape char to
-				 *	the output sbuff.
-				 */
-				if (p > our_in.p) FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
-
-				do_escape = true;
-				p++;
-				continue;
-			}
-
-		next:
-			if (fr_sbuff_terminal_search(in, p, idx, tt)) break;
-			p++;
 		}
 
-		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
+	next_esc:
+		if (*fr_sbuff_current(&our_in) == e_rules->chr) {
+			/*
+			 *	Copy out any data we got before
+			 *	we hit the escape char.
+			 *
+			 *	We need to do this before we
+			 *	can write the escape char to
+			 *	the output sbuff.
+			 */
+			FILL_OR_GOTO_DONE(out, &c_s, fr_sbuff_behind(&c_s));
 
-		if (p != end) break;		/* stopped early, break */
+			do_escape = true;
+			fr_sbuff_advance(&our_in, 1);
+			continue;
+		}
+
+	next:
+		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt)) break;
+		fr_sbuff_advance(&our_in, 1);
 	};
 
+	/*
+	 *	Copy any remaining data over
+	 */
+	FILL_OR_GOTO_DONE(out, &c_s, fr_sbuff_behind(&c_s));
+
 done:
+	fr_sbuff_set(in, &c_s);	/* Only advance by as much as we copied */
 	*out->p = '\0';
+
 	return fr_sbuff_marker_release_behind(&o_s);
 }
 
