@@ -45,6 +45,8 @@ typedef struct {
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
 
+	bool				discard;	//!< whether or not we discard the packet
+
 	/*
 	 *	We can't set the "process" function here, because a
 	 *	second (conflicting) packet may arrive while we're

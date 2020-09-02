@@ -954,7 +954,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		fr_assert(client == old->client);
 		fr_assert(track->ev == NULL);
 		(void) rbtree_deletebydata(client->table, old);
-		track->address = NULL; /* don't send any reply, there's nowhere for it to go */
+		track->discard = true; /* don't send any reply, there's nowhere for it to go */
 		talloc_set_destructor(track, track_free);
 	}
 
@@ -2044,7 +2044,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *
 	 *	On duplicates this also extends the expiry timer.
 	 */
-	if (!now && track->address && inst->app_io->track_duplicates) {
+	if (!now && !track->discard && inst->app_io->track_duplicates) {
 		fr_assert(inst->cleanup_delay > 0);
 
 		/*
@@ -2128,14 +2128,14 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	The request later received a conflicting
 		 *	packet, so we discard this one.
 		 */
-		if ((track->timestamp != request_time) || !track->address) {
+		if ((track->timestamp != request_time) || track->discard) {
 			fr_assert(track->packets > 0);
 			fr_assert(client->packets > 0);
 			track->packets--;
 
 			DEBUG3("Suppressing reply as we have a newer packet");
 
-			track->address = NULL; /* clean it up now */
+			track->discard = true;
 			packet_expiry_timer(el, 0, track);
 			return buffer_len;
 		}
