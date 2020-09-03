@@ -138,10 +138,10 @@ dhcp DHCP-Discover {
 	#  In the event that DHCP-Message-Type is not set then the
 	#  server will fall back to determining the type of reply
 	#  based on the rcode of this section.
-
-	update reply {
-	       DHCP-Message-Type = DHCP-Offer
-	}
+	#
+	#update reply {
+	#       DHCP-Message-Type = DHCP-Offer
+	#}
 
 	#  The contents here are invented.  Change them!
 	#  Lease time is referencing the lease time set in the
@@ -181,15 +181,16 @@ dhcp DHCP-Discover {
 	#  message.
 	#
 	#  Other rcodes will tell the server to not return any response.
-	ok
+	#
+	#ok
 }
 
 dhcp DHCP-Request {
 
-	# Response packet type. See DHCP-Discover section above.
-	update reply {
-	       &DHCP-Message-Type = DHCP-Ack
-	}
+	#  Response packet type. See DHCP-Discover section above.
+	#update reply {
+	#       &DHCP-Message-Type = DHCP-Ack
+	#}
 
 	#  The contents here are invented.  Change them!
 	#  Lease time is referencing the lease time set in the
@@ -231,7 +232,8 @@ dhcp DHCP-Request {
 	#
 	#  "handled" will not return a packet, all other rcodes will
 	#  send back a DHCP-NAK.
-	ok
+	#
+	#ok
 }
 
 #
