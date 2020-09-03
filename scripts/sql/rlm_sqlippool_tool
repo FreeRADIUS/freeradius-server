@@ -755,7 +755,7 @@ sub load_templates {
   );',
 		'COMMIT;'
 	    ];
-	$template->{'mysql'} = join("\n", @{$queries->{'mysql'}->{pre}});
+	$template->{'mysql'} = join("\n", @{$queries->{'mysql'}->{pre}})."\n";
 	$template->{'mysql'} .= <<'END_mysql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -769,7 +769,7 @@ sub load_templates {
 [%-   END %]
 [%- END %]
 END_mysql
-	$template->{'mysql'} .= join("\n", @{$queries->{'mysql'}->{post}});
+	$template->{'mysql'} .= join("\n", @{$queries->{'mysql'}->{post}})."\n";
 
 #
 #  PostgreSQL
@@ -796,7 +796,7 @@ END_mysql
   );',
 		'COMMIT;'
 	    ];
-	$template->{'postgresql'} = join("\n", @{$queries->{'postgresql'}->{pre}});
+	$template->{'postgresql'} = join("\n", @{$queries->{'postgresql'}->{pre}})."\n";
 	$template->{'postgresql'} .= <<'END_postgresql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -810,7 +810,7 @@ END_mysql
 [%-   END %]
 [%- END %]
 END_postgresql
-	$template->{'postgresql'} .= join("\n", @{$queries->{'postgresql'}->{post}});
+	$template->{'postgresql'} .= join("\n", @{$queries->{'postgresql'}->{post}})."\n";
 #
 #  Oracle
 #
@@ -833,7 +833,7 @@ END_postgresql
 		'COMMIT;'
 	    ];
 
-	$template->{'oracle'} = join("\n", @{$queries->{'oracle'}->{pre}});
+	$template->{'oracle'} = join("\n", @{$queries->{'oracle'}->{pre}})."\n";
 	$template->{'oracle'} .= <<'END_oracle';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -842,7 +842,7 @@ END_postgresql
 [%-   END %]
 [%- END %]
 END_oracle
-	$template->{'oracle'} .= join("\n", @{$queries->{'oracle'}->{post}});
+	$template->{'oracle'} .= join("\n", @{$queries->{'oracle'}->{post}})."\n";
 
 #
 #  SQLite
@@ -871,7 +871,7 @@ END_oracle
 		'DROP TABLE '.$tablename.'_temp;'
 	    ];
 
-	$template->{'sqlite'} = join("\n", @{$queries->{'sqlite'}->{pre}});
+	$template->{'sqlite'} = join("\n", @{$queries->{'sqlite'}->{pre}})."\n";
 	$template->{'sqlite'} .= <<'END_sqlite';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -885,7 +885,7 @@ END_oracle
 [%-   END %]
 [%- END %]
 END_sqlite
-	$template->{'sqlite'} .= join("\n", @{$queries->{'sqlite'}->{post}});
+	$template->{'sqlite'} .= join("\n", @{$queries->{'sqlite'}->{post}})."\n";
 
 #
 #  MS SQL
@@ -917,7 +917,7 @@ END_sqlite
 		'COMMIT TRAN;'
 	    ];
 
-	$template->{'mssql'} = join("\n", @{$queries->{'mssql'}->{pre}});
+	$template->{'mssql'} = join("\n", @{$queries->{'mssql'}->{pre}})."\n";
 	$template->{'mssql'} .= <<'END_mssql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -932,7 +932,7 @@ GO
 [%-   END %]
 [% END %]
 END_mssql
-	$template->{'mssql'} .= join("\n", @{$queries->{'mssql'}->{post}});
+	$template->{'mssql'} .= join("\n", @{$queries->{'mssql'}->{post}})."\n";
 
 	return ($template, $queries);
 
