@@ -290,7 +290,7 @@ static int fetch_and_process_password(pwd_session_t *session, REQUEST *request, 
 	fr_pair_add(&fake->packet->vps, fake->username);
 
 	if (inst->prep >= 0) {
-		vp = fr_pair_afrom_num(fake, PW_EAP_PWD_PASSWORD_PREP, 0);
+		vp = fr_pair_afrom_num(fake->packet, PW_EAP_PWD_PASSWORD_PREP, 0);
 		rad_assert(vp != NULL);
 		vp->vp_byte = inst->prep;
 		fr_pair_add(&fake->packet->vps, vp);
