@@ -223,7 +223,7 @@ dhcp DHCP-Request {
 #	update control {
 #		&Pool-Name := "local"
 #	}
-#	dhcp_sqlippool
+#	dhcp_sqlippool_request
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Ack
