@@ -408,32 +408,32 @@ static void test_unescape_until(void)
 	fr_sbuff_t		sbuff;
 	ssize_t			slen;
 
-	fr_sbuff_escape_rules_t	rules = {
+	fr_sbuff_unescape_rules_t	rules = {
 					.chr = '\\'
 				};
 
-	fr_sbuff_escape_rules_t	pipe_rules = {
+	fr_sbuff_unescape_rules_t	pipe_rules = {
 					.chr = '|',
 					.subs = { ['g'] = 'g', ['|'] = '|'  }
 				};
 
-	fr_sbuff_escape_rules_t	pipe_rules_sub = {
+	fr_sbuff_unescape_rules_t	pipe_rules_sub = {
 					.chr = '|', .subs = { ['g'] = 'h', ['|'] = '|'  }
 				};
 
-	fr_sbuff_escape_rules_t	pipe_rules_sub_hex = {
+	fr_sbuff_unescape_rules_t	pipe_rules_sub_hex = {
 					.chr = '|',
 					.subs = { ['g'] = 'h', ['|'] = '|'  },
 					.do_hex = true
 				};
 
-	fr_sbuff_escape_rules_t	pipe_rules_sub_oct = {
+	fr_sbuff_unescape_rules_t	pipe_rules_sub_oct = {
 					.chr = '|',
 					.subs = { ['g'] = 'h', ['|'] = '|' },
 					.do_oct = true
 				};
 
-	fr_sbuff_escape_rules_t	pipe_rules_both = {
+	fr_sbuff_unescape_rules_t	pipe_rules_both = {
 					.chr = '|',
 					.subs = { ['g'] = 'h', ['|'] = '|'  },
 					.do_hex = true,
@@ -625,7 +625,7 @@ static void test_unescape_until(void)
 	{
 		char		tmp_out[30 + 1];
 
-		fr_sbuff_escape_rules_t double_quote_rules = {
+		fr_sbuff_unescape_rules_t double_quote_rules = {
 			.chr = '\\',
 			.subs = {
 				['a'] = '\a',

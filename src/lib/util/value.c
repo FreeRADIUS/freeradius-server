@@ -288,7 +288,7 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_double = {
+fr_sbuff_unescape_rules_t fr_value_unescape_double = {
 	.chr = '\\',
 	.subs = {
 		['"'] = '"',	/* Quoting char */
@@ -306,7 +306,7 @@ fr_sbuff_escape_rules_t fr_value_escape_double = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_single = {
+fr_sbuff_unescape_rules_t fr_value_unescape_single = {
 	.chr = '\\',
 	.subs = {
 		['\''] = '\'',	/* Quoting char */
@@ -316,7 +316,7 @@ fr_sbuff_escape_rules_t fr_value_escape_single = {
 	.do_oct = false
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
 	.chr = '\\',
 	.subs = {
 		['%'] = '%',	/* xlat expansions */
@@ -337,7 +337,7 @@ fr_sbuff_escape_rules_t fr_value_escape_solidus = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
 	.chr = '\\',
 	.subs = {
 		['%'] = '%',	/* xlat expansions */
@@ -355,11 +355,86 @@ fr_sbuff_escape_rules_t fr_value_escape_backtick = {
 	.do_oct = true
 };
 
+fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
+	[T_DOUBLE_QUOTED_STRING]	= &fr_value_unescape_double,
+	[T_SINGLE_QUOTED_STRING]	= &fr_value_unescape_single,
+	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_unescape_solidus,
+	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_double = {
+	.chr = '\\',
+	.subs = {
+		['"'] = '"',	/* Quoting char */
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_single = {
+	.chr = '\\',
+	.subs = {
+		['\''] = '\'',	/* Quoting char */
+		['\\'] = '\\'
+	},
+	.do_utf8 = true,
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['/'] = '/',	/* Quoting char */
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['`'] = '`',	/* Quoting char */
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
 fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_DOUBLE_QUOTED_STRING]	= &fr_value_escape_double,
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_escape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_escape_solidus,
-	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick
+	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
 };
 
 /** Copy flags and type data from one value box to another
@@ -815,21 +890,21 @@ size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char
 
 	case '"':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_double);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_double);
 	}
 	case '\'':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_single);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_single);
 	}
 
 	case '`':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_backtick);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_backtick);
 	}
 
 	case '/':
 	{
-		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_escape_solidus);
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_solidus);
 	}
 	}
 
@@ -887,16 +962,16 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
 		break;
 
 	case '"':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("\""), &fr_value_escape_double);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("\""), &fr_value_unescape_double);
 
 	case '\'':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("'"), &fr_value_escape_single);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("'"), &fr_value_unescape_single);
 
 	case '`':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("`"), &fr_value_escape_backtick);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("`"), &fr_value_unescape_backtick);
 
 	case '/':
-		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("/"), &fr_value_escape_solidus);
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("/"), &fr_value_unescape_solidus);
 	}
 
 	return fr_sbuff_out_bstrncpy(out, in, inlen);

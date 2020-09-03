@@ -159,6 +159,8 @@ typedef struct {
 typedef struct {
 	char		chr;				//!< Character at the start of an escape sequence.
 	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+							///< Indexed by the printable representation i.e.
+							///< 'n' for \n.
 	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
 							///< output along with the escape character.
 							///< This is useful where we need to interpret escape
@@ -166,20 +168,34 @@ typedef struct {
 							///< be passed off to a 3rd party library which will
 							///< need to interpret the same sequences.
 
-	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
-							///< octal escape sequences.
-	bool		do_utf8;			//!< Process utf8 multi-byte sequences before applying
-							///< escaping rules.
-
 	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
 	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
+} fr_sbuff_unescape_rules_t;
+
+/** Set of parsing rules for *unescape_until functions
+ *
+ */
+typedef struct {
+	char		chr;				//!< Character at the start of an escape sequence.
+
+	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+							///< Indexed by the binary representation i.e.
+							///< 0x0a for \n.
+	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
+							///< octal escape sequences.
+	bool		do_utf8;			//!< If true Don't apply escaping rules to valid UTF-8 sequences.
+
+	bool		do_hex;				//!< Represent escaped chars as hex sequences i.e.
+							///< \x<hex><hex>.
+	bool		do_oct;				//!< Represent escapes chars as octal sequences i.e.
+							///< \<oct><oct><oct>.
 } fr_sbuff_escape_rules_t;
 
 /** A set of terminal sequences, and escape rules
  *
  */
 typedef struct {
-	fr_sbuff_escape_rules_t const	*escapes;	//!< Escape characters
+	fr_sbuff_unescape_rules_t const	*escapes;	//!< Escape characters
 
 	fr_sbuff_term_t const		*terminals;	//!< Terminal characters used as a hint
 							///< that a token is not complete.
@@ -256,19 +272,51 @@ extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true, \
 	['F'] = true
 
+/*
+ * If the additional tables need to be generated feel free to use this
+ * code snippet.
+ *
+ * @verbatim
+	#include <stdio.h>
+	#include <stdlib.h>
+
+	int main(int argc, char **argv)
+	{
+		int start, end, i;
+		start = atoi(argv[1]);
+		end = atoi(argv[2]);
+		for (i = start; i <= end; i++) {
+			printf("[0x%02x] = true, ", i);
+			if (!(i % 8)) printf("\\\n");
+		}
+		return 0;
+	}
+ * @endverbatim
+ */
+
 /** Unprintables (ascii range)
  *
  * We don't include characters in the extended range (128-255) as they're
  * likely part of a multi-byte sequence and we don't want to break UTF8 strings.
  */
 #define SBUFF_CHAR_UNPRINTABLES_LOW \
-	[000] = true, [001] = true, [002] = true, [003] = true, [004] = true, \
-	[005] = true, [006] = true, [007] = true, [008] = true, [009] = true, \
-	[010] = true, [011] = true, [012] = true, [013] = true, [014] = true, \
-	[015] = true, [016] = true, [017] = true, [018] = true, [019] = true, \
-	[020] = true, [021] = true, [022] = true, [023] = true, [024] = true, \
-	[025] = true, [026] = true, [027] = true, [028] = true, [029] = true, \
-	[030] = true, [031] = true, [127] = true
+	[0x00] = true, \
+	[0x01] = true, [0x02] = true, [0x03] = true, [0x04] = true, [0x05] = true, [0x06] = true, [0x07] = true, [0x08] = true, \
+	[0x09] = true, [0x0a] = true, [0x0b] = true, [0x0c] = true, [0x0d] = true, [0x0e] = true, [0x0f] = true, [0x10] = true, \
+	[0x11] = true, [0x12] = true, [0x13] = true, [0x14] = true, [0x15] = true, [0x16] = true, [0x17] = true, [0x18] = true, \
+	[0x19] = true, [0x1a] = true, [0x1b] = true, [0x1c] = true, [0x1d] = true, [0x1e] = true, [0x1f] = true, [0x20] = true, \
+	[0x21] = true, [0x22] = true, [0x23] = true, [0x24] = true, [0x25] = true, [0x26] = true, [0x27] = true, [0x28] = true, \
+	[0x29] = true, [0x2a] = true, [0x2b] = true, [0x2c] = true, [0x2d] = true, [0x2e] = true, [0x2f] = true, [0x30] = true, \
+	[0x31] = true, [0x32] = true, [0x33] = true, [0x34] = true, [0x35] = true, [0x36] = true, [0x37] = true, [0x38] = true, \
+	[0x39] = true, [0x3a] = true, [0x3b] = true, [0x3c] = true, [0x3d] = true, [0x3e] = true, [0x3f] = true, [0x40] = true, \
+	[0x41] = true, [0x42] = true, [0x43] = true, [0x44] = true, [0x45] = true, [0x46] = true, [0x47] = true, [0x48] = true, \
+	[0x49] = true, [0x4a] = true, [0x4b] = true, [0x4c] = true, [0x4d] = true, [0x4e] = true, [0x4f] = true, [0x50] = true, \
+	[0x51] = true, [0x52] = true, [0x53] = true, [0x54] = true, [0x55] = true, [0x56] = true, [0x57] = true, [0x58] = true, \
+	[0x59] = true, [0x5a] = true, [0x5b] = true, [0x5c] = true, [0x5d] = true, [0x5e] = true, [0x5f] = true, [0x60] = true, \
+	[0x61] = true, [0x62] = true, [0x63] = true, [0x64] = true, [0x65] = true, [0x66] = true, [0x67] = true, [0x68] = true, \
+	[0x69] = true, [0x6a] = true, [0x6b] = true, [0x6c] = true, [0x6d] = true, [0x6e] = true, [0x6f] = true, [0x70] = true, \
+	[0x71] = true, [0x72] = true, [0x73] = true, [0x74] = true, [0x75] = true, [0x76] = true, [0x77] = true, [0x78] = true, \
+	[0x79] = true, [0x7a] = true, [0x7b] = true, [0x7c] = true, [0x7d] = true, [0x7e] = true, [0x7f] = true,
 
 /** Unprintables (extended range)
  *
@@ -276,33 +324,23 @@ extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
  * the 'do_utf8' flag.
  */
 #define SBUFF_CHAR_UNPRINTABLES_EXTENDED \
-	[128] = true, [129] = true, \
-	[130] = true, [131] = true, [132] = true, [133] = true, [134] = true, \
-	[135] = true, [136] = true, [137] = true, [138] = true, [139] = true, \
-	[140] = true, [141] = true, [142] = true, [143] = true, [144] = true, \
-	[145] = true, [146] = true, [147] = true, [148] = true, [149] = true, \
-	[150] = true, [151] = true, [152] = true, [153] = true, [154] = true, \
-	[155] = true, [156] = true, [157] = true, [158] = true, [159] = true, \
-	[160] = true, [161] = true, [162] = true, [163] = true, [164] = true, \
-	[165] = true, [166] = true, [167] = true, [168] = true, [169] = true, \
-	[170] = true, [171] = true, [172] = true, [173] = true, [174] = true, \
-	[175] = true, [176] = true, [177] = true, [178] = true, [179] = true, \
-	[180] = true, [181] = true, [182] = true, [183] = true, [184] = true, \
-	[185] = true, [186] = true, [187] = true, [188] = true, [189] = true, \
-	[190] = true, [191] = true, [192] = true, [193] = true, [194] = true, \
-	[195] = true, [196] = true, [197] = true, [198] = true, [199] = true, \
-	[200] = true, [201] = true, [202] = true, [203] = true, [204] = true, \
-	[205] = true, [206] = true, [207] = true, [208] = true, [209] = true, \
-	[210] = true, [211] = true, [212] = true, [213] = true, [214] = true, \
-	[215] = true, [216] = true, [217] = true, [218] = true, [219] = true, \
-	[220] = true, [221] = true, [222] = true, [223] = true, [224] = true, \
-	[225] = true, [226] = true, [227] = true, [228] = true, [229] = true, \
-	[230] = true, [231] = true, [232] = true, [233] = true, [234] = true, \
-	[235] = true, [236] = true, [237] = true, [238] = true, [239] = true, \
-	[240] = true, [241] = true, [242] = true, [243] = true, [244] = true, \
-	[245] = true, [246] = true, [247] = true, [248] = true, [249] = true, \
-	[250] = true, [251] = true, [252] = true, [253] = true, [254] = true, \
-	[255] = true
+	[0x80] = true, \
+	[0x81] = true, [0x82] = true, [0x83] = true, [0x84] = true, [0x85] = true, [0x86] = true, [0x87] = true, [0x88] = true, \
+	[0x89] = true, [0x8a] = true, [0x8b] = true, [0x8c] = true, [0x8d] = true, [0x8e] = true, [0x8f] = true, [0x90] = true, \
+	[0x91] = true, [0x92] = true, [0x93] = true, [0x94] = true, [0x95] = true, [0x96] = true, [0x97] = true, [0x98] = true, \
+	[0x99] = true, [0x9a] = true, [0x9b] = true, [0x9c] = true, [0x9d] = true, [0x9e] = true, [0x9f] = true, [0xa0] = true, \
+	[0xa1] = true, [0xa2] = true, [0xa3] = true, [0xa4] = true, [0xa5] = true, [0xa6] = true, [0xa7] = true, [0xa8] = true, \
+	[0xa9] = true, [0xaa] = true, [0xab] = true, [0xac] = true, [0xad] = true, [0xae] = true, [0xaf] = true, [0xb0] = true, \
+	[0xb1] = true, [0xb2] = true, [0xb3] = true, [0xb4] = true, [0xb5] = true, [0xb6] = true, [0xb7] = true, [0xb8] = true, \
+	[0xb9] = true, [0xba] = true, [0xbb] = true, [0xbc] = true, [0xbd] = true, [0xbe] = true, [0xbf] = true, [0xc0] = true, \
+	[0xc1] = true, [0xc2] = true, [0xc3] = true, [0xc4] = true, [0xc5] = true, [0xc6] = true, [0xc7] = true, [0xc8] = true, \
+	[0xc9] = true, [0xca] = true, [0xcb] = true, [0xcc] = true, [0xcd] = true, [0xce] = true, [0xcf] = true, [0xd0] = true, \
+	[0xd1] = true, [0xd2] = true, [0xd3] = true, [0xd4] = true, [0xd5] = true, [0xd6] = true, [0xd7] = true, [0xd8] = true, \
+	[0xd9] = true, [0xda] = true, [0xdb] = true, [0xdc] = true, [0xdd] = true, [0xde] = true, [0xdf] = true, [0xe0] = true, \
+	[0xe1] = true, [0xe2] = true, [0xe3] = true, [0xe4] = true, [0xe5] = true, [0xe6] = true, [0xe7] = true, [0xe8] = true, \
+	[0xe9] = true, [0xea] = true, [0xeb] = true, [0xec] = true, [0xed] = true, [0xee] = true, [0xef] = true, [0xf0] = true, \
+	[0xf1] = true, [0xf2] = true, [0xf3] = true, [0xf4] = true, [0xf5] = true, [0xf6] = true, [0xf7] = true, [0xf8] = true, \
+	[0xf9] = true, [0xfa] = true, [0xfb] = true, [0xfc] = true, [0xfd] = true, [0xfe] = true, [0xff] = true,
 
 /** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the sbuff
  *
@@ -1087,11 +1125,11 @@ ssize_t	fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap);
 ssize_t	fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...);
 #define	FR_SBUFF_IN_SPRINTF_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_sprintf, ##__VA_ARGS__)
 
-ssize_t	fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, char quote);
-#define	FR_SBUFF_IN_SNPRINT_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_snprint, ##__VA_ARGS__)
+ssize_t	fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules);
+#define	FR_SBUFF_IN_ESCAPE_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_escape, ##__VA_ARGS__)
 
-ssize_t	fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote);
-#define	FR_SBUFF_IN_SNPRINT_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_snprint_buffer, ##__VA_ARGS__)
+ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
+#define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
 
 /** Lookup a string in a table using an integer value, and copy it to the sbuff
  *
@@ -1131,7 +1169,7 @@ size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    fr_sbuff_term_t const *tt,
-				    fr_sbuff_escape_rules_t const *rules);
+				    fr_sbuff_unescape_rules_t const *u_rules);
 
 /** Find the longest prefix in an sbuff
  *
@@ -1248,7 +1286,7 @@ static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, f
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, escape_chr);
 
 static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_term_t const *tt, fr_sbuff_escape_rules_t const *rules)
+						  fr_sbuff_term_t const *tt, fr_sbuff_unescape_rules_t const *rules)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, rules);
 /** @} */
 

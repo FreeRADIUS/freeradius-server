@@ -74,7 +74,7 @@ bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
 
 /** Escape rules to use when an escape_rules pointer is NULL
  */
-fr_sbuff_escape_rules_t escape_none = {};
+fr_sbuff_unescape_rules_t escape_none = {};
 
 /** Copy function that allows overlapping memory ranges to be copied
  *
@@ -102,6 +102,41 @@ static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
 		memcpy(o_start,  i_start, i_len);
 	} else {							/* overlap */
 		memmove(o_start, i_start, i_len);
+	}
+
+	return (i_len);
+}
+
+/** Copy function that only allows non-overlapping memory ranges to be copied
+ *
+ * This should be used in printing functions which may write more data
+ * than was originally present in the buffer.
+ *
+ * @param[out] o_start		start of output buffer.
+ * @param[in] o_end		end of the output buffer.
+ * @param[in] i_start		start of the input buffer.
+ * @param[in] i_end		end of data to copy.
+ * @return
+ *	- >0 the number of bytes copied.
+ *      - 0 invalid args.
+ *      - <0 the number of bytes we'd need to complete the copy.
+ */
+static inline CC_HINT(always_inline) ssize_t safecpy_no_overlap(char *o_start, char *o_end,
+								char const *i_start, char const *i_end)
+{
+	ssize_t	diff;
+	size_t	i_len = i_end - i_start;
+
+	if (unlikely((o_end < o_start) || (i_end < i_start))) return 0;	/* sanity check */
+
+	diff = (o_end - o_start) - (i_len);
+	if (diff < 0) return diff;
+
+	if (likely((i_start > o_end) || (i_end < o_start))) {	/* no-overlap */
+		memcpy(o_start,  i_start, i_len);
+	} else {
+		fr_strerror_printf("Address overlap %p-%p with %p-%p", o_start, o_end, i_start, i_end);	/* overlap */
+		return 0;
 	}
 
 	return (i_len);
@@ -764,14 +799,14 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] tt		Token terminal strings in the encompassing grammar.
- * @param[in] e_rules		for processing escape sequences.
+ * @param[in] u_rules		for processing unescape sequences.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes written to out.
  */
 size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_escape_rules_t const *e_rules)
+				   fr_sbuff_unescape_rules_t const *u_rules)
 {
 	fr_sbuff_t 			our_in;
 	bool				do_escape = false;			/* Track state across extensions */
@@ -788,7 +823,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 *	If we don't need to do unescaping
 	 *	call a more suitable function.
 	 */
-	if (!e_rules || (e_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
+	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
 
 	CHECK_SBUFF_INIT(in);
 
@@ -822,13 +857,12 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 			/*
 			 *	Check for \x<hex><hex>
 			 */
-			if (e_rules->do_hex && fr_sbuff_is_char(&our_in, 'x')) {
+			if (u_rules->do_hex && fr_sbuff_is_char(&our_in, 'x')) {
 				uint8_t			escape;
 				fr_sbuff_marker_t	m;
 
 				fr_sbuff_marker(&m, &our_in);		/* allow for backtrack */
-
-				fr_sbuff_advance(&our_in, 1);
+				fr_sbuff_advance(&our_in, 1);		/* skip over the 'x' */
 
 				if (fr_sbuff_out_uint8_hex(NULL, &escape, &our_in, false) != 2) {
 					fr_sbuff_set(&our_in, &m);	/* backtrack */
@@ -849,7 +883,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 			/*
 			 *	Check for \<oct><oct><oct>
 			 */
-			if (e_rules->do_oct && fr_sbuff_is_digit(&our_in)) {
+			if (u_rules->do_oct && fr_sbuff_is_digit(&our_in)) {
 				uint8_t 		escape;
 				fr_sbuff_marker_t	m;
 
@@ -880,8 +914,8 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 			{
 				uint8_t c = *fr_sbuff_current(&our_in);
 
-				if (e_rules->subs[c] == '\0') {
-					if (e_rules->skip[c] == true) goto next;
+				if (u_rules->subs[c] == '\0') {
+					if (u_rules->skip[c] == true) goto next;
 					goto next_esc;
 				}
 
@@ -891,7 +925,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				 *	write the substituted char to
 				 *	the output buffer.
 				 */
-				if (fr_sbuff_in_char(out, e_rules->subs[c]) <= 0) break;
+				if (fr_sbuff_in_char(out, u_rules->subs[c]) <= 0) break;
 
 				/*
 				 *	...and advance past the entire
@@ -904,7 +938,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		}
 
 	next_esc:
-		if (*fr_sbuff_current(&our_in) == e_rules->chr) {
+		if (*fr_sbuff_current(&our_in) == u_rules->chr) {
 			/*
 			 *	Copy out any data we got before
 			 *	we hit the escape char.
@@ -1256,7 +1290,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 	len = strlen(str);
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
-	safecpy(sbuff->p, sbuff->end, str, str + len);
+	safecpy_no_overlap(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);
@@ -1279,7 +1313,7 @@ ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
-	safecpy(sbuff->p, sbuff->end, str, str + len);
+	safecpy_no_overlap(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);
@@ -1305,7 +1339,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
-	safecpy(sbuff->p, sbuff->end, str, str + len);
+	safecpy_no_overlap(sbuff->p, sbuff->end, str, str + len);
 	sbuff->p[len] = '\0';
 
 	return fr_sbuff_advance(sbuff, len);
@@ -1399,46 +1433,94 @@ ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
  * @param[in] sbuff	to print into.
  * @param[in] in	to escape.
  * @param[in] inlen	of string to escape.
- * @param[in] quote	Escaping rules.  Used to escape special characters
+ * @param[in] e_rules	Escaping rules.  Used to escape special characters
  *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
  *	- <0 the number of bytes required to complete the print operation.
  */
-ssize_t fr_sbuff_in_snprint(fr_sbuff_t *sbuff, char const *in, size_t inlen, char quote)
+ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules)
 {
-	size_t		len;
+	char const	*end = in + inlen;
+	char const	*p = in;
+	fr_sbuff_t	our_sbuff;
+
+	/* Significantly quicker if there are no rules */
+	if (!e_rules || (e_rules->chr == '\0')) return fr_sbuff_in_bstrncpy(sbuff, in, inlen);
 
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (unlikely(sbuff->is_const)) return 0;
 
-	len = fr_snprint_len(in, inlen, quote);
-	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
+	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	while (p < end) {
+		size_t	clen;
+		uint8_t	c = (uint8_t)*p;
+		char	sub;
 
-	len = fr_snprint(fr_sbuff_current(sbuff), fr_sbuff_remaining(sbuff) + 1, in, inlen, quote);
-	fr_sbuff_advance(sbuff, len);
+		/*
+		 *	We don't support escaping UTF8 sequences
+		 *	as they're not used anywhere in our
+		 *	grammar.
+		 */
+		if (e_rules->do_utf8 && ((clen = fr_utf8_char((uint8_t const *)p, end - p)) > 1)) {
+			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_sbuff, p, clen);
+			p += clen;
+			continue;
+		}
 
-	return len;
+		/*
+		 *	Check if there's a special substitution
+		 *	like 0x0a -> \n.
+		 */
+		sub = e_rules->subs[c];
+		if (sub != '\0') {
+			FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, e_rules->chr, sub);
+			p++;
+			continue;
+		}
+
+		/*
+		 *	Check if the character is in the range
+		 *	we escape.
+		 */
+		if (e_rules->esc[c]) {
+			/*
+			 *	For legacy reasons we prefer
+			 *	octal escape sequences.
+			 */
+			if (e_rules->do_oct) {
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%c%03o", e_rules->chr, *p++);
+				continue;
+			} else if (e_rules->do_hex) {
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%cx%02x", e_rules->chr, *p++);
+				continue;
+			}
+		}
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, *p++);
+	}
+
+	return fr_sbuff_set(sbuff, &our_sbuff);
 }
 
 /** Print an escaped string to an sbuff taking a talloced buffer as input
  *
  * @param[in] sbuff	to print into.
  * @param[in] in	to escape.
- * @param[in] quote	Escaping rules.  Used to escape special characters
+ * @param[in] e_rules	Escaping rules.  Used to escape special characters
  *      		as data is written to the sbuff.  May be NULL.
  * @return
  *	- >= 0 the number of bytes printed into the sbuff.
  *	- <0 the number of bytes required to complete the print operation.
  */
-ssize_t fr_sbuff_in_snprint_buffer(fr_sbuff_t *sbuff, char const *in, char quote)
+ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules)
 {
 	if (unlikely(!in)) return 0;
 
 	if (unlikely(sbuff->is_const)) return 0;
 
-	return fr_sbuff_in_snprint(sbuff, in, talloc_array_length(in) - 1, quote);
+	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
 }
 
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
