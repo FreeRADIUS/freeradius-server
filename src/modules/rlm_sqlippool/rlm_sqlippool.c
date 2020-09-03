@@ -755,22 +755,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t *inst, REQUEST *request)
 {
-	int affected;
-
 	DO(start_begin);
-	DO_AFFECTED(start_update, affected);
+	DO(start_update);
 	DO(start_commit);
 
-	return (affected == 0 ? RLM_MODULE_NOOP : RLM_MODULE_OK);
+	return RLM_MODULE_OK;
 }
 
 static int mod_accounting_alive(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t *inst, REQUEST *request)
 {
+	int affected;
+
 	DO(alive_begin);
-	DO(alive_update);
+	DO_AFFECTED(alive_update, affected);
 	DO(alive_commit);
-	return RLM_MODULE_OK;
+
+	return (affected == 0 ? RLM_MODULE_NOTFOUND : RLM_MODULE_OK);
 }
 
 static int mod_accounting_stop(rlm_sql_handle_t **handle,
