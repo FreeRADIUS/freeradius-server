@@ -28,9 +28,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_tls.h"
 #include <openssl/hmac.h>
 
-
 /*
- * TLS PRF from RFC 2246
+ *	TLS P_hash from RFC 2246/5246 section 5
  */
 static void P_hash(EVP_MD const *evp_md,
 		   unsigned char const *secret, unsigned int secret_len,
@@ -38,7 +37,7 @@ static void P_hash(EVP_MD const *evp_md,
 		   unsigned char *out, unsigned int out_len)
 {
 	HMAC_CTX *ctx_a, *ctx_out;
-	unsigned char a[HMAC_MAX_MD_CBLOCK];
+	unsigned char a[EVP_MAX_MD_SIZE];
 	unsigned int size;
 
 	ctx_a = HMAC_CTX_new();
@@ -85,6 +84,38 @@ static void P_hash(EVP_MD const *evp_md,
 	memset(a, 0, sizeof(a));
 }
 
+/*
+ *	TLS PRF from RFC 2246 section 5
+ */
+static void PRF(unsigned char const *secret, unsigned int secret_len,
+		unsigned char const *seed,   unsigned int seed_len,
+		unsigned char *out, unsigned int out_len)
+{
+	uint8_t buf[out_len + (out_len % SHA_DIGEST_LENGTH)];
+	unsigned int i;
+
+	unsigned int len = (secret_len + 1) / 2;
+	uint8_t const *s1 = secret;
+	uint8_t const *s2 = secret + (secret_len - len);
+
+	P_hash(EVP_md5(),  s1, len, seed, seed_len, out, out_len);
+	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
+
+	for (i = 0; i < out_len; i++) {
+		out[i] ^= buf[i];
+	}
+}
+
+/*
+ *	TLS 1.2 PRF from RFC 5246 section 5
+ */
+static void PRFv12(unsigned char const *secret, unsigned int secret_len,
+		   unsigned char const *seed,   unsigned int seed_len,
+		   unsigned char *out, unsigned int out_len)
+{
+	P_hash(EVP_sha256(), secret, secret_len, seed, seed_len, out, out_len);
+}
+
 /*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
 void T_PRF(unsigned char const *secret, unsigned int secret_len,
 	   char const *prf_label,
@@ -126,23 +157,6 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 
 	memset(buf, 0, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
 	talloc_free(buf);
-}
-
-static void PRF(unsigned char const *secret, unsigned int secret_len,
-		unsigned char const *seed,   unsigned int seed_len,
-		unsigned char *out, unsigned char *buf, unsigned int out_len)
-{
-	unsigned int i;
-	unsigned int len = (secret_len + 1) / 2;
-	uint8_t const *s1 = secret;
-	uint8_t const *s2 = secret + (secret_len - len);
-
-	P_hash(EVP_md5(),  s1, len, seed, seed_len, out, out_len);
-	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
-
-	for (i=0; i < out_len; i++) {
-		out[i] ^= buf[i];
-	}
 }
 
 #define EAPTLS_MPPE_KEY_LEN     32
@@ -282,7 +296,7 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 /*
  *	Same as before, but for EAP-FAST the order of {server,client}_random is flipped
  */
-void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
+void eap_fast_tls_gen_challenge(SSL *s, int version, uint8_t *buffer, size_t size, char const *prf_label)
 {
 	uint8_t *p;
 	size_t len, master_key_len;
@@ -301,7 +315,9 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
 	p += SSL3_RANDOM_SIZE;
 
 	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
-	PRF(master_key, master_key_len, seed, p - seed, buffer, scratch, size);
+
+	if (version == TLS1_2_VERSION)
+		PRFv12(master_key, master_key_len, seed, p - seed, buffer, size);
+	else
+		PRF(master_key, master_key_len, seed, p - seed, buffer, size);
 }
-
-

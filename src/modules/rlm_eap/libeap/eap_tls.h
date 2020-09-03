@@ -66,7 +66,7 @@ void	T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf
 void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, size_t context_size);
 void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 void	eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
-void	eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
+void	eap_fast_tls_gen_challenge(SSL *ssl, int version, uint8_t *buffer, size_t size, char const *prf_label) CC_HINT(nonnull);
 
 #define BUFFER_SIZE 1024
 
