@@ -443,7 +443,11 @@ sub call_database {
 	} elsif ($opts->{dialect} eq 'sqlite') {
 		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
 	} elsif ($opts->{dialect} eq 'mssql') {
-		$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+		if ($opts->{driver} eq 'rlm_sql_unixodbc') {
+			$dsn = "DBI:ODBC:DSN=$opts->{server}";
+		} else {
+			$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+		}
 	} elsif ($opts->{dialect} eq 'oracle') {
 		#  Extract data from Oracle connection string as used by FreeRADIUS
 		if ($opts->{radius_db} =~ m/HOST=(.+?)\)/) {
@@ -459,7 +463,7 @@ sub call_database {
 	} else {
 		$dsn = "DBI:$opts->{dialect}:database=$opts->{radius_db};host=$opts->{server}";
 	}
-	$dsn .= ";port=$opts->{port}" if $opts->{port};
+	$dsn .= ";port=$opts->{port}" if ($opts->{port}) && ($opts->{driver} ne 'rlm_sql_unixodbc');
 
 	#  Read the results by running our query against the database
 	my $dbh = DBI->connect($dsn, $opts->{login}, $opts->{password}) || die "Unable to connect to database";
