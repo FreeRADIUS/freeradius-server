@@ -32,6 +32,9 @@ sqlippool dhcp_sqlippool {
 	# SQL table to use for ippool range and lease info
 	ippool_table = "dhcpippool"
 
+	# The duration for which a lease is reserved whilst under offer
+	offer_duration = 10
+
 	# IP lease duration. (Leases expire even if no DHCP-Release packet is received)
 	lease_duration = 7200
 
