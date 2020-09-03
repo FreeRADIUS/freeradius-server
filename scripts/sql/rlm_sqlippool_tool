@@ -273,7 +273,7 @@ if ($opts->{raddb_dir}) {
 }
 
 #
-# The SQL dialect and table name must be set
+#  The SQL dialect and table name must be set
 #
 if ((!($opts->{dialect})) || (!($opts->{table_name}))) {
 	usage();
@@ -407,8 +407,45 @@ sub call_database {
 	}
 
 	my $dsn;
-	if ($opts->{dialect} eq 'oracle') {
-		# Extract data from Oracle connection string as used by FreeRADIUS
+	if ($opts->{dialect} eq 'mysql') {
+		$dsn = "DBI:mysql:database=$opts->{radius_db};host=$opts->{server}";
+		if (defined($opts->{mysql}->{tls})) {
+			$dsn .= ';mysql_ssl=1';
+			$dsn .= ';mysql_ssl_ca_file='.$opts->{mysql}->{tls}->{ca_file} if ($opts->{mysql}->{tls}->{ca_file});
+			$dsn .= ';mysql_ssl_ca_path='.$opts->{mysql}->{tls}->{ca_path} if ($opts->{mysql}->{tls}->{ca_path});
+			$dsn .= ';mysql_ssl_client_key='.$opts->{mysql}->{tls}->{private_key_file} if ($opts->{mysql}->{tls}->{private_key_file});
+			$dsn .= ';mysql_ssl_client_cert='.$opts->{mysql}->{tls}->{certificate_file} if ($opts->{mysql}->{tls}->{certificate_file});
+			$dsn .= ';mysql_ssl_cipher='.$opts->{mysql}->{tls}->{cipher} if ($opts->{mysql}->{tls}->{cipher});
+		}
+	} elsif ($opts->{dialect} eq 'postgresql') {
+		#  Parse FreeRADIUS alternative connection string
+		if ($opts->{radius_db} =~ m/host=(.+)\b/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/user=(.+)\b/) {
+			$opts->{login} = $1;
+		}
+		if ($opts->{radius_db} =~ m/password=(.+)\b/) {
+			$opts->{password} = $1;
+		}
+		if ($opts->{radius_db} =~ m/sslmode=(.+)\b/) {
+			$opts->{sslmode} = $1;
+		}
+		if ($opts->{radius_db} =~ m/dbname=(.+)\b/) {
+			$opts->{radius_db} = $1;
+		}
+		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
+		#
+		#  DBD doesn't have all the options used by FreeRADIUS - just enable ssl if
+		#  FreeRADIUS has SSL options enabled
+		#
+		$dsn .= ';sslmode=prefer' if ($opts->{sslmode});
+	} elsif ($opts->{dialect} eq 'sqlite') {
+		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
+	} elsif ($opts->{dialect} eq 'mssql') {
+		$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+	} elsif ($opts->{dialect} eq 'oracle') {
+		#  Extract data from Oracle connection string as used by FreeRADIUS
 		if ($opts->{radius_db} =~ m/HOST=(.+\))/) {
 			$opts->{server} = $1;
 		}
@@ -419,18 +456,12 @@ sub call_database {
 			$opts->{sid} = $1;
 		}
 		$dsn = "DBI:Oracle:host=$opts->{server};sid=$opts->{sid}";
-	} elsif ($opts->{dialect} eq 'postgresql') {
-		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
-	} elsif ($opts->{dialect} eq 'sqlite') {
-		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
-	} elsif ($opts->{dialect} eq 'mssql') {
-		$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
 	} else {
 		$dsn = "DBI:$opts->{dialect}:database=$opts->{radius_db};host=$opts->{server}";
 	}
 	$dsn .= ";port=$opts->{port}" if $opts->{port};
 
-	# Read the results by running our query against the database
+	#  Read the results by running our query against the database
 	my $dbh = DBI->connect($dsn, $opts->{login}, $opts->{password}) || die "Unable to connect to database";
 
 	foreach my $query (@{$queries->{$opts->{dialect}}->{pre}}) {
@@ -499,7 +530,7 @@ sub handle_range {
 		warn 'WARNING: Insufficent IPs in the range. Will create '.$capacity.' entries.';
 	}
 
-	# Prune the entries to only those within the specified range
+	#  Prune the entries to only those within the specified range
 	for (my $i = 0; $i <= $#entries; $i++) {
 		my $version = ip_is_ipv4($entries[$i]) ? 4 : 6;
 		my $binip = ip_iptobin($entries[$i],$version);
