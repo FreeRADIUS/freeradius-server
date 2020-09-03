@@ -360,8 +360,6 @@ eap {
 		#  TLS cipher suites.  The format is listed
 		#  in "man 1 ciphers".
 		#
-		#  For EAP-FAST, use "ALL:!EXPORT:!eNULL:!SSLv2"
-		#
 		cipher_list = "DEFAULT"
 
 		#  If enabled, OpenSSL will use server cipher list
@@ -935,9 +933,6 @@ eap {
 		#  This is not as straight forward as appending "ADH" alongside
 		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
-		#
-		#  Note - for OpenSSL 1.1.0 and above you may need
-		#  to add ":@SECLEVEL=0"
 		#
 	#	cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 

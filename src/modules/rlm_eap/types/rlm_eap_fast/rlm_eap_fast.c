@@ -566,6 +566,20 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		}
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+	{
+		int i;
+		for (i = 0; ; i++) {
+			const char *cipher = SSL_get_cipher_list(tls_session->ssl, i);
+			if (!cipher) break;
+			if (!strstr(cipher, "ADH-")) continue;
+			RDEBUG("Setting security level to 0 to allow anonymous cipher suites");
+			SSL_set_security_level(tls_session->ssl, 0);
+			break;
+		}
+	}
+#endif
+
 #ifdef SSL_OP_NO_TLSv1_2
 	/*
 	 *	Forcibly disable TLSv1.2
