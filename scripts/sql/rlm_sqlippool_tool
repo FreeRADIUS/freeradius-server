@@ -341,7 +341,7 @@ sub process_commandline {
 
 	@entries = handle_range($opts->{range_start}, $opts->{range_end}, $opts->{capacity}, @entries);
 
-	if ($opts->{server}) {
+	if ($opts->{radius_db}) {
 		&call_database($opts, $queries, @entries);
 	} else {
 		my $tt=Template->new();
@@ -383,7 +383,7 @@ sub process_yaml_file {
 		}
 	}
 
-	if ($opts->{server}) {
+	if ($opts->{radius_db}) {
 		&call_database($opts, $queries, @entries);
 	} else {
 		my $tt=Template->new();
@@ -419,19 +419,19 @@ sub call_database {
 		}
 	} elsif ($opts->{dialect} eq 'postgresql') {
 		#  Parse FreeRADIUS alternative connection string
-		if ($opts->{radius_db} =~ m/host=(.+)\b/) {
+		if ($opts->{radius_db} =~ m/host=(.+?)\b/) {
 			$opts->{server} = $1;
 		}
-		if ($opts->{radius_db} =~ m/user=(.+)\b/) {
+		if ($opts->{radius_db} =~ m/user=(.+?)\b/) {
 			$opts->{login} = $1;
 		}
-		if ($opts->{radius_db} =~ m/password=(.+)\b/) {
+		if ($opts->{radius_db} =~ m/password=(.+?)\b/) {
 			$opts->{password} = $1;
 		}
-		if ($opts->{radius_db} =~ m/sslmode=(.+)\b/) {
+		if ($opts->{radius_db} =~ m/sslmode=(.+?)\b/) {
 			$opts->{sslmode} = $1;
 		}
-		if ($opts->{radius_db} =~ m/dbname=(.+)\b/) {
+		if ($opts->{radius_db} =~ m/dbname=(.+?)\b/) {
 			$opts->{radius_db} = $1;
 		}
 		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
@@ -446,13 +446,13 @@ sub call_database {
 		$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
 	} elsif ($opts->{dialect} eq 'oracle') {
 		#  Extract data from Oracle connection string as used by FreeRADIUS
-		if ($opts->{radius_db} =~ m/HOST=(.+\))/) {
+		if ($opts->{radius_db} =~ m/HOST=(.+?)\)/) {
 			$opts->{server} = $1;
 		}
-		if ($opts->{radius_db} =~ m/PORT=(.+\))/) {
+		if ($opts->{radius_db} =~ m/PORT=(.+?)\)/) {
 			$opts->{port} =$1;
 		}
-		if ($opts->{radius_db} =~ m/SID=(.+\))/) {
+		if ($opts->{radius_db} =~ m/SID=(.+?)\)/) {
 			$opts->{sid} = $1;
 		}
 		$dsn = "DBI:Oracle:host=$opts->{server};sid=$opts->{sid}";
@@ -815,25 +815,27 @@ END_postgresql
 #  Oracle
 #
 	$queries->{'oracle'}->{pre} = [
-		'CREATE GLOBAL TEMPORARY TABLE '.$tablename.'_temp (
+		'CREATE TABLE '.$tablename.'_temp (
   pool_name               VARCHAR(30) NOT NULL,
   FramedIPAddress         VARCHAR(15) NOT NULL
-) ON COMMIT DELETE ROWS;',
-		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress);'
+)',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress)'
 	    ];
-	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.' (pool_name,FramedIPAddress) VALUES (?, ?)';
+	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,FramedIPAddress) VALUES (?, ?)';
 	$queries->{'oracle'}->{post} = [
-		'DELETE FROM '.$tablename.' WHERE (pool_name, framedipaddress)
-  NOT IN (SELECT pool_name, framedipaddress FROM '.$tablename.'_temp);',
+		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS
+		(SELECT * FROM '.$tablename.'_temp t WHERE
+		r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress)',
 		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
   SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
     WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
-  );',
-		'COMMIT;'
+  )',
+		'DROP TABLE '.$tablename.'_temp',
+		'COMMIT'
 	    ];
 
-	$template->{'oracle'} = join("\n", @{$queries->{'oracle'}->{pre}})."\n";
+	$template->{'oracle'} = join(";\n", @{$queries->{'oracle'}->{pre}}).";\n";
 	$template->{'oracle'} .= <<'END_oracle';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
@@ -842,7 +844,7 @@ END_postgresql
 [%-   END %]
 [%- END %]
 END_oracle
-	$template->{'oracle'} .= join("\n", @{$queries->{'oracle'}->{post}})."\n";
+	$template->{'oracle'} .= join(";\n", @{$queries->{'oracle'}->{post}})."\n";
 
 #
 #  SQLite
