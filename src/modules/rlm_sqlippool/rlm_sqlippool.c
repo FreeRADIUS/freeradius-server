@@ -317,6 +317,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	char *expanded = NULL;
 
 	int ret;
+	int affected;
 
 	/*
 	 *	If we don't have a command, do nothing.
@@ -347,9 +348,11 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	if (!*handle) return -1;
 
+	affected = (data->sql_inst->module->sql_affected_rows)(*handle, data->sql_inst->config);
+
 	if (*handle) (data->sql_inst->module->sql_finish_query)(*handle, data->sql_inst->config);
 
-	return 0;
+	return affected;
 }
 
 /*
@@ -357,6 +360,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  */
 #undef DO
 #define DO(_x) if (sqlippool_command(inst->_x, handle, inst, request, NULL, 0) < 0) return RLM_MODULE_FAIL
+#define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, handle, inst, request, NULL, 0); if (_affected < 0) return RLM_MODULE_FAIL
 #define DO_PART(_x) if (sqlippool_command(inst->_x, &handle, inst, request, NULL, 0) < 0) goto error
 
 /*
@@ -751,11 +755,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 static int mod_accounting_start(rlm_sql_handle_t **handle,
 				rlm_sqlippool_t *inst, REQUEST *request)
 {
+	int affected;
+
 	DO(start_begin);
-	DO(start_update);
+	DO_AFFECTED(start_update, affected);
 	DO(start_commit);
 
-	return RLM_MODULE_OK;
+	return (affected == 0 ? RLM_MODULE_NOOP : RLM_MODULE_OK);
 }
 
 static int mod_accounting_alive(rlm_sql_handle_t **handle,
