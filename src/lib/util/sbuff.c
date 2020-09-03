@@ -291,7 +291,7 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
 	 *	Double the buffer size if it's more than the
 	 *	requested amount.
 	 */
-	} else if (elen < clen){
+	} else if (elen < clen) {
 		elen = clen - 1;		/* Don't double alloc \0 */
 	}
 
@@ -366,17 +366,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
  * @param[in] _in	sbuff to copy from.
  * @param[in] _len	maximum amount to copy.
  */
-#define FILL_OR_GOTO_DONE(_out, _in, _len) \
-do { \
-	ssize_t _copied = safecpy((_out)->p, (_out)->end, (_in)->p, \
-				  ((_in)->p) + ((size_t)(_len) <= fr_sbuff_remaining(_in) ? (size_t)(_len) : fr_sbuff_remaining(_in))); \
-	if (_copied < 0) { \
-		if ((_out)->extend && ((_out)->extend(_out, _copied * -1) > 0)) continue; \
-		fr_sbuff_advance(_out, fr_sbuff_advance(_in, safecpy((_out)->p, (_out)->end, (_in)->p, (_in)->p + ((_len) + _copied)))); \
-		goto done;\
-	} \
-	fr_sbuff_advance(_out, fr_sbuff_advance(_in, _copied)); \
-} while(0)
+#define FILL_OR_GOTO_DONE(_out, _in, _len) if (fr_sbuff_move(_out, _in, _len) < (size_t)(_len)) goto done
 
 /** Constrain end pointer to prevent advancing more than the amount the called specified
  *
@@ -1161,6 +1151,91 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 
 SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
 SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100);
+
+/** Move data from one sbuff to another
+ *
+ * @note Do not call this function directly use #fr_sbuff_move
+ *
+ * Both in and out will be advanced by len, with len set to the shortest
+ * value between the user specified value, the number of bytes remaining
+ * in the input buffer (after extension), and the number of bytes remaining
+ * in the output buffer (after extension).
+ *
+ * @param[in] out	sbuff to copy data to.
+ * @param[in] in	sbuff to copy data from.
+ * @param[in] len	Maximum length of string to copy.
+ * @return The amount of data copied.
+ */
+size_t _fr_sbuff_move_sbuff_to_sbuff(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
+{
+	size_t o_remaining = fr_sbuff_extend_lowat(NULL, out, len);
+	size_t i_remaining = fr_sbuff_extend_lowat(NULL, in, len);
+	size_t to_copy = len;
+	if (to_copy > o_remaining) to_copy = o_remaining;
+	if (to_copy > i_remaining) to_copy = i_remaining;
+	safecpy(fr_sbuff_current(out), fr_sbuff_end(out), fr_sbuff_current(in), fr_sbuff_current(in) + to_copy);
+	return fr_sbuff_advance(out, fr_sbuff_advance(in, to_copy));
+}
+
+/** Move data from a marker to an sbuff
+ *
+ * @note Do not call this function directly use #fr_sbuff_move
+ *
+ * @param[in] out	sbuff to copy data to.
+ * @param[in] in	marker to copy data from.
+ * @param[in] len	Maximum length of string to copy.
+ * @return The amount of data copied.
+ */
+size_t _fr_sbuff_move_marker_to_sbuff(fr_sbuff_t *out, fr_sbuff_marker_t *in, size_t len)
+{
+	size_t o_remaining = fr_sbuff_extend_lowat(NULL, out, len);
+	size_t i_remaining = fr_sbuff_extend_lowat(NULL, in, len);
+	size_t to_copy = len;
+	if (to_copy > o_remaining) to_copy = o_remaining;
+	if (to_copy > i_remaining) to_copy = i_remaining;
+	safecpy(fr_sbuff_current(out), fr_sbuff_end(out), fr_sbuff_current(in), fr_sbuff_current(in) + to_copy);
+	return fr_sbuff_advance(out, fr_sbuff_advance(in, to_copy));
+}
+
+/** Move data from one marker to another
+ *
+ * @note Do not call this function directly use #fr_sbuff_move
+ *
+ * @param[in] out	marker to copy data to.
+ * @param[in] in	marker to copy data from.
+ * @param[in] len	Maximum length of string to copy.
+ * @return The amount of data copied.
+ */
+size_t _fr_sbuff_move_marker_to_marker(fr_sbuff_marker_t *out, fr_sbuff_marker_t *in, size_t len)
+{
+	size_t o_remaining = fr_sbuff_extend_lowat(NULL, out, len);
+	size_t i_remaining = fr_sbuff_extend_lowat(NULL, in, len);
+	size_t to_copy = len;
+	if (to_copy > o_remaining) to_copy = o_remaining;
+	if (to_copy > i_remaining) to_copy = i_remaining;
+	safecpy(fr_sbuff_current(out), fr_sbuff_end(out), fr_sbuff_current(in), fr_sbuff_current(in) + to_copy);
+	return fr_sbuff_advance(out, fr_sbuff_advance(in, to_copy));
+}
+
+/** Move data from an sbuff to a marker
+ *
+ * @note Do not call this function directly use #fr_sbuff_move
+ *
+ * @param[in] out	marker to copy data to.
+ * @param[in] in	sbuff to copy data from.
+ * @param[in] len	Maximum length of string to copy.
+ * @return The amount of data copied.
+ */
+size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, size_t len)
+{
+	size_t o_remaining = fr_sbuff_extend_lowat(NULL, out, len);
+	size_t i_remaining = fr_sbuff_extend_lowat(NULL, in, len);
+	size_t to_copy = len;
+	if (to_copy > o_remaining) to_copy = o_remaining;
+	if (to_copy > i_remaining) to_copy = i_remaining;
+	safecpy(fr_sbuff_current(out), fr_sbuff_end(out), fr_sbuff_current(in), fr_sbuff_current(in) + to_copy);
+	return fr_sbuff_advance(out, fr_sbuff_advance(in, to_copy));
+}
 
 /** Copy bytes into the sbuff up to the first \0
  *

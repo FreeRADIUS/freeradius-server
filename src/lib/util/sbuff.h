@@ -542,6 +542,30 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
  * APIs.
  */
 
+/** Return a pointer to the sbuff
+ *
+ * @param[in] _sbuff_or_marker	to return a pointer to.
+ * @return A pointer to the sbuff.
+ */
+#define fr_sbuff_ptr(_sbuff_or_marker) \
+	_Generic((_sbuff_or_marker), \
+		 fr_sbuff_t *			: ((fr_sbuff_t *)(_sbuff_or_marker)), \
+		 fr_sbuff_marker_t *		: ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
+	)
+
+/** Return a const pointer to the sbuff
+ *
+ * @param[in] _sbuff_or_marker	to return a pointer to.
+ * @return A pointer to the sbuff.
+ */
+#define fr_sbuff_ptr_const(_sbuff_or_marker) \
+	_Generic((_sbuff_or_marker), \
+		 fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker)), \
+		 fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker)), \
+		 fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent, \
+		 fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent \
+	)
+
 /** Return a pointer to the start of the underlying buffer in an sbuff or one of its markers
  *
  * @param[in] _sbuff_or_marker	to return the buffer for.
@@ -716,6 +740,48 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 #define FR_SBUFF_CHECK_REMAINING_RETURN(_sbuff, _len) \
 	if ((_len) > fr_sbuff_remaining(_sbuff)) return -((_len) - fr_sbuff_remaining(_sbuff))
 
+static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in,
+					    size_t remaining, size_t lowat)
+{
+	size_t extended;
+
+	if (status && !(*status & FR_SBUFF_EXTENDABLE)) {
+	not_extendable:
+		if (status) *status = FR_SBUFF_NOT_EXTENDABLE;
+		return remaining;
+	}
+
+	if (remaining >= lowat) {
+		if (status) *status = FR_SBUFF_EXTENDABLE;
+		return remaining;
+	}
+
+	if (!in->extend || !(extended = in->extend(in, lowat - remaining))) goto not_extendable;
+
+	if (status) *status = FR_SBUFF_EXTENDABLE_EXTENDED;
+
+	return remaining + extended;
+}
+
+/** Extend a buffer if we're below the low water mark
+ *
+ * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
+ *				for the first call to this function if used
+ *				as a loop condition.
+ *				Will be filled with the result of the previous
+ *				call, and can be used to determine if the buffer
+ *				was extended.
+ * @param[in] _sbuff_or_marker	to extend.
+ * @param[in] lowat		If bytes remaining are below the amount, extend.
+ * @return
+ *	- 0 if there are no bytes left in the buffer and we couldn't extend.
+ *	- >0 the number of bytes in the buffer after extending.
+ */
+#define fr_sbuff_extend_lowat(_status, _sbuff_or_marker, _lowat) \
+	_fr_sbuff_extend_lowat(_status, \
+			       fr_sbuff_ptr(_sbuff_or_marker), \
+			       fr_sbuff_remaining(_sbuff_or_marker), _lowat)
+
 /** Check if _len bytes are available in the sbuff and extend the buffer if possible
  *
  * If we do not have _len bytes in the sbuff after extending, then return.
@@ -730,42 +796,6 @@ do { \
 	if (_remaining < _len) return -(_len - _remaining); \
 } while (0)
 
-/** Extend a buffer if we're below the low water mark
- *
- * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
- *				for the first call to this function if used
- *				as a loop condition.
- *				Will be filled with the result of the previous
- *				call, and can be used to determine if the buffer
- *				was extended.
- * @param[in] in		to extend.
- * @param[in] lowat		If bytes remaining are below the amount, extend.
- * @return
- *	- 0 if there are no bytes left in the buffer and we couldn't extend.
- *	- >0 the number of bytes in the buffer after extending.
- */
-static inline size_t fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in, size_t lowat)
-{
-	size_t remaining = fr_sbuff_remaining(in);
-
-	if (status && !(*status & FR_SBUFF_EXTENDABLE)) {
-	not_extendable:
-		if (status) *status = FR_SBUFF_NOT_EXTENDABLE;
-		return remaining;
-	}
-
-	if (remaining >= lowat) {
-		if (status) *status = FR_SBUFF_EXTENDABLE;
-		return remaining;
-	}
-
-	if (!in->extend || !in->extend(in, lowat - remaining)) goto not_extendable;
-
-	if (status) *status = FR_SBUFF_EXTENDABLE_EXTENDED;
-
-	return fr_sbuff_remaining(in);
-}
-
 /** Extend a buffer if no space remains
  *
  * @param[in] _sbuff	to extend.
@@ -773,7 +803,7 @@ static inline size_t fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_
  *	- 0 if there are no bytes left in the buffer and we couldn't extend.
  *	- >0 the number of bytes in the buffer after extending.
  */
-#define fr_sbuff_extend(_sbuff) fr_sbuff_extend_lowat(NULL, _sbuff, 1)
+#define fr_sbuff_extend(_sbuff_or_marker) fr_sbuff_extend_lowat(NULL, _sbuff_or_marker, 1)
 
 /** @} */
 
@@ -996,7 +1026,43 @@ static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
 }
 /** @} */
 
-/** @name Copy/print data to an sbuff
+/** @name Copy/print partial input data to an sbuff
+ *
+ * These functions are typically used for moving data between sbuffs
+ *
+ * @{
+ */
+
+size_t _fr_sbuff_move_sbuff_to_sbuff(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
+
+size_t _fr_sbuff_move_marker_to_sbuff(fr_sbuff_t *out, fr_sbuff_marker_t *in, size_t len);
+
+size_t _fr_sbuff_move_marker_to_marker(fr_sbuff_marker_t *out, fr_sbuff_marker_t *in, size_t len);
+
+size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, size_t len);
+
+/** Copy in as many bytes as possible from one sbuff or marker to another
+ *
+ * @param[in] out	to copy into.
+ * @param[in] in	to copy from.
+ * @param[in] len	The maximum length to copy.
+ * @return Number of bytes to copy.
+ */
+#define fr_sbuff_move(_out, _in, _len) \
+      _Generic((_out), \
+	       fr_sbuff_t *		: \
+	       		_Generic((_in), \
+	       			fr_sbuff_t *		: _fr_sbuff_move_sbuff_to_sbuff((fr_sbuff_t *)_out, (fr_sbuff_t *)_in, _len), \
+	       			fr_sbuff_marker_t *	: _fr_sbuff_move_marker_to_sbuff((fr_sbuff_t *)_out, (fr_sbuff_marker_t *)_in, _len) \
+	       		), \
+	       fr_sbuff_marker_t *	: \
+	       		_Generic((_in), \
+	       			fr_sbuff_t *		: _fr_sbuff_move_sbuff_to_marker((fr_sbuff_marker_t *)_out, (fr_sbuff_t *)_in, _len), \
+	       			fr_sbuff_marker_t *	: _fr_sbuff_move_marker_to_marker((fr_sbuff_marker_t *)_out, (fr_sbuff_marker_t *)_in, _len) \
+	       		) \
+      )
+
+/** @name Copy/print complete input data to an sbuff
  *
  * These functions are typically used for printing.
  *
