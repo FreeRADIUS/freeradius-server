@@ -125,6 +125,11 @@ listen {
 
 dhcp DHCP-Discover {
 
+	#  The DHCP Server Identifier is set here since is returned in OFFERs
+	update control {
+		&DHCP-DHCP-Server-Identifier = 192.0.2.2
+	}
+
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -152,7 +157,7 @@ dhcp DHCP-Discover {
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
 #		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
 	}
 
 	#  Do a simple mapping of MAC to assigned IP.
@@ -187,6 +192,19 @@ dhcp DHCP-Discover {
 
 dhcp DHCP-Request {
 
+	#  You must set the DHCP Server Identifier here since this is returned
+	#  in ACKs and is used to determine whether a request containing a
+	#  "server-ip" field is intended for this server
+	update control {
+		&DHCP-DHCP-Server-Identifier = 192.0.2.2
+	}
+
+	#  If the request is not for this server then silently discard it
+	if (&request:DHCP-DHCP-Server-Identifier && \
+	    &request:DHCP-DHCP-Server-Identifier != &control:DHCP-DHCP-Server-Identifier) {
+		do_not_respond
+	}
+
 	#  Response packet type. See DHCP-Discover section above.
 	#update reply {
 	#       &DHCP-Message-Type = DHCP-Ack
@@ -201,7 +219,7 @@ dhcp DHCP-Request {
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
 #		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
 	}
 
 	#  Do a simple mapping of MAC to assigned IP.
