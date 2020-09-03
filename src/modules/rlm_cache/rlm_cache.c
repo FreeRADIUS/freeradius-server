@@ -715,7 +715,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
+	if (strncmp(inst->driver_name, "rlm_cache_", 10) != 0) {
 		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->driver_name);
 		return -1;
 	}

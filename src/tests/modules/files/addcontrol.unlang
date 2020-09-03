@@ -1,0 +1,8 @@
+#
+#  Run the "files" module
+#
+files
+
+update {
+    &reply: += &control:[*]
+}

@@ -355,6 +355,15 @@ static int dhcp_process(REQUEST *request)
 		if (relay) relay->vp_ipaddr = vp->vp_ipaddr;
 	}
 
+	/*
+	 *	RFC 6842: If there's a DHCP-Client-Identifier ("uid") in the
+	 *	request then echo this in the reply.
+	 */
+	vp = fr_pair_find_by_num(request->packet->vps, 61, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Identifier */
+	if (vp && !fr_pair_find_by_num(request->reply->vps, 61, DHCP_MAGIC_VENDOR, TAG_ANY)) {
+		fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
+	}
+
 	vp = fr_pair_find_by_num(request->packet->vps, 53, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
 		DICT_VALUE *dv = dict_valbyattr(53, DHCP_MAGIC_VENDOR, vp->vp_byte);

@@ -537,9 +537,11 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	if (certs) SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)certs);
-	SSL_set_fd(ssn->ssl, fd);
-	ret = SSL_connect(ssn->ssl);
 
+	fr_nonblock(fd);
+	SSL_set_fd(ssn->ssl, fd);
+
+	ret = SSL_connect(ssn->ssl);
 	if (ret < 0) {
 		switch (SSL_get_error(ssn->ssl, ret)) {
 			default:
@@ -711,10 +713,41 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	just too much.
 	 */
 	state->mtu = conf->fragment_size;
+#define EAP_TLS_MAGIC_OVERHEAD (63)
+
+	/*
+	 *	If the packet contains an MTU, then use that.  We
+	 *	trust the admin!
+	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
-		state->mtu = vp->vp_integer;
+	if (vp) {
+		if ((vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
+			state->mtu = vp->vp_integer;
+		}
+
+	} else if (request->parent) {
+		/*
+		 *	If there's a parent request, we look for what
+		 *	MTU was set there.  Then, we use an MTU which
+		 *	accounts for the extra overhead of nesting EAP
+		 *	+ TLS inside of EAP + TLS.
+		 */
+		vp = fr_pair_find_by_num(request->parent->state, PW_FRAMED_MTU, 0, TAG_ANY);
+		if (vp && (vp->vp_integer > (100 + EAP_TLS_MAGIC_OVERHEAD)) && (vp->vp_integer <= state->mtu)) {
+			state->mtu = vp->vp_integer - EAP_TLS_MAGIC_OVERHEAD;
+		}
 	}
+
+	/*
+	 *	Cache / update the Framed-MTU in the session-state
+	 *	list.
+	 */
+	vp = fr_pair_find_by_num(request->state, PW_FRAMED_MTU, 0, TAG_ANY);
+	if (!vp) {
+		vp = fr_pair_afrom_num(request->state_ctx, PW_FRAMED_MTU, 0);
+		fr_pair_add(&request->state, vp);
+	}
+	if (vp) vp->vp_integer = state->mtu;
 
 	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
 
@@ -738,7 +771,10 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
-	if (ssn->invalid_hb_used) return 0;
+	if (ssn->invalid_hb_used) {
+		REDEBUG("OpenSSL Heartbeat attack detected.  Closing connection");
+		return 0;
+	}
 
 	if (ssn->dirty_in.used > 0) {
 		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
@@ -896,10 +932,10 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 		record_minus(&ssn->clean_in, NULL, written);
 
 		/* Get the dirty data from Bio to send it */
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
-			       sizeof(ssn->dirty_out.data));
+		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data + ssn->dirty_out.used,
+			       sizeof(ssn->dirty_out.data) - ssn->dirty_out.used);
 		if (err > 0) {
-			ssn->dirty_out.used = err;
+			ssn->dirty_out.used += err;
 		} else {
 			if (!tls_error_io_log(request, ssn, err,
 					      "Failed in " STRINGIFY(__FUNCTION__) " (SSL_write)")) {
@@ -1327,6 +1363,10 @@ static CONF_PARSER tls_server_config[] = {
 
 	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
 
+#ifdef TLS1_3_VERSION
+	{ "tls13_send_zero", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_send_zero), NULL },
+#endif
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -1391,6 +1431,23 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	BIO *bio;
 
 	if (!file) return 0;
+
+	/*
+	 * Prior to trying to load the file, check what OpenSSL will do with it.
+	 *
+	 * Certain downstreams (such as RHEL) will ignore user-provided dhparams
+	 * in FIPS mode, unless the specified parameters are FIPS-approved.
+	 * However, since OpenSSL >= 1.1.1 will automatically select parameters
+	 * anyways, there's no point in attempting to load them.
+	 *
+	 * Change suggested by @t8m
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (FIPS_mode() > 0) {
+		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
+		return 0;
+	}
+#endif
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		ERROR(LOG_PREFIX ": Unable to open DH file - %s", file);
@@ -1608,7 +1665,7 @@ done:
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, int *copy)
 #else
 static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int len, int *copy)
@@ -2108,7 +2165,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[8][2] = {
+static char const *cert_attr_names[9][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2116,7 +2173,8 @@ static char const *cert_attr_names[8][2] = {
 	{ "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
-	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" }
+	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
+	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2127,6 +2185,7 @@ static char const *cert_attr_names[8][2] = {
 #define FR_TLS_SAN_EMAIL       	(5)
 #define FR_TLS_SAN_DNS          (6)
 #define FR_TLS_SAN_UPN          (7)
+#define FR_TLS_VALID_SINCE	(8)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -2254,6 +2313,19 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	}
+
+	/*
+	 *	Get the Valid Since Date
+	 */
+	buf[0] = '\0';
+	asn_time = X509_get_notBefore(client_cert);
+	if (certs && (lookup <= 1) && asn_time &&
+	    (asn_time->length < (int) sizeof(buf))) {
+		memcpy(buf, (char*) asn_time->data, asn_time->length);
+		buf[asn_time->length] = '\0';
+		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_VALID_SINCE][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
@@ -2403,11 +2475,36 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				if (*p == ' ') *p = '-';
 			}
 
-			X509V3_EXT_print(out, ext, 0, 0);
-			len = BIO_read(out, value , sizeof(value) - 1);
-			if (len <= 0) continue;
+			if (X509V3_EXT_get(ext)) { /* Known extension, converting value into plain string */
+				X509V3_EXT_print(out, ext, 0, 0);
+				len = BIO_read(out, value, sizeof(value) - 1);
+				if (len <= 0) continue;
+				value[len] = '\0';
+			} else {
+				/*
+				 * An extension not known to OpenSSL, dump it's value as a value of an unknown attribute.
+				 */
+				value[0] = '0';
+				value[1] = 'x';
+				const unsigned char *srcp;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+				const ASN1_STRING *srcasn1p;
+				srcasn1p = X509_EXTENSION_get_data(ext);
+				srcp = ASN1_STRING_get0_data(srcasn1p);
+#else
+				ASN1_STRING *srcasn1p;
+				srcasn1p = X509_EXTENSION_get_data(ext);
+				srcp = ASN1_STRING_data(srcasn1p);
+#endif
+				int asn1len = ASN1_STRING_length(srcasn1p);
+				/* 3 comes from '0x' + \0 */
+				if ((size_t)(asn1len << 1) >= sizeof(value) - 3) {
+					RDEBUG("Value of '%s' attribute is too long to be stored, it will be truncated", attribute);
+					asn1len = (sizeof(value) - 3) >> 1;
+				}
+				fr_bin2hex(value + 2, srcp, asn1len);
+			}
 
-			value[len] = '\0';
 
 			vp = fr_pair_make(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (!vp) {
@@ -3105,6 +3202,18 @@ post_ca:
 	ctx_options |= SSL_OP_NO_SSLv3;
 
 	/*
+	 *	If set then dummy Change Cipher Spec (CCS) messages are sent in
+	 *	TLSv1.3. This has the effect of making TLSv1.3 look more like TLSv1.2
+	 *	so that middleboxes that do not understand TLSv1.3 will not drop
+	 *	the connection. This isn't needed for EAP-TLS, so we disable it.
+	 *
+	 *	EAP (hopefully) does not have middlebox deployments
+	 */
+#ifdef SSL_OP_ENABLE_MIDDLEBOX_COMPAT
+	ctx_options &= ~SSL_OP_ENABLE_MIDDLEBOX_COMPAT;
+#endif
+
+	/*
 	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
 	 *
 	 *	This version already defines macros for TLS1_2_VERSION and
@@ -3132,9 +3241,9 @@ post_ca:
 			 *	Pick the maximum one we know about.
 			 */
 #ifdef TLS1_4_VERSION
-			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
+			max_version = TLS1_3_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
 #elif defined(TLS1_3_VERSION)
-			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.3 are NOT finished */
+			max_version = TLS1_3_VERSION;
 #elif defined(TLS1_2_VERSION)
 			max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
@@ -3308,6 +3417,19 @@ post_ca:
 	SSL_CTX_set_options(ctx, ctx_options);
 
 	/*
+	 *	TLS 1.3 introduces the concept of early data (also known as zero
+	 *	round trip data or 0-RTT data). Early data allows a client to send
+	 *	data to a server in the first round trip of a connection, without
+	 *	waiting for the TLS handshake to complete if the client has spoken
+	 *	to the same server recently. This doesn't work for EAP, so we
+	 *	disable early data.
+	 *
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	SSL_CTX_set_max_early_data(ctx, 0);
+#endif
+
+	/*
 	 *	TODO: Set the RSA & DH
 	 *	SSL_CTX_set_tmp_rsa_callback(ctx, cbtls_rsa);
 	 *	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
@@ -3363,6 +3485,35 @@ post_ca:
 			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
 
+	/*
+	 *	Check the certificates for revocation.
+	 */
+#ifdef X509_V_FLAG_CRL_CHECK
+	if (conf->check_crl) {
+		certstore = SSL_CTX_get_cert_store(ctx);
+		if (certstore == NULL) {
+			tls_error_log(NULL, "Error reading Certificate Store");
+	    		return NULL;
+		}
+		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
+
+#ifdef X509_V_FLAG_USE_DELTAS
+		/*
+		 *	If set, delta CRLs (if present) are used to
+		 *	determine certificate status. If not set
+		 *	deltas are ignored.
+		 *
+		 *	So it's safe to always set this flag.
+		 */
+		X509_STORE_set_flags(certstore, X509_V_FLAG_USE_DELTAS);
+#endif
+
+#ifdef X509_V_FLAG_CRL_CHECK_ALL
+		if (conf->check_all_crl)
+			X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);
+#endif
+	}
+#endif
 
 	/*
 	 *	Set verify modes
@@ -3432,14 +3583,14 @@ post_ca:
 		 */
 		SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 		SSL_CTX_set_num_tickets(ctx, 1);
 #endif
 
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 		/*
 		 *	This controls the number of stateful or stateless tickets
 		 *	generated with TLS 1.3.  In OpenSSL 1.1.1 it's also

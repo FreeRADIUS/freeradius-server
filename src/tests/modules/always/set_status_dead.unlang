@@ -1,0 +1,18 @@
+#
+#  Set the module status to dead, call it and check that it fails
+#
+%{db_status:dead}
+
+db_status {
+	fail = 1
+}
+
+if (fail) {
+	update reply {
+		Filter-Id := "success"
+	}
+}
+
+update control {
+	Cleartext-Password := "hello"
+}

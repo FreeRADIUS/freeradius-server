@@ -108,15 +108,9 @@ eap {
 	#  We do not recommend using LEAP in new deployments.  See:
 	#  http://www.securiteam.com/tools/5TP012ACKE.html
 	#
-	#  Cisco LEAP uses the MS-CHAP algorithm (but not
-	#  the MS-CHAP attributes) to perform it's authentication.
+	#  As of 3.0.22, LEAP has been removed from the server.
+	#  It is insecure, and no one should be using it.
 	#
-	#  As a result, LEAP *requires* access to the plain-text
-	#  User-Password, or the NT-Password attributes.
-	#  'System' authentication is impossible with LEAP.
-	#
-	leap {
-	}
 
 
 	#  EAP-GTC -- Generic Token Card
@@ -377,8 +371,6 @@ eap {
 		#  TLS cipher suites.  The format is listed
 		#  in "man 1 ciphers".
 		#
-		#  For EAP-FAST, use "ALL:!EXPORT:!eNULL:!SSLv2"
-		#
 		cipher_list = "DEFAULT"
 
 		#  If enabled, OpenSSL will use server cipher list
@@ -415,11 +407,6 @@ eap {
 		#  able to connect.
 		#
 		#  Allowed values are "1.0", "1.1", "1.2", and "1.3".
-		#
-		#  Note that the server WILL NOT permit negotiation of
-		#  TLS 1.3.  The EAP-TLS standards for TLS 1.3 are NOT
-		#  finished.  It is therefore impossible for the server
-		#  to negotiate EAP-TLS correctly with TLS 1.3.
 		#
 		#  The values must be in quotes.
 		#
@@ -957,9 +944,6 @@ eap {
 		#  This is not as straight forward as appending "ADH" alongside
 		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
-		#
-		#  Note - for OpenSSL 1.1.0 and above you may need
-		#  to add ":@SECLEVEL=0"
 		#
 	#	cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 

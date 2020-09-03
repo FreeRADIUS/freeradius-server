@@ -25,6 +25,20 @@
 #  Will return "yes" if the connection has TLS enabled.  It will
 #  return "no" if TLS is not enabled for a particular listen section.
 #
+#  A number of TLS-Client-Cert-.. attributes holds X509v3 extensions
+#  data, attributes named the way OpenSSL names them. It is possible
+#  to extract data for an extension not known to OpenSSL by defining
+#  a custom string attribute which contains extension OID in it's
+#  name after 'TLS-Client-Cert-' prefix. E.g.:
+#
+#  ATTRIBUTE	TLS-Client-Cert-1.3.6.1.4.1.311.21.7	3002	string
+#
+#  which will yield something simmilar to:
+#
+#   (0) eap_tls: TLS - Creating attributes from certificate OIDs
+#   (0) eap_tls:   TLS-Client-Cert-1.3.6.1.4.1.311.21.7 += "0x302e06"
+#   ...
+#
 ######################################################################
 
 listen {

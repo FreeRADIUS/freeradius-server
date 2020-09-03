@@ -1,0 +1,140 @@
+# -*- text -*-
+######################################################################
+#
+#  This virtual server provides an example of how to dynamically amend the
+#  control flow within some virtual server's policy on the basis of the status
+#  of some resource, such as an external database.
+#
+#  This resource-check virtual server receives periodic dummy server-status
+#  requests that trigger an arbitrary set of checks. On the basis of those
+#  checks the status of an instance of the rlm_always module, that we refer to
+#  as the "control module", is updated to reflect the system status.
+#
+#  Elsewhere, some other virtual server (the "controlled virtual server") uses
+#  the control module to make decisions during the processing of incoming
+#  requests. By amending the status of the control module in response to the
+#  system status this virtual server is able to manipulate the outcome of the
+#  controlled virtual server.
+#
+#  Firstly, the authorize section of this virtual server will need to be
+#  amended to check the status of the external resources and to set the status
+#  of the control module appropriately, as described in the inline comments
+#  below...
+#
+#  In addition to configuring and activating this virtual server, a control
+#  module must be configured as an instance of rlm_always in mods-enabled, for
+#  example:
+#
+#    always db_online {
+#        # Default to online
+#        rcode = ok
+#    }
+#
+#  Now trigger the resource checks by sending a server-status request to this
+#  virtual server, as follows:
+#
+#    echo "Message-Authenticator = 0x00" | \
+#      radclient -r 1 -t 3 -q 127.0.0.1:18122 status testing123
+#
+#  The trigger could be invoked by a cron job or if more frequent checks than
+#  once per minute are required a systemd timer might be used.
+#
+#  The current status of the control module can be examined at any time using
+#  radmin:
+#
+#    radmin -e 'show module status db_online'
+#
+#  For radmin to work requires that the control-socket virtual server is
+#  configured and enabled.
+#
+#  The controlled virtual server will contain some control flow decision that
+#  uses the control module, for example:
+#
+#    server default {
+#
+#    ...
+#
+#    authorize {
+#
+#        #  If the database is not healthy then remain silent to trigger
+#        #  NAS failover
+#        #
+#        db_online {
+#            fail = 1
+#        }
+#        if (fail) {
+#             do_not_respond
+#        }
+#
+#        sql
+#
+#        pap
+#    }
+#
+#    ...
+#
+#
+#  The configuration for this virtual server follows and should be amended as
+#  required...
+#
+
+
+#
+#  Listen on a local port for Server-Status requests that trigger the resource
+#  checks.
+#
+#  This uses the normal set of clients, with the same secret as for
+#  authentication and accounting.
+#
+listen {
+	type = status
+	ipaddr = 127.0.0.1
+	port = 18122
+	virtual_server = resource_check
+}
+
+
+#
+#  Within this virual server we provide only an Autz-Type Status-Server section
+#  whose task is to perform the resource checks and sets the status of the
+#  "control module"
+#
+server resource-check {
+
+authorize {
+
+Autz-Type Status-Server {
+
+	#
+	#  In this example we check whether a PostgreSQL database is in
+	#  recovery (or inaccessible) and when this is the case we fail the
+	#  db_online control module.
+	#
+	#  Other modules could be used here.
+	#
+	#  You can even invoke synchronous checks using the %{exec:...} xlat in
+	#  which case timeout should be set to less than the check trigger
+	#  interval to avoid buildup of checks when resources do not respond.
+	#  See rlm_exec for details.
+	#
+	if ("%{sql:SELECT pg_is_in_recovery()}" != "f") {
+
+		# Fail the db_online module, if it isn't already
+		if ("%{db_online:}" != "fail") {
+			%{db_online:fail}
+		}
+
+	} else {
+
+		# Set the db_online module status to alive, if it isn't already
+		if ("%{db_online:}" != "alive") {
+			%{db_online:alive}
+		}
+
+	}
+
+}
+
+}
+
+}

@@ -34,7 +34,7 @@ use warnings;
 use Data::Dumper;
 
 # Bring the global hashes into the package scope
-our (%RAD_REQUEST, %RAD_REPLY, %RAD_CHECK, %RAD_STATE);
+our (%RAD_REQUEST, %RAD_REPLY, %RAD_CHECK, %RAD_STATE, %RAD_PERLCONF);
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;

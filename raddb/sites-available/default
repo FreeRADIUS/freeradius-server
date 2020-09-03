@@ -637,8 +637,12 @@ accounting {
 #	radutmp
 #	sradutmp
 
+	#
 	#  Return an address to the IP Pool when we see a stop record.
-#	main_pool
+	#
+	#  Ensure that &control:Pool-Name is set to determine which
+	#  pool of IPs are used.
+#	sqlippool
 
 	#
 	#  Log traffic to an SQL database.
@@ -727,8 +731,13 @@ post-auth {
 		&reply: += &session-state:
 	}
 
-	#  Get an address from the IP Pool.
-#	main_pool
+	#
+	#  Refresh leases when we see a start or alive. Return an address to
+	#  the IP Pool when we see a stop record.
+	#
+	#  Ensure that &control:Pool-Name is set to determine which
+	#  pool of IPs are used.
+#	sqlippool
 
 
 	#  Create the CUI value and add the attribute to Access-Accept.
@@ -769,7 +778,7 @@ post-auth {
 	#  you will need to define the WiMAX NAI, usually via
 	#
 	#	update request {
-	#	       WiMAX-MN-NAI = "%{User-Name}"
+	#	       &WiMAX-MN-NAI = "%{User-Name}"
 	#	}
 	#
 	#  If you want various keys to be calculated, you will need to
@@ -778,8 +787,8 @@ post-auth {
 	#  taken from the cryptographic calculations.  e.g.
 	#
 	# 	update reply {
-	#		WiMAX-FA-RK-Key = 0x00
-	#		WiMAX-MSK = "%{EAP-MSK}"
+	#		&WiMAX-FA-RK-Key = 0x00
+	#		&WiMAX-MSK = "%{reply:EAP-MSK}"
 	#	}
 	#
 	#  You may want to delete the MS-MPPE-*-Keys from the reply,
@@ -872,6 +881,15 @@ post-auth {
 #		attr_filter.access_challenge.post-auth
 	}
 
+	#
+	#  If the client sends EAP-Key-Name in the request,
+	#  then echo the real value back in the reply.
+	#
+	if (EAP-Key-Name && &reply:EAP-Session-Id) {
+		update reply {
+			EAP-Key-Name := &reply:EAP-Session-Id
+		}
+	}
 }
 
 #

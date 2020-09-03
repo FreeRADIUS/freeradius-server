@@ -2,6 +2,8 @@
 #
 #  This module will open a new socket for each packet, and "clone"
 #  the incoming packet to the destination realm (i.e. home server).
+#  These packets are only sent to UDP home servers.  TCP and TLS
+#  are not supported.
 #
 #  Use it by setting "Replicate-To-Realm = name" in the control list,
 #  just like Proxy-To-Realm.  The configurations for the two attributes

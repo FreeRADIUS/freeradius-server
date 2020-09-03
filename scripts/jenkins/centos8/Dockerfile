@@ -4,7 +4,7 @@ FROM centos:8
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
 
 RUN yum groupinstall -y "Development Tools"
-RUN yum install -y rpmdevtools openssl dnf-utils
+RUN yum install -y rpmdevtools openssl yum-utils
 
 #
 #  Create build directory

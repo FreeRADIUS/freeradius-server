@@ -1138,7 +1138,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 }
 
 #ifdef WITH_PROXY
-static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+static int command_show_home_servers(rad_listen_t *listener, int argc, char *argv[])
 {
 	int i;
 	home_server_t *home;
@@ -1146,10 +1146,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		home = home_server_bynumber(i);
-		if (!home) break;
-
+	for (i = 0; (home = home_server_bynumber(i)) != NULL; i++) {
 		/*
 		 *	Internal "virtual" home server.
 		 */
@@ -1212,10 +1209,19 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
-			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port, proto, type, state,
-			home->currently_outstanding);
+		if (argc > 0 && !strcmp(argv[0], "all")) {
+			char const *dynamic = home->dynamic ? "yes" : "no";
+
+			cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\t(name=%s, dynamic=%s)\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->port, proto, type, state,
+				home->currently_outstanding, home->name, dynamic);
+		} else {
+			cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->port, proto, type, state,
+				home->currently_outstanding);
+		}
 	}
 
 	return CMD_OK;
@@ -1246,10 +1252,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	RADCLIENT *client;
 	char buffer[256];
 
-	for (i = 0; i < 256; i++) {
-		client = client_findbynumber(NULL, i);
-		if (!client) break;
-
+	for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
 		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
 
 		if (((client->ipaddr.af == AF_INET) &&
@@ -2056,7 +2059,7 @@ static fr_command_table_t command_table_show_client[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
 	{ "list", FR_READ,
-	  "show home_server list - shows list of home servers",
+	  "show home_server list [all] - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
 	  "show home_server state <ipaddr> <port> [udp|tcp] [src <ipaddr>] - shows state of given home server",
@@ -2597,6 +2600,36 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 }
 
 
+static int command_del_home_server(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 2) {
+		cprintf_error(listener, "<name> and <type> are required\n");
+		return 0;
+	}
+
+	if (home_server_delete(argv[0], argv[1]) < 0) {
+		cprintf_error(listener, "Failed deleted home_server %s - %s\n", argv[1], fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
+static int command_add_home_server_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 1) {
+		cprintf_error(listener, "<file> is required\n");
+		return 0;
+	}
+
+	if (home_server_afrom_file(argv[0]) < 0) {
+		cprintf_error(listener, "Unable to add home server - %s\n", fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
 static fr_command_table_t command_table_del_client[] = {
 	{ "ipaddr", FR_WRITE,
 	  "del client ipaddr <ipaddr> [udp|tcp] [listen <ipaddr> <port>] - Delete a dynamically created client",
@@ -2605,15 +2638,25 @@ static fr_command_table_t command_table_del_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_del_home_server[] = {
+	{ "file", FR_WRITE,
+	  "del home_server file <name> [auth|acct|coa] - Delete a dynamically created home_server",
+	  command_del_home_server, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_del[] = {
 	{ "client", FR_WRITE,
 	  "del client <command> - Delete client configuration commands",
 	  NULL, command_table_del_client },
 
+	{ "home_server", FR_WRITE,
+	  "del home_server <command> - Delete home_server configuration commands",
+	  NULL, command_table_del_home_server },
+
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
 
 static fr_command_table_t command_table_add_client[] = {
 	{ "file", FR_WRITE,
@@ -2623,11 +2666,22 @@ static fr_command_table_t command_table_add_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_add_home_server[] = {
+	{ "file", FR_WRITE,
+	  "add home_server file <filename> - Add new home serverdefinition from <filename>",
+	  command_add_home_server_file, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_add[] = {
 	{ "client", FR_WRITE,
 	  "add client <command> - Add client configuration commands",
 	  NULL, command_table_add_client },
+
+	{ "home_server", FR_WRITE,
+	  "add home_server <command> - Add home server configuration commands",
+	  NULL, command_table_add_home_server },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -2673,7 +2727,7 @@ static fr_command_table_t command_table_set[] = {
 #ifdef WITH_STATS
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
+	  "stats client [auth/acct/coa] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
 	  "- show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
 

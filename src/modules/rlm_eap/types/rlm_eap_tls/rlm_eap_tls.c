@@ -100,11 +100,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "client EAP encryption";
-
-	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
@@ -194,6 +189,13 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			talloc_free(fake);
 			/* success */
 		}
+
+		/*
+		 *	Set the label to a fixed string.  For TLS 1.3,
+		 *	the label is the same for all TLS-based EAP
+		 *	methods.
+		 */
+		tls_session->label = "client EAP encryption";
 
 		/*
 		 *	Success: Automatically return MPPE keys.

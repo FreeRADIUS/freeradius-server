@@ -2018,6 +2018,7 @@ int main(int argc, char *argv[])
 				INFO("%i.%s", i++, dev_p->name);
 			}
 			ret = 0;
+			pcap_freealldevs(all_devices);
 			goto finish;
 		}
 
@@ -2415,6 +2416,9 @@ int main(int argc, char *argv[])
 		}
 		conf->from_auto = true;
 		conf->from_dev = true;
+
+		pcap_freealldevs(all_devices);
+
 		INFO("Defaulting to capture on all interfaces");
 	}
 

@@ -1,16 +1,126 @@
-FreeRADIUS 3.0.21 Thu 14 Nov 2019 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
+	Feature improvements
+	* Update dictionary.bskyb.  Fixes #3339.
+	* Update alcatel.sr. #3495
+	* Abfab-tls updates from Alejandro Perez.
+	* Allow CoA and Disconnect messages over TLS sockets.
+	  Fixes #3356.
+	* New xlat for setting status of rlm_always instances and new
+	  resource-check example virtual server for manipulating control flow
+	  in unlang policies based on status of some external resource.
+	  Patches from Terry Burton.
+	* Allow delta CRLs.  Fixes #3393.
+	* Limited support for dynamic home servers.  See proxy.conf
+	  and doc/configuration/dynamic_home_servers.md
+	* Update radmin to show more information about the home servers
+	  using "show home_server list all".
+	* Support TLS 1.3 in TLS-based EAP methods.  This has been tested
+	  to work with hostap and Windows.  Thanks to Jorge Vergara
+	  for assistance.
+	* The default configuration now replies with EAP-Key-Name, if it
+	  is available, and was requested.
+	* Include extensions in generated certificates.
+	* Many improvements for DHCP IP pools for all SQL dialects.
+	  Patches from Nick Porter.
+	* Ignore user-provided dhparams in FIPS mode.
+	  Patch from Alexander Scheel.
+	* Add support for DHCP-Decline.
+	* Remove native support for Cisco LEAP.  It is insecure, and
+	  should not be used.  Proxying LEAP is still supported.
+	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
+	  works, and no longer requires manual changes to the configuration.
+
+	Bug fixes
+	* Respect the "log_reject" configuration item in more places.
+	  Fixes #3352.  This lowers the number of "Login incorrect"
+	  messages when "log_reject = no".
+	* Fix rpmbuild for Centos > 6.  Patch from Matthew Newton.
+	* Run Post-Proxy-Type Fail... when all home servers are down.
+	* Note that rlm_replicate can only use UDP, and not TCP or TLS.
+	* DHCP pool lookup is now keyed by Client Identifier (Option 61) when
+	  supplied by client, otherwise the hardware address is used. Compliant
+	  with RFC 2132. This change will not affect existing systems on upgrade,
+	  but new installations will use the new behavior.
+	  Patch from Terry Burton.
+	* Fix minor spelling mistakes in man pages.  Patch from
+	  Alexander Scheel.
+	* Don't print invalid tags in rlm_cache, among other places.
+	  Fixes #3491
+	* Do home_server failover immediately when an initial TCP / Radsec
+	  connection fails.
+	* Port EAP-PWD constant time fixes from "master" branch.  The issue
+	  was verified by Mohamed Sabt, and a patch supplied by
+	  Daniel De Almeida Braga.
+	* Clear error on SQLITE_BUSY to prevent memory leak in corner cases.
+	  Patch from Nick Porter.
+	* Properly add SQL clients to virtual servers.
+	* Update documentation for cert generation.  Patch from Alexander Scheel.
+	* Use better API when decoding DHCP packets, to avoid unnecessary work.
+	  This improves performance noticably.
+
+FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* New stored procedure for allocating IPs with PostgreSQL.
 	  Rates of 1500 IPs per second are now possible.
 	  See raddb/mods-config/sql/ippool/postgresql/procedure.sql
 	  Patch from Terry Burton.
+	* Add SQL IP pool support for Microsoft SQL Server
+	  See raddb/mods-config/sql/ippool/mssql/
+	  Patch from Terry Burton.
+	* Added RCNTEC dictionary. Closes #3168.
+	* Added Pica8 dictionary. Closes #3179.
+	* Add TLS-Client-Cert-Valid-Since attribute holding notBefore date.
+	  Patch from Boris Lytochkin.  Fixes #3157.
+	* Generate attributes containing unknown OIDs.
+	  See raddb/sites-available/tls.  Patch from Boris Lytochkin.
+	* Update the WiMAX dictionary.
+	* Added ability to rlm_python(Python2) show a stacktrace from errors. #2979
+	* Add WiFi Alliance Policy OIDs.  See raddb/certs/xpextensions
+	  Patch from Stefan Winter.
+	* radmin now shows coa stats, too.
+	* Sample schema extensions for summarizing data in SQL.
+	  See mods-config/sql/main/*/process-radacct.sql
+	  Many patches from Terry Burton.
+	* Update dictionary.aerohive, dictionary.fortinet,
+	  dictionary.arista and dictionary.erx
+	* Added VAS Experts dictionary.
+	* Many updates to RPM and jenkins builds from Matthew Newton
+	* Added %C (time now in seconds) and %c (microsecond component of now)
+	  back-ported from the "master" branch.
+	* Add reload capability to systemd unit file in Debian and RedHat.
+	* Increase timestamp precision in postauth to maximum supported by each
+	  database and simplify (and make more consistent between drivers) the
+	  timestamps in SQL queries by using expansions.
+	  Patches from Terry Burton.
+	* Option to set dictionary path in raduat script. Patch from Terry Burton.
 
 	Bug fixes
+	* Various fixes found by PVS-Studio.
 	* Set permissions of certificates in bootstrap shell script.
 	  Fixes #3132.
 	* Increase the 'nasportid' SQL field for 'varchar(32)'. #3141
 	* Skip processing proxy reply if there are no home servers
 	  available.
+	* Update SQLite IPPool queries.  Fixes #3177
+	  Patch from Terry Burton.
+	* rlm_sql_unixodbc fixes. Patches from Terry Burton. Fixes #2822
+	* Fixes when building with LibreSSL. Patch from Nathan Owens.
+	* Fix the rlm_python3 build. Note that this module is experimental. #3183
+	* The rlm_python should append the 'python_path' paths in 'sys.path',
+	  It fixes the expected behavior to use the existing Python modules.
+	  Fixes #3180
+	* Fix rlm_python to print the script errors properly.
+	* Bound total query time for PostgreSQL.  Fixes #3253
+	* Many fixes to Oracle sqlippool.  It now does 500 IPs per second
+	  without any tuning.  Fixes #3270.
+	* Reference sqlippool by it's correct name.  Fixes #3272
+	* Revert 3.0.20 patch which caused crashes on duplicate clients.
+	* Update WiMAX-MSK attribute.  Fixes #3280.
+	* Fix crash when trying to access non-existant regex capture group.
+	* Use timestamps (request or server) rather than SQL NOW() in
+	  accounting queries so that these are stable when replayed from a
+	  file buffer.
+	  Patches from Terry Burton.
 
 FreeRADIUS 3.0.20 Thu 14 Nov 2019 12:00:00 EDT urgency=medium
 	Feature improvements

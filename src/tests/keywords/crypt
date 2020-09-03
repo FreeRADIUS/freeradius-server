@@ -116,15 +116,18 @@ if ("%{crypt:aa:&Tmp-String-1}" != "aadzEnaZwH90k") {
 
 # Check invalid chars in salt
 #
-if ("%{crypt:&Tmp-String-2:foo}") {
-	update reply {
-		&Filter-Id += 'fail 5a'
-	}
+# In this case, depending on the library implementation, crypt
+# seems to either return an empty string (null) and set an error,
+# or it will return an invalid hash beginning with '*'.
+#
+update request {
+	&Tmp-String-7 := "%{crypt:&Tmp-String-2:foo}"
 }
 
-if ("%{request:Module-Failure-Message[0]}" !~ /Crypt salt has the wrong format/) {
+if (&Tmp-String-7 !~ /^\*/ && \
+		"%{request:Module-Failure-Message[0]}" !~ /Crypt salt has the wrong format/) {
         update reply {
-                &Filter-Id += 'fail 5b'
+                &Filter-Id += 'fail 5a'
         }
 }
 

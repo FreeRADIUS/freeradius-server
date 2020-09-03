@@ -486,6 +486,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			type++;
 		}
 	}
+	REXDENT();
 
 	*out = '\0';
 	return 0;
@@ -1468,7 +1469,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%}delmntDGHIMSTYv", p[1])) {
+			if (!p[1] || !strchr("%}cdelmntCDGHIMSTYv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
 				p++;
@@ -2132,6 +2133,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str[1] = '\0';
 			break;
 
+		case 'c':	/* current epoch time seconds */
+			snprintf(str, freespace, "%" PRIu64, (uint64_t) time(NULL));
+			break;
+
 		case 'd': /* request day */
 			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%d", &ts);
@@ -2161,6 +2166,16 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			CTIME_R(&when, str, freespace);
 			nl = strchr(str, '\n');
 			if (nl) *nl = '\0';
+			break;
+
+		case 'C':	/* current epoch time microseconds */
+			{
+				struct timeval tv;
+
+				gettimeofday(&tv, NULL);
+
+				snprintf(str, freespace, "%" PRIu64, (uint64_t) tv.tv_usec);
+			}
 			break;
 
 		case 'D': /* request date */

@@ -124,7 +124,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	if (!cap) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
 	ret = pcre_get_substring(cap->value, (int *)cap->rxmatch, (int)cap->nmatch, num, &p);
@@ -182,7 +182,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	if (!cap) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
 	ret = pcre_get_named_substring(cap->preg->compiled, cap->value,

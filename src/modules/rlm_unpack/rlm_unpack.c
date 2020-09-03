@@ -126,7 +126,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	}
 
 	if ((size_t) offset >= input_len) {
-		REDEBUG("Offset is larget then the input.");
+		REDEBUG("Offset is larger then the input.");
 		goto nothing;
 	}
 
@@ -141,7 +141,17 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 
 		*p = '\0';
 
-		to_copy = strtoul(p + 1, &end, 10);
+		/*
+		 *	Allow the caller to say "get me everything
+		 *	else"
+		 */
+		if (p[1] == ')') {
+			to_copy = input_len - offset;
+			end = p + 1;
+
+		} else {
+			to_copy = strtoul(p + 1, &end, 10);
+		}
 		if (to_copy > input_len) {
 			REDEBUG("Invalid length at '%s'", p + 1);
 			goto nothing;

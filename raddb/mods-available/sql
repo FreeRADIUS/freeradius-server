@@ -56,7 +56,6 @@ sql {
 	#	rlm_sql_freetds
 	#	rlm_sql_iodbc
 	#	rlm_sql_unixodbc
-	#	rlm_sql_mongo
 	#
 	driver = "rlm_sql_null"
 #	driver = "rlm_sql_${dialect}"
@@ -131,6 +130,11 @@ sql {
 	#
 	#		raddb/mods-config/sql/main/mongo/queries.conf
 	#		raddb/mods-config/sql/main/ippool/queries.conf
+	#
+	#	In order to use findAndModify with an aggretation pipleline, make
+	#	sure that you are running MongoDB version 4.2 or greater. FreeRADIUS
+	#	assumes that the paramaters passed to the methods are supported by the
+	#	version of MongoDB which it is connected to.
 	#
 	mongo {
 		#
@@ -247,7 +251,7 @@ sql {
 	# connection pool, use "pool = name" instead of a "pool"
 	# section.  e.g.
 	#
-	#	sql1 {
+	#	sql sql1 {
 	#	    ...
 	#	    pool {
 	#	    	 ...
@@ -255,7 +259,7 @@ sql {
 	#	}
 	#
 	#	# sql2 will use the connection pool from sql1
-	#	sql2 {
+	#	sql sql2 {
 	#	     ...
 	#	     pool = sql1
 	#	}

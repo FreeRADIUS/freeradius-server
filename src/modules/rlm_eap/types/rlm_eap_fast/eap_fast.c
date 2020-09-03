@@ -44,7 +44,7 @@ static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	int md_size;
 
 	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL ||
@@ -61,33 +61,51 @@ static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
 		return -1;
 
 	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d "
-		   "IV_len=%d", EVP_CIPHER_key_length(c), md_size,
-		   EVP_CIPHER_iv_length(c));
+		"IV_len=%d", EVP_CIPHER_key_length(c), md_size,
+		EVP_CIPHER_iv_length(c));
 	return 2 * (EVP_CIPHER_key_length(c) +
 		    md_size +
 		    EVP_CIPHER_iv_length(c));
 #else
 	const SSL_CIPHER *ssl_cipher;
 	int cipher, digest;
+	int mac_key_len, enc_key_len, fixed_iv_len;
 
 	ssl_cipher = SSL_get_current_cipher(ssl);
 	if (!ssl_cipher)
 		return -1;
 	cipher = SSL_CIPHER_get_cipher_nid(ssl_cipher);
 	digest = SSL_CIPHER_get_digest_nid(ssl_cipher);
-	RDEBUG2("OpenSSL: cipher nid %d digest nid %d", cipher, digest);
+	RDEBUG3("OpenSSL: cipher nid %d digest nid %d",
+		cipher, digest);
 	if (cipher < 0 || digest < 0)
 		return -1;
-	c = EVP_get_cipherbynid(cipher);
-	h = EVP_get_digestbynid(digest);
-	if (!c || !h)
+	if (cipher == NID_undef) {
+		RDEBUG3("OpenSSL: no cipher in use?!");
 		return -1;
+	}
+	c = EVP_get_cipherbynid(cipher);
+	if (!c)
+		return -1;
+	enc_key_len = EVP_CIPHER_key_length(c);
+	if (EVP_CIPHER_mode(c) == EVP_CIPH_GCM_MODE ||
+	    EVP_CIPHER_mode(c) == EVP_CIPH_CCM_MODE)
+		fixed_iv_len = 4; /* only part of IV from PRF */
+	else
+		fixed_iv_len = EVP_CIPHER_iv_length(c);
+	if (digest == NID_undef) {
+		RDEBUG3("OpenSSL: no digest in use (e.g., AEAD)");
+		mac_key_len = 0;
+	} else {
+		h = EVP_get_digestbynid(digest);
+		if (!h)
+			return -1;
+		mac_key_len = EVP_MD_size(h);
+	}
 
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d IV_len=%d",
-		   EVP_CIPHER_key_length(c), EVP_MD_size(h),
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +
-		    EVP_CIPHER_iv_length(c));
+	RDEBUG2("OpenSSL: keyblock size: mac_key_len=%d enc_key_len=%d fixed_iv_len=%d",
+		mac_key_len, enc_key_len, fixed_iv_len);
+	return 2 * (mac_key_len + enc_key_len + fixed_iv_len);
 #endif
 }
 
@@ -98,7 +116,6 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t *t = tls_session->opaque;
 	uint8_t *buf;
-	uint8_t *scratch;
 	size_t ksize;
 
 	RDEBUG2("Deriving EAP-FAST keys");
@@ -108,11 +125,10 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
 	rad_assert(ksize > 0);
 	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
-	scratch = talloc_size(request, ksize + sizeof(*t->keyblock));
 
 	t->keyblock = talloc(t, eap_fast_keyblock_t);
 
-	eap_fast_tls_gen_challenge(tls_session->ssl, buf, scratch, ksize + sizeof(*t->keyblock), "key expansion");
+	eap_fast_tls_gen_challenge(tls_session->ssl, tls_session->info.version, buf, ksize + sizeof(*t->keyblock), "key expansion");
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
@@ -123,7 +139,6 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	t->imckc = 0;
 
 	talloc_free(buf);
-	talloc_free(scratch);
 }
 
 /**

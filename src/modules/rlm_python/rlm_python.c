@@ -35,13 +35,14 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <Python.h>
+#include <frameobject.h> /* Python header not pulled in by default. */
 #include <dlfcn.h>
 #ifdef HAVE_DL_ITERATE_PHDR
 #include <link.h>
 #endif
 
 #define LIBPYTHON_LINKER_NAME \
-	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so"
+	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) LT_SHREXT
 
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
@@ -70,7 +71,6 @@ typedef struct rlm_python_t {
 
 #if PY_VERSION_HEX > 0x03050000
 	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
-	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
 #endif
 	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
@@ -218,23 +218,38 @@ static PyMethodDef module_methods[] = {
  */
 static void python_error_log(void)
 {
-	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
+	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
-	PyErr_Fetch(&pType, &pValue, &pTraceback);
-	if (!pType || !pValue)
-		goto failed;
-	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
-	    ((pStr2 = PyObject_Str(pValue)) == NULL))
-		goto failed;
+	PyErr_Fetch(&p_type, &p_value, &p_traceback);
+	PyErr_NormalizeException(&p_type, &p_value, &p_traceback);
+	if (!p_type || !p_value) goto failed;
 
-	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	if (((p_str_1 = PyObject_Str(p_type)) == NULL) || ((p_str_2 = PyObject_Str(p_value)) == NULL)) goto failed;
+
+	ERROR("%s (%s)", PyString_AsString(p_str_1), PyString_AsString(p_str_2));
+
+	if (p_traceback != Py_None) {
+		PyTracebackObject *ptb = (PyTracebackObject*)p_traceback;
+		size_t fnum = 0;
+
+		for (; ptb != NULL; ptb = ptb->tb_next, fnum++) {
+			PyFrameObject *cur_frame = ptb->tb_frame;
+
+			ERROR("[%ld] %s:%d at %s()",
+				fnum,
+				PyString_AsString(cur_frame->f_code->co_filename),
+				PyFrame_GetLineNumber(cur_frame),
+				PyString_AsString(cur_frame->f_code->co_name)
+			);
+		}
+	}
 
 failed:
-	Py_XDECREF(pStr1);
-	Py_XDECREF(pStr2);
-	Py_XDECREF(pType);
-	Py_XDECREF(pValue);
-	Py_XDECREF(pTraceback);
+	Py_XDECREF(p_str_1);
+	Py_XDECREF(p_str_2);
+	Py_XDECREF(p_type);
+	Py_XDECREF(p_value);
+	Py_XDECREF(p_traceback);
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
@@ -755,6 +770,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (ret == RLM_MODULE_FAIL) python_error_log();
 	PyEval_SaveThread();
 
 	return ret;
@@ -1032,19 +1048,19 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
-#if PY_VERSION_HEX > 0x03050000
-			{
-				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-				PySys_SetPath(inst->wide_path);
-			}
-#else
-			{
-				char *path;
+			char *p, *path;
+			PyObject *sys = PyImport_ImportModule("sys");
+			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
 
-				memcpy(&path, &inst->python_path, sizeof(path));
-				PySys_SetPath(path);
+			memcpy(&p, &inst->python_path, sizeof(path));
+
+			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
+				PyList_Append(sys_path, PyString_FromString(path));
 			}
-#endif
+
+			PyObject_SetAttrString(sys, "path", sys_path);
+			Py_DecRef(sys);
+			Py_DecRef(sys_path);
 		}
 
 		/*
@@ -1155,7 +1171,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Call the instantiate function.
 	 */
 	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-	if (code < 0) {
+	if (code == RLM_MODULE_FAIL) {
 	error:
 		python_error_log();	/* Needs valid thread with GIL */
 		PyEval_SaveThread();
@@ -1177,6 +1193,7 @@ static int mod_detach(void *instance)
 	PyEval_RestoreThread(inst->sub_interpreter);
 
 	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (ret == RLM_MODULE_FAIL) python_error_log();
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1213,7 +1230,6 @@ static int mod_detach(void *instance)
 
 #if PY_VERSION_HEX > 0x03050000
 		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
-		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 	}
 

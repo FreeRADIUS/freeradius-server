@@ -13,7 +13,7 @@ python3 {
 	#  item is GLOBAL TO THE SERVER.  That is, you cannot have two
 	#  instances of the python module, each with a different path.
 	#
-#        python_path="/path/to/python/files:/another_path/to/python_files/"
+#	python_path="${modconfdir}/${.:name}:/another_path/to/python_files"
 
 	module = example
 

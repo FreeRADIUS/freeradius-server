@@ -61,6 +61,14 @@ proc:BEGIN
         FOR UPDATE;
 --      FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
 
+        -- NOTE: You should enable SKIP LOCKED here (as well as any other
+        --       instances) if your database server supports it. If it is not
+        --       supported and you are not running a multi-master cluster (e.g.
+        --       Galera or MaxScale) then you should instead consider using the
+        --       SP in procedure-no-skip-locked.sql which will be faster and
+        --       less likely to result in thread starvation under highly
+        --       concurrent load.
+
         -- Reissue an user's previous IP address, provided that the lease is
         -- available (i.e. enable sticky IPs)
         --

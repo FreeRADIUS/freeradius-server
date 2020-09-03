@@ -8,4 +8,4 @@ User-Password = "bradpitt"
 #  Expected answer
 #
 Response-Packet-Type == Access-Accept
-Filter-Id == 'success'
+Reply-Message == 'success'

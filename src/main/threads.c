@@ -758,7 +758,7 @@ static void *request_handler_thread(void *arg)
 			 *	waiting, but DON'T print out any more
 			 *	text.
 			 */
-			if (errno == EINTR) {
+			if ((errno == EINTR) || (errno == EAGAIN)) {
 				DEBUG2("Re-wait %d", self->thread_num);
 				goto re_wait;
 			}

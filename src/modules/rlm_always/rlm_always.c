@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/modcall.h>
 
 /*
@@ -52,12 +53,94 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Set module status or rcode
+ *
+ * Look ma, no locks...
+ *
+ * Example: "%{db_status:dead}"
+ */
+static ssize_t always_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+{
+	CONF_SECTION		*cs;
+	module_instance_t 	*mi;
+	rlm_always_t 		*inst = instance;
+	char const		*status = fmt;
+	char const		*p;
+	size_t			len;
+
+	cs = cf_section_find("modules");
+	if (!cs) return -1;
+
+	mi = module_find(cs, inst->name);
+	if (!mi) {
+		RERROR("Can't find the module that registered this xlat: %s", inst->name);
+		return -1;
+	}
+
+	/*
+	 *	Expand to the existing status
+	 */
+	p = "alive";
+	if (mi->force) {
+		p = fr_int2str(mod_rcode_table, mi->code, "<invalid>");
+	}
+
+	len = strlen(p);
+	if (outlen < len) {
+		RWARN("Output is too short!");
+		*out = '\0';
+	} else {
+		strncpy(out, p, outlen);
+	}
+
+	if (*fmt == '\0') goto done;
+
+	/*
+	 *	Set the module status
+	 */
+	if (strcmp(status, "alive") == 0) {
+		mi->force = false;
+
+	} else if (strcmp(status, "dead") == 0) {
+		mi->code = RLM_MODULE_FAIL;
+		mi->force = true;
+
+	} else {
+		int rcode;
+
+		rcode = fr_str2int(mod_rcode_table, status, -1);
+		if (rcode < 0) {
+			RWARN("Unknown status \"%s\"", status);
+			return -1;
+		}
+
+		mi->code = rcode;
+		mi->force = true;
+
+	}
+
+done:
+	return strlen(out);
+}
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_always_t *inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
+
+	xlat_register(inst->name, always_xlat, NULL, inst);
+
+	return 0;
+}
+
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_always_t *inst = instance;
 
-	inst->name = cf_section_name1(conf);
-	if (!inst->name) inst->name = cf_section_name2(conf);
 	/*
 	 *	Convert the rcode string to an int
 	 */
@@ -130,6 +213,7 @@ module_t rlm_always = {
 	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_always_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_always_return,

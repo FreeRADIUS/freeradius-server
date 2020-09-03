@@ -2536,7 +2536,8 @@ static int my_dict_init(char const *parent, char const *filename,
 			 *	BEGIN-VENDOR foo format=Foo-Encapsulation-Attr
 			 */
 			if (argc > 2) {
-				if (strncmp(argv[2], "format=", 7) != 0) {
+				if ((strncmp(argv[2], "format=", 7) != 0) &&
+				    (strncmp(argv[2], "parent=", 7) != 0)) {
 					fr_strerror_printf(
 						"dict_init: %s[%d]: Invalid format %s",
 						fn, line, argv[2]);

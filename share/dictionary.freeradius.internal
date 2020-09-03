@@ -278,6 +278,7 @@ ATTRIBUTE	SSHA2-384-Password			1179	octets
 ATTRIBUTE	SSHA2-512-Password			1180	octets
 
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
+ATTRIBUTE	Home-Server-Name			1193	string
 
 #
 #	Range:	1200-1279
@@ -317,6 +318,10 @@ ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
 
 ATTRIBUTE	Outer-Realm-Name			1218	string
 ATTRIBUTE	Inner-Realm-Name			1219	string
+
+ATTRIBUTE	EAP-Pwd-Password-Hash			1220	octets
+ATTRIBUTE	EAP-Pwd-Password-Salt			1221	octets
+ATTRIBUTE	EAP-Pwd-Password-Prep			1222	byte
 
 #
 #	Range:	1280 - 1535
@@ -525,7 +530,8 @@ ATTRIBUTE	TLS-Cert-Common-Name			1914	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
-# 1918 - 1919: reserved for future cert attributes
+ATTRIBUTE	TLS-Cert-Valid-Since			1918	string
+# 1919: reserved for future cert attribute
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
@@ -541,8 +547,9 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
+ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
 
-# 1937 - 1939: reserved for future cert attributes
+# 1938 - 1939: reserved for future cert attributes
 
 # 1940 - 1949: reserved for TLS session caching, mostly in 4.0
 

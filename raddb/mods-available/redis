@@ -12,6 +12,9 @@ redis {
 	#  We recommend using ONLY 127.0.0.1 !
 	server = 127.0.0.1
 
+	#  Select the Redis logical database having the specified zero-based numeric index.
+#	database = 0
+
 	#  The default port.
 	port = 6379
 

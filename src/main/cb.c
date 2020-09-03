@@ -124,6 +124,12 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	} else if (content_type == SSL3_RT_INNER_CONTENT_TYPE && buf[0] == SSL3_RT_APPLICATION_DATA) {
+		/* let tls_ack_handler set application_data */
+		state->info.content_type = SSL3_RT_HANDSHAKE;
+#endif
+
 #ifdef SSL3_RT_HEARTBEAT
 	} else if (content_type == TLS1_RT_HEARTBEAT) {
 		uint8_t *p = buf;

@@ -41,8 +41,17 @@ RCSID("$Id$")
 #include <link.h>
 #endif
 
+/*
+ * Since version 3.8, the "m" suffix is no longer available.
+ * https://bugs.python.org/issue36707
+ */
+#if PY_MINOR_VERSION >= 8
 #define LIBPYTHON_LINKER_NAME \
-	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) "m.so"
+	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) LT_SHREXT
+#else
+#define LIBPYTHON_LINKER_NAME \
+	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) "m" LT_SHREXT
+#endif
 
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
@@ -67,8 +76,10 @@ static CONF_PARSER module_config[] = {
 	A(preacct)
 	A(accounting)
 	A(checksimul)
+#ifdef WITH_PROXY
 	A(pre_proxy)
 	A(post_proxy)
+#endif
 	A(post_auth)
 #ifdef WITH_COA
 	A(recv_coa)
@@ -98,7 +109,9 @@ static struct {
 	A(L_AUTH)
 	A(L_INFO)
 	A(L_ERR)
+#ifdef WITH_PROXY
 	A(L_PROXY)
+#endif
 	A(L_ACCT)
 	A(L_DBG_WARN)
 	A(L_DBG_ERR)
@@ -186,18 +199,16 @@ static void python_error_log(void)
 
 	if (!pExcType || !pExcValue) {
 		ERROR("%s:%d, Unknown error", __func__, __LINE__);
-		if (pExcType) {
-			Py_DecRef(pExcType);
-		}
-		if (pExcValue) {
-			Py_DecRef(pExcValue);
-		}
+		Py_XDECREF(pExcType);
+		Py_XDECREF(pExcValue);
 		return;
 	}
 
 	if (((pStr1 = PyObject_Str(pExcType)) != NULL) && 
 	    ((pStr2 = PyObject_Str(pExcValue)) != NULL)) {
 		ERROR("%s:%d, Exception type: %s, Exception value: %s", __func__, __LINE__, PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
+		Py_DECREF(pStr1);
+		Py_DECREF(pStr2);
 	} 
 
 	if (pExcTraceback) {
@@ -217,46 +228,23 @@ static void python_error_log(void)
 				char *str = PyBytes_AsString(pTraceString);
 				ERROR("%s:%d, full_backtrace: %s", __func__, __LINE__, str);
 
-				if (pyth_val) {
-					Py_DecRef(pyth_val);
-				}
-				if (pystr) {
-					Py_DecRef(pystr);
-				}
-				if (pTraceString) {
-					Py_DecRef(pTraceString);
-				}
+				Py_DECREF(pyth_val);
+				Py_DECREF(pystr);
+				Py_DECREF(pTraceString);
+				Py_DECREF(pyth_func);
 			}
-			if (pyth_func) {
-				Py_DecRef(pyth_func);
-			}
-			Py_DecRef(pyth_module);
+			Py_DECREF(pyth_module);
 		} else {
 			ERROR("%s:%d, py_module is null, name: %p", __func__, __LINE__, module_name);
 		}
 
-		if (module_name) {
-			Py_DecRef(module_name);
-		}
-
-		Py_DecRef(pRepr);
+		Py_DECREF(module_name);
+		Py_DECREF(pRepr);
+		Py_DECREF(pExcTraceback);
 	}
 
-	if (pExcType) {
-		Py_DecRef(pExcType);
-	}
-	if (pExcValue) {
-		Py_DecRef(pExcValue);
-	}
-	if (pExcTraceback) {
-		Py_DecRef(pExcTraceback);
-	}
-	if (pStr1) {
-		Py_DecRef(pStr1);
-	}
-	if (pStr2) {
-		Py_DecRef(pStr2);
-	}
+	Py_DECREF(pExcType);
+	Py_DECREF(pExcValue);
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
@@ -510,6 +498,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			goto finish;
 		}
 
+#ifdef WITH_PROXY
 		/* fill proxy vps */
 		if (request->proxy) {
 			if (!mod_populate_vps(pArgs, 4, request->proxy->vps)) {
@@ -517,10 +506,13 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-		} else {
+		} else
+#endif
+		{
 			mod_populate_vps(pArgs, 4, NULL);
 		}
 
+#ifdef WITH_PROXY
 		/* fill proxy_reply vps */
 		if (request->proxy_reply) {
 			if (!mod_populate_vps(pArgs, 5, request->proxy_reply->vps)) {
@@ -528,7 +520,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-		} else {
+		} else
+#endif
+		{
 			mod_populate_vps(pArgs, 5, NULL);
 		}
 
@@ -550,9 +544,14 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		    PyDict_SetItemString(pDictInput, "request", PyTuple_GET_ITEM(pArgs, 0)) ||
 		    PyDict_SetItemString(pDictInput, "reply", PyTuple_GET_ITEM(pArgs, 1)) ||
 		    PyDict_SetItemString(pDictInput, "config", PyTuple_GET_ITEM(pArgs, 2)) ||
-		    PyDict_SetItemString(pDictInput, "session-state", PyTuple_GET_ITEM(pArgs, 3)) ||
+		    PyDict_SetItemString(pDictInput, "session-state", PyTuple_GET_ITEM(pArgs, 3))
+#ifdef WITH_PROXY
+		    ||
 		    PyDict_SetItemString(pDictInput, "proxy-request", PyTuple_GET_ITEM(pArgs, 4)) ||
-		    PyDict_SetItemString(pDictInput, "proxy-reply", PyTuple_GET_ITEM(pArgs, 5))) {
+		    PyDict_SetItemString(pDictInput, "proxy-reply", PyTuple_GET_ITEM(pArgs, 5))
+#endif
+		    ) {
+
 			ERROR("%s:%d, %s - PyDict_SetItemString failed", __func__, __LINE__, funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
@@ -819,8 +818,10 @@ MOD_FUNC(authorize)
 MOD_FUNC(preacct)
 MOD_FUNC(accounting)
 MOD_FUNC(checksimul)
+#ifdef WITH_PROXY
 MOD_FUNC(pre_proxy)
 MOD_FUNC(post_proxy)
+#endif
 MOD_FUNC(post_auth)
 #ifdef WITH_COA
 MOD_FUNC(recv_coa)
@@ -1102,20 +1103,13 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		python_dlhandle = dlopen_libpython(RTLD_NOW | RTLD_GLOBAL);
 		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table");
 
-#if PY_VERSION_HEX > 0x03050000
+#if PY_VERSION_HEX >= 0x03050000
 		{
 			wchar_t  *name;
 
 			MEM(name = Py_DecodeLocale(main_config.name, NULL));
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 			PyMem_RawFree(name);
-		}
-#elif PY_VERSION_HEX > 0x0300000
-		{
-			wchar_t *name;
-
-			MEM(name = _Py_char2wchar(main_config.name, NULL));
-			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
 		}
 #else
 		{
@@ -1163,37 +1157,34 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
+			char *p, *path;
+			PyObject *sys = PyImport_ImportModule("sys");
+			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
+
+			memcpy(&p, &inst->python_path, sizeof(path));
+
+			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
 #if PY_VERSION_HEX > 0x03050000
-			{
-				wchar_t *path;
-				PyObject* sys = PyImport_ImportModule("sys");
-				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
+				wchar_t *py_path;
 
-				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
-				PyObject_SetAttrString(sys,"path",sys_path);
-				PyMem_RawFree(path);
-			}
+				MEM(py_path = Py_DecodeLocale(path, NULL));
+				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				PyMem_RawFree(py_path);
 #elif PY_VERSION_HEX > 0x03000000
-			{
-				wchar_t *path;
-				PyObject* sys = PyImport_ImportModule("sys");
-				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
+				wchar_t *py_path;
 
-				MEM(path = _Py_char2wchar(inst->python_path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
-				PyObject_SetAttrString(sys,"path",sys_path);
-			}
+				MEM(py_path = _Py_char2wchar(path, NULL));
+				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				PyMem_RawFree(py_path);
 #else
-			{
-				char *path;
-
-				memcpy(&path, &inst->python_path, sizeof(path));
-				Py_SetPath(path);
-			}
+				PyList_Append(sys_path, PyLong_FromString(path));
 #endif
-		}
+			}
 
+			PyObject_SetAttrString(sys, "path", sys_path);
+			Py_DecRef(sys);
+			Py_DecRef(sys_path);
+		}
 	} else {
 		inst->module = main_module;
 		Py_IncRef(inst->module);
@@ -1220,7 +1211,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_python_t	*inst = instance;
-	int		code = 0;
+	int		code = RLM_MODULE_OK;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -1245,8 +1236,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PYTHON_FUNC_LOAD(preacct);
 	PYTHON_FUNC_LOAD(accounting);
 	PYTHON_FUNC_LOAD(checksimul);
+#ifdef WITH_PROXY
 	PYTHON_FUNC_LOAD(pre_proxy);
 	PYTHON_FUNC_LOAD(post_proxy);
+#endif
 	PYTHON_FUNC_LOAD(post_auth);
 #ifdef WITH_COA
 	PYTHON_FUNC_LOAD(recv_coa);
@@ -1257,12 +1250,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-	if (code < 0) {
-	error:
-		python_error_log();	/* Needs valid thread with GIL */
-		PyEval_SaveThread();
-		return -1;
+	if (inst->instantiate.function) {
+		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
+		if (code < 0) {
+		error:
+			python_error_log();	/* Needs valid thread with GIL */
+			PyEval_SaveThread();
+			return -1;
+		}
 	}
 	PyEval_SaveThread();
 
@@ -1272,22 +1267,31 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static int mod_detach(void *instance)
 {
 	rlm_python_t *inst = instance;
-	int	     ret;
+	int	     ret = RLM_MODULE_OK;
 
 	/*
 	 *	Call module destructor
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
-	PYTHON_FUNC_DESTROY(authorize);
 	PYTHON_FUNC_DESTROY(authenticate);
+	PYTHON_FUNC_DESTROY(authorize);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
 	PYTHON_FUNC_DESTROY(checksimul);
+#ifdef WITH_PROXY
+	PYTHON_FUNC_DESTROY(pre_proxy);
+	PYTHON_FUNC_DESTROY(post_proxy);
+#endif
+	PYTHON_FUNC_DESTROY(post_auth);
+#ifdef WITH_COA
+	PYTHON_FUNC_DESTROY(recv_coa);
+	PYTHON_FUNC_DESTROY(send_coa);
+#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
@@ -1313,13 +1317,7 @@ static int mod_detach(void *instance)
 		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
-
-#if PY_VERSION_HEX > 0x03050000
-		//if (inst->wide_name) PyMem_RawFree(inst->wide_name);
-		//if (inst->wide_path) PyMem_RawFree(inst->wide_path);
-#endif
 	}
-
 
 	return ret;
 }
@@ -1348,8 +1346,10 @@ module_t rlm_python3 = {
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_SESSION]		= mod_checksimul,
+#ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
+#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa,

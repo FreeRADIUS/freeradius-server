@@ -320,7 +320,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 {
 	fr_tls_server_conf_t *tls;
 	unsigned char *key_buf = NULL;
-	ssize_t keylen;
+	ssize_t keylen = 0;
 	char *hexbuf = NULL;
 	DH *aaa_server_dh;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L

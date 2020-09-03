@@ -95,14 +95,6 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #define RTLD_LOCAL (0)
 #endif
 
-#ifdef __APPLE__
-#  define LT_SHREXT ".dylib"
-#elif defined (WIN32)
-#  define LT_SHREXT ".dll"
-#else
-#  define LT_SHREXT ".so"
-#endif
-
 /** Check if the magic number in the module matches the one in the library
  *
  * This is used to detect potential ABI issues caused by running with modules which

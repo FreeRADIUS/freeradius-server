@@ -138,16 +138,14 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						pUserLocation = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
+						pUserLocation = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						pUserLocation[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
 					}
 				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						*outUserName = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
+						*outUserName = talloc_zero_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-						*outUserName[pValueEntry->fAttributeValueData.fBufferLength] = '\0';
 					}
 				}
 
@@ -314,7 +312,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RINDENT();
 	RDEBUG2("Stepbuf server challenge : ");
 	for (t = 0; t < challenge->vp_length; t++) {
-		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -330,7 +328,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #ifndef NDEBUG
 	RDEBUG2("Stepbuf peer challenge   : ");
 	for (t = 2; t < 18; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -347,7 +345,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RDEBUG2("Stepbuf p24              : ");
 	REXDENT();
 	for (t = 26; t < 50; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif

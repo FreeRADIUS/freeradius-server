@@ -863,8 +863,23 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	intermediary variable to handle the conversions.
 		 */
 		time_t date;
+		struct tm tm = { 0 };
+		char *end;
 
-		if (fr_get_time(src, &date) < 0) {
+		/*
+		 *	Try to parse dates via locale-specific names,
+		 *	using the same format string as strftime(),
+		 *	below.
+		 *
+		 *	If that fails (e.g. unix dates as integer),
+		 *	then we fall back to our parsing routine,
+		 *	which is much more forgiving.
+		 */
+		end = strptime(src, "%b %e %Y %H:%M:%S %Z", &tm);
+		if (end && (*end == '\0')) {
+			date = mktime(&tm);
+
+		} else if (fr_get_time(src, &date) < 0) {
 			fr_strerror_printf("failed to parse time string \"%s\"", src);
 			return -1;
 		}
@@ -982,7 +997,11 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 	case PW_TYPE_INTEGER64:
 		dst_len = sizeof(dst->integer64);
 
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) {
+		too_small:
+			fr_strerror_printf("Source is too small to cast to destination type");
+			return -1;
+		}
 
 		dst->integer64 = htonll(*(uint64_t const *)src);
 		break;
@@ -993,7 +1012,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 	case PW_TYPE_SIGNED:
 		dst_len = sizeof(dst->integer);
 
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) goto too_small;
 
 		dst->integer = htonl(*(uint32_t const *)src);
 		break;
@@ -1002,7 +1021,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 	case PW_TYPE_SHORT:
 		dst_len = sizeof(dst->ushort);
 
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) goto too_small;
 
 		dst->ushort = htons(*(uint16_t const *)src);
 		break;
@@ -1011,7 +1030,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 	case PW_TYPE_BYTE:
 		dst_len = sizeof(dst->byte);
 
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) goto too_small;
 
 		dst->byte = *(uint8_t const *)src;
 		break;
@@ -1024,7 +1043,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		/*
 		 *	Not enough information, die.
 		 */
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) goto too_small;
 
 		/*
 		 *	Copy only as much as we need from the source.
@@ -1060,7 +1079,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		dst_len = sizeof(dst->ipv4prefix);
 		dst_ptr = (uint8_t *) dst->ipv4prefix;
 
-		if (src_len < dst_len) return -1;
+		if (src_len < dst_len) goto too_small;
 		if ((((uint8_t const *)src)[1] & 0x3f) > 32) return -1;
 		goto copy;
 
@@ -1072,7 +1091,7 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		 *	Smaller IPv6 prefixes are OK, too, so long as
 		 *	they're not too short.
 		 */
-		if (src_len < 2) return -1;
+		if (src_len < 2) goto too_small;
 
 		/*
 		 *	Prefix is too long.
@@ -1093,6 +1112,8 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		goto copy;
 
 	default:
+		fr_strerror_printf("Invalid cast to %s",
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 		return -1;	/* can't do it */
 	}
 
@@ -1120,7 +1141,10 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 {
 	ssize_t dst_len;
 
-	if (!fr_assert(dst_type != src_type)) return -1;
+	if (!fr_assert(dst_type != src_type)) {
+		fr_strerror_printf("Types do not match");
+		return -1;
+	}
 
 	/*
 	 *	Deserialise a value_data_t

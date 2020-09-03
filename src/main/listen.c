@@ -217,7 +217,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		client_delete(clients, client);
 
 		/*
-		 *	Add a timer to free the client in 120s
+		 *	Add a timer to free the client 20s after it's already timed out.
 		 */
 		el = radius_event_list_corral(EVENT_CORRAL_MAIN);
 

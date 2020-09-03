@@ -427,7 +427,8 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	}
 
 	if (len < sizeof(buffer)) {
-		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
+		vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
+		len += strlen(buffer + len);
 	}
 
 	/*

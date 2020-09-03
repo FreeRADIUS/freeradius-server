@@ -210,7 +210,11 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	to the global client list.
 			 */
 			subcs = cf_section_sub_find(cs, "listen");
-			if (!subcs) goto global_clients;
+			if (!subcs) {
+				DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
+				      client->server);
+				goto global_clients;
+			}
 
 			/*
 			 *	If the client list already exists, use that.
@@ -223,14 +227,13 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 					ERROR("Out of memory");
 					return false;
 				}
-
-				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
-					ERROR("Failed to associate clients with virtual server %s", client->server);
-					client_list_free(clients);
-					return false;
-				}
 			}
 
+			if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
+				ERROR("Failed to associate clients with virtual server %s", client->server);
+				client_list_free(clients);
+				return false;
+			}
 		} else {
 		global_clients:
 			/*
@@ -286,7 +289,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 
 		ERROR("Failed to add duplicate client %s", client->shortname);
-		client_free(client);
 		return false;
 	}
 #undef namecmp
@@ -295,7 +297,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
-		client_free(client);
 		return false;
 	}
 

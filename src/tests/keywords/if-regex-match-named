@@ -3,6 +3,32 @@
 if ('${feature.regex-pcre}' == 'yes') {
 update request {
 	Tmp-Integer-0 := '123456789'
+	Tmp-Integer-1 := 1
+}
+
+# Check failures when no previous capture
+if ("%{regex:}" != "") {
+	update reply {
+		Filter-Id += 'Fail 0.1'
+	}
+}
+
+if ("%{regex:foo}" != "") {
+	update reply {
+		Filter-Id += 'Fail 0.2'
+	}
+}
+
+if ("%{regex:%{Tmp-Integer-1}}" != "") {
+	update reply {
+		Filter-Id += 'Fail 0.3'
+	}
+}
+
+if ("%{regex:1}" != "") {
+	update reply {
+		Filter-Id += 'Fail 0.4'
+	}
 }
 
 # uncompiled - ref - named capture groups
