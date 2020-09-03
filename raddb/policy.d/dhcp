@@ -1,10 +1,41 @@
+#  Assign compatibility data to request for sqlippool for DHCP Request
+dhcp_sqlippool_request {
+
+	#
+	#  During initial address selection (DORA) the REQUEST is broadcast and
+	#  requested-ip must be provided. We revoke any active offers for addresses
+	#  not matching the requested-ip, i.e. those made by other servers when
+	#  processing the DISCOVER.
+	#
+	#  If there is only a single server then this optimisation can be disabled.
+	#
+	if (&DHCP-Requested-IP-Address) {
+		update request {
+			&Acct-Status-Type := Start
+		}
+		dhcp_sqlippool.accounting
+	}
+
+	#  Extend an existing offer or active lease
+	update request {
+		&Acct-Status-Type := Alive
+	}
+	dhcp_sqlippool.accounting {
+		notfound = return
+	}
+
+	update reply {
+		&DHCP-Your-IP-Address := "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	}
+
+}
+
 #  Assign compatibility data to request for sqlippool for DHCP Release
 dhcp_sqlippool_release {
 
 	#  Do some minor hacks to the request so that it looks
 	#  like a RADIUS Accounting Stop request to the SQL IP Pool module.
 	update request {
-		&Framed-IP-Address = "%{DHCP-Client-IP-Address}"
 		&Acct-Status-Type = Stop
 	}
 
