@@ -500,6 +500,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	char const	*xlat_name;
 
+	INFO("Perl version: %s", PERL_API_VERSION_STRING);
+
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) xlat_name = cf_section_name1(conf);
 
