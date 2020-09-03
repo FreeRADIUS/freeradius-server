@@ -1053,7 +1053,11 @@ DIAG_ON(nested-externs)
 
 static int mod_load(void)
 {
+#define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
+
+	LOAD_INFO("Perl version: %s", PERL_API_VERSION_STRING);
+	dependency_version_number_add(NULL, "perl", PERL_API_VERSION_STRING);
 
 	/*
 	 *	Load perl using RTLD_GLOBAL and dlopen.
