@@ -165,7 +165,9 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
 		"leak:libSystem_atfork_child\n"
-		"leak:fork"
+		"leak:fork\n"
+		/* Perl >= 5.32.0 */
+		"leak:perl_construct"
 #elif defined(__linux__)
 		"leak:kqueue"
 #elif defined(__FreeBSD__)
