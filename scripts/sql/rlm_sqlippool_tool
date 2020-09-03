@@ -251,10 +251,10 @@ if ($opts->{raddb_dir}) {
 						}
 					}
 					$level-- if ($_ =~ m/\s+\}/); # Close of nesting
-#					last if ($level == 0); # We've got to the end of the instance
+					last if ($level == 0); # We've got to the end of the instance
 				}
 				if ($_ =~ m/\b$instance\s+\{/) {
-					print "$file contains instance\n";
+					# We've found the specified SQL instance
 					$found = 1;
 					$level = 1;
 				}
@@ -894,16 +894,13 @@ END_sqlite
 #
 	$queries->{'mssql'}->{pre} = [
 		'DROP TABLE IF EXISTS #'.$tablename.'_temp;',
-		'GO',
 		'CREATE TABLE #'.$tablename.'_temp (
   id                    int identity(1, 1) NOT NULL,
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL,
   PRIMARY KEY (id),
 );',
-		'GO',
-		'CREATE INDEX pool_name_framedipaddress ON #'.$tablename.'_temp(pool_name, framedipaddress);',
-		'GO'
+		'CREATE INDEX pool_name_framedipaddress ON #'.$tablename.'_temp(pool_name, framedipaddress);'
 	    ];
 	$queries->{'mssql'}->{insert} = 'INSERT INTO #'.$tablename.'_temp (pool_name, framedipaddress) VALUES (?, ?)';
 	$queries->{'mssql'}->{post} = [
@@ -919,7 +916,7 @@ END_sqlite
 		'COMMIT TRAN;'
 	    ];
 
-	$template->{'mssql'} = join("\n", @{$queries->{'mssql'}->{pre}})."\n";
+	$template->{'mssql'} = join("\nGO\n", @{$queries->{'mssql'}->{pre}})."\nGO\n";
 	$template->{'mssql'} .= <<'END_mssql';
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
