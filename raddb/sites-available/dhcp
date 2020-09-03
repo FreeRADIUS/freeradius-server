@@ -202,7 +202,6 @@ dhcp DHCP-Request {
 		&DHCP-Router-Address = 192.0.2.1
 #		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
-		&DHCP-Your-IP-Address = 192.0.2.9
 	}
 
 	#  Do a simple mapping of MAC to assigned IP.
