@@ -423,6 +423,8 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 			if (!((packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_ERROR) ||
 			      (packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
 				packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(vps, attr_tacacs_argument_list, &p, end);
+			} else {
+				packet->author.res.arg_cnt = 0;
 			}
 
 			/*
