@@ -15,6 +15,9 @@
 #  if called with the -f option will directly operate on the database configured
 #  within the FreeRADIUS configuration to update the IP pool table specified
 #
+#  Note: Direct connection to databases is done using Perl DBI.  You may need
+#        to install the appropriate Perl DBD driver to enable this functionality.
+#
 #
 #  Use with a single address range
 #  -------------------------------
