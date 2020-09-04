@@ -807,8 +807,6 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
-		char *value;
-
 		if (vp->da->parent == attr_eap_fast_tlv) {
 			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
@@ -818,9 +816,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 				code = FR_CODE_ACCESS_ACCEPT;
 				t->stage = EAP_FAST_PROVISIONING;
 			} else {
-				value = fr_pair_asprint(request->packet, vp, '"');
-				RDEBUG2("ignoring unknown %s", value);
-				talloc_free(value);
+				RDEBUG2("ignoring unknown %pP", vp);
 				continue;
 			}
 		} else if (vp->da->parent == attr_eap_fast_crypto_binding) {
@@ -870,15 +866,11 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 				t->pac.send = true;
 				continue;
 			} else {
-				value = fr_pair_asprint(request->packet, vp, '"');
-				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %s", value);
-				talloc_free(value);
+				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %pP", vp);
 				continue;
 			}
 		} else {
-			value = fr_pair_asprint(request->packet, vp, '"');
-			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
-			talloc_free(value);
+			RDEBUG2("ignoring non-EAP-FAST TLV %pP", vp);
 			continue;
 		}
 

@@ -389,8 +389,6 @@ error:
 	for (vp = fr_cursor_head(&cursor);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		char *value;
-
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {
 			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
@@ -409,9 +407,7 @@ error:
 			fr_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 		} else {
-			value = fr_pair_asprint(tls_session, vp, '"');
-			RERROR("unknown TLV: %s", value);
-			talloc_free(value);
+			RERROR("unknown TLV: %pP", vp);
 			errmsg = "unknown TLV";
 			goto error;
 		}
