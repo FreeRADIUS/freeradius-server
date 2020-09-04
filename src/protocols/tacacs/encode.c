@@ -128,7 +128,7 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
  */
 #define ENCODE_FIELD_UINT8(_field, _da) do { \
 	vp = fr_pair_find_by_da(vps, _da, TAG_ANY); \
-	if (vp) _field = vp->vp_uint8; \
+	_field = (vp) ? vp->vp_uint8 : 0; \
 } while (0)
 
 #define ENCODE_FIELD_STRING8(_field, _da) _field = tacacs_encode_field(vps, _da, &p, end, 0xff)
