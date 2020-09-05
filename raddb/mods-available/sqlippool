@@ -66,6 +66,9 @@ sqlippool {
 	#
 #	allow_duplicates = no
 
+	#  The attribute in which an IP address hint may be supplied
+	req_attribute_name = Framed-IP-Address
+
 	# Attribute which should be considered unique per NAS
 	#
 	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
