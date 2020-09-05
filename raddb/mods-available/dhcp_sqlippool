@@ -38,10 +38,13 @@ sqlippool dhcp_sqlippool {
 	#  The attribute in which the IP address is returned in the reply
 	attribute_name = "DHCP-Your-IP-Address"
 
-	#  Assign the IP address, even if the Framed-IP-Address attribute
-	#  already exists in the reply.
+	#  Assign the IP address, even if the above attribute already exists in
+	#  the reply.
 	#
 #	allow_duplicates = no
+
+	#  The attribute in which an IP address hint may be supplied
+	req_attribute_name = "DHCP-Requested-IP-Address"
 
 	#
 	#  RFC 2132 allows the DHCP client to supply a unique

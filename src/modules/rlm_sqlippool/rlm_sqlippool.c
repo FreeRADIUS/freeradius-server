@@ -48,15 +48,18 @@ typedef struct rlm_sqlippool_t {
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
 	bool		allow_duplicates;	//!< assign even if it already exists
 	char const	*attribute_name;	//!< name of the IP address attribute
+	char const	*req_attribute_name;	//!< name of the requested IP address attribute
 
 	DICT_ATTR const *framed_ip_address; 	//!< the attribute for IP address allocation
+	DICT_ATTR const *req_framed_ip_address;	//!< the attribute for requested IP address
 	DICT_ATTR const *pool_attribute; 	//!< the attribute corresponding to the pool_name
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
 	char const	*allocate_clear;	//!< SQL query to clear an IP.
 	uint32_t	allocate_clear_timeout; //!< Number of second between two allocate_clear SQL query
-	char const	*allocate_existing;	//!< SQL query to find existing IP.
+	char const	*allocate_existing;	//!< SQL query to find existing IP leased to the device.
+	char const	*allocate_requested;	//!< SQL query to find requested IP.
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
 	char const	*allocate_update;	//!< SQL query to mark an IP as used.
 	char const	*allocate_commit;	//!< SQL query to commit.
@@ -135,6 +138,7 @@ static CONF_PARSER module_config[] = {
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
 	{ "allow_duplicates", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, allow_duplicates), NULL},
 	{ "attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, attribute_name), NULL},
+	{ "req_attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, req_attribute_name), NULL},
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
@@ -146,6 +150,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "allocate-existing", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_existing), NULL },
 	{ "allocate_existing", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_existing), ""  },
+
+	{ "allocate-requested", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_requested), NULL },
+	{ "allocate_requested", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_requested), ""  },
 
 	{ "allocate-find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_find), NULL },
 	{ "allocate_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), ""  },
@@ -493,6 +500,31 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (!inst->framed_ip_address) goto fail;
 	}
 
+	if (inst->req_attribute_name) {
+		DICT_ATTR const *da;
+
+		da = dict_attrbyname(inst->req_attribute_name);
+		if (!da) {
+			cf_log_err_cs(conf, "Unknown attribute 'req_attribute_name = %s'", inst->req_attribute_name);
+			return -1;
+		}
+
+		switch (da->type) {
+		default:
+			cf_log_err_cs(conf, "Cannot use non-IP attributes for 'req_attribute_name = %s'", inst->req_attribute_name);
+			return -1;
+
+		case PW_TYPE_IPV4_ADDR:
+		case PW_TYPE_IPV6_ADDR:
+		case PW_TYPE_IPV4_PREFIX:
+		case PW_TYPE_IPV6_PREFIX:
+			break;
+
+		}
+
+		inst->req_framed_ip_address = da;
+	}
+
 	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
@@ -605,7 +637,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *	If no existing IP found, look for a free one
+	 *	If we have a requested IP address and a query to find whether
+	 *	it is available then run that next
+	 */
+	if (allocation_len == 0 && inst->allocate_requested && *inst->allocate_requested &&
+	    fr_pair_find_by_num(request->packet->vps,
+				inst->req_framed_ip_address->attr,
+				inst->req_framed_ip_address->vendor,
+				TAG_ANY) != NULL) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->allocate_requested, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	If no IP found, look for a free one
 	 */
 	if (allocation_len == 0) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
