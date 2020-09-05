@@ -836,15 +836,17 @@ uint32_t fr_hash(void const *data, size_t size)
 uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 {
 	uint8_t const *p = data;
-	uint8_t const *q = p + size;
+	uint8_t const *q;
 
-	while (p != q) {
+	if (size == 0) return hash;	/* Avoid ubsan issues with access NULL pointer */
+
+ 	q = p + size;
+	while (p < q) {
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (*p++);
-    }
+	}
 
-    return hash;
-
+	return hash;
 }
 
 /*
