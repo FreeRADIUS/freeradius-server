@@ -2778,7 +2778,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 			 *	A bare '-' with no number means
 			 *	run all remaining lines.
 			 */
-			if (fr_sbuff_extend(in)) {
+			if (!fr_sbuff_extend(in)) {
 				lr->end = UINT32_MAX;
 				return 0;
 			}
