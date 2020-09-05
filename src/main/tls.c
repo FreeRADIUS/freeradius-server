@@ -609,12 +609,9 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 				 */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 				conf->old_x509_store = SSL_CTX_get_cert_store(conf->ctx);
-				/*
-				 * Old store will not be free()'d until refcount is zero.
-				 * Each X509_STORE_free() call decreases refcount so this
-				 * store will be free()'d next time this code is executed.
-				 */
-				SSL_CTX_set1_cert_store(conf->ctx, new_cert_store);
+				/* Bump refcnt so the store is kept allocated till next store replacement */
+				X509_STORE_up_ref(conf->old_x509_store);
+				SSL_CTX_set_cert_store(conf->ctx, new_cert_store);
 #else
 				/*
 				 * We do not use SSL_CTX_set_cert_store() call here because
