@@ -41,16 +41,16 @@ fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dic
 
 fr_table_num_ordered_t const date_precision_table[] = {
 	{ L("microseconds"),	FR_TIME_RES_USEC },
-	{ L("us"),			FR_TIME_RES_USEC },
+	{ L("us"),		FR_TIME_RES_USEC },
 
 	{ L("nanoseconds"),	FR_TIME_RES_NSEC },
-	{ L("ns"),			FR_TIME_RES_NSEC },
+	{ L("ns"),		FR_TIME_RES_NSEC },
 
 	{ L("milliseconds"),	FR_TIME_RES_MSEC },
-	{ L("ms"),			FR_TIME_RES_MSEC },
+	{ L("ms"),		FR_TIME_RES_MSEC },
 
 	{ L("seconds"),		FR_TIME_RES_SEC },
-	{ L("s"),			FR_TIME_RES_SEC }
+	{ L("s"),		FR_TIME_RES_SEC }
 
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
@@ -344,7 +344,7 @@ static uint32_t dict_enum_value_hash(void const *data)
 	fr_dict_enum_t const *enumv = data;
 
 	hash = fr_hash_update((void const *)&enumv->da, sizeof(void *), hash);	/* Cast to quiet static analysis */
-	return fr_hash_update((void const *)enumv->value, sizeof(void *), hash);
+	return fr_value_box_hash(enumv->value, hash);
 }
 
 /** Compare two dictionary enum values
@@ -354,6 +354,10 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
+	int8_t ret;
+
+	ret = (a->da > b->da) - (a->da < b->da);
+	if (ret != 0) return ret;
 
 	return fr_value_box_cmp(a->value, b->value);
 }
@@ -2171,7 +2175,7 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 	}
 
 	dv = fr_dict_enum_by_value(da, value);
-	if (!dv) return "";
+	if (!dv) return NULL;
 
 	return dv->name;
 }
@@ -2562,7 +2566,26 @@ static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsig
 
 void fr_dict_dump(fr_dict_t const *dict)
 {
+	fr_hash_iter_t		iter;
+	fr_dict_enum_t const	*enumv;
+
 	_fr_dict_dump(dict, dict->root, 0);
+
+	printf("Enumeration name -> value:\n");
+
+	for (enumv = fr_hash_table_iter_init(dict->values_by_da, &iter);
+	     enumv;
+	     enumv = fr_hash_table_iter_next(dict->values_by_da, &iter)) {
+	     	char			*enumv_str;
+	     	fr_dict_attr_t const	*da = enumv->da;
+
+		enumv_str = fr_asprintf(NULL, "0x%016" PRIxPTR " %s(%u) %s: %s -> %pV",
+					(unsigned long)da, da->name, da->attr,
+					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
+					enumv->name, enumv->value);
+		printf("%s\n", enumv_str);
+		talloc_free(enumv_str);
+	}
 }
 
 /** Callback to automatically load validation routines for dictionaries.

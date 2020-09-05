@@ -51,6 +51,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/strerror.h>
@@ -105,12 +106,12 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("octets"),		FR_TYPE_OCTETS		},
 
 	{ L("ipaddr"),		FR_TYPE_IPV4_ADDR	},
-	{ L("ipv4addr"),		FR_TYPE_IPV4_ADDR	},
-	{ L("ipv4prefix"),		FR_TYPE_IPV4_PREFIX	},
-	{ L("ipv6addr"),		FR_TYPE_IPV6_ADDR	},
-	{ L("ipv6prefix"),		FR_TYPE_IPV6_PREFIX	},
+	{ L("ipv4addr"),	FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4prefix"),	FR_TYPE_IPV4_PREFIX	},
+	{ L("ipv6addr"),	FR_TYPE_IPV6_ADDR	},
+	{ L("ipv6prefix"),	FR_TYPE_IPV6_PREFIX	},
 	{ L("ifid"),		FR_TYPE_IFID		},
-	{ L("combo-ip"),		FR_TYPE_COMBO_IP_ADDR	},
+	{ L("combo-ip"),	FR_TYPE_COMBO_IP_ADDR	},
 	{ L("combo-prefix"),	FR_TYPE_COMBO_IP_PREFIX	},
 	{ L("ether"),		FR_TYPE_ETHERNET	},
 
@@ -129,7 +130,7 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("float32"),		FR_TYPE_FLOAT32		},
 	{ L("float64"),		FR_TYPE_FLOAT64		},
 
-	{ L("time_delta"),		FR_TYPE_TIME_DELTA	},
+	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
 	{ L("date"),		FR_TYPE_DATE		},
 
 	{ L("abinary"),		FR_TYPE_ABINARY		},
@@ -5225,6 +5226,28 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	talloc_free(pool);
 
 	return aggr;
+}
+
+/** Hash the contents of a value box
+ *
+ */
+uint32_t fr_value_box_hash(fr_value_box_t const *vb, uint32_t hash)
+{
+	switch (vb->type) {
+	case FR_TYPE_FIXED_SIZE:
+		return fr_hash_update(((uint8_t const *)vb) + fr_value_box_offsets[vb->type],
+				      fr_value_box_field_sizes[vb->type], hash);
+
+	case FR_TYPE_STRING:
+		return fr_hash_update(vb->vb_strvalue, vb->vb_length, hash);
+
+	case FR_TYPE_OCTETS:
+		return fr_hash_update(vb->vb_octets, vb->vb_length, hash);
+
+	default:
+		break;
+	}
+	return hash;
 }
 
 /** Flatten a list into individual "char *" argv-style array

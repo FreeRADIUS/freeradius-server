@@ -708,16 +708,19 @@ int		fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_
 
 void		fr_value_box_increment(fr_value_box_t *vb);
 
-/*
- *	Parsing
+/** @name Parsing
+ *
+ * @{
  */
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *src, ssize_t src_len, char quote, bool tainted)
 				      CC_HINT(nonnull(2,3,5));
+/** @} */
 
-/*
- *	Lists
+/** @name Work with lists of boxed values
+ *
+ * @{
  */
 int		fr_value_box_list_concat(TALLOC_CTX *ctx,
 					 fr_value_box_t *out, fr_value_box_t **list,
@@ -732,6 +735,7 @@ bool		fr_value_box_list_tainted(fr_value_box_t const *head);
 fr_value_box_t*	fr_value_box_list_get(fr_value_box_t *head, int index);
 
 int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in);
+/** @} */
 
 /*
  *	Printing
@@ -739,6 +743,13 @@ int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_bo
 char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
+
+/** @name Hashing
+ *
+ * @{
+ */
+uint32_t	fr_value_box_hash(fr_value_box_t const *vb, uint32_t hash);
+/** @} */
 
 #undef _CONST
 
