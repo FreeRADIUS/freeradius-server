@@ -1458,10 +1458,10 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 			 *	octal escape sequences.
 			 */
 			if (e_rules->do_oct) {
-				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%c%03o", e_rules->chr, *p++);
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%c%03o", e_rules->chr, (uint8_t)*p++);
 				continue;
 			} else if (e_rules->do_hex) {
-				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%cx%02x", e_rules->chr, *p++);
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_sbuff, "%cx%02x", e_rules->chr, (uint8_t)*p++);
 				continue;
 			}
 		}

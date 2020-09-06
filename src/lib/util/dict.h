@@ -440,6 +440,7 @@ int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx)
  */
 int			fr_dict_free(fr_dict_t **dict);
 
+int			fr_dict_const_free(fr_dict_t const **dict);
 /** @} */
 
 /** @name Global dictionary management
