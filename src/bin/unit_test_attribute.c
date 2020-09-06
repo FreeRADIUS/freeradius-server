@@ -1512,7 +1512,7 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 static size_t command_decode_dns_label(command_result_t *result, command_file_ctx_t *cc,
 				       char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
-	ssize_t slen, total, i;
+	ssize_t slen, total, i, outlen;
 	char *out, *end;
 	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 
@@ -1541,9 +1541,9 @@ static size_t command_decode_dns_label(command_result_t *result, command_file_ct
 		/*
 		 *	We don't print it with quotes.
 		 */
-		slen = fr_value_box_print(&FR_SBUFF_OUT(out, end - out), box, NULL);
-		if (slen <= 0) goto error;
-		out += slen;
+		outlen = fr_value_box_print(&FR_SBUFF_OUT(out, end - out), box, NULL);
+		if (outlen <= 0) goto error;
+		out += outlen;
 
 		fr_value_box_clear(box);
 	}
