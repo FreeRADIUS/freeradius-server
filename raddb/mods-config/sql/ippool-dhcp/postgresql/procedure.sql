@@ -21,7 +21,8 @@
 --		'%{control:${pool_name}}', \
 --		'%{DHCP-Gateway-IP-Address}', \
 --		'${pool_key}', \
---		${lease_duration} \
+--		${lease_duration}, \
+--		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 --	)"
 -- allocate_update = ""
 -- allocate_commit = ""
@@ -31,13 +32,14 @@ CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
 	v_pool_name VARCHAR(64),
 	v_gateway VARCHAR(16),
 	v_pool_key VARCHAR(64),
-	v_lease_duration INT
+	v_lease_duration INT,
+	v_requested_address INET
 )
 RETURNS inet
 LANGUAGE plpgsql
 AS $$
 DECLARE
-	r_address inet;
+	r_address INET;
 BEGIN
 
 	-- Reissue an existing IP address lease when re-authenticating a session
@@ -71,6 +73,24 @@ BEGIN
 	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
 	-- FROM ips WHERE dhcpippool.framedipaddress = ips.framedipaddress
 	-- RETURNING dhcpippool.framedipaddress INTO r_address;
+
+	-- Issue the requested IP address if it is available
+	--
+	IF r_address IS NULL AND v_requested_address != '0.0.0.0' THEN
+		WITH ips AS (
+			SELECT framedipaddress FROM dhcpippool
+			WHERE pool_name = v_pool_name
+				AND framedipaddress = v_requested_address
+				AND status = 'dynamic'
+				AND ( pool_key = v_pool_key OR expiry_time < NOW() )
+			LIMIT 1 FOR UPDATE SKIP LOCKED )
+		UPDATE dhcpippool
+		SET pool_key = v_pool_key,
+			expiry_time = NOW() + v_lease_duration * interval '1 sec',
+			gateway = v_gateway
+		FROM ips WHERE dhcpippool.framedipaddress = ips.framedipaddress
+		RETURNING dhcpippool.framedipaddress INTO r_address;
+	END IF;
 
 	-- If we didn't reallocate a previous address then pick the least
 	-- recently used address from the pool which maximises the likelihood
