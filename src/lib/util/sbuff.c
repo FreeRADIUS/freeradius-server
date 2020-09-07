@@ -1122,6 +1122,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 			*out = (_type)(_max); \
 			return 0; \
 		} \
+		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
