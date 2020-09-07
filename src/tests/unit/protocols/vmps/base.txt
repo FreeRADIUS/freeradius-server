@@ -1,0 +1,33 @@
+#  Test vectors for VMPS/VQP attributes
+#
+#  Copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+#
+proto vmps
+proto-dictionary vmps
+
+#
+#	decode Join-Request
+#
+decode-proto 01 01 00 06 00 00 12 34 00 00 0c 01 00 04 c0 a8 45 01 00 00 0c 02 00 04 65 74 68 30 00 00 0c 03 00 05 6b 61 6c 6f 73 00 00 0c 04 00 0b 74 61 70 69 6f 63 61 2e 6c 61 6e 00 00 0c 07 00 01 00 00 00 0c 06 00 06 ca fe ca fe ca fe
+match Packet-Type = Join-Request, Error-Code = No-Error, Sequence-Number = 4660, Client-IPv4-Address = 192.168.69.1, Port-Name = "eth0", VLAN-Name = "kalos", Domain-Name = "tapioca.lan", Unknown = 0x00, MAC-Address = ca:fe:ca:fe:ca:fe
+
+#
+#	decode Join-Request
+#
+encode-proto -
+match 01 01 00 06 00 00 12 34 00 00 0c 01 00 04 c0 a8 45 01 00 00 0c 02 00 04 65 74 68 30 00 00 0c 03 00 05 6b 61 6c 6f 73 00 00 0c 04 00 0b 74 61 70 69 6f 63 61 2e 6c 61 6e 00 00 0c 07 00 01 00 00 00 0c 06 00 06 ca fe ca fe ca fe
+
+#
+#	decode Join-Response
+#
+decode-proto 01 02 00 02 00 00 12 34 00 00 0c 03 00 08 4d 69 72 61 6b 75 6c 6f 00 00 0c 08 00 06 ca fe ca fe ca fe
+match Packet-Type = Join-Response, Error-Code = No-Error, Sequence-Number = 4660, VLAN-Name = "Mirakulo", Cookie = ca:fe:ca:fe:ca:fe
+
+#
+#	encode Join-Response
+#
+encode-proto -
+match 01 02 00 02 00 00 12 34 00 00 0c 03 00 08 4d 69 72 61 6b 75 6c 6f 00 00 0c 08 00 06 ca fe ca fe ca fe
+
+count
+match 10
