@@ -102,7 +102,7 @@ bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 	while (data_len > 0) {
 		if (data_len < 7) {
 			fr_strerror_printf("Packet contains malformed attribute");
-			false;
+			return false;
 		}
 
 		/*
