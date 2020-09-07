@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/vmps/vmps.h>
+#include <freeradius-devel/io/test_point.h>
 
 #include "vmps.h"
 #include "attrs.h"
@@ -555,3 +556,41 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		print_hex_data(attr + 5, length, 3);
 	}
 }
+
+/*
+ *	Test points for protocol decode
+ */
+static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	return fr_vmps_decode(ctx, data, data_len, vps, NULL);
+}
+
+static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
+{
+	fr_vmps_free();
+
+	return 0;
+}
+
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+{
+	fr_vmps_ctx_t *test_ctx;
+
+	if (fr_vmps_init() < 0) return -1;
+
+	test_ctx = talloc_zero(ctx, fr_vmps_ctx_t);
+	if (!test_ctx) return -1;
+
+	test_ctx->root = fr_dict_root(dict_vmps);
+	talloc_set_destructor(test_ctx, _decode_test_ctx);
+
+	*out = test_ctx;
+
+	return 0;
+}
+
+extern fr_test_point_proto_decode_t vmps_tp_decode_proto;
+fr_test_point_proto_decode_t vmps_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_vmps_decode_proto
+};
