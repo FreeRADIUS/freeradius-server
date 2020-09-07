@@ -85,6 +85,7 @@ typedef struct {
 
 #define NSEC	(1000000000)
 #define USEC	(1000000)
+#define MSEC	(1000)
 
 int fr_time_start(void);
 int fr_time_sync(void);
@@ -197,6 +198,10 @@ fr_unix_time_t fr_time_to_unix_time(fr_time_t when);
 int64_t		fr_time_wallclock_at_last_sync(void);
 
 fr_time_t	fr_time_from_sec(time_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_msec(int64_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_usec(int64_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_nsec(int64_t when) CC_HINT(nonnull);
+
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);

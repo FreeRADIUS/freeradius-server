@@ -255,6 +255,45 @@ fr_time_t fr_time_from_sec(time_t when)
 	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
+/** Convert msec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_msec(int64_t when)
+{
+	return (((fr_time_t) when) * MSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert usec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_usec(int64_t when)
+{
+	return (((fr_time_t) when) * USEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a nsec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_nsec(int64_t when)
+{
+	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
 /** Convert a timespec (wallclock time) to a fr_time_t (internal time)
  *
  * @param[in] when_ts	The timestamp to convert.
