@@ -2735,7 +2735,7 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 				cast = src->vb_date;
 				break;
 			}
-			if ((cast >= UINT32_MAX) || (cast < 0)) goto invalid_cast;
+			if (cast >= UINT32_MAX) goto invalid_cast;
 
 			dst->vb_uint32 = cast;
 		}
