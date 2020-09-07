@@ -225,7 +225,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, ptr, attr_len, true) < 0) {
 			talloc_free(vp);
-			return -1;
+			goto error;
 		}
 
 		ptr += attr_len;
