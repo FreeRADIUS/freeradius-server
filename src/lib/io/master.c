@@ -883,6 +883,9 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	We are checking for duplicates, see if there is a dup
 	 *	already in the tree.
 	 */
+	fr_assert_msg(client->inst->app_io->track != NULL,
+		"The %s has '.track_duplicates = true', But It is missing '.track = ...' entry point.", client->inst->app_io->name);
+
 	track->packet = client->inst->app_io->track(track, packet, packet_len);
 	if (!track->packet) {
 		talloc_free(track);
