@@ -52,6 +52,13 @@ int			fr_vmps_init(void);
 
 void			fr_vmps_free(void);
 
+/** Used as the decoder ctx
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const *root;
+} fr_vmps_ctx_t;
+
 #ifdef __cplusplus
 }
 #endif
