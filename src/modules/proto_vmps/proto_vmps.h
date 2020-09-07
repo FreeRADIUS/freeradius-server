@@ -42,3 +42,11 @@ typedef struct {
 
 	uint32_t			priorities[FR_VQP_MAX_CODE];	//!< priorities for individual packets
 } proto_vmps_t;
+
+/*
+ *	Shorter version of the packet for deduping
+ */
+typedef struct {
+	uint32_t 	transaction_id;
+	uint8_t		opcode;
+} proto_vmps_track_t;
