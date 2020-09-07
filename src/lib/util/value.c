@@ -2553,6 +2553,16 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
 		break;
 
+	case FR_TYPE_INT8:
+		if (src->vb_int8 < 0 ) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+			return -1;
+		}
+		dst->vb_uint8 = (uint8_t)src->vb_int8;
+		break;
+
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
@@ -2611,11 +2621,18 @@ static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_INT8:
 		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
+		negative_value:
+			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 			return -1;
 		}
-		dst->vb_uint16 = (uint8_t)src->vb_int8;
+		dst->vb_uint16 = (uint16_t)src->vb_int8;
+		break;
+
+	case FR_TYPE_INT16:
+		if (src->vb_int16 < 0 ) goto negative_value;
+		dst->vb_uint16 = (uint16_t)src->vb_int16;
 		break;
 
 	default:
@@ -2681,20 +2698,23 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_INT8:
 		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
+		negative_value:
+			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 			return -1;
 		}
-		dst->vb_uint32 = (uint8_t)src->vb_int8;
+		dst->vb_uint32 = (uint32_t)src->vb_int8;
 		break;
 
 	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
-					   "signed value %d is negative ", src->vb_int16);
-			return -1;
-		}
-		dst->vb_uint32 = (uint16_t)src->vb_int16;
+		if (src->vb_int16 < 0 ) goto negative_value;
+		dst->vb_uint32 = (uint32_t)src->vb_int16;
+		break;
+
+	case FR_TYPE_INT32:
+		if (src->vb_int32 < 0 ) goto negative_value;
+		dst->vb_uint32 = (uint32_t)src->vb_int32;
 		break;
 
 	case FR_TYPE_DATE:
@@ -2843,29 +2863,28 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_INT8:
 		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
+		negative_value:
+			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 			return -1;
 		}
-		dst->vb_uint64 = (uint8_t)src->vb_int8;
+		dst->vb_uint64 = (uint64_t)src->vb_int8;
 		break;
 
 	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
-					   "signed value %d is negative ", src->vb_int16);
-			return -1;
-		}
-		dst->vb_uint64 = (uint16_t)src->vb_int16;
+		if (src->vb_int16 < 0 ) goto negative_value;
+		dst->vb_uint64 = (uint64_t)src->vb_int16;
 		break;
 
 	case FR_TYPE_INT32:
-		if (src->vb_int32 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int32 to uint32.  "
-					   "signed value %d is negative ", src->vb_int32);
-			return -1;
-		}
-		dst->vb_uint64 = (uint32_t)src->vb_int32;
+		if (src->vb_int32 < 0 ) goto negative_value;
+		dst->vb_uint64 = (uint64_t)src->vb_int32;
+		break;
+
+	case FR_TYPE_INT64:
+		if (src->vb_int64 < 0 ) goto negative_value;
+		dst->vb_uint64 = (uint64_t)src->vb_int64;
 		break;
 
 	case FR_TYPE_DATE:
@@ -2940,7 +2959,7 @@ static inline int fr_value_box_cast_to_date(TALLOC_CTX *ctx, fr_value_box_t *dst
 					    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					    fr_value_box_t const *src)
 {
-	int64_t tmp = 0;
+	uint64_t tmp = 0;
 
 	fr_assert(dst_type == FR_TYPE_DATE);
 
@@ -3000,7 +3019,7 @@ static inline int fr_value_box_cast_to_date(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	case FR_TYPE_UINT8:
-		tmp = (int64_t)src->vb_uint8;
+		tmp = (uint64_t)src->vb_uint8;
 
 	assign:
 		if (!dst->enumv) {
@@ -3009,60 +3028,63 @@ static inline int fr_value_box_cast_to_date(TALLOC_CTX *ctx, fr_value_box_t *dst
 		delta_seconds:
 		default:
 		case FR_TIME_RES_SEC:
-			dst->vb_uint64 = fr_unix_time_from_sec(tmp);
+			dst->vb_date = fr_unix_time_from_sec(tmp);
 			break;
 
 		case FR_TIME_RES_USEC:
-			dst->vb_uint64 = fr_unix_time_from_usec(tmp);
+			dst->vb_date = fr_unix_time_from_usec(tmp);
 			break;
 
 		case FR_TIME_RES_MSEC:
-			dst->vb_uint64 = fr_unix_time_from_msec(tmp);
+			dst->vb_date = fr_unix_time_from_msec(tmp);
 			break;
 
 		case FR_TIME_RES_NSEC:
-			dst->vb_uint64 = fr_unix_time_from_nsec(tmp);
+			dst->vb_date = fr_unix_time_from_nsec(tmp);
 			break;
 		}
 		break;
 
 	case FR_TYPE_UINT16:
-		tmp = (int64_t)src->vb_uint16;
+		tmp = (uint64_t)src->vb_uint16;
 		goto assign;
 
 	case FR_TYPE_UINT32:
-		tmp = (int64_t)src->vb_uint32;
+		tmp = (uint64_t)src->vb_uint32;
 		goto assign;
 
 	case FR_TYPE_UINT64:
-		if (src->vb_uint64 > INT64_MAX) {
-			fr_strerror_printf("Invalid cast from %s to %s.  %" PRIu64 " outside of value range "
-					   "%" PRId64 "-%" PRId64,
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->vb_uint64, INT64_MIN, INT64_MAX);
-			return -1;
-		}
-		tmp = (int64_t)src->vb_uint64;
+		tmp = (uint64_t)src->vb_uint64;
 		goto assign;
 
 	case FR_TYPE_INT8:
-		tmp = (int64_t)src->vb_int8;
+		if (src->vb_int8 < 0) {
+		negative_value:
+			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+			return -1;
+		}
+		tmp = (uint64_t)src->vb_int8;
 		goto assign;
 
 	case FR_TYPE_INT16:
-		tmp = (int64_t)src->vb_int16;
+		if (src->vb_int16 < 0) goto negative_value;
+		tmp = (uint64_t)src->vb_int16;
 		goto assign;
 
 	case FR_TYPE_INT32:
-		tmp = (int64_t)src->vb_int32;
+		if (src->vb_int32 < 0) goto negative_value;
+		tmp = (uint64_t)src->vb_int32;
 		goto assign;
 
 	case FR_TYPE_INT64:
-		tmp = (int64_t)src->vb_int64;
+		if (src->vb_int64 < 0) goto negative_value;
+		tmp = (uint64_t)src->vb_int64;
 		goto assign;
 
 	case FR_TYPE_TIME_DELTA:
+		if (src->vb_time_delta < 0) goto negative_value;
 		dst->vb_date = fr_time_from_nsec(src->vb_time_delta);
 		break;
 
@@ -3104,7 +3126,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (!fr_cond_assert(src != dst)) return -1;
 
 	if (fr_dict_non_data_types[dst_type]) {
-		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types.",
+		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
