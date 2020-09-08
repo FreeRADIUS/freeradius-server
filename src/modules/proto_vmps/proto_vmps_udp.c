@@ -364,23 +364,45 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len)
+{
+	proto_vmps_track_t  *track;
+
+	if (buffer_len < 4) {
+		ERROR("VMPS packet is too small. (%zu < 4)", buffer_len);
+		return NULL;
+	}
+
+	track = talloc_zero(ctx, proto_vmps_track_t);
+
+	if (!track) return NULL;
+
+	talloc_set_name_const(track, "proto_vmps_track_t");
+
+	memcpy(&track->transaction_id, buffer, sizeof(track->transaction_id));
+
+	track->opcode = buffer[1];
+
+	return track;
+}
+
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
+	proto_vmps_track_t const *a = talloc_get_type_abort_const(one, proto_vmps_track_t);
+	proto_vmps_track_t const *b = talloc_get_type_abort_const(two, proto_vmps_track_t);
 	int rcode;
-	uint8_t const *a = one;
-	uint8_t const *b = two;
 
 	/*
 	 *	Order by transaction ID
 	 */
-	rcode = memcmp(a + 4, b + 4, 4);
+	rcode = (a->transaction_id < b->transaction_id) - (a->transaction_id > b->transaction_id);
 	if (rcode != 0) return rcode;
 
 	/*
 	 *	Then ordered by opcode, which is usally the same.
 	 */
-	return (a[1] < b[1]) - (a[1] > b[1]);
+	return (a->opcode < b->opcode) - (a->opcode > b->opcode);
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
@@ -512,6 +534,7 @@ fr_app_io_t proto_vmps_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track			= mod_track_create,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
