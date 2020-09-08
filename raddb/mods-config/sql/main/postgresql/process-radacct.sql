@@ -108,7 +108,9 @@ BEGIN
         SET
             acctinputoctets = data_usage_by_period.acctinputoctets + EXCLUDED.acctinputoctets,
             acctoutputoctets = data_usage_by_period.acctoutputoctets + EXCLUDED.acctoutputoctets,
-            period_end = v_end;
+            period_end = v_end
+        WHERE
+            data_usage_by_period.period_end IS NULL;
 
     --
     -- Create an open-ended "next period" for all ongoing sessions and carry a
