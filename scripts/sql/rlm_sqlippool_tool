@@ -1,0 +1,967 @@
+#!/usr/bin/perl -Tw
+
+######################################################################
+#
+#  Copyright (C) 2020 Network RADIUS
+#
+#  $Id$
+#
+######################################################################
+#
+#  Helper script for populating IP pools with address entries.
+#
+#  This script generates SQL output that is useful for populating an IP pool
+#  for use with FreeRADIUS (and possibly other purposes).  Alternatively,
+#  if called with the -f option will directly operate on the database configured
+#  within the FreeRADIUS configuration to update the IP pool table specified
+#
+#  Note: Direct connection to databases is done using Perl DBI.  You may need
+#        to install the appropriate Perl DBD driver to enable this functionality.
+#
+#
+#  Use with a single address range
+#  -------------------------------
+#
+#  For basic use, arguments can be provided to this script that denote the ends
+#  of a single IP (v4 or v6) address range together with the pool_name and
+#  SQL dialect or a raddb directory from which the database config will be
+#  read.
+#
+#  If a raddb directory is specified, then the instance of the FreeRADIUS sql
+#  module to be found in the config can be specified.  It defaults to "sql".
+#
+#  Optionally the number of IPs to sparsely populate the range with can be
+#  provided. If the range is wider than a /16 then the population of the range
+#  is capped at 65536 IPs, unless otherwise specified.
+#
+#  In the case that a sparse range is defined, a file containing pre-existing
+#  IP entries can be provided. The range will be populated with entries from
+#  this file that fall within the range, prior to the remainder of the range
+#  being populated with random address in the range.
+#
+#    rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> \
+#            -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) \
+#            [ -c <capacity> ] [ -x <existing_ips_file> ]
+#
+#  Note: Sparse ranges are populated using a deterministic, pseudo-random
+#        function. This allows pools to be trivially extended without having to
+#        supply the existing contents using a file. If you require
+#        less-predictable randomness or a different random sequence then remove
+#        or modify the line calling srand(), below.
+#
+#
+#  Use with multiple pools and address ranges
+#  ------------------------------------------
+#
+#  For more complex us, the script allows a set of pool definitions to be
+#  provided in a YAML file which describes a set of one or more pools, each
+#  containing a set of one or more ranges.
+#
+#    rlm_sqlippool_tool -y <pool_defs_yaml_file> -t <table_name> \
+#            ( -d <dialect> | -f <raddb_dir> [ -i <instance> ] ) \
+#            [ -x <existing_ips_file> ]
+#
+#  The format for the YAML file is demonstrated by the following example:
+#
+#      pool_with_a_single_contiguous_range:
+#        - start:    192.0.2.3
+#          end:      192.0.2.250
+#
+#      pool_with_a_single_sparse_range:
+#        - start:    10.10.10.0
+#          end:      10.10.20.255
+#          capacity: 200
+#
+#      pool_with_multiple_ranges:
+#        - start:    10.10.10.1
+#          end:      10.10.10.253
+#        - start:    10.10.100.0
+#          end:      10.10.199.255
+#          capacity: 1000
+#
+#      v6_pool_with_contiguous_range:
+#        - start:    '2001:db8:1:2:3:4:5:10'
+#          end:      '2001:db8:1:2:3:4:5:7f'
+#
+#      v6_pool_with_sparse_range:
+#        - start:    '2001:db8:1:2::'
+#          end:      '2001:db8:1:2:ffff:ffff:ffff:ffff'
+#          capacity: 200
+#
+#  As with the basic use case, a file containing pre-existing IP entries can be
+#  provided with which any sparse ranges will be populated ahead of any random
+#  addresses.
+#
+#
+#  Output
+#  ------
+#
+#  The script returns SQL formatted appropriately for one of a number of
+#  different SQL dialects.
+#
+#  The SQL first creates a temporary table to insert the new pools into,
+#  inserts the addresses, then removes any exisitng entries from the pool
+#  table that do not exist in the new pool.  Finally any new entries that
+#  don't exist in the existing pool table are copied from the temporary
+#  table.
+#
+#  The SQL templates assume that the pool name will be in a field called
+#  "pool_name" and the IP address in a field named "framedipaddress",
+#  matching the default schema for ippools and DHCP ippools as shipped with
+#  FreeRADIUS.
+#
+#
+#  Examples
+#  --------
+#
+#    rlm_sqlippool_tool -p main_pool -s 192.0.2.3 -e 192.0.2.249 \
+#            -d postgresql -t radippool
+#
+#      Will create a pool from a full populated IPv4 range, i.e. all IPs in the
+#      range available for allocation, with SQL output suitable for PostgreSQL
+#
+#    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 10000 \
+#            -d mysql -t radippool
+#
+#      Will create a pool from a sparsely populated IPv4 range for a /16
+#      network (maximum of 65.536 addresses), populating the range with 10,000
+#      addreses. With SQL output suitable for MySQL.
+#      The effective size of the pool can be increased in future by increasing
+#      the capacity of the range with:
+#
+#    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 20000 \
+#            -d mysql -t radippool
+#
+#      This generates the same initial set of 10,000 addresses as the previous
+#      example but will create 20,000 addresses overall, unless the random seed
+#      has been amended since the initial run.
+#
+#    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
+#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff -d mssql -t radippool
+#
+#      Will create a pool from the IPv6 range 2001:db8:1:2::/64, initially
+#      populating the range with 65536 (by default) addresses.
+#
+#    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
+#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff \
+#            -c 10000 -x existing_ips.txt -d mysql -t radippool
+#
+#      Will create a pool using the same range as the previous example, but
+#      this time the range will be populated with 10,000 addresses.  The range
+#      will be populated using lines extracted from the `existing_ips.txt` file
+#      that represent IPs which fall within range.
+#
+#    rlm_sqlippool_tool -y pool_defs.yml -d postgresql -t radippool \
+#            -x existing_ips.txt
+#
+#      Will create one of more pools using the definitions found in the
+#      pool_defs.yml YAML file. The pools will contain one or more ranges with
+#      each of the ranges first being populated with entries from the
+#      existing_ips.txt file that fall within the range, before being filled
+#      with random addresses to the defined capacity.
+#
+
+use strict;
+use Net::IP qw/ip_bintoip ip_iptobin ip_bincomp ip_binadd ip_is_ipv4 ip_is_ipv6/;
+use Template;
+
+#
+#  Option defaults
+#
+my $opts = {
+	instance => 'sql',
+	capacity => 65536
+};
+
+#
+#  Parse the command line arguments
+#
+my $opt = '';
+for (my $i = 0; $i <= $#ARGV; $i++) {
+	if ($ARGV[$i] =~ m/^-(.)$/) {
+		if ($1 eq 'p') {
+			$opt = 'pool_name';
+		} elsif ($1 eq 's') {
+			$opt = 'range_start';
+		} elsif ($1 eq 'e') {
+			$opt = 'range_end';
+		} elsif ($1 eq 'c') {
+			$opt = 'capacity';
+		} elsif ($1 eq 't') {
+			$opt = 'table_name';
+		} elsif ($1 eq 'd') {
+			$opt = 'dialect';
+		} elsif ($1 eq 'y') {
+			$opt = 'yaml';
+		} elsif ($1 eq 'x') {
+			$opt = 'entries';
+		} elsif ($1 eq 'f') {
+			$opt = 'raddb_dir';
+		} elsif ($1 eq 'i') {
+			$opt = 'instance';
+		} else {
+			usage();
+			exit 1;
+		}
+	} else {
+		if ($opt eq '') {
+			usage();
+			exit 1;
+		} else {
+			$opts->{$opt} = $ARGV[$i]
+		}
+	}
+}
+
+#
+#  If a raddb dir is set then we parse the mods-enabled config
+#
+
+if ($opts->{raddb_dir}) {
+	my $found = 0;
+	if (-d $opts->{raddb_dir}.'/mods-enabled') {
+		opendir(my $dh, $opts->{raddb_dir}.'/mods-enabled') || die 'ERROR: Could not open directory '.$opts->{raddb_dir}.'/mods-enabled';
+		my @dir = grep { -f  "$opts->{raddb_dir}/mods-enabled/$_" } readdir($dh);
+		closedir($dh);
+		my $instance = $opts->{instance};
+		foreach my $file (@dir) {
+			open (my $fh, $opts->{raddb_dir}.'/mods-enabled/'.$file);
+			my $level = 0;
+			my $section = '';
+			my $subsection = '';
+			while (<$fh>) {
+				if ($found) {
+					&process_config_line($_, \$level, \$section, \$subsection, \$opts);
+					last if ($level == 0); # We've got to the end of the instance
+				}
+				if ($_ =~ m/\b$instance\s+\{/) {
+					# We've found the specified SQL instance
+					$found = 1;
+					$level = 1;
+				}
+			}
+			close ($fh);
+			if ($found) {
+				last;
+			}
+		}
+		if (($found) && ($opts->{dialect})) {
+			#  Check for dialect specific options
+			if ( open (my $fh, $opts->{raddb_dir}.'/mods-config/sql/driver/'.$opts->{dialect}) ) {
+				my $level = 1;
+				my $section = '';
+				my $subsection = '';
+				while (<$fh>) {
+					&process_config_line($_, \$level, \$section, \$subsection, \$opts);
+				}
+				close ($fh);
+			}
+		}
+	} else {
+		die 'ERROR: Specified FreeRADIUS config directory does not contain mods-enabled';
+	}
+	if ($found == 0) {
+		die 'ERROR: SQL instance not found in FreeRADIUS config';
+	}
+}
+
+#
+#  The SQL dialect and table name must be set
+#
+if ((!($opts->{dialect})) || (!($opts->{table_name}))) {
+	usage();
+	exit 1;
+}
+
+if ($opts->{yaml})  {
+	my $yaml_available = 0;
+
+	eval {
+		require YAML::XS;
+		YAML::XS->import('LoadFile');
+		$yaml_available = 1;
+	};
+
+	unless ($yaml_available) {
+		die "ERROR: YAML is not available. Install the YAML::XS Perl module.";
+	}
+	process_yaml_file($opts);
+
+	goto done;
+
+}
+	    
+
+if ((!($opts->{pool_name})) || (!($opts->{range_start})) || (!($opts->{range_end}))) {
+	usage();
+	exit 1;
+}
+
+process_commandline($opts);
+
+done:
+
+exit 0;
+
+
+sub usage {
+	print STDERR <<'EOF'
+Usage:
+  rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) [ -c <capacity> ] [ -x <existing_ips_file> ]
+or:
+  rlm_sqlippool_tool -y <pool_defs_yaml_file> -t <table_name> (-d <dialect> | -f <raddb_dir> [ -i <instance> ]) [ -x <existing_ips_file> ]
+
+EOF
+}
+
+
+sub process_commandline {
+
+	my $opts = shift;
+	$SIG{__DIE__} = sub { usage(); die(@_); };
+
+	(my $template, my $queries)=load_templates($opts->{table_name});
+
+	unless (defined $template->{$opts->{dialect}}) {
+		print STDERR "Unknown dialect. Pick one of: ";
+		print STDERR "$_ " foreach sort keys %{$template};
+		print STDERR "\n";
+		exit 1;
+	}
+
+	my @entries = ();
+	@entries = load_entries($opts->{entries}) if ($opts->{entries});
+
+	@entries = handle_range($opts->{range_start}, $opts->{range_end}, $opts->{capacity}, @entries);
+
+	if ($opts->{radius_db}) {
+		&call_database($opts, $queries, @entries);
+	} else {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {ranges => [{pool_name => $opts->{pool_name}, ips => \@entries}], batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+	}
+}
+
+
+sub process_yaml_file {
+
+	my $opts = shift;
+
+	unless (-r $opts->{yaml}) {
+		die "ERROR: Cannot open <pool_defs_yaml_file> for reading: $opts->{yaml}";
+	}
+
+	my %pool_defs = %{LoadFile($opts->{yaml})};
+
+	(my $template, my $queries)=load_templates($opts->{table_name});
+
+	unless (defined $template->{$opts->{dialect}}) {
+		print STDERR "Unknown dialect. Pick one of: ";
+		print STDERR "$_ " foreach sort keys %{$template};
+		print STDERR "\n";
+		exit 1;
+	}
+
+	my @entries = ();
+	@entries = load_entries($opts->{entries}) if ($opts->{entries});
+
+	my @ranges;
+	foreach my $pool_name (sort keys %pool_defs) {
+		foreach my $range (@{$pool_defs{$pool_name}}) {
+			my $range_start = $range->{start};
+			my $range_end   = $range->{end};
+			my $capacity    = $range->{capacity};
+			my @ips = handle_range($range_start, $range_end, $capacity, @entries);
+			push (@ranges, {pool_name => $pool_name, ips => \@ips});
+		}
+	}
+
+	if ($opts->{radius_db}) {
+		&call_database($opts, $queries, @entries);
+	} else {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {ranges => \@ranges, batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+	}
+}
+
+sub call_database {
+
+	my $opts = shift;
+	my $queries = shift;
+	my @entries = @_;
+
+	my $dbi_avail = 0;
+	eval {
+		require DBI;
+		$dbi_avail = 1;
+	};
+	unless($dbi_avail) {
+		die "ERROR: DBI is not available. Install the DBI Perl module.";
+	}
+
+	my $dsn;
+	if ($opts->{dialect} eq 'mysql') {
+		$dsn = "DBI:mysql:database=$opts->{radius_db};host=$opts->{server}";
+		if (defined($opts->{mysql}->{tls})) {
+			$dsn .= ';mysql_ssl=1';
+			$dsn .= ';mysql_ssl_ca_file='.$opts->{mysql}->{tls}->{ca_file} if ($opts->{mysql}->{tls}->{ca_file});
+			$dsn .= ';mysql_ssl_ca_path='.$opts->{mysql}->{tls}->{ca_path} if ($opts->{mysql}->{tls}->{ca_path});
+			$dsn .= ';mysql_ssl_client_key='.$opts->{mysql}->{tls}->{private_key_file} if ($opts->{mysql}->{tls}->{private_key_file});
+			$dsn .= ';mysql_ssl_client_cert='.$opts->{mysql}->{tls}->{certificate_file} if ($opts->{mysql}->{tls}->{certificate_file});
+			$dsn .= ';mysql_ssl_cipher='.$opts->{mysql}->{tls}->{cipher} if ($opts->{mysql}->{tls}->{cipher});
+		}
+	} elsif ($opts->{dialect} eq 'postgresql') {
+		#  Parse FreeRADIUS alternative connection string
+		if ($opts->{radius_db} =~ m/host=(.+?)\b/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/user=(.+?)\b/) {
+			$opts->{login} = $1;
+		}
+		if ($opts->{radius_db} =~ m/password=(.+?)\b/) {
+			$opts->{password} = $1;
+		}
+		if ($opts->{radius_db} =~ m/sslmode=(.+?)\b/) {
+			$opts->{sslmode} = $1;
+		}
+		if ($opts->{radius_db} =~ m/dbname=(.+?)\b/) {
+			$opts->{radius_db} = $1;
+		}
+		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
+		#
+		#  DBD doesn't have all the options used by FreeRADIUS - just enable ssl if
+		#  FreeRADIUS has SSL options enabled
+		#
+		$dsn .= ';sslmode=prefer' if ($opts->{sslmode});
+	} elsif ($opts->{dialect} eq 'sqlite') {
+		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
+	} elsif ($opts->{dialect} eq 'mssql') {
+		if ($opts->{driver} eq 'rlm_sql_unixodbc') {
+			$dsn = "DBI:ODBC:DSN=$opts->{server}";
+		} else {
+			$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+		}
+	} elsif ($opts->{dialect} eq 'oracle') {
+		#  Extract data from Oracle connection string as used by FreeRADIUS
+		if ($opts->{radius_db} =~ m/HOST=(.+?)\)/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/PORT=(.+?)\)/) {
+			$opts->{port} =$1;
+		}
+		if ($opts->{radius_db} =~ m/SID=(.+?)\)/) {
+			$opts->{sid} = $1;
+		}
+		$dsn = "DBI:Oracle:host=$opts->{server};sid=$opts->{sid}";
+	} else {
+		$dsn = "DBI:$opts->{dialect}:database=$opts->{radius_db};host=$opts->{server}";
+	}
+	$dsn .= ";port=$opts->{port}" if ($opts->{port}) && ($opts->{driver} ne 'rlm_sql_unixodbc');
+
+	#  Read the results by running our query against the database
+	my $dbh = DBI->connect($dsn, $opts->{login}, $opts->{password}) || die "Unable to connect to database";
+
+	foreach my $query (@{$queries->{$opts->{dialect}}->{pre}}) {
+		$dbh->do($query);
+	}
+
+	my $sth = $dbh->prepare($queries->{$opts->{dialect}}->{insert});
+	foreach my $ip (@entries) {
+		$sth->execute($opts->{pool_name}, $ip);
+	}
+	$sth->finish();
+
+	foreach my $query (@{$queries->{$opts->{dialect}}->{post}}) {
+		$dbh->do($query);
+	}
+
+	$dbh->disconnect();
+}
+
+sub load_entries {
+
+	my $entries_file = shift;
+
+	my @entries = ();
+	unless (-r $entries_file) {
+		die "ERROR: Cannot open <existing_ips_file> for reading: $entries_file"
+	}
+	open(my $fh, "<", $entries_file) || die "Failed to open $entries_file";
+	while(<$fh>) {
+		chomp;
+		push @entries, $_;
+	}
+
+	return @entries;
+
+}
+
+
+sub handle_range {
+
+	my $range_start = shift;
+	my $range_end = shift;
+	my $capacity = shift;
+	my @entries = @_;
+
+	unless (ip_is_ipv4($range_start) || ip_is_ipv6($range_start)) {
+		die "ERROR: Incorrectly formatted IPv4/IPv6 address for range_start: $range_start";
+	}
+
+	unless (ip_is_ipv4($range_end) || ip_is_ipv6($range_end)) {
+		die "ERROR: Incorrectly formatted IPv4/IPv6 address for range_end: $range_end";
+	}
+
+	my $ip_start = new Net::IP($range_start);
+	my $ip_end   = new Net::IP($range_end);
+	my $ip_range = new Net::IP("$range_start - $range_end");
+
+	unless (defined $ip_range) {
+		die "ERROR: The range defined by <range_start> - <range_end> is invalid: $range_start - $range_end";
+	}
+
+	my $range_size = $ip_range->size;
+
+	if ($range_size < $capacity) {
+		$capacity = "$range_size";
+		warn 'WARNING: Insufficent IPs in the range. Will create '.$capacity.' entries.';
+	}
+
+	#  Prune the entries to only those within the specified range
+	for (my $i = 0; $i <= $#entries; $i++) {
+		my $version = ip_is_ipv4($entries[$i]) ? 4 : 6;
+		my $binip = ip_iptobin($entries[$i],$version);
+		if ($ip_start->version != $version ||
+			ip_bincomp($binip, 'lt', $ip_start->binip) == 1 ||
+			ip_bincomp($binip, 'gt', $ip_end->binip) == 1) {
+			$entries[$i]='';
+		}
+	}
+
+	#
+	#  We use the sparse method if the number of entries available occupies < 80% of
+	#  the network range, otherwise we use a method that involves walking the
+	#  entire range.
+	#
+
+	srand(42);  # Set the seed for the PRNG
+
+	if ($capacity / "$range_size" > 0.9) {
+ 	        @entries = walk_fill($ip_start, $ip_end, $capacity, @entries);
+	} elsif (length($range_size) > 9 || $capacity / "$range_size" < 0.8) {  # From "BigInt" to FP
+		@entries = sparse_fill($ip_start, $ip_end, $capacity, @entries);
+	} else {
+		@entries = dense_fill($ip_start, $ip_end, $ip_range, $capacity, @entries);
+	}
+
+	return @entries;
+}
+
+
+#
+#  With this sparse fill method we randomly allocate within the scope of the
+#  smallest enclosing network prefix, checking that we are within the given
+#  range, retrying if we are outside or we hit a duplicate.
+#
+#  This method can efficiently choose a small number of addresses relative to
+#  the size of the range. It becomes slower as the population of a range nears
+#  the range's limit since it is harder to choose a free address at random.
+#
+#  It is useful for selecting a handful of addresses from an enourmous IPv6 /64
+#  network for example.
+#
+sub sparse_fill {
+
+	my $ip_start = shift;
+	my $ip_end = shift;
+	my $capacity = shift;
+	my @entries = @_;
+
+	# Find the smallest network that encloses the given range
+	my $version = $ip_start->version;
+	( $ip_start->binip ^ $ip_end->binip ) =~ /^\0*/;
+	my $net_prefix = $+[0];
+	my $net_bits = substr($ip_start->binip, 0, $net_prefix);
+	my $host_length = length($ip_start->binip) - $net_prefix;
+
+	my %ips = ();
+	my $i = 0;
+	while ($i < $capacity) {
+
+		# Use the given entries first
+		my $rand_ip;
+		my $given_lease = 0;
+		shift @entries while $#entries >= 0 && $entries[0] eq '';
+		if ($#entries >= 0) {
+			$rand_ip = ip_iptobin(shift @entries, $version);
+			$given_lease = 1;
+		} else {
+			$rand_ip = $net_bits;
+			$rand_ip .= [0..1]->[rand 2] for 1..$host_length;
+			# Check that we are inside the given range
+			next if ip_bincomp($rand_ip, 'lt', $ip_start->binip) == 1 ||
+				ip_bincomp($rand_ip, 'gt', $ip_end->binip) == 1;
+		}
+
+		next if defined $ips{$rand_ip};
+
+		$ips{$rand_ip} = $given_lease ? '=' : '+';
+		$i++;
+
+	}
+
+	return map { ip_bintoip($_, $version) } keys %ips;
+
+}
+
+
+#
+#  With this dense fill method, after first selecting the given entries we walk
+#  the network range picking IPs with evenly distributed probability.
+#
+#  This method can efficiently choose a large number of addresses relative to
+#  the size of a range, provided that the range isn't massive. It becomes
+#  slower as the range size increases.
+#
+sub dense_fill {
+
+	my $ip_start = shift;
+	my $ip_end = shift;
+	my $ip_range = shift;
+	my $capacity = shift;
+	my @entries = @_;
+
+	my $version = $ip_start->version;
+
+	my $one = ("0"x($version == 4 ? 31 : 127)) . '1';
+
+	my %ips = ();
+	my $remaining_entries = $capacity;
+	my $remaining_ips = $ip_range->size;
+	my $ipbin = $ip_start->binip;
+
+	while ($remaining_entries > 0 && (ip_bincomp($ipbin, 'le', $ip_end->binip) == 1)) {
+
+		# Use the given entries first
+		shift @entries while $#entries >= 0 && $entries[0] eq '';
+		if ($#entries >= 0) {
+			$ips{ip_iptobin(shift @entries, $version)} = '=';
+			$remaining_entries--;
+			$remaining_ips--;
+			next;
+		}
+
+		goto next_ip if defined $ips{$ipbin};
+
+		# Skip the IP that we have already selected by given entries, otherwise
+		# randomly pick it
+		if (!defined $ips{$ipbin} &&
+		    (rand) <= $remaining_entries / "$remaining_ips") {  # From "BigInt" to FP
+			$ips{$ipbin} = '+';
+			$remaining_entries--;
+		}
+
+		$remaining_ips--;
+		$ipbin = ip_binadd($ipbin,$one);
+
+	}
+
+	return map { ip_bintoip($_, $version) } keys %ips;
+
+}
+
+#
+#  With this walk fill method we walk the IP range from the beginning
+#  for as many IPs as are required
+#
+#  It is useful for selecting a fully populated network.
+#
+
+sub walk_fill {
+	my $ip_start = shift;
+	my $ip_end = shift;
+	my $capacity = shift;
+	my @entries = @_;
+
+	my $version = $ip_start->version;
+
+	my $one = ("0"x($version == 4 ? 31 : 127)) . '1';
+
+	my %ips = ();
+	my $remaining_entries = $capacity;
+	my $ipbin = $ip_start->binip;
+
+	# Sort existing IPs and remove any blank entries.  Allows existing entries to be
+	# matched quickly in the new pool
+	my @sorted_entries = sort @entries;
+	shift @sorted_entries while $#sorted_entries >= 0 && $sorted_entries[0] eq '';
+
+	# Walk through the IP range from the beginning
+	while ($remaining_entries > 0 && (ip_bincomp($ipbin, 'le', $ip_end->binip) == 1)) {
+
+		if ($#sorted_entries >= 0) {
+			# If there are existing entries check if they match
+			$ips{$ipbin} = (ip_bincomp($ipbin, 'eq', ip_iptobin($sorted_entries[0]) == 1) && shift(@sorted_entries) ? '=' : '+');
+		} else {
+			$ips{$ipbin} = '+';
+		}
+		$remaining_entries--;
+		$ipbin = ip_binadd($ipbin,$one);
+
+	}
+
+	return map { ip_bintoip($_, $version) } keys %ips;
+
+}
+
+
+
+#
+#  SQL dialect templates
+#
+
+sub load_templates {
+
+	my $tablename = shift;
+
+	my $template;
+	my $queries;
+#
+#  MySQL / MariaDB
+#
+	$queries->{'mysql'}->{pre} = [
+		'DROP TEMPORARY TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
+  id                    int(11) unsigned NOT NULL auto_increment,
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL,
+  PRIMARY KEY (id),
+  KEY pool_name_framedipaddress (pool_name,framedipaddress)
+);'
+	    ];
+	$queries->{'mysql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'mysql'}->{post} = [
+		'START TRANSACTION;',
+		'DELETE r FROM '.$tablename.' r
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+      WHERE t.id IS NULL;',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;'
+	    ];
+	$template->{'mysql'} = join("\n", @{$queries->{'mysql'}->{pre}})."\n";
+	$template->{'mysql'} .= <<'END_mysql';
+-- Populate the temporary table
+[%- FOREACH r IN ranges %]
+[%-   FOREACH i IN r.ips %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% r.pool_name %]','[% i %]');
+[%-     ELSE %]
+('[% r.pool_name %]','[% i %]'),
+[%-     END %]
+[%-   END %]
+[%- END %]
+END_mysql
+	$template->{'mysql'} .= join("\n", @{$queries->{'mysql'}->{post}})."\n";
+
+#
+#  PostgreSQL
+#
+	$queries->{'postgresql'}->{pre} = [
+		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
+  pool_name               varchar(64) NOT NULL,
+  FramedIPAddress         INET NOT NULL
+);',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp USING btree (pool_name,FramedIPAddress);'
+	    ];
+	$queries->{'postgresql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'postgresql'}->{post} = [
+		'START TRANSACTION;',
+		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS (
+  SELECT FROM '.$tablename.'_temp t
+  WHERE t.pool_name = r.pool_name AND t.framedipaddress = r.framedipaddress
+);',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;'
+	    ];
+	$template->{'postgresql'} = join("\n", @{$queries->{'postgresql'}->{pre}})."\n";
+	$template->{'postgresql'} .= <<'END_postgresql';
+-- Populate the temporary table
+[%- FOREACH r IN ranges %]
+[%-   FOREACH i IN r.ips %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% r.pool_name %]','[% i %]');
+[%-     ELSE %]
+('[% r.pool_name %]','[% i %]'),
+[%-     END %]
+[%-   END %]
+[%- END %]
+END_postgresql
+	$template->{'postgresql'} .= join("\n", @{$queries->{'postgresql'}->{post}})."\n";
+#
+#  Oracle
+#
+	$queries->{'oracle'}->{pre} = [
+		'CREATE TABLE '.$tablename.'_temp (
+  pool_name               VARCHAR(30) NOT NULL,
+  FramedIPAddress         VARCHAR(15) NOT NULL
+)',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress)'
+	    ];
+	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,FramedIPAddress) VALUES (?, ?)';
+	$queries->{'oracle'}->{post} = [
+		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS
+		(SELECT * FROM '.$tablename.'_temp t WHERE
+		r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress)',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  )',
+		'DROP TABLE '.$tablename.'_temp',
+		'COMMIT'
+	    ];
+
+	$template->{'oracle'} = join(";\n", @{$queries->{'oracle'}->{pre}}).";\n";
+	$template->{'oracle'} .= <<'END_oracle';
+-- Populate the temporary table
+[%- FOREACH r IN ranges %]
+[%-   FOREACH i IN r.ips %]
+[%- "\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES " %]('[% r.pool_name %]','[% i %]');
+[%-   END %]
+[%- END %]
+END_oracle
+	$template->{'oracle'} .= join(";\n", @{$queries->{'oracle'}->{post}})."\n";
+
+#
+#  SQLite
+#
+	$queries->{'sqlite'}->{pre} = [
+		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
+		'CREATE TABLE '.$tablename.'_temp (
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL
+);',
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress);'
+	    ];
+	$queries->{'sqlite'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'sqlite'}->{post} = [
+		'BEGIN TRANSACTION;',
+		'DELETE FROM '.$tablename.' WHERE rowid IN (
+  SELECT r.rowid FROM '.$tablename.' r
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+      WHERE t.rowid IS NULL);',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+  );',
+		'COMMIT;',
+		'DROP TABLE '.$tablename.'_temp;'
+	    ];
+
+	$template->{'sqlite'} = join("\n", @{$queries->{'sqlite'}->{pre}})."\n";
+	$template->{'sqlite'} .= <<'END_sqlite';
+-- Populate the temporary table
+[%- FOREACH r IN ranges %]
+[%-   FOREACH i IN r.ips %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% r.pool_name %]','[% i %]');
+[%-     ELSE %]
+('[% r.pool_name %]','[% i %]'),
+[%-     END %]
+[%-   END %]
+[%- END %]
+END_sqlite
+	$template->{'sqlite'} .= join("\n", @{$queries->{'sqlite'}->{post}})."\n";
+
+#
+#  MS SQL
+#
+	$queries->{'mssql'}->{pre} = [
+		'DROP TABLE IF EXISTS #'.$tablename.'_temp;',
+		'CREATE TABLE #'.$tablename.'_temp (
+  id                    int identity(1, 1) NOT NULL,
+  pool_name             varchar(30) NOT NULL,
+  framedipaddress       varchar(15) NOT NULL,
+  PRIMARY KEY (id),
+);',
+		'CREATE INDEX pool_name_framedipaddress ON #'.$tablename.'_temp(pool_name, framedipaddress);'
+	    ];
+	$queries->{'mssql'}->{insert} = 'INSERT INTO #'.$tablename.'_temp (pool_name, framedipaddress) VALUES (?, ?)';
+	$queries->{'mssql'}->{post} = [
+		'BEGIN TRAN;',
+		'DELETE r FROM '.$tablename.' r
+  LEFT JOIN #'.$tablename.'_temp t ON r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress
+      WHERE t.id IS NULL;',
+		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
+  SELECT pool_name,framedipaddress FROM #'.$tablename.'_temp t WHERE NOT EXISTS (
+    SELECT * FROM '.$tablename.' r
+    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+		);',
+		'COMMIT TRAN;'
+	    ];
+
+	$template->{'mssql'} = join("\nGO\n", @{$queries->{'mssql'}->{pre}})."\nGO\n";
+	$template->{'mssql'} .= <<'END_mssql';
+-- Populate the temporary table
+[%- FOREACH r IN ranges %]
+[%-   FOREACH i IN r.ips %]
+[%- "\n\nINSERT INTO #${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
+('[% r.pool_name %]','[% i %]');
+GO
+[%-     ELSE %]
+('[% r.pool_name %]','[% i %]'),
+[%-     END %]
+[%-   END %]
+[% END %]
+END_mssql
+	$template->{'mssql'} .= join("\n", @{$queries->{'mssql'}->{post}})."\n";
+
+	return ($template, $queries);
+
+}
+
+sub process_config_line {
+	my $line = shift;
+	my $level = shift;
+	my $section = shift;
+	my $subsection = shift;
+	my $opts = shift;
+	
+	$line =~ s/#.*//;  # Remove comments
+	if ($line =~ m/\s*([a-z0-9_]+)\s*=\s*(.+)/) {
+		my $param = $1;
+		my $value = $2;
+		$value =~ s/^"//;
+		$value =~ s/"\s*$//;
+		if ($$level == 1) {
+			$$opts->{$param} = $value;
+		} elsif ($$level == 2) {
+			$$opts->{$$section}->{$param} = $value;
+		} elsif ($$level == 3) {
+			$$opts->{$$section}->{$$subsection}->{$param} = $value;
+		}
+	}
+	if ($line =~ m/([a-z_]*)\s+\{/) { # Find nested sectinos
+		$$level++ ;
+		if ($$level == 2) {
+			$$section = $1;
+		} elsif ($$level == 3) {
+			$$subsection = $1;
+		}
+	}
+	$$level-- if ($line =~ m/\s+\}/); # Close of nesting
+}
