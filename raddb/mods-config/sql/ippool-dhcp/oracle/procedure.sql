@@ -21,7 +21,8 @@
 --		'%{control:${pool_name}}', \
 --		'%{DHCP-Gateway-IP-Address}', \
 --		'${pool_key}', \
---		${lease_duration} \
+--		${lease_duration}, \
+--		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 --	) FROM dual"
 -- allocate_update = ""
 -- allocate_commit = ""
@@ -31,7 +32,8 @@ CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
 	v_pool_name IN VARCHAR2,
 	v_gateway IN VARCHAR2,
 	v_pool_key IN VARCHAR2,
-	v_lease_duration IN INTEGER
+	v_lease_duration IN INTEGER,
+	v_requested_address IN VARCHAR2,
 )
 RETURN varchar2 IS
 	PRAGMA AUTONOMOUS_TRANSACTION;
@@ -76,6 +78,8 @@ BEGIN
 	--		r_address := NULL;
 	-- END;
 
+
+
 	-- Reissue an user's previous IP address, provided that the lease is
 	-- available (i.e. enable sticky IPs)
 	--
@@ -117,11 +121,56 @@ BEGIN
 	--	       r_address := NULL;
 	-- END;
 
+
+
+	-- Issue the requested IP address if it is available
+	--
+	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
+		BEGIN
+		SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+			SELECT id FROM (
+				SELECT *
+				FROM dhcpippool
+				JOIN dhcpstatus
+				ON dhcpstatus.status_id = dhcpippool.status_id
+				WHERE pool_name = v_pool_name
+					AND framedipaddress = v_requested_address
+					AND dhcpstatus.status = 'dynamic'
+					AND ( pool_key = v_pool_key OR expiry_time < CURRENT_TIMESTAMP )
+				) WHERE ROWNUM <= 1
+		) FOR UPDATE SKIP LOCKED;
+		EXCEPTION
+		WHEN NO_DATA_FOUND THEN
+			r_address := NULL;
+		END;
+	END IF;
+
+	-- Oracle >= 12c version of the above query
+	--
+	-- IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
+	--	BEGIN
+	--	SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+	--		SELECT id FROM dhcpippool
+	--		JOIN dhcpstatus
+	--		ON dhcpstatus.status_id = dhcpippool.status_id
+	--		WHERE pool_name = v_pool_name
+	--			AND framedipaddress = v_requested_address
+	--			AND dhcpstatus.status = 'dynamic'
+	--			AND ( pool_key = v_pool_key OR expiry_time < CURRENT_TIMESTAMP )
+	--		FETCH FIRST 1 ROWS ONLY
+	--	) FOR UPDATE SKIP LOCKED;
+	--	EXCEPTION
+	--	WHEN NO_DATA_FOUND THEN
+	--		r_address := NULL;
+	--	END;
+	-- END IF;
+
+
+
 	-- If we didn't reallocate a previous address then pick the least
 	-- recently used address from the pool which maximises the likelihood
 	-- of re-assigning the other addresses to their recent user
 	--
-
 	IF r_address IS NULL THEN
 		DECLARE
 			l_cursor sys_refcursor;
