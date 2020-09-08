@@ -35,9 +35,8 @@ my $sql_host		= 'localhost';
 my $sql_user		= 'radius';
 my $sql_pass		= 'radpass';
 my $sql_database	= 'radius';
-my $sql_table		= 'radippool';
+my $sql_table		= 'dhcpippool';
 my $pool_name		= '';
-my $pool_key		= 'Calling-Station-Id';
 my $insert_only 	= 0;
 
 my $verbose;
@@ -61,7 +60,6 @@ $this[$#this] [options] <pool>
 
 Options:
 	-leases <lease file>    - The lease file to parse (defaults to '$lease_file')
-	-pool-key <attribute>	- The attribute used to identify the user (defaults to '$pool_key')
 	-no-update		- Don't update existing lease entries
 	-type			- SQL database type (defaults to '$sql_type')
 	-table			- SQL table (defaults to '$sql_table')
@@ -77,7 +75,6 @@ HELP
 
 GetOptions (
 	'leases=s'	=> \$lease_file,
-	'pool-key=s'	=> \$pool_key,
 	'no-update'	=> \$insert_only,
 	'type=s'	=> \$sql_type,
 	'table=s'	=> \$sql_table,
@@ -115,7 +112,7 @@ for my $lease ($leases->get_objects) {
 		$query = $handle->prepare("
 			SELECT expiry_time, framedipaddress FROM $sql_table
 			WHERE pool_name = ?
-			AND callingstationid = ?;"
+			AND pool_key = ?;"
 			, undef);
 
 		$query->bind_param(1, $pool_name);
@@ -135,16 +132,13 @@ for my $lease ($leases->get_objects) {
 			$handle->do("
 				INSERT INTO $sql_table (
 					pool_name, framedipaddress,
-					calledstationid, callingstationid
 					expiry_time, pool_key)
-				VALUES (?, ?, ?, ?, ?, ?);"
+				VALUES (?, ?, ?, ?);"
 				, undef
 				, $pool_name
 				, $lease->ip_address
-				, '00:00:00:00:00:00'
-				, $lease->mac_address
 				, $dt_sql->format_datetime($ends_isc)
-				, $pool_key
+				, $lease->mac_address
 			);
 		};
 		
@@ -165,14 +159,14 @@ for my $lease ($leases->get_objects) {
 			$handle->do("
 				UPDATE $sql_table
 				SET 
-					framedipaddress = ?, expiry_time = ?
+					pool_key = ?, expiry_time = ?
 				WHERE pool_name = ?
-				AND callingstationid = ?;"
+				AND framedipaddress = ?;"
 				, undef
-				, $lease->ip_address
+				, $lease->mac_address
 				, $dt_sql->format_datetime($ends_isc)
 				, $pool_name
-				, $lease->mac_address
+				, $lease->ip_address
 			);
 		};
 		
