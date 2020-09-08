@@ -21,7 +21,8 @@
 --              @v_pool_name = '%{control:${pool_name}}', \
 --              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
 --              @v_pool_key = '${pool_key}', \
---              @v_lease_duration = ${lease_duration} \
+--              @v_lease_duration = ${lease_duration}, \
+--              @v_requested_address = '%{%{${req_attribute_name}}:-0.0.0.0}' \
 --      "
 -- allocate_update = ""
 -- allocate_commit = ""
@@ -31,7 +32,8 @@ CREATE OR ALTER PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress
 	@v_pool_name VARCHAR(64),
 	@v_gateway VARCHAR(15),
 	@v_pool_key VARCHAR(64),
-	@v_lease_duration INT
+	@v_lease_duration INT,
+	@v_requested_address VARCHAR(15)
 AS
 	BEGIN
 
@@ -54,7 +56,7 @@ AS
 		--
 		WITH cte AS (
 			SELECT TOP(1) FramedIPAddress
-			FROM dhcpippool
+			FROM dhcpippool WITH (rowlock, readpast)
 			JOIN dhcpstatus
 			ON dhcpstatus.status_id = dhcpippool.status_id
 			WHERE pool_name = @v_pool_name
@@ -62,7 +64,7 @@ AS
 				AND pool_key = @v_pool_key
 				AND dhcpstatus.status IN ('dynamic', 'static')
 		)
-		UPDATE cte WITH (rowlock, readpast)
+		UPDATE cte
 		SET FramedIPAddress = FramedIPAddress
 		OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 		SELECT @r_address = id FROM @r_address_tab;
@@ -76,17 +78,37 @@ AS
 		--
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) FramedIPAddress
-		-- 	FROM dhcpippool
+		-- 	FROM dhcpippool WITH (rowlock, readpast)
 		--	JOIN dhcpstatus
 		--	ON dhcpstatus.status_id = dhcpippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
 		-- 		AND pool_key = @v_pool_key
 		--		AND dhcpstatus.status IN ('dynamic', 'static')
 		-- )
-		-- UPDATE cte WITH (rowlock, readpast)
+		-- UPDATE cte
 		-- SET FramedIPAddress = FramedIPAddress
 		-- OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 		-- SELECT @r_address = id FROM @r_address_tab;
+
+		-- Issue the requested IP address if it is available
+		--
+		IF @r_address IS NULL AND @v_requested_address <> '0.0.0.0'
+		BEGIN
+			WITH cte AS (
+				SELECT TOP(1) FramedIPAddress
+				FROM dhcpippool WITH (rowlock, readpast)
+				JOIN dhcpstatus
+				ON dhcpstatus.status_id = dhcpippool.status_id
+				WHERE pool_name = @v_pool_name
+					AND framedipaddress = @v_requested_address
+					AND dhcpstatus.status = 'dynamic'
+					AND ( pool_key = @v_pool_name OR expiry_time < CURRENT_TIMESTAMP )
+			)
+			UPDATE cte
+			SET FramedIPAddress = FramedIPAddress
+			OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
+			SELECT @r_address = id FROM @r_address_tab;
+		END
 
 		-- If we didn't reallocate a previous address then pick the least
 		-- recently used address from the pool which maximises the likelihood
@@ -96,7 +118,7 @@ AS
 		BEGIN
 			WITH cte AS (
 				SELECT TOP(1) FramedIPAddress
-				FROM dhcpippool
+				FROM dhcpippool WITH (rowlock, readpast)
 				JOIN dhcpstatus
 				ON dhcpstatus.status_id = dhcpippool.status_id
 				WHERE pool_name = @v_pool_name
@@ -105,7 +127,7 @@ AS
 				ORDER BY
 					expiry_time
 			)
-			UPDATE cte WITH (rowlock, readpast)
+			UPDATE cte
 			SET FramedIPAddress = FramedIPAddress
 			OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 			SELECT @r_address = id FROM @r_address_tab;
