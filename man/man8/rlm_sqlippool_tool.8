@@ -1,0 +1,150 @@
+.TH RLM_SQLIPPOOL_TOOL 8
+.SH NAME
+rlm_sqlippool_tool - manage SQL IP pools
+.SH SYNOPSIS
+.B rlm_sqlippool_tool
+.RB \-p
+.IR pool_name
+.RB \-s
+.IR range_start
+.RB \-e
+.IR range_end
+.RB \-t
+.IR table_name
+.RB \-d
+.OR dialect
+.RB \-f
+.IR raddb_dir
+.RB \-i
+.IR instance
+.RB [ \-c
+.IR capacity ]
+.RB [ \-x
+.IR existing_ips_file ]
+
+.B rlm_sqlippool_tool
+.RB \-y
+.IR pool_defs_yaml_file
+.RB \-t
+.IR table_name
+.RB \-d
+.OR dialect
+.RB \-f
+.IR raddb_dir
+.RB \-i
+.IR instance
+.RB [ \-x
+.IR existing_ips_file ]
+
+.SH DESCRIPTION
+\fBrlm_sqlippool_tool\fP is a tool to manage IP address in SQL IP
+pools as used by FreeRADIUS.  It will either output SQL that can
+be used to manipulate the database or will interact directly with
+a database to populate an IP pool table.
+
+The format of the SQL output or the commands operated on the database
+are based on the default FreeRADIUS ippool schemas.  The fields
+populated are \fIpool_name\fP and \fIframedipaddress\fP.  All other
+fields are left to be populated with their database defaults.
+
+.SH OPTIONS
+
+.IP \-c\ \fIcapacity\fP
+Number of IP addreses to populate the pool with.  Defaults to 65536,
+or the maximum number that can be provisioned between the start and
+end of the range.
+.IP \-d\ \fIdialect\fP
+SQL dialect to use in producing the output.
+.IP \-e\ \fIrange_end\fP
+End IP address in the pool range.  Either IPv4 or IPv6 addresses are
+allowed.
+.IP \-f\ \fIraddb_dir\fP
+Directory containing the FreeRADIUS configuration.  If this option
+is specified, then \fBrlm_sqlippool_tool\fP will parse the configuration
+and attempt to talk directly to the database server specified in
+the FreeRADIUS configuration.
+.IP \-i\ \fIinstance\fP
+Used in conjuction with -f.  Specifies the name of the sql module
+instance to parse in the FreeRADIUS configuration.  Defaults to \fIsql\fP.
+.IP \-p\ \fIpool_name\fP
+The pool name to populate.
+.IP \-s\ \fIrange_start\fP
+Start IP address in the pool range.  Either IPv4 or IPv6 addresses
+are allowed.
+.IP \-t\ \fItable_name\fP
+Name of the table in the database to populate.
+.IP \-x\ \fIexisting_ips_file\fP
+A file containing exsiting IP addresses in the pool.  Use of this allows
+for more controlled growth of a sparesly populated pool.
+.IP \-y\ \fIpool_defs_yaml_file\fP
+A YAML formatted file containing specifications for a number of pools.
+
+.SH EXAMPLES
+To produce MySQL formatted SQL for a pool named \fIlocal\fP populated with
+addresses from 10.0.0.1 to 10.0.0.199:
+.PP
+.nf
+.RS
+$ rlm_sqlippool_tool -p local -s 10.0.0.1 -e 10.0.0.199 \\
+    -t dhcpippool -d mysql
+.RE
+.fi
+.PP
+To do the same but directly interacting with the SQL module configured
+in the FreeRADIUS configuration under \fI/etc/raddb\fP:
+.PP
+.nf
+.RS
+$ rlm_sqlippool_tool -p local -s 10.0.0.1 -e 10.0.0.199 \\
+    -t dhcpippool -f /etc/raddb
+.RE
+.fi
+.PP
+To use a YAML file to specify the pool ranges to be populated, outputting
+PostgreSQL formatted SQL:
+.PP
+.nf
+.RS
+$ rlm_sqlippool_tool -y pools.yaml -t dhcpippool -d postgresql
+.RE
+.fi
+.PP
+
+.SH YAML FORMAT
+
+A YAML file to populate multiple pools should be formatted like this:
+.PP
+.nf
+.RS
+pool_with_a_single_contiguous_range:
+  - start:    192.0.2.3
+    end:      192.0.2.250
+
+pool_with_a_single_sparse_range:
+  - start:    10.10.10.0
+    end:      10.10.20.255
+    capacity: 200
+
+pool_with_multiple_ranges:
+  - start:    10.10.10.1
+    end:      10.10.10.253
+  - start:    10.10.100.0
+    end:      10.10.199.255
+    capacity: 1000
+
+v6_pool_with_contiguous_range:
+  - start:    '2001:db8:1:2:3:4:5:10'
+    end:      '2001:db8:1:2:3:4:5:7f'
+
+v6_pool_with_sparse_range:
+  - start:    '2001:db8:1:2::'
+    end:      '2001:db8:1:2:ffff:ffff:ffff:ffff'
+    capacity: 200
+.RE
+.ni
+.PP
+
+.SH SEE ALSO
+radiusd.conf(5), raddb/mods-available/sql
+.SH AUTHORS
+Nick Porter <nick@portercomputing.co.uk>
