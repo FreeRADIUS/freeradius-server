@@ -174,9 +174,9 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	/*
 	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
 	 *
-	 *	We allow "type = foo", but we just load proto_vmps_all.a
+	 *	We allow "type = foo", but we just load proto_vmps_process.a
 	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, "all", DL_MODULE_TYPE_SUBMODULE);
+	return dl_module_instance(ctx, out, process_app_cs, parent_inst, "process", DL_MODULE_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
