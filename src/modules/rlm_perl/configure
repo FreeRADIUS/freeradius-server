@@ -2940,7 +2940,14 @@ $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: ExtUtil's ccopts were \"${mod_cflags}\"" >&6;}
 
-		mod_cflags=$(echo "$mod_cflags" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_cflags=`echo $mod_cflags | sed -e '\
+			s/-I */-isystem /g;\
+			s/-arch ^ *//g;\
+			s/  / /g;\
+			s/^ *//;\
+			s/ *$//;\
+			s/-fstack-clash-protection[[:blank:]]*//g;
+			'`
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
