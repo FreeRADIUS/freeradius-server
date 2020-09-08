@@ -721,6 +721,12 @@ ifneq "$(MAKECMDGOALS)" "clean"
       $(eval -include ${${TGT}_DEPS}))
 endif
 
+#
+#  Install binaries
+#
+$(foreach B,$(INSTALL_BIN),\
+  $(eval $(call ADD_INSTALL_RULE.bin,${B})))
+
 # Build rules for installation subdirectories
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))

@@ -53,6 +53,23 @@ define ADD_INSTALL_RULE.exe
 
 endef
 
+# ADD_INSTALL_RULE.bin - Parameterized "function" that adds a new rule
+#   and phony target for installing an executable into the "bin" directory
+#
+#   USE WITH EVAL
+#
+define ADD_INSTALL_RULE.bin
+    ALL_INSTALL += ${R}${bindir}/$(notdir ${1})
+
+    # Global install depends on ${1}
+    install: ${R}${bindir}/$(notdir ${1})
+
+    # Install executable ${1}
+    ${R}${bindir}/$(notdir ${1}): ${1} | ${R}${bindir}/
+	@$(ECHO) INSTALL $(notdir ${1})
+	$(Q)$${PROGRAM_INSTALL} -c -m 755 ${1} ${R}${bindir}/
+endef
+
 # ADD_INSTALL_RULE.a - Parameterized "function" that adds a new rule
 #   and phony target for installing a static library
 #
