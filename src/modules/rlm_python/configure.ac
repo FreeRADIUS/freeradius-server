@@ -47,6 +47,8 @@ if test x$with_[]modname != xno; then
 		dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 		dnl # Strip -W*, we decide what warnings are important
 		dnl # Strip -DNDEBUG
+		dnl # Strip -stack-clash-protection.  We don't need it for our module and it's not
+		dnl # supported by clang < 11.
 		mod_cflags=`echo $python_cflags | sed -e '\
 			s/-I/-isystem/g;\
 			s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
@@ -54,7 +56,8 @@ if test x$with_[]modname != xno; then
 			s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
 			s/-g[[^ ]]*//g;\
 			s/-W[[^ ]]*//g;\
-			s/-DNDEBUG[[[:blank:]]]*//g;
+			s/-DNDEBUG[[[:blank:]]]*//g;\
+			s/-fstack-clash-protection[[[:blank:]]]*//g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
