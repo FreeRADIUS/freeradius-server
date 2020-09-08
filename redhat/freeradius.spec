@@ -809,6 +809,7 @@ fi
 %doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
+%doc %{_mandir}/man8/rlm_sqlippool_tool.8.gz
 
 %files json
 %defattr(-,root,root)
