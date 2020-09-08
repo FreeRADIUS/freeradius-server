@@ -100,6 +100,9 @@ $ rlm_sqlippool_tool -p local -s 10.0.0.1 -e 10.0.0.199 \\
 .RE
 .fi
 .PP
+\fBNote:\fP Direct connection to the database is done using Perl DBI.  You
+may need to install the appropriate Perl DBD driver to enable this functionality.
+.PP
 To use a YAML file to specify the pool ranges to be populated, outputting
 PostgreSQL formatted SQL:
 .PP
