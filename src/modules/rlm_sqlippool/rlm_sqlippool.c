@@ -49,10 +49,13 @@ typedef struct {
 	char const	*pool_name;
 	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
 	char const	*attribute_name;	//!< name of the IP address attribute
+	fr_dict_attr_t const *req_framed_ip_address; //!< the attribute for requested IP address
+	char const	*req_attribute_name;	//!< name of the requested IP address attribute
 
 						/* Alloc sequence */
 	char const	*alloc_begin;		//!< SQL query to begin.
 	char const	*alloc_existing;	//!< SQL query to find existing IP.
+	char const	*alloc_requested;	//!< SQL query to find requested IP.
 	char const	*alloc_find;		//!< SQL query to find an unused IP.
 	char const	*alloc_update;		//!< SQL query to mark an IP as used.
 	char const	*alloc_commit;		//!< SQL query to commit.
@@ -61,6 +64,7 @@ typedef struct {
 
 						/* Update sequence */
 	char const	*update_begin;		//!< SQL query to begin.
+	char const	*update_free;		//!< SQL query to clear offered IPs
 	char const	*update_update;		//!< SQL query to update an IP entry.
 	char const	*update_commit;		//!< SQL query to commit.
 
@@ -109,12 +113,16 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
 
+	{ FR_CONF_OFFSET("req_attribute_name", FR_TYPE_STRING, rlm_sqlippool_t, req_attribute_name) },
+
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
 
 	{ FR_CONF_OFFSET("alloc_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
 
 	{ FR_CONF_OFFSET("alloc_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_existing) },
+
+	{ FR_CONF_OFFSET("alloc_requested", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_requested) },
 
 	{ FR_CONF_OFFSET("alloc_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, alloc_find) },
 
@@ -127,6 +135,8 @@ static CONF_PARSER module_config[] = {
 
 
 	{ FR_CONF_OFFSET("update_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_begin) },
+
+	{ FR_CONF_OFFSET("update_free", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_free) },
 
 	{ FR_CONF_OFFSET("update_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, update_update) },
 
@@ -436,6 +446,26 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 	}
 
+	if (inst->req_attribute_name) {
+		if (fr_dict_attr_by_qualified_name(&inst->req_framed_ip_address,
+						   dict_freeradius, inst->req_attribute_name, false) != FR_DICT_ATTR_OK) {
+			cf_log_perr(conf, "Failed resolving requested attribute");
+			return -1;
+		}
+
+		switch (inst->req_framed_ip_address->type) {
+		default:
+			cf_log_err(conf, "Cannot use non-IP attributes for 'req_attribute_name = %s'", inst->req_attribute_name);
+			return -1;
+
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_PREFIX:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_PREFIX:
+			break;
+		}
+	}
+
 	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
 
 	if (strcmp(cf_section_name1(inst->sql_inst->cs), "sql") != 0) {
@@ -520,6 +550,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	} else {
 		allocation_len = 0;
 	}
+
+	/*
+	 *	If no existing IP was found and we have a requested IP address
+	 *	and a query to find whether it is available then try that
+	 */
+	if (allocation_len == 0 && inst->alloc_requested && *inst->alloc_requested &&
+	    fr_pair_find_by_da(request->packet->vps, inst->req_framed_ip_address, TAG_ANY) != NULL) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->alloc_requested, &handle,
+						  inst, request, (char *) NULL, 0);
+		if (!handle) return RLM_MODULE_FAIL;
+	}
+
 
 	/*
 	 *	If no existing IP was found (or no query was run),
@@ -639,6 +682,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, REQUEST
 	}
 
 	DO_PART(update_begin);
+
+	/*
+	 *  An optional query which can be used to tidy up before updates
+	 *  primarily intended for multi-server setups sharing a common database
+	 *  allowing for tidy up of multiple offered addresses in a DHCP context.
+	 */
+	DO_PART(update_free);
 
 	affected = sqlippool_command(inst->update_update, &handle, inst, request, NULL, 0);
 
