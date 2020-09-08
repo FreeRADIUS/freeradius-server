@@ -33,7 +33,8 @@
 -- 		'%{control:${pool_name}}', \
 -- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
--- 		${lease_duration} \
+-- 		${lease_duration}, \
+-- 		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 -- 	)"
 -- allocate_update = ""
 -- allocate_commit = ""
@@ -46,12 +47,22 @@ CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
 	IN v_pool_name VARCHAR(64),
 	IN v_gateway VARCHAR(15),
 	IN v_pool_key VARCHAR(64),
-	IN v_lease_duration INT
+	IN v_lease_duration INT,
+	IN v_requested_address VARCHAR(15)
 )
 proc:BEGIN
 	DECLARE r_address VARCHAR(15);
 
 	-- Reissue an existing IP address lease when re-authenticating a session
+	--
+	-- Note: In this query we get away without the need for FOR UPDATE
+	--       becase:
+	--
+	--         (a) Each existing lease only belongs to a single device, so
+	--             no two devices will be racing over a single address.
+	--         (b) The set of existing leases (not yet expired) are
+	--             disjoint from the set of free leases, so not subject to
+	--             reallocation.
 	--
 	SELECT framedipaddress INTO r_address
 	FROM dhcpippool
@@ -74,6 +85,15 @@ proc:BEGIN
 	--	AND pool_key = v_pool_key
 	--	AND `status` IN ('dynamic', 'static')
 	-- LIMIT 1;
+
+	--
+	-- Normally here we would honour an IP address hint if the IP were
+	-- available, however we cannot do that without taking a lock which
+	-- defeats the purpose of this version of the stored procedure.
+	--
+	-- It you need to honour an IP address hint then use a database with
+	-- support for SKIP LOCKED and use the normal stored procedure.
+	--
 
 	IF r_address IS NOT NULL THEN
 		UPDATE dhcpippool
