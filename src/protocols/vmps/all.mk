@@ -3,9 +3,9 @@
 #
 # Version:      $Id$
 #
-TARGET		:= libfreeradius-vqp.a
+TARGET		:= libfreeradius-vmps.a
 
-SOURCES		:= vqp.c base.c
+SOURCES		:= vmps.c base.c
 
 SRC_CFLAGS	:= -I$(top_builddir)/src -DNO_ASSERT
 

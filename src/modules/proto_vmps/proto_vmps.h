@@ -24,7 +24,7 @@
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/master.h>
-#include <freeradius-devel/vqp/vqp.h>
+#include <freeradius-devel/vmps/vmps.h>
 
 /** An instance of a proto_vmps listen section
  *

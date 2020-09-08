@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= proto_vmps_dynamic_client.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a libfreeradius-vqp.a
+TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a libfreeradius-vmps.a

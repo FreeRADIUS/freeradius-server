@@ -28,7 +28,7 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/vqp/vqp.h>
+#include <freeradius-devel/vmps/vmps.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_vmps;
@@ -66,7 +66,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		RDEBUG("Received %s ID %i", fr_vqp_codes[request->packet->code], request->packet->id);
+		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "vmps";

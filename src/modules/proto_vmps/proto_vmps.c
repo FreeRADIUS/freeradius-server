@@ -258,9 +258,9 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_vqp_ok().
+	 *	transport, via a call to fr_vmps_ok().
 	 */
-	if (fr_vqp_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code) < 0) {
+	if (fr_vmps_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -371,7 +371,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 #endif
 
-	data_len = fr_vqp_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
 				  request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");
@@ -571,7 +571,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (fr_vqp_init() < 0) {
+	if (fr_vmps_init() < 0) {
 		PERROR("Failed initializing the VMPS dictionaries");
 		return -1;
 	}
@@ -581,7 +581,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_vqp_free();
+	fr_vmps_free();
 }
 
 fr_app_t proto_vmps = {
