@@ -174,7 +174,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *      If it's not a VMPS packet, ignore it.
 	 */
-	if (!fr_vqp_ok(buffer, &packet_len)) {
+	if (!fr_vmps_ok(buffer, &packet_len)) {
 		/*
 		 *      @todo - check for F5 load balancer packets.  <sigh>
 		 */

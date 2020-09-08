@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file src/protocols/vqp/vqp.c
+ * @file src/protocols/vmps/vmps.c
  * @brief Functions to send/receive VQP packets.
  *
  * @copyright 2007 Alan DeKok (aland@deployingradius.com)
@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/vmps/vmps.h>
 
-#include "vqp.h"
+#include "vmps.h"
 #include "attrs.h"
 
 /*
@@ -64,7 +64,7 @@ RCSID("$Id$")
  * VQP is layered over UDP.  The default destination port is 1589.
  *
  */
-char const *fr_vqp_codes[FR_VQP_MAX_CODE] = {
+char const *fr_vmps_codes[FR_VQP_MAX_CODE] = {
 	[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "Join-Request",
 	[FR_PACKET_TYPE_VALUE_JOIN_RESPONSE] = "Join-Response",
 	[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "Reconfirm-Request",
@@ -72,7 +72,7 @@ char const *fr_vqp_codes[FR_VQP_MAX_CODE] = {
 };
 
 
-static size_t const fr_vqp_attr_sizes[FR_TYPE_MAX + 1][2] = {
+static size_t const fr_vmps_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
 	[FR_TYPE_STRING]	= {0, ~0},
@@ -85,7 +85,7 @@ static size_t const fr_vqp_attr_sizes[FR_TYPE_MAX + 1][2] = {
 };
 
 
-bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
+bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 {
 	uint8_t	const	*ptr;
 	ssize_t		data_len;
@@ -144,7 +144,7 @@ bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
 }
 
 
-int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
+int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
 {
 	uint8_t const  	*ptr, *end;
 	int		attr;
@@ -188,9 +188,9 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 	end = data + data_len;
 
 	/*
-	 *	Note that vqp_recv() MUST ensure that the packet is
-	 *	formatted in a way we expect, and that vqp_recv() MUST
-	 *	be called before vqp_decode().
+	 *	Note that vmps_recv() MUST ensure that the packet is
+	 *	formatted in a way we expect, and that vmps_recv() MUST
+	 *	be called before vmps_decode().
 	 */
 	while (ptr < end) {
 		attr = (ptr[2] << 8) | ptr[3];
@@ -198,7 +198,7 @@ int fr_vqp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_P
 		ptr += 6;
 
 		/*
-		 *	fr_vqp_ok() should have checked this already,
+		 *	fr_vmps_ok() should have checked this already,
 		 *	but it doesn't hurt to do it again.
 		 */
 		if (attr_len > (size_t) (end - ptr)) {
@@ -262,7 +262,7 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 };
 #endif
 
-ssize_t fr_vqp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		       int code, uint32_t id, VALUE_PAIR *vps)
 {
 	uint8_t *attr;
@@ -322,11 +322,11 @@ ssize_t fr_vqp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 
 		switch (vp->vp_type) {
 		case FR_TYPE_IPV4_ADDR:
-			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			len = fr_vmps_attr_sizes[vp->vp_type][0];
 			break;
 
 		case FR_TYPE_ETHERNET:
-			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			len = fr_vmps_attr_sizes[vp->vp_type][0];
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -346,7 +346,7 @@ ssize_t fr_vqp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		/*
 		 *	Type.  Note that we look at only the lower 8
 		 *	bits, as the upper 8 bits have been hacked.
-		 *	See also dictionary.vqp
+		 *	See also dictionary.vmps
 		 */
 		attr[0] = 0;
 		attr[1] = 0;
@@ -401,7 +401,7 @@ next:
  *	<= 0 packet is bad.
  *      >0 how much of the data is a packet (can be larger than data_len)
  */
-ssize_t fr_vqp_packet_size(uint8_t const *data, size_t data_len)
+ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len)
 {
 	int attributes;
 	uint8_t const *ptr, *end;
@@ -493,7 +493,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 /** Print a raw VMPS packet as hex.
  *
  */
-void fr_vqp_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 {
 	int length;
 	uint8_t const *attr, *end;
@@ -503,14 +503,14 @@ void fr_vqp_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	fprintf(fp, "  Version:\t\t%u\n", packet[0]);
 
-	if ((packet[1] > 0) && (packet[1] < FR_VQP_MAX_CODE) && fr_vqp_codes[packet[1]]) {
-		fprintf(fp, "  OpCode:\t\t%s\n", fr_vqp_codes[packet[1]]);
+	if ((packet[1] > 0) && (packet[1] < FR_VQP_MAX_CODE) && fr_vmps_codes[packet[1]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[1]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[1]);
 	}
 
-	if ((packet[2] > 0) && (packet[2] < FR_VQP_MAX_CODE) && fr_vqp_codes[packet[2]]) {
-		fprintf(fp, "  OpCode:\t\t%s\n", fr_vqp_codes[packet[2]]);
+	if ((packet[2] > 0) && (packet[2] < FR_VQP_MAX_CODE) && fr_vmps_codes[packet[2]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[2]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[2]);
 	}

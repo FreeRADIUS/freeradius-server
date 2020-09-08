@@ -17,12 +17,12 @@
 
 /**
  * $Id$
- * @file src/protocols/vqp/attrs.h
+ * @file src/protocols/vmps/attrs.h
  * @brief VQP attributes
  *
  * @copyright 2019 The FreeRADIUS project
  */
-RCSIDH(vqp_attrs_h, "$Id$")
+RCSIDH(vmps_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
