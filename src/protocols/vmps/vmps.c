@@ -193,6 +193,11 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_
 	 *	be called before vmps_decode().
 	 */
 	while (ptr < end) {
+		if ((end - ptr) < 6) {
+			fr_strerror_printf("Packet is too small. (%ld < 6)", (end - ptr));
+			goto error;
+		}
+
 		attr = (ptr[2] << 8) | ptr[3];
 		attr_len = (ptr[4] << 8) | ptr[5];
 		ptr += 6;
