@@ -11,12 +11,6 @@ SECRET := testing123
 GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
 
 #
-#	We need the 'tacacs_plus' Python3 module to excute TACACS+ tests
-#	i.e: Needed by ./scripts/tacacs/tacacs_client
-#
-PYTHON3_HAS_TACACS_PLUS = $(shell python3 -c "import tacacs_plus" 2>&- && echo yes || echo no)
-
-#
 #  To work around OpenSSL issues with travis.
 #
 raddb/test.conf:

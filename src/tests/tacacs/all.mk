@@ -1,10 +1,21 @@
+TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
+
+#
+#	We need the 'tacacs_plus' Python3 module to excute TACACS+ tests
+#	i.e: Needed by ./scripts/tacacs/tacacs_client
+#
+$(TACACS_BUILD_DIR)/depends.mk:
+	@mkdir -p $(dir $@)
+	@(python3 -c "import tacacs_plus" 2>&- && echo WITH_TACACS=yes || echo WITH_TACACS=no) > $@
+
+-include $(TACACS_BUILD_DIR)/depends.mk
+
+
+
 #
 #	Unit tests for scripts/tacacs/tacacs_client against the radiusd/proto_tacacs.
 #
-ifeq "$(PYTHON3_HAS_TACACS_PLUS)" "no"
-	$(Q)echo "WARNING: Can't execute 'test.tacacs' without 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
-else
-
+ifeq "$(WITH_TACACS)" "yes"
 #
 #	Test name
 #
@@ -16,9 +27,9 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #	Config settings
 #
-TACCLIENT_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
-TACCLIENT_RADIUS_LOG := $(TACCLIENT_BUILD_DIR)/radiusd.log
-TACCLIENT_GDB_LOG    := $(TACCLIENT_BUILD_DIR)/gdb.log
+TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
+TACACS_RADIUS_LOG := $(TACACS_BUILD_DIR)/radiusd.log
+TACACS_GDB_LOG    := $(TACACS_BUILD_DIR)/gdb.log
 
 #
 #	Local TACACS+ client
@@ -40,7 +51,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
-	$(Q)echo "PROTO_TACACS INPUT=$(TARGET) TACCLIENT_ARGV=\"$(ARGV)\""
+	$(Q)echo "PROTO_TACACS INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(PORT) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
@@ -74,4 +85,9 @@ $(TEST):
 	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
 
+else
+.PHONY: test.tacacs
+test.tacacs:
+	$(Q)echo "WARNING: 'tests.tacacs' requires 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
+	$(@)echo "Skipping 'test.tacacs'"
 endif
