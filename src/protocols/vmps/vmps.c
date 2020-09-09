@@ -263,30 +263,39 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 #endif
 
 ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
-		       int code, uint32_t id, VALUE_PAIR *vps)
+		       int code, uint32_t seq_no, VALUE_PAIR *vps)
 {
 	uint8_t *attr;
 	VALUE_PAIR *vp;
 	fr_cursor_t cursor;
+	int our_code = code;
 
 	if (buflen < 8) {
-		fr_strerror_printf("Output buffer is too small for VMPS header.");
+		fr_strerror_printf("Output buffer is too small for VMPS header. (%zu < 8)", buflen);
 		return -1;
 	}
 
+	/* If the 'code' exist in the VP's, use it. */
+	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+	if (vp) our_code = vp->vp_uint8;
+
+	/* fill up */
 	buffer[0] = FR_VQP_VERSION;
-	buffer[1] = code;
+	buffer[1] = our_code;
 	buffer[2] = 0;
 	buffer[3] = 0;
 
 	/*
 	 *	The number of attributes is hard-coded.
 	 */
-	if ((code == 1) || (code == 3)) {
+	if (our_code != -1) {
+		uint32_t our_seq_no = seq_no;
 		uint32_t sequence;
 
+		vp = fr_pair_find_by_da(vps, attr_sequence_number, TAG_ANY);
+		if (vp) our_seq_no = vp->vp_uint32;
 
-		sequence = htonl(id);
+		sequence = htonl(our_seq_no);
 		memcpy(buffer + 4, &sequence, 4);
 	} else {
 		if (!original) {
