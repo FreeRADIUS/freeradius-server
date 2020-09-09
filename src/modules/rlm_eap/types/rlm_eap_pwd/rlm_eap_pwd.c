@@ -305,7 +305,7 @@ static int fetch_and_process_password(pwd_session_t *session, REQUEST *request, 
 	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
 		/* EAP-Type = NAK here if inst->prep == -1.
 		 * But this does not help the virtual server to differentiate
-		 * based on which EAP method was selected, that is to property
+		 * based on which EAP method was selected, that is to properly
 		 * prepare session-state: for PWD.
 		 * So fake EAP-Type = PWD here for the time of the inner request.
 		 */
