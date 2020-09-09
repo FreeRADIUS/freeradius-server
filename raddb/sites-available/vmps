@@ -85,6 +85,7 @@ server vmps {
 		#  required VMPS reply attributes
 		update reply {
 			&Packet-Type = Join-Response
+			&Error-Code = No-Error
 			&Cookie = &MAC-Address
 
 			&VLAN-Name = "please_use_real_vlan_here"
