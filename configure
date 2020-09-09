@@ -747,6 +747,7 @@ enable_verify_ptr
 enable_largefile
 enable_strict_dependencies
 enable_werror
+enable_llvm_fuzzer_sanitizer
 enable_llvm_address_sanitizer
 enable_llvm_leak_sanitizer
 enable_llvm_undefined_behaviour_sanitizer
@@ -1426,6 +1427,9 @@ Optional Features:
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
+  --enable-llvm-fuzzer-sanitizer
+                          build with support for LLVM's fuzzer sanitizer (if
+                          building with clang).
   --enable-llvm-address-sanitizer
                           build with support for LLVM's address sanitizer (if
                           building with clang).
@@ -5786,6 +5790,19 @@ if test "${enable_werror+set}" = set; then :
     ;;
     *)
       werror=yes
+  esac
+
+fi
+
+
+# Check whether --enable-llvm-fuzzer-sanitizer was given.
+if test "${enable_llvm_fuzzer_sanitizer+set}" = set; then :
+  enableval=$enable_llvm_fuzzer_sanitizer;  case "$enableval" in
+  no)
+    llvm_fuzzer_sanitizer=no
+    ;;
+  *)
+    llvm_fuzzer_sanitizer=yes
   esac
 
 fi
@@ -13245,6 +13262,10 @@ $as_echo "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
   fi
 
           fsanitizeflags=
+
+        if test "x$llvm_fuzzer_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
 
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
                         devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"

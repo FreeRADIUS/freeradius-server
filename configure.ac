@@ -353,6 +353,22 @@ AC_ARG_ENABLE(werror,
 )
 
 dnl #
+dnl #  Enable the -fsanitize=fuzzer and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(llvm-fuzzer-sanitizer,
+[AS_HELP_STRING([--enable-llvm-fuzzer-sanitizer],
+                [build with support for LLVM's fuzzer sanitizer (if building with clang).])],
+[ case "$enableval" in
+  no)
+    llvm_fuzzer_sanitizer=no
+    ;;
+  *)
+    llvm_fuzzer_sanitizer=yes
+  esac ]
+)
+
+dnl #
 dnl #  Enable the -fsanitize=address and link in the address sanitizer
 dnl #  libraries.
 dnl #
@@ -1751,6 +1767,16 @@ if test "x$developer" = "xyes"; then
   dnl #  the values into one.
   dnl #
   fsanitizeflags=
+
+  dnl #
+  dnl #  If running with clang, add in FUZZER
+  dnl #
+  if test "x$llvm_fuzzer_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=fuzzer  - Build with fuzzer support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
 
   dnl #
   dnl #  If running with clang, add in ASAN
