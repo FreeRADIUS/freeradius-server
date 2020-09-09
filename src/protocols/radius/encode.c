@@ -645,7 +645,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *
  * @param dbuff	dbuff that has at its end a header followed by too much data
  * 			for the header's one-byte length field
- * @param ptr		points at said header
+ * @param ptr		marker that points at said header
  * @param hdr_len	length of the headers that will be added
  * @param len		number of bytes of data, starting at ptr + ptr[1]
  * @param flag_offset	offset within header of a flag byte whose MSB is set for all
@@ -659,12 +659,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  * constrained then those following.
  */
 static ssize_t attr_shift(fr_dbuff_t *dbuff,
-			  uint8_t *ptr, int hdr_len, ssize_t len,
+			  fr_dbuff_marker_t *ptr, int hdr_len, ssize_t len,
 			  int flag_offset, int vsa_offset)
 {
-	int		check_len = len - ptr[1];
-	int		total = hdr_len;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	int			check_len = len - fr_dbuff_marker_current(ptr)[1];
+	int			total = hdr_len;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
 
 	/*
 	 *	Pass 1: Check if the addition of the headers
@@ -684,32 +687,40 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 	 *	"encode_value" function to take into account the header
 	 *	lengths.
 	 */
-	if (fr_dbuff_advance(&work_dbuff, total) < 0) return (ptr + ptr[1]) - dbuff->start;
+	if (fr_dbuff_advance(&work_dbuff, total) < 0) {
+		return (fr_dbuff_marker_current(ptr) + fr_dbuff_marker_current(ptr)[1]) - fr_dbuff_marker_current(&start);
+	}
 
 	/*
 	 *	Pass 2: Now that we know there's enough freespace,
 	 *	re-arrange the data to form a set of valid
 	 *	RADIUS attributes.
 	 */
-	while (1) {
-		int sublen = 255 - ptr[1];
 
-		if (len <= sublen) break;
+	for (;;) {
+		/* Extend current attribute as much as possible. */
+		int sublen = 255 - fr_dbuff_marker_current(ptr)[1];
+		if (len < sublen) sublen = len;
+		fr_dbuff_marker_current(ptr)[1] += sublen;
 
+		/* Adjust the other length field if it exists. */
+		if (vsa_offset) fr_dbuff_marker_current(ptr)[vsa_offset] += sublen;
+
+		/* If all data are accounted for, we're done. */
 		len -= sublen;
-		memmove(ptr + 255 + hdr_len, ptr + 255, sublen);
-		memmove(ptr + 255, ptr, hdr_len);
-		ptr[1] += sublen;
-		if (vsa_offset) ptr[vsa_offset] += sublen;
-		ptr[flag_offset] |= 0x80;
+		if (len == 0) break;
 
-		ptr += 255;
-		ptr[1] = hdr_len;
-		if (vsa_offset) ptr[vsa_offset] = 3;
+		/* This attribute isn't the last, so flag it. */
+		fr_dbuff_marker_current(ptr)[flag_offset] |= 0x80;
+
+		/* Make room for another header. */
+		memmove(fr_dbuff_marker_current(ptr) + 255 + hdr_len, fr_dbuff_marker_current(ptr) + 255, sublen);
+		/* Copy current header into new header and advance to it... */
+		memmove(fr_dbuff_marker_current(ptr) + 255, fr_dbuff_marker_current(ptr), hdr_len);
+		fr_dbuff_marker_advance(ptr, 255);
+		/* ...but set its length to that of the header. */
+		fr_dbuff_marker_current(ptr)[1] = hdr_len;
 	}
-
-	ptr[1] += len;
-	if (vsa_offset) ptr[vsa_offset] += len;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -728,10 +739,12 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	int			jump = 3;
 #endif
 	int			extra;
-	uint8_t			*hdr = dbuff->p;
+	fr_dbuff_marker_t	hdr;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		*attr_dbuff;
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -754,15 +767,13 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	 */
 	switch (attr_type) {
 	case FR_TYPE_EXTENDED:
-		FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, (size_t)(3 + extra));
-
 		/*
 		 *	Encode which extended attribute it is.
 		 */
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
-		if (extra) fr_dbuff_bytes_in(&work_dbuff, 0);	/* flags start off at zero */
+		if (extra) FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);	/* flags start off at zero */
 		break;
 
 	default:
@@ -778,19 +789,18 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	 *	Handle VSA as "VENDOR + attr"
 	 */
 	if (da_stack->da[depth]->type == FR_TYPE_VSA) {
-		FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, 5);
-
 		depth++;
 
-		fr_dbuff_uint32_in(&work_dbuff, da_stack->da[depth++]->attr);
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) da_stack->da[depth++]->attr);
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
-		hdr[1] += 5;
+		fr_dbuff_marker_current(&hdr)[1] += 5;
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
-		FR_PROTO_HEX_DUMP(hdr, hdr[1], "header extended vendor specific");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), fr_dbuff_marker_current(&hdr)[1],
+				  "header extended vendor specific");
 	} else {
-		FR_PROTO_HEX_DUMP(hdr, hdr[1], "header extended");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), fr_dbuff_marker_current(&hdr)[1], "header extended");
 	}
 
 	/*
@@ -812,19 +822,19 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
-	if (slen > (255 - hdr[1])) {
-		slen = attr_shift(&work_dbuff, hdr, 4, slen, 3, 0);
+	if (slen > (255 - fr_dbuff_marker_current(&hdr)[1])) {
+		slen = attr_shift(&work_dbuff, &hdr, 4, slen, 3, 0);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
 
-	hdr[1] += slen;
+	fr_dbuff_marker_current(&hdr)[1] += slen;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl > 3) {
 		if (vsa_type == FR_TYPE_VENDOR) jump += 5;
 
-		FR_PROTO_HEX_DUMP(hdr, jump, "header extended");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), jump, "header extended");
 	}
 #endif
 
@@ -843,7 +853,6 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
-	uint8_t			*hdr;
 	uint8_t const		*p;
 	size_t			left;
 	ssize_t			slen;
@@ -856,25 +865,22 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	slen = fr_radius_attr_len(vp);
 
 	while (slen > 0) {
-		if (fr_dbuff_remaining(&work_dbuff) <= 2) break;
+		fr_dbuff_marker_t	hdr;
 
-		hdr = work_dbuff.p;
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, 2);
+		fr_dbuff_marker(&hdr, &work_dbuff);
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, 2);
 
 		left = slen;
 
 		/* no more than 253 octets */
 		if (left > 253) left = 253;
 
-		/* no more than "freespace" octets */
-		if (fr_dbuff_remaining(&work_dbuff) < (left + 2)) left = fr_dbuff_remaining(&work_dbuff) - 2;
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, p, left);
 
-		fr_dbuff_memcpy_in(&work_dbuff, p, left);
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr) + 2, left, "concat value octets");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), 2, "concat header rfc");
 
-		FR_PROTO_HEX_DUMP(hdr + 2, left, "concat value octets");
-		FR_PROTO_HEX_DUMP(hdr, 2, "concat header rfc");
-
-		hdr[1] += left;
+		fr_dbuff_marker_current(&hdr)[1] += left;
 		p += left;
 		slen -= left;
 	}
@@ -900,11 +906,12 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t slen;
-	uint8_t	*hdr = dbuff->p;
+	ssize_t 		slen;
+	fr_dbuff_marker_t	hdr;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	switch (da_stack->da[depth]->type) {
 	default:
@@ -928,9 +935,9 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encoder_ctx);
 	if (slen <= 0) return slen;
 
-	hdr[1] += slen;
+	fr_dbuff_marker_current(&hdr)[1] += slen;
 
-	FR_PROTO_HEX_DUMP(hdr, 2, "header rfc");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), 2, "header rfc");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -947,10 +954,11 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	ssize_t			slen;
 	size_t			hdr_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	uint8_t			*hdr = dbuff->p;
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da, *dv;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	dv = da_stack->da[depth++];
 
@@ -965,6 +973,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 		return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encoder_ctx);
 	}
 
+	fr_dbuff_marker(&hdr, &work_dbuff);
 	hdr_len = dv->flags.type_size + dv->flags.length;
 
 	/*
@@ -1018,9 +1027,9 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	}
 	if (slen <= 0) return slen;
 
-	if (dv->flags.length) hdr[hdr_len - 1] += slen;
+	if (dv->flags.length) fr_dbuff_marker_current(&hdr)[hdr_len - 1] += slen;
 
-	FR_PROTO_HEX_DUMP(hdr, hdr_len, "header vsa");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), hdr_len, "header vsa");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -1034,17 +1043,13 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	uint8_t			*hdr = dbuff->p;
+	fr_dbuff_marker_t	hdr;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	/*
-	 *	Not enough freespace for:
-	 *		attr, len, vendor-id, vsa, vsalen, continuation
-	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, 9);
 
 	if (da_stack->da[depth++]->attr != FR_VENDOR_SPECIFIC) {
 		fr_strerror_printf("%s: level[1] of da_stack is incorrect, must be Vendor-Specific (26)",
@@ -1063,13 +1068,13 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, FR_VENDOR_SPECIFIC, 9);
-	fr_dbuff_uint32_in(&work_dbuff, fr_dict_vendor_num_by_da(vp->da));
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 9);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) fr_dict_vendor_num_by_da(vp->da));
 
 	/*
 	 *	Encode the first attribute
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 3, 0);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 3, 0);
 
 	/*
 	 *	"outlen" can be larger than 255 because of the "continuation" byte.
@@ -1089,16 +1094,16 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	 *	and copy the existing header over.  Set the "C" flag
 	 *	ONLY after copying the rest of the data.
 	 */
-	if (slen > (255 - hdr[1])) {
-		slen = attr_shift(&work_dbuff, hdr, hdr[1], slen, 8, 7);
+	if (slen > (255 - fr_dbuff_marker_current(&hdr)[1])) {
+		slen = attr_shift(&work_dbuff, &hdr, fr_dbuff_marker_current(&hdr)[1], slen, 8, 7);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
 
-	hdr[1] += slen;
-	hdr[7] += slen;
+	fr_dbuff_marker_current(&hdr)[1] += slen;
+	fr_dbuff_marker_current(&hdr)[7] += slen;
 
-	FR_PROTO_HEX_DUMP(hdr, 9, "header wimax");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), 9, "header wimax");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -1110,10 +1115,12 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	uint8_t			*hdr = dbuff->p;
+	fr_dbuff_marker_t	hdr;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1152,9 +1159,9 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	len = encode_vendor_attr_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 6), da_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;
 
-	hdr[1] = fr_dbuff_used(&work_dbuff);
+	fr_dbuff_marker_current(&hdr)[1] = fr_dbuff_used(&work_dbuff);
 
-	FR_PROTO_HEX_DUMP(hdr, 6, "header vsa");
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hdr), 6, "header vsa");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -1167,6 +1174,9 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 {
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	start;
+
+	fr_dbuff_marker(&start, &work_dbuff);
 
 	/*
 	 *	Sanity checks
@@ -1204,7 +1214,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	if ((vp->da == attr_chargeable_user_identity) && (vp->vp_length == 0)) {
 		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)vp->da->attr, 2);
 
-		FR_PROTO_HEX_DUMP(dbuff->p, 2, "header rfc");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), 2, "header rfc");
 
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -1215,13 +1225,12 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	 *	Message-Authenticator is hard-coded.
 	 */
 	if (vp->da == attr_message_authenticator) {
-		FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, 18);
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
+		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, 16);
 
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)vp->da->attr, 18);
-		fr_dbuff_memset(&work_dbuff, 0, 16);
-
-		FR_PROTO_HEX_DUMP(dbuff->p + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH, "message-authenticator");
-		FR_PROTO_HEX_DUMP(dbuff->p, 2, "header rfc");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start) + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH,
+				  "message-authenticator");
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), 2, "header rfc");
 
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -1254,14 +1263,13 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const	*vp;
-	size_t			attr_len;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (!cursor || fr_dbuff_remaining(&work_dbuff) <= 2) return PAIR_ENCODE_FATAL_ERROR;
+	if (!cursor) return PAIR_ENCODE_FATAL_ERROR;
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) return 0;
@@ -1294,7 +1302,6 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 	 *	255 bytes, so each call to an encode function can
 	 *	only use 255 bytes of buffer space at a time.
 	 */
-	attr_len = (fr_dbuff_remaining(&work_dbuff) > UINT8_MAX) ? UINT8_MAX : fr_dbuff_remaining(&work_dbuff);
 
 	/*
 	 *	Fast path for the common case.
@@ -1304,7 +1311,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 		da_stack.da[1] = NULL;
 		da_stack.depth = 1;
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
@@ -1329,7 +1336,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 			if (len < 0) return len;
 			break;
 		}
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		break;
 
@@ -1345,17 +1352,17 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 			if (len < 0) return len;
 			break;
 		}
-		len = encode_vsa_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_vsa_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		break;
 
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		break;
 
 	case FR_TYPE_EXTENDED:
-		len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		break;
 
