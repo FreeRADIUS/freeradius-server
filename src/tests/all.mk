@@ -62,6 +62,7 @@ test: \
 		test.radmin	\
 		test.eap	\
 		test.tacacs	\
+		test.vmps	\
 		| build.raddb
 
 clean: clean.test
