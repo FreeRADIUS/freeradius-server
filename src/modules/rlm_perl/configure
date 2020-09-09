@@ -2935,18 +2935,18 @@ fi
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
-		mod_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${mod_cflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ccopts were \"${mod_cflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
 
-		mod_cflags=`echo $mod_cflags | sed -e '\
+		mod_cflags=`echo $perl_cflags | sed -e '\
 			s/-I */-isystem /g;\
 			s/-arch ^ *//g;\
 			s/  / /g;\
 			s/^ *//;\
 			s/ *$//;\
-			s/-fstack-clash-protection[[:blank:]]*//g;
+			s/-fstack-clash-protection[[:blank:]]*//g; \
 			'`
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
@@ -2956,12 +2956,17 @@ $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ldflags'" >&6;}
-		mod_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${mod_ldflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ldopts were \"${mod_ldflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ldopts were \"${perl_ldflags}\"" >&6;}
 
-		mod_ldflags=$(echo "$mod_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_ldflags=`echo $perl_ldflags | sed -e '\
+			s/-arch ^ *//g;\
+			s/  / /g;\
+			s/^ *//;\
+			s/ *$//;\
+			'`
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldopts are \"${mod_ldflags}\"" >&6;}

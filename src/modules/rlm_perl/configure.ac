@@ -24,17 +24,17 @@ if test x$with_[]modname != xno; then
 		dnl # Call ExtUtils::Embed to get compiler flags
 		dnl ############################################################
 		AC_MSG_NOTICE([Calling ExtUtils::Embed to get 'ccopts'])
-		mod_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-		AC_MSG_NOTICE([ExtUtil's ccopts were \"${mod_cflags}\"])
+		AC_MSG_NOTICE([ExtUtil's ccopts were \"${perl_cflags}\"])
 
-		mod_cflags=`echo $mod_cflags | sed -e '\
+		mod_cflags=`echo $perl_cflags | sed -e '\
 			s/-I[ ]*/-isystem /g;\
 			s/-arch [^ ]*//g;\
 			s/  / /g;\
 			s/^ *//;\
 			s/ *$//;\
-			s/-fstack-clash-protection[[[:blank:]]]*//g;
+			s/-fstack-clash-protection[[[:blank:]]]*//g; \
 			'`
 
 		AC_MSG_NOTICE([Sanitized ccopts are \"${mod_cflags}\"])
@@ -45,11 +45,16 @@ if test x$with_[]modname != xno; then
 		dnl #  Call ExtUtils::Embed to get linker flags
 		dnl ############################################################
 		AC_MSG_NOTICE([Calling ExtUtils::Embed to get 'ldflags'])
-		mod_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
 
-		AC_MSG_NOTICE([ExtUtil's ldopts were \"${mod_ldflags}\"])
+		AC_MSG_NOTICE([ExtUtil's ldopts were \"${perl_ldflags}\"])
 
-		mod_ldflags=[$(echo "$mod_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')]
+		mod_ldflags=`echo $perl_ldflags | sed -e '\
+			s/-arch [^ ]*//g;\
+			s/  / /g;\
+			s/^ *//;\
+			s/ *$//;\
+			'`
 
 		AC_MSG_NOTICE([Sanitized ldopts are \"${mod_ldflags}\"])
 
