@@ -238,7 +238,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_
 	 *	FIXME: Map attributes to Calling-Station-Id, etc...
 	 */
 
-	return 0;
+	return data_len;
 }
 
 #if 0
