@@ -314,7 +314,7 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		/*
 		 *	Skip non-VMPS attributes/
 		 */
-		if (!((vp->da->attr >= 0x2c01) && (vp->da->attr <= 0x2c08))) goto next;
+		if (!((vp->da->attr >= FR_CLIENT_IPV4_ADDRESS) && (vp->da->attr <= FR_COOKIE))) goto next;
 
 		if (attr >= (buffer + buflen)) break;
 
