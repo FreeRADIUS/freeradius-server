@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
 	v_gateway IN VARCHAR2,
 	v_pool_key IN VARCHAR2,
 	v_lease_duration IN INTEGER,
-	v_requested_address IN VARCHAR2,
+	v_requested_address IN VARCHAR2
 )
 RETURN varchar2 IS
 	PRAGMA AUTONOMOUS_TRANSACTION;
@@ -136,7 +136,7 @@ BEGIN
 				WHERE pool_name = v_pool_name
 					AND framedipaddress = v_requested_address
 					AND dhcpstatus.status = 'dynamic'
-					AND ( pool_key = v_pool_key OR expiry_time < CURRENT_TIMESTAMP )
+					AND expiry_time < CURRENT_TIMESTAMP
 				) WHERE ROWNUM <= 1
 		) FOR UPDATE SKIP LOCKED;
 		EXCEPTION
@@ -156,7 +156,7 @@ BEGIN
 	--		WHERE pool_name = v_pool_name
 	--			AND framedipaddress = v_requested_address
 	--			AND dhcpstatus.status = 'dynamic'
-	--			AND ( pool_key = v_pool_key OR expiry_time < CURRENT_TIMESTAMP )
+	--			AND expiry_time < CURRENT_TIMESTAMP
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
 	--	EXCEPTION
