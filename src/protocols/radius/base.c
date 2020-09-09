@@ -247,31 +247,31 @@ ssize_t fr_radius_ascend_secret(uint8_t *out, size_t outlen, uint8_t const *in, 
 }
 
 ssize_t fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
-				char const *secret, uint8_t const *vector)
+				      char const *secret, uint8_t const *vector)
 {
-	fr_md5_ctx_t	*md5_ctx;
-	int		i;
-	uint8_t		buff[RADIUS_AUTH_VECTOR_LENGTH];
+	fr_md5_ctx_t		*md5_ctx;
+	int			i;
+	uint8_t			digest[MD5_DIGEST_LENGTH];
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	start;
 
 	fr_dbuff_marker(&start, &work_dbuff);
 
-	if (inlen > RADIUS_AUTH_VECTOR_LENGTH) inlen = RADIUS_AUTH_VECTOR_LENGTH;
-
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, RADIUS_AUTH_VECTOR_LENGTH);
 
 	fr_dbuff_set_to_start(&work_dbuff);
+
+	if (inlen > RADIUS_AUTH_VECTOR_LENGTH) inlen = RADIUS_AUTH_VECTOR_LENGTH;
 	fr_dbuff_memcpy_in(&work_dbuff, in, inlen);
 	if (inlen < RADIUS_AUTH_VECTOR_LENGTH) fr_dbuff_memset(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH - inlen);
 
 	md5_ctx = fr_md5_ctx_alloc(true);
 	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	fr_md5_final(buff, md5_ctx);
+	fr_md5_final(digest, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) fr_dbuff_marker_current(&start)[i] ^= buff[i];
+	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) fr_dbuff_marker_current(&start)[i] ^= digest[i];
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
