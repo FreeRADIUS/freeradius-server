@@ -280,10 +280,13 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 	if (vp) our_code = vp->vp_uint8;
 
 	/* fill up */
-	buffer[0] = FR_VQP_VERSION;
-	buffer[1] = our_code;
-	buffer[2] = 0;
-	buffer[3] = 0;
+	buffer[0] = FR_VQP_VERSION;	/* Version */
+	buffer[1] = our_code;		/* Opcode */
+
+	vp = fr_pair_find_by_da(vps, attr_error_code, TAG_ANY);
+	buffer[2] = (vp) ? vp->vp_uint8 : FR_ERROR_CODE_VALUE_NO_ERROR;	/* Response Code */
+
+	buffer[3] = 0;			/* Data Count */
 
 	/*
 	 *	The number of attributes is hard-coded.
