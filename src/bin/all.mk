@@ -37,7 +37,7 @@ endef
 #  The fuzzer binary needs special magic to run, as it doesn't parse
 #  command-line options.  See fuzzer.mk for details.
 #
-PROTOCOLS = radius dhcpv4 dhcpv6 tacacs
+PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 endif
