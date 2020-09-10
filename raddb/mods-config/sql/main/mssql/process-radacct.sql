@@ -81,7 +81,7 @@ BEGIN
     DECLARE @v_start DATETIME;
     DECLARE @v_end DATETIME;
 
-    SELECT @v_start = COALESCE(MAX(period_start), CAST('1970-01-01' AS DATETIME)) FROM data_usage_by_period;
+    SELECT @v_start = COALESCE(DATEADD(ss, 1, MAX(period_end)), CAST('1970-01-01' AS DATETIME)) FROM data_usage_by_period;
     SELECT @v_end = CAST(CURRENT_TIMESTAMP AS DATETIME2(0));
 
     BEGIN TRAN;
