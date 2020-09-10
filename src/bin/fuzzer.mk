@@ -27,3 +27,20 @@ SOURCES		:= fuzzer.c
 TGT_PREREQS	:= libfreeradius-util.a libfreeradius-$(PROTOCOL).a
 
 TGT_LDLIBS	:= $(LIBS) 
+
+#
+#  Ensure that the large data file is copied from git-lfs,
+#  and then the files are extracted.
+#
+.PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
+src/tests/fuzzer-corpus/$(PROTOCOL):
+	${Q}git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull
+	${Q}cd src/tests/fuzzer-corpus && tar -xf $(PROTOCOL).tar
+
+#
+#  Run the fuzzer binary against the fuzzer corpus data files.
+#
+#  @todo - make `max_len` protocol-specific
+#
+fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)

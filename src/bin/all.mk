@@ -23,8 +23,7 @@ ifneq "$(findstring -fsanitize=fuzzer,${CFLAGS})" ""
 #
 define FUZZ_PROTOCOL
 src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
-	$${Q}echo "PROTOCOL=${1}" > $$@
-	$${Q}cat $$^ >> $$@
+	$${Q}sed 's/$$$$(PROTOCOL)/${1}/g' < $$^ > $$@
 
 SUBMAKEFILES += fuzzer_${1}.mk
 endef
