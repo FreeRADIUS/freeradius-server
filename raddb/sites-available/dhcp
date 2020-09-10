@@ -126,6 +126,35 @@ listen {
 
 recv DHCP-Discover {
 
+	#  The DHCP Server Identifier is set here since it is returned in OFFERs
+	update control {
+		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+	}
+
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
+
+	#  Do a simple mapping of MAC to assigned IP.
+	#
+	#  See below for the definition of the "mac2ip"
+	#  module.
+	#
+	#mac2ip
+
+	#  If the MAC wasn't found in that list, do something else.
+	#  You could call a Perl, Python, or Java script here.
+
+	#if (notfound) {
+	#  ...
+	#}
+
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
+	#  set the pool name here if you haven't set it elsewhere.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool
+
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -140,74 +169,38 @@ recv DHCP-Discover {
 	#  server will fall back to determining the type of reply
 	#  based on the rcode of this section.
 
-	update reply {
-	       &DHCP-Message-Type = DHCP-Offer
-	}
-
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
-	}
-
-	#  Do a simple mapping of MAC to assigned IP.
-	#
-	#  See below for the definition of the "mac2ip"
-	#  module.
-	#
-	#mac2ip
-
-	#  If the MAC wasn't found in that list, do something else.
-	#  You could call a Perl, Python, or Java script here.
-
-	#if (notfound) {
-	#  ...
+	#update reply {
+	#       &DHCP-Message-Type = DHCP-Offer
 	#}
-
-	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
-	#  set the pool name here if you haven't set it elsewhere.
-#	update control {
-#		&Pool-Name := "local"
-#	}
-	# Update the request to contain fields needed for SQL pool
-	# address allocation
-#	update request {
-#		&Calling-Station-Id = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
-#	}
-#	dhcp_sqlippool
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Offer
 	#  message.
 	#
 	#  Other rcodes will tell the server to not return any response.
-	ok
+	#ok
 }
 
 recv DHCP-Request {
 
-	#  Response packet type. See DHCP-Discover section above.
-	update reply {
-	       &DHCP-Message-Type = DHCP-Ack
-	}
-
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+	#  The DHCP Server Identifier is set here since it is returned in OFFERs
+	update control {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
+
+	#  If the request is not for this server then silently discard it
+	if (&request:DHCP-DHCP-Server-Identifier && \
+	    &request:DHCP-DHCP-Server-Itentifier != &control:DHCP-DHCP-Server-Identifier) {
+	        do_not_respond
+	}
+
+	#  Response packet type. See DHCP-Discover section above.
+	#update reply {
+	#       &DHCP-Message-Type = DHCP-Ack
+	#}
+
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -228,13 +221,13 @@ recv DHCP-Request {
 #	update control {
 #		&Pool-Name := "local"
 #	}
-	# Update the request to contain fields needed for SQL pool
-	# address allocation
-#	update request {
-#		&Calling-Station-Id = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
-#		&NAS-IP-Address = "%{%{DHCP-Gateway-IP-Address}:-127.0.0.1}"
-#	}
 #	dhcp_sqlippool
+
+	if (ok) {
+		update reply {
+			&DHCP-Your-IP-Address := "%{%{request:DHCP-Requested-IP-Address}:-{request:DHCP-Client-IP-Address}}"
+		}
+	}
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Ack
@@ -242,7 +235,7 @@ recv DHCP-Request {
 	#
 	#  "handled" will not return a packet, all other rcodes will
 	#  send back a DHCP-NAK.
-	ok
+	#ok
 }
 
 #
@@ -253,10 +246,14 @@ recv DHCP-Request {
 #  not defined here will be responded to with a DHCP-NAK.
 
 recv DHCP-Decline {
-	update reply {
-	       &DHCP-Message-Type = DHCP-Do-Not-Respond
-	}
-	reject
+	#  If using IPs from a DHCP pool in SQL then you may need to set the
+	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool
+
+	ok
 }
 
 #
@@ -265,15 +262,9 @@ recv DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 recv DHCP-Inform {
-	#  The contents here are invented.  Change them!
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
-		&DHCP-Message-Type = DHCP-Ack
-	}
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
+
 	ok
 }
 
@@ -291,10 +282,14 @@ recv DHCP-Inform {
 #}
 
 recv DHCP-Release {
-	update reply {
-	       &DHCP-Message-Type = DHCP-Do-Not-Respond
-	}
-	reject
+	#  If using IPs from a DHCP pool in SQL then you may need to set the
+	#  pool name here if you haven't set it elsewhere and release the IP.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool
+
+	ok
 }
 
 
