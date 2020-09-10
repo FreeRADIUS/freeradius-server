@@ -55,6 +55,7 @@ CREATE TABLE data_usage_by_period (
 );
 CREATE UNIQUE INDEX idx_data_usage_by_period_username_period_start ON data_usage_by_period (username,period_start);
 CREATE INDEX idx_data_usage_by_period_period_start ON data_usage_by_period (period_start);
+CREATE INDEX idx_data_usage_by_period_period_end ON data_usage_by_period (period_end);
 
 --
 --  Stored procedure that when run with some arbitrary frequency, say
@@ -79,7 +80,7 @@ AS
     v_end TIMESTAMP WITH TIME ZONE;
 BEGIN
 
-    SELECT COALESCE(MAX(period_start), TO_DATE('1970-01-01','YYYY-MM-DD')) INTO v_start FROM data_usage_by_period;
+    SELECT COALESCE(MAX(period_end) + NUMTODSINTERVAL(1,'SECOND'), TO_DATE('1970-01-01','YYYY-MM-DD')) INTO v_start FROM data_usage_by_period;
     SELECT CAST(CURRENT_TIMESTAMP AS DATE) INTO v_end FROM dual;
 
     BEGIN
