@@ -20,15 +20,23 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* The default configuration now replies with EAP-Key-Name, if it
 	  is available, and was requested.
 	* Include extensions in generated certificates.
-	* Many improvements for DHCP IP pools for all SQL dialects.
-	  Patches from Nick Porter.
 	* Ignore user-provided dhparams in FIPS mode.
 	  Patch from Alexander Scheel.
-	* Add support for DHCP-Decline.
 	* Remove native support for Cisco LEAP.  It is insecure, and
 	  should not be used.  Proxying LEAP is still supported.
 	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
 	  works, and no longer requires manual changes to the configuration.
+	* Allow use of password preparation methods with rlm_eap_pwd.
+	  Patch from Michael Braun.
+	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
+	* Add a_path_reload_interval option for tls.  See mods-available/eap.
+	  Fixes #1831.  Patch from Boris Lytochkin.
+	* Many, many, improvements for DHCP from Nick Porter and Terry Burton.
+	* Use DHCP-specific schemas.
+	* Add stored procedures for DHCP lease allocation
+	* Add support for DHCP-Decline.
+	* More RFC complaince for various corner cases of DHCP,
+	* Treat DHCP Discover and Request differently for lease allocation times.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
@@ -57,6 +65,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Update documentation for cert generation.  Patch from Alexander Scheel.
 	* Use better API when decoding DHCP packets, to avoid unnecessary work.
 	  This improves performance noticably.
+	* Parse locale-dependent dates.  Fixes #3602.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
