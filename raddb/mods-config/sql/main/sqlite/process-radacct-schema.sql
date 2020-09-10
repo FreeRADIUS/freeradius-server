@@ -49,3 +49,4 @@ CREATE TABLE data_usage_by_period (
     PRIMARY KEY (username, period_start)
 );
 CREATE INDEX idx_data_usage_by_period_period_start ON data_usage_by_period(period_start);
+CREATE INDEX idx_data_usage_by_period_period_end ON data_usage_by_period(period_end);
