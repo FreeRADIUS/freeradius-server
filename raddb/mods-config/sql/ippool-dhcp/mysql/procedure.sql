@@ -21,7 +21,8 @@
 -- 		'%{control:${pool_name}}', \
 -- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
--- 		${lease_duration} \
+-- 		${lease_duration}, \
+--		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 -- 	)"
 -- allocate_update = ""
 -- allocate_commit = ""
@@ -34,7 +35,8 @@ CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress (
 	IN v_pool_name VARCHAR(64),
 	IN v_gateway VARCHAR(15),
 	IN v_pool_key VARCHAR(64),
-	IN v_lease_duration INT
+	IN v_lease_duration INT,
+	IN v_requested_address VARCHAR(15)
 )
 proc:BEGIN
 	DECLARE r_address VARCHAR(15);
@@ -78,6 +80,19 @@ proc:BEGIN
 	-- LIMIT 1
 	-- FOR UPDATE;
 	-- -- FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
+
+	-- Issue the requested IP address if it is available
+	--
+	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
+		SELECT framedipaddress INTO r_address
+		FROM dhcpippool
+		WHERE pool_name = v_pool_name
+			AND framedipaddress = v_requested_address
+			AND `status` = 'dynamic'
+			AND expiry_time < NOW()
+		FOR UPDATE;
+--		FOR UPDATE SKIP LOCKED;  -- Better performance, but limited support
+	END IF;
 
 	-- If we didn't reallocate a previous address then pick the least
 	-- recently used address from the pool which maximises the likelihood
