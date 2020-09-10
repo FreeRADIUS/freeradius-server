@@ -51,6 +51,7 @@ CREATE TABLE data_usage_by_period (
     acctoutputoctets bigint
 );
 ALTER TABLE data_usage_by_period ADD CONSTRAINT data_usage_by_period_pkey PRIMARY KEY (username, period_start);
+CREATE INDEX data_usage_by_period_pkey_period_end ON data_usage_by_period(period_end);
 
 
 --
@@ -78,7 +79,7 @@ DECLARE v_start timestamp;
 DECLARE v_end timestamp;
 BEGIN
 
-    SELECT COALESCE(MAX(period_start), TO_TIMESTAMP(0)) INTO v_start FROM data_usage_by_period;
+    SELECT COALESCE(MAX(period_end) + INTERVAL '1 SECOND', TO_TIMESTAMP(0)) INTO v_start FROM data_usage_by_period;
     SELECT DATE_TRUNC('second',CURRENT_TIMESTAMP) INTO v_end;
 
     --
