@@ -39,4 +39,17 @@ endef
 PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+
+.PHONY: fuzzer.help
+fuzzer.help:
+	@git-lfs env > /dev/null 2>&1 || echo "Please install 'git-lfs' in order to use the fuzzer corpus files."
+	@echo To run the fuzzer, please use one of:
+	@echo
+	@for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
+	@echo
+
+else
+.PHONY: fuzzer.help
+fuzzer.help:
+	@echo "The server MUST be built with '--enable-llvm-fuzzer-sanitizer'"
 endif
