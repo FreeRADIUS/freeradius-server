@@ -27,6 +27,10 @@ src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
 	$${Q}cat $$^ >> $$@
 
 SUBMAKEFILES += fuzzer_${1}.mk
+
+fuzzer.${1}:
+	$${Q}mkdir -p build/fuzzer/${1}
+	$${Q}./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_${1} build/fuzzer/${1}
 endef
 
 #
@@ -40,4 +44,9 @@ endef
 PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+
+fuzzer:
+	${Q}echo "Available targets for the protocols:"
+	${Q}echo ""
+	${Q}for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
 endif
