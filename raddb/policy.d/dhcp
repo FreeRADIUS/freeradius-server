@@ -1,0 +1,15 @@
+#  A policy to set options required in all DHCP replies
+dhcp_common {
+	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
+	update reply {
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 7200
+#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
+	}
+}
