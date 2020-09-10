@@ -460,9 +460,13 @@ int vqp_decode(RADIUS_PACKET *packet)
 	while (ptr < end) {
 		char *p;
 
+		if ((end - ptr) < 6) break;
+
 		attribute = (ptr[2] << 8) | ptr[3];
 		length = (ptr[4] << 8) | ptr[5];
 		ptr += 6;
+
+		if ((ptr + length) > end) break;
 
 		/*
 		 *	Hack to get the dictionaries to work correctly.
@@ -525,6 +529,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			}
 			break;
 		}
+
 		ptr += length;
 		debug_pair(vp);
 		fr_cursor_insert(&cursor, vp);
