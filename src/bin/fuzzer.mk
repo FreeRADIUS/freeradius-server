@@ -1,13 +1,13 @@
 #
-#  In order to use the fuzzer, you must edit Make.inc to add:
+#  In order to use the fuzzer, you must build with:
 #
-#	CFLAGS += -fsanitize=fuzzer
+#	./configure --enable-llvm-fuzzer-sanitizer ...
 #
 #  and then re-build *all* of the source.
 #
 #  Once the fuzzer is build, run it via:
 #
-#  ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -max_len=256 -D ./share/dictionary/ path/to/corpus/directory/
+#	make fuzzer.PROTOCOL
 #
 
 #
