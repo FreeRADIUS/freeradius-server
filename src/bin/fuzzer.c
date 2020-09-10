@@ -73,7 +73,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 			if ((p[0] == '-') && (p[1] == 'D')) {
 				dict_dir = (*argv)[i + 1];
 
-				for (j = *argc + 2; j < *argc; j++) {
+				for (j = i + 2; j < *argc; j++) {
 					(*argv)[i] = (*argv)[j];
 				}
 
@@ -81,7 +81,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 				break;
 			}
 		}
-
 	}
 
 	if (!dict_dir) dict_dir = DICTDIR;
