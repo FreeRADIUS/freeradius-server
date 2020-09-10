@@ -19,14 +19,31 @@
 #  ## Configuration Settings
 sqlippool dhcp_sqlippool {
 	#
-	#  See the `sqlippool` module for common configuration explanation.
+	#  SQL instance to use (from mods-available/sql)
 	#
-
+	#  If you have multiple sql instances such as "sql sql1 {...}",
+	#  use the *instance* name here: sql1
 	sql_module_instance = "sql"
 
+	#  This should be set the same as the dialect for the SQL
+	#  instance in use
+	dialect = "postgresql"
+
+	#  SQL table name to use for DHCP ip pools
 	ippool_table = "radippool"
 
+	#  Name of the attribute to be populated with the pool name
+	#  to pick addresses from
+	pool_name = "Pool-Name"
+
+	#  IP lease duration.  Used to set the expiry time of a lease
+	#  in the database in response to DHCP Request
 	lease_duration = 7200
+
+	#  How long to hold leases in the database between a Discover
+	#  and Request.  Setting this short prevents the pool being
+	#  exhausted by clients sending Discovers but never Reqiests.
+	offer_duration = 5
 
 	#
 	#  RFC 2132 allows the DHCP client to supply a unique
@@ -45,24 +62,22 @@ sqlippool dhcp_sqlippool {
 	#
 	#  pool_key = "%{DHCP-Client-Hardware-Address}"
 
-	attribute_name = DHCP-Your-IP-Address
+	#  The attribute in which the IP address is returned in the reply
+	attribute_name = "DHCPv4.DHCP-Your-IP-Address"
+
+	#  The attribute in which a requested IP address is received
+	req_attribute_name = "DHCPv4.DHCP-Requested-IP-Address"
 
 	#
-	#  The current sample is prepared to work with MySQL.
+	#  Load queries for the relevant SQL version
 	#
-	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
+	$INCLUDE ${modconfdir}/sql/ippool-dhcp/${dialect}/queries.conf
 
-	#
-	#  NOTE: To use sqlite you need to add `%` to `safe_characters` in
-	#  `raddb/mods-config/sql/main/sqlite/queries.conf.`
-	#
-#	$INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
+	sqlippool_log_exists = "DHCP: Existing IP: %{reply:${attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_exists = "DHCP: Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_success = "DHCP: Allocated IP: %{reply:${attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_success = "DHCP: Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
-	sqlippool_log_clear = "DHCP: Released IP %{${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+	sqlippool_log_clear = "DHCP: Released IP %{${attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
 	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
