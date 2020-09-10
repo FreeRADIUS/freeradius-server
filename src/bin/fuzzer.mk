@@ -16,10 +16,6 @@
 #  libraries export a common test point.  We have one source / make file, which
 #  then magically turns into different fuzzers.
 #
-#  However, because the *test point* functions are loaded dynamically,
-#  you still have to tell the fuzzer which library it's supposed to
-#  load.
-#
 
 TARGET		:= fuzzer_$(PROTOCOL)
 SOURCES		:= fuzzer.c
