@@ -21,7 +21,7 @@
 --              @v_pool_name = '%{control:${pool_name}}', \
 --              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
 --              @v_pool_key = '${pool_key}', \
---              @v_lease_duration = ${lease_duration}, \
+--              @v_lease_duration = ${offer_duration}, \
 --              @v_requested_address = '%{%{${req_attribute_name}}:-0.0.0.0}' \
 --      "
 -- allocate_update = ""

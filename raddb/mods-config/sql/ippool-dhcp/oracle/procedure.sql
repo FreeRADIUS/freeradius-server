@@ -21,7 +21,7 @@
 --		 '%{control:${pool_name}}', \
 --		 '%{DHCP-Gateway-IP-Address}', \
 --		 '${pool_key}', \
---		 ${lease_duration}, \
+--		 ${offer_duration}, \
 --		 '%{%{${req_attribute_name}}:-0.0.0.0}'
 --	 ) FROM dual"
 -- allocate_update = ""
