@@ -30,8 +30,11 @@ TGT_LDLIBS	:= $(LIBS)
 #
 .PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
 src/tests/fuzzer-corpus/$(PROTOCOL):
-	${Q}git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull
-	${Q}cd src/tests/fuzzer-corpus && tar -xf $(PROTOCOL).tar
+	${Q}if [ ! -e $@ ]; then \
+		git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
+		cd src/tests/fuzzer-corpus; \
+		tar -xf $(PROTOCOL).tar; \
+	fi
 
 #
 #  Run the fuzzer binary against the fuzzer corpus data files.
