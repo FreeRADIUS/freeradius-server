@@ -51,7 +51,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
-	$(Q)echo "PROTO_TACACS INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
+	$(Q)echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(PORT) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
