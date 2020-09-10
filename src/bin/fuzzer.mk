@@ -1,7 +1,7 @@
 #
-#  In order to use the fuzzer, you must edit Make.inc to add:
+#  In order to use the fuzzer, you must build with:
 #
-#	CFLAGS += -fsanitize=fuzzer
+#	./configure --enable-llvm-fuzzer-sanitizer ...
 #
 #  and then re-build *all* of the source.
 #
