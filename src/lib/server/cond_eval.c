@@ -465,7 +465,7 @@ do {\
 	if (map->op == T_OP_REG_EQ) {
 		cast_type = FR_TYPE_STRING;
 
-		if (tmpl_is_xlat(map->rhs)) escape = regex_escape;
+		if (tmpl_is_regex_xlat(map->rhs)) escape = regex_escape;
 	}
 	else
 #endif
