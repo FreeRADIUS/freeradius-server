@@ -130,35 +130,8 @@ dhcp DHCP-Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
-	#  Set the type of packet to send in reply.
-	#
-	#  The server will look at the DHCP-Message-Type attribute to
-	#  determine which type of packet to send in reply. Common
-	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
-	#  dictionary.dhcp for all the possible values.
-	#
-	#  DHCP-Do-Not-Respond can be used to tell the server to not
-	#  respond.
-	#
-	#  In the event that DHCP-Message-Type is not set then the
-	#  server will fall back to determining the type of reply
-	#  based on the rcode of this section.
-	#
-	#update reply {
-	#       DHCP-Message-Type = DHCP-Offer
-	#}
-
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
-	}
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -181,6 +154,24 @@ dhcp DHCP-Discover {
 #	}
 #	dhcp_sqlippool
 
+	#  Set the type of packet to send in reply.
+	#
+	#  The server will look at the DHCP-Message-Type attribute to
+	#  determine which type of packet to send in reply. Common
+	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+	#  dictionary.dhcp for all the possible values.
+	#
+	#  DHCP-Do-Not-Respond can be used to tell the server to not
+	#  respond.
+	#
+	#  In the event that DHCP-Message-Type is not set then the
+	#  server will fall back to determining the type of reply
+	#  based on the rcode of this section.
+	#
+	#update reply {
+	#       DHCP-Message-Type = DHCP-Offer
+	#}
+	#
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Offer
 	#  message.
@@ -210,17 +201,8 @@ dhcp DHCP-Request {
 	#       &DHCP-Message-Type = DHCP-Ack
 	#}
 
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
-	}
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -281,15 +263,9 @@ dhcp DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 dhcp DHCP-Inform {
-	#  The contents here are invented.  Change them!
-	update reply {
-		&DHCP-Message-Type = DHCP-Ack
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
-	}
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
+
 	ok
 }
 

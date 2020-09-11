@@ -1,3 +1,21 @@
+#  Assign common DHCP reply packet options
+dhcp_common {
+	#  The contents here are invented.  Change them!
+	#  Lease time should either be set here or can
+	#  reference the lease time set in the named
+	#  sqlipppol module instance configuration if that
+	#  is in use for lease management
+	update reply {
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 7200
+#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
+	}
+}
+
 #  Assign compatibility data to request for sqlippool for DHCP Request
 dhcp_sqlippool_request {
 
