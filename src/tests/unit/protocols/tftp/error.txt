@@ -1,0 +1,51 @@
+#  Test vectors for TFTP attributes
+#
+#  Copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+#
+proto tftp
+proto-dictionary tftp
+
+#
+#	Invalid blksize
+#
+decode-proto 00 01 34 00 6f 63 74 65 74 00 62 6c 6b 73 69 7a 65 00 31 32
+match Packet contains malformed attribute
+
+decode-proto 00 01 34 00 6f 63 74 65 74 00 62 6c 6b 73 69 7a 65 00 31 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32 32
+match Packet contains malformed attribute
+
+#
+#	Invalid filename
+#
+decode-proto 00 01 00 6f 63 74 65 74 00 62 6c 6b 73 69 7a 65 7d 35 35 35 35 35 35 35
+match Packet contains malformed attribute
+
+#
+#	Client -> Server (Read-Request) - With invalid block-size. (max is 65464)
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00 62 6c 6b 73 69 7a 65 00 36 35 34 36 35 00
+match Invalid TFTP-Block-Size 65465 value
+
+#
+#	Client -> Server (Read-Request) - With invalid mode. (max is 65464)
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 01 02 03 04 05 00
+match Invalid TFTP-Mode
+
+#
+#	Invalid opcode
+#
+decode-proto 00 66 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 01 02 03 04 05 00
+match Invalid TFTP opcode 0x66
+
+#
+#	Invalid packet
+#
+decode-proto 00 11
+match TFTP packet is too small. (2 < 4)
+
+decode-proto 00 00 25 88
+match Invalid TFTP opcode 0000
+
+count
+match 18
