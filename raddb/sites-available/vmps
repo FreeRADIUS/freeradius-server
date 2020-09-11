@@ -57,12 +57,9 @@ server vmps {
 	}
 
 	#
-	#  If you have switches that are allowed to send VMPS, but NOT
-	#  RADIUS packets, then list them here as "client" sections.
-	#
-	#  NOTE: For compatibility with RADIUS, you still have to
-	#  list a "secret" for each client, though that secret will not
-	#  be used for anything.
+	#  You can list multiple "client" sections here in order to define
+	#  clients which apply only to this virtual server.  i.e. only for
+	#  the VMPS protocol.
 	#
 
 	#
