@@ -1,0 +1,304 @@
+= About Sbuffs
+
+== Motivation
+
+Fundamentally, sbuffs do for text what dbuffs do for binary data:
+provide an abstraction text buffer that lets the user write with
+minimal boilerplate.
+
+That said, parsing text is more complicated than handling binary
+data. With binary data, one converts to or from network byte order,
+and there is either enough space for the data or there isn't. Parsing
+text is parsing in the traditional sense, and there are additional
+data structures to support it. We will wait until we've named all the
+players to describe the operations one can perform.
+
+== Internals
+
+=== Sbuffs
+
+Sbuffs are represented by the `fr_sbuff_t` type in the source. It is
+much like a dbuff. Sbuffs are structures that contain
+
+* A pointer to a buffer
+* A pointer to the start of the portion of the buffer the sbuff has
+access to
+* A pointer to the current position, which is either that of the next
+available character or just past the last byte available to the sbuff 
+* A pointer just past the last character available to the sbuff (aka
+the "end pointer")
+* A flag marking the sbuff as either mutable or immutable; an immutable
+sbuff cannot be written to 
+* A flag that determines whether changes in the current position are
+propagated back to the sbuff's ancestors
+* A count of the number of bytes the sbuff has been "shifted"
+* A pointer that, if non-NULL, points to a function to repopulate or
+extend the sbuff
+* A pointer to a "context" used by the extension/refill function (used
+only if there is such a function)
+* A pointer that, if non-NULL, points to a parent sbuff. All sbuffs
+sharing a buffer are ancestrally related
+* A pointer that, if non-NULL, points to the first element of a linked
+list of "markers" associated with the sbuff
+
+(Why the buffer pointer? There are extensible sbuffs, one kind of
+which uses the talloc memory allocator. `realloc()`-like functions need
+the actual pointer the previous allocation returned, but the start
+pointer of child sbuffs need not point there; hence the buffer
+pointer, which is the same for all related sbuffs.)
+
+=== Markers
+
+A marker, represented by the `fr_sbuff_marker_t` type, is a structure
+that contains
+
+* A pointer to its associated sbuff
+* A pointer to the next marker on the list
+* A pointer to a position in the associated sbuff
+
+The position pointer in a marker associated with an sbuff will be kept
+consistent with the sbuff across possible extensions.
+
+=== Character sets
+
+A character set is an array of 256 boolean values; there's not a
+typedef for it. Sbuff routines using them take into account the
+possible signedness of characters.
+
+=== Escape rules
+
+An `fr_sbuff_escape_rules_t` is a structure that specifies:
+
+* an escape character
+* an array of 256 characters indicating which characters have
+two-character escape sequences (the escape character followed by the
+(non-zero) array element)
+* whether to apply escape rules to valid UTF-8 sequences
+* whether to represent escaped characters as hex sequences
+* whether to represent escaped characters as octal sequences
++
+These can be used when reading from an sbuff.
+
+=== Unescape rules
+
+An `fr_sbuff_unescape_rules_t` is a structure that specifies:
+
+* an escape character
+* an array of 256 characters subscripted by a character following the
+escape character; the corresponding element is the binary
+representation of the character corresponding to the escape sequence
+* a character set indicating which escape sequences should be passed
+on to the output
+* whether to process hex sequences (the escape character followed by
+'x' and two hex digits)
+* whether to process octal sequences (the escape character followed
+by three octal digits)
++
+These can be used when writing to an sbuff.
+
+=== Terminal elements and sets thereof
+
+==== Terminal elements
+
+A "terminal element", `fr_sbuff_term_elem_t`, is a structure with
+
+* a string
+* the string's length (not counting the `'\0'` terminator)
+
+==== Sets of terminal elements
+
+A set of terminal elements, `fr_sbuff_term_t`, is a structure with
+
+* a length
+* a pointer to an array of terminal elements of the specified length
+
+The terminal elements in the array must appear in lexicographical order.
+
+== Operations
+
+=== Common to sbuffs and markers
+
+A number of operations can be done either on initialized sbuffs or
+markers. Those that yield
+
+* the address of an sbuff or a marker
+* the address of an sbuff or a marker, qualified to prevent
+modification
+* the current position pointer of an sbuff or a marker
+
+use the structure they're given. In the following, references to the
+current pointer use that of the sbuff or marker, whichever is passed;
+reference to other members, when passed a marker, fetch it from the
+marker's associated sbuff.
+
+* the buffer pointer
+* the start pointer
+* the end pointer
+* the number of bytes shifted
+* the number of bytes remaining. Note that this only reflects what's
+in the buffer; an extensible buffer may have more data to read or
+space to fill.
+* the number of bytes used
+* the total number of bytes used (bytes used plus bytes shifted)
+
+Finally, given _two_ sbuffs or markers, one can get the difference
+between their current pointers.
+
+Caching these values is strongly discouraged, because reads and writes
+to extensible sbuffs may render them invalid. 
+
+=== Sbuffs
+
+==== Initialization
+Given an sbuff, one can initialize it in several ways. The resulting 
+buff will have no parent.
+
+* with a pointer to a buffer and either an end pointer or size. The
+sbuff will not be extensible, and will be immutable if and only if
+the buffer pointer has type `char const *`.
+* with a pointer to a buffer, the buffer's size, a `FILE *` for a file
+open for reading, and a maximum amount to read. The sbuff will be
+extensible and mutable; an attempt to read after the data read so far
+is used up will cause an attempt to "shift" the sbuff to move out
+already-read text and read more, subject to the maximum amount to read.
+* with a context for allocation, an initial buffer size, and a maximum
+buffer size. The sbuff will be extensible and mutable; an attempt to
+write more bytes than reamain will cause an attempt to extend it,
+subject to the maximum buffer size. 
+
+* Given a buffer and either an end pointer or size, one can create a
+temporary sbuff to pass to a function; it will have no parent, will
+not be extensible, and will be immutable if and only if the buffer
+pointer has type `char const *`. On successful return, the function
+should return the number of characters consumed from or written to
+the buffer.
+* Given an initialized sbuff, one can create a child sbuff, with the
+option of preventing its advances from automatically propagating back
+to its ancestors. The child will share the parent's buffer, will be
+extensible if and only if the parent is, and will start at the
+parent's current position.
+
+==== Writing
+One can write text into an sbuff. The source can be individual
+characters, a string, a readable sbuff, the result of a table lookup,
+or the result of processing a string according to a set of escape
+rules. One can even effectively `sprintf()` or `vsprintf()` into an
+sbuff. The current pointer is advanced past the text written.
+
+==== Reading
+* One can read up to a specified number of characters from an sbuff,
+optionally subject to constraints such as being in or not being in a
+specified character set.
+* One can read text from an sbuff and attempt to interpret it as a
+boolean, integer, or floating point value, saving the value if the
+attempt succeeds.
+
+The current pointer is advanced past the text read.
+
+==== Conditions
+
+Given a readable sbuff, one can determine whether
+
+* the character at the current position is in a specified character
+set
+* the characters starting at the current position match a specified
+string (up to a specified length)
+* the character at the current position matches a specified character
+
+One can also determine whether the character at the current position
+is in one of the following categories:
+
+* decimal digit
+* hexadecimal digit
+* lower case
+* upper case
+* alphabetic
+* whitespace
+
+The condition evaluates to true if and only if enough characters are
+in the sbuff to perform the check (possibly after extension) and the
+check succeeds.
+
+==== Position modification
+
+There are various ways to explicitly set an sbuff's position. A child
+sbuff's position changes are propagated to its ancestors, unless it's
+flagged to prevent it.
+
+One can set an sbuff's current pointer to the sbuff's start or end.
+
+==== Modifications common to sbuffs and markers
+
+The following operations are shared with markers. One can set an
+sbuff's (or marker's) current pointer to:
+
+* a specified sbuff's current pointer
+* a specified marker's current pointer
+* a specified pointer to character
+* the sbuff's (or for markers, the associated sbuff's) start plus a
+specified displacement
+
+For these, the new value cannot be before the sbuff's (or associated
+sbuff's, for markers) start or past its end.
+
+==== Advancement
+One can advance an sbuff's current pointer in one of several ways:
+
+* by a specified number of characters; this will not attempt to extend
+the sbuff
+* past the next character if it matches a specified character
+* past the next character if it doesn't match a specified character 
+* past text satisfying a condition, up to a specified length; the
+condition can be
+** matching a specified string; one can request a case-insensitive
+match
+** consisting of whitespace characters
+** consisting of characters in, or not in, a specified character set
+* to the first occurrence of text satisfying a condition, up to a
+specified length; the condition can be
+** being in a specified character set
+** matching a specified character
+** matching a specified UTF-8 character
+** matching a specified string; one can request a case-insensitive
+match
+
+=== Markers
+
+* One can initialize a marker, given an sbuff. The marker's position
+will be set to the sbuff's current position, and the marker will be
+placed at the beginning of the sbuff's list of markers.
+* One can release a marker from its association with an sbuff. This
+also releases all its predecessors on the sbuff's marker list, so in
+particular, releasing the last marker empties the sbuff's marker list.
+* One can retrieve an initialized marker's position pointer.
+Extensions of its associated sbuff may invalidate a saved copy of the
+position pointer, so caching it is not recommended.
+* One can set a marker's position pointer to its sbuff's position
+pointer.
+
+=== Terminal elements and sets thereof
+
+* There are two macros to initialize a set of terminal elements; one
+is used for singleton sets, the other for the more general case. In
+the latter case, the ordering requirement is left to the user.
+* Given two sets of terminal elements, one can determine their union.
+
+== Classifying the various functions and macros
+
+There are many functions and macros involving sbuffs, but there is a
+logic to their naming, following the rules in the FreeRADIUS coding
+standards. They all start with `fr_sbuff` (the "prefix" and "noun"
+respectively). Then:
+
+* those starting `fr_sbuff_out` read data out of an sbuff
+* those starting `fr_sbuff_in` write data into an sbuff
+* those starting `fr_sbuff_extend` support extensible sbuffs; they're
+only (implicitly) called in sbuff operations that try to read or write
+more than what is between the current position and the end
+
+Some functions have generic macros that simplify their use. For
+example, `fr_sbuff_out()` calls the appropriate type-specific function
+depending on the type of the pointer. (There are no
+`fr_sbuff_out_oct()` or `fr_sbuff_out_hex()` generic macros to let one
+read any integral type using octal or hexadecimal.)
+
