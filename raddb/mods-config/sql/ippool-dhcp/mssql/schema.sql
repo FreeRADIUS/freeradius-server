@@ -23,6 +23,7 @@ CREATE TABLE dhcpippool (
 	gateway			varchar(15) NOT NULL default '',
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
 	status_id		int NOT NULL default 1,
+	counter			int NOT NULL default 0,
 	CONSTRAINT fk_status_id FOREIGN KEY (status_id) REFERENCES dhcpstatus (status_id),
 	PRIMARY KEY (id)
 )
