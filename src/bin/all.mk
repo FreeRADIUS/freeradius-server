@@ -21,7 +21,7 @@ SUBMAKEFILES := \
 #  The fuzzer binary needs special magic to run, as it doesn't parse
 #  command-line options.  See fuzzer.mk for details.
 #
-PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
+FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
@@ -38,7 +38,7 @@ src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
 SUBMAKEFILES += fuzzer_${1}.mk
 endef
 
-$(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+$(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 .PHONY: fuzzer.help
 fuzzer.help:
@@ -49,7 +49,7 @@ fuzzer.help:
 	@echo
 
 else
-.PHONY: fuzzer.help $(foreach X,${PROTOCOLS},fuzzer.${X})
-fuzzer.help $(foreach X,${PROTOCOLS},fuzzer.${X}):
+.PHONY: fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X})
+fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X}):
 	@echo "The server MUST be built with '--enable-llvm-fuzzer-sanitizer'"
 endif
