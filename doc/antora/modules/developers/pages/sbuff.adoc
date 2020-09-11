@@ -20,26 +20,29 @@ players to describe the operations one can perform.
 Sbuffs are represented by the `fr_sbuff_t` type in the source. It is
 much like a dbuff. Sbuffs are structures that contain
 
-* A pointer to a buffer
-* A pointer to the start of the portion of the buffer the sbuff has
-access to
-* A pointer to the current position, which is either that of the next
-available character or just past the last byte available to the sbuff 
-* A pointer just past the last character available to the sbuff (aka
-the "end pointer")
-* A flag marking the sbuff as either mutable or immutable; an immutable
-sbuff cannot be written to 
-* A flag that determines whether changes in the current position are
-propagated back to the sbuff's ancestors
-* A count of the number of bytes the sbuff has been "shifted"
-* A pointer that, if non-NULL, points to a function to repopulate or
-extend the sbuff
-* A pointer to a "context" used by the extension/refill function (used
-only if there is such a function)
-* A pointer that, if non-NULL, points to a parent sbuff. All sbuffs
-sharing a buffer are ancestrally related
-* A pointer that, if non-NULL, points to the first element of a linked
-list of "markers" associated with the sbuff
+* `buff` - A pointer to a buffer.
+* `start` - A pointer to the start of the portion of the buffer the sbuff has
+access to.
+* `p` - A pointer to the current position, which is either that of the next
+available character or just past the last byte available to the sbuff .
+* `end` - A pointer just past the last character available to the sbuff (aka
+the "end pointer").
+* `is_const` - A flag marking the sbuff as either mutable or immutable; an 
+immutable sbuff cannot be written to .
+* `adv_parent` - A flag that determines whether changes in the current position 
+are propagated back to the sbuff's ancestors.
+* `shifted` - A count of the number of bytes the sbuff has been "shifted".  
+This is used to track the amount of data which has been "shifted" beyond
+the start of the buffer when the buffer has been refilled during string
+parsing.
+* `extend` - A pointer that, if non-NULL, points to a function to repopulate or
+extend the sbuff.
+* `uctx` - A pointer to a "context" used by the extension/refill function (used
+only if there is such a function).
+* `parent` - A pointer that, if non-NULL, points to a parent sbuff. All sbuffs
+sharing a buffer are ancestrally related.
+* `m` - A pointer that, if non-NULL, points to the first element of a linked
+list of "markers" associated with the sbuff.
 
 (Why the buffer pointer? There are extensible sbuffs, one kind of
 which uses the talloc memory allocator. `realloc()`-like functions need
@@ -52,9 +55,9 @@ pointer, which is the same for all related sbuffs.)
 A marker, represented by the `fr_sbuff_marker_t` type, is a structure
 that contains
 
-* A pointer to its associated sbuff
-* A pointer to the next marker on the list
-* A pointer to a position in the associated sbuff
+* `p` - A pointer to its associated sbuff.
+* `next` - A pointer to the next marker on the list.
+* `parent` - A pointer to a position in the associated sbuff.
 
 The position pointer in a marker associated with an sbuff will be kept
 consistent with the sbuff across possible extensions.
@@ -69,32 +72,44 @@ possible signedness of characters.
 
 An `fr_sbuff_escape_rules_t` is a structure that specifies:
 
-* an escape character
-* an array of 256 characters indicating which characters have
-two-character escape sequences (the escape character followed by the
-(non-zero) array element)
-* whether to apply escape rules to valid UTF-8 sequences
-* whether to represent escaped characters as hex sequences
-* whether to represent escaped characters as octal sequences
+* `name` - An identifier to help determine which rule set is in use
+when debugging.
+* `chr` - An escape character.
+* `subs` - An array of 256 characters specifying which characters should
+be converted to two-character escape sequences i.e. '\n'.  The second
+character of the escape sequence is the value of the array element.
+* `esc` - An array of 256 bools specifying which characters should be
+converted to hex or octal escape sequences.
+* `do_utf8` - Whether to apply escape rules to characters within
+UTF-8 sequences.
+* `do_hex` - Whether to represent escaped characters as hex sequences.
+* `do_oct` - Whether to represent escaped characters as octal sequences.
+If both `do_hex` and `do_oct` are true, `do_oct` takes priority.
 +
-These can be used when reading from an sbuff.
+These can be used when adding data to an sbuff (printing), e.g. the 
+`fr_sbuff_in_*` functions.
 
 === Unescape rules
 
 An `fr_sbuff_unescape_rules_t` is a structure that specifies:
 
-* an escape character
-* an array of 256 characters subscripted by a character following the
-escape character; the corresponding element is the binary
-representation of the character corresponding to the escape sequence
-* a character set indicating which escape sequences should be passed
-on to the output
+* `name` - An identifier to help determine which rule set is in use
+when debugging.
+* `chr` - An escape character.
+* `subs` - An array of 256 characters subscripted by a character following 
+the escape character; the corresponding element is the binary
+representation of the character corresponding to the escape sequence.
+* `skip` - A character set indicating which escape sequences should be passed
+on to the output unmolested.  This is used where the unescaped string will
+be interpreted by a 3rd party library which needs to interpret the original
+escape sequences in the string, not their binary equivalents.
 * whether to process hex sequences (the escape character followed by
 'x' and two hex digits)
 * whether to process octal sequences (the escape character followed
 by three octal digits)
 +
-These can be used when writing to an sbuff.
+These can be used when copying data from an sbuff (parsing), e.g. the
+`fr_sbuff_out_*` functions.
 
 === Terminal elements and sets thereof
 
@@ -112,7 +127,8 @@ A set of terminal elements, `fr_sbuff_term_t`, is a structure with
 * a length
 * a pointer to an array of terminal elements of the specified length
 
-The terminal elements in the array must appear in lexicographical order.
+The terminal elements in the array *must* appear in lexicographical
+order.
 
 == Operations
 
@@ -178,14 +194,14 @@ to its ancestors. The child will share the parent's buffer, will be
 extensible if and only if the parent is, and will start at the
 parent's current position.
 
-==== Writing
+==== Printing
 One can write text into an sbuff. The source can be individual
 characters, a string, a readable sbuff, the result of a table lookup,
 or the result of processing a string according to a set of escape
 rules. One can even effectively `sprintf()` or `vsprintf()` into an
 sbuff. The current pointer is advanced past the text written.
 
-==== Reading
+==== Parsing
 * One can read up to a specified number of characters from an sbuff,
 optionally subject to constraints such as being in or not being in a
 specified character set.
