@@ -153,7 +153,7 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("byte"),		FR_TYPE_UINT8		},
 	{ L("short"),		FR_TYPE_UINT16		},
 	{ L("integer"),		FR_TYPE_UINT32		},
-	{ L("integer64"),		FR_TYPE_UINT64		},
+	{ L("integer64"),	FR_TYPE_UINT64		},
 	{ L("decimal"),		FR_TYPE_FLOAT64		},
 	{ L("signed"),        	FR_TYPE_INT32		}
 };
@@ -285,6 +285,46 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
 
 	[FR_TYPE_VALUE_BOX]			= 0,
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+uint64_t const fr_value_box_integer_max[] = {
+	[FR_TYPE_BOOL]				= true,
+	[FR_TYPE_UINT8]				= UINT8_MAX,
+	[FR_TYPE_UINT16]			= UINT16_MAX,
+	[FR_TYPE_UINT32]			= UINT32_MAX,
+	[FR_TYPE_UINT64]			= UINT64_MAX,
+
+	[FR_TYPE_INT8]				= INT8_MAX,
+	[FR_TYPE_INT16]				= INT16_MAX,
+	[FR_TYPE_INT32]				= INT32_MAX,
+	[FR_TYPE_INT64]				= INT64_MAX,
+
+	[FR_TYPE_DATE]				= UINT64_MAX,
+	[FR_TYPE_TIME_DELTA]			= INT64_MAX,
+
+	[FR_TYPE_SIZE]				= SIZE_MAX,
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+int64_t const fr_value_box_integer_min[] = {
+	[FR_TYPE_BOOL]				= false,
+	[FR_TYPE_UINT8]				= 0,
+	[FR_TYPE_UINT16]			= 0,
+	[FR_TYPE_UINT32]			= 0,
+	[FR_TYPE_UINT64]			= 0,
+
+	[FR_TYPE_INT8]				= INT8_MIN,
+	[FR_TYPE_INT16]				= INT16_MIN,
+	[FR_TYPE_INT32]				= INT32_MIN,
+	[FR_TYPE_INT64]				= INT64_MIN,
+
+	[FR_TYPE_DATE]				= 0,
+	[FR_TYPE_TIME_DELTA]			= INT64_MIN,
+
+	[FR_TYPE_SIZE]				= 0,
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
@@ -2521,13 +2561,181 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 	return 0;
 }
 
-/** Convert any supported type to a uint8
+/** Convert any signed or unsigned integer type to any other signed or unsigned integer type
  *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_INT8 (if positive)
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
+ */
+static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst,
+						       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						       fr_value_box_t const *src)
+{
+	uint64_t		tmp = 0;
+	size_t			len = fr_value_box_field_sizes[src->type];
+	int64_t			min;
+
+#define SIGN_BIT_HIGH(_int, _len)	((((uint64_t)1) << ((_len << 3) - 1)) & _int)
+#define SIGN_PROMOTE(_int, _len)	((_len) < sizeof(_int) ? \
+					(_int) | (~((__typeof__(_int))0)) << ((_len) << 3) : (_int))
+
+	switch (src->type) {
+	/*
+	 *	Dates are always represented in nanoseconds
+	 *	internally, but when we convert to another
+	 *	integer type, we scale appropriately.
+	 *
+	 *	i.e. if the attribute value resolution is
+	 *	seconds, then the integer value is
+	 *	nanoseconds -> seconds.
+	 */
+	case FR_TYPE_DATE:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			date_src_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				tmp = fr_unix_time_to_sec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_USEC:
+				tmp = fr_unix_time_to_usec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				tmp = fr_unix_time_to_msec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				tmp = src->vb_date;
+				break;
+			}
+		} else goto date_src_seconds;
+		break;
+
+	/*
+	 *	Same deal with time deltas.  Note that
+	 *	even though we store the value as an
+	 *	unsigned integer, it'll be cast to a
+	 *	signed integer for comparisons.
+	 */
+	case FR_TYPE_TIME_DELTA:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			delta_src_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				tmp = (uint64_t)fr_time_delta_to_sec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_USEC:
+				tmp = (uint64_t)fr_time_delta_to_usec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				tmp = (uint64_t)fr_time_delta_to_msec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				tmp = (uint64_t)src->vb_time_delta;
+				break;
+			}
+		} else goto delta_src_seconds;
+		break;
+
+	default:
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)&tmp) + (sizeof(tmp) - len),
+		       ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
+#else
+		memcpy(&tmp, src, len);
+#endif
+		break;
+	}
+
+	min = fr_value_box_integer_min[dst_type];
+	if ((min < 0) && SIGN_BIT_HIGH(tmp, len)) {
+		tmp = SIGN_PROMOTE(tmp, len);
+		if (((int64_t)tmp < min)) {
+			fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
+					   "outside value range %"PRId64"-%"PRIu64,
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   (int64_t)tmp,
+					   min, fr_value_box_integer_max[dst_type]);
+			return -1;
+		}
+	} else if (tmp > fr_value_box_integer_max[dst_type]) {
+		fr_strerror_printf("Invalid cast from %s to %s.  %"PRIu64" "
+				   "outside value range 0-%"PRIu64,
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   tmp, fr_value_box_integer_max[dst_type]);
+		return -1;
+	}
+
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	switch (dst_type) {
+	case FR_TYPE_DATE:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			date_dst_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				dst->vb_date = fr_unix_time_from_sec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_USEC:
+				dst->vb_date = fr_unix_time_from_usec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				dst->vb_date = fr_unix_time_from_msec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				dst->vb_date = fr_unix_time_from_nsec((fr_unix_time_t)tmp);
+				break;
+			}
+		} else goto date_dst_seconds;
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			delta_dst_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				dst->vb_time_delta = fr_time_delta_from_sec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_USEC:
+				dst->vb_time_delta = fr_time_delta_from_usec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				dst->vb_time_delta = fr_time_delta_from_msec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				dst->vb_time_delta = fr_time_delta_from_nsec((fr_time_delta_t)tmp);
+				break;
+			}
+		 } else goto delta_dst_seconds;
+		 break;
+
+	default:
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		       ((uint8_t *)&tmp) + (sizeof(tmp) - len), fr_value_box_field_sizes[dst_type]);
+#else
+		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		       &tmp, fr_value_box_field_sizes[dst_type]);
+#endif
+		break;
+	}
+
+	return 0;
+}
+
+/** Convert any value to a signed or unsigned integer
  *
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
@@ -2535,13 +2743,18 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
  * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
-static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					     fr_value_box_t const *src)
+static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					       fr_value_box_t const *src)
 {
-	fr_assert(dst_type == FR_TYPE_UINT8);
-
 	switch (src->type) {
+	default:
+	bad_cast:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+		return -1;
+
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 				             src->vb_strvalue, src->datum.length, '\0', src->tainted);
@@ -2549,560 +2762,71 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
 
-	default:
-		break;
-	}
+	case FR_TYPE_INTEGER:
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
-	/*
-	 *	Pre-initialise box for non-variable types
-	 */
-	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
-		}
-		dst->vb_uint8 = (uint8_t)src->vb_int8;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Convert any supported type to a uint16
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
-	fr_assert(dst_type == FR_TYPE_UINT16);
-
-	switch (src->type) {
-	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
-
-	case FR_TYPE_OCTETS:
-		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Pre-initialise box for non-variable types
-	 */
-	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint16 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		dst->vb_uint16 = src->vb_uint8;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-		negative_value:
-			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
-		}
-		dst->vb_uint16 = (uint16_t)src->vb_int8;
-		break;
-
-	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) goto negative_value;
-		dst->vb_uint16 = (uint16_t)src->vb_int16;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Convert any supported type to a uint32
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_UINT16
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
-	fr_assert(dst_type == FR_TYPE_UINT32);
-
-	switch (src->type) {
-	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
-
-	case FR_TYPE_OCTETS:
-		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Pre-initialise box for non-variable types
-	 */
-	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint32 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		dst->vb_uint32 = src->vb_uint8;
-		break;
-
-	case FR_TYPE_UINT16:
-		dst->vb_uint32 = src->vb_uint16;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-		negative_value:
-			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
-		}
-		dst->vb_uint32 = (uint32_t)src->vb_int8;
-		break;
-
-	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) goto negative_value;
-		dst->vb_uint32 = (uint32_t)src->vb_int16;
-		break;
-
-	case FR_TYPE_INT32:
-		if (src->vb_int32 < 0 ) goto negative_value;
-		dst->vb_uint32 = (uint32_t)src->vb_int32;
-		break;
-
-	case FR_TYPE_DATE:
-		/*
-		 *	Dates are represented internally as int64_t
-		 *	nanoseconds since the server started.  But we
-		 *	note that dates can't be negative.
-		 */
-
-		if (!dst->enumv) {
-			goto date_seconds;
-
-		} else {
-			fr_unix_time_t cast;
-
-			switch (dst->enumv->flags.type_size) {
-			date_seconds:
-			default:
-			case FR_TIME_RES_SEC:
-				cast = fr_unix_time_to_sec(src->vb_date);
-				if (cast >= UINT32_MAX) {
-				invalid_cast:
-					fr_strerror_printf("Invalid cast: result cannot fit into uint32");
-					return -1;
-				}
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_USEC:
-				cast = fr_unix_time_to_usec(src->vb_date);
-				break;
-
-			case FR_TIME_RES_MSEC:
-				cast = fr_unix_time_to_msec(src->vb_date);
-				break;
-
-			case FR_TIME_RES_NSEC:
-				cast = src->vb_date;
-				break;
-			}
-			if (cast >= UINT32_MAX) goto invalid_cast;
-
-			dst->vb_uint32 = cast;
-		}
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-		if (src->vb_time_delta < 0) goto invalid_cast;
-
-		if (!dst->enumv) {
-			goto delta_seconds;
-
-		} else {
-			int64_t cast;
-
-			switch (dst->enumv->flags.type_size) {
-			delta_seconds:
-			default:
-			case FR_TIME_RES_SEC:
-				cast = fr_time_delta_to_sec(src->vb_time_delta);
-				break;
-
-			case FR_TIME_RES_USEC:
-				cast = fr_time_delta_to_usec(src->vb_time_delta);
-				break;
-
-			case FR_TIME_RES_MSEC:
-				cast = fr_time_delta_to_msec(src->vb_time_delta);
-				break;
-
-			case FR_TIME_RES_NSEC:
-				cast = src->vb_time_delta;
-				break;
-			}
-			if ((cast >= UINT32_MAX) || (cast < 0)) goto invalid_cast;
-
-			dst->vb_uint32 = cast;
-		}
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Convert any supported type to a uint64
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_UINT16
- * - FR_TYPE_UINT32
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
-	fr_assert(dst_type == FR_TYPE_UINT64);
-
-	switch (src->type) {
-	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
-
-	case FR_TYPE_OCTETS:
-		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Pre-initialise box for non-variable types
-	 */
-	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint64 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		dst->vb_uint64 = src->vb_uint8;
-		break;
-
-	case FR_TYPE_UINT16:
-		dst->vb_uint64 = src->vb_uint16;
-		break;
-
-	case FR_TYPE_UINT32:
-		dst->vb_uint64 = src->vb_uint32;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-		negative_value:
-			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
-		}
-		dst->vb_uint64 = (uint64_t)src->vb_int8;
-		break;
-
-	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) goto negative_value;
-		dst->vb_uint64 = (uint64_t)src->vb_int16;
-		break;
-
-	case FR_TYPE_INT32:
-		if (src->vb_int32 < 0 ) goto negative_value;
-		dst->vb_uint64 = (uint64_t)src->vb_int32;
-		break;
-
-	case FR_TYPE_INT64:
-		if (src->vb_int64 < 0 ) goto negative_value;
-		dst->vb_uint64 = (uint64_t)src->vb_int64;
-		break;
-
-	case FR_TYPE_DATE:
-		if (!dst->enumv) {
-			goto date_seconds;
-
-		} else switch (dst->enumv->flags.type_size) {
-		date_seconds:
-		default:
-		case FR_TIME_RES_SEC:
-			dst->vb_uint64 = fr_unix_time_to_sec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_uint64 = fr_unix_time_to_usec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_uint64 = fr_unix_time_to_msec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_uint64 = src->vb_date;
-			break;
-		}
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-		/*
-		 *	uint64 can't hold all of int64
-		 */
-		if (src->vb_time_delta < 0) {
-			fr_strerror_printf("Invalid cast: result cannot fit into uint64");
-			return -1;
-		}
-
-		if (!dst->enumv) {
-			goto delta_seconds;
-
-		} else switch (dst->enumv->flags.type_size) {
-		delta_seconds:
-		default:
-		case FR_TIME_RES_SEC:
-			dst->vb_uint64 = fr_time_delta_to_sec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_uint64 = fr_time_delta_to_usec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_uint64 = fr_time_delta_to_msec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_uint64 = src->vb_time_delta;
-			break;
-		}
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	return 0;
-}
-
-static inline int fr_value_box_cast_to_date(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					    fr_value_box_t const *src)
-{
-	uint64_t tmp = 0;
-
-	fr_assert(dst_type == FR_TYPE_DATE);
-
-	switch (src->type) {
-	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Pre-initialise box for non-variable types
-	 */
-	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-
-	switch (src->type) {
-	/*
-	 *	First convert to a numeric type
-	 */
-	case FR_TYPE_OCTETS:
+	case FR_TYPE_IPV4_ADDR:
 	{
-		fr_type_t	width;
-		fr_value_box_t	number;
+		fr_value_box_t	tmp;
 
-		switch (src->vb_length) {
-		case 8:
-			width = FR_TYPE_UINT64;
-			break;
-
-		case 4:
-			width = FR_TYPE_UINT32;
-			break;
-
-		case 2:
-			width = FR_TYPE_UINT16;
-			break;
-
-		case 1:
-			width = FR_TYPE_UINT8;
+		switch (dst_type) {
+		case FR_TYPE_UINT32:
+		case FR_TYPE_INT64:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_DATE:
+		case FR_TYPE_TIME_DELTA:
 			break;
 
 		default:
-			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd does not match "
-					   "the length of a numeric type",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->datum.length);
-			return -1;
+			goto bad_cast;
 		}
 
-		if (fr_value_box_fixed_size_from_octets(&number, width, dst_enumv, src) < 0) return -1;
-
-		return fr_value_box_cast_to_date(ctx, dst, dst_type, dst_enumv, &number);
+		fr_value_box_init(&tmp, FR_TYPE_UINT32, src->enumv, src->tainted);
+		memcpy(&tmp.vb_uint32, &src->vb_ip.addr.v4, sizeof(tmp.vb_uint32));
+		fr_value_box_hton(&tmp, &tmp);
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, &tmp);
 	}
-		break;
 
-	case FR_TYPE_UINT8:
-		tmp = (uint64_t)src->vb_uint8;
+	case FR_TYPE_ETHERNET:
+	{
+		fr_value_box_t	tmp;
 
-	assign:
-		if (!dst->enumv) {
-			goto delta_seconds;
-		} else switch (dst->enumv->flags.type_size) {
-		delta_seconds:
+		switch (dst_type) {
+		case FR_TYPE_INT64:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_DATE:
+		case FR_TYPE_TIME_DELTA:
+			break;
+
 		default:
-		case FR_TIME_RES_SEC:
-			dst->vb_date = fr_unix_time_from_sec(tmp);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_date = fr_unix_time_from_usec(tmp);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_date = fr_unix_time_from_msec(tmp);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_date = fr_unix_time_from_nsec(tmp);
-			break;
+			goto bad_cast;
 		}
-		break;
 
-	case FR_TYPE_UINT16:
-		tmp = (uint64_t)src->vb_uint16;
-		goto assign;
+		fr_value_box_init(&tmp, FR_TYPE_UINT64, src->enumv, src->tainted);
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)&tmp.vb_uint64) + (sizeof(tmp.vb_uint64) - sizeof(src->vb_ether)),
+		       &src->vb_ether, sizeof(src->vb_ether));
+#else
+		memcpy(&tmp.vb_uint64, &src->vb_ether, sizeof(tmp.vb_ether));
+#endif
+		fr_value_box_hton(&tmp, &tmp);
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, &tmp);
+	}
 
-	case FR_TYPE_UINT32:
-		tmp = (uint64_t)src->vb_uint32;
-		goto assign;
+	case FR_TYPE_IFID:
+	{
+		switch (dst_type) {
+		case FR_TYPE_UINT64:
+			break;
 
-	case FR_TYPE_UINT64:
-		tmp = (uint64_t)src->vb_uint64;
-		goto assign;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0) {
-		negative_value:
-			fr_strerror_printf("Invalid cast from %s to %s.  Signed value is negative",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
+		default:
+			goto bad_cast;
 		}
-		tmp = (uint64_t)src->vb_int8;
-		goto assign;
 
-	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0) goto negative_value;
-		tmp = (uint64_t)src->vb_int16;
-		goto assign;
-
-	case FR_TYPE_INT32:
-		if (src->vb_int32 < 0) goto negative_value;
-		tmp = (uint64_t)src->vb_int32;
-		goto assign;
-
-	case FR_TYPE_INT64:
-		if (src->vb_int64 < 0) goto negative_value;
-		tmp = (uint64_t)src->vb_int64;
-		goto assign;
-
-	case FR_TYPE_TIME_DELTA:
-		if (src->vb_time_delta < 0) goto negative_value;
-		dst->vb_date = fr_time_from_nsec(src->vb_time_delta);
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
+		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+		dst->vb_uint64 = fr_net_to_uint64(&src->vb_ifid[0]);
+		return 0;
+	}
 	}
 
 	return 0;
@@ -3209,31 +2933,13 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_BOOL:
 		return fr_value_box_cast_to_bool(ctx, dst, dst_type, dst_enumv, src);
 
-	case FR_TYPE_UINT8:
-		return fr_value_box_cast_to_uint8(ctx, dst, dst_type, dst_enumv, src);
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+		return fr_value_box_cast_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
-	case FR_TYPE_UINT16:
-		return fr_value_box_cast_to_uint16(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_UINT32:
-		return fr_value_box_cast_to_uint32(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_UINT64:
-		return fr_value_box_cast_to_uint64(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 		break;
 
-	case FR_TYPE_DATE:
-		return fr_value_box_cast_to_date(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		break;
 
@@ -3244,8 +2950,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
-	invalid_cast:
-		fr_strerror_printf("Invalid cast from %s to %s",
+		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
@@ -3258,84 +2963,9 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 								      src->vb_strvalue,
 								      src->datum.length, '\0', src->tainted);
 
-	if ((src->type == FR_TYPE_IFID) &&
-	    (dst_type == FR_TYPE_UINT64)) {
-		dst->vb_uint64 = fr_net_to_uint64(&src->vb_ifid[0]);
-
-	fixed_length:
-		dst->type = dst_type;
-		dst->enumv = dst_enumv;
-
-		return 0;
-	}
-
-	/*
-	 *	We can cast uint32s less that < INT_MAX to signed
-	 */
-	if (dst_type == FR_TYPE_INT32) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->vb_int32 = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->vb_int32 = src->vb_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			if (src->vb_uint32 > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From uint32 to signed.  uint32 value %u is larger "
-						   "than max signed int and would overflow", src->vb_uint32);
-				return -1;
-			}
-			dst->vb_int32 = (int)src->vb_uint32;
-			break;
-
-		case FR_TYPE_UINT64:
-			if (src->vb_uint32 > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From uint64 to signed.  uint64 value %" PRIu64
-						   " is larger than max signed int and would overflow", src->vb_uint64);
-				return -1;
-			}
-			dst->vb_int32 = (int)src->vb_uint64;
-			break;
-
-		case FR_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			goto invalid_cast;
-		}
-		goto fixed_length;
-	}
-
-	if (dst_type == FR_TYPE_TIME_DELTA) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->datum.time_delta = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->datum.time_delta = src->vb_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			dst->datum.time_delta = src->vb_uint32;
-			break;
-
-		case FR_TYPE_UINT64:
-			dst->datum.time_delta = src->vb_uint64;
-			break;
-
-		default:
-			goto invalid_cast;
-		}
-	}
-
 	if (src->type == FR_TYPE_OCTETS) {
 		fr_value_box_t tmp;
 
-	do_octets:
 		if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 					   "destination type size %zd",
@@ -3367,40 +2997,10 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		dst->enumv = dst_enumv;
 
 		fr_value_box_hton(dst, &tmp);
-
-		/*
-		 *	Fixup IP addresses.
-		 */
-		switch (dst->type) {
-		case FR_TYPE_IPV4_ADDR:
-			dst->vb_ip.af = AF_INET;
-			dst->vb_ip.prefix = 128;
-			dst->vb_ip.scope_id = 0;
-			break;
-
-		case FR_TYPE_IPV6_ADDR:
-			dst->vb_ip.af = AF_INET6;
-			dst->vb_ip.prefix = 128;
-			dst->vb_ip.scope_id = 0;
-			break;
-
-		default:
-			break;
-		}
-
 		return 0;
 	}
 
-	if ((src->type == FR_TYPE_IPV4_ADDR) &&
-		   ((dst_type == FR_TYPE_UINT32) ||
-		    (dst_type == FR_TYPE_DATE) ||
-		    (dst_type == FR_TYPE_TIME_DELTA) ||
-		    (dst_type == FR_TYPE_INT32))) {
-		dst->vb_uint32 = htonl(src->vb_ip.addr.v4.s_addr);
-
-	} else {		/* they're of the same uint8 order */
-		memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
-	}
+	memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
 
 	dst->type = dst_type;
 	dst->enumv = dst_enumv;

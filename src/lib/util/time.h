@@ -109,17 +109,22 @@ static inline fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * 1000);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_usec(uint64_t usec)
+static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
 {
-	return (usec * 1000);
+	return nsec;
 }
 
-static inline fr_time_delta_t fr_time_delta_from_msec(uint64_t msec)
+static inline fr_time_delta_t fr_time_delta_from_usec(int64_t usec)
 {
-	return (msec * 1000000);
+	return (usec * MSEC);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_sec(uint64_t sec)
+static inline fr_time_delta_t fr_time_delta_from_msec(int64_t msec)
+{
+	return (msec * USEC);
+}
+
+static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 {
 	return (sec * NSEC);
 }

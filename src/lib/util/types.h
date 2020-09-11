@@ -110,12 +110,9 @@ typedef enum {
 	case FR_TYPE_BOOL: \
 	case FR_TYPE_FLOAT64
 
-/** Naturally numeric types
- *
- */
-#define FR_TYPE_NUMERIC \
-	FR_TYPE_BOOL: \
-	case FR_TYPE_UINT8: \
+
+#define FR_TYPE_INTEGER_EXCEPT_BOOL \
+	FR_TYPE_UINT8: \
 	case FR_TYPE_UINT16: \
 	case FR_TYPE_UINT32: \
 	case FR_TYPE_UINT64: \
@@ -123,11 +120,24 @@ typedef enum {
 	case FR_TYPE_INT16: \
 	case FR_TYPE_INT32: \
 	case FR_TYPE_INT64: \
-	case FR_TYPE_FLOAT32: \
-	case FR_TYPE_FLOAT64: \
 	case FR_TYPE_DATE: \
 	case FR_TYPE_TIME_DELTA: \
 	case FR_TYPE_SIZE
+
+/** Signed or unsigned integers
+ *
+ */
+#define FR_TYPE_INTEGER \
+	FR_TYPE_BOOL: \
+	case FR_TYPE_INTEGER_EXCEPT_BOOL \
+
+/** Naturally numeric types
+ *
+ */
+#define FR_TYPE_NUMERIC \
+	FR_TYPE_INTEGER: \
+	case FR_TYPE_FLOAT32: \
+	case FR_TYPE_FLOAT64 \
 
 /** Match all variable length types in case statements
  *
