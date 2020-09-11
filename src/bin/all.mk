@@ -14,6 +14,16 @@ SUBMAKEFILES := \
     checkrad.mk
 
 #
+#  Add the list of protocols to be fuzzed here Each protocol needs to
+#  have a test point for packet decoding.  See
+#  src/protocols/radius/decode.c for an example.
+#
+#  The fuzzer binary needs special magic to run, as it doesn't parse
+#  command-line options.  See fuzzer.mk for details.
+#
+PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
+
+#
 #  Add the fuzzer only if everything was built with the fuzzing flags.
 #
 ifneq "$(findstring -fsanitize=fuzzer,${CFLAGS})" ""
@@ -28,16 +38,6 @@ src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
 SUBMAKEFILES += fuzzer_${1}.mk
 endef
 
-#
-#  Add the list of protocols to be fuzzed here Each protocol needs to
-#  have a test point for packet decoding.  See
-#  src/protocols/radius/decode.c for an example.
-#
-#  The fuzzer binary needs special magic to run, as it doesn't parse
-#  command-line options.  See fuzzer.mk for details.
-#
-PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
-
 $(foreach X,${PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 .PHONY: fuzzer.help
@@ -49,7 +49,7 @@ fuzzer.help:
 	@echo
 
 else
-.PHONY: fuzzer.help
-fuzzer.help:
+.PHONY: fuzzer.help $(foreach X,${PROTOCOLS},fuzzer.${X})
+fuzzer.help $(foreach X,${PROTOCOLS},fuzzer.${X}):
 	@echo "The server MUST be built with '--enable-llvm-fuzzer-sanitizer'"
 endif
