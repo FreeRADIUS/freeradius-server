@@ -1,12 +1,19 @@
+[WARNING]
+====
+*VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY
+RELEASED. USE AT YOUR OWN RISK.*
+
+The configuration may change. The behavior may change. The
+documentation may change.
+
+Please wait for an official release before using version 4.
+====
+
 = Introduction
 
 This is the documentation for FreeRADIUS, version 4. The documentation
 is available under the Creative Commons Non-Commercial license, as given
 in the `LICENSE` file in this directory.
-
-WARNING: *PLEASE DO NOT USE VERSION 4. IT IS INTENDED ONLY FOR
-DEVELOPERS. THE CONFIGURATION MAY CHANGE. THE BEHAVIOR MAY CHANGE. THE
-DOCUMENTATION MAY CHANGE.*
 
 FreeRADIUS is a complex piece of software with many configuration
 options. However, we have taken great care to make the default
