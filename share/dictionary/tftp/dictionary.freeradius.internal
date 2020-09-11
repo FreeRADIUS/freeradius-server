@@ -1,0 +1,25 @@
+# -*- text -*-
+# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+# Internal FreeRADIUS TFTP dictionary.
+#
+# $Id$
+#
+##############################################################################
+
+#
+#  TFTP packet header fields
+#
+FLAGS	internal
+
+ATTRIBUTE	Packet-Type				65536	uint32
+
+VALUE	Packet-Type			Read-Request			1
+VALUE	Packet-Type			Write-Request			2
+VALUE	Packet-Type			Data				3
+VALUE	Packet-Type			Acknowledgement			4
+VALUE	Packet-Type			Error				5
+VALUE	Packet-Type			Do-Not-Respond			6

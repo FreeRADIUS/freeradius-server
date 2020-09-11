@@ -1,0 +1,45 @@
+# -*- text -*-
+# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	TFTP (Trivial File Transfer Protocol)
+#
+#	The default destination port is 69.
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#  TFTPD attributes for the packet header
+#
+ATTRIBUTE	TFTP-Opcode			1	uint16
+ATTRIBUTE	TFTP-Filename			2	string
+ATTRIBUTE	TFTP-Mode			3	uint8
+ATTRIBUTE	TFTP-Block-Size			4	uint16
+
+ATTRIBUTE	TFTP-Block			5	uint16
+ATTRIBUTE	TFTP-Data			6	octets
+ATTRIBUTE	TFTP-Error-Code			7	uint16
+ATTRIBUTE	TFTP-Error-Message		8	string
+
+VALUE  TFTP-Opcode	Read-Request 		0x0001
+VALUE  TFTP-Opcode	Write-Request 		0x0002
+VALUE  TFTP-Opcode	Data 			0x0003
+VALUE  TFTP-Opcode	Acknowledgement		0x0004
+VALUE  TFTP-Opcode	Error 			0x0005
+
+VALUE  TFTP-Mode	INVALID	0
+VALUE  TFTP-Mode	ASCII	1
+VALUE  TFTP-Mode	OCTET	2
+
+VALUE  TFTP-Error-Code		Not-Defined			0
+VALUE  TFTP-Error-Code		File-Not-Found			1
+VALUE  TFTP-Error-Code		Access-Violation		2
+VALUE  TFTP-Error-Code		Disk-Full			3
+VALUE  TFTP-Error-Code		Illegal-TFTP-Operation		4
+VALUE  TFTP-Error-Code		Unknown-transfer-ID		5
+VALUE  TFTP-Error-Code		File-Already-Exists		6
+VALUE  TFTP-Error-Code		No-Such-User			7

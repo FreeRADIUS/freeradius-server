@@ -77,7 +77,8 @@ PROTOCOLS    := \
 	radius \
 	snmp \
 	tacacs \
-	vmps
+	vmps \
+	tftp
 
 #
 #  If we're building packages or crossbuilding, just do that.
