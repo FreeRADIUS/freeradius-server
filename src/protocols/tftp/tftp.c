@@ -274,3 +274,48 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 done:
 	return data_len;
 }
+
+/**
+ *	Used as the decoder ctx.
+ */
+typedef struct {
+	fr_dict_attr_t const *root;
+} fr_tftp_ctx_t;
+
+/*
+ *	Test points for protocol decode
+ */
+static ssize_t fr_tftp_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	return fr_tftp_decode(ctx, data, data_len, vps);
+}
+
+static int _decode_test_ctx(UNUSED fr_tftp_ctx_t *proto_ctx)
+{
+	fr_tftp_free();
+
+	return 0;
+}
+
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+{
+	fr_tftp_ctx_t *test_ctx;
+
+	if (fr_tftp_init() < 0) return -1;
+
+	test_ctx = talloc_zero(ctx, fr_tftp_ctx_t);
+	if (!test_ctx) return -1;
+
+	test_ctx->root = fr_dict_root(dict_tftp);
+	talloc_set_destructor(test_ctx, _decode_test_ctx);
+
+	*out = test_ctx;
+
+	return 0;
+}
+
+extern fr_test_point_proto_decode_t tftp_tp_decode_proto;
+fr_test_point_proto_decode_t tftp_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_tftp_decode_proto
+};
