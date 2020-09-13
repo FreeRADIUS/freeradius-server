@@ -34,6 +34,8 @@ extern "C" {
 #include <freeradius-devel/protocol/tftp/freeradius.internal.h>
 #include <freeradius-devel/protocol/tftp/rfc1350.h>
 
+#include <freeradius-devel/util/dbuff.h>
+
 #define FR_TFTP_MAX_CODE				(FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND+1)
 #define FR_TFTP_MAX_ERROR_CODE				(FR_TFTP_ERROR_CODE_VALUE_NO_SUCH_USER+1)
 #define FR_TFTP_HDR_LEN				(4)	/* at least: 2-bytes opcode + 2-bytes */
@@ -79,6 +81,7 @@ extern "C" {
 
 /* tftp.c */
 int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pair_t **vps) CC_HINT(nonnull(2,4));
+ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_t *vps) CC_HINT(nonnull(1,2));
 
 /* base.c */
 extern char const	*fr_tftp_codes[FR_TFTP_MAX_CODE];
