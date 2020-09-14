@@ -1,0 +1,156 @@
+#  -*- text -*-
+######################################################################
+#
+#	$Id$
+#
+######################################################################
+
+server tftp {
+	#
+	#  In v4, all "server" sections MUST start with a "namespace"
+	#  parameter.  This tells the server which protocol is being used.
+	#
+	#  All of the subsequent "listen" sections in this server will
+	#  only accept packets for that protocol.
+	#
+	namespace = tftp
+
+	listen {
+		#
+		#  directory:: Files are served by default from the below directory.
+		#
+		directory = "${modconfdir}/${..:instance}"
+
+		#
+		#  type:: Type of TFTP packets to listen for.
+		#
+		type = Read-Request
+		type = Acknowledgement
+
+		#
+		#  NOTE: This service prohibiting client to upload to server.
+		#
+
+		#
+		#  max_blksize:: The number of octets in a block, specified in ASCII.
+		#                Valid values range between "8" and "65464" octets.
+		#
+		max_blksize = 1400
+
+		#
+		#  transport:: Only `udp` is allowed.
+		#
+		transport = udp
+
+		udp {
+			#
+			#  ipaddr:: TFTP sockets only support IPv4 addresses.
+			#
+			ipaddr = *
+
+			#
+			#  port:: Port on which to listen.
+			#
+			#  NOTE: 69 is the default TFTP port.
+			#
+			port = 69
+
+			#
+			#  Some systems support binding to an interface, in addition
+			#  to the IP address.  This feature isn't strictly necessary,
+			#  but for sites with many IP addresses on one interface,
+			#  it's useful to say "listen on all addresses for eth0".
+			#
+			#  If your system does not support this feature, you will
+			#  get an error if you try to use it.
+			#
+#			interface = eth0
+		}
+
+		limit {
+			idle_timeout = 30.0
+		}
+	}
+
+	#
+	#  You can list multiple "client" sections here in order to define
+	#  clients which apply only to this virtual server.  i.e. only for
+	#  the TFTP protocol.
+	#
+	client cable_modems {
+		ipaddr = 192.168.0.0/16
+	}
+
+	recv Read-Request {
+		#
+		#	You could deny a file by a specific IP.
+		#
+		if (&Packet-Src-IP-Address == "192.168.1.22") {
+			update reply {
+				&TFTP-Opcode := Error
+				&TFTP-Error-Code := Access-Violation
+				&TFTP-Error-Message := "You're not allowed"
+			}
+			reject
+		}
+
+		#
+		#  ... Or overwrite the FILE's like:
+		#
+		if (&TFTP-Mode == ASCII && &TFTP-Filename == "test-ascii") {
+			update reply {
+				&TFTP-Filename := "sample-netascii.txt"
+			}
+			updated
+		}
+		if (&TFTP-Mode == OCTET && &TFTP-Filename == "test-octet") {
+			update reply {
+				&TFTP-Filename := "sample-octet.png"
+			}
+			updated
+		}
+
+		#
+		#  ... Or If you have FILES's in a database, you can `select` like:
+		#
+#		if (&TFTP-Filename == "firmware.bin") {
+#			update reply {
+#				&TFTP-Filename := "%{sql:SELECT firmware_file WHERE ipaddr='%{Packet-Src-IP-Address}'}"
+#			}
+#		}
+	}
+
+	#
+	#  This section is called when it sends a valid file.
+	#
+	send Data {
+		ok
+	}
+
+	#
+	#  This section is called when it receives a valid Data request.
+	#
+	recv Acknowledgement {
+		ok
+	}
+
+	#
+	#  This section is called when we have some error.
+	#
+	send Error {
+		#
+		#  Add contents here!
+		#
+		update reply {
+			&TFTP-Opcode := Error
+			&TFTP-Error-Code := Access-Violation
+		}
+	}
+
+	#
+	#  This section is called when not responding to packets.
+	#
+	send Do-Not-Respond {
+		ok
+	}
+}
