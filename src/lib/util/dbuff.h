@@ -75,6 +75,8 @@ struct fr_dbuff_s {
 						///< buffer changes.
 };
 
+static inline void fr_dbuff_set_to_marker(fr_dbuff_marker_t *m);
+
 /** @name utility macros
  * @{
  */
@@ -471,6 +473,11 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
  *	- 0 on failure (p out of range), marker position will remain unchanged.
  *	- >0 the number of bytes the marker advanced.
  *	- <0 the number of bytes the marker retreated.
+ *
+ * @note 	moving the marker's position past its parent's position is
+ *		effectively using part of the dbuff behind the parent's back
+ *		(fr_dbuff_used() won't see it), so in that case we set the
+ *		parent to match.
  */
 static inline ssize_t fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p)
 {
@@ -481,6 +488,8 @@ static inline ssize_t fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p
 	if (unlikely(p < dbuff->start)) return 0;
 
 	m->p_i = p;
+
+	if (m->p > dbuff->p) fr_dbuff_set_to_marker(m);
 
 	return p - current;
 }

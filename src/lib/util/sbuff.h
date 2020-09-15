@@ -93,6 +93,8 @@ struct fr_sbuff_s {
 							///< buffer changes.
 };
 
+static inline ssize_t _fr_sbuff_set(fr_sbuff_t *sbuff, char const *p);
+
 /** Talloc sbuff extension structure
  *
  * Holds the data necessary for creating dynamically
@@ -870,6 +872,7 @@ static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 	if (unlikely(p < sbuff->start)) return 0;
 
 	m->p_i = p;
+	if (m->p_i > sbuff->p_i) (void) _fr_sbuff_set(sbuff, p);
 
 	return p - current;
 }

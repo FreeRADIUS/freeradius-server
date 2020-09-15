@@ -1369,6 +1369,26 @@ static void test_next_unless_char(void)
 	TEST_CHECK_STRCMP("", sbuff.p);
 }
 
+static void test_advance(void)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	marker;
+	char const		in[] = "abcdefghijklm";
+
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+	fr_sbuff_marker(&marker, &sbuff);
+
+	TEST_CASE("Marker moves within used area leave parent's position alone");
+	fr_sbuff_advance(&sbuff, 8);
+	fr_sbuff_advance(&marker, 4);
+	TEST_SBUFF_USED(&sbuff, 8);
+
+	TEST_CASE("Marker moves past parent's position advance parent's position");
+	fr_sbuff_advance(&marker, 8);
+	TEST_CHECK(marker.p == sbuff.p);
+	TEST_SBUFF_USED(&sbuff, 12);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -1380,6 +1400,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
+	{ "fr_sbuff_advance",			test_advance },
 
 	/*
 	 *	Extending buffer

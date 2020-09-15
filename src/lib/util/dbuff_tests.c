@@ -219,6 +219,26 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+static void test_dbuff_marker_set(void)
+{
+	uint8_t			buff[32];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_marker_t	marker;
+
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_marker(&marker, &dbuff);
+
+	TEST_CASE("Marker moves within used area leave parent's position alone");
+	fr_dbuff_advance(&dbuff, 8);
+	fr_dbuff_marker_advance(&marker, 4);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 8);
+
+	TEST_CASE("Marker moves past parent's position advance parent's position");
+	fr_dbuff_marker_advance(&marker, 8);
+	TEST_CHECK(marker.p == dbuff.p);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 12);
+}
+
 
 TEST_LIST = {
 	/*
@@ -228,6 +248,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_marker_set",			test_dbuff_marker_set },
 
 	{ NULL }
 };
