@@ -1,3 +1,34 @@
+#  Determine subnet name to use in looking up options
+dhcp_determine_subnet {
+
+	#
+	#  If multiple subnets are in use, configure logic here to choose the
+	#  appropriate one.  DHCP-Network-IP-Address contains the address
+	#  to match into subnets, based on data provided in the DHCP packet.
+	#
+	#  With IP addresses the "<" operator can be used to match addresses
+	#  to subnets.
+	#
+	#  This is a made up example that should be customised to the real
+	#  Network environment
+	#
+
+	#  if (&DHCP-Network-IP-Address < 10.1.0.0/16) {
+	#	update control {
+	#		&DHCP-Subnet-Name = network1
+	#	}
+	#  } elsif (&DHCP-Network-IP-Address < 10.2.0.0/16) {
+	#	update control {
+	#		&DHCP-Subnet-Name = network2
+	#	}
+	#  } else {
+	#	update control {
+	#	       &DHCP-Subnet-Name = default
+	#	}
+	#  }
+
+}
+
 #  Assign compatibility data to request for sqlippool for DHCP Request
 dhcp_sqlippool_request {
 

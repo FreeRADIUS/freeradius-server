@@ -130,6 +130,10 @@ dhcp DHCP-Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -205,6 +209,10 @@ dhcp DHCP-Request {
 		do_not_respond
 	}
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  Response packet type. See DHCP-Discover section above.
 	#update reply {
 	#       &DHCP-Message-Type = DHCP-Ack
@@ -262,6 +270,10 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
 #	update control {
@@ -281,6 +293,10 @@ dhcp DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 dhcp DHCP-Inform {
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  The contents here are invented.  Change them!
 	update reply {
 		&DHCP-Message-Type = DHCP-Ack
@@ -307,6 +323,10 @@ dhcp DHCP-Inform {
 #}
 
 dhcp DHCP-Release {
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
