@@ -66,6 +66,9 @@ fr_dict_attr_t const *attr_dhcp_message_type;
 fr_dict_attr_t const *attr_dhcp_parameter_request_list;
 fr_dict_attr_t const *attr_dhcp_overload;
 fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
+fr_dict_attr_t const *attr_dhcp_relay_link_selection;
+fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
+fr_dict_attr_t const *attr_dhcp_network_ip_address;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -89,6 +92,9 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_parameter_request_list, .name = "DHCP-Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_overload, .name = "DHCP-Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_vendor_class_identifier, .name = "DHCP-Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_relay_link_selection, .name = "DHCP-Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_subnet_selection_option, .name = "DHCP-Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_network_ip_address, .name = "DHCP-Network-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 

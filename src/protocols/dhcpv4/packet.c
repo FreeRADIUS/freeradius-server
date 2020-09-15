@@ -110,7 +110,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 	uint32_t	giaddr;
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*head = NULL, *vp;
-	VALUE_PAIR	*maxms, *mtu;
+	VALUE_PAIR	*maxms, *mtu, *netaddr;
 
 	fr_cursor_init(&cursor, &head);
 
@@ -297,6 +297,46 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 			}
 		}
 	}
+
+	/*
+	 *	Determine the address to use in looking up which subnet the
+	 *	client belongs to based on packet data.  The sequence here
+	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
+	 *	store the found address in an internal attribute of
+	 *	DHCP-Network-IP-Address.
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_ip_address);
+	/*
+	 *	First look for Relay-Link-Selection
+	 */
+	netaddr = fr_pair_find_by_da(head, attr_dhcp_relay_link_selection);
+	if (!netaddr) {
+		/*
+		 *	Next try Subnet-Selection-Option
+		 */
+		netaddr = fr_pair_find_by_da(head, attr_dhcp_subnet_selection_option);
+	}
+	if (!netaddr) {
+		if (giaddr != htonl(INADDR_ANY)) {
+			/*
+			 *	Gateway address is set - use that one
+			 */
+			fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						  data + 24, 4, true);
+		} else {
+			/*
+			 *	else, store client address whatever it is
+			 */
+			fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						  data + 12, 4, true);
+		}
+	} else {
+		/*
+		 *	Store whichever address we found from options
+		 */
+		fr_value_box_copy(vp, &vp->data, &netaddr->data);
+	}
+	fr_cursor_append(&cursor, vp);
 
 	/*
 	 *	Client can request a LARGER size, but not a smaller
