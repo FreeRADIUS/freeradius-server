@@ -967,7 +967,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	uint32_t giaddr;
 	vp_cursor_t cursor;
 	VALUE_PAIR *head = NULL, *vp;
-	VALUE_PAIR *maxms, *mtu;
+	VALUE_PAIR *maxms, *mtu, *netaddr;
 
 	fr_cursor_init(&cursor, &head);
 	p = packet->data;
@@ -1137,6 +1137,46 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			}
 		}
 	}
+
+	/*
+	 *	Determine the address to use in looking up which subnet the
+	 *	client belongs to based on packet data.  The sequence here
+	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
+	 *	store the found address in an internal attribute of 274 -
+	 *	DHCP-Network-IP-Address.
+	 */
+	vp = fr_pair_afrom_num(packet, 274, DHCP_MAGIC_VENDOR);
+	/*
+	 *	First look for Relay-Link-Selection - option 82, suboption 5
+	 */
+	netaddr = fr_pair_find_by_num(head, (82 | (5 << 8)), DHCP_MAGIC_VENDOR, TAG_ANY);
+	if (!netaddr) {
+		/*
+		 *	Next try Subnet-Selection-Option - option 118
+		 */
+		netaddr = fr_pair_find_by_num(head, 118, DHCP_MAGIC_VENDOR, TAG_ANY);
+	}
+	if (!netaddr) {
+		if (giaddr != htonl(INADDR_ANY)) {
+			/*
+			 *	Gateway address is set - use that one
+			 */
+			memcpy(&vp->vp_ipaddr, packet->data + 24, 4);
+		} else {
+			/*
+			 *	else, store client address whatever it is
+			 */
+			memcpy(&vp->vp_ipaddr, packet->data + 12, 4);
+		}
+	} else {
+		/*
+		 *	Store whichever address we've found from options
+		 */
+		memcpy(&vp->vp_ipaddr, &netaddr->vp_ipaddr, 4);
+	}
+	vp->vp_length = 4;
+	debug_pair(vp);
+	fr_cursor_insert(&cursor, vp);
 
 	/*
 	 *	FIXME: Nuke attributes that aren't used in the normal
