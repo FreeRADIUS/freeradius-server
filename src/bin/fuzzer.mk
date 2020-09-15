@@ -41,5 +41,12 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 #
 #  @todo - make `max_len` protocol-specific
 #
+#  We can also add
+#
+#	-use_value_profile=1
+#
+#  This will track values across compare instructions.  But it can slow down scanning by 2x, and
+#  increase the size of the corpus by several times.
+#
 fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
