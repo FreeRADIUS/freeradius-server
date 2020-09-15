@@ -225,7 +225,7 @@ ATTRIBUTE	DHCP-Auto-Config			116	byte
 # Name Service Search
 ATTRIBUTE	DHCP-Name-Service-Search		117	octets
 # Subnet Selection Option
-ATTRIBUTE	DHCP-Subnet-Selection-Option		118	octets
+ATTRIBUTE	DHCP-Subnet-Selection-Option		118	ipaddr
 # DNS domain serach list
 ATTRIBUTE	DHCP-Domain-Search			119	octets
 # SIP-Servers DHCP Option
