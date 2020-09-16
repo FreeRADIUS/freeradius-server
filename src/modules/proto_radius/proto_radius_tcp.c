@@ -589,7 +589,6 @@ fr_app_io_t proto_radius_tcp = {
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
-	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,
