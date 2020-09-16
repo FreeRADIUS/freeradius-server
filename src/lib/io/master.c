@@ -2546,6 +2546,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	} else {
 		FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, >=, fr_time_delta_from_sec(1));
+
+		if (!inst->app_io->track) {
+			cf_log_err(inst->app_io_conf, "Internal error: 'track_duplicates' is set, but there is no 'track' function");
+		}
 	}
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
