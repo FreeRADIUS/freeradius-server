@@ -26,6 +26,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_tls.h"
+#include <openssl/ssl.h>
 #include <openssl/hmac.h>
 
 /*
@@ -259,10 +260,14 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name.
  */
-void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
+void eaptls_gen_eap_key(eap_handler_t *handler)
 {
+	RADIUS_PACKET *packet = handler->request->reply;
+	tls_session_t *tls_session = handler->opaque;
+	SSL *s = tls_session->ssl;
 	VALUE_PAIR *vp;
 	uint8_t *buff, *p;
+	uint8_t type = handler->type & 0xff;
 
 	vp = fr_pair_afrom_num(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
@@ -270,24 +275,31 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
 	buff = p = talloc_array(vp, uint8_t, vp->vp_length);
 
-	*p++ = header & 0xff;
+	*p++ = type;
 
+	switch (tls_session->info.version) {
+	case TLS1_VERSION:
+	case TLS1_1_VERSION:
+	case TLS1_2_VERSION:
+		SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
+		p += SSL3_RANDOM_SIZE;
+		SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
+		break;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	case TLS1_3_VERSION:
+	default:
 	{
-		uint8_t const context[] = { header };
+		uint8_t const context[] = { type };
 
 		if (SSL_export_keying_material(s, p, 2 * SSL3_RANDOM_SIZE,
 					       FR_TLS_EXPORTER_METHOD_ID, sizeof(FR_TLS_EXPORTER_METHOD_ID)-1,
-					       context, 1, 1) != 1) {
+					       context, sizeof(context), 1) != 1) {
 			ERROR("Failed generating keying material");
 			return;
 		}
 	}
-#else
-	SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
-	SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 #endif
+	}
 
 	vp->vp_octets = buff;
 	fr_pair_add(&packet->vps, vp);

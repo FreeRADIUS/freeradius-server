@@ -139,7 +139,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
  */
 int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
-	EAPTLS_PACKET	reply;
+	EAPTLS_PACKET reply;
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
@@ -187,14 +187,14 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 			return 0;
 			break;
 		}
-		eaptls_gen_mppe_keys(handler->request,
+		eaptls_gen_mppe_keys(request,
 				     tls_session->ssl, tls_session->label,
 				     context, context_size);
 	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
-	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl, handler->type);
+	eaptls_gen_eap_key(handler);
 
 	return 1;
 }
