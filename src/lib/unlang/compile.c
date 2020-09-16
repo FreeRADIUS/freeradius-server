@@ -161,9 +161,15 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
-		if (tmpl_attr_to_xlat(ctx, vpt_p) < 0) return false;
-		return true;
-	}
+		if (tmpl_attr_to_xlat(ctx, vpt_p) < 0) {
+			return false;
+		}
+
+		/*
+		 *	The VPT has been rewritten, so use the new one.
+		 */
+		vpt = *vpt_p;
+	} /* it's now xlat, so we need to resolve it. */
 
 	/*
 	 *	Fixup any other tmpl types

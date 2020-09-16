@@ -3185,6 +3185,8 @@ int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
 		return -1;
 	}
 
+	if (vpt->data.xlat.flags.needs_resolving) vpt->type |= TMPL_FLAG_UNRESOLVED;
+
 	*vpt_p = vpt;
 
 	return 0;

@@ -1515,10 +1515,16 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 		case XLAT_VIRTUAL_UNRESOLVED:
 		{
 			xlat_t *func;
+			char const *name;
 
-			fr_assert(node->attr->type == TMPL_TYPE_ATTR_UNRESOLVED);
+			if (node->attr->type == TMPL_TYPE_ATTR_UNRESOLVED) {
+				name = tmpl_attr_unresolved(node->attr);
+			} else {
+				fr_assert(node->attr->type == TMPL_TYPE_ATTR);
+				name = tmpl_da(node->attr)->name;
+			}
 
-			func = xlat_func_find(tmpl_attr_unresolved(node->attr), -1);
+			func = xlat_func_find(name, -1);
 			if (func) {
 				xlat_exp_set_type(node, XLAT_VIRTUAL);
 				node->attr = node->attr;	/* Shift to the right location */
