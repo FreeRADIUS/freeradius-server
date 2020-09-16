@@ -77,7 +77,6 @@ fr_table_num_sorted_t const request_ref_table[] = {
 	{ L("current"),		REQUEST_CURRENT			},
 	{ L("outer"),		REQUEST_OUTER			},
 	{ L("parent"),		REQUEST_PARENT			},
-	{ L("proxy"),		REQUEST_PROXY			}
 };
 size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
 
@@ -385,11 +384,7 @@ int radius_request(REQUEST **context, request_ref_t name)
 		*context = request->parent;
 		break;
 
-	case REQUEST_PROXY:
-		if (!request->proxy) {
-			return -1;
-		}
-		*context = request->proxy;
+		fr_assert(0);
 		break;
 
 	case REQUEST_UNKNOWN:

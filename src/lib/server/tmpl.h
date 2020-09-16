@@ -99,7 +99,6 @@ typedef enum requests_ref_e {
 					//!< by the NAS.
 
 	REQUEST_PARENT,			//!< Parent (whatever it is).
-	REQUEST_PROXY,			//!< Proxied request.
 	REQUEST_UNKNOWN			//!< Unknown request.
 } request_ref_t;
 
