@@ -26,6 +26,7 @@ dhcp_determine_subnet {
 	#	       &DHCP-Subnet-Name = default
 	#	}
 	#  }
+}
 
 #  Assign common DHCP reply packet options
 dhcp_common {
