@@ -60,6 +60,13 @@ ATTRIBUTE	DHCP-Relay-Max-Hop-Count		271	integer
 # added to the reply packet by the server core.
 ATTRIBUTE	DHCP-Relay-IP-Address			272	ipaddr
 
+# This address is assigned on a hierarchical basis to then determine
+# the subnet which the client belongs to
+ATTRIBUTE	DHCP-Network-IP-Address			274	ipaddr
+# This is a name for the subnet a client belongs to then used for
+# looking up of options
+ATTRIBUTE	DHCP-Subnet-Name			275	string
+
 VALUE	DHCP-Flags			Broadcast		0x8000
 
 VALUE	DHCP-Hardware-Type		Ethernet		1
@@ -311,7 +318,7 @@ ATTRIBUTE	DHCP-Auto-Config			116	byte
 # Name Service Search
 ATTRIBUTE	DHCP-Name-Service-Search		117	octets
 # Subnet Selection Option
-ATTRIBUTE	DHCP-Subnet-Selection-Option		118	octets
+ATTRIBUTE	DHCP-Subnet-Selection-Option		118	ipaddr
 # DNS domain serach list
 ATTRIBUTE	DHCP-Domain-Search			119	octets
 # SIP-Servers DHCP Option

@@ -130,6 +130,28 @@ dhcp DHCP-Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
+	#  Set the type of packet to send in reply.
+	#
+	#  The server will look at the DHCP-Message-Type attribute to
+	#  determine which type of packet to send in reply. Common
+	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+	#  dictionary.dhcp for all the possible values.
+	#
+	#  DHCP-Do-Not-Respond can be used to tell the server to not
+	#  respond.
+	#
+	#  In the event that DHCP-Message-Type is not set then the
+	#  server will fall back to determining the type of reply
+	#  based on the rcode of this section.
+	#
+	#update reply {
+	#       DHCP-Message-Type = DHCP-Offer
+	#}
+
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
@@ -196,6 +218,10 @@ dhcp DHCP-Request {
 		do_not_respond
 	}
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  Response packet type. See DHCP-Discover section above.
 	#update reply {
 	#       &DHCP-Message-Type = DHCP-Ack
@@ -244,6 +270,10 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
 #	update control {
@@ -263,9 +293,13 @@ dhcp DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 dhcp DHCP-Inform {
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
-
+  
 	ok
 }
 
@@ -283,6 +317,10 @@ dhcp DHCP-Inform {
 #}
 
 dhcp DHCP-Release {
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
