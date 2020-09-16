@@ -3476,7 +3476,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix
 	 *	we add the .unknown prefix.
 	 *
 	 */
-	if (tmpl_contains_attr(vpt) && (ar = fr_dlist_tail(&vpt->data.attribute.ar))) {
+	if (!tmpl_is_list(vpt) && (ar = fr_dlist_tail(&vpt->data.attribute.ar))) {
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
 		case TMPL_ATTR_TYPE_UNKNOWN:
@@ -3494,7 +3494,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix
 	 *	Print attribute identifiers
 	 */
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		switch(ar->type) {
+		if (!tmpl_is_list(vpt)) switch(ar->type) {
 		/*
 		 *	For normal attributes we use the name
 		 */
