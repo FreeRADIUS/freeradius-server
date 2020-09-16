@@ -2549,6 +2549,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		if (!inst->app_io->track) {
 			cf_log_err(inst->app_io_conf, "Internal error: 'track_duplicates' is set, but there is no 'track' function");
+			return -1;
 		}
 	}
 
