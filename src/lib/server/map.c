@@ -1177,7 +1177,9 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	bool			found = false;
 
 	vp_map_t		exp_map;
-	tmpl_t		*exp_lhs;
+	tmpl_t			*exp_lhs;
+	request_ref_t		request_ref;
+	pair_list_t		list_ref;
 
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
@@ -1256,17 +1258,21 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	}
 
 	context = request;
-	if (radius_request(&context, tmpl_request(map->lhs)) < 0) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
+	request_ref = tmpl_request(map->lhs);
+	if (radius_request(&context, request_ref) < 0) {
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in right side of map",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
+			fr_table_str_by_value(request_ref_table, request_ref, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}
 
-	list = radius_list(context, tmpl_list(map->lhs));
+	list_ref = tmpl_list(map->lhs);
+	list = radius_list(context, list_ref);
 	if (!list) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
+			fr_table_str_by_value(pair_list_table, list_ref, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}

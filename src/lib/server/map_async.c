@@ -200,17 +200,23 @@ static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const
 {
 	REQUEST		*context = request;
 	VALUE_PAIR	**list;
+	request_ref_t	request_ref;
+	pair_list_t	list_ref;
 
-	if (radius_request(&context, tmpl_request(src_dst)) < 0) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
+	request_ref = tmpl_request(src_dst);
+	if (radius_request(&context, request_ref) < 0) {
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\"",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
+			fr_table_str_by_value(request_ref_table, request_ref, "<INVALID>"));
 		return NULL;
 	}
 
-	list = radius_list(context, tmpl_list(src_dst));
+	list_ref = tmpl_list(src_dst);
+	list = radius_list(context, list_ref);
 	if (!list) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\"",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
+			fr_table_str_by_value(pair_list_table, list_ref, "<INVALID>"));
 		return NULL;
 	}
 
