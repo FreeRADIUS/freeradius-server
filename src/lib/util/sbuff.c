@@ -205,7 +205,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 #define update_ptr(_buff, _shift, _field) _field = ((_field) - (_shift)) <= (_buff) ? (_buff) : ((_field) - (_shift))
 #define update_max_shift(_buff, _max_shift, _field) if (((_buff) + (_max_shift)) > (_field)) _max_shift -= (((_buff) + (_max_shift)) - (_field))
 
-	buff = sbuff->start;
+	buff = sbuff->buff;
 
 	/*
 	 *	If the sbuff is already \0 terminated
@@ -234,14 +234,16 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
+		char			*start = sbuff_i->start;
 
 		/*
 		 *	Current position shifts, but stays the same
 		 *	relative to content.
 		 */
+		update_ptr(buff, max_shift, sbuff_i->start);
 		update_ptr(buff, max_shift, sbuff_i->p);
 		update_ptr(buff, max_shift, sbuff_i->end);
-		sbuff_i->shifted += max_shift;
+		sbuff_i->shifted += (max_shift - (start - sbuff_i->start));
 
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
 	}
