@@ -227,8 +227,16 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			break;
 
+		case PW_TYPE_IPV4_PREFIX:
 		case PW_TYPE_IPV6_PREFIX:
-			ret = memcmp(vp->vp_ipv6prefix, check->vp_ipv6prefix, sizeof(vp->vp_ipv6prefix));
+			ret = fr_pair_cmp_op(check->op, vp, check);
+			if (ret == -1) return -2;   // error
+			if (check->op == T_OP_LT || check->op == T_OP_LE)
+				ret = (ret == 1) ? -1 : 1;
+			else if (check->op == T_OP_GT || check->op == T_OP_GE)
+				ret = (ret == 1) ? 1 : -1;
+			else if (check->op == T_OP_CMP_EQ)
+				ret = (ret == 1) ? 0 : -1;
 			break;
 
 		case PW_TYPE_IFID:
