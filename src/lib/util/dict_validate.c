@@ -43,7 +43,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	int bit;
 	uint32_t all_flags;
 	uint32_t shift_is_root, shift_internal;
-	uint32_t shift_has_tag, shift_array, shift_has_value;
+	uint32_t shift_array, shift_has_value;
 	uint32_t shift_virtual, shift_subtype, shift_extra;
 	fr_dict_attr_t const *v;
 
@@ -57,7 +57,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 #define SET_FLAG(_flag) do { shift_ ## _flag = 1 << bit; if (flags->_flag) {all_flags |= (1 << bit); } bit++; } while (0)
 	SET_FLAG(is_root);
 	SET_FLAG(internal);
-	SET_FLAG(has_tag);
 	SET_FLAG(array);
 	SET_FLAG(has_value);
 	SET_FLAG(virtual);
@@ -75,7 +74,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// is_unknown
 	// is_raw
 	// internal
-	// has_tag
 	// array
 	// has_value
 	// virtual
@@ -96,39 +94,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (flags->is_raw) {
 		fr_strerror_printf("The 'raw' flag cannot be set for attributes in the dictionary.");
 		return -1;
-	}
-
-	/*
-	 *	Tags can only be used in a few limited situations.
-	 */
-	if (flags->has_tag) {
-		/*
-		 *	0 is internal, 1 is RADIUS, everything else is disallowed.
-		 */
-		if (dict->root->attr > FR_PROTOCOL_RADIUS) {
-			fr_strerror_printf("The 'has_tag' flag can only be used in the RADIUS dictionary");
-			return false;
-		}
-
-		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
-					   "or 'string'");
-			return false;
-		}
-
-		if (!(parent->flags.is_root ||
-		      ((parent->type == FR_TYPE_VENDOR) &&
-		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
-			return false;
-		}
-
-		/*
-		 *	"has_tag" can also be used with "encrypt=", and "internal" (for testing)
-		 */
-		ALLOW_FLAG(subtype);
-		ALLOW_FLAG(internal);
-		FORBID_OTHER_FLAGS(has_tag);
 	}
 
 	/*

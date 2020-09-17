@@ -46,7 +46,6 @@ do { \
 	FLAG_SET(is_unknown);
 	FLAG_SET(is_raw);
 	FLAG_SET(internal);
-	FLAG_SET(has_tag);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
 	FLAG_SET(virtual);

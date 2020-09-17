@@ -437,11 +437,6 @@ ATTRIBUTE	Tmp-Ethernet-4				1874	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
 
-#
-#  Mostly for testing
-#
-ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag
-ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag
 
 ATTRIBUTE	Log-Message				1894	string
 ATTRIBUTE	Log-Level				1895	integer

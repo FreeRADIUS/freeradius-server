@@ -1132,6 +1132,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	except for CoA-Requests.  They can have a tag,
 		 *	so data_len is not the same as attrlen.
 		 */
+		case FLAG_TAGGED_TUNNEL_PASSWORD:
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (fr_radius_decode_tunnel_password(buffer, &data_len,
 							     packet_ctx->secret, packet_ctx->vector,

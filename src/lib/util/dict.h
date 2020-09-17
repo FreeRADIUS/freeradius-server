@@ -79,7 +79,6 @@ typedef struct {
 
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
-	unsigned int		has_tag : 1;			//!< Tagged attribute.
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
 	unsigned int		has_value : 1;			//!< Has a value.
 

@@ -87,6 +87,8 @@ enum {
 	FLAG_NONE = 0,					//!< No extra flags
 	FLAG_LONG_EXTENDED_ATTR,	      		//!< the attribute is a long extended attribute
 	FLAG_CONCAT,					//!< the attribute is concatenated
+	FLAG_HAS_TAG,					//!< the attribute has a tag
+	FLAG_TAGGED_TUNNEL_PASSWORD,   			//!< the attribute has a tag and is encrypted
 
 	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
 	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
@@ -94,11 +96,11 @@ enum {
 };
 
 
-#define flag_has_tag(_flags)	     ((_flags)->has_tag)
+#define flag_has_tag(_flags)	     (!(_flags)->extra && (((_flags)->subtype == FLAG_HAS_TAG) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 #define flag_concat(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_CONCAT)
-#define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_ENCRYPT_USER_PASSWORD)
+#define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_TAGGED_TUNNEL_PASSWORD)
 #define flag_long_extended(_flags)   (!(_flags)->extra && (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR)
-#define flag_tunnel_password(_flags) (!(_flags)->extra && (_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD)
+#define flag_tunnel_password(_flags) (!(_flags)->extra && (((_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 
 /*
  *	protocols/radius/base.c

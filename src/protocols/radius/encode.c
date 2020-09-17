@@ -620,6 +620,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 		break;
 
+	case FLAG_TAGGED_TUNNEL_PASSWORD:
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 	{
 		uint8_t *value_end = out_p;

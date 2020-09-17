@@ -1131,18 +1131,21 @@ void fr_radius_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
+	{ L("long"),			FLAG_LONG_EXTENDED_ATTR },
 	{ L("concat"),			FLAG_CONCAT },
+	{ L("has_tag"),			FLAG_HAS_TAG },
+	{ L("has_tag,encrypt=2"),	FLAG_TAGGED_TUNNEL_PASSWORD },
+
 	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },
 	{ L("encrypt=2"),		FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ L("encrypt=3"),		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ L("long"),			FLAG_LONG_EXTENDED_ATTR },
 
 	/*
 	 *	And some humanly-readable names
 	 */
-	{ L("encrypt=Ascend-Secret"),	FLAG_ENCRYPT_ASCEND_SECRET },
-	{ L("encrypt=Tunnel-Password"),	FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ L("encrypt=User-Password"),	FLAG_ENCRYPT_USER_PASSWORD },
+	{ L("encrypt=Tunnel-Password"),	FLAG_ENCRYPT_TUNNEL_PASSWORD },
+	{ L("encrypt=Ascend-Secret"),	FLAG_ENCRYPT_ASCEND_SECRET },
 };
 
 static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
@@ -1187,9 +1190,25 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!flags->subtype) return true;
 
-	if (flag_has_tag(flags) && (flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
-		fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
-		return false;
+	/*
+	 *	Tagged attributes can only be of two data types.  They
+	 *	can, however, be VSAs.
+	 */
+	if (flag_has_tag(flags)) {
+		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
+			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
+					   "or 'string'");
+			return false;
+		}
+
+		if (!(parent->flags.is_root ||
+		      ((parent->type == FR_TYPE_VENDOR) &&
+		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
+			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
+			return false;
+		}
+
+		return true;
 	}
 
 	if (flag_long_extended(flags) && (type != FR_TYPE_EXTENDED)) {
@@ -1252,7 +1271,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	We forbid User-Password and Ascend-Send-Secret
 	 *	methods in the extended space.
 	 */
-	if ((flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags->internal && !parent->flags.internal) {
+	if (!flag_tunnel_password(flags) && !flags->internal && !parent->flags.internal) {
 		fr_dict_attr_t const *v;
 
 		for (v = parent; v != NULL; v = v->parent) {

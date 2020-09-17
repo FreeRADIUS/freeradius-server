@@ -352,25 +352,12 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		}
 
 		/*
-		 *	Boolean flag, means this is a tagged
-		 *	attribute.
+		 *	Marks the attribute up as internal.
+		 *	This means it can use numbers outside of the allowed
+		 *	protocol range, and also means it will not be included
+		 *	in replies or proxy requests.
 		 */
-		if (strcmp(key, "has_tag") == 0) {
-			if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
-				fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
-						   "or 'string'");
-				return -1;
-			}
-
-			flags->has_tag = 1;
-
-			/*
-			 *	Marks the attribute up as internal.
-			 *	This means it can use numbers outside of the allowed
-			 *	protocol range, and also means it will not be included
-			 *	in replies or proxy requests.
-			 */
-		} else if (strcmp(key, "internal") == 0) {
+		if (strcmp(key, "internal") == 0) {
 			flags->internal = 1;
 
 		} else if (strcmp(key, "array") == 0) {

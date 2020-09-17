@@ -515,7 +515,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 	char value[255];    /* radius attribute value */
 
 	/* add this attribute/value pair to our json output */
-	if (!vp->da->flags.has_tag) {
+	{
 		unsigned int i;
 
 		switch (vp->vp_type) {
