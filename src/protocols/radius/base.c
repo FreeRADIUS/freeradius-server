@@ -1157,6 +1157,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags->extra) return true;
 
+	if (flags->array) {
+		fr_strerror_printf("RADIUS does not support the 'array' flag.");
+		return false;
+	}
+
 	if (flag_concat(flags)) {
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes wuth the 'concat' flag MUST be at the root of the dictionary");
