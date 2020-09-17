@@ -1279,22 +1279,31 @@ static inline bool CC_HINT(always_inline) tmpl_substr_terminal_check(fr_sbuff_t 
 	return ret;
 }
 
+/** Descriptive return values for filter parsing
+ *
+ */
+typedef enum {
+	TMPL_ATTR_REF_HAS_FILTER = 1,
+	TMPL_ATTR_REF_NO_FILTER = 0,
+	TMPL_ATTR_REF_BAD_FILTER = -1
+} tmpl_attr_ref_filter_t;
+
 /** Parse array subscript and in future other filters
  *
  * @param[out] err	Parse error code.
  * @param[in] ar	to populate filter for.
  * @param[in] name	containing more attribute ref data.
  * @return
- *	- 1 on success with filter parsed.
- *	- 0 on success.
- *	- -1 on failure.
+ *	- TMPL_ATTR_REF_HAS_FILTER on success with filter parsed.
+ *	- TMPL_ATTR_REF_NO_FILTER on success with no filter.
+ *	- TMPL_ATTR_REF_BAD_FILTER on failure.
  */
-static int tmpl_attr_ref_parse_filter(attr_ref_error_t *err, tmpl_attr_t *ar, fr_sbuff_t *name)
+static tmpl_attr_ref_filter_t tmpl_attr_ref_parse_filter(attr_ref_error_t *err, tmpl_attr_t *ar, fr_sbuff_t *name)
 {
 	/*
 	 *	Parse array subscript (and eventually complex filters)
 	 */
-	if (!fr_sbuff_next_if_char(name, '[')) return 0;
+	if (!fr_sbuff_next_if_char(name, '[')) return TMPL_ATTR_REF_NO_FILTER;
 
 	switch (*fr_sbuff_current(name)) {
 	case '#':
@@ -1322,7 +1331,7 @@ static int tmpl_attr_ref_parse_filter(attr_ref_error_t *err, tmpl_attr_t *ar, fr
 				fr_strerror_printf("Array index is not an integer");
 				if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
 			error:
-				return -1;
+				return TMPL_ATTR_REF_BAD_FILTER;
 			}
 
 			fr_strerror_printf("Invalid array index");
@@ -1351,7 +1360,7 @@ static int tmpl_attr_ref_parse_filter(attr_ref_error_t *err, tmpl_attr_t *ar, fr
 		goto error;
 	}
 
-	return 1;
+	return TMPL_ATTR_REF_HAS_FILTER;
 }
 
 /** Parse an attribute reference, either an OID or attribute name
@@ -1489,6 +1498,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
+	tmpl_attr_ref_filter_t	filter;
 
 	fr_sbuff_marker(&m_s, name);
 
@@ -1700,48 +1710,16 @@ check_attr:
 do_suffix:
 	/*
 	 *	Parse the attribute reference filter
+	 *
+	 *	Error out immediately if the filter is bad
+	 *	otherwise determine whether to keep the
+	 *	attribute reference or omit it based on:
+	 *
+	 *	- Whether there was a filter present.
+	 *	- The type of attribute.
+	 *	- If this is the leaf attribute reference.
 	 */
-	switch (tmpl_attr_ref_parse_filter(err, ar, name)) {
-	case 0:						/* No filter */
-		/*
-		 *	Omit nesting types where the relationship is already
-		 *	described by the dictionaries and there's no filter.
-		 *
-		 *	These attribute references would just use additional
-		 *	memory for no real purpose.
-		 *
-		 *	Because we pre-allocate an attribute reference in
-		 *	each tmpl talloc pool, unless the attribute
-		 *	reference list contains a group, there's no performance
-		 *	penalty in repeatedly allocating and freeing this ar.
-		 */
-		switch (da->type) {
-		case FR_TYPE_STRUCT:
-		case FR_TYPE_TLV:
-		case FR_TYPE_VENDOR:
-		case FR_TYPE_VSA:
-			TALLOC_FREE(ar);
-			break;
-
-		/*
-		 *	Groups are fine, as are leaf values.
-		 */
-		case FR_TYPE_GROUP:
-		case FR_TYPE_VALUE:
-			break;
-
-		default:
-			goto error;
-		}
-		FALL_THROUGH;
-
-	case 1:						/* Found a filter */
-		fr_dlist_insert_tail(list, ar);
-		break;
-
-	default:					/* Parse error */
-		goto error;
-	}
+	if ((filter = tmpl_attr_ref_parse_filter(err, ar, name)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -1762,6 +1740,21 @@ do_suffix:
 		case FR_TYPE_TLV:
 		case FR_TYPE_VENDOR:
 		case FR_TYPE_VSA:
+			/*
+			 *	Omit nesting types where the relationship is already
+			 *	described by the dictionaries and there's no filter.
+			 *
+			 *	These attribute references would just use additional
+			 *	memory for no real purpose.
+			 *
+			 *	Because we pre-allocate an attribute reference in
+			 *	each tmpl talloc pool, unless the attribute
+			 *	reference list contains a group, there's no performance
+			 *	penalty in repeatedly allocating and freeing this ar.
+			 */
+			if (filter == TMPL_ATTR_REF_NO_FILTER) {
+				TALLOC_FREE(ar);
+			}
 			parent = da;
 			break;
 
@@ -1770,15 +1763,26 @@ do_suffix:
 					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
 					   fr_table_str_by_value(fr_value_box_type_table,
 					   			 da->type, "<INVALID>"));
-			fr_dlist_talloc_free_tail(list); /* Remove and free ar */
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
 
+		if (ar) fr_dlist_insert_tail(list, ar);
 		if (tmpl_attr_ref_afrom_attr_substr(ctx, err, vpt, parent, name, rules, depth + 1) < 0) {
-			fr_dlist_talloc_free_tail(list); /* Remove and free ar */
+			if (ar) fr_dlist_talloc_free_tail(list); /* Remove and free ar */
 			goto error;
 		}
+	/*
+	 *	If it's a leaf we always insert the attribute
+	 *	reference into the list, even if it's a
+	 *	nesting attribute.
+	 *
+	 *	This is useful for nested update sections
+	 *	where the tmpl might be the name of a new
+	 *	subsection.
+	 */
+	} else {
+		fr_dlist_insert_tail(list, ar);
 	}
 
 	fr_sbuff_marker_release(&m_s);
