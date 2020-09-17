@@ -376,14 +376,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "array") == 0) {
 			flags->array = 1;
 
-		} else if (strcmp(key, "concat") == 0) {
-			if (type != FR_TYPE_OCTETS) {
-				fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-				return -1;
-			}
-
-			flags->concat = 1;
-
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
 

@@ -49,7 +49,6 @@ do { \
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
-	FLAG_SET(concat);
 	FLAG_SET(virtual);
 
 	if (dict && !flags->extra && flags->subtype) {

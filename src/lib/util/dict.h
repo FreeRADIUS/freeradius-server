@@ -83,8 +83,6 @@ typedef struct {
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
 	unsigned int		has_value : 1;			//!< Has a value.
 
-	unsigned int		concat : 1;			//!< concatenate multiple instances
-
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
 	unsigned int		extra : 1;			//!< really "subtype is used by dict, not by protocol"

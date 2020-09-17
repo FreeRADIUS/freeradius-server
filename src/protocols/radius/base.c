@@ -1131,10 +1131,11 @@ void fr_radius_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
+	{ L("concat"),			FLAG_CONCAT },
 	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },
 	{ L("encrypt=2"),		FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ L("encrypt=3"),		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ L("long"),		FLAG_EXTENDED_ATTR },
+	{ L("long"),			FLAG_EXTENDED_ATTR },
 
 	/*
 	 *	And some humanly-readable names
@@ -1157,6 +1158,20 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	dictionaries itself.
 	 */
 	if (flags->extra) return true;
+
+	if (flag_concat(flags)) {
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("Attributes wuth the 'concat' flag MUST be at the root of the dictionary");
+			return false;
+		}
+
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("Attributes wuth the 'concat' flag MUST be of data type 'octets'");
+			return false;
+		}
+
+		return true;	/* can't use any other flag */
+	}
 
 	if (parent->type == FR_TYPE_STRUCT) {
 		if (flags->subtype == FLAG_EXTENDED_ATTR) {

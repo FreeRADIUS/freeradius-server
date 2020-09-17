@@ -1391,7 +1391,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 	/*
 	 *	Fast path for the common case.
 	 */
-	if (vp->da->parent->flags.is_root && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
+	if (vp->da->parent->flags.is_root && !vp->da->flags.subtype && (vp->vp_type != FR_TYPE_TLV)) {
 		da_stack.da[0] = vp->da;
 		da_stack.da[1] = NULL;
 		da_stack.depth = 1;
@@ -1410,7 +1410,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 	da = da_stack.da[0];
 	switch (da->type) {
 	default:
-		if (da->flags.concat) {
+		if (flag_concat(&da->flags)) {
 			/*
 			 *	Attributes like EAP-Message are marked as
 			 *	"concat", which means that they are fragmented

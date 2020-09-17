@@ -43,7 +43,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	int bit;
 	uint32_t all_flags;
 	uint32_t shift_is_root, shift_internal;
-	uint32_t shift_has_tag, shift_array, shift_has_value, shift_concat;
+	uint32_t shift_has_tag, shift_array, shift_has_value;
 	uint32_t shift_virtual, shift_subtype, shift_extra;
 	fr_dict_attr_t const *v;
 
@@ -60,7 +60,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(has_tag);
 	SET_FLAG(array);
 	SET_FLAG(has_value);
-	SET_FLAG(concat);
 	SET_FLAG(virtual);
 	SET_FLAG(extra);
 
@@ -79,7 +78,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// has_tag
 	// array
 	// has_value
-	// concat
 	// virtual
 	// extra
 	// encrypt
@@ -177,23 +175,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		FORBID_OTHER_FLAGS(has_value);
-	}
-
-	/*
-	 *	'concat' can only be used in a few limited situations.
-	 */
-	if (flags->concat) {
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-			return false;
-		}
-
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			return false;
-		}
-
-		FORBID_OTHER_FLAGS(concat);
 	}
 
 	/*

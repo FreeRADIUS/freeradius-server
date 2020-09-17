@@ -1627,7 +1627,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	/*
 	 *	Pass the entire thing to the decoding function
 	 */
-	if (da->flags.concat) {
+	if (flag_concat(&da->flags)) {
 		FR_PROTO_TRACE("Concat attribute");
 		return decode_concat(ctx, cursor, da, data, data_len);
 	}
