@@ -893,7 +893,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	/*
 	 *	Fast path for the common case.
 	 */
-	if ((vp->da->parent == packet_ctx->root) && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
+	if ((vp->da->parent == packet_ctx->root) && (vp->vp_type != FR_TYPE_TLV)) {
 		da_stack.da[0] = vp->da;
 		da_stack.da[1] = NULL;
 		da_stack.depth = 1;
