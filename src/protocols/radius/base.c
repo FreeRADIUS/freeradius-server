@@ -1164,12 +1164,12 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		if (flags->subtype != FLAG_ENCRYPT_NONE) {
+		if (flag_encrypted(flags)) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
 			return false;
 		}
 
-		if (flags->has_tag) {
+		if (flag_has_tag(flags)) {
 			fr_strerror_printf("Tagged attributes cannot be used inside of a 'struct'");
 			return false;
 		}
@@ -1182,7 +1182,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!flags->subtype) return true;
 
-	if (flags->has_tag && (flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+	if (flag_has_tag(flags) && (flags->subtype != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
 		fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
 		return false;
 	}
@@ -1214,7 +1214,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 	}
 
-	if (flags->subtype > FLAG_EXTENDED_ATTR) {
+	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
 		fr_strerror_printf("The 'encrypt' flag can only be 0..3");
 		return false;
 	}

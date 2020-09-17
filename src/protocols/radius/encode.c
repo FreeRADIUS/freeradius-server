@@ -372,7 +372,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Catch errors early on.
 	 */
-	if (!vp->da->flags.extra && (vp->da->flags.subtype != FLAG_EXTENDED_ATTR) && !packet_ctx) {
+	if (flag_encrypted(&vp->da->flags) && !packet_ctx) {
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -460,7 +460,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
 	 */
-	if ((vp->da->type == FR_TYPE_STRING) && vp->da->flags.has_tag) {
+	if ((vp->da->type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
 		CHECK_FREESPACE(out_end - out_p, 1);
 //		*out_p++ = vp->tag;
 		value_start = out_p;
@@ -601,7 +601,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (!da->flags.extra) switch (vp->da->flags.subtype) {
+	if (flag_encrypted(&da->flags)) switch (vp->da->flags.subtype) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 	{
 		uint8_t *value_end = out_p;
@@ -627,11 +627,15 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		out_p = value_start;	/* Reset */
 
 		/*
-		 *	Hack - Always encode the tag even if it's zero.
+		 *	Always encode the tag even if it's zero.
 		 *
-		 *	Not sure why we do this, but the old code did...
+		 *	The Tunnel-Password uses 2 salt fields which
+		 *	MAY have any value.  As a result, we always
+		 *	encode a tag.  If we would omit the tag, then
+		 *	perhaps one of the salt fields could be
+		 *	mistaken for the tag.
 		 */
-		if (vp->da->flags.has_tag) out_p++;
+		if (flag_has_tag(&vp->da->flags)) out_p++;
 
 		slen = encode_tunnel_password(out_p, out_end - out_p,
 					      value_start, value_end - value_start, packet_ctx);
@@ -650,7 +654,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *	Do this after so we don't mess up the input
 		 *	value.
 		 */
-		if (vp->da->flags.has_tag) *value_start = 0x00;
+		if (flag_has_tag(&vp->da->flags)) *value_start = 0x00;
 
 		out_p += slen;
 	}
@@ -685,7 +689,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	same tunnel.  Valid values for this field are 0x01 through 0x1F,
 	 *	inclusive.  If the Tag field is unused, it MUST be zero (0x00).
 	 */
-	if ((vp->da->type == FR_TYPE_UINT32) && vp->da->flags.has_tag) {
+	if ((vp->da->type == FR_TYPE_UINT32) && flag_has_tag(&vp->da->flags)) {
 		/*
 		 *	Only 24bit integers are allowed here
 		 */
@@ -819,7 +823,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	extra = (!da_stack->da[0]->flags.extra && (da_stack->da[0]->flags.subtype == FLAG_EXTENDED_ATTR));
+	extra = flag_extended(&da_stack->da[0]->flags);
 
 	/*
 	 *	@fixme: check depth of stack

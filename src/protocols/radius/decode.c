@@ -1029,7 +1029,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
 	data_len = attr_len;
-	extra = (!parent->flags.extra && (parent->flags.subtype == FLAG_EXTENDED_ATTR));
+	extra = flag_extended(&parent->flags);
 
 	/*
 	 *	Silently ignore zero-length attributes.
@@ -1039,7 +1039,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	/*
 	 *	Hacks for tags.
 	 */
-	if (parent->flags.has_tag) {
+	if (flag_has_tag(&parent->flags)) {
 		/*
 		 *	Check for valid tags and data types.
 		 */
@@ -1058,8 +1058,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	there is a tag, or it's encrypted with Tunnel-Password,
 		 *	then decode the tag.
 		 */
-		if ((p[0] < 0x20) ||
-		    (!parent->flags.extra && (parent->flags.subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+		if ((p[0] < 0x20) || flag_tunnel_password(&parent->flags)) {
 			/*
 			 *	Only "short" attributes can be encrypted.
 			 */
@@ -1083,7 +1082,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (packet_ctx && !parent->flags.extra && (parent->flags.subtype != FLAG_ENCRYPT_NONE)) {
+	if (packet_ctx && flag_encrypted(&parent->flags)) {
 		FR_PROTO_TRACE("Decrypting type %u", parent->flags.subtype);
 		/*
 		 *	Encrypted attributes can only exist for the

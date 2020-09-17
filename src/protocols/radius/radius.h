@@ -81,14 +81,21 @@ typedef enum {
 
 /** subtype values for RADIUS
  *
+ *  Order of the flags is important for the flag_foo() checks.
  */
 enum {
 	FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
+	FLAG_EXTENDED_ATTR,				//!< the attribute is an extended attribute
+
 	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
 	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
 	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
-	FLAG_EXTENDED_ATTR,				//!< the attribute is an extended attribute
 };
+
+#define flag_has_tag(_flags)	     ((_flags)->has_tag)
+#define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_ENCRYPT_USER_PASSWORD)
+#define flag_extended(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_EXTENDED_ATTR)
+#define flag_tunnel_password(_flags) (!(_flags)->extra && (_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD)
 
 /*
  *	protocols/radius/base.c
