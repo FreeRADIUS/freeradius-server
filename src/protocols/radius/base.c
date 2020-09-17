@@ -1135,7 +1135,7 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },
 	{ L("encrypt=2"),		FLAG_ENCRYPT_TUNNEL_PASSWORD },
 	{ L("encrypt=3"),		FLAG_ENCRYPT_ASCEND_SECRET },
-	{ L("long"),			FLAG_EXTENDED_ATTR },
+	{ L("long"),			FLAG_LONG_EXTENDED_ATTR },
 
 	/*
 	 *	And some humanly-readable names
@@ -1148,11 +1148,6 @@ static fr_table_num_ordered_t const subtype_table[] = {
 static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	if ((parent->type == FR_TYPE_STRUCT) && (type == FR_TYPE_EXTENDED)) {
-		fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
-		return false;
-	}
-
 	/*
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
@@ -1174,18 +1169,13 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	if (parent->type == FR_TYPE_STRUCT) {
-		if (flags->subtype == FLAG_EXTENDED_ATTR) {
+		if (type == FR_TYPE_EXTENDED) {
 			fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
 			return false;
 		}
 
-		if (flag_encrypted(flags)) {
-			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT be encrypted.");
-			return false;
-		}
-
-		if (flag_has_tag(flags)) {
-			fr_strerror_printf("Tagged attributes cannot be used inside of a 'struct'");
+		if (flags->subtype) {
+			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT have flags set");
 			return false;
 		}
 
@@ -1202,7 +1192,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
-	if ((flags->subtype == FLAG_EXTENDED_ATTR) && (type != FR_TYPE_EXTENDED)) {
+	if (flag_long_extended(flags) && (type != FR_TYPE_EXTENDED)) {
 		fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
 		return false;
 	}
@@ -1236,7 +1226,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	switch (type) {
 	case FR_TYPE_EXTENDED:
-		if (flags->subtype == FLAG_EXTENDED_ATTR) break;
+		if (flag_long_extended(flags)) break;
 		FALL_THROUGH;
 
 	default:

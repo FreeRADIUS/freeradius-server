@@ -823,7 +823,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	extra = flag_extended(&da_stack->da[0]->flags);
+	extra = flag_long_extended(&da_stack->da[0]->flags);
 
 	/*
 	 *	@fixme: check depth of stack

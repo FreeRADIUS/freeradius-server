@@ -1029,7 +1029,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
 	data_len = attr_len;
-	extra = flag_extended(&parent->flags);
+	extra = flag_long_extended(&parent->flags);
 
 	/*
 	 *	Silently ignore zero-length attributes.
