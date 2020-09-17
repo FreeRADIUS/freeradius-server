@@ -80,7 +80,7 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
-	unsigned int		extra : 1;			//!< for LONG extended attributes
+	unsigned int		extra : 1;			//!< really "subtype is used by dict, not by protocol"
 
 	uint8_t			subtype;			//!< for FR_TYPE_STRING encoding
 
