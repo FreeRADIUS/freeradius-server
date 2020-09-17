@@ -50,6 +50,8 @@ match Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 t
 
 # this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
 encode-pair ERX-LI-Action = off
+match 1a 1a 00 00 13 0a 3a 14 8d 31 89 6e 2e 8a f5 fa 78 fb d5 90 d8 1a 15 91 c1 f1
+
 decode-pair -
 match ERX-LI-Action = off
 
@@ -82,4 +84,4 @@ decode-pair 1a 39 00 00 01 37 01 33 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
 match Attr-26.311.1 = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
 
 count
-match 43
+match 44
