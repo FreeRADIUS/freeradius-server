@@ -1127,6 +1127,30 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	return 0;
 }
 
+static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
+{
+	if (tmpl_is_list(vpt)) {
+		fr_strerror_printf("Cannot use list references in condition");
+		fr_sbuff_set(in, m_lhs);
+		return -1;
+	}
+
+	if (!tmpl_is_attr(vpt)) return 0;
+
+	switch (tmpl_da(vpt)->type) {
+	case FR_TYPE_VALUE:
+		break;
+
+	default:
+		fr_strerror_printf("Nesting types such as groups or TLVs cannot "
+				   "be used in condition comparisons");
+		fr_sbuff_set(in, m_lhs);
+		return -1;
+	}
+
+	return 0;
+}
+
 static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 				     fr_sbuff_marker_t *opd_start, fr_sbuff_t *in,
 				     tmpl_rules_t const *rules)
@@ -1259,23 +1283,10 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	/*
 	 *	Sanity check for nested types
 	 */
-	if (tmpl_is_attr(vpt)) {
-		switch (tmpl_da(vpt)->type) {
-		case FR_TYPE_VALUE:
-			break;
-
-		default:
-			fr_strerror_printf("Nesting types such as groups or TLVs may not "
-					   "be compared in conditions");
-			fr_sbuff_set(&our_in, &m);
-			goto error;
-		}
-
-		if (tmpl_attr_unknown_add(vpt) < 0) {
-			fr_strerror_printf("Failed defining attribute");
-			fr_sbuff_set(&our_in, &m);
-			goto error;
-		}
+	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
+		fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
+		fr_sbuff_set(&our_in, &m);
+		goto error;
 	}
 
 	if (tmpl_cast_set(vpt, cast) < 0) {
@@ -1493,6 +1504,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	}
 
 	/*
+	 *	We now have LHS OP RHS.  So the LHS can't be a group,
+	 *	list, or nested thing.
+	 */
+	if (cond_forbid_groups(lhs, &our_in, &m_lhs) < 0) goto error;
+
+	/*
 	 *	Check for any other operator
 	 */
 	fr_sbuff_marker(&m_op, &our_in);
@@ -1551,6 +1568,11 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		}
 		if (tmpl_is_attr_unresolved(rhs)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
+		/*
+		 *	Groups can't be on the RHS of a comparison, either
+		 */
+		if (cond_forbid_groups(rhs, &our_in, &m_rhs) < 0) goto error;
+
 		*map = (vp_map_t) {
 			.ci = cf_section_to_item(cs),
 			.lhs = lhs,
@@ -1561,21 +1583,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		if (rhs->cast != FR_TYPE_INVALID) {
 			fr_strerror_printf("Unexpected cast");
 			fr_sbuff_set(&our_in, &m_rhs_cast);
-			goto error;
-		}
-
-		/*
-		 *	Binary expressions can't contain lists
-		 */
-		if (tmpl_is_list(lhs)) {
-			fr_strerror_printf("Cannot use list references in condition");
-			fr_sbuff_set(&our_in, &m_lhs);
-			goto error;
-		}
-
-		if (tmpl_is_list(rhs)) {
-			fr_strerror_printf("Cannot use list references in condition");
-			fr_sbuff_set(&our_in, &m_rhs);
 			goto error;
 		}
 
