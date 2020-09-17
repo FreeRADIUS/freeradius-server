@@ -1,3 +1,6 @@
+#
+#  List existence checks are "is the list empty" checks.
+#
 if (&session-state:) {
 	test_fail
 }
