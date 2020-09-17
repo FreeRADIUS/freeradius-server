@@ -305,6 +305,21 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		key = p;
 
 		/*
+		 *	Allow for "key1,key2".  But is has to be the
+		 *	last string in the flags field.
+		 */
+		if (ctx->dict->subtype_table) {
+			int subtype;
+
+			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
+			if (subtype >= 0) {
+				flags->subtype = subtype;
+				break;
+			}
+		}
+
+
+		/*
 		 *	Search for the first '=' or ','
 		 */
 		for (next = p + 1; *next && (*next != '=') && (*next != ','); next++) {
