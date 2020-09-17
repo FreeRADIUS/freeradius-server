@@ -90,8 +90,9 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
+		 *	i.e. tagged, encrypted, or extended attributes
 		 */
-		if (!vp->da->flags.subtype && (vp->da->flags.subtype != FLAG_ENCRYPT_NONE)) {
+		if (vp->da->flags.subtype) {
 		next:
 			fr_cursor_next(&cursor);
 			continue;
