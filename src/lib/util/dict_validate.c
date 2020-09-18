@@ -722,6 +722,31 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
 
+#if 0
+	if (parent->type == FR_TYPE_STRUCT) {
+		/*
+		 *	@todo - check PREVIOUS element.  if it's non-fixed size, then error out.
+		 *	Move validation code from dict_read_process_member() to here
+		 */
+		switch (type) {
+		case FR_TYPE_FIXED_SIZE:
+			break;
+
+		case FR_TYPE_TLV:
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+			if (flags->length != 0) {
+				fr_strerror_printf("The 'octets' type MUST be fixed-width when used inside of a 'struct'");
+				return false;
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+#endif
+
 	/*
 	 *	If attributes have number greater than 255, do sanity
 	 *	checks on their values, to ensure that they fit within
