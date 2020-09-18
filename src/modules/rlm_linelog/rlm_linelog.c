@@ -510,7 +510,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 		tmpl_str = cf_pair_value(cp);
 		if (!tmpl_str || (tmpl_str[0] == '\0')) {
 			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
-			vpt_p = tmpl_init_shallow(&empty, TMPL_TYPE_UNRESOLVED, T_DOUBLE_QUOTED_STRING, "", 0);
+			vpt_p = tmpl_init_shallow(&empty, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
+			fr_value_box_init_null(&empty.data.literal);
+			fr_value_box_strdup_shallow(&empty.data.literal, NULL, "", false);
 			goto build_vector;
 		}
 
