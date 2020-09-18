@@ -2782,6 +2782,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 	parse_rules = *unlang_ctx->rules;
 	parse_rules.dict_def = dict;
+	parse_rules.allow_foreign = true; /* the parent is _by definition_ in a different dictionary */
 
 	unlang_ctx2.actions = unlang_ctx->actions;
 
