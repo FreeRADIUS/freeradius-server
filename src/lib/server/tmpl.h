@@ -301,7 +301,7 @@ struct tmpl_rules_s {
 
 	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 							///< Instantiated xlats are not added to the global
-							///< trees, regex are not JIT'd.
+							///< trees, regexes are not JIT'd.
 
 	tmpl_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.

@@ -376,10 +376,6 @@ static bool pass2_fixup_map(fr_cond_t *c)
 		 *	forbids this.
 		 */
 		if (tmpl_is_attr(map->lhs)) {
-			fr_dict_attr_t const *da = c->cast;
-
-			if (!c->cast) da = tmpl_da(map->lhs);
-
 			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
 		} else {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
@@ -2096,10 +2092,6 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *	expansions.
 		 */
 		if (tmpl_is_xlat_unresolved(vpt)) {
-			fr_dict_attr_t const *da = NULL;
-
-			if (tmpl_is_attr(f->vpt)) da = tmpl_da(f->vpt);
-
 			/*
 			 *	Don't expand xlat's into an
 			 *	attribute of a different type.

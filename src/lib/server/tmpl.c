@@ -3097,10 +3097,20 @@ int tmpl_resolve(tmpl_t *vpt)
 		char *unescaped = vpt->data.unescaped;	/* Copy the pointer before zeroing the union */
 
 		fr_value_box_init_null(&vpt->data.literal);
+
 		fr_value_box_bstrdup_buffer_shallow(NULL, &vpt->data.literal, NULL, unescaped, false);
+
+		/*
+		 *	Attempt to process the cast
+		 */
+		if (vpt->cast != FR_TYPE_INVALID) {
+			ret = fr_value_box_cast_in_place(vpt, &vpt->data.literal, vpt->cast, NULL);
+			if (ret < 0) goto done;
+		}
 		vpt->type = TMPL_TYPE_DATA;
 	}
 
+done:
 	TMPL_VERIFY(vpt);
 
 	return ret;
