@@ -1305,30 +1305,12 @@ finish:
  *	We don't have (or need yet) cf_pair_parse_pass2(), so we just
  *	do it for tmpls.
  */
-static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
+static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
 {
-	ssize_t	slen;
-	tmpl_t *vpt;
+	tmpl_t *vpt = *out;
 
-	slen = tmpl_afrom_substr(cs, &vpt,
-				 &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1),
-				 cf_pair_value_quote(cp),
-				 tmpl_parse_rules_quoted[cf_pair_value_quote(cp)],
-				 &(tmpl_rules_t){
-				 	.allow_unknown = true,
-				 	.allow_unresolved = true,
-				 	.allow_foreign = true
-				 });
-	if (slen < 0) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(vpt, &spaces, &text, slen, cp->value);
-
-		cf_log_err(cp, "%s", text);
-		cf_log_perr(cp, "%s^", spaces);
-
-		talloc_free(spaces);
-		talloc_free(text);
+	if (tmpl_resolve(vpt) < 0) {
+		cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);
 		return -1;
 	}
 
@@ -1339,23 +1321,19 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 	}
 
 	switch (vpt->type) {
-		/*
-		 *	All attributes should have been defined by this point.
-		 */
+	/*
+	 *	All attributes should have been defined by this point.
+	 */
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unresolved(vpt));
-		talloc_free(vpt);
 		return -1;
 
 	case TMPL_TYPE_UNRESOLVED:
 		/*
 		 *	Try to realize the underlying type, if at all possible.
 		 */
-		if (!attribute && type &&
-		    (tmpl_cast_in_place(vpt, type, NULL) < 0)) {
-			cf_log_err(cp, "Failed parsing '%s': %s",
-				   cp->attr, fr_strerror());
-			talloc_free(vpt);
+		if (!attribute && type && (tmpl_cast_in_place(vpt, type, NULL) < 0)) {
+			cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);
 			return -1;
 		}
 		break;
@@ -1380,11 +1358,6 @@ static int cf_parse_tmpl_pass2(CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr
 		/* Don't add default */
 	}
 
-	/*
-	 *	Free the old value if we're overwriting
-	 */
-	TALLOC_FREE(*out);
-	*out = vpt;
 	return 0;
 }
 
