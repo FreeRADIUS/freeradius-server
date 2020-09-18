@@ -2784,7 +2784,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_sbuff_marker_t	m;
 	fr_type_t		cast = FR_TYPE_INVALID;
-	size_t			slen;
+	ssize_t			slen;
 
 	if (fr_sbuff_next_if_char(&our_in, '<')) {
 		fr_sbuff_marker(&m, &our_in);

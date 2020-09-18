@@ -647,7 +647,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 	default:
 	{
 		char	buffer[1024];
-		size_t	slen;
+		ssize_t	slen;
 
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
 		if (slen < 0) return;
@@ -728,7 +728,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		default:
 		{
 			char buffer[1024];
-			size_t slen;
+			ssize_t slen;
 
 			slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
 			RDEBUG2("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name,

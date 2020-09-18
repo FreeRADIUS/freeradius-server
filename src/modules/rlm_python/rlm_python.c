@@ -461,7 +461,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		size_t slen;
+		ssize_t slen;
 		char buffer[256];
 
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);

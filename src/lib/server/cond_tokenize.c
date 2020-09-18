@@ -462,6 +462,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	 *	This allows Framed-IP-Address < 192.168.0.0./24
 	 */
 	unresolved = NULL;
+	data = NULL;	/* gcc stupidity */
 	if (TMPL_OF_TYPE_A_B(attr, unresolved) || TMPL_OF_TYPE_A_B(attr, data)) {
 		fr_type_t type = tmpl_da(attr)->type;
 

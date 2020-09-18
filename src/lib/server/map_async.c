@@ -289,7 +289,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	{
-		size_t slen;
+		ssize_t slen;
 
 		/*
 		 *	Get our own mutable copy of the original so we can

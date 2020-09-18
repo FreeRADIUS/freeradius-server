@@ -95,7 +95,7 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_ABINARY:
 	{
 		char	buff[128];
-		size_t	slen;
+		ssize_t	slen;
 
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, sizeof(buff)), vp, T_BARE_WORD);
 		if (slen < 0) {

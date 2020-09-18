@@ -1027,7 +1027,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	VALUE_PAIR 	*head = NULL;
-	size_t		slen;
+	ssize_t		slen;
 
 	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();

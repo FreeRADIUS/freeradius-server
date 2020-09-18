@@ -289,7 +289,8 @@ char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
  */
 size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	size_t slen, freespace = outlen;
+	ssize_t slen;
+	size_t freespace = outlen;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_UINT32:
@@ -320,7 +321,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		/* Indicate truncation */
 		if (!tmp) return outlen + 1;
 		slen = strlen(tmp);
-		if (freespace <= slen) return outlen + 1;
+		if (freespace <= (size_t)slen) return outlen + 1;
 
 		strcpy(out, tmp);
 		talloc_free(tmp);

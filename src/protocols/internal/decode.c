@@ -73,7 +73,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 				   uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 
-	size_t		slen;
+	ssize_t		slen;
 	fr_pair_list_t	children;
 	fr_cursor_t	cursor;
 	uint8_t	const	*p = start;
@@ -126,7 +126,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 				     uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 	VALUE_PAIR	*vp;
-	size_t		slen;
+	ssize_t		slen;
 	uint8_t	const	*p = start;
 
 	FR_PROTO_TRACE("Decoding group - %s", parent_da->name);
