@@ -382,6 +382,7 @@ static void usage(int code)
  * This is portable to any POSIX-compliant system has /dev/null
  */
 static FILE *f = NULL;
+
 static int vsnprintf(char *str, size_t n, char const *fmt, va_list ap)
 {
 	int res;
@@ -415,6 +416,20 @@ static int snprintf(char *str, size_t n, char const *fmt, ...)
 	return res;
 }
 #endif
+
+static void strip_double_chars(char *str, char c)
+{
+	size_t	len = strlen(str);
+	char	*p = str;
+	char	*out = str;
+	char	*end = p + len;
+
+	while (p < end) {
+		if ((p[0] == c) && (p[1] == c)) p++;
+		*out++ = *p++;
+	}
+	*out = '\0';
+}
 
 static void *lt_malloc(size_t size)
 {
@@ -2081,6 +2096,7 @@ static void link_fixup(command_t *cmd)
 #if 0 && defined(PROGRAM_VERSION) && !defined(__APPLE__)
 				strcat(tmp, "." STRINGIFY(PROGRAM_VERSION));
 #endif
+				strip_double_chars(tmp, '/');	/* macos now complains bitterly about double slashes */
 
 				push_count_chars(cmd->shared_opts.normal, tmp);
 			}
