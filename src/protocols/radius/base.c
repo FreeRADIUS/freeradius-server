@@ -1151,29 +1151,9 @@ static fr_table_num_ordered_t const subtype_table[] = {
 static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	/*
-	 *	"extra" signifies that subtype is being used by the
-	 *	dictionaries itself.
-	 */
-	if (flags->extra) return true;
-
 	if (flags->array) {
 		fr_strerror_printf("RADIUS does not support the 'array' flag.");
 		return false;
-	}
-
-	if (flag_concat(flags)) {
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("Attributes wuth the 'concat' flag MUST be at the root of the dictionary");
-			return false;
-		}
-
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("Attributes wuth the 'concat' flag MUST be of data type 'octets'");
-			return false;
-		}
-
-		return true;	/* can't use any other flag */
 	}
 
 	if (parent->type == FR_TYPE_STRUCT) {
@@ -1182,6 +1162,16 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
+		/*
+		 *	The "extra" flag signifies that the subtype
+		 *	field is being used by the dictionaries
+		 *	itself, for key fields, etc.
+		 */
+		if (flags->extra) return true;
+
+		/*
+		 *	All other flags are invalid inside of a struct.
+		 */
 		if (flags->subtype) {
 			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT have flags set");
 			return false;
@@ -1191,9 +1181,39 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
+	 *	The 'extra flag is only for inside of structs.  It
+	 *	shouldn't appear anywhere else.
+	 */
+	if (flags->extra) {
+		fr_strerror_printf("Unsupported extension.");
+		return false;
+	}
+
+	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
+		fr_strerror_printf("Invalid flag value %u", flags->subtype);
+		return false;
+	}
+
+	/*
 	 *	No special flags, so we're OK.
+	 *
+	 *	If there is a subtype, it can only be of one kind.
 	 */
 	if (!flags->subtype) return true;
+
+	if (flag_concat(flags)) {
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("Attributes with the 'concat' flag MUST be at the root of the dictionary");
+			return false;
+		}
+
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("Attributes with the 'concat' flag MUST be of data type 'octets'");
+			return false;
+		}
+
+		return true;	/* can't use any other flag */
+	}
 
 	/*
 	 *	Tagged attributes can only be of two data types.  They
@@ -1216,9 +1236,18 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return true;
 	}
 
-	if (flag_long_extended(flags) && (type != FR_TYPE_EXTENDED)) {
-		fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
-		return false;
+	if (flag_long_extended(flags)) {
+		if (type != FR_TYPE_EXTENDED) {
+			fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
+			return false;
+		}
+
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'long' flag can only be used for top-level RFC attributes");
+			return false;
+		}
+
+		return true;
 	}
 
 	/*
@@ -1243,31 +1272,21 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 	}
 
-	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
-		fr_strerror_printf("The 'encrypt' flag can only be 0..3");
-		return false;
-	}
-
 	switch (type) {
-	case FR_TYPE_EXTENDED:
-		if (flag_long_extended(flags)) break;
-		FALL_THROUGH;
-
-	default:
-	encrypt_fail:
-		fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-		return false;
+	case FR_TYPE_STRING:
+		break;
 
 	case FR_TYPE_TLV:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_OCTETS:
-		if (flags->subtype == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
-		break;
+		if (flags->subtype != FLAG_ENCRYPT_ASCEND_SECRET) break;
+		FALL_THROUGH;
 
-	case FR_TYPE_STRING:
-		break;
+	default:
+		fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+		return false;
 	}
 
 	/*
