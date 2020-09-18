@@ -89,6 +89,7 @@ VALUE	DHCP-Hardware-Type		HFI			37
 ATTRIBUTE	Packet-Type				273	integer
 
 VALUE	Packet-Type			DHCP-Do-Not-Respond	0
+VALUE	Packet-Type			Do-Not-Respond		0
 VALUE	Packet-Type			DHCP-Discover		1
 VALUE	Packet-Type			DHCP-Offer		2
 VALUE	Packet-Type			DHCP-Request		3
