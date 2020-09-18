@@ -2162,7 +2162,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-	dec_len = xlat_tokenize(NULL, &head, NULL, &FR_SBUFF_IN(in, input_len), &p_rules,
+	dec_len = xlat_tokenize(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), &p_rules,
 				&(tmpl_rules_t) {
 					.dict_def = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
 					.allow_unresolved = cc->tmpl_rules.allow_unresolved
@@ -2171,7 +2171,6 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 		fr_strerror_printf_push("ERROR offset %d", (int) -dec_len);
 
 	return_error:
-		TALLOC_FREE(head);
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -2181,7 +2180,6 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	}
 
 	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
-	TALLOC_FREE(head);
 	RETURN_OK(escaped_len);
 }
 
