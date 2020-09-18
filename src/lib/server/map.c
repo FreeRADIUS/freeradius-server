@@ -1133,7 +1133,7 @@ do {\
 		fr_pair_aprint_value_quoted(request, &our_old, _old, T_DOUBLE_QUOTED_STRING); \
 		fr_pair_aprint_value_quoted(request, &our_new, _new, T_DOUBLE_QUOTED_STRING); \
 		RINDENT(); \
-		RDEBUG3("--> overwriting '%s' with '%s'", our_old, our_new); \
+		RDEBUG3("--> overwriting %s with %s", our_old, our_new); \
 		REXDENT(); \
 		talloc_free(our_old); \
 		talloc_free(our_new); \
