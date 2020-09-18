@@ -1752,7 +1752,7 @@ do_suffix:
 			 *	reference list contains a group, there's no performance
 			 *	penalty in repeatedly allocating and freeing this ar.
 			 */
-			if (filter == TMPL_ATTR_REF_NO_FILTER) {
+			if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
 				TALLOC_FREE(ar);
 			}
 			parent = da;
@@ -3311,7 +3311,7 @@ int tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type)
  */
 int tmpl_attr_unknown_add(tmpl_t *vpt)
 {
-	fr_dict_attr_t const *da;
+	tmpl_attr_t		*ar = NULL;
 
 	if (!vpt) return 1;
 
@@ -3319,12 +3319,37 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	if (!tmpl_da(vpt)->flags.is_unknown) return 1;
+	if (!tmpl_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
 
-	da = tmpl_da(vpt);
-	da = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(da)), da);
-	if (!da) return -1;
-	tmpl_attr_set_leaf_da(vpt, da);
+	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
+		fr_dict_attr_t const	*da;
+
+		switch (ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:		/* Skip */
+			continue;
+
+		case TMPL_ATTR_TYPE_UNRESOLVED:		/* Shouldn't have been called */
+			fr_assert(0);
+			return -1;
+
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			break;
+		}
+
+		da = ar->ar_da;
+		da = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(da)), da);
+		if (!da) return -1;
+
+		/*
+		 *	Convert the ref to a normal type.
+		 *	At runtime there should be no
+		 *	"unknown" references as they should
+		 *	have all been added to a
+		 *	dictionary.
+		 */
+		ar->type = TMPL_ATTR_TYPE_NORMAL;
+		ar->ar_da = da;
+	}
 
 	return 0;
 }
