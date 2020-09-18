@@ -77,19 +77,19 @@ typedef struct {
 /** linelog module instance
  */
 typedef struct {
-	char const			*name;			//!< Module instance name.
-	fr_pool_t			*pool;			//!< Connection pool instance.
+	char const		*name;			//!< Module instance name.
+	fr_pool_t		*pool;			//!< Connection pool instance.
 
-	char const			*delimiter;		//!< Line termination string (usually \n).
-	size_t				delimiter_len;		//!< Length of line termination string.
+	char const		*delimiter;		//!< Line termination string (usually \n).
+	size_t			delimiter_len;		//!< Length of line termination string.
 
 	tmpl_t			*log_src;		//!< Source of log messages.
 
 	tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-								///< log messages).
+							///< log messages).
 
-	linefr_log_dst_t		log_dst;		//!< Logging destination.
-	char const			*log_dst_str;		//!< Logging destination string.
+	linefr_log_dst_t	log_dst;		//!< Logging destination.
+	char const		*log_dst_str;		//!< Logging destination string.
 
 	struct {
 		char const		*facility;		//!< Syslog facility string.
@@ -104,7 +104,7 @@ typedef struct {
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_legacy_t		escape_func;		//!< Escape function.
+		xlat_escape_legacy_t	escape_func;		//!< Escape function.
 	} file;
 
 	struct {
