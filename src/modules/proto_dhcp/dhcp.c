@@ -1143,7 +1143,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	client belongs to based on packet data.  The sequence here
 	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
 	 *	store the found address in an internal attribute of 274 -
-	 *	DHCP-Network-IP-Address.
+	 *	DHCP-Network-IP-Address.  Thisis stored as an IPv4 prefix
+	 *	with a /32 netmask allowing "closest containing subnet"
+	 *	matching in rlm_files
 	 */
 	vp = fr_pair_afrom_num(packet, 274, DHCP_MAGIC_VENDOR);
 	/*
@@ -1161,20 +1163,25 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			/*
 			 *	Gateway address is set - use that one
 			 */
-			memcpy(&vp->vp_ipaddr, packet->data + 24, 4);
+			memcpy(&vp->vp_ipv4prefix[2], packet->data + 24, 4);
 		} else {
 			/*
 			 *	else, store client address whatever it is
 			 */
-			memcpy(&vp->vp_ipaddr, packet->data + 12, 4);
+			memcpy(&vp->vp_ipv4prefix[2], packet->data + 12, 4);
 		}
 	} else {
 		/*
 		 *	Store whichever address we've found from options
 		 */
-		memcpy(&vp->vp_ipaddr, &netaddr->vp_ipaddr, 4);
+		memcpy(&vp->vp_ipv4prefix[2], &netaddr->vp_ipaddr, 4);
 	}
-	vp->vp_length = 4;
+	/*
+	 *	Set the netmask to /32
+	 */
+	vp->vp_ipv4prefix[0] = 0;
+	vp->vp_ipv4prefix[1] = 32;
+
 	debug_pair(vp);
 	fr_cursor_insert(&cursor, vp);
 
