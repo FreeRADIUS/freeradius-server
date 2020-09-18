@@ -3403,7 +3403,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 	slen = regex_compile(vpt, &vpt->data.reg.ex,
 			     unescaped, talloc_array_length(unescaped) - 1,
 			     &vpt->data.reg.flags, subcaptures, vpt->rules.at_runtime);
-	if (slen < 0) return slen;
+	if (slen <= 0) return slen;
 	talloc_free(unescaped);
 
 	vpt->type = TMPL_TYPE_REGEX;
@@ -4929,7 +4929,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 #ifdef HAVE_REGEX
 		if (tmpl_regex(vpt) == NULL) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-					     "comp field was NULL", file, line);
+					     "reg.ex field was NULL", file, line);
 		}
 #else
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX - No regex support",

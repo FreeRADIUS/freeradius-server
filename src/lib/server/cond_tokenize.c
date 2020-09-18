@@ -1272,7 +1272,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (tmpl_is_regex_uncompiled(vpt)) {
 			slen = tmpl_regex_compile(vpt, true);
-			if (slen < 0) {
+			if (slen <= 0) {
 				fr_sbuff_set(&our_in, &m);	/* Reset to start of expression */
 				fr_sbuff_advance(&our_in, slen * -1);
 				goto error;
