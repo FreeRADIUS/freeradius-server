@@ -1304,6 +1304,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		case TMPL_TYPE_XLAT_UNRESOLVED:
 		case TMPL_TYPE_EXEC:
 		case TMPL_TYPE_EXEC_UNRESOLVED:
+		case TMPL_TYPE_DATA:
 			break;
 
 		default:
