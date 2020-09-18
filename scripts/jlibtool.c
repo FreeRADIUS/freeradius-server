@@ -425,7 +425,7 @@ static void strip_double_chars(char *str, char c)
 	char	*end = p + len;
 
 	while (p < end) {
-		if ((p[0] == c) && (p[1] == c)) p++;
+		while ((p[0] == c) && (p[1] == c)) p++;
 		*out++ = *p++;
 	}
 	*out = '\0';
