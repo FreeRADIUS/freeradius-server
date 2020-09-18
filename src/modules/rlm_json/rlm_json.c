@@ -40,6 +40,14 @@ RCSID("$Id$")
 #  error "rlm_json should not be built unless json-c is available"
 #endif
 
+static fr_sbuff_parse_rules_t const json_arg_parse_rules = {
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L(" "),
+		L("!")
+	)
+};
+
 /** rlm_json module instance
  *
  */
@@ -179,22 +187,20 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
-	rlm_json_t const *inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-							     rlm_json_t);
-	fr_json_format_t const *format = inst->format;
+	rlm_json_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+								    rlm_json_t);
+	fr_json_format_t const	*format = inst->format;
 
-	ssize_t slen;
-	tmpl_t *vpt = NULL;
-	fr_cursor_t cursor;
-	fr_cursor_t filter;
-	VALUE_PAIR *json_vps = NULL;
-	VALUE_PAIR *vps = NULL;
-	bool negate;
-	char *json_str = NULL;
-	char const *start;
-	char const *p;
-	char const *end;
-	fr_value_box_t *vb;
+	ssize_t			slen;
+	tmpl_t			*vpt = NULL;
+	fr_cursor_t		cursor;
+	fr_cursor_t		filter;
+	VALUE_PAIR		*json_vps = NULL;
+	VALUE_PAIR		*vps = NULL;
+	bool			negate;
+	char			*json_str = NULL;
+	fr_value_box_t		*vb;
+	fr_sbuff_t		sbuff;
 
 	if (!in) {
 		REDEBUG("Missing attribute(s)");
@@ -206,37 +212,32 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 		return XLAT_ACTION_FAIL;
 	}
 
-	start = p = (*in)->vb_strvalue;
-	end = p + (*in)->vb_length;
-
-	fr_bskip_whitespace(p, end);
+	sbuff = FR_SBUFF_IN((*in)->vb_strvalue, (*in)->vb_length);
+	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
 
 	/*
 	 * Iterate through the list of attribute templates in the xlat. For each
 	 * one we either add it to the list of attributes for the JSON document
 	 * or, if prefixed with '!', remove from the JSON list.
 	 */
-	while (p < end) {
+	while (fr_sbuff_extend(&sbuff)) {
 		negate = false;
 
 		/* Check if we should be removing attributes */
-		if (*p == '!') {
-			negate = true;
-			p++;
-		}
+		if (fr_sbuff_next_if_char(&sbuff, '!')) negate = true;
 
 		/* Decode next attr template */
 		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
-					      &FR_SBUFF_IN(p, strlen(p)),
-					      NULL,
+					      &sbuff,
+					      &json_arg_parse_rules,
 					      &(tmpl_rules_t){ .dict_def = request->dict });
-
 		if (slen <= 0) {
-			REMARKER(start, (p-start) + (-slen), "Invalid input");
-			error:
-				fr_pair_list_free(&json_vps);
-				talloc_free(vpt);
-				return XLAT_ACTION_FAIL;
+			fr_sbuff_set(&sbuff, (size_t)(slen * -1));
+			REMARKER(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), "%s", fr_strerror());
+		error:
+			fr_pair_list_free(&json_vps);
+			talloc_free(vpt);
+			return XLAT_ACTION_FAIL;
 		}
 
 		/*
@@ -274,8 +275,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 		TALLOC_FREE(vpt);
 
 		/* Jump forward to next attr */
-		p += slen;
-		fr_bskip_whitespace(p, end);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
 	}
 
 	/*
