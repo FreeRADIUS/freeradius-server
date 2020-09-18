@@ -33,9 +33,6 @@ match foo =~ /bar/m
 condition foo =~ /bar/im
 match foo =~ /bar/im
 
-condition foo =~ /bar/gimsux
-match foo =~ /bar/gimsux
-
 condition foo =~ /bar/ima
 match ERROR offset 14 Unsupported regex flag 'a'
 
@@ -69,4 +66,4 @@ condition &User-Name == /foo/
 match ERROR offset 14 Unexpected regular expression
 
 count
-match 39
+match 37
