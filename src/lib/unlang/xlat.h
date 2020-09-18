@@ -292,15 +292,15 @@ int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
-ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, REQUEST *request,
+ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 					fr_sbuff_t *in,
-					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
+					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t		xlat_print(fr_sbuff_t *in, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 

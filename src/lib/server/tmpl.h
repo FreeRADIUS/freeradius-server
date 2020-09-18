@@ -288,7 +288,7 @@ struct tmpl_rules_s {
 	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	bool			allow_unresolved;		//!< Allow attributes that look valid but were
+	bool			allow_unresolved;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
@@ -298,6 +298,10 @@ struct tmpl_rules_s {
 	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
 
 	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
+
+	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
+							///< Instantiated xlats are not added to the global
+							///< trees, regex are not JIT'd.
 
 	tmpl_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
@@ -783,7 +787,7 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
-					       tmpl_rules_t const *ar_rules);
+					       tmpl_rules_t const *t_rules);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
 					    tmpl_t **out, char const *name,
@@ -793,7 +797,7 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_t *in,
 					  fr_token_t quote,
 					  fr_sbuff_parse_rules_t const *p_rules,
-					  tmpl_rules_t const *ar_rules);
+					  tmpl_rules_t const *t_rules);
 
 ssize_t			tmpl_cast_from_substr(fr_type_t *vpt, fr_sbuff_t *in);	/* Parses cast string */
 
@@ -826,7 +830,7 @@ int			tmpl_attr_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,
 						 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 #ifdef HAVE_REGEX
-ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures, bool runtime);
+ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures);
 #endif
 /** @} */
 

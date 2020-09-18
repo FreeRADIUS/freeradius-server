@@ -455,7 +455,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 
 	char				*p = buff;
 	char const			*value;
-	tmpl_t			empty, *vpt = NULL, *vpt_p = NULL;
+	tmpl_t				empty, *vpt = NULL, *vpt_p = NULL;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
 	ssize_t				slen;
 
@@ -523,8 +523,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQ
 					 cf_pair_value_quote(cp),
 					 NULL,
 					 &(tmpl_rules_t){
+					 	.dict_def = request->dict,
 					 	.allow_unknown = true,
-					 	.allow_unresolved = true
+					 	.allow_unresolved = false,
+					 	.at_runtime = true
 					 });
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());

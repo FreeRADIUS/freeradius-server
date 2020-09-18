@@ -1794,7 +1794,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 						     tmpl_t *vpt,
 						     fr_sbuff_t *name,
 						     fr_sbuff_parse_rules_t const *p_rules,
-					      	     tmpl_rules_t const *ar_rules,
+					      	     tmpl_rules_t const *t_rules,
 					      	     unsigned int depth)
 {
 	request_ref_t		ref;
@@ -1804,7 +1804,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 	fr_sbuff_marker_t	s_m;
 
 	fr_sbuff_marker(&s_m, name);
-	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, request_ref_table, name, ar_rules->request_def);
+	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, request_ref_table, name, t_rules->request_def);
 
 	/*
 	 *	No match
@@ -1848,7 +1848,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 		return -1;
 	}
 
-	if (ar_rules->disallow_qualifiers) {
+	if (t_rules->disallow_qualifiers) {
 		fr_strerror_printf("It is not permitted to specify a request reference here");
 		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
 		return -1;
@@ -1867,7 +1867,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 	 *	Advance past the separator (if there is one)
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		if (tmpl_request_ref_afrom_attr_substr(ctx, err, vpt, name, p_rules, ar_rules, depth + 1) < 0) {
+		if (tmpl_request_ref_afrom_attr_substr(ctx, err, vpt, name, p_rules, t_rules, depth + 1) < 0) {
 			fr_dlist_talloc_free_tail(list); /* Remove and free rr */
 			return -1;
 		}
@@ -1886,7 +1886,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
  *				If only #request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
- * @param[in] ar_rules		Rules which control parsing:
+ * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
  *				- request_def		The default #REQUEST to set if no
@@ -1923,7 +1923,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 			       tmpl_t **out, fr_sbuff_t *name,
 			       fr_sbuff_parse_rules_t const *p_rules,
-			       tmpl_rules_t const *ar_rules)
+			       tmpl_rules_t const *t_rules)
 {
 	int		ret;
 	size_t		list_len;
@@ -1932,7 +1932,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	bool		ref_prefix = false;
 	bool		is_raw = false;
 
-	if (!ar_rules) ar_rules = &default_attr_ref_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_ref_rules;	/* Use the defaults */
 
 	if (err) *err = ATTR_REF_ERROR_NONE;
 
@@ -1945,7 +1945,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	/*
 	 *	Check to see if we expect a reference prefix
 	 */
-	switch (ar_rules->prefix) {
+	switch (t_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
 		if (!fr_sbuff_next_if_char(&our_name, '&')) {
 			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
@@ -1987,7 +1987,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, ar_rules, 0);
+	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, t_rules, 0);
 	if (ret < 0) {
 	error:
 		talloc_free(vpt);
@@ -2001,9 +2001,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	 *	are integrated into attribute references.
 	 */
 	fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-				       &our_name, ar_rules->list_def);
+				       &our_name, t_rules->list_def);
 
-	if (ar_rules->disallow_qualifiers && (list_len > 0)) {
+	if (t_rules->disallow_qualifiers && (list_len > 0)) {
 		fr_strerror_printf("It is not permitted to specify a pair list here");
 		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
 		talloc_free(vpt);
@@ -2021,7 +2021,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	    (((fr_sbuff_next_if_char(&our_name, ':') && (vpt->data.attribute.old_list_sep = true)) ||
 	     fr_sbuff_next_if_char(&our_name, '.')) && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_ref_afrom_attr_substr(vpt, err,
-						      vpt, NULL, &our_name, ar_rules, 0);
+						      vpt, NULL, &our_name, t_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -2063,7 +2063,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	}
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
-	vpt->rules = *ar_rules;	/* Record the rules */
+	vpt->rules = *t_rules;	/* Record the rules */
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_printf("Unexpected text after attribute reference");
@@ -2495,7 +2495,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
  * @param[in,out] ctx		To allocate #tmpl_t in.
  * @param[out] out		Where to write the pointer to the new #tmpl_t.
  * @param[in] p_rules		Formatting rules for the tmpl.
- * @param[in] ar_rules		Validation rules for attribute references.
+ * @param[in] t_rules		Validation rules for attribute references.
  * @return
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
@@ -2507,7 +2507,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			  fr_sbuff_t *in, fr_token_t quote,
 			  fr_sbuff_parse_rules_t const *p_rules,
-			  tmpl_rules_t const *ar_rules)
+			  tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 
@@ -2516,7 +2516,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	tmpl_t		*vpt = NULL;
 
-	if (!ar_rules) ar_rules = &default_attr_ref_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_ref_rules;	/* Use the defaults */
 
 	*out = NULL;
 
@@ -2527,7 +2527,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	we find a '&' prefix.
 		 */
 		if (fr_sbuff_is_char(&our_in, '&')) return tmpl_afrom_attr_substr(ctx, NULL, out, in,
-										  p_rules, ar_rules);
+										  p_rules, t_rules);
 
 		/*
 		 *	Allow bareword xlats if we
@@ -2539,8 +2539,12 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			xlat_flags_t	flags = {};
 
 			vpt = tmpl_alloc_null(ctx);
-			slen = xlat_tokenize(vpt, &head, &flags,
-					     &our_in, p_rules, ar_rules);
+			if (!t_rules->at_runtime) {
+				slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
+			} else {
+				slen = xlat_tokenize_ephemeral(vpt, &head, &flags, &our_in, p_rules, t_rules);
+			}
+
 			if (!head) return slen;
 
 			if (flags.needs_resolving) type |= TMPL_FLAG_UNRESOLVED;
@@ -2607,7 +2611,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	See if it's an attribute reference
 		 *	without the prefix.
 		 */
-		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, ar_rules);
+		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, t_rules);
 		if (slen > 0) goto done_bareword;
 
 		vpt = tmpl_alloc_null(ctx);
@@ -2647,9 +2651,12 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		xlat_flags_t	flags = {};
 
 		vpt = tmpl_alloc_null(ctx);
-		slen = xlat_tokenize(vpt,
-				     &head, &flags,
-				     &our_in, p_rules, ar_rules);
+
+		if (!t_rules->at_runtime) {
+			slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
+		} else {
+			slen = xlat_tokenize_ephemeral(vpt, &head, &flags, &our_in, p_rules, t_rules);
+		}
 		if (!head) return slen;
 
 		/*
@@ -2689,8 +2696,11 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	Ensure that we pre-parse the exec string.
 		 *	This allows us to catch parse errors as early
 		 *	as possible.
+		 *
+		 *	FIXME - We need an ephemeral version of this
+		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &flags, &our_in, p_rules, ar_rules);
+		slen = xlat_tokenize_argv(vpt, &head, &flags, &our_in, p_rules, t_rules);
 		if (slen < 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			talloc_free(vpt);
@@ -2713,7 +2723,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, ar_rules);
+		slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
 		if (!head) return slen;
 
 		/*
@@ -3371,7 +3381,7 @@ int tmpl_attr_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
  *
  * Other regex types become noops.
  */
-ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures, bool runtime)
+ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 {
 	ssize_t slen;
 	char	*unescaped = vpt->data.unescaped;
@@ -3382,7 +3392,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures, bool runtime)
 
 	slen = regex_compile(vpt, &vpt->data.reg.ex,
 			     unescaped, talloc_array_length(unescaped) - 1,
-			     &vpt->data.reg.flags, subcaptures, runtime);
+			     &vpt->data.reg.flags, subcaptures, vpt->rules.at_runtime);
 	if (slen < 0) return slen;
 	talloc_free(unescaped);
 

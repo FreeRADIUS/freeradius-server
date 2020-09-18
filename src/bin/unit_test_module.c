@@ -387,7 +387,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 			xlat_exp_t		*head = NULL;
 			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, NULL, request,
+			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, NULL,
 						       &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1), &p_rules, NULL);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);

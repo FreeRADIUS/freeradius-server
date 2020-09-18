@@ -203,14 +203,14 @@ void xlat_exp_free(xlat_exp_t **head)
 }
 
 static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   tmpl_rules_t const *ar_rules);
+				   tmpl_rules_t const *t_rules);
 
 static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				 bool brace,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules);
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					    tmpl_rules_t const *ar_rules)
+					    tmpl_rules_t const *t_rules)
 {
 	xlat_exp_t	*node;
 
@@ -218,7 +218,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 
 	node = xlat_exp_alloc_null(ctx);
 	xlat_exp_set_type(node, XLAT_ALTERNATE);
-	if (xlat_tokenize_expansion(node, &node->child, &node->flags, in, ar_rules) < 0) {
+	if (xlat_tokenize_expansion(node, &node->child, &node->flags, in, t_rules) < 0) {
 	error:
 		*head = NULL;
 		talloc_free(node);
@@ -244,7 +244,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	 *	Parse the alternate expansion.
 	 */
 	if (xlat_tokenize_literal(node, &node->alternate, &node->flags, in,
-				  true, &xlat_rules, ar_rules) < 0) goto error;
+				  true, &xlat_rules, t_rules) < 0) goto error;
 
 	if (!node->alternate) {
 		talloc_free(node);
@@ -410,7 +410,7 @@ static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xla
  *
  */
 static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules)
+					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t			slen;
 	attr_ref_error_t	err;
@@ -428,21 +428,21 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	and instead are "virtual" attributes like
 	 *	Foreach-Variable-N.
 	 */
-	tmpl_rules_t		 our_ar_rules;
+	tmpl_rules_t		 our_t_rules;
 
-	if (ar_rules) {
-		memcpy(&our_ar_rules, ar_rules, sizeof(our_ar_rules));
+	if (t_rules) {
+		memcpy(&our_t_rules, t_rules, sizeof(our_t_rules));
 	} else {
-		memset(&our_ar_rules, 0, sizeof(our_ar_rules));
+		memset(&our_t_rules, 0, sizeof(our_t_rules));
 	}
 
-	our_ar_rules.allow_unresolved = true;		/* So we can check for virtual attributes later */
-  	our_ar_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
+	our_t_rules.allow_unresolved = true;		/* So we can check for virtual attributes later */
+  	our_t_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
 
 	fr_sbuff_marker(&m_s, in);
 
 	MEM(node = xlat_exp_alloc_null(ctx));
-	slen = tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_ar_rules);
+	slen = tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(in, slen * -1);
 
@@ -512,7 +512,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		 *	Not a normal attribute, not a virtual attribute
 		 *	and we're not allowing unresolved attributes.
 		 */
-		if (!ar_rules || !ar_rules->allow_unresolved) {
+		if (!t_rules || !t_rules->allow_unresolved) {
 			talloc_free(vpt);
 
 			fr_strerror_printf("Unresolved attributes not allowed in expansions here");
@@ -552,7 +552,7 @@ done:
 }
 
 static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   tmpl_rules_t const *ar_rules)
+				   tmpl_rules_t const *t_rules)
 {
 	size_t			len;
 	fr_sbuff_marker_t	s_m;
@@ -576,7 +576,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	 *	%{...}:-bar}
 	 */
 	if (fr_sbuff_adv_past_str_literal(in, "%{")) {
-		return xlat_tokenize_alternation(ctx, head, flags, in, ar_rules);
+		return xlat_tokenize_alternation(ctx, head, flags, in, t_rules);
 	}
 
 	/*
@@ -653,7 +653,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		ret = xlat_tokenize_function(ctx, head, flags, in, ar_rules);
+		ret = xlat_tokenize_function(ctx, head, flags, in, t_rules);
 		if (ret <= 0) return ret;
 	}
 		break;
@@ -669,7 +669,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		if (xlat_tokenize_attribute(ctx, head, flags, in, &attr_p_rules, ar_rules) < 0) return -1;
+		if (xlat_tokenize_attribute(ctx, head, flags, in, &attr_p_rules, t_rules) < 0) return -1;
 		break;
 
 	/*
@@ -708,14 +708,14 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
  * @param[in] in		sbuff to parse.
  * @param[in] brace		true if we're inside a braced expansion, else false.
  * @param[in] p_rules		that control parsing.
- * @param[in] ar_rules		that control attribute reference and xlat function parsing.
+ * @param[in] t_rules		that control attribute reference and xlat function parsing.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules)
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	xlat_exp_t			*node = NULL;
 	size_t				len;
@@ -783,7 +783,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
 			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
 
-			if (xlat_tokenize_expansion(ctx, &node, flags, in, ar_rules) < 0) {
+			if (xlat_tokenize_expansion(ctx, &node, flags, in, t_rules) < 0) {
 			error:
 				talloc_free(node);
 				fr_cursor_head(&cursor);
@@ -1089,19 +1089,18 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] head	the head of the xlat list / tree structure.
  * @param[in,out] flags	that control evaluation and parsing.
- * @param[in] request	the input request.  Memory will be attached here.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	from the encompassing grammar.
- * @param[in] ar_rules	controlling how attribute references are parsed.
+ * @param[in] t_rules	controlling how attribute references are parsed.
  * @return
  *	- >0 on success.
  *	- 0 and *head == NULL - Parse failure on first char.
  *	- 0 and *head != NULL - Zero length expansion
  *	- <0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, REQUEST *request,
+ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 			        fr_sbuff_t *in,
-			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules)
+			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	xlat_flags_t	tmp_flags = {};
@@ -1111,19 +1110,13 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 	*head = NULL;
 
 	fr_strerror();	/* Clear error buffer */
-	if (xlat_tokenize_literal(request, head, flags,
-				  &our_in, false, p_rules, ar_rules) < 0) return -fr_sbuff_used(&our_in);
+	if (xlat_tokenize_literal(ctx, head, flags,
+				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
 	if (fr_sbuff_used(&our_in) == 0) *head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
-
-	if (RDEBUG_ENABLED3) {
-		INFO("%pV", fr_box_strvalue_len(fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-		INFO("Parsed xlat tree:");
-		xlat_debug(*head);
-	}
 
 	/*
 	 *	Create ephemeral instance data for the xlat
@@ -1147,13 +1140,13 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
  * @param[out] flags		Populated with parameters that control xlat
  *				evaluation and multi-pass parsing.
  * @param[in] in		the format string to expand.
- * @param[in] ar_rules		controlling how attribute references are parsed.
+ * @param[in] t_rules		controlling how attribute references are parsed.
  * @return
  *	- <=0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
 ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules)
+			   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t			our_in = FR_SBUFF_NO_ADVANCE(in);
 	ssize_t				slen;
@@ -1209,7 +1202,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 */
 		case T_BARE_WORD:
 			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
-						  false, our_p_rules, ar_rules) < 0) {
+						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &tmpl_parse_rules_bareword_quoted) {
 					talloc_const_free(our_p_rules->terminals);
@@ -1228,7 +1221,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 */
 		case T_DOUBLE_QUOTED_STRING:
 			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
-						  false, &tmpl_parse_rules_double_quoted, ar_rules) < 0) goto error;
+						  false, &tmpl_parse_rules_double_quoted, t_rules) < 0) goto error;
 			xlat_flags_merge(flags, &node->flags);
 			break;
 
@@ -1314,7 +1307,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	controlling how the string containing the xlat
  *			expansions should be parsed.
- * @param[in] ar_rules	controlling how attribute references are parsed.
+ * @param[in] t_rules	controlling how attribute references are parsed.
  * @return
  *	- >0 on success.
  *	- 0 and *head == NULL - Parse failure on first char.
@@ -1322,7 +1315,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
  *	- < 0 the negative offset of the parse failure.
  */
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-		      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *ar_rules)
+		      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	xlat_flags_t	tmp_flags = {};
@@ -1333,7 +1326,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
 	fr_strerror();	/* Clear error buffer */
 
 	if (xlat_tokenize_literal(ctx, head, flags,
-				  &our_in, false, p_rules, ar_rules) < 0) return -fr_sbuff_used(&our_in);
+				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Add nodes that need to be bootstrapped to
