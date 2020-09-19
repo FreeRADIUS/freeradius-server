@@ -3428,7 +3428,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 	slen = regex_compile(vpt, &vpt->data.reg.ex,
 			     unescaped, talloc_array_length(unescaped) - 1,
 			     &vpt->data.reg.flags, subcaptures, vpt->rules.at_runtime);
-	if (slen <= 0) return slen;
+	if (slen <= 0) return vpt->quote != T_BARE_WORD ? slen - 1 : slen;	/* Account for the quoting */
 	talloc_free(unescaped);
 
 	vpt->type = TMPL_TYPE_REGEX;
