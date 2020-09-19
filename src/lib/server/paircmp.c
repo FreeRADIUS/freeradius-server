@@ -480,7 +480,14 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 
 		case FR_TYPE_IPV4_PREFIX:
 		case FR_TYPE_IPV6_PREFIX:
-			ret = memcmp(&vp->vp_ip, &check->vp_ip, sizeof(vp->vp_ip));
+			ret = fr_pair_cmp_op(check->op, vp, check);
+			if (ret == -1) return -2;   // error
+			if (check->op == T_OP_LT || check->op == T_OP_LE)
+				ret = (ret == 1) ? -1 : 1;
+			else if (check->op == T_OP_GT || check->op == T_OP_GE)
+				ret = (ret == 1) ? 1 : -1;
+			else if (check->op == T_OP_CMP_EQ)
+				ret = (ret == 1) ? 0 : -1;
 			break;
 
 		case FR_TYPE_IFID:
