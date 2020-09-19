@@ -41,7 +41,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 			rm -f $(BUILD_DIR)/tests/test.digest;           \
 			$(MAKE) --no-print-directory test.digest.radiusd_kill; \
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
-			echo "RADCLIENT: $(TEST_BIN)/radclient -f $@_request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
+			echo "RADCLIENT: $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET)"; \
 			exit 1;						\
 		fi;							\
 		touch $@;						\
