@@ -22,6 +22,13 @@ ifeq "$(OPENSSL_LIBS)" ""
 FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
+#
+#  Some tests require PCRE or PCRE2
+#
+ifeq "$(AC_HAVE_REGEX_PCRE)$(AC_REGEX_HAVE_PCRE2)" ""
+FILES := $(filter-out if-regex-match-named,$(FILES))
+endif
+
 $(eval $(call TEST_BOOTSTRAP))
 
 #
