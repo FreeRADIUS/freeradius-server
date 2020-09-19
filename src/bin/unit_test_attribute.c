@@ -2458,6 +2458,9 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 		DEBUG2("%s[%d]: --> %s", cc->filename, cc->lineno,
 		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"));
 	}
+
+	talloc_free_children(cc->tmp_ctx);
+
 	return data_used;
 }
 
