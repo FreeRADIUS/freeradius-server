@@ -425,6 +425,13 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			handler->opaque = NULL;
 		}
 
+		/*
+		 *	We got a NAK after the peer started doing a
+		 *	particular EAP type.  That's rude, tell the
+		 *	peer to go away.
+		 */
+		if (handler->started) return EAP_INVALID;
+
 		next = eap_process_nak(inst, handler->request,
 				       handler->type, type);
 
@@ -440,28 +447,29 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		/*
 		 *	Key off of the configured sub-modules.
 		 */
-		default:
-			/*
-			 *	We haven't configured it, it doesn't exit.
-			 */
-			if (!inst->methods[type->num]) {
-				REDEBUG2("Client asked for unsupported EAP type %s (%d)",
-					 eap_type2name(type->num),
-					 type->num);
+	default:
+		/*
+		 *	We haven't configured it, it doesn't exist.
+		 */
+		if (!inst->methods[type->num]) {
+			REDEBUG2("Client asked for unsupported EAP type %s (%d)",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
 
-			rad_assert(handler->stage == PROCESS);
-			handler->type = type->num;
-			if (eap_module_call(inst->methods[type->num],
-					    handler) == 0) {
-				REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
-					 eap_type2name(type->num),
-					 type->num);
+		rad_assert(handler->stage == PROCESS);
+		handler->type = type->num;
+		if (eap_module_call(inst->methods[type->num],
+				    handler) == 0) {
+			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
+		handler->started = true;
 		break;
 	}
 
@@ -498,11 +506,6 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.
 	 *	Do so now.
-	 *
-	 *	LEAP requires the Id to be incremented on EAP-Success
-	 *	in Stage 4, so that we can carry on the conversation
-	 *	where the client asks us to authenticate ourselves
-	 *	in stage 5.
 	 */
 	if (!eap_ds->set_request_id) {
 		/*
@@ -590,8 +593,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
-		request->reply->code = PW_CODE_ACCESS_ACCEPT;
-		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+		rcode = RLM_MODULE_REJECT;
 		break;
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
@@ -905,10 +908,50 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	/*
 	 *	High level EAP packet checks
 	 */
-	if ((len <= EAP_HEADER_LEN) ||
-	    ((eap_packet->code != PW_EAP_RESPONSE) &&
-	     (eap_packet->code != PW_EAP_REQUEST))) {
-		RAUTH("Badly formatted EAP Message: Ignoring the packet");
+	if (len <= EAP_HEADER_LEN) {
+		RAUTH("EAP packet is too small: Ignoring it.");
+		return EAP_INVALID;
+	}
+
+	if (eap_packet->code == PW_EAP_REQUEST) {
+		VALUE_PAIR *vp;
+		RAUTH("Unexpected EAP-Request.  NAKing it.");
+
+		vp = pair_make_reply("EAP-Message", "123456", T_OP_SET);
+		if (vp) {
+			uint8_t buffer[6];
+
+			buffer[0] = PW_EAP_RESPONSE;
+			buffer[1] = eap_packet->id;
+			buffer[2] = 0;
+			buffer[3] = 6;
+			buffer[4] = PW_EAP_NAK;
+			buffer[5] = 0; /* no overlapping EAP types */
+
+			fr_pair_value_memcpy(vp, buffer, 6);
+		}
+
+		/*
+		 *	Ensure that the Access-Reject has a Message-Authenticator
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+		if (!vp) {
+			vp = fr_pair_afrom_num(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
+			vp->vp_length = AUTH_VECTOR_LEN;
+			vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
+			fr_pair_add(&(request->reply->vps), vp);
+		}
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+
+		return EAP_INVALID;
+	}
+
+	/*
+	 *	We only allow responses from the peer.  The peer
+	 *	CANNOT ask us to authenticate outselves.
+	 */
+	if (eap_packet->code != PW_EAP_RESPONSE) {
+		RAUTH("Unexpected packet code %02x: Ignoring it.", eap_packet->code);
 		return EAP_INVALID;
 	}
 
@@ -1222,6 +1265,6 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	}
 
 	handler->timestamp = request->timestamp;
-	handler->request = request; /* LEAP needs this */
+	handler->request = request;
 	return handler;
 }

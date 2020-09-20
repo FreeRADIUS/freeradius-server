@@ -170,6 +170,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 *	have EAP without the TLS types.
 		 */
 		switch (method) {
+		case PW_EAP_FAST:
 		case PW_EAP_TLS:
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
@@ -377,26 +378,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rcode = eap_compose(handler);
 
 	/*
-	 *	Add to the list only if it is EAP-Request, OR if
-	 *	it's LEAP, and a response.
+	 *	Add to the list only if it is EAP-Request.
 	 */
-	if (((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
-	    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) ||
-
-		/*
-		 *	LEAP is a little different.  At Stage 4,
-		 *	it sends an EAP-Success message, but we still
-		 *	need to keep the State attribute & session
-		 *	data structure around for the AP Challenge.
-		 *
-		 *	At stage 6, LEAP sends an EAP-Response, which
-		 *	isn't put into the list.
-		 */
-	    ((handler->eap_ds->response->code == PW_EAP_RESPONSE) &&
-	     (handler->eap_ds->response->type.num == PW_EAP_LEAP) &&
-	     (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
-	     (handler->eap_ds->request->type.num == 0))) {
-
+	if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
+	    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
 		/*
 		 *	Return FAIL if we can't remember the handler.
 		 *	This is actually disallowed by the
@@ -620,8 +605,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 		eap_compose(handler);
 
 		/*
-		 *	Add to the list only if it is EAP-Request, OR if
-		 *	it's LEAP, and a response.
+		 *	Add to the list only if it is EAP-Request.
 		 */
 		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
 		    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
@@ -631,7 +615,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 
-		} else {	/* couldn't have been LEAP, there's no tunnel */
+		} else {
 			RDEBUG2("Freeing handler");
 			/* handler is not required any more, free it now */
 			talloc_free(handler);

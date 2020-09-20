@@ -125,6 +125,15 @@ listen {
 
 dhcp DHCP-Discover {
 
+	#  The DHCP Server Identifier is set here since is returned in OFFERs
+	update control {
+		&DHCP-DHCP-Server-Identifier = 192.0.2.2
+	}
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -138,22 +147,13 @@ dhcp DHCP-Discover {
 	#  In the event that DHCP-Message-Type is not set then the
 	#  server will fall back to determining the type of reply
 	#  based on the rcode of this section.
+	#
+	#update reply {
+	#       DHCP-Message-Type = DHCP-Offer
+	#}
 
-	update reply {
-	       DHCP-Message-Type = DHCP-Offer
-	}
-
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
-	}
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -176,32 +176,59 @@ dhcp DHCP-Discover {
 #	}
 #	dhcp_sqlippool
 
+	#  Set the type of packet to send in reply.
+	#
+	#  The server will look at the DHCP-Message-Type attribute to
+	#  determine which type of packet to send in reply. Common
+	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+	#  dictionary.dhcp for all the possible values.
+	#
+	#  DHCP-Do-Not-Respond can be used to tell the server to not
+	#  respond.
+	#
+	#  In the event that DHCP-Message-Type is not set then the
+	#  server will fall back to determining the type of reply
+	#  based on the rcode of this section.
+	#
+	#update reply {
+	#       DHCP-Message-Type = DHCP-Offer
+	#}
+	#
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Offer
 	#  message.
 	#
 	#  Other rcodes will tell the server to not return any response.
-	ok
+	#
+	#ok
 }
 
 dhcp DHCP-Request {
 
-	# Response packet type. See DHCP-Discover section above.
-	update reply {
-	       &DHCP-Message-Type = DHCP-Ack
+	#  You must set the DHCP Server Identifier here since this is returned
+	#  in ACKs and is used to determine whether a request containing a
+	#  "server-ip" field is intended for this server
+	update control {
+		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
-	update reply {
-		&DHCP-Domain-Name-Server = 127.0.0.1
-		&DHCP-Domain-Name-Server = 127.0.0.2
-		&DHCP-Subnet-Mask = 255.255.255.0
-		&DHCP-Router-Address = 192.0.2.1
-		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+	#  If the request is not for this server then silently discard it
+	if (&request:DHCP-DHCP-Server-Identifier && \
+	    &request:DHCP-DHCP-Server-Identifier != &control:DHCP-DHCP-Server-Identifier) {
+		do_not_respond
 	}
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
+	#  Response packet type. See DHCP-Discover section above.
+	#update reply {
+	#       &DHCP-Message-Type = DHCP-Ack
+	#}
+
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -222,7 +249,7 @@ dhcp DHCP-Request {
 #	update control {
 #		&Pool-Name := "local"
 #	}
-#	dhcp_sqlippool
+#	dhcp_sqlippool_request
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Ack
@@ -230,7 +257,8 @@ dhcp DHCP-Request {
 	#
 	#  "handled" will not return a packet, all other rcodes will
 	#  send back a DHCP-NAK.
-	ok
+	#
+	#ok
 }
 
 #
@@ -241,17 +269,38 @@ dhcp DHCP-Request {
 #  not defined here will be responded to with a DHCP-NAK.
 
 dhcp DHCP-Decline {
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
+	#  If using IPs from a DHCP pool in SQL then you may need to set the
+	#  pool name here if you haven't set it elsewhere and release the IP.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool_decline
+
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
 	reject
 }
 
+#
+#  A dummy config for Inform packets - this should match the
+#  options set in the Request section above, except Inform replies
+#  must not set Your-IP-Address or IP-Address-Lease-Time
+#
 dhcp DHCP-Inform {
-	update reply {
-	       &DHCP-Message-Type = DHCP-Do-Not-Respond
-	}
-	reject
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
+
+	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	dhcp_common
+  
+	ok
 }
 
 #
@@ -268,6 +317,10 @@ dhcp DHCP-Inform {
 #}
 
 dhcp DHCP-Release {
+
+	#  If multiple subnets are being served, use a policy (defined in
+	#  policy.d/dhcp) to determine the subnet name.
+	#  dhcp_determine_subnet
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.

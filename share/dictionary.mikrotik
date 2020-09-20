@@ -50,6 +50,7 @@ ATTRIBUTE	Mikrotik-Wireless-VLANID		26	integer
 ATTRIBUTE	Mikrotik-Wireless-VLANID-Type		27	integer
 ATTRIBUTE	Mikrotik-Wireless-Minsignal		28	string
 ATTRIBUTE	Mikrotik-Wireless-Maxsignal		29	string
+ATTRIBUTE	Mikrotik-Switching-Filter		30	string
 
 # MikroTik Values
 

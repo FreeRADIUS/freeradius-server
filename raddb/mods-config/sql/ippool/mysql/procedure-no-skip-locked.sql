@@ -63,8 +63,8 @@ proc:BEGIN
         FROM radippool
         WHERE pool_name = v_pool_name
                 AND expiry_time > NOW()
-                AND username = v_username
-                AND callingstationid = v_callingstationid
+                AND nasipaddress = v_nasipaddress
+                AND pool_key = v_pool_key
         LIMIT 1;
 
         -- Reissue an user's previous IP address, provided that the lease is
@@ -77,8 +77,8 @@ proc:BEGIN
         -- SELECT framedipaddress INTO r_address
         -- FROM radippool
         -- WHERE pool_name = v_pool_name
-        --         AND username = v_username
-        --         AND callingstationid = v_callingstationid
+        --         AND nasipaddress = v_nasipaddress
+        --         AND pool_key = v_pool_key
         -- LIMIT 1;
 
         IF r_address IS NOT NULL THEN
@@ -104,7 +104,7 @@ proc:BEGIN
                 SELECT framedipaddress INTO r_address
                 FROM radippool
                 WHERE pool_name = v_pool_name
-                        AND ( expiry_time < NOW() OR expiry_time IS NULL )
+                        AND expiry_time < NOW()
                 --
                 -- WHERE ... GET_LOCK(...,0) = 1 is a poor man's SKIP LOCKED that simulates
                 -- a row-level lock using a "user lock" that allows the locked "rows" to be
@@ -136,7 +136,7 @@ proc:BEGIN
                 -- Here we re-evaluate the original condition for selecting the address
                 -- to detect a race, in which case we try again...
                 --
-                        AND (expiry_time<NOW() OR expiry_time IS NULL);
+                        AND expiry_time<NOW();
 
         UNTIL ROW_COUNT() <> 0 END REPEAT;
 

@@ -254,7 +254,7 @@ typedef struct fr_packet_socket_t {
 
 
 #define FNV_MAGIC_PRIME (0x01000193)
-#define MAX_SOCKETS (256)
+#define MAX_SOCKETS (1024)
 #define SOCKOFFSET_MASK (MAX_SOCKETS - 1)
 #define SOCK2OFFSET(sockfd) ((sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
 

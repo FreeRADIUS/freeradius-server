@@ -138,6 +138,8 @@ Group: System Environment/Daemons
 Summary: FreeRADIUS utilities
 Requires: %{name} = %{version}-%{release}
 Requires: libpcap >= 0.9.4
+Requires: perl-Net-IP
+Requires: perl-Template-Toolkit
 
 %description utils
 The FreeRADIUS server has a number of features found in other servers,
@@ -594,7 +596,6 @@ fi
 %{_libdir}/freeradius/rlm_eap.so
 %{_libdir}/freeradius/rlm_eap_fast.so
 %{_libdir}/freeradius/rlm_eap_gtc.so
-%{_libdir}/freeradius/rlm_eap_leap.so
 %{_libdir}/freeradius/rlm_eap_md5.so
 %{_libdir}/freeradius/rlm_eap_mschapv2.so
 %{_libdir}/freeradius/rlm_eap_peap.so

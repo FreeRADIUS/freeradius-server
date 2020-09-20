@@ -1,11 +1,104 @@
+#  Determine subnet name to use in looking up options
+dhcp_determine_subnet {
+
+	#
+	#  If multiple subnets are in use, configure logic here to choose the
+	#  appropriate one.  DHCP-Network-IP-Address contains the address
+	#  to match into subnets, based on data provided in the DHCP packet.
+	#
+	#  With IP addresses the "<" operator can be used to match addresses
+	#  to subnets.
+	#
+	#  This is a made up example that should be customised to the real
+	#  Network environment
+	#
+
+	#  if (&DHCP-Network-IP-Address < 10.1.0.0/16) {
+	#	update control {
+	#		&DHCP-Subnet-Name = network1
+	#	}
+	#  } elsif (&DHCP-Network-IP-Address < 10.2.0.0/16) {
+	#	update control {
+	#		&DHCP-Subnet-Name = network2
+	#	}
+	#  } else {
+	#	update control {
+	#	       &DHCP-Subnet-Name = default
+	#	}
+	#  }
+}
+
+#  Assign common DHCP reply packet options
+dhcp_common {
+	#  The contents here are invented.  Change them!
+	#  Lease time should either be set here or can
+	#  reference the lease time set in the named
+	#  sqlipppol module instance configuration if that
+	#  is in use for lease management
+	update reply {
+		&DHCP-Domain-Name-Server = 127.0.0.1
+		&DHCP-Domain-Name-Server = 127.0.0.2
+		&DHCP-Subnet-Mask = 255.255.255.0
+		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-IP-Address-Lease-Time = 7200
+#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
+	}
+}
+
+#  Assign compatibility data to request for sqlippool for DHCP Request
+dhcp_sqlippool_request {
+
+	#
+	#  During initial address selection (DORA) the REQUEST is broadcast and
+	#  requested-ip must be provided. We revoke any active offers for addresses
+	#  not matching the requested-ip, i.e. those made by other servers when
+	#  processing the DISCOVER.
+	#
+	#  If there is only a single server then this optimisation can be disabled.
+	#
+	if (&DHCP-Requested-IP-Address) {
+		update request {
+			&Acct-Status-Type := Start
+		}
+		dhcp_sqlippool.accounting
+	}
+
+	#  Extend an existing offer or active lease
+	update request {
+		&Acct-Status-Type := Alive
+	}
+	dhcp_sqlippool.accounting {
+		notfound = return
+	}
+
+	update reply {
+		&DHCP-Your-IP-Address := "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	}
+
+}
+
 #  Assign compatibility data to request for sqlippool for DHCP Release
 dhcp_sqlippool_release {
 
 	#  Do some minor hacks to the request so that it looks
 	#  like a RADIUS Accounting Stop request to the SQL IP Pool module.
 	update request {
-		&Framed-IP-Address = "%{DHCP-Client-IP-Address}"
 		&Acct-Status-Type = Stop
+	}
+
+	#  Call the actual module in accounting context
+	dhcp_sqlippool.accounting
+
+}
+
+#  Assign compatibility data to request for sqlippool for DHCP Decline
+dhcp_sqlippool_decline {
+
+	#  Do a minor hack to the request so that it looks
+	#  like a RADIUS Accounting Off request to the SQL IP Pool module.
+	update request {
+		&Acct-Status-Type = Accounting-Off
 	}
 
 	#  Call the actual module in accounting context

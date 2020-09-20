@@ -30,7 +30,7 @@ cat <<EOF | sqlite3 "$1"
         PRIMARY KEY (key)
     );
 
-    INSERT INTO vars SELECT 'v_start', COALESCE(MAX(period_start), DATETIME(0, 'unixepoch')) FROM data_usage_by_period;
+    INSERT INTO vars SELECT 'v_start', COALESCE(DATETIME(MAX(period_start), '+1 seconds'), DATETIME(0, 'unixepoch')) FROM data_usage_by_period;
     INSERT INTO vars SELECT 'v_end', CURRENT_TIMESTAMP;
 
 

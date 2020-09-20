@@ -61,13 +61,12 @@ AS
 		--
 		WITH cte AS (
 			SELECT TOP(1) FramedIPAddress
-			FROM radippool
+			FROM radippool WITH (xlock rowlock readpast)
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
-				AND UserName = @v_username
-				AND CallingStationId = @v_callingstationid
+				AND NASIPAddress = @v_nasipaddress AND pool_key = @v_pool_key
 		)
-		UPDATE cte WITH (rowlock, readpast)
+		UPDATE cte
 		SET FramedIPAddress = FramedIPAddress
 		OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 		SELECT @r_address = id FROM @r_address_tab;
@@ -81,12 +80,11 @@ AS
 		--
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) FramedIPAddress
-		-- 	FROM radippool
+		-- 	FROM radippool WITH (xlock rowlock readpast)
 		-- 	WHERE pool_name = @v_pool_name
-		-- 		AND UserName = @v_username
-		-- 		AND CallingStationId = @v_callingstationid
+		-- 		AND NASIPAddress = @v_nasipaddress AND pool_key = @v_pool_key
 		-- )
-		-- UPDATE cte WITH (rowlock, readpast)
+		-- UPDATE cte
 		-- SET FramedIPAddress = FramedIPAddress
 		-- OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 		-- SELECT @r_address = id FROM @r_address_tab;
@@ -99,13 +97,13 @@ AS
 		BEGIN
 			WITH cte AS (
 				SELECT TOP(1) FramedIPAddress
-				FROM radippool
+				FROM radippool WITH (xlock rowlock readpast)
 				WHERE pool_name = @v_pool_name
-					AND ( expiry_time < CURRENT_TIMESTAMP OR expiry_time IS NULL )
+					AND expiry_time < CURRENT_TIMESTAMP
 				ORDER BY
 					expiry_time
 			)
-			UPDATE cte WITH (rowlock, readpast)
+			UPDATE cte
 			SET FramedIPAddress = FramedIPAddress
 			OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
 			SELECT @r_address = id FROM @r_address_tab;
