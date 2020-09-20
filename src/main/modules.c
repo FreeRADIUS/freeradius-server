@@ -1157,6 +1157,7 @@ static int load_component_section(CONF_SECTION *cs,
 		if (comp == MOD_AUTHENTICATE) {
 			DICT_VALUE *dval;
 			char const *modrefname = NULL;
+
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
 			} else {
@@ -1168,6 +1169,7 @@ static int load_component_section(CONF_SECTION *cs,
 					return -1;
 				}
 			}
+			if (*modrefname == '-') modrefname++;
 
 			dval = dict_valbyname(PW_AUTH_TYPE, 0, modrefname);
 			if (!dval) {
@@ -1684,6 +1686,11 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 {
 	uint32_t value;
 	DICT_VALUE *dval;
+
+	/*
+	 *	Allow for conditionally loaded types
+	 */
+	if (*name == '-') name++;
 
 	/*
 	 *	If the value already exists, don't
