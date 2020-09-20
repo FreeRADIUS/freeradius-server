@@ -194,6 +194,13 @@ static void *check_path(char *filename, char const *name, size_t namelen,
  *		If a library exists, but does NOT contain
  *     		"symbol", it is skipped.
  *
+ *  The function returns the full pathname where the library was
+ *  found, if the full pathname is available.  If no path is
+ *  available, it returns the library name. "libfoo".
+ *
+ *  If the dlopen() call fails, or the symbol isn't found, then the
+ *  function returns an empty string "".
+ *
  *  Library handles are cached across calls to $(dlopen ...).  So they
  *  should be closed with $(dlclose ...)
  *
@@ -377,11 +384,10 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 found:
 	if (!lib->filename) {
 no_file:
-		p = gmk_alloc(strlen(lib->name));
+		p = gmk_alloc(1);
 		if (!p) goto oom;
 
-		p[0] = '1';
-		p[1] = '\0';
+		p[0] = '\0';
 		return p;
 	}
 
