@@ -4649,7 +4649,7 @@ parse:
 		 *	Invalid.
 		 */
 		if ((len & 0x01) != 0) {
-			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", len);
+			fr_strerror_printf("Length of hex string is not even, got %zu bytes", len);
 			return -1;
 		}
 
