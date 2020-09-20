@@ -203,7 +203,7 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
 
-/** How many uint8s wide each of the value data fields are
+/** How many bytes wide each of the value data fields are
  *
  * This is useful when copying a value from a fr_value_box_t to a memory
  * location passed as a void *.
@@ -613,7 +613,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
  *
  *	reserved, prefix-len, data...
  */
-static int fr_value_box_cidr_cmp_op(fr_token_t op, int uint8s,
+static int fr_value_box_cidr_cmp_op(fr_token_t op, int bytes,
 				 uint8_t a_net, uint8_t const *a,
 				 uint8_t b_net, uint8_t const *b)
 {
@@ -626,7 +626,7 @@ static int fr_value_box_cidr_cmp_op(fr_token_t op, int uint8s,
 	if (a_net == b_net) {
 		int compare;
 
-		compare = memcmp(a, b, uint8s);
+		compare = memcmp(a, b, bytes);
 
 		/*
 		 *	If they're identical return true for
@@ -685,14 +685,14 @@ static int fr_value_box_cidr_cmp_op(fr_token_t op, int uint8s,
 	}
 
 	/*
-	 *	Do the check uint8 by uint8.  If the uint8s are
+	 *	Do the check uint8 by uint8.  If the bytes are
 	 *	identical, it MAY be a match.  If they're different,
 	 *	it is NOT a match.
 	 */
 	i = 0;
-	while (i < uint8s) {
+	while (i < bytes) {
 		/*
-		 *	All leading uint8s are identical.
+		 *	All leading bytes are identical.
 		 */
 		if (common == 0) return true;
 
@@ -1891,7 +1891,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	}
 
 	/*
-	 *	<4 uint8s address>
+	 *	<4 bytes address>
 	 */
 	case FR_TYPE_IPV4_ADDR:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
@@ -1899,7 +1899,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					   sizeof(src->vb_ip.addr.v4.s_addr), src->tainted);
 
 	/*
-	 *	<1 uint8 prefix> + <4 uint8s address>
+	 *	<1 uint8 prefix> + <4 bytes address>
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	{
@@ -1914,7 +1914,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		return 0;
 
 	/*
-	 *	<16 uint8s address>
+	 *	<16 bytes address>
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
@@ -1922,7 +1922,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					   sizeof(src->vb_ip.addr.v6.s6_addr), src->tainted);
 
 	/*
-	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 uint8s address>
+	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 bytes address>
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 	{
@@ -2108,7 +2108,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	/*
-	 *	Copy the last four uint8s, to make an IPv4prefix
+	 *	Copy the last four bytes, to make an IPv4prefix
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
@@ -4649,7 +4649,7 @@ parse:
 		 *	Invalid.
 		 */
 		if ((len & 0x01) != 0) {
-			fr_strerror_printf("Length of Hex String is not even, got %zu uint8s", len);
+			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", len);
 			return -1;
 		}
 
