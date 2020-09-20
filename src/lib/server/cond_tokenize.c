@@ -1184,6 +1184,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	tmpl_t				*vpt;
 	fr_token_t			type;
 	fr_type_t			cast = FR_TYPE_INVALID;
+	fr_sbuff_parse_rules_t		tmp_p_rules;
 	fr_sbuff_parse_rules_t const	*p_rules;
 	ssize_t				slen;
 
@@ -1205,10 +1206,11 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	switch (type) {
 	default:
 	case T_BARE_WORD:
-		p_rules = &(fr_sbuff_parse_rules_t){
+		tmp_p_rules = (fr_sbuff_parse_rules_t){		/* Stack allocated due to CL scope */
 			.terminals = &bareword_terminals,
 			.escapes = NULL
 		};
+		p_rules = &tmp_p_rules;
 		break;
 
 	case T_BACK_QUOTED_STRING:

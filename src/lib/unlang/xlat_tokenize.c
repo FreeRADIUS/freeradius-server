@@ -205,8 +205,8 @@ void xlat_exp_free(xlat_exp_t **head)
 static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   tmpl_rules_t const *t_rules);
 
-static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				 bool brace,
+static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
+				 fr_sbuff_t *in, bool brace,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
@@ -1153,6 +1153,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 	fr_cursor_t			cursor;
 	fr_sbuff_marker_t		m;
 	fr_sbuff_parse_rules_t const	*our_p_rules;	/* Bareword parse rules */
+	fr_sbuff_parse_rules_t		tmp_p_rules;
 	xlat_flags_t			tmp_flags = {};
 
 	if (!flags) flags = &tmp_flags;
@@ -1160,11 +1161,12 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 	*head = NULL;
 
 	if (p_rules && p_rules->terminals) {
-		our_p_rules = &(fr_sbuff_parse_rules_t){
+		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
 			.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
 							       tmpl_parse_rules_bareword_quoted.terminals),
 			.escapes = tmpl_parse_rules_bareword_quoted.escapes
 		};
+		our_p_rules = &tmp_p_rules;
 	} else {
 		our_p_rules = &tmpl_parse_rules_bareword_quoted;
 	}
