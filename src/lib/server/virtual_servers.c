@@ -42,9 +42,7 @@ RCSID("$Id$")
 
 typedef struct {
 	char const		*namespace;		//!< Namespace function is registered to.
-	char const		*proto_dict;		//!< Dictionary name to load for this namespace.
-	char const		*proto_dir;		//!< Override proto_dict and specify a dictionary off of
- 							//!< the dictionary root directory (may be NULL).
+	fr_dict_t const		*dict;			//!< dictionary to use
 	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
 } fr_virtual_namespace_t;
 
@@ -173,14 +171,25 @@ static int _virtual_server_dict_free(virtual_server_dict_t *cd)
 
 static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
 {
-	virtual_server_dict_t *cd;
+	virtual_server_dict_t *p;
+	CONF_DATA const *cd;
 
-	cd = talloc_zero(server_cs, virtual_server_dict_t);
-	cd->do_free = do_free;
-	cd->dict = dict;
-	talloc_set_destructor(cd, _virtual_server_dict_free);
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+	if (cd) {
+		p = (virtual_server_dict_t *) cf_data_value(cd);
+		if (p->dict == dict) return;
 
-	cf_data_add(server_cs, cd, "dictionary", true);
+		cf_log_warn(server_cs, "Attempt to add multiple different dictionaries %s and %s",
+			    fr_dict_root(p->dict)->name, fr_dict_root(dict)->name);
+		return;
+	}
+
+	p = talloc_zero(server_cs, virtual_server_dict_t);
+	p->do_free = do_free;
+	p->dict = dict;
+	talloc_set_destructor(p, _virtual_server_dict_free);
+
+	cf_data_add(server_cs, p, "dictionary", true);
 }
 
 /** dl_open a proto_* module
@@ -536,17 +545,17 @@ int virtual_servers_instantiate(void)
 		 */
 		if (!cf_data_find(server_cs, virtual_server_dict_t, "dictionary")) {
 			fr_dict_t *dict = NULL;
+			fr_virtual_namespace_t	*found = NULL;
 
 			if (vns_tree) {
-				fr_virtual_namespace_t	*found;
-
 				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
 				if (found) {
+					virtual_server_dict_set(server_cs, found->dict, true);
 
-					if (fr_dict_protocol_afrom_file(&dict, found->proto_dict, found->proto_dir) < 0) return -1;
-					virtual_server_dict_set(server_cs, dict, true);
-
-					if ((found->func(server_cs) < 0)) return -1;
+					if ((found->func(server_cs) < 0)) {
+						PERROR("Failed compiling %s", cf_section_name2(server_cs));
+						return -1;
+					}
 				}
 			}
 
@@ -555,10 +564,13 @@ int virtual_servers_instantiate(void)
 			 *	just don't have a dictionary for it.
 			 *	Load the dictionary now.
 			 */
-			if (!dict) {
+			if (!found) {
 				char const *value = cf_pair_value(ns);
 
-				if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) return -1;
+				if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) {
+					PERROR("Failed loading dictionary %s", value);
+					return -1;
+				}
 				virtual_server_dict_set(server_cs, dict, true);
 			}
 		}
@@ -830,16 +842,14 @@ static int _virtual_namespace_cmp(void const *a, void const *b)
  *  This allows modules to register unlang compilation functions for specific namespaces
  *
  * @param[in] namespace		to register.
- * @param[in] proto_dict	Dictionary name to load for this namespace.
- * @param[in] proto_dir		Override proto_dict and specify a dictionary off of
- *				the dictionary root directory (may be NULL).
+ * @param[in] dict		Dictionary name to use for this namespace
  * @param[in] func		to call to compile sections in the virtual server.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int virtual_namespace_register(char const *namespace,
-			       char const *proto_dict, char const *proto_dir, fr_virtual_server_compile_t func)
+int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
+			       fr_virtual_server_compile_t func)
 {
 	rbtree_t		*vns_tree;
 	fr_virtual_namespace_t	*vns;
@@ -848,8 +858,7 @@ int virtual_namespace_register(char const *namespace,
 
 	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
 	vns->namespace = talloc_strdup(vns, namespace);
-	vns->proto_dict = talloc_strdup(vns, proto_dict);
-	vns->proto_dir = talloc_strdup(vns, proto_dir);
+	vns->dict = dict;
 	vns->func = func;
 
 	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
