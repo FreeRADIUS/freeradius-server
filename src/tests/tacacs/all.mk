@@ -89,5 +89,5 @@ else
 .PHONY: test.tacacs
 test.tacacs:
 	$(Q)echo "WARNING: 'tests.tacacs' requires 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
-	$(@)echo "Skipping 'test.tacacs'"
+	$(Q)echo "Skipping 'test.tacacs'"
 endif
