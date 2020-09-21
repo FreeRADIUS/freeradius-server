@@ -67,12 +67,12 @@ size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
 /** Attr ref types
  */
-fr_table_num_ordered_t const attr_ref_table[] = {
+fr_table_num_ordered_t const attr_table[] = {
 	{ L("normal"),		TMPL_ATTR_TYPE_NORMAL		},
 	{ L("unknown"),		TMPL_ATTR_TYPE_UNKNOWN		},
 	{ L("unresolved"),	TMPL_ATTR_TYPE_UNRESOLVED	}
 };
-size_t attr_ref_table_len = NUM_ELEMENTS(attr_ref_table);
+size_t attr_table_len = NUM_ELEMENTS(attr_table);
 
 /** Map keywords to #pair_list_t values
  */
@@ -105,7 +105,7 @@ static fr_table_num_sorted_t const attr_num_table[] = {
 };
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 
-static void tmpl_attr_ref_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
+static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
 
 void tmpl_attr_debug(tmpl_t const *vpt)
 {
@@ -160,7 +160,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 			if (!ar->da) {
 				INFO("\t[%u] %s null%s%s%s",
 				     i,
-				     fr_table_str_by_value(attr_ref_table, ar->type, "<INVALID>"),
+				     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 				     ar->num != NUM_ANY ? "[" : "",
 			     	     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
 			     	     ar->num != NUM_ANY ? "]" : "");
@@ -169,7 +169,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 
 			INFO("\t[%u] %s %s %s%s%s%s (%u)",
 			     i,
-			     fr_table_str_by_value(attr_ref_table, ar->type, "<INVALID>"),
+			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
 			     ar->da->name,
 			     ar->num != NUM_ANY ? "[" : "",
@@ -186,7 +186,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		case TMPL_ATTR_TYPE_UNRESOLVED:
 			INFO("\t[%u] %s %s%s%s%s - unresolved",
 			     i,
-			     fr_table_str_by_value(attr_ref_table, ar->type, "<INVALID>"),
+			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     ar->ar_unresolved,
 			     ar->num != NUM_ANY ? "[" : "",
 			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
@@ -195,7 +195,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 
 		default:
 			INFO("\t[%u] Bad type %s(%u)",
-			     i, fr_table_str_by_value(attr_ref_table, ar->type, "<INVALID>"), ar->type);
+			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
 			break;
 		}
 
@@ -806,7 +806,7 @@ static tmpl_request_t *tmpl_req_ref_add(tmpl_t *vpt, request_ref_t request)
 /** Allocate a new attribute reference and add it to the end of the attribute reference list
  *
  */
-static tmpl_attr_t *tmpl_attr_ref_add(tmpl_t *vpt, tmpl_attr_type_t type)
+static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 {
 	tmpl_attr_t	*ar;
 	TALLOC_CTX	*ctx;
@@ -878,7 +878,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	if (fr_dlist_num_elements(&dst->data.attribute.ar) > 0) fr_dlist_talloc_reverse_free(&dst->data.attribute.ar);
 
 	while ((src_ar = fr_dlist_next(&src->data.attribute.ar, src_ar))) {
-		dst_ar = tmpl_attr_ref_add(dst, src_ar->type);
+		dst_ar = tmpl_attr_add(dst, src_ar->type);
 
 		switch (src_ar->type) {
 	 	case TMPL_ATTR_TYPE_NORMAL:
@@ -938,10 +938,10 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Unknown attributes get copied
 	 */
 	if (da->flags.is_unknown) {
-		ref = tmpl_attr_ref_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
 		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da);
 	} else {
-		ref = tmpl_attr_ref_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
 	}
 
@@ -981,7 +981,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		 */
 		talloc_free_children(ref);
 	} else {
-		ref = tmpl_attr_ref_add(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
+		ref = tmpl_attr_add(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
 	}
 
 
@@ -1008,7 +1008,7 @@ void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
 	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (fr_dlist_num_elements(&vpt->data.attribute.ar) == 0) {
-		ref = tmpl_attr_ref_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
 	} else {
 		ref = fr_dlist_tail(&vpt->data.attribute.ar);
 	}
@@ -1062,7 +1062,7 @@ void tmpl_attr_set_unresolved(tmpl_t *vpt, char const *name, size_t len)
 		fr_dlist_talloc_reverse_free(&vpt->data.attribute.ar);
 	}
 
-	ref = tmpl_attr_ref_add(vpt, TMPL_ATTR_TYPE_UNRESOLVED);
+	ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNRESOLVED);
 	ref->ar_unresolved = talloc_strndup(vpt, name, len);
 
 	TMPL_ATTR_VERIFY(vpt);
@@ -1146,7 +1146,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
  *
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
-static tmpl_rules_t const default_attr_ref_rules = {
+static tmpl_rules_t const default_attr_rules = {
 	.request_def = REQUEST_CURRENT,
 	.list_def = PAIR_LIST_REQUEST
 };
@@ -1280,7 +1280,7 @@ typedef enum {
 	TMPL_ATTR_REF_HAS_FILTER = 1,
 	TMPL_ATTR_REF_NO_FILTER = 0,
 	TMPL_ATTR_REF_BAD_FILTER = -1
-} tmpl_attr_ref_filter_t;
+} tmpl_attr_filter_t;
 
 /** Parse array subscript and in future other filters
  *
@@ -1292,7 +1292,7 @@ typedef enum {
  *	- TMPL_ATTR_REF_NO_FILTER on success with no filter.
  *	- TMPL_ATTR_REF_BAD_FILTER on failure.
  */
-static tmpl_attr_ref_filter_t tmpl_attr_ref_parse_filter(attr_ref_error_t *err, tmpl_attr_t *ar, fr_sbuff_t *name)
+static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar, fr_sbuff_t *name)
 {
 	/*
 	 *	Parse array subscript (and eventually complex filters)
@@ -1323,20 +1323,20 @@ static tmpl_attr_ref_filter_t tmpl_attr_ref_parse_filter(attr_ref_error_t *err, 
 		if (fr_sbuff_out(&sberr, &ar->num, &tmp) == 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
 				fr_strerror_printf("Array index is not an integer");
-				if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
+				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			error:
 				return TMPL_ATTR_REF_BAD_FILTER;
 			}
 
 			fr_strerror_printf("Invalid array index");
-			if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
+			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
 		}
 
 		if ((ar->num > 1000) || (ar->num < 0)) {
 			fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->num);
 			ar->num = 0;
-			if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
+			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
 		}
 		fr_sbuff_set(name, &tmp);	/* Advance name _AFTER_ doing checks */
@@ -1350,7 +1350,7 @@ static tmpl_attr_ref_filter_t tmpl_attr_ref_parse_filter(attr_ref_error_t *err, 
 	 */
 	if (!fr_sbuff_next_if_char(name, ']')) {
 		fr_strerror_printf("No closing ']' for array index");
-		if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 		goto error;
 	}
 
@@ -1368,13 +1368,13 @@ static tmpl_attr_ref_filter_t tmpl_attr_ref_parse_filter(attr_ref_error_t *err, 
  * @param[out] err		Parse error.
  * @param[in,out] vpt		to append this reference to.
  * @param[in] name		to parse.
- * @param[in] rules		see tmpl_attr_ref_afrom_attr_substr.
+ * @param[in] rules		see tmpl_attr_afrom_attr_substr.
  * @param[in] depth		How deep we are.  Used to check for maximum nesting level.
  * @return
  *	- <0 on error.
  *	- 0 on success.
  */
-static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 							     tmpl_t *vpt,
 							     fr_sbuff_t *name, tmpl_rules_t const *rules,
 							     unsigned int depth)
@@ -1387,7 +1387,7 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("Attribute nesting too deep");
-		if (err) *err = ATTR_REF_ERROR_NESTING_TOO_DEEP;
+		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 		return -1;
 	}
 
@@ -1396,7 +1396,7 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
 	 */
 	if (!fr_sbuff_extend(name)) {
 		fr_strerror_printf("Missing attribute reference");
-		if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		return -1;
 	}
 
@@ -1418,14 +1418,14 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
 					     fr_dict_attr_allowed_chars);
 	if (len == 0) {
 		fr_strerror_printf("Invalid attribute name");
-		if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 	error:
 		talloc_free(ar);
 		return -1;
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name is too long");
-		if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		goto error;
 	}
 
@@ -1435,7 +1435,7 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
 		.ar_unresolved = unresolved
 	};
 
-	if (tmpl_attr_ref_parse_filter(err, ar, name) < 0) goto error;
+	if (tmpl_attr_parse_filter(err, ar, name) < 0) goto error;
 
 	fr_dlist_insert_tail(list, ar);
 
@@ -1444,7 +1444,7 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
 	 *	future OID components are also unresolved.
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_ref_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth + 1);
+		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth + 1);
 		if (ret < 0) {
 			fr_dlist_talloc_free_tail(list); /* Remove and free ar */
 			return -1;
@@ -1481,7 +1481,7 @@ static inline int tmpl_attr_ref_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, at
  *	- <0 on error.
  *	- 0 on success.
  */
-static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 						  tmpl_t *vpt,
 						  fr_dict_attr_t const *parent,
 						  fr_sbuff_t *name, tmpl_rules_t const *rules, unsigned int depth)
@@ -1492,13 +1492,13 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
-	tmpl_attr_ref_filter_t	filter;
+	tmpl_attr_filter_t	filter;
 
 	fr_sbuff_marker(&m_s, name);
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("Attribute nesting too deep");
-		if (err) *err = ATTR_REF_ERROR_NESTING_TOO_DEEP;
+		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 	error:
 		fr_sbuff_marker_release(&m_s);
 		return -1;
@@ -1509,7 +1509,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 	 */
 	if (!fr_sbuff_extend(name)) {
 		fr_strerror_printf("Missing attribute reference");
-		if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		goto error;
 	}
 
@@ -1565,7 +1565,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 		if (!parent && !rules->disallow_internal) parent = fr_dict_root(fr_dict_internal());
 		if (!parent) {
 			fr_strerror_printf("OID references must be qualified with a protocol when used here");
-			if (err) *err = ATTR_REF_ERROR_UNQUALIFIED_ATTRIBUTE_NOT_ALLOWED;
+			if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -1594,7 +1594,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 
 		if (!rules->allow_unknown) {
 			fr_strerror_printf("Unknown attributes not allowed here");
-			if (err) *err = ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED;
+			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -1604,14 +1604,14 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 		switch (parent->type) {
 		case FR_TYPE_VSA:
 			if (fr_dict_unknown_vendor_afrom_num(ar, &da_unknown, parent, oid) < 0) {
-				if (err) *err = ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED;	/* strerror set by dict function */
+				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
 			}
 			break;
 
 		default:
 			if (fr_dict_unknown_attr_afrom_num(ar, &da_unknown, parent, oid) < 0) {
-				if (err) *err = ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED;	/* strerror set by dict function */
+				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
 			}
 			break;
@@ -1638,7 +1638,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 	 */
 	if (!rules->allow_unresolved) {
 		fr_strerror_printf_push("Unparsed attributes not allowed here");
-		if (err) *err = ATTR_REF_ERROR_UNRESOLVED_ATTRIBUTE_NOT_ALLOWED;
+		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
 		goto error;
 	}
@@ -1649,7 +1649,7 @@ static inline int tmpl_attr_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_erro
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_ref_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth);
+	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth);
 
 check_attr:
 	/*
@@ -1670,7 +1670,7 @@ check_attr:
 		 */
 		if (rules->disallow_internal && (found_in == fr_dict_internal())) {
 			fr_strerror_printf("Internal attributes not allowed here");
-			if (err) *err = ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED;
+			if (err) *err = TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -1695,7 +1695,7 @@ check_attr:
 		    !rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
 			fr_strerror_printf("Only attributes from the %s protocol are allowed here",
 					   fr_dict_root(rules->dict_def)->name);
-			if (err) *err = ATTR_REF_ERROR_FOREIGN_ATTRIBUTES_NOT_ALLOWED;
+			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -1713,7 +1713,7 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	if ((filter = tmpl_attr_ref_parse_filter(err, ar, name)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
+	if ((filter = tmpl_attr_parse_filter(err, ar, name)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -1762,7 +1762,7 @@ do_suffix:
 		}
 
 		if (ar) fr_dlist_insert_tail(list, ar);
-		if (tmpl_attr_ref_afrom_attr_substr(ctx, err, vpt, parent, name, rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, name, rules, depth + 1) < 0) {
 			if (ar) fr_dlist_talloc_free_tail(list); /* Remove and free ar */
 			goto error;
 		}
@@ -1784,7 +1784,7 @@ do_suffix:
 	return 0;
 }
 
-static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 						     tmpl_t *vpt,
 						     fr_sbuff_t *name,
 						     fr_sbuff_parse_rules_t const *p_rules,
@@ -1838,13 +1838,13 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
 	 */
 	if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
 		fr_strerror_printf("Request ref nesting too deep");
-		if (err) *err = ATTR_REF_ERROR_NESTING_TOO_DEEP;
+		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 		return -1;
 	}
 
 	if (t_rules->disallow_qualifiers) {
 		fr_strerror_printf("It is not permitted to specify a request reference here");
-		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		return -1;
 	}
 
@@ -1914,7 +1914,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_e
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_t **out, fr_sbuff_t *name,
 			       fr_sbuff_parse_rules_t const *p_rules,
 			       tmpl_rules_t const *t_rules)
@@ -1926,13 +1926,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	bool		ref_prefix = false;
 	bool		is_raw = false;
 
-	if (!t_rules) t_rules = &default_attr_ref_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
 
-	if (err) *err = ATTR_REF_ERROR_NONE;
+	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
 	if (!fr_sbuff_extend(&our_name)) {
 		fr_strerror_printf("Empty attribute reference");
-		if (err) *err = ATTR_REF_ERROR_EMPTY;
+		if (err) *err = TMPL_ATTR_ERROR_EMPTY;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
@@ -1943,7 +1943,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	case TMPL_ATTR_REF_PREFIX_YES:
 		if (!fr_sbuff_next_if_char(&our_name, '&')) {
 			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
-			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
+			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
 			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
 
@@ -1952,7 +1952,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	case TMPL_ATTR_REF_PREFIX_NO:
 		if (fr_sbuff_is_char(&our_name, '&')) {
 			fr_strerror_printf("Attribute references used here must not have a '&' prefix");
-			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
+			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
 			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
 		break;
@@ -1999,7 +1999,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 
 	if (t_rules->disallow_qualifiers && (list_len > 0)) {
 		fr_strerror_printf("It is not permitted to specify a pair list here");
-		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
@@ -2014,8 +2014,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 	if ((list_len == 0) ||
 	    (((fr_sbuff_next_if_char(&our_name, ':') && (vpt->data.attribute.old_list_sep = true)) ||
 	     fr_sbuff_next_if_char(&our_name, '.')) && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
-		ret = tmpl_attr_ref_afrom_attr_substr(vpt, err,
-						      vpt, NULL, &our_name, t_rules, 0);
+		ret = tmpl_attr_afrom_attr_substr(vpt, err,
+						  vpt, NULL, &our_name, t_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -2040,7 +2040,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 		tmpl_attr_t *ar;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		switch (tmpl_attr_ref_parse_filter(err, ar, &our_name)) {
+		switch (tmpl_attr_parse_filter(err, ar, &our_name)) {
 		case 0:						/* No filter */
 			talloc_free(ar);
 			break;
@@ -2061,7 +2061,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_printf("Unexpected text after attribute reference");
-		if (err) *err = ATTR_REF_ERROR_MISSING_TERMINATOR;
+		if (err) *err = TMPL_ATTR_ERROR_MISSING_TERMINATOR;
 		talloc_free(vpt);
 		*out = NULL;
 		return -fr_sbuff_used(&our_name);
@@ -2087,12 +2087,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
  *	name string isn't parsed.
  */
-ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
+ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			    tmpl_t **out, char const *name, tmpl_rules_t const *rules)
 {
 	ssize_t slen, name_len;
 
-	if (!rules) rules = &default_attr_ref_rules;	/* Use the defaults */
+	if (!rules) rules = &default_attr_rules;	/* Use the defaults */
 
 	name_len = strlen(name);
 	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, rules);
@@ -2510,7 +2510,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	tmpl_t		*vpt = NULL;
 
-	if (!t_rules) t_rules = &default_attr_ref_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
 
 	*out = NULL;
 
@@ -3025,7 +3025,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		 *	to be raw, and it's not, correct
 		 *	that now.
 		 */
-		if (is_raw) tmpl_attr_ref_to_raw(vpt, ar);
+		if (is_raw) attr_to_raw(vpt, ar);
 	}
 
 	vpt->type ^= TMPL_FLAG_UNRESOLVED;
@@ -3210,7 +3210,7 @@ int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
 	return 0;
 }
 
-static void tmpl_attr_ref_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
+static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 {
 	if (!ref) return;
 
@@ -3256,7 +3256,7 @@ static void tmpl_attr_ref_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
  */
 void tmpl_attr_to_raw(tmpl_t *vpt)
 {
-	tmpl_attr_ref_to_raw(vpt, fr_dlist_tail(&vpt->data.attribute.ar));
+	attr_to_raw(vpt, fr_dlist_tail(&vpt->data.attribute.ar));
 }
 
 /** Convert an abstract da into a concrete one
@@ -3455,7 +3455,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix)
+ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
 	tmpl_request_t		*rr = NULL;
 	tmpl_attr_t		*ar = NULL;
@@ -3630,7 +3630,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix
  *	- <0 the number of bytes we would have needed to complete the print.
  */
 ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-		   tmpl_attr_ref_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
+		   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
 
@@ -3709,7 +3709,7 @@ ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-ssize_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix)
+ssize_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
 	fr_sbuff_t our_out = FR_SBUFF_NO_ADVANCE(out);
 

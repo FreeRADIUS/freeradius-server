@@ -965,7 +965,7 @@ Generate HMAC-SHA1 of input data.
 
 "%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
 
-.IP %{pairs:<list_or_attr_ref>}
+.IP %{pairs:<list_or_attr>}
 Serialize attributes as comma-delimited string
 
 e.g. "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."

@@ -413,7 +413,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t			slen;
-	attr_ref_error_t	err;
+	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -452,7 +452,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		 *	as it was more likely to be a bad module name,
 		 *	than a request qualifier.
 		 */
-		if (err == ATTR_REF_ERROR_MISSING_TERMINATOR) fr_sbuff_set(in, &m_s);
+		if (err == TMPL_ATTR_ERROR_MISSING_TERMINATOR) fr_sbuff_set(in, &m_s);
 	error:
 		*head = NULL;
 		fr_sbuff_marker_release(&m_s);
@@ -471,7 +471,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	in different contexts (i.e. on the parent request).
 	 */
 	if ((tmpl_is_attr_unresolved(vpt) || (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) &&
-	    (tmpl_attr_ref_count(vpt) == 1)) {
+	    (tmpl_attr_count(vpt) == 1)) {
 	    	if (tmpl_is_attr(vpt)) {
 			func = xlat_func_find(tmpl_da(vpt)->name, -1);
 		} else {
@@ -1628,7 +1628,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 	 *	If it's a single attribute reference
 	 *	see if it's actually a virtual attribute.
 	 */
-	if (tmpl_attr_ref_count(vpt) == 1) {
+	if (tmpl_attr_count(vpt) == 1) {
 		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
 			func = xlat_func_find(tmpl_da(vpt)->name, -1);
 			if (!func) {

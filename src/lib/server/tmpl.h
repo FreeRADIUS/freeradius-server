@@ -270,7 +270,7 @@ typedef enum {
 	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
 	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
-} tmpl_attr_ref_prefix_t;
+} tmpl_attr_prefix_t;
 
 /** Optional arguments passed to vp_tmpl functions
  *
@@ -303,7 +303,7 @@ struct tmpl_rules_s {
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
 
-	tmpl_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
+	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
 };
 
@@ -516,7 +516,7 @@ static inline char const *tmpl_attr_unresolved(tmpl_t const *vpt)
 /** The number of attribute references contained within a tmpl
  *
  */
-static inline size_t tmpl_attr_ref_count(tmpl_t const *vpt)
+static inline size_t tmpl_attr_count(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt));
@@ -660,27 +660,27 @@ do {\
 } while (0)
 
 typedef enum {
-	ATTR_REF_ERROR_NONE = 0,			//!< No error.
-	ATTR_REF_ERROR_EMPTY,				//!< Attribute ref contains no data.
-	ATTR_REF_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.
-	ATTR_REF_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
-	ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute specified as OID, could not be
+	TMPL_ATTR_ERROR_NONE = 0,			//!< No error.
+	TMPL_ATTR_ERROR_EMPTY,				//!< Attribute ref contains no data.
+	TMPL_ATTR_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.
+	TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
+	TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED,		//!< Attribute specified as OID, could not be
 							///< found in the dictionaries, and is disallowed
 							///< because 'disallow_internal' in tmpl_rules_t
 							///< is trie.
-	ATTR_REF_ERROR_UNRESOLVED_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute couldn't be found in the dictionaries.
-	ATTR_REF_ERROR_UNQUALIFIED_ATTRIBUTE_NOT_ALLOWED,//!< Attribute must be qualified to be used here.
-	ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME,		//!< Attribute ref length is zero, or longer than
+	TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED,		//!< Attribute couldn't be found in the dictionaries.
+	TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED,	//!< Attribute must be qualified to be used here.
+	TMPL_ATTR_ERROR_INVALID_NAME,			//!< Attribute ref length is zero, or longer than
 							///< the maximum.
-	ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute resolved to an internal attribute
+	TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED,		//!< Attribute resolved to an internal attribute
 							///< which is disallowed.
-	ATTR_REF_ERROR_FOREIGN_ATTRIBUTES_NOT_ALLOWED,	//!< Attribute resolved in a dictionary different
+	TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED,		//!< Attribute resolved in a dictionary different
 							///< to the one specified.
-	ATTR_REF_ERROR_TAGGED_ATTRIBUTE_NOT_ALLOWED,	//!< Tagged attributes not allowed here.
-	ATTR_REF_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
-	ATTR_REF_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
-	ATTR_REF_ERROR_MISSING_TERMINATOR		//!< Unexpected text found after attribute reference
-} attr_ref_error_t;
+	TMPL_ATTR_ERROR_TAGGED_NOT_ALLOWED,		//!< Tagged attributes not allowed here.
+	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
+	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
+	TMPL_ATTR_ERROR_MISSING_TERMINATOR		//!< Unexpected text found after attribute reference
+} tmpl_attr_error_t;
 
 /** Map ptr type to a boxed type
  *
@@ -784,12 +784,12 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
  *
  * @{
  */
-ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
 					       tmpl_rules_t const *t_rules);
 
-ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
+ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					    tmpl_t **out, char const *name,
 					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
@@ -837,12 +837,12 @@ ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures);
 /** @name Print the contents of a #tmpl_t
  * @{
  */
-ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix);
+ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix);
 
 ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-				   tmpl_attr_ref_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules);
+				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules);
 
-ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_ref_prefix_t ar_prefix);
+ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix);
 /** @} */
 
 ssize_t			_tmpl_to_type(void *out,
