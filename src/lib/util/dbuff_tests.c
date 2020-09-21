@@ -219,6 +219,47 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
 }
 
+static void test_dbuff_move(void)
+{
+	uint8_t			buff1[26], buff2[26], buff3[10];
+	fr_dbuff_t		dbuff1, dbuff2, dbuff3;
+	fr_dbuff_marker_t	marker1, marker2;
+
+	memcpy(buff1, "abcdefghijklmnopqrstuvwxyz", sizeof(buff1));
+	memcpy(buff2, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", sizeof(buff2));
+	memcpy(buff3, "0123456789", sizeof(buff3));
+	fr_dbuff_init(&dbuff1, buff1, sizeof(buff1));
+	fr_dbuff_init(&dbuff2, buff2, sizeof(buff2));
+	fr_dbuff_init(&dbuff3, buff3, sizeof(buff3));
+	fr_dbuff_marker(&marker1, &dbuff1);
+	fr_dbuff_marker(&marker2, &dbuff2);
+
+	TEST_CASE("move dbuff to dbuff");
+	TEST_CHECK(fr_dbuff_move(&dbuff1, &dbuff2, 13) == 13);
+	TEST_CHECK(fr_dbuff_used(&dbuff1) == 13);
+	TEST_CHECK(fr_dbuff_used(&dbuff2) == 13);
+	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMnopqrstuvwxyz", 26) == 0);
+
+	TEST_CASE("move dbuff to marker");
+	fr_dbuff_marker_advance(&marker2, 4);
+	TEST_CHECK(fr_dbuff_move(&marker2, &dbuff3, 10) == 10);
+	TEST_CHECK(fr_dbuff_marker_used(&marker2) == 14);
+	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789OPQRSTUVWXYZ", 26) == 0);
+
+	TEST_CASE("move marker to dbuff");
+	fr_dbuff_marker_advance(&marker1, 7);
+	TEST_CHECK(fr_dbuff_move(&dbuff1, &marker1, 6) == 6);
+	TEST_CHECK(fr_dbuff_used(&dbuff1) == 19);
+	TEST_CHECK(fr_dbuff_marker_used(&marker1) == 13);
+	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMHIJKLMtuvwxyz", 26) == 0);
+
+	TEST_CASE("move marker to marker");
+	TEST_CHECK(fr_dbuff_move(&marker2, &marker1, 8) == 8);
+	TEST_CHECK(fr_dbuff_marker_used(&marker1) == 21);
+	TEST_CHECK(fr_dbuff_marker_used(&marker2) == 22);
+	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789HIJKLMtuWXYZ", 26) == 0);
+}
+
 
 TEST_LIST = {
 	/*
@@ -228,6 +269,7 @@ TEST_LIST = {
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
 	{ "fr_dbuff_in",			test_dbuff_net_encode },
+	{ "fr_dbuff_move",				test_dbuff_move },
 
 	{ NULL }
 };
