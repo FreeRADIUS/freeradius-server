@@ -130,10 +130,6 @@ dhcp DHCP-Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
-
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -223,10 +219,6 @@ dhcp DHCP-Request {
 	    &request:DHCP-DHCP-Server-Identifier != &control:DHCP-DHCP-Server-Identifier) {
 		do_not_respond
 	}
-
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
 
 	#  Response packet type. See DHCP-Discover section above.
 	#update reply {
