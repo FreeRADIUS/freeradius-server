@@ -36,7 +36,9 @@ sqlippool dhcp_sqlippool {
 	offer_duration = 10
 
 	# IP lease duration. (Leases expire even if no DHCP-Release packet is received)
-	lease_duration = 7200
+	# Either use the value to be sent to the client or a hard coded one.
+	lease_duration = "%{reply:DHCP-IP-Address-Lease-Time}"
+	#lease_duration = 7200
 
 	#  The attribute in which the IP address is returned in the reply
 	attribute_name = "DHCP-Your-IP-Address"

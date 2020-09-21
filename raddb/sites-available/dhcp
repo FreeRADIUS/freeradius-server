@@ -155,6 +155,12 @@ dhcp DHCP-Discover {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
 	#  Do a simple mapping of MAC to assigned IP.
 	#
 	#  See below for the definition of the "mac2ip"
@@ -230,6 +236,12 @@ dhcp DHCP-Request {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
 	#  Do a simple mapping of MAC to assigned IP.
 	#
 	#  See below for the definition of the "mac2ip"
@@ -270,9 +282,10 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
+	#  Use a "files" module to lookup global and subnet options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
@@ -293,13 +306,15 @@ dhcp DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 dhcp DHCP-Inform {
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
-
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
-  
+
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
 	ok
 }
 
@@ -318,9 +333,11 @@ dhcp DHCP-Inform {
 
 dhcp DHCP-Release {
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
