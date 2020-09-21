@@ -145,7 +145,7 @@ void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
  * @param[in] parent		to populate from.
  * @param[in] da		to populate to.
  */
-void fr_proto_da_stack_partial_build(fr_da_stack_t *stack, fr_dict_attr_t const *parent, fr_dict_attr_t const *da)
+void fr_proto_da_stack_build_partial(fr_da_stack_t *stack, fr_dict_attr_t const *parent, fr_dict_attr_t const *da)
 {
 	fr_dict_attr_t const	*da_p, **da_q, **da_o;
 

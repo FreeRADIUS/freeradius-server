@@ -191,7 +191,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 
 				FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, child->da->name);
 
-				fr_proto_da_stack_partial_build(da_stack, da_stack->da[depth], child->da);
+				fr_proto_da_stack_build_partial(da_stack, da_stack->da[depth], child->da);
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
 				slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
