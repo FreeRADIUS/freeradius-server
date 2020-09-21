@@ -75,6 +75,11 @@ extern "C" {
 
 #include <freeradius-devel/util/table.h>
 
+/** The maximum number of request references allowed
+ *
+ */
+#define TMPL_MAX_REQUEST_REF_NESTING	10
+
 /*
  *	Forward declarations
  */
@@ -318,8 +323,6 @@ typedef enum {
 							///< to identify the attribute.
 							///< may be resolved later.
 } tmpl_attr_type_t;
-
-#define TMPL_MAX_REQUEST_REF_NESTING	20
 
 #define NUM_ANY			INT16_MIN
 #define NUM_ALL			(INT16_MIN + 1)
