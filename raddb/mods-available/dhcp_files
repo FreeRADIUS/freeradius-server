@@ -13,3 +13,15 @@ files dhcp_subnet {
 	#  the file
 	key = "network"
 }
+
+files dhcp_hosts {
+	#  An example of a DHCP host mapping for option setting
+
+	#  Use the same file as for subnets - could be split
+	#  for large, complex installations
+	filename = ${modconfdir}/files/dhcp
+
+	#  If a different identifier is needed for looking up
+	#  host specific entries then amend this key.
+	key = "host-%{DHCP-Client-Hardware-Address}"
+}

@@ -26,3 +26,14 @@ network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "visitors"
 	DHCP-Router-Address := 10.30.1.1,
 	DHCP-Domain-Name := "guests.example.org",
 	DHCP-IP-Address-Lease-Time := 3600
+
+
+#
+#  Set host specific options
+#
+host-00:10:20:30:40:50
+	DHCP-Filename := "customboot.pxe"
+
+host-10:90:80:70:aa:bb
+	DHCP-Font-Server := 10.20.1.10,
+	DHCP-Impress-Server := 10.20.1.20
