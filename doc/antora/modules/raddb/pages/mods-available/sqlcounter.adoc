@@ -131,7 +131,7 @@ sqlcounter dailycounter {
 	dialect = ${modules.sql.dialect}
 	counter_name = &Daily-Session-Time
 	check_name = &control:Max-Daily-Session
-	reply_name = &reply:Session-Timeout
+	reply_name = &reply.Session-Timeout
 	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 	reset = daily
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -141,7 +141,7 @@ sqlcounter monthlycounter {
 	dialect = ${modules.sql.dialect}
 	counter_name = &Monthly-Session-Time
 	check_name = &control:Max-Monthly-Session
-	reply_name = &reply:Session-Timeout
+	reply_name = &reply.Session-Timeout
 	key = &User-Name
 	reset = monthly
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf

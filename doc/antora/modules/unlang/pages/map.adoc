@@ -46,9 +46,9 @@ are affected.
 [source,unlang]
 ----
 map sql "SELECT column1, column2, column3 from table WHERE user=%{User-Name}" {
-    &reply:Framed-IP-Address := 'column1'
-    &reply:Filter-Id := 'column2'
-    &reply:Reply-Message := 'column3'
+    &reply.Framed-IP-Address := 'column1'
+    &reply.Filter-Id := 'column2'
+    &reply.Reply-Message := 'column3'
 }
 ----
 

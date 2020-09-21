@@ -273,7 +273,7 @@ send Access-Accept {
                 }
                 # On failure for any reason, reject
                 update {
-                        &reply:Reply-Message += Module-Failure-Message
+                        &reply.Reply-Message += Module-Failure-Message
                 }
                 reject
         }

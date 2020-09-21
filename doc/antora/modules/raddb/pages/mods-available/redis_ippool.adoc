@@ -125,9 +125,9 @@ redis_ippool {
 	device = &DHCP-Client-Hardware-Address
 	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
 #	ipv4_integer = yes
-	allocated_address_attr = &reply:DHCP-Your-IP-Address
-	range_attr = &reply:Pool-Range
-	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
+	allocated_address_attr = &reply.DHCP-Your-IP-Address
+	range_attr = &reply.Pool-Range
+	expiry_attr = &reply.DHCP-IP-Address-Lease-Time
 	copy_on_update = yes
 	redis {
 		server = localhost

@@ -54,7 +54,7 @@ cui.authorize {
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
-	if (!&control:Proxy-To-Realm && &Chargeable-User-Identity && !&reply:Chargeable-User-Identity && \
+	if (!&control:Proxy-To-Realm && &Chargeable-User-Identity && !&reply.Chargeable-User-Identity && \
 	    (&Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
 		update reply {
 			&Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}%{%{Operator-Name}:-}}}"
@@ -69,10 +69,10 @@ cui.post-auth {
 	#  If your NAS can do CUI based accounting themselves or you do not care about
 	#  accounting, comment out the 'cuisql' line below.
 	#
-	if (&reply:Chargeable-User-Identity) {
+	if (&reply.Chargeable-User-Identity) {
 		# Force User-Name to be the User-Name from the request
 		update {
-			&reply:User-Name := &request.User-Name
+			&reply.User-Name := &request.User-Name
 		}
 		cuisql
 	}

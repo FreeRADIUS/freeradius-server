@@ -327,7 +327,7 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 		fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
 
 		RINDENT();
-		RDEBUG2("&reply:%pP", vp);
+		RDEBUG2("&reply.%pP", vp);
 		REXDENT();
 	}
 

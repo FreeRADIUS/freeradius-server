@@ -1163,7 +1163,7 @@ send Access-Accept {
 	#  here. e.g. for later CoA-Request with State, and
 	#  Service-Type = Authorize-Only.
 	#
-#	if (!&reply:State) {
+#	if (!&reply.State) {
 #		update reply {
 #			&State := "0x%{randstr:16h}"
 #		}
@@ -1305,9 +1305,9 @@ send Access-Accept {
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
 #
-#	if (&reply:EAP-Session-Id) {
+#	if (&reply.EAP-Session-Id) {
 #		update reply {
-#			&EAP-Key-Name := &reply:EAP-Session-Id
+#			&EAP-Key-Name := &reply.EAP-Session-Id
 #		}
 #	}
 

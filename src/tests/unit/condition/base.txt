@@ -11,8 +11,8 @@
 #
 proto-dictionary radius
 
-condition &request.User-Name == &reply:User-Name
-match &User-Name == &reply:User-Name
+condition &request.User-Name == &reply.User-Name
+match &User-Name == &reply.User-Name
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
@@ -421,8 +421,8 @@ match ERROR offset 0 Cannot compare types 'ipaddr' (cast) and 'string' (attr)
 condition &Tmp-Integer64-0 == &request.Foo-Stuff-Bar
 match &Tmp-Integer64-0 == &Foo-Stuff-Bar
 
-condition &Tmp-Integer64-0 == &reply:Foo-Stuff-Bar
-match &Tmp-Integer64-0 == &reply:Foo-Stuff-Bar
+condition &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
+match &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
 
 #
 #  Casting attributes of different size
@@ -611,7 +611,7 @@ match <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
 #
 #  This is allowed and means "the list is not empty"
 #
-condition (&reply:)
+condition (&reply.)
 match &reply:
 
 #

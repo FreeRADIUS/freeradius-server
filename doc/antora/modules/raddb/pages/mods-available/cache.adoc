@@ -253,9 +253,9 @@ cache {
 	add_stats = no
 #	max_entries = 0
 	update {
-		&reply:Reply-Message := &reply:Reply-Message
-		&reply:Reply-Message := "Cache last updated at %t"
-		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
+		&reply.Reply-Message := &reply.Reply-Message
+		&reply.Reply-Message := "Cache last updated at %t"
+		&reply.Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 }
 ```

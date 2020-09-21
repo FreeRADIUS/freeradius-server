@@ -29,7 +29,7 @@ debug_coa {
 #  Outputs the contents of the reply list in debugging (-X) mode
 #
 debug_reply {
-	if ("%{debug_attr:reply:[*]}" == '') {
+	if ("%{debug_attr:reply.[*]}" == '') {
 		noop
 	}
 }

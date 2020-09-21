@@ -203,10 +203,10 @@ ldap {
 	update {
 		&control:Password-With-Header	+= 'userPassword'
 #		&control:NT-Password		:= 'ntPassword'
-#		&reply:Reply-Message		:= 'radiusReplyMessage'
-#		&reply:Tunnel-Type		:= 'radiusTunnelType'
-#		&reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		&reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+#		&reply.Reply-Message		:= 'radiusReplyMessage'
+#		&reply.Tunnel-Type		:= 'radiusTunnelType'
+#		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		&reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 
 		#  NOTE: Where only a list is specified as the RADIUS attribute,
 		#  the value of the LDAP attribute is parsed as a valuepair

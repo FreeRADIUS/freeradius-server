@@ -71,8 +71,8 @@ listen {
 		#
 		#       src_ipaddr
 		#       ipaddr
-		#       reply:DHCP-Server-IP-Address
-		#       reply:DHCP-DHCP-Server-Identifier
+		#       reply.DHCP-Server-IP-Address
+		#       reply.DHCP-DHCP-Server-Identifier
 		#
 #		src_ipaddr = 127.0.0.1
 

@@ -53,7 +53,7 @@ attributes.
 this name from the request is used to search for the record from
 passwd file.
 
-  * Attributes marked as `=` are added to the `&reply:` list,
+  * Attributes marked as `=` are added to the `&reply.` list,
 instead of default `&control:` list.
 
   * Attributes marked as `~` are added to the `&request.` list.

@@ -5,8 +5,8 @@ update {
 	&request.Tmp-String-0 := 'testkey'
 
 	# Reply attributes
-	&reply:Reply-Message := 'hello'
-	&reply:Reply-Message += 'goodbye'
+	&reply.Reply-Message := 'hello'
+	&reply.Reply-Message += 'goodbye'
 
 	# Request attributes
 	&Tmp-Integer-0 += 10

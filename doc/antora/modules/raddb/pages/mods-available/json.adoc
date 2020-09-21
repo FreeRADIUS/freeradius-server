@@ -237,7 +237,7 @@ be included in the document, _except_ any attributes in the RADIUS reply.
 .Example
 
 ```
-%{json_encode:&request.[*] !&reply:[*] &control:User-Name}
+%{json_encode:&request.[*] !&reply.[*] &control:User-Name}
 ```
 
 #### Output format modes

@@ -683,7 +683,7 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 	MEM(pair_update_reply(&vp, da) >= 0);
 	fr_pair_value_memdup(vp, value, len, false);
 	RINDENT();
-	RDEBUG2("&reply:%pP", vp);
+	RDEBUG2("&reply.%pP", vp);
 	REXDENT();
 }
 

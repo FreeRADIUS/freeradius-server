@@ -2,5 +2,5 @@
 #  PRE: map-2arg-error map-empty-error map-module-error
 #
 map csv &User-Name {
-    reply:Filter-Id := 'field2'	# ERROR
+    reply.Filter-Id := 'field2'	# ERROR
 }

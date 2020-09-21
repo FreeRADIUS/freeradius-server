@@ -10,11 +10,11 @@ call second {
 	}
 }
 
-if (!&reply:Reply-Message) {
+if (!&reply.Reply-Message) {
 	test_fail
 }
 
-if (&reply:Reply-Message != "call second") {
+if (&reply.Reply-Message != "call second") {
 	test_fail
 }
 

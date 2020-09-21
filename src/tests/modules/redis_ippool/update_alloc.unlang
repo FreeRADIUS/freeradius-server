@@ -33,7 +33,7 @@ update {
 redis_ippool
 
 # 3. Check the expiry attribute is present and correct
-if (&reply:Session-Timeout == 60) {
+if (&reply.Session-Timeout == 60) {
 	test_pass
 } else {
 	test_fail
@@ -47,7 +47,7 @@ if ("%{redis:HGET {%{control.Pool-Name}%}:ip:%{reply.Framed-IP-Address} gateway}
 }
 
 # 5. Verify we got an IP
-if (&reply:Framed-IP-Address == 192.168.0.1) {
+if (&reply.Framed-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail

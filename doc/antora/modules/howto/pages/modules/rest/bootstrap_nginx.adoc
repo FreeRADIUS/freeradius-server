@@ -20,7 +20,7 @@ Serving files with static JSON data is often sufficient for testing purposes.
 ----
 cat <<EOF > /usr/share/nginx/html/reply_message.json
 {
-"reply:Reply-Message": "Hello from NGINX!"
+"reply.Reply-Message": "Hello from NGINX!"
 }
 EOF
 ----

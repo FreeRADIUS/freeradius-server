@@ -73,7 +73,7 @@ permit_only_eap {
 #  not be present in the same response.
 #
 remove_reply_message_if_eap {
-	if (&reply:EAP-Message && &reply:Reply-Message) {
+	if (&reply.EAP-Message && &reply.Reply-Message) {
 		update reply {
 			&Reply-Message !* ANY
 		}

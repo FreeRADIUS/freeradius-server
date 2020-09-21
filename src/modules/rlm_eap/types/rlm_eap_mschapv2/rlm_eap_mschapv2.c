@@ -555,7 +555,7 @@ failure:
 
 			if (data->mppe_keys) {
 				RDEBUG2("Adding stored attributes to parent");
-				log_request_pair_list(L_DBG_LVL_2, request, data->mppe_keys, "&parent.reply:");
+				log_request_pair_list(L_DBG_LVL_2, request, data->mppe_keys, "&parent.reply.");
 				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");

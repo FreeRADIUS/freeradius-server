@@ -124,7 +124,7 @@ server ldap {
 	#  - If a connection experiences an error and needs to be restarted.
 	#
 	#  The section may return one of the following/codes attributes:
-	#  - ok/updated and &reply:LDAP-Sync-Cookie to indicate a cookie value was loaded.
+	#  - ok/updated and &reply.LDAP-Sync-Cookie to indicate a cookie value was loaded.
 	#  - noop to indicate that no cookie was found.
 	#    A cookie value representing the current state of the LDAP server may then be
 	#    optionally synthesised to avoid a complete refresh phase.

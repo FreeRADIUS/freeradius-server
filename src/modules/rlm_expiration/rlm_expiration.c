@@ -88,13 +88,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 			/* just update... */
 			if (vp->vp_uint32 > (uint32_t)left) {
 				vp->vp_uint32 = (uint32_t)left;
-				RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+				RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 			}
 			break;
 
 		case 0:	/* no pre-existing */
 			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+			RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 			break;
 
 		default: /* malloc failure */

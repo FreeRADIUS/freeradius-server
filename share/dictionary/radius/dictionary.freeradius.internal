@@ -67,6 +67,6 @@ VALUE	Packet-Type			Protocol-Error		52
 
 VALUE	Packet-Type			Do-Not-Respond		256
 
-# 1001 was Response-Packet-Type.  Now &reply:Packet-Type
+# 1001 was Response-Packet-Type.  Now &reply.Packet-Type
 
 ATTRIBUTE	Packet-Authentication-Vector		1002	octets virtual

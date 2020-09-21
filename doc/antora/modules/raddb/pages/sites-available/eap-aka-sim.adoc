@@ -291,8 +291,8 @@ following control attributes:
 
 ### Pseudonyms
 
-For identity privacy you may include a `&reply:Next-Pseudonym`
-attribute. `&reply:Next-Pseudonym` must be a valid UTF8 string and
+For identity privacy you may include a `&reply.Next-Pseudonym`
+attribute. `&reply.Next-Pseudonym` must be a valid UTF8 string and
 MUST NOT contain a realm.  The supplicant will decorate the identity
 as appropriate to ensure correct routing.
 
@@ -303,7 +303,7 @@ values:
 - The `%{3gpp_pseudonym_encrypt:}` expansion.
 - The `%{rand:}` expansion.
 
-NOTE: Add a `&reply:Next-Pseudonym-Id` attribute in this section to
+NOTE: Add a `&reply.Next-Pseudonym-Id` attribute in this section to
 avoid having the permanent Id of the SIM exposed during subsequent
 authentication attempts.
 
@@ -318,7 +318,7 @@ based EAP methods, where the original MK (Master Key) is stored and
 then used to generate new MSKs (Master Session Keys) for subsequent
 authentication attempts.
 
-NOTE: Add a `&reply:Next-Reauth-Id` attribute in this section, to
+NOTE: Add a `&reply.Next-Reauth-Id` attribute in this section, to
 allow session-resumption for subsequent authentication attempts.
 
 ### Cryptographic identity overrides
@@ -380,11 +380,11 @@ The following rcodes have special meanings in this section:
 There's not much to do here as the majority of the work for
 session resumption is done in `load session { ... }`.
 
-Add a `&reply:Next-Pseudonym-Id` attribute in this section if you want
+Add a `&reply.Next-Pseudonym-Id` attribute in this section if you want
 to allow avoid having the permanent Id of the SIM exposed during
 subsequent authentication attempts.
 
-Add a `&reply:Next-Reauth-Id` attribute in this section, to allow
+Add a `&reply.Next-Reauth-Id` attribute in this section, to allow
 session resumption for subsequent authentication attempts.
 
 The following rcodes have special meanings in this section:
@@ -516,13 +516,13 @@ NOTE: The rcode returned from this section is ignored.
 ### `store pseudonym { ... }`
 
 If when sending a Challenge-Request Reauthentication-Request a
-`&reply:Next-Pseudonym-Id` attribute is found, this section will be
+`&reply.Next-Pseudonym-Id` attribute is found, this section will be
 called.
 
-If `&reply:Next-Pseudonym-Id` is empty, it will be filled with a random
+If `&reply.Next-Pseudonym-Id` is empty, it will be filled with a random
 string of alphanumeric characters.
 
-For consistency, &reply:Next-Pseudonym-Id will also be made available
+For consistency, &reply.Next-Pseudonym-Id will also be made available
 temporarily in `&Next-Pseudonym-Id` for use as a key.
 
 You should store the following attributes against the key
@@ -570,11 +570,11 @@ You should remove any session information stored against
 
 ### `store session { ... }`
 
-If when sending a Reauthentication-Request a `&reply:Next-Reauth-Id`
+If when sending a Reauthentication-Request a `&reply.Next-Reauth-Id`
 attribute is found, this section will be called.
 
 You should restore the contents of the following attributes using
-`&session-state:Session-ID` or `&reply:Next-Reauth-Id` as a key:
+`&session-state:Session-ID` or `&reply.Next-Reauth-Id` as a key:
 
 - `&session-state:Counter`::		How many times this session has
 			been resumed.
@@ -597,7 +597,7 @@ provide a unified session store.
 This section will be called prior to attempting re-authentication.
 
 You should restore the contents of the following attributes using
-`&session-state:Session-ID` or `&reply:Next-Reauth-Id` as a key:
+`&session-state:Session-ID` or `&reply.Next-Reauth-Id` as a key:
 
 - `&session-state:Counter`::		How many times this session has
 			been resumed.

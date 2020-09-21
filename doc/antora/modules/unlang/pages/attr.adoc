@@ -36,7 +36,7 @@ server looks in the input packet list for the named attribute.
 
 `&User-Name` +
 `&NAS-IP-Address` +
-`&reply:Reply-Message`
+`&reply.Reply-Message`
 
 // Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

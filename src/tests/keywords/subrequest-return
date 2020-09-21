@@ -13,7 +13,7 @@ subrequest Access-Request {
 	}
 }
 
-if ((&request.Tmp-String-0 == "testing1234") && !&reply:Tmp-String-1) {
+if ((&request.Tmp-String-0 == "testing1234") && !&reply.Tmp-String-1) {
 	success
 }
 else {

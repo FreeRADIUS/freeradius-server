@@ -610,7 +610,7 @@ recv Access-Request {
 === rlm_rest
 
 `REST-HTTP-Code` is now inserted into the `&request.` list instead
-of the `&reply:` list, to be compliant with the
+of the `&reply.` list, to be compliant with the
 http://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 
 === rlm_sql
@@ -660,7 +660,7 @@ In v4 they must now be specified as::
 count_attribute = &Acct-Session-Time
 counter_name    = &Daily-Session-Time
 check_name      = &control:Max-Daily-Session
-reply_name      = &reply:Session-Timeout
+reply_name      = &reply.Session-Timeout
 key             = "%{%{Stripped-User-Name}:-%{User-Name}}"
 ```
 
@@ -717,4 +717,4 @@ duplicate functionality.
 == Deleted Functionality
 
 The `Response-Packet-Type` attribute has been removed.  Please replace
-it with `&reply:Packet-Type`.
+it with `&reply.Packet-Type`.

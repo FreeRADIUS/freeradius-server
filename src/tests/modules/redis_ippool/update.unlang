@@ -23,14 +23,14 @@ if (updated) {
 }
 
 # 2.
-if (&reply:Framed-IP-Address == 192.168.0.1) {
+if (&reply.Framed-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail
 }
 
 # 3. Check the expiry attribute is present and correct
-if (&reply:Session-Timeout == 30) {
+if (&reply.Session-Timeout == 30) {
 	test_pass
 } else {
 	test_fail
@@ -50,7 +50,7 @@ update request {
 
 # 6. Verify that the lease time is extended
 update {
-	&request.Framed-IP-Address := &reply:Framed-IP-Address
+	&request.Framed-IP-Address := &reply.Framed-IP-Address
 	&request.NAS-IP-Address := 127.0.0.2
 	&control:Pool-Action := Renew
 }
@@ -62,7 +62,7 @@ if (updated) {
 }
 
 # 7. Lease time should now be 60 seconds
-if (&reply:Session-Timeout == 60) {
+if (&reply.Session-Timeout == 60) {
 	test_pass
 } else {
 	test_fail
@@ -87,7 +87,7 @@ if ("%{expr:%{redis:ZSCORE '{%{control.Pool-Name}%}:pool' '%{reply.Framed-IP-Add
 }
 
 # 10. Verify the lease is still associated with the device
-if (&reply:Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:%{Calling-Station-ID}'}") {
+if (&reply.Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:%{Calling-Station-ID}'}") {
 	test_pass
 } else {
 	test_fail
@@ -108,7 +108,7 @@ if ("%{redis:HGET {%{control.Pool-Name}%}:ip:%{request.Framed-IP-Address} gatewa
 }
 
 # 13. and that the range attribute was set
-if (&reply:Pool-Range && (&reply:Pool-Range == '192.168.0.0')) {
+if (&reply.Pool-Range && (&reply.Pool-Range == '192.168.0.0')) {
 	test_pass
 } else {
 	test_fail
@@ -145,7 +145,7 @@ if (invalid) {
 }
 
 # 16. Verify the lease is still associated with the previous device
-if (&reply:Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:00:11:22:33:44:55'}") {
+if (&reply.Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:00:11:22:33:44:55'}") {
 	test_pass
 } else {
 	test_fail

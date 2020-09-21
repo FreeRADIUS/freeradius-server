@@ -113,7 +113,7 @@ redis_ippool {
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
 	#
-	allocated_address_attr = &reply:DHCP-Your-IP-Address
+	allocated_address_attr = &reply.DHCP-Your-IP-Address
 
 	#
 	#  range_attr:: List and attribute where the `Pool-Range` ID (if set) is written to.
@@ -125,7 +125,7 @@ redis_ippool {
 	#  There may be multiple ranges of IP address contained within any given pool,
 	#  which is why this is provided in addition to the pool name.
 	#
-	range_attr = &reply:Pool-Range
+	range_attr = &reply.Pool-Range
 
 	#
 	#  expiry_attr:: If set - the list and attribute to write the remaining lease time to.
@@ -133,7 +133,7 @@ redis_ippool {
 	#  This attribute can be populated on alloc, or renew, if an
 	#  IP address was available for the alloc.
 	#
-	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
+	expiry_attr = &reply.DHCP-IP-Address-Lease-Time
 
 	#
 	#  copy_on_update:: If true - Copy the value of ip_address to the attribute specified by

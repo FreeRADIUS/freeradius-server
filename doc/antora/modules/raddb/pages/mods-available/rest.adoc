@@ -185,7 +185,7 @@ The following config items may be listed in any of the sections:
                    Values from expansion will not be escaped, this should be
                    done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
 | `force_to`     | Force the response to be decoded with this decoder.
-                   May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
+                   May be 'plain' (creates reply.REST-HTTP-Body), 'post' or 'json'.
 | `tls`          | TLS settings for HTTPS.
 | `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',
                    'digest', 'digest-ie', 'gss-negotiate', 'ntlm',

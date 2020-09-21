@@ -75,7 +75,7 @@ uidNumber: 100
 gidNumber: 100
 homeDirectory: /home/john
 radiusIdleTimeout: 3600
-radiusAttribute: reply:Session-Timeout := 7200
+radiusAttribute: reply.Session-Timeout := 7200
 radiusAttribute: control:NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
 

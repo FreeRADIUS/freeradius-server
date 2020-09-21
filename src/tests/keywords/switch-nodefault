@@ -10,7 +10,7 @@ switch &User-Name {
 	}
 }
 
-if (&reply:Filter-Id) {
+if (&reply.Filter-Id) {
 	test_fail
 }
 else {

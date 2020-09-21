@@ -172,7 +172,7 @@ server abfab-idp {
 		#  we insert the failure all the time, but for ABFAB It's more desirable to preserve
 		#  `Reply-Message` when we can.
 		#
-		if (&reply:Eap-Message) {
+		if (&reply.Eap-Message) {
 			eap
 		}
 

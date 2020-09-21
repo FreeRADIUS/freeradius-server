@@ -3,5 +3,5 @@
 #
 
 map csv "%{tolower:%{User-Name}}" {
-	&reply:Filter-Id := 'field3'
+	&reply.Filter-Id := 'field3'
 }

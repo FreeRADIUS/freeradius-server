@@ -107,7 +107,7 @@ server tls-cache {
 	#
 	#  This section is run after OCSP validation has completed.
 	#
-	#  It should write the attribute &reply:TLS-OCSP-Cert-Valid
+	#  It should write the attribute &reply.TLS-OCSP-Cert-Valid
 	#  to the cache.
 	#
 	#  On success it should return 'ok' or 'updated'.
@@ -117,7 +117,7 @@ server tls-cache {
 	#
 	store ocsp-state {
 		update control {
-			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
+			Cache-TTL := "%{expr:&reply.TLS-OCSP-Next-Update * -1}"
 			Cache-Allow-Merge := no
 		}
 		cache_ocsp

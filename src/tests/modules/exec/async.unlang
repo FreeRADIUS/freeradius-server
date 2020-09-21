@@ -15,10 +15,10 @@ if (&Tmp-String-0 != '') {
 #  Async calls should not have their output added to the request
 #
 update request {
-	&Tmp-String-0 := "%{exec_async:/bin/bash -c \"echo 'reply:Reply-Message = \'hello\''\"}"
+	&Tmp-String-0 := "%{exec_async:/bin/bash -c \"echo 'reply.Reply-Message = \'hello\''\"}"
 }
 
-if (&reply:Reply-Message == 'hello') {
+if (&reply.Reply-Message == 'hello') {
 	test_fail
 } else {
 	test_pass

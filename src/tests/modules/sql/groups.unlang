@@ -44,7 +44,7 @@ else {
 	test_fail
 }
 
-if (&reply:Reply-Message == "Hello User B") {
+if (&reply.Reply-Message == "Hello User B") {
 	test_pass
 }
 else {

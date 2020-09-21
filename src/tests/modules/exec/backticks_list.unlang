@@ -15,10 +15,10 @@ if (&Tmp-String-0 != 'hello') {
 #  Test default list override
 #
 #update request {
-#	control: += `/bin/bash -c "echo reply:Reply-Message = \'hello\'"`
+#	control: += `/bin/bash -c "echo reply.Reply-Message = \'hello\'"`
 #}
 
-#if (&reply:Reply-Message != 'hello') {
+#if (&reply.Reply-Message != 'hello') {
 #	test_fail
 #} else {
 #	test_pass

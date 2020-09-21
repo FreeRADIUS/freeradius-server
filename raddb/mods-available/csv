@@ -166,7 +166,7 @@ csv {
 	#  look like this:
 	#
 	#	map csv &User-Name {
-	#		&reply:Reply-Message := 'color'
+	#		&reply.Reply-Message := 'color'
 	#		&Tmp-Integer-0 := 'count'
 	#	}
 	#

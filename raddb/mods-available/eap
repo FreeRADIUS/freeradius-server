@@ -732,7 +732,7 @@ eap {
 		#  In addition to the configuration items below, the behaviour of
 		#  OCSP can be altered by runtime attributes.
 		#
-		#  If OCSP is enabled, the `&reply:TLS-OCSP-Cert-Valid` attribute will
+		#  If OCSP is enabled, the `&reply.TLS-OCSP-Cert-Valid` attribute will
 		#  be added after OCSP completes.  One of the following values will
 		#  be set:
 		#
@@ -744,7 +744,7 @@ eap {
 		#  | skipped | OCSP checks were skipped.
 		#  |===
 		#
-		#  If an OCSP check is performed, the `&reply:TLS-OCSP-Next-Update`
+		#  If an OCSP check is performed, the `&reply.TLS-OCSP-Next-Update`
 		#  attribute will also be added.  The value of this will attribute
 		#  be the number of seconds until the certificate state need be refreshed.
 		#  This can be used as a `Cache-TTL` value if you wish to use the cache
@@ -1404,9 +1404,9 @@ eap {
 		#  `recv Identity-Response { ... }` section of the specified
 		#  EAP-SIM virtual_server, to the reply list:
 		#
-		#  - &reply:Any-Id-Req
-		#  - &reply:Fullauth-Id-Req
-		#  - &reply:Permanent-Id-Req
+		#  - &reply.Any-Id-Req
+		#  - &reply.Fullauth-Id-Req
+		#  - &reply.Permanent-Id-Req
 		#
 		#  Even if this configuration item is set to 'no', additional
 		#  identities can be requested by policy.
@@ -1481,9 +1481,9 @@ eap {
 		#  `recv Identity-Response { ... }` section of the specified
 		#  EAP-AKA virtual_server, to the reply list:
 		#
-		#  - &reply:Any-Id-Req
-		#  - &reply:Fullauth-Id-Req
-		#  - &reply:Permanent-Id-Req
+		#  - &reply.Any-Id-Req
+		#  - &reply.Fullauth-Id-Req
+		#  - &reply.Permanent-Id-Req
 		#
 		#  Even if this configuration item is set to 'no', additional
 		#  identities can be requested by policy.
@@ -1560,7 +1560,7 @@ eap {
 		#  to be.
 		#
 		#  The value of the AT_KDF_INPUT can be overridden in the
-		#  eap-aka-prime virtual server with &reply:KDF-Input if
+		#  eap-aka-prime virtual server with &reply.KDF-Input if
 		#  this value needs to be determined dynamically.
 		#
 		#  How this value should be created and formatted is specified
@@ -1581,9 +1581,9 @@ eap {
 		#  `recv Identity-Response { ... }` section of the specified
 		#  EAP-AKA virtual_server, to the reply list:
 		#
-		#  - &reply:Any-Id-Req
-		#  - &reply:Fullauth-Id-Req
-		#  - &reply:Permanent-Id-Req
+		#  - &reply.Any-Id-Req
+		#  - &reply.Fullauth-Id-Req
+		#  - &reply.Permanent-Id-Req
 		#
 		#  Even if this configuration item is set to 'no', additional
 		#  identities can be requested by policy.

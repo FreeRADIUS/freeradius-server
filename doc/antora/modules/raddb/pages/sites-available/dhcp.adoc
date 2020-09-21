@@ -53,8 +53,8 @@ address:
 
      src_ipaddr
      ipaddr
-     reply:DHCP-Server-IP-Address
-     reply:DHCP-DHCP-Server-Identifier
+     reply.DHCP-Server-IP-Address
+     reply.DHCP-DHCP-Server-Identifier
 
 
 The DHCP server defaults to allowing broadcast packets.

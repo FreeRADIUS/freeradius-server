@@ -26,35 +26,35 @@ else {
 }
 
 # IP netmask defined in profile1 should overwrite radprofile value.
-if (&reply:Framed-IP-Netmask != 255.255.0.0) {
+if (&reply.Framed-IP-Netmask != 255.255.0.0) {
         test_fail
 }
 else {
         test_pass
 }
 
-if (&reply:Acct-Interim-Interval != 1800) {
+if (&reply.Acct-Interim-Interval != 1800) {
         test_fail
 }
 else {
         test_pass
 }
 
-if (&reply:Idle-Timeout != 3600) {
+if (&reply.Idle-Timeout != 3600) {
         test_fail
 }
 else {
         test_pass
 }
 
-if (&reply:Session-Timeout != 7200) {
+if (&reply.Session-Timeout != 7200) {
         test_fail
 }
 else {
         test_pass
 }
 
-if ("%{pairs:reply:}" == "") {
+if ("%{pairs:reply.}" == "") {
         test_fail
 }
 

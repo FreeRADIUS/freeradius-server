@@ -176,7 +176,7 @@ static bool identity_req_set_by_user(REQUEST *request, eap_aka_sim_session_t *ea
 			eap_aka_sim_session->id_req = AKA_SIM_PERMANENT_ID_REQ;
 		found:
 			set_by_user = true;
-			RDEBUG2("Previous section added &reply:%pP, will request additional identity", vp);
+			RDEBUG2("Previous section added &reply.%pP, will request additional identity", vp);
 			fr_cursor_free_item(&cursor);
 		}
 		else if (vp->da == attr_eap_aka_sim_fullauth_id_req) {
@@ -863,7 +863,7 @@ static int common_encode(REQUEST *request, eap_session_t *eap_session, uint16_t 
 		 */
 		if (!eap_aka_sim_session->allow_encrypted &&
 		    fr_dict_attr_common_parent(attr_eap_aka_sim_encr_data, vp->da, true)) {
-			RWDEBUG("Silently discarding &reply:%s: Encrypted attributes not allowed in this round",
+			RWDEBUG("Silently discarding &reply.%s: Encrypted attributes not allowed in this round",
 				vp->da->name);
 			talloc_free(vp);
 			continue;

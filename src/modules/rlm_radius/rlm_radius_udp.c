@@ -2444,7 +2444,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	If the reply has Message-Authenticator, delete
 		 *	it from the proxy reply so that it isn't
 		 *	copied over to our reply.  But also create a
-		 *	reply:Message-Authenticator attribute, so that
+		 *	reply.Message-Authenticator attribute, so that
 		 *	it ends up in our reply.
 		 */
 		if (fr_pair_find_by_da(reply, attr_message_authenticator)) {
