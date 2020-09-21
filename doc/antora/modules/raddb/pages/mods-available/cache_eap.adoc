@@ -71,7 +71,7 @@ cache cache_eap {
 	key = "%{%{control.State}:-%{%{reply.State}:-%{State}}}"
 	ttl = 15
 	update reply {
-		&reply: += &reply:
+		&reply += &reply
 		&control.State := &request.State
 	}
 }

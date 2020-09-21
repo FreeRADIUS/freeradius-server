@@ -7,7 +7,7 @@ update request {
 	&Tmp-String-0 += 'foo'
 	&Tmp-String-0 += 'bar'
 	&Tmp-String-1 += 'baz'
-	&control: !* ANY
+	&control !* ANY
 }
 
 if (&Tmp-String-0[0] != 'foo') {

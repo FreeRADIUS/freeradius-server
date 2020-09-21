@@ -130,7 +130,7 @@ use_tunneled_reply {
 	#  copy the outer session-state list to the final reply.
 	#
 	update {
-		&outer.session-state: += &reply:
+		&outer.session-state: += &reply
 	}
 }
 

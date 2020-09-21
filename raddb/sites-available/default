@@ -1179,7 +1179,7 @@ send Access-Accept {
 	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
 	update {
-		&reply: += &session-state:
+		&reply += &session-state
 	}
 
 	#

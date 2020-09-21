@@ -3486,9 +3486,13 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 		if (printed_rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
 		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, pair_list_table, tmpl_list(vpt), "<INVALID>");
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+		}
 	} else if (printed_rr) {			/* Request qualifier with no list qualifier */
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+		}
 	}
 
 	/*

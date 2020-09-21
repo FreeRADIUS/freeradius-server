@@ -1,5 +1,5 @@
 files
 
 update {
-    &reply: += &control[*]
+    &reply += &control[*]
 }

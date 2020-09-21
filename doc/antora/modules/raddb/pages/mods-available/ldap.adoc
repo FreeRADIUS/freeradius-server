@@ -805,9 +805,9 @@ ldap {
 #		&reply.Tunnel-Type		:= 'radiusTunnelType'
 #		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
 #		&reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
-		&control:			+= 'radiusControlAttribute'
-		&request:			+= 'radiusRequestAttribute'
-		&reply:				+= 'radiusReplyAttribute'
+		&control			+= 'radiusControlAttribute'
+		&request			+= 'radiusRequestAttribute'
+		&reply				+= 'radiusReplyAttribute'
 	}
 #	edir = no
 #	edir_autz = no

@@ -67,7 +67,7 @@ cache cache_tls_session {
 		#  Policies run in `post-auth` then have access to the same data
 		#  irrespective of whether the session is being resumed.
 		#
-#		&session-state: += &session-state:
+#		&session-state += &session-state
 	}
 }
 

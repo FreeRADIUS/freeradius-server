@@ -152,5 +152,5 @@ if (&reply.Framed-IP-Address == "%{redis:GET '{%{control.Pool-Name}%}:device:00:
 }
 
 update {
-	&reply: !* ANY
+	&reply !* ANY
 }

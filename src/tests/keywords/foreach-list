@@ -1,4 +1,4 @@
-foreach &request: {
+foreach &request {
 	update reply {
 		&Called-Station-Id += "%{Foreach-Variable-0}"
 	}

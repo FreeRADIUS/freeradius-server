@@ -1485,7 +1485,7 @@ send Access-Accept {
 #		}
 #	}
 	update {
-		&reply: += &session-state:
+		&reply += &session-state
 	}
 	eap
 #	sqlippool

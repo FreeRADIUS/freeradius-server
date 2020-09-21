@@ -98,7 +98,7 @@ update {
 	&request.Pool-Range := &reply.Pool-Range
 	&request.Framed-IP-Address := &reply.Framed-IP-Address
 	&request.Session-Timeout := &reply.Session-Timeout # We should get the same lease time
-	&reply: !* ANY
+	&reply !* ANY
 }
 
 #
@@ -149,7 +149,7 @@ if ("%{expr:&request.Session-Timeout - &reply.Session-Timeout}" < 5) {
 }
 
 update {
-	&reply: !* ANY
+	&reply !* ANY
 }
 
 #
@@ -176,5 +176,5 @@ if (&reply.Framed-IP-Address == 192.168.1.1) {
 }
 
 update {
-	&reply: !* ANY
+	&reply !* ANY
 }

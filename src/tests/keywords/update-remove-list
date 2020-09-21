@@ -14,7 +14,7 @@ if ((&Tmp-String-0 != 'foobarbaz') || (&Tmp-Integer-0 != 123456789) || (&Tmp-IP-
 
 # Remove all attributes in the control list
 update {
-	&request: !* ANY
+	&request !* ANY
 }
 
 # All attributes should now of been removed

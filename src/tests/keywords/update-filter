@@ -13,8 +13,8 @@ update control {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 debug_request
@@ -42,8 +42,8 @@ debug_request
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -65,8 +65,8 @@ debug_request
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -90,8 +90,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -120,8 +120,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -149,8 +149,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -182,8 +182,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 #
@@ -215,8 +215,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 # Reset the request list
 update {
-	&request: !* ANY
-	&request: += &control[*]
+	&request !* ANY
+	&request += &control[*]
 }
 
 update request {

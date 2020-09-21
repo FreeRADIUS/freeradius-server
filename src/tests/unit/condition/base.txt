@@ -110,13 +110,13 @@ match handled && &Packet-Type == Access-Challenge
 condition handled &&&Packet-Type == Access-Challenge
 match handled && &Packet-Type == Access-Challenge
 
-condition &reply: == &request:
+condition &reply == &request
 match ERROR offset 0 Cannot use list references in condition
 
-condition &reply: == "hello"
+condition &reply == "hello"
 match ERROR offset 0 Cannot use list references in condition
 
-condition "hello" == &reply:
+condition "hello" == &reply
 match ERROR offset 11 Cannot use list references in condition
 
 
@@ -612,7 +612,7 @@ match <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
 #  This is allowed and means "the list is not empty"
 #
 condition (&reply.)
-match &reply:
+match &reply
 
 #
 #  Expansions of environment variables

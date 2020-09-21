@@ -100,7 +100,7 @@ server abfab-idp {
 		#  an `Access-Reject` or `Access-Accept` is sent.
 		#
 		update {
-			&reply: += &session-state:
+			&reply += &session-state
 		}
 
 		#

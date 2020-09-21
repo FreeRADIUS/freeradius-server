@@ -54,5 +54,5 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 }
 
 update {
-	&reply: !* ANY
+	&reply !* ANY
 }

@@ -6,7 +6,7 @@ call second {
 	#  Copy our reply to the parents reply.
 	#
 	update {
-		&parent.reply: += &reply:
+		&parent.reply: += &reply
 	}
 }
 

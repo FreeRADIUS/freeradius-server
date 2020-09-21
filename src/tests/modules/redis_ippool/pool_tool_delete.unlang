@@ -65,5 +65,5 @@ if ("%{redis:ZCOUNT '{%{control.Pool-Name}%}:pool' -inf +inf}" == 0) {
 }
 
 update {
-	&reply: !* ANY
+	&reply !* ANY
 }

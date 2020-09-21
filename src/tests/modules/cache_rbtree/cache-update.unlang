@@ -101,5 +101,5 @@ else {
 
 # Clear out the reply list
 update {
-    &reply: !* ANY
+    &reply !* ANY
 }

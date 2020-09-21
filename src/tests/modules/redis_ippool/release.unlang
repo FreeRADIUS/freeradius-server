@@ -112,5 +112,5 @@ if (updated) {
 }
 
 update reply {
-	&reply: !* ANY
+	&reply !* ANY
 }
