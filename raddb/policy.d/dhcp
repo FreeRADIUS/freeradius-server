@@ -1,47 +1,12 @@
-#  Determine subnet name to use in looking up options
-dhcp_determine_subnet {
-
-	#
-	#  If multiple subnets are in use, configure logic here to choose the
-	#  appropriate one.  DHCP-Network-IP-Address contains the address
-	#  to match into subnets, based on data provided in the DHCP packet.
-	#
-	#  With IP addresses the "<" operator can be used to match addresses
-	#  to subnets.
-	#
-	#  This is a made up example that should be customised to the real
-	#  Network environment
-	#
-
-	#  if (&DHCP-Network-IP-Address < 10.1.0.0/16) {
-	#	update control {
-	#		&DHCP-Subnet-Name = network1
-	#	}
-	#  } elsif (&DHCP-Network-IP-Address < 10.2.0.0/16) {
-	#	update control {
-	#		&DHCP-Subnet-Name = network2
-	#	}
-	#  } else {
-	#	update control {
-	#	       &DHCP-Subnet-Name = default
-	#	}
-	#  }
-}
-
 #  Assign common DHCP reply packet options
 dhcp_common {
 	#  The contents here are invented.  Change them!
-	#  Lease time should either be set here or can
-	#  reference the lease time set in the named
-	#  sqlipppol module instance configuration if that
-	#  is in use for lease management
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
 		&DHCP-IP-Address-Lease-Time = 7200
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
 	}
 }
