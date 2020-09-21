@@ -81,6 +81,7 @@ impossible to create before.
 |=====
 | Keyword | Description
 | xref:call.adoc[call]             | Call one virtual server from another
+| xref:caller.adoc[caller]         | Check if the request is from a parent `call`
 | xref:detach.adoc[detach]         | Detach a child from a parent
 | xref:parallel.adoc[parallel]     | Create multiple parallel child requests
 | xref:subrequest.adoc[subrequest] | Create a child request

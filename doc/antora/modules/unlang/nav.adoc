@@ -7,6 +7,7 @@
 ** xref:keywords.adoc[Keywords]
 *** xref:break.adoc[break]
 *** xref:call.adoc[call]
+*** xref:caller.adoc[caller]
 *** xref:case.adoc[case]
 *** xref:detach.adoc[detach]
 *** xref:else.adoc[else]

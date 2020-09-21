@@ -75,6 +75,7 @@ typedef enum {
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
+	UNLANG_TYPE_CALLER,			//!< conditionally check parent dictionary type
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
@@ -353,6 +354,8 @@ REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace
  * @{
  */
 void		unlang_call_init(void);
+
+void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
 

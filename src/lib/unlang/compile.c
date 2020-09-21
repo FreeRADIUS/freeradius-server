@@ -711,6 +711,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 			break;
 
 		case UNLANG_TYPE_CALL:
+		case UNLANG_TYPE_CALLER:
 		case UNLANG_TYPE_CASE:
 		case UNLANG_TYPE_FOREACH:
 		case UNLANG_TYPE_ELSE:
@@ -2865,6 +2866,50 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 }
 
 
+static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	unlang_t		*c;
+	unlang_group_t		*g;
+	fr_token_t		type;
+	char const     		*name;
+	fr_dict_t const		*dict;
+
+	name = cf_section_name2(cs);
+	if (!name) {
+		cf_log_err(cs, "You MUST specify a protocol name for 'caller <protocol> { ... }'");
+		return NULL;
+	}
+
+	type = cf_section_name2_quote(cs);
+	if (type != T_BARE_WORD) {
+		cf_log_err(cs, "The argument to 'caller' cannot be a quoted string or a dynamic value");
+		return NULL;
+	}
+
+	dict = fr_dict_by_protocol_name(name);
+	if (!dict) {
+		cf_log_err(cs, "Unknown protocol '%s'", name);
+		return NULL;
+	}
+
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALLER);
+	if (!c) return NULL;
+
+	/*
+	 *	Set the virtual server name, which tells unlang_call()
+	 *	which virtual server to call.
+	 */
+	g = unlang_generic_to_group(c);
+	g->dict = dict;
+
+	if (!g->num_children) {
+		talloc_free(c);
+		return UNLANG_IGNORE;
+	}
+
+	return c;
+}
+
 static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
 				  CONF_SECTION *subcs, rlm_components_t component,
 				  bool policy)
@@ -3110,6 +3155,7 @@ typedef unlang_t *(*unlang_op_compile_t)(unlang_t *parent, unlang_compile_t *unl
 
 static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("call"),		(void *) compile_call },
+	{ L("caller"),		(void *) compile_caller },
 	{ L("case"),		(void *) compile_case },
 	{ L("else"),		(void *) compile_else },
 	{ L("elsif"),		(void *) compile_elsif },
