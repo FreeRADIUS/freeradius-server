@@ -238,7 +238,7 @@ server coa {
 					}
 					subrequest CoA-Request {
 						update request {
-							&request := &parent.request.[*]
+							&request := &parent.request[*]
 							&Acct-Session-Id := &parent.control.Tmp-String-1
 							&Event-Timestamp := "%l"
 							&Message-Authenticator := 0x00

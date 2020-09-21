@@ -257,7 +257,7 @@ expands to a zero-length string.
 ----
 recv Access-Request {
     if (&request.User-Name == "bob") {
-        "%{debug_attr:request.[*]}"
+        "%{debug_attr:request[*]}"
     }
     ...
 }
@@ -269,13 +269,13 @@ recv Access-Request {
 ...
 (0)  recv Access-Request {
 (0)    if (&request.User-Name == "bob") {
-(0)      Attributes matching "request.[*]"
+(0)      Attributes matching "request[*]"
 (0)        &request.User-Name = bob
 (0)        &request.User-Password = hello
 (0)        &request.NAS-IP-Address = 127.0.1.1
 (0)        &request.NAS-Port = 1
 (0)        &request.Message-Authenticator = 0x9210ee447a9f4c522f5300eb8fc15e14
-(0)      EXPAND %{debug_attr:request.[*]}
+(0)      EXPAND %{debug_attr:request[*]}
 (0)    } # if (&request.User-Name == "bob") (...)
 ...
 ```
@@ -435,7 +435,7 @@ update {
 }
 
 update reply {
-    &Reply-Message := "Serialize output: %{pairs:&control.[*]}"
+    &Reply-Message := "Serialize output: %{pairs:&control[*]}"
 }
 ----
 

@@ -227,7 +227,7 @@ The following will include all attributes in the RADIUS request, except for
 .Example
 
 ```
-%{json_encode:&request.[*] !&User-Password}
+%{json_encode:&request[*] !&User-Password}
 ```
 
 In another (contrived) example, all the attributes in the RADIUS request will
@@ -237,7 +237,7 @@ be included in the document, _except_ any attributes in the RADIUS reply.
 .Example
 
 ```
-%{json_encode:&request.[*] !&reply.[*] &control.User-Name}
+%{json_encode:&request[*] !&reply[*] &control.User-Name}
 ```
 
 #### Output format modes

@@ -9,7 +9,7 @@ update {
 }
 
 update {
-	&request.Tmp-String-1 := "%{concat:, %{pairs:request.[*]}}"
+	&request.Tmp-String-1 := "%{concat:, %{pairs:request[*]}}"
 	&request.Tmp-String-2 := "%{pairs:Tmp-String-0}"
 	&request.Tmp-String-3 := "%{concat:, %{pairs:Tmp-String-0[*]}}"
 	&request.Tmp-String-4 := "%{pairs:control.}"
