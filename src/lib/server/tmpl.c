@@ -678,8 +678,6 @@ tmpl_t *tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char c
 {
 	va_list		ap;
 
-	fr_assert(vpt->type == TMPL_TYPE_UNINITIALISED);
-
 	memset(vpt, 0, sizeof(*vpt));
 	tmpl_type_init(vpt, type);
 
@@ -707,8 +705,6 @@ tmpl_t *tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char c
  */
 tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len)
 {
-	fr_assert(vpt->type == TMPL_TYPE_UNINITIALISED);
-
 	memset(vpt, 0, sizeof(*vpt));
 	tmpl_type_init(vpt, type);
 	tmpl_set_name_shallow(vpt, quote, name, len);
@@ -727,8 +723,6 @@ tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char 
  */
 tmpl_t *tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len)
 {
-	fr_assert(vpt->type == TMPL_TYPE_UNINITIALISED);
-
 	memset(vpt, 0, sizeof(*vpt));
 	tmpl_type_init(vpt, type);
 	tmpl_set_name(vpt, quote, name, len);
