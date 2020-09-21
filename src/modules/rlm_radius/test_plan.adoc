@@ -111,7 +111,7 @@ The home server should be configured to respond to all packets from the `NAS + P
 response (`Access-Accept` / `Accounting-Response`).
 
 Packet loss should be introduced on the home server.  There are various facilities in IP tables to do this,
-or `%{rand:}` and `&control:Response-Packet-Type = none` may be used on the home server to randomly prevent
+or `%{rand:}` and `&control.Response-Packet-Type = none` may be used on the home server to randomly prevent
 replies to requests.
 
 If delay needs to be added at a network level, a script is available https://gist.github.com/arr2036/6598137[here].

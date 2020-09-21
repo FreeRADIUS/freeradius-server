@@ -54,7 +54,7 @@ this name from the request is used to search for the record from
 passwd file.
 
   * Attributes marked as `=` are added to the `&reply.` list,
-instead of default `&control:` list.
+instead of default `&control.` list.
 
   * Attributes marked as `~` are added to the `&request.` list.
 
@@ -63,7 +63,7 @@ instead of default `&control:` list.
 The format here uses the first field as the key.  If the
 `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` matches, the `Crypt-Password` attribute is
 created from the second field, and is added to the
-`&control:` list.
+`&control.` list.
 
 
 

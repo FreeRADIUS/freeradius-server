@@ -767,7 +767,7 @@ finish:
 		case FR_CACHE_ALLOW_MERGE:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
-			RDEBUG2("Removing &control:%s", vp->da->name);
+			RDEBUG2("Removing &control.%s", vp->da->name);
 			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
 			vp = fr_cursor_current(&cursor);

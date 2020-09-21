@@ -788,13 +788,13 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 
 	auth_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control:MS-CHAP-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
 	peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
 	}
 
@@ -803,7 +803,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 
 		peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge);
 		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-			RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
+			RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 			peer_challenge = NULL;
 		}
 

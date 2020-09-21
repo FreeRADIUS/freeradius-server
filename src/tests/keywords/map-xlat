@@ -4,7 +4,7 @@
 #  Test the map xlat
 #
 update {
-	&Tmp-String-0 := '&control:Tmp-String-0 := \'testing123\''
+	&Tmp-String-0 := '&control.Tmp-String-0 := \'testing123\''
 	&Tmp-String-1 := "request.Alc-MSAP-Interface = 'UNICAST_7360OLT3'"
 	&Tmp-String-1 += "request.Alc-MSAP-Interface += 'UNICAST_7360OLT4'"
 }
@@ -13,7 +13,7 @@ if ("%{map:%{Tmp-String-0}}" != 1) {
 	test_fail
 }
 
-if (&control:Tmp-String-0 != 'testing123') {
+if (&control.Tmp-String-0 != 'testing123') {
 	test_fail
 }
 

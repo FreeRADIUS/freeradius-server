@@ -59,7 +59,7 @@ if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach &control:Tmp-Integer-0 {
+foreach &control.Tmp-Integer-0 {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#

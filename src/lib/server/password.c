@@ -736,9 +736,9 @@ do_header:
 	 *	header to indicate hash type.
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("No {...} in &control:%pP, re-writing to %s", known_good, def->name);
+		RDEBUG3("No {...} in &control.%pP, re-writing to %s", known_good, def->name);
 	} else {
-		RDEBUG2("No {...} in &control:%s, re-writing to %s", known_good->da->name, def->name);
+		RDEBUG2("No {...} in &control.%s, re-writing to %s", known_good->da->name, def->name);
 	}
 
 bad_header:
@@ -805,10 +805,10 @@ static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
 	 */
 	if (info->min_hash_len && (out->vp_length < MIN_LEN(info))) {
 		if (RDEBUG_ENABLED3) {
-			RWDEBUG3("&control:%pP too short, expected %zu bytes, got %zu bytes",
+			RWDEBUG3("&control.%pP too short, expected %zu bytes, got %zu bytes",
 				 out, MIN_LEN(info), out->vp_length);
 		} else {
-			RWDEBUG2("&control:%s too short, expected %zu bytes, got %zu bytes",
+			RWDEBUG2("&control.%s too short, expected %zu bytes, got %zu bytes",
 				 out->da->name, MIN_LEN(info), out->vp_length);
 		}
 	invalid:
@@ -821,10 +821,10 @@ static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
 	 */
 	if (info->max_hash_len && (out->vp_length > info->max_hash_len)) {
 		if (RDEBUG_ENABLED3) {
-			RWDEBUG3("&control:%pP too long, expected %zu bytes, got %zu bytes",
+			RWDEBUG3("&control.%pP too long, expected %zu bytes, got %zu bytes",
 				 out, info->max_hash_len, out->vp_length);
 		} else {
-			RWDEBUG2("&control:%s too long, expected %zu bytes, got %zu bytes",
+			RWDEBUG2("&control.%s too long, expected %zu bytes, got %zu bytes",
 				 out->da->name, info->max_hash_len, out->vp_length);
 		}
 		goto invalid;
@@ -836,10 +836,10 @@ static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
 	if ((info->type == PASSWORD_HASH) && (out->vp_length != info->min_hash_len)) {
 
 		if (RDEBUG_ENABLED3) {
-			RWDEBUG3("&control:%pP incorrect length, expected %zu bytes, got %zu bytes",
+			RWDEBUG3("&control.%pP incorrect length, expected %zu bytes, got %zu bytes",
 				 out, info->min_hash_len, out->vp_length);
 		} else {
-			RWDEBUG2("&control:%s incorrect length, expected %zu bytes, got %zu bytes",
+			RWDEBUG2("&control.%s incorrect length, expected %zu bytes, got %zu bytes",
 				 out->da->name, info->min_hash_len, out->vp_length);
 		}
 		goto invalid;
@@ -872,11 +872,11 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 		if (!new) break;		/* Process next input attribute */
 
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Replacing &control:%pP with &control:%pP",
+			RDEBUG3("Replacing &control.%pP with &control.%pP",
 				known_good, new);
 
 		} else {
-			RDEBUG2("Replacing &control:%s with &control:%s",
+			RDEBUG2("Replacing &control.%s with &control.%s",
 				known_good->da->name, new->da->name);
 		}
 		fr_cursor_free_item(&cursor);
@@ -965,7 +965,7 @@ VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 
 		if (known_good->da == attr_user_password) {
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
+			RWDEBUG("!!! Ignoring control.User-Password.  Update your        !!!");
 			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
 			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
 			RWDEBUG("!!! User-Password.                                      !!!");

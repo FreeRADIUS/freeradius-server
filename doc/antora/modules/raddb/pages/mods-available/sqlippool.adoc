@@ -52,7 +52,7 @@ WARNING: ONLY change this if you know what you are doing!
 
 
 
-messages { ... }:: These messages are added to the `control::` items, as
+messages { ... }:: These messages are added to the `control.:` items, as
 `Module-Success-Message`. They are not logged anywhere else, unlike
 previous versions.
 If you want to have them logged to a file, see the `linelog` module,

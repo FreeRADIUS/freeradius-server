@@ -1050,7 +1050,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		fr_pair_value_bstrndup(vp, password, pass_size, true);
 
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Added eDirectory password.  control:%pP", vp);
+			RDEBUG3("Added eDirectory password.  control.%pP", vp);
 		} else {
 			RDEBUG2("Added eDirectory password");
 		}

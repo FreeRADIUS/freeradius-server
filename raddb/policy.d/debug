@@ -2,7 +2,7 @@
 #  Outputs the contents of the control list in debugging (-X) mode
 #
 debug_control {
-	if ("%{debug_attr:control:[*]}" == '') {
+	if ("%{debug_attr:control.[*]}" == '') {
 		noop
 	}
 }

@@ -3235,7 +3235,7 @@ static rlm_rcode_t aka_authentication_reject_recv_resume(module_ctx_t const *mct
  *   rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or if no 'recv Syncronization-Failure { ... }' section was
  *   defined, then enter the FAILURE-NOTIFICATION state.
- * - ...or if the user didn't provide a new SQN value in &control:SQN
+ * - ...or if the user didn't provide a new SQN value in &control.SQN
  *   then enter the FAILURE-NOTIFICATION state.
  * - ...or enter the AKA-CHALLENGE state.
  */
@@ -3269,7 +3269,7 @@ static rlm_rcode_t aka_synchronization_failure_recv_resume(module_ctx_t const *m
 	 */
 	vp = fr_pair_find_by_da(request->control, attr_sim_sqn);
 	if (!vp) {
-		REDEBUG("No &control:SQN value provided after resynchronisation, cannot continue");
+		REDEBUG("No &control.SQN value provided after resynchronisation, cannot continue");
 		goto failure;
 	}
 
@@ -3947,7 +3947,7 @@ static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST 
 	 *	the submodule.
 	 */
 	eap_type = fr_pair_find_by_da(request->control, attr_eap_type);
-	if (eap_type) RWDEBUG("Ignoring &control:EAP-Type, this must be set *before* the EAP module is called");
+	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
 
 	method = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_method_hint);
 

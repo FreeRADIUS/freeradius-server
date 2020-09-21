@@ -9,8 +9,8 @@ update {
 	&request.Tmp-IP-Address-0 += 192.0.2.2
 	&request.Tmp-IP-Address-0 += 192.0.2.3
 	&request.Tmp-IP-Address-0 += 192.0.2.4
-	&control:Tmp-IP-Address-0 := 192.0.2.1
-	&control:Tmp-IP-Address-0 += 192.0.2.3
+	&control.Tmp-IP-Address-0 := 192.0.2.1
+	&control.Tmp-IP-Address-0 += 192.0.2.3
 }
 
 if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || \

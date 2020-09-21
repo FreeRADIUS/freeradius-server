@@ -145,9 +145,9 @@ server coa {
 		#
 		#  Split the string and split into pieces.
 		#
-		if ("%{explode:&control:Tmp-String-0 |}") {
+		if ("%{explode:&control.Tmp-String-0 |}") {
 
-			foreach &control:Tmp-String-0 {
+			foreach &control.Tmp-String-0 {
 
 				#
 				#  Send an update for each session we find.
@@ -177,7 +177,7 @@ server coa {
 							#
 							#  Add/override the session identification attributes looked up
 							#
-							&Acct-Session-Id := &parent.control:Tmp-String-1
+							&Acct-Session-Id := &parent.control.Tmp-String-1
 
 							#
 							#  Some NASs want these, others don't
@@ -217,7 +217,7 @@ server coa {
 						#
 						#  Call the radius client module instance for the NAS-IP-Address
 						#
-						switch &parent.control:Tmp-IP-Address-0 {
+						switch &parent.control.Tmp-IP-Address-0 {
 							#
 							#  Repeat this for each NAS
 							#
@@ -227,7 +227,7 @@ server coa {
 								#  Increment count of sent updates
 								#
 								update parent.control {
-									&Tmp-Integer-0 := %{expr: %{parent.control:Tmp-Integer-0} + 1}
+									&Tmp-Integer-0 := %{expr: %{parent.control.Tmp-Integer-0} + 1}
 								}
 
 								radius-originate-coa-192.0.2.1
@@ -239,7 +239,7 @@ server coa {
 							#
 							case {
 								update parent.control {
-									&Reply-Message += "Missing map for NAS: %{parent.control:Tmp-IP-Address-0}"
+									&Reply-Message += "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
 								}
 							}
 
@@ -255,7 +255,7 @@ server coa {
 		#
 		#  Report what we did
 		#
-		if (&control:Tmp-Integer-0) {
+		if (&control.Tmp-Integer-0) {
 			update reply {
 				&Reply-Message += "Sent updates for %{control.Tmp-Integer-0} active sessions"
 			}

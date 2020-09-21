@@ -150,7 +150,7 @@ server eap-aka-sim {
 	#  involved in that negotiation, you can use
 	#  `%{aka_sim_id_method:User-Name}` in the top level virtual server,
 	#  which will return the EAP method hinted by the identity, and then
-	#  set `&control:EAP-Type` to an appropriate value before calling the
+	#  set `&control.EAP-Type` to an appropriate value before calling the
 	#  EAP module.
 	#
 	#  #### Pseudonyms
@@ -369,7 +369,7 @@ server eap-aka-sim {
 	#  the encrypted identity blob.
 	#
 	#  If you need to implement one of these identity privacy schemes, the
-	#  cryptographic identity can be specified with `&control:KDF-Identity`.
+	#  cryptographic identity can be specified with `&control.KDF-Identity`.
 	#
 	send Challenge-Request {
 		ok
@@ -497,10 +497,10 @@ server eap-aka-sim {
 	#  If the original UMTS quintuplets were calculated locally and you
 	#  provided Ki and OP/OPc in the Challenge-Request round, then the
 	#  EAP-AKA module will automatically calculate a new SQN for you and
-	#  place it in `&control:SIM-SQN`.  You should store this new SQN.
+	#  place it in `&control.SIM-SQN`.  You should store this new SQN.
 	#
 	#  As a convenience, the EAP-AKA module will also repopulate
-	#  &control:SIM-Ki and &control:SIM-OPc so you do not need to retrieve
+	#  &control.SIM-Ki and &control.SIM-OPc so you do not need to retrieve
 	#  them again in the `send Challenge-Request { ... }` section.
 	#
 	#  If the UMTS quintuplets were provided by an AuC, you should submit
@@ -509,7 +509,7 @@ server eap-aka-sim {
 	#  `send Challenge-Request { ... }` section.
 	#
 	#  If the rcode returned from this section does not indicate failure
-	#  and a &control:SQN value is provided, we send a new challenge to
+	#  and a &control.SQN value is provided, we send a new challenge to
 	#  the supplicant and continue; otherwise authentication fails.
 	#
 	#  NOTE: Only one Synchronisation attempt is permitted per

@@ -59,11 +59,11 @@ Yubikey authentication needs two attributes retrieved from persistent storage:
 [options="header,autowidth"]
 |===
 | Attributes                 | Description
-| `&control:Yubikey-Key`     | The AES key used to decrypt the OTP data.
+| `&control.Yubikey-Key`     | The AES key used to decrypt the OTP data.
                                The `Yubikey-Public-Id` and/or User-Name
                                attributes may be used to retrieve the key.
                                The value is a `16-byte` binary blob.
-| `&control:Yubikey-Counter` | This is compared with the counter in the OTP
+| `&control.Yubikey-Counter` | This is compared with the counter in the OTP
                                data and used to prevent replay attacks.
                                This attribute will also be available in
                                the request list after successful decryption.

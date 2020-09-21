@@ -3,14 +3,14 @@
 #
 ldap
 
-if (&control:NAS-IP-Address != 1.2.3.4) {
+if (&control.NAS-IP-Address != 1.2.3.4) {
         test_fail
 }
 else {
         test_pass
 }
 
-if (&control:Reply-Message != "Hello world") {
+if (&control.Reply-Message != "Hello world") {
         test_fail
 }
 else {
@@ -18,7 +18,7 @@ else {
 }
 
 # Cmp operator means Framed-IP-Address is ignored
-if (&control:Framed-IP-Address) {
+if (&control.Framed-IP-Address) {
         test_fail
 }
 else {

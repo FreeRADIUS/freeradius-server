@@ -31,7 +31,7 @@ redis_ippool {
 	#
 	#  pool_name:: Name of the pool from which leases are allocated.
 	#
-	pool_name = &control:Pool-Name
+	pool_name = &control.Pool-Name
 
 	#
 	#  offer_time:: How long a lease is reserved for after making an offer.

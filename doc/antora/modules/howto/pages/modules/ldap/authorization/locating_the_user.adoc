@@ -2,7 +2,7 @@
 
 No matter how the LDAP module is called (via its `authorize`, `authenticate`,
 `accounting` methods or an `LDAP-Group` comparison) the first operation the
-module performs it to populate `&control:LDAP-UserDN` with the location of
+module performs it to populate `&control.LDAP-UserDN` with the location of
 the authenticating user's object in LDAP.
 
 Below is an example of configuring a user section for OpenLDAP, with callouts

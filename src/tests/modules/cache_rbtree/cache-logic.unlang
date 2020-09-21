@@ -10,7 +10,7 @@ update {
 # 0.  Basic store and retrieve
 #
 update control {
-	&control:Tmp-String-1 := 'cache me'
+	&control.Tmp-String-1 := 'cache me'
 }
 
 cache
@@ -42,7 +42,7 @@ else {
 }
 
 # 3.
-if (&control:Cache-Status-Only) {
+if (&control.Cache-Status-Only) {
 	test_fail
 }
 else {
@@ -59,7 +59,7 @@ else {
 }
 
 # 5.
-if (&request.Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -80,7 +80,7 @@ else {
 }
 
 # 7.
-if (&request.Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -114,7 +114,7 @@ else {
 }
 
 # 10.
-if (&control:Cache-Status-Only) {
+if (&control.Cache-Status-Only) {
 	test_fail
 }
 else {
@@ -135,7 +135,7 @@ else {
 }
 
 # 12.
-if (&control:Cache-Allow-Merge) {
+if (&control.Cache-Allow-Merge) {
 	test_fail
 }
 else {
@@ -184,7 +184,7 @@ else {
 }
 
 # 17.
-if (&request.Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -208,7 +208,7 @@ else {
 }
 
 # 19. Request Tmp-String-1 shouldn't have been updated yet
-if (&request.Tmp-String-1 == &control:Tmp-String-1) {
+if (&request.Tmp-String-1 == &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -228,7 +228,7 @@ else {
 }
 
 # 21. Request Tmp-String-1 still shouldn't have been updated yet
-if (&request.Tmp-String-1 == &control:Tmp-String-1) {
+if (&request.Tmp-String-1 == &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -245,7 +245,7 @@ else {
 }
 
 # 23. Request Tmp-String-1 should now have been updated
-if (&request.Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -267,7 +267,7 @@ else {
 }
 
 # 25. Request Tmp-String-1 should now have been updated
-if (&request.Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
 	test_fail
 }
 else {

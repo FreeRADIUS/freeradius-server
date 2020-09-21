@@ -92,7 +92,7 @@ send Accounting-Response {
 	#
 	#  Return an address to the IP Pool when we see a stop record.
 	#
-	#  Ensure that &control:Pool-Name is set to determine which
+	#  Ensure that &control.Pool-Name is set to determine which
 ￼	#  pool of IPs are used.
 	#
 	sqlippool

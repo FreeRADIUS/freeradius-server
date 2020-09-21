@@ -282,7 +282,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 inst->name);
-			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 				 inst->name);
 			RWDEBUG2("!!!    (pap only)");
 
@@ -297,7 +297,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 inst->name);
-			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 				 inst->name);
 			RWDEBUG("!!!    (pap only)");
 			break;
@@ -312,7 +312,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 					 conn->config->admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					 inst->name);
-				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 					 inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			} else {
@@ -324,7 +324,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 				RWDEBUG2("!!!    that password attribute");
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					 inst->name);
-				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 					 inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			}

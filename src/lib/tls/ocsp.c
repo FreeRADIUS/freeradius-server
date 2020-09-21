@@ -380,11 +380,11 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 	vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_cert_valid);
 	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
 		return OCSP_STATUS_FAILED;
 
 	case 1: /* yes */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
 
 		/*
 		 *	If this fails, and an OCSP stapled response is required,
@@ -393,7 +393,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 		if (staple_response) {
 			vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_response);
 			if (!vp) {
-				RDEBUG2("No &control:TLS-OCSP-Response attribute found, performing full OCSP check");
+				RDEBUG2("No &control.TLS-OCSP-Response attribute found, performing full OCSP check");
 				break;
 			}
 			if (ocsp_staple_from_pair(request, ssl, vp) < 0) {
@@ -405,7 +405,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 		return OCSP_STATUS_OK;
 
 	case 2: /* skipped */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
 		return conf->softfail ? OCSP_STATUS_OK : OCSP_STATUS_FAILED;
 
 	case 3: /* unknown */

@@ -208,7 +208,7 @@ e.g:
 ldap
 if ((ok || updated) && &User-Password) {
 	update {
-		&control:Auth-Type := ldap
+		&control.Auth-Type := ldap
 	}
 }
 ----
@@ -423,7 +423,7 @@ filter:: Filter for RADIUS profile objects.
 default:: The default profile. This may be a DN or an attribute reference.
 
 NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
-to specify the default profile, set this to `&control:User-Profile`.
+to specify the default profile, set this to `&control.User-Profile`.
 
 
 
@@ -799,8 +799,8 @@ ldap {
 #		ldap_debug = 0x0000
 	}
 	update {
-		&control:Password-With-Header	+= 'userPassword'
-#		&control:NT-Password		:= 'ntPassword'
+		&control.Password-With-Header	+= 'userPassword'
+#		&control.NT-Password		:= 'ntPassword'
 #		&reply.Reply-Message		:= 'radiusReplyMessage'
 #		&reply.Tunnel-Type		:= 'radiusTunnelType'
 #		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'

@@ -263,11 +263,11 @@ server dynamic_clients {
 		#  This requires the SQL module to be configured, of course.
 		#
 		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
-			&control:FreeRADIUS-Client-IP-Address := 'nasname'
-			&control:FreeRADIUS-Client-Shortname := 'shortname'
-			&control:FreeRADIUS-Client-Secret := 'secret'
-			&control:FreeRADIUS-Client-NAS-Type := 'type'
-			&control:FreeRADIUS-Client-Virtual-Server := 'server'
+			&control.FreeRADIUS-Client-IP-Address := 'nasname'
+			&control.FreeRADIUS-Client-Shortname := 'shortname'
+			&control.FreeRADIUS-Client-Secret := 'secret'
+			&control.FreeRADIUS-Client-NAS-Type := 'type'
+			&control.FreeRADIUS-Client-Virtual-Server := 'server'
 		}
 
 		#

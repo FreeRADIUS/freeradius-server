@@ -542,7 +542,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		 */
 		vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_type);
 		if (vp) {
-			RDEBUG2("Using method from &control:EAP-Type");
+			RDEBUG2("Using method from &control.EAP-Type");
 			next = vp->vp_uint32;
 		}
 

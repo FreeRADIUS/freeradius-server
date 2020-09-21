@@ -619,11 +619,11 @@ bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr
 	case 0:
 		fr_value_box_copy(vp, &vp->data, enumv->value);
 		vp->data.enumv = vp->da;	/* So we get the correct string alias */
-		RDEBUG2("Setting &control:%pP", vp);
+		RDEBUG2("Setting &control.%pP", vp);
 		return true;
 
 	case 1:
-		RDEBUG2("&control:%s already set.  Not setting to %s", vp->da->name, enumv->name);
+		RDEBUG2("&control.%s already set.  Not setting to %s", vp->da->name, enumv->name);
 		return false;
 
 	default:

@@ -5,9 +5,9 @@ update control {
 #
 #  @todo - conditions do not yet support YIELD
 #
-if (&control:Tmp-String-0 == "yes") {
+if (&control.Tmp-String-0 == "yes") {
 	update {
-		&control:Cleartext-Password := "hello"
+		&control.Cleartext-Password := "hello"
 		&reply.Reply-Message += "success"
 	}
 }

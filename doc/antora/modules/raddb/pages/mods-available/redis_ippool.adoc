@@ -116,7 +116,7 @@ NOTE: See the `redis` module for more information.
 
 ```
 redis_ippool {
-	pool_name = &control:Pool-Name
+	pool_name = &control.Pool-Name
 	offer_time = 30
 	lease_time = 3600
 #	wait_num = 10

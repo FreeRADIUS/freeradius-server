@@ -74,7 +74,7 @@ keys or WPA enterprise.
 
 ### EAP-PWD (Secure password-based authentication)
 
-In v4, the "known good" password is taken from the `&request.control:Cleartext-Password` list,
+In v4, the "known good" password is taken from the `&request.control.Cleartext-Password` list,
 as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
 is no not used.
 
@@ -297,7 +297,7 @@ password.
 
 The file should be provided as the attribute:
 
-    &control:TLS-Session-Cert-File
+    &control.TLS-Session-Cert-File
 
 If there are any errors loading or verifying the
 certificate, authentication will fail.
@@ -677,7 +677,7 @@ be the number of seconds until the certificate state need be refreshed.
 This can be used as a `Cache-TTL` value if you wish to use the cache
 module to store OCSP certificate validation status.
 
-If when the OCSP check is performed, a `&control:TLS-OCSP-Cert-Valid`
+If when the OCSP check is performed, a `&control.TLS-OCSP-Cert-Valid`
 attribute is present, its value will force the outcome of the OCSP
 check, and the OCSP responder will not be contacted.
 Values map to the following OCSP responses:
@@ -1229,30 +1229,30 @@ Default is `mschapv2`
 
 Triplets can be provided using control attributes:
 
-  * `&control:EAP-SIM-KC`
-  * `&control:EAP-SIM-RAND`
-  * `&control:EAP-SIM-SRES`
+  * `&control.EAP-SIM-KC`
+  * `&control.EAP-SIM-RAND`
+  * `&control.EAP-SIM-SRES`
 
 NOTE: Three instances of each attribute must be provided.
 
 Alternatively triplets can be generated locally using
 control attributes:
 
-  * `&control:SIM-Ki`
-  * `&control:SIM-OPc`
-  * `&control:SIM-Algo-Version` (optional - see defaults below)
+  * `&control.SIM-Ki`
+  * `&control.SIM-OPc`
+  * `&control.SIM-Algo-Version` (optional - see defaults below)
 
 UMTS Milenage inputs (AMF, SQN) are ignored.
 
-`&control:SIM-Algo-Version` selects the SIM algorithm used,
+`&control.SIM-Algo-Version` selects the SIM algorithm used,
 it must match the algorithm used by the SIM.
 
 Accepted values for `SIM-Algo-Version` are:
 
   * `Comp128v1`
   * `Comp128v2`
-  * `Comp128v3` (default if no &control:SIM-OPc)
-  * `Comp128v4` (default if &control:SIM-OPc is available)
+  * `Comp128v3` (default if no &control.SIM-OPc)
+  * `Comp128v4` (default if &control.SIM-OPc is available)
 
 NOTE: In general operators will not provide the Ki (subscriber
 key) for their `SIM cards`, as the Ki is considered highly

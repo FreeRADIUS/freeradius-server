@@ -10,6 +10,6 @@ dhcp_common {
 		&DHCP-Router-Address = 192.0.2.1
 		&DHCP-IP-Address-Lease-Time = 7200
 #		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
+		&DHCP-DHCP-Server-Identifier = &control.DHCP-DHCP-Server-Identifier
 	}
 }

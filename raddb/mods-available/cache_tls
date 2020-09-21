@@ -91,7 +91,7 @@ cache cache_ocsp {
 	#  update <section> { ... }::
 	#
 	update {
-		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
-		&control:TLS-OCSP-Response := &TLS-OCSP-Response
+		&control.TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
+		&control.TLS-OCSP-Response := &TLS-OCSP-Response
 	}
 }

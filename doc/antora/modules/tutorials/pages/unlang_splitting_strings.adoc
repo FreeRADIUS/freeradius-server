@@ -34,7 +34,7 @@ two components on the "@" separator.
 
 The first component should be written to the `&request.Stripped-User-Name`
 attribute and the second component should be written to the
-`&control:Stripped-User-Domain` attribute.
+`&control.Stripped-User-Domain` attribute.
 
 Use `bob@realm1.sh` and `bob@realm2.sh` to test your new policy to ensure
 it works as expected.

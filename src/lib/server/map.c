@@ -145,7 +145,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_quote, char const *rhs)
 	tmpl_attr_set_leaf_da(vpt, da);
 
 	/*
-	 *	Be sure to keep the "&control:" or "control:" prefix.
+	 *	Be sure to keep the "&control." or "control." prefix.
 	 *	If it's there, we re-generate it from whatever was in
 	 *	the original name, including the '&'.
 	 *

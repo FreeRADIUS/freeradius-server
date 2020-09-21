@@ -2,7 +2,7 @@
 #  PRE: update if return
 #
 update {
-	&control:Auth-Type = 'Accept'
+	&control.Auth-Type = 'Accept'
 }
 
 group {

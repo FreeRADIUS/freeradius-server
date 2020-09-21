@@ -1522,7 +1522,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, VALUE_PAI
 			/*
 			 *	If we're doing internal auth, then this is an issue
 			 */
-			RWDEBUG2("No &control:%s or &control:%s found.  Cannot create NT-Password",
+			RWDEBUG2("No &control.%s or &control.%s found.  Cannot create NT-Password",
 				 attr_cleartext_password->name, attr_nt_password->name);
 			return -1;
 
@@ -1552,10 +1552,10 @@ found_password:
 		}
 
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Hashed &control:%pP to create %s = %pV",
+			RDEBUG3("Hashed &control.%pP to create %s = %pV",
 				password, attr_nt_password->name, fr_box_octets(p, NT_DIGEST_LENGTH));
 		} else {
-			RDEBUG2("Hashed &control:%s to create %s", attr_nt_password->name, password->da->name);
+			RDEBUG2("Hashed &control.%s to create %s", attr_nt_password->name, password->da->name);
 		}
 
 		if (*ephemeral) talloc_list_free(&password);
@@ -1569,9 +1569,9 @@ found_password:
 	fr_assert(password->da == attr_nt_password);
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Found &control:%pP", password);
+		RDEBUG3("Found &control.%pP", password);
 	} else {
-		RDEBUG2("Found &control:%s", attr_nt_password->name);
+		RDEBUG2("Found &control.%s", attr_nt_password->name);
 	}
 	*out = password;
 
@@ -2030,7 +2030,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge);
 	if (!challenge) {
-		REDEBUG("&control:Auth-Type = %s set for a request that does not contain &%s",
+		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s",
 			inst->name, attr_ms_chap_challenge->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
@@ -2054,7 +2054,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 						   method);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
-		REDEBUG("&control:Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
+		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
 			inst->name, attr_ms_chap_response->name, attr_ms_chap2_response->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;

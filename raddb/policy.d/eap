@@ -7,7 +7,7 @@ Xeap.authorize {
 		#
 		#	Expire previous cache entry
 		#
-		if (&control:State) {
+		if (&control.State) {
 			update control {
 				&Cache-TTL := 0
 			}

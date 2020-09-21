@@ -1262,7 +1262,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	 */
 	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
 	if (!vp) {
-		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control:Pool-Action, doing nothing...");
+		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.Pool-Action, doing nothing...");
 		return RLM_MODULE_NOOP;
 	}
 

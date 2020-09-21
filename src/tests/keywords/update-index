@@ -2,30 +2,30 @@
 # PRE: update update-remove-index
 #
 update {
-	&control:Reply-Message += 'a'
-	&control:Reply-Message += 'b'
-	&control:Reply-Message += 'c'
+	&control.Reply-Message += 'a'
+	&control.Reply-Message += 'b'
+	&control.Reply-Message += 'c'
 }
 
-if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'b') || (&control:Reply-Message[2] != 'c')) {
+if ((&control.Reply-Message[0] != 'a') || (&control.Reply-Message[1] != 'b') || (&control.Reply-Message[2] != 'c')) {
 	test_fail
 }
 
 # Overwrite a specific index, and check the value here is replaced
 update {
-	&control:Reply-Message[1] := 'd'
+	&control.Reply-Message[1] := 'd'
 }
 
-if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
+if ((&control.Reply-Message[0] != 'a') || (&control.Reply-Message[1] != 'd') || (&control.Reply-Message[2] != 'c')) {
 	test_fail
 }
 
 # Check isolation...
 update {
-	&control:Reply-Message[0] := &control:Reply-Message[0]
+	&control.Reply-Message[0] := &control.Reply-Message[0]
 }
 
-if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
+if ((&control.Reply-Message[0] != 'a') || (&control.Reply-Message[1] != 'd') || (&control.Reply-Message[2] != 'c')) {
 	test_fail
 }
 

@@ -27,8 +27,8 @@ update control {
 }
 
 update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control:Tmp-String-0}"
-    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control:Framed-IP-Address}"
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control.Tmp-String-0}"
+    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control.Framed-IP-Address}"
 }
 ----
 
@@ -65,10 +65,10 @@ unsigned 32-bit number.
 [source,unlang]
 ----
 update {
-    &control:Service-Type := Login-User
+    &control.Service-Type := Login-User
 }
 update reply {
-    &Reply-Message := "The value of Service-Type is %{integer:&control:Service-Type}"
+    &Reply-Message := "The value of Service-Type is %{integer:&control.Service-Type}"
 }
 ----
 
@@ -322,9 +322,9 @@ Used to join two or more attributes, separated by a delimiter.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "aaa"
-    &control:Tmp-String-0 += "bb"
-    &control:Tmp-String-0 += "c"
+    &control.Tmp-String-0 := "aaa"
+    &control.Tmp-String-0 += "bb"
+    &control.Tmp-String-0 += "c"
 }
 
 update reply {
@@ -358,7 +358,7 @@ update control {
     &Tmp-String-0 := "bob.toba@domain.com"
 }
 
-"%{explode:&control:Tmp-String-0 @}"
+"%{explode:&control.Tmp-String-0 @}"
 
 update reply {
     &Reply-Message := "Welcome %{control.Tmp-String-0[0]}"
@@ -385,7 +385,7 @@ update control {
     &Tmp-String-0 := "123"
 }
 update reply {
-    &Reply-Message := "Maximum should be %{lpad:&control:Tmp-String-0 11 0}"
+    &Reply-Message := "Maximum should be %{lpad:&control.Tmp-String-0 11 0}"
 }
 ----
 
@@ -409,7 +409,7 @@ update control {
     &Tmp-String-0 := "123"
 }
 update reply {
-    &Reply-Message := "Maximum should be %{rpad:&control:Tmp-String-0 11 0}"
+    &Reply-Message := "Maximum should be %{rpad:&control.Tmp-String-0 11 0}"
 }
 ----
 
@@ -430,12 +430,12 @@ Serialize attributes as comma-delimited string.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "This is a string"
-    &control:Tmp-String-0 += "This is another one"
+    &control.Tmp-String-0 := "This is a string"
+    &control.Tmp-String-0 += "This is another one"
 }
 
 update reply {
-    &Reply-Message := "Serialize output: %{pairs:&control:[*]}"
+    &Reply-Message := "Serialize output: %{pairs:&control.[*]}"
 }
 ----
 
@@ -480,7 +480,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control:Tmp-String-0}"
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
 }
 ----
 
@@ -649,7 +649,7 @@ Quote URL special characters.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "http://example.org/"
+    &control.Tmp-String-0 := "http://example.org/"
 }
 update reply {
     &Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
@@ -673,7 +673,7 @@ Unquote URL special characters.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+    &control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
 }
 update reply {
     &Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
@@ -699,16 +699,16 @@ Generate `HMAC-MD5` of string.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "mykey"
-    &control:Tmp-String-1 := "Caipirinha"
+    &control.Tmp-String-0 := "mykey"
+    &control.Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control:Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control.Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
 }
 
 update reply {
     &Reply-Message := "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
 }
 ----
 
@@ -730,16 +730,16 @@ Generate `HMAC-SHA1` of string.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "mykey"
-    &control:Tmp-String-1 := "Caipirinha"
+    &control.Tmp-String-0 := "mykey"
+    &control.Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control:Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control.Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
 }
 
 update reply {
     &Reply-Message := "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
 }
 ----
 
@@ -812,7 +812,7 @@ families of digest functions.
 [source,unlang]
 ----
 update {
-    &control:Tmp-String-0 := "Caipirinha"
+    &control.Tmp-String-0 := "Caipirinha"
 }
 update reply {
     &Reply-Message := "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
@@ -948,7 +948,7 @@ update control {
     &Tmp-String-0 := "user@example.com"
 }
 
-if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
+if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
     update reply {
         &Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
     }

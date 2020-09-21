@@ -91,7 +91,7 @@ server tls-cache {
 	#  This section is run after certificate attributes are added
 	#  to the request list, and before performing OCSP validation.
 	#
-	#  It should read the attribute &control:TLS-OCSP-Cert-Valid
+	#  It should read the attribute &control.TLS-OCSP-Cert-Valid
 	#  from the cache.
 	#
 	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'

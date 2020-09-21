@@ -92,8 +92,8 @@ cache cache_ocsp {
 	driver = "rlm_cache_rbtree"
 	key = &session-state:TLS-Client-Cert-Serial
 	update {
-		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
-		&control:TLS-OCSP-Response := &TLS-OCSP-Response
+		&control.TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
+		&control.TLS-OCSP-Response := &TLS-OCSP-Response
 	}
 }
 ```

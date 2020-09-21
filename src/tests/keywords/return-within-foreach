@@ -9,7 +9,7 @@ update control {
 }
 
 group {
-	foreach &control:Tmp-Integer-0 {
+	foreach &control.Tmp-Integer-0 {
 		if ("%{Foreach-Variable-0}" == '2') {
 			accept
 			success

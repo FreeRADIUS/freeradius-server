@@ -483,14 +483,14 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 		id_p = id + 1;
 		id_end = (id_p + id_len) - 1;
 	/*
-	 *	ID lacks a hint byte, figure it out from &control:EAP-Type
+	 *	ID lacks a hint byte, figure it out from &control.EAP-Type
 	 */
 	} else if ((id_len >= AKA_SIM_IMSI_MIN_LEN) && (id_len <= AKA_SIM_IMSI_MAX_LEN)) {
 		VALUE_PAIR *eap_type;
 
 		eap_type = fr_pair_find_by_da(request->packet->vps, attr_eap_type);
 		if (!eap_type) {
-			REDEBUG("SIM ID does not contain method hint, and no &control:EAP-Type found.  "
+			REDEBUG("SIM ID does not contain method hint, and no &control.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");
 			goto error;
 		}
@@ -509,7 +509,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 			break;
 
 		default:
-			REDEBUG("&control:EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
+			REDEBUG("&control.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
 			break;
 		}
 

@@ -133,7 +133,7 @@ other participant in the group, into your backend datastore.
 If the datastore provides no authentication method (`sql`, `redis`), you should
 use the value of `&Stripped-User-Name` as the key, and when the user attempts to
 login, retrieve the user's password and store it in
-`&control:Cleartext-Password`.
+`&control.Cleartext-Password`.
 
 == Authorization
 
@@ -154,14 +154,14 @@ login, retrieve the user's password and store it in
 First, in the `recv Access-Request { ... }` or `authorize { ... }` section of
 of an appropriate virtual server,  call the suffix module.
 
-If, after the suffix module has returned, the `&control:Proxy-To-Realm` attribute
+If, after the suffix module has returned, the `&control.Proxy-To-Realm` attribute
 is set, use the `return` keyword to exit from the section.  This prevents local
 modules being called, when we know the request will be handled by a remote proxy.
 
 [source,unlang]
 ----
 suffix
-if (&control:Proxy-To-Realm) {
+if (&control.Proxy-To-Realm) {
 	return
 }
 ----
@@ -180,11 +180,11 @@ Call the backend module's authorize method (or run an appropriate expansion) to
 determine if the authenticating user exists in the datastore.
 
 If the user does exist, and your module has an authenticate method (`ldap`,
-`rest`), set `&control:Auth-Type` to an appropriate value.
+`rest`), set `&control.Auth-Type` to an appropriate value.
 
 If the backend module does not have an authenticate method (`redis`, `files`,
 `sql`), you should ensure the "known good" copy of the user's password is set in
-`&control:Cleartext-Password` and then call the pap module.
+`&control.Cleartext-Password` and then call the pap module.
 
 === Bonus tasks
 

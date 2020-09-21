@@ -26,14 +26,14 @@ else {
 #
 #  Check we have these values cached
 #
-if (&control:LDAP-Cached-Membership[*] == 'foo') {
+if (&control.LDAP-Cached-Membership[*] == 'foo') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:LDAP-Cached-Membership[*] == 'cn=foo,ou=groups,dc=example,dc=com') {
+if (&control.LDAP-Cached-Membership[*] == 'cn=foo,ou=groups,dc=example,dc=com') {
 	test_pass
 }
 else {

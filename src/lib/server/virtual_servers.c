@@ -1100,7 +1100,7 @@ rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_
 
 	vp = fr_pair_find_by_da(request->control, attr_auth_type);
 	if (!vp) {
-		RDEBUG2("No &control:Auth-Type found");
+		RDEBUG2("No &control.Auth-Type found");
 	fail:
 		request->rcode = RLM_MODULE_FAIL;
 		return unlang_module_yield_to_section(request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);

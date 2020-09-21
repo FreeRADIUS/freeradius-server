@@ -330,11 +330,11 @@ server dynamic_clients {
 			&FreeRADIUS-Client-NAS-Type = "other"
 		}
 		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
-			&control:FreeRADIUS-Client-IP-Address := 'nasname'
-			&control:FreeRADIUS-Client-Shortname := 'shortname'
-			&control:FreeRADIUS-Client-Secret := 'secret'
-			&control:FreeRADIUS-Client-NAS-Type := 'type'
-			&control:FreeRADIUS-Client-Virtual-Server := 'server'
+			&control.FreeRADIUS-Client-IP-Address := 'nasname'
+			&control.FreeRADIUS-Client-Shortname := 'shortname'
+			&control.FreeRADIUS-Client-Secret := 'secret'
+			&control.FreeRADIUS-Client-NAS-Type := 'type'
+			&control.FreeRADIUS-Client-Virtual-Server := 'server'
 		}
 		if ("%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}") {
 			update control {

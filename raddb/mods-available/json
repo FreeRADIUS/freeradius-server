@@ -254,7 +254,7 @@ json {
 #  .Example
 #
 #  ```
-#  %{json_encode:&request.[*] !&reply.[*] &control:User-Name}
+#  %{json_encode:&request.[*] !&reply.[*] &control.User-Name}
 #  ```
 #
 #  #### Output format modes

@@ -501,15 +501,15 @@ The following modules exhibit changed behaviour.
 
 === rlm_cache
 
-`&control:Cache-Merge` has been renamed to
-`&control:Cache-Merge-New` and controls whether new entries are merged
+`&control.Cache-Merge` has been renamed to
+`&control.Cache-Merge-New` and controls whether new entries are merged
 into the current request. It defaults to `no`. The primary use case,
 is if you’re using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
 expensions to be available immediately.
 
-Two new control attributes `&control:Cache-Allow-Merge` and
-`&control:Cache-Allow-Insert` have been added. These control whether
+Two new control attributes `&control.Cache-Allow-Merge` and
+`&control.Cache-Allow-Insert` have been added. These control whether
 existing entries are to be merged, and new entries created on the next
 call to a cache module instance. Both default to `yes`.
 
@@ -553,7 +553,7 @@ preferable to having them hard-coded in C.
 === rlm_eap_pwd
 
 The `virtual_server` configuration has been removed from EAP-PWD. The
-module now looks for &request.control:Cleartext-Password.
+module now looks for &request.control.Cleartext-Password.
 
 === rlm_eap_leap
 
@@ -659,7 +659,7 @@ In v4 they must now be specified as::
 ```
 count_attribute = &Acct-Session-Time
 counter_name    = &Daily-Session-Time
-check_name      = &control:Max-Daily-Session
+check_name      = &control.Max-Daily-Session
 reply_name      = &reply.Session-Timeout
 key             = "%{%{Stripped-User-Name}:-%{User-Name}}"
 ```

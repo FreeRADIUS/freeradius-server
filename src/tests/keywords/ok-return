@@ -1,5 +1,5 @@
 update {
-	&control:Auth-Type = 'Accept'
+	&control.Auth-Type = 'Accept'
 	&reply.Reply-Message = 'pass'
 }
 

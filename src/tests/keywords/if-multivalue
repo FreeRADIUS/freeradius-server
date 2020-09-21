@@ -47,22 +47,22 @@ update control {
 #
 #  Mmmm O(N^2)
 #
-if (&request.Tmp-String-0[*] != &control:Tmp-String-0[*]) {
+if (&request.Tmp-String-0[*] != &control.Tmp-String-0[*]) {
 	test_fail
 }
 
-if (&request.Tmp-String-0[*] == &control:Tmp-String-1[*]) {
+if (&request.Tmp-String-0[*] == &control.Tmp-String-1[*]) {
 	test_fail
 }
 
-if (&request.Tmp-String-1[*] == &control:Tmp-String-0[*]) {
+if (&request.Tmp-String-1[*] == &control.Tmp-String-0[*]) {
 	test_fail
 }
 
 #
 #  Integer comparison and normalisation
 #
-if (&request.Tmp-Integer-0 != &control:Tmp-Integer-0) {
+if (&request.Tmp-Integer-0 != &control.Tmp-Integer-0) {
 	test_fail
 }
 
@@ -70,7 +70,7 @@ if (&request.Tmp-Integer-0 != &control:Tmp-Integer-0) {
 #  if any value of request.Tmp-Integer-0 > any value of
 #  request.Tmp-Integer-1 then evaluate to true
 #
-if (&request.Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
+if (&request.Tmp-Integer-0[*] > &control.Tmp-Integer-1[*]) {
 	test_fail
 }
 
@@ -81,11 +81,11 @@ if (&request.Tmp-String-1[*] !~ /PEONS$/) {
 	test_fail
 }
 
-if (&control:Tmp-String-1 =~ /PEONS$/) {
+if (&control.Tmp-String-1 =~ /PEONS$/) {
 	test_fail
 }
 
-if (&control:Tmp-String-1 =~ /DINKS$/) {
+if (&control.Tmp-String-1 =~ /DINKS$/) {
 	test_fail
 }
 
@@ -111,18 +111,18 @@ if (&request.Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
 #
 #  XLAT virtual comparisons
 #
-if (&control:Tmp-Integer-0[*] != "%{control.Tmp-Integer-0[#]}") {
+if (&control.Tmp-Integer-0[*] != "%{control.Tmp-Integer-0[#]}") {
 	test_fail
 }
 
 #
 #  Literal comparisons
 #
-if (&control:Tmp-String-1[*] != 'boink') {
+if (&control.Tmp-String-1[*] != 'boink') {
 	test_fail
 }
 
-if (&control:Tmp-String-1[*] == 'foo') {
+if (&control.Tmp-String-1[*] == 'foo') {
 	test_fail
 }
 

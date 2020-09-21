@@ -37,7 +37,7 @@ else {
 	test_fail
 }
 
-if (&control:Cleartext-Password == &User-Password) {
+if (&control.Cleartext-Password == &User-Password) {
 	test_pass
 }
 else {

@@ -190,7 +190,7 @@ recv DHCP-Request {
 
 	#  If the request is not for this server then silently discard it
 	if (&request.DHCP-DHCP-Server-Identifier && \
-	    &request.DHCP-DHCP-Server-Identifier != &control:DHCP-DHCP-Server-Identifier) {
+	    &request.DHCP-DHCP-Server-Identifier != &control.DHCP-DHCP-Server-Identifier) {
 	        do_not_respond
 	}
 

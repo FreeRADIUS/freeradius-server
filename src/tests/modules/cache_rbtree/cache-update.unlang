@@ -18,7 +18,7 @@ update {
 #  Basic store and retrieve
 #
 update control {
-	&control:Tmp-String-1 := 'cache me'
+	&control.Tmp-String-1 := 'cache me'
 }
 
 cache_update

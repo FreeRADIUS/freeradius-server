@@ -167,7 +167,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 
 	chap = fr_pair_find_by_da(request->packet->vps, attr_chap_password);
 	if (!chap) {
-		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
+		REDEBUG("You set '&control.Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
