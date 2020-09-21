@@ -1049,25 +1049,6 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-void tmpl_attr_set_unresolved(tmpl_t *vpt, char const *name, size_t len)
-{
-	tmpl_attr_t *ref;
-
-	tmpl_assert_type(tmpl_is_attr_unresolved(vpt));
-
-	/*
-	 *	Clear any existing references
-	 */
-	if (fr_dlist_num_elements(&vpt->data.attribute.ar) > 0) {
-		fr_dlist_talloc_reverse_free(&vpt->data.attribute.ar);
-	}
-
-	ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNRESOLVED);
-	ref->ar_unresolved = talloc_strndup(vpt, name, len);
-
-	TMPL_ATTR_VERIFY(vpt);
-}
-
 /** Set the request for an attribute ref
  *
  */
