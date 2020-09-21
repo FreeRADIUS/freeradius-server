@@ -157,6 +157,11 @@ dhcp DHCP-Discover {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
+
 	#  Do a simple mapping of MAC to assigned IP.
 	#
 	#  See below for the definition of the "mac2ip"
@@ -234,6 +239,11 @@ dhcp DHCP-Request {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
+
 	#  Do a simple mapping of MAC to assigned IP.
 	#
 	#  See below for the definition of the "mac2ip"
@@ -306,6 +316,11 @@ dhcp DHCP-Inform {
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
+
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
 
 	ok
 }
