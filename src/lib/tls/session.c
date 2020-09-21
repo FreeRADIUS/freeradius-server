@@ -1442,7 +1442,7 @@ int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher));
 			fr_pair_add(&request->state, vp);
 			RINDENT();
-			RDEBUG2("&session-state:%pP", vp);
+			RDEBUG2("&session-state.%pP", vp);
 			REXDENT();
 		}
 
@@ -1458,7 +1458,7 @@ int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 			fr_pair_value_strdup(vp, version);
 			fr_pair_add(&request->state, vp);
 			RINDENT();
-			RDEBUG2("&session-state:TLS-Session-Version := \"%s\"", version);
+			RDEBUG2("&session-state.TLS-Session-Version := \"%s\"", version);
 			REXDENT();
 		}
 

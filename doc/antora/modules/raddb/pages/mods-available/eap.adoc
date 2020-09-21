@@ -508,7 +508,7 @@ how TLS cache now works.
 
 If using the default `tls-cache` virtual server and
 cache module config, policy attributes may be stored in the
-`&session-state:` list.
+`&session-state.` list.
 
 
 virtual_server::

@@ -46,14 +46,14 @@ else {
 	test_fail
 }
 
-if (&session-state:Reply-Message[0] == 'hello') {
+if (&session-state.Reply-Message[0] == 'hello') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&session-state:Reply-Message[1] == 'goodbye') {
+if (&session-state.Reply-Message[1] == 'goodbye') {
 	test_pass
 }
 else {

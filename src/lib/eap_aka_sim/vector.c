@@ -831,7 +831,7 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, VALUE_P
 	 */
 	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
-		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+		RDEBUG2("No &session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
 		return 1;
 	}
@@ -840,13 +840,13 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, VALUE_P
 	mk_vp = fr_pair_find_by_da(vps, attr_session_data);
 	if (!mk_vp) mk_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_mk);
 	if (!mk_vp) {
-		RDEBUG2("Neither &session-state:%s or &session-state:%s attributes found, "
+		RDEBUG2("Neither &session-state.%s or &session-state.%s attributes found, "
 			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_mk->name);
 		return 1;
 	}
 
 	if (mk_vp->vp_length != AKA_SIM_MK_SIZE) {
-		REDEBUG("&session-state:%s incorrect length.  Expected "
+		REDEBUG("&session-state.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_MK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_mk->name, mk_vp->vp_length);
 		return -1;
@@ -881,7 +881,7 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(REQUEST *request, VALUE_PAIR 
 	 */
 	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
-		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+		RDEBUG2("No &session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
 		return 1;
 	}
@@ -890,13 +890,13 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(REQUEST *request, VALUE_PAIR 
 	k_re_vp = fr_pair_find_by_da(vps, attr_session_data);
 	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_k_re);
 	if (!k_re_vp) {
-		RDEBUG2("Neither &session-state:%s or &session-sate:%s attributes found, "
+		RDEBUG2("Neither &session-state.%s or &session-sate:%s attributes found, "
 			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_k_re->name);
 		return 1;
 	}
 
 	if (k_re_vp->vp_length != AKA_SIM_K_RE_SIZE) {
-		REDEBUG("&session-state:%s incorrect length.  Expected "
+		REDEBUG("&session-state.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_K_RE_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_mk->name, k_re_vp->vp_length);
 		return -1;

@@ -52,4 +52,4 @@ finishes, it is deleted, and is no longer accessible to the parent.
 .Examples
 `&parent.request.User-Name` +
 `&parent.reply.Reply-Message` +
-`&parent.parent.session-state:Filter-Id`
+`&parent.parent.session-state.Filter-Id`

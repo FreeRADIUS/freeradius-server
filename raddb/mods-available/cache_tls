@@ -54,7 +54,7 @@ cache cache_tls_session {
 	#  update <section> { ... }::
 	#
 	update {
-		&session-state:Session-Data := &session-state:Session-Data
+		&session-state.Session-Data := &session-state.Session-Data
 
 		#
 		#  NOTE: If you want to store authorization attributes too, consider
@@ -85,7 +85,7 @@ cache cache_ocsp {
 	#
 	#  key:: `cache` key.
 	#
-	key = &session-state:TLS-Client-Cert-Serial
+	key = &session-state.TLS-Client-Cert-Serial
 
 	#
 	#  update <section> { ... }::

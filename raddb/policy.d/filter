@@ -18,16 +18,16 @@ deny_realms {
 filter_username {
 	if (&State) {
 		if (&User-Name) {
-			if (!&session-state:Session-State-User-Name) {
+			if (!&session-state.Session-State-User-Name) {
 				update request {
-					&Module-Failure-Message += 'No cached session-state:Session-State-User-Name'
+					&Module-Failure-Message += 'No cached session-state.Session-State-User-Name'
 				}
 				reject
 			}
 
-			if (&User-Name != &session-state:Session-State-User-Name) {
+			if (&User-Name != &session-state.Session-State-User-Name) {
 				update request {
-					&Module-Failure-Message += 'User-Name does not match cached session-state:Session-State-User-Name'
+					&Module-Failure-Message += 'User-Name does not match cached session-state.Session-State-User-Name'
 				}
 				reject
 			}

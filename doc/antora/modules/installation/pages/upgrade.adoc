@@ -515,7 +515,7 @@ call to a cache module instance. Both default to `yes`.
 
 === rlm_eap
 
-All certificate attributes are available in the `&session-state:`
+All certificate attributes are available in the `&session-state.`
 list, immediately after they are parsed from their ASN1 form.
 
 The certificates are no longer added to the `&request.` list. Instead,
@@ -523,7 +523,7 @@ they are added to the `session-state` list.  You are advised to update
 any references during the upgrade to 4.0:
 
 ```
-s/TLS-Cert-/session-state:TLS-Cert-/
+s/TLS-Cert-/session-state.TLS-Cert-/
 ```
 
 The `rlm_eap_ikev2` module was removed. It does not follow RFC 5106,

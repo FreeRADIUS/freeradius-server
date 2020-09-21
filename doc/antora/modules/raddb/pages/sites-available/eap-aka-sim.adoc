@@ -98,7 +98,7 @@ required.
 The following actions are associated with the various
 `Identity-Type` values:
 - `Permanent`::	The current `&Identity` value will be copied to
-  	`&session-state:Permanent-Identity`.  The hint byte
+  	`&session-state.Permanent-Identity`.  The hint byte
    	will be stripped if the hint matches the current
 	EAP-Method.  If the hint byte does not match
 	the current EAP-Method the complete value of
@@ -555,7 +555,7 @@ You should restore the contents of the following attributes using
 
 NOTE: If you're using 3GPP style encrypted pseudonyms, you should
 decrypt the pseudonym here, and store the decrypted value in
-`&session-state:Permanent-Identity`.
+`&session-state.Permanent-Identity`.
 
 
 
@@ -574,11 +574,11 @@ If when sending a Reauthentication-Request a `&reply.Next-Reauth-Id`
 attribute is found, this section will be called.
 
 You should restore the contents of the following attributes using
-`&session-state:Session-ID` or `&reply.Next-Reauth-Id` as a key:
+`&session-state.Session-ID` or `&reply.Next-Reauth-Id` as a key:
 
-- `&session-state:Counter`::		How many times this session has
+- `&session-state.Counter`::		How many times this session has
 			been resumed.
-- `&session-state:Session-Data`::	The master session key.
+- `&session-state.Session-Data`::	The master session key.
 - `&session-State:Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 
@@ -597,11 +597,11 @@ provide a unified session store.
 This section will be called prior to attempting re-authentication.
 
 You should restore the contents of the following attributes using
-`&session-state:Session-ID` or `&reply.Next-Reauth-Id` as a key:
+`&session-state.Session-ID` or `&reply.Next-Reauth-Id` as a key:
 
-- `&session-state:Counter`::		How many times this session has
+- `&session-state.Counter`::		How many times this session has
 			been resumed.
-- `&session-state:Session-Data`::	The master session key.
+- `&session-state.Session-Data`::	The master session key.
 - `&session-State:Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 

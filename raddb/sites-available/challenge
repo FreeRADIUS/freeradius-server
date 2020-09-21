@@ -37,7 +37,7 @@ recv Access-Request {
 		#
 		update control {
 			Auth-Type := Step2
-			Cleartext-Password := &session-state:Tmp-Integer-0
+			Cleartext-Password := &session-state.Tmp-Integer-0
 		}
 	}
 }
@@ -55,7 +55,7 @@ authenticate step1 {
 		Tmp-Integer-0 := "%{randstr:n}"
 	}
 	update reply {
-		Reply-Message := &session-state:Tmp-Integer-0
+		Reply-Message := &session-state.Tmp-Integer-0
 	}
 
 	#

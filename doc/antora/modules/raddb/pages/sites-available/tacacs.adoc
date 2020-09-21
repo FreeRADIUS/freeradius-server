@@ -86,7 +86,7 @@ server tacacs {
 	recv Authentication {
 		if (&TACACS-Sequence-Number > 1) {
 			update request {
-				TACACS-Authentication-Type = &session-state:TACACS-Authentication-Type
+				TACACS-Authentication-Type = &session-state.TACACS-Authentication-Type
 			}
 		}
 		switch &TACACS-Authentication-Type {
@@ -97,8 +97,8 @@ server tacacs {
 					}
 				} else {
 					update request {
-						User-Name = &session-state:User-Name
-						User-Password = &session-state:User-Password
+						User-Name = &session-state.User-Name
+						User-Password = &session-state.User-Password
 					}
 				}
 				if (!&User-Name) {
@@ -144,7 +144,7 @@ server tacacs {
 					}
 				} else {
 					update request {
-						User-Name = &session-state:User-Name
+						User-Name = &session-state.User-Name
 					}
 				}
 				if (!&User-Password) {

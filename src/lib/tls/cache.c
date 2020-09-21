@@ -285,7 +285,7 @@ int fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session)
 	MEM(vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data));
 	fr_pair_value_memdup(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob), false);
 	RINDENT();
-	RDEBUG2("&session-state:%pP", vp);
+	RDEBUG2("&session-state.%pP", vp);
 	REXDENT();
 	fr_pair_add(&request->state, vp);
 

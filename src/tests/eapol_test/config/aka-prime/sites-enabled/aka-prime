@@ -2,8 +2,8 @@ server eap-aka-prime {
 	namespace = eap-aka-prime
 
 	recv Identity-Response {
-		"%{debug_attr:&session-state:}"
-		if (!&session-state:Tmp-String-0) {
+		"%{debug_attr:&session-state.}"
+		if (!&session-state.Tmp-String-0) {
 			update reply {
 				&Any-ID-Req := yes
 			}

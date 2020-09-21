@@ -159,7 +159,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state:");
+			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state.");
 
 			/*
 			 *	cert_vps have a different talloc parent, so we

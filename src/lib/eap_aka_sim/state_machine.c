@@ -350,7 +350,7 @@ static int identity_req_pairs_add(REQUEST *request, eap_aka_sim_session_t *eap_a
  * to form the real permanent ID.
  *
  * Otherwise copy the entire incoming Identity to the
- * &session-state:Permanent-Identity attribute.
+ * &session-state.Permanent-Identity attribute.
  *
  * @param[in] request		The current request.
  * @param[in] in		current identity.
@@ -419,7 +419,7 @@ static int identity_to_permanent_identity(REQUEST *request, VALUE_PAIR *in, eap_
 			fr_aka_sim_hint_byte(AKA_SIM_ID_TYPE_PERMANENT, expected_method),
 			fr_aka_sim_hint_byte(our_type, our_method));
 		RINDENT();
-		RDEBUG2("&session-state:%pP", vp);
+		RDEBUG2("&session-state.%pP", vp);
 		REXDENT();
 	} else {
 		/*
@@ -435,7 +435,7 @@ static int identity_to_permanent_identity(REQUEST *request, VALUE_PAIR *in, eap_
 
 		RDEBUG2("Stripping 'hint' byte from %s", attr_eap_aka_sim_permanent_identity->name);
 		RINDENT();
-		RDEBUG2("&session-state:%pP", vp);
+		RDEBUG2("&session-state.%pP", vp);
 		REXDENT();
 	}
 

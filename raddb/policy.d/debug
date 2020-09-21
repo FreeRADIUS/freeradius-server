@@ -38,7 +38,7 @@ debug_reply {
 #  Outputs the contents of the session state list in debugging (-X) mode
 #
 debug_session_state {
-	if ("%{debug_attr:session-state:[*]}" == '') {
+	if ("%{debug_attr:session-state.[*]}" == '') {
 		noop
 	}
 }
