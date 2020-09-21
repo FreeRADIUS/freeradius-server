@@ -3,13 +3,13 @@
 #
 
 update {
-	&request:Tmp-String-0 := 'foobarbaz'
-	&request:Tmp-Integer-0 := 123456789
-	&request:Tmp-IP-Address-0 := 192.0.2.1
-	&request:Tmp-IP-Address-0 += 192.0.2.2
-	&request:Tmp-IP-Address-0 += 192.0.2.3
-	&request:Tmp-IP-Address-0 += 192.0.2.2
-	&request:Tmp-IP-Address-0 += 192.0.2.4
+	&request.Tmp-String-0 := 'foobarbaz'
+	&request.Tmp-Integer-0 := 123456789
+	&request.Tmp-IP-Address-0 := 192.0.2.1
+	&request.Tmp-IP-Address-0 += 192.0.2.2
+	&request.Tmp-IP-Address-0 += 192.0.2.3
+	&request.Tmp-IP-Address-0 += 192.0.2.2
+	&request.Tmp-IP-Address-0 += 192.0.2.4
 }
 
 

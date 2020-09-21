@@ -2,7 +2,7 @@
 #  PRE: update if
 #
 update {
-	&request:Class := 0x00000101
+	&request.Class := 0x00000101
 }
 
 if (<integer>&Class[0] == 257) {

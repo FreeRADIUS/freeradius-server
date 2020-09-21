@@ -173,12 +173,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	}
 
 	if (chap->vp_length == 0) {
-		REDEBUG("&request:CHAP-Password is empty");
+		REDEBUG("&request.CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH + 1) {
-		REDEBUG("&request:CHAP-Password has invalid length");
+		REDEBUG("&request.CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -214,7 +214,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 
 		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge);
 		if (vp) {
-			RDEBUG2("Using challenge from &request:CHAP-Challenge");
+			RDEBUG2("Using challenge from &request.CHAP-Challenge");
 			p = vp->vp_octets;
 			length = vp->vp_length;
 		} else {

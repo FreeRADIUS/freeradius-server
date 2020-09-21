@@ -73,7 +73,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		 */
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
+			REDEBUG("Failed to find value for &request.Packet-Type");
 			return RLM_MODULE_FAIL;
 		}
 

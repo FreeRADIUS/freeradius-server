@@ -50,8 +50,8 @@ update request {
 
 # 6. Verify that the lease time is extended
 update {
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
-	&request:NAS-IP-Address := 127.0.0.2
+	&request.Framed-IP-Address := &reply:Framed-IP-Address
+	&request.NAS-IP-Address := 127.0.0.2
 	&control:Pool-Action := Renew
 }
 redis_ippool
@@ -116,7 +116,7 @@ if (&reply:Pool-Range && (&reply:Pool-Range == '192.168.0.0')) {
 
 # Change the ip address to one that doesn't exist in the pool and check we *can't* update it
 update request {
-	&request:Framed-IP-Address := 192.168.3.1
+	&request.Framed-IP-Address := 192.168.3.1
 }
 redis_ippool {
 	invalid = 1
@@ -128,7 +128,7 @@ if (notfound) {
 	test_fail
 }
 update request {
-	&request:Framed-IP-Address := 192.168.0.1
+	&request.Framed-IP-Address := 192.168.0.1
 }
 
 # 15. Now change the calling station ID and check that we *can't* update the lease

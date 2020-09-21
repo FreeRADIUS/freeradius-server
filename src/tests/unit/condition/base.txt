@@ -11,7 +11,7 @@
 #
 proto-dictionary radius
 
-condition &request:User-Name == &reply:User-Name
+condition &request.User-Name == &reply:User-Name
 match &User-Name == &reply:User-Name
 
 # All IP address literals should be parsed as prefixes
@@ -418,7 +418,7 @@ match ERROR offset 0 Cannot compare attributes of type 'string' and 'ipaddr'
 condition <ipaddr>127.0.0.1 == &Filter-Id
 match ERROR offset 0 Cannot compare types 'ipaddr' (cast) and 'string' (attr)
 
-condition &Tmp-Integer64-0 == &request:Foo-Stuff-Bar
+condition &Tmp-Integer64-0 == &request.Foo-Stuff-Bar
 match &Tmp-Integer64-0 == &Foo-Stuff-Bar
 
 condition &Tmp-Integer64-0 == &reply:Foo-Stuff-Bar
@@ -525,21 +525,21 @@ match ERROR offset 11 Invalid array index '-1' (should be between 0-1000)
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
 #
-condition request:Foo == 'request:Foo'
+condition request.Foo == 'request.Foo'
 match true
 
 # Bareword compared with bareword is true
-condition request:Foo+Bar == request:Foo+Bar
+condition request.Foo+Bar == request.Foo+Bar
 match true
 
-condition &request:Foo+Bar == 'request:Foo+Bar'
+condition &request.Foo+Bar == 'request.Foo+Bar'
 match ERROR offset 12 Unexpected text after attribute reference
 
-condition 'request:Foo+d' == &request:Foo+Bar
+condition 'request.Foo+d' == &request.Foo+Bar
 match ERROR offset 31 Unexpected text after attribute reference
 
 #  Attribute tags are not allowed for unknown attributes
-condition &request:FooBar:0 == &request:FooBar
+condition &request.FooBar:0 == &request.FooBar
 match ERROR offset 15 Unexpected text after attribute reference
 
 condition &not-a-list:User-Name == &not-a-list:User-Name

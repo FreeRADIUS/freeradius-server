@@ -6,15 +6,15 @@
 # 0. Check basic xlat parsing
 
 update request {
-	&Tmp-String-1 := "%{json_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_encode:&request:[*] }"
-	&Tmp-String-3 := "%{json_encode: &request:[*]}"
-	&Tmp-String-4 := "%{json_encode: 	 &request:[*]	}"
-	&Tmp-String-5 := "%{json_encode: &request:[*]    !&Filter-Id }"
-	&Tmp-String-6 := "%{json_encode:&request:[*] ! }"
+	&Tmp-String-1 := "%{json_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_encode:&request.[*] }"
+	&Tmp-String-3 := "%{json_encode: &request.[*]}"
+	&Tmp-String-4 := "%{json_encode: 	 &request.[*]	}"
+	&Tmp-String-5 := "%{json_encode: &request.[*]    !&Filter-Id }"
+	&Tmp-String-6 := "%{json_encode:&request.[*] ! }"
 #  Check defaults are the same as output_mode "object":
-	&Tmp-String-7 := "%{json_object_encode:&request:[*]}"
-	&Tmp-String-8 := "%{json_object_no_encode:&request:[*]}"
+	&Tmp-String-7 := "%{json_object_encode:&request.[*]}"
+	&Tmp-String-8 := "%{json_object_no_encode:&request.[*]}"
 }
 
 
@@ -67,8 +67,8 @@ update request {
 # decide that it's going to use a different ordering of the keys...
 
 update request {
-	&Tmp-String-1 := "%{json_object_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_object_ex_encode:&request:[*]}"
+	&Tmp-String-1 := "%{json_object_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_object_ex_encode:&request.[*]}"
 }
 
 if (&Tmp-String-1 == '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}') {
@@ -86,7 +86,7 @@ if (&Tmp-String-2 == '{"pf:User-Name":{"type":"string","value":["john"]},"pf:Fil
 # 1b. "object" empty inputs
 
 update request {
-	&Tmp-String-1 := "%{json_object_encode:!&request:[*]}"
+	&Tmp-String-1 := "%{json_object_encode:!&request.[*]}"
 	&Tmp-String-2 := "%{json_object_ex_encode:}"
 }
 
@@ -118,8 +118,8 @@ update request {
 # 2a. Output mode "object_simple" tests
 
 update request {
-	&Tmp-String-1 := "%{json_object_simple_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_object_simple_ex_encode:&request:[*]}"
+	&Tmp-String-1 := "%{json_object_simple_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_object_simple_ex_encode:&request.[*]}"
 }
 
 if (&Tmp-String-1 == '{"User-Name":"john","Filter-Id":["f1","f2"],"NAS-Port":999,"Service-Type":"Login-User"}') {
@@ -137,7 +137,7 @@ if (&Tmp-String-2 == '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2"],"pf:NA
 # 2b. "object_simple" empty inputs
 
 update request {
-	&Tmp-String-1 := "%{json_object_simple_encode:!&request:[*]}"
+	&Tmp-String-1 := "%{json_object_simple_encode:!&request.[*]}"
 	&Tmp-String-2 := "%{json_object_simple_ex_encode:}"
 }
 
@@ -169,8 +169,8 @@ update request {
 # 3a. Output mode "array" tests
 
 update request {
-	&Tmp-String-1 := "%{json_array_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_array_ex_encode:&request:[*]}"
+	&Tmp-String-1 := "%{json_array_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_array_ex_encode:&request.[*]}"
 }
 
 if (&Tmp-String-1 == '[{"name":"User-Name","type":"string","value":"john"},{"name":"Filter-Id","type":"string","value":"f1"},{"name":"Filter-Id","type":"string","value":"f2"},{"name":"NAS-Port","type":"uint32","value":999},{"name":"Service-Type","type":"uint32","value":"Login-User"}]') {
@@ -188,7 +188,7 @@ if (&Tmp-String-2 == '[{"name":"pf:User-Name","type":"string","value":["john"]},
 # 3b. "array" empty inputs
 
 update request {
-	&Tmp-String-1 := "%{json_array_encode:!&request:[*]}"
+	&Tmp-String-1 := "%{json_array_encode:!&request.[*]}"
 	&Tmp-String-2 := "%{json_array_ex_encode:}"
 }
 
@@ -220,8 +220,8 @@ update request {
 # 4a. Output mode "array_of_names" tests
 
 update request {
-	&Tmp-String-1 := "%{json_array_names_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_array_names_ex_encode:&request:[*]}"
+	&Tmp-String-1 := "%{json_array_names_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_array_names_ex_encode:&request.[*]}"
 }
 
 if (&Tmp-String-1 == '["User-Name","Filter-Id","Filter-Id","NAS-Port","Service-Type"]') {
@@ -239,7 +239,7 @@ if (&Tmp-String-2 == '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf:NAS-Port
 # 4b. "array_of_names" empty inputs
 
 update request {
-	&Tmp-String-1 := "%{json_array_names_encode:!&request:[*]}"
+	&Tmp-String-1 := "%{json_array_names_encode:!&request.[*]}"
 	&Tmp-String-2 := "%{json_array_names_ex_encode:}"
 }
 
@@ -271,8 +271,8 @@ update request {
 # 5a. Output mode "array_of_values" tests
 
 update request {
-	&Tmp-String-1 := "%{json_array_values_encode:&request:[*]}"
-	&Tmp-String-2 := "%{json_array_values_ex_encode:&request:[*]}"
+	&Tmp-String-1 := "%{json_array_values_encode:&request.[*]}"
+	&Tmp-String-2 := "%{json_array_values_ex_encode:&request.[*]}"
 }
 
 if (&Tmp-String-1 == '["john","f1","f2",999,"Login-User"]') {
@@ -290,7 +290,7 @@ if (&Tmp-String-2 == '["john","f1","f2","999","1"]') {
 # 5b. "array_of_values" empty inputs
 
 update request {
-	&Tmp-String-1 := "%{json_array_values_encode:!&request:[*]}"
+	&Tmp-String-1 := "%{json_array_values_encode:!&request.[*]}"
 	&Tmp-String-2 := "%{json_array_values_ex_encode:}"
 }
 

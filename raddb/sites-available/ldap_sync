@@ -110,10 +110,10 @@ server ldap {
 	#
 	#  A request will be generated with the following attributes:
 	#
-	#  - &request:LDAP-Sync-DN		the base_dn of the sync.
-	#  - &request:LDAP-Sync-Filter		the filter of the sync (optional).
-	#  - &request:LDAP-Sync-Scope		the scope of the sync (optional).
-	#  - &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+	#  - &request.LDAP-Sync-DN		the base_dn of the sync.
+	#  - &request.LDAP-Sync-Filter		the filter of the sync (optional).
+	#  - &request.LDAP-Sync-Scope		the scope of the sync (optional).
+	#  - &request.LDAP-Sync-attr		the attributes returned by the sync (optional).
 	#
 	#  You should use these attributes to uniquely identify the sync when retrieving
 	#  previous cookie values.
@@ -137,11 +137,11 @@ server ldap {
 	#
 	#  A request will be generated with the following attributes:
 	#
-	#  - &request:LDAP-Sync-DN		the base_dn of the sync.
-	#  - &request:LDAP-Sync-Cookie		the cookie value to store.
-	#  - &request:LDAP-Sync-Filter		the filter of the sync (optional).
-	#  - &request:LDAP-Sync-Scope		the scope of the sync (optional).
-	#  - &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+	#  - &request.LDAP-Sync-DN		the base_dn of the sync.
+	#  - &request.LDAP-Sync-Cookie		the cookie value to store.
+	#  - &request.LDAP-Sync-Filter		the filter of the sync (optional).
+	#  - &request.LDAP-Sync-Scope		the scope of the sync (optional).
+	#  - &request.LDAP-Sync-attr		the attributes returned by the sync (optional).
 	#
 	#  The return code of this section is ignored.
 	store Cookie {
@@ -158,14 +158,14 @@ server ldap {
 	#
 	#  A request will be generated with the following attributes:
 	#
-	#  - &request:LDAP-Sync-DN		the base_dn of the sync.
-	#  - &request:LDAP-Sync-Entry-UUID	the UUID of the object.
-	#  - &request:LDAP-Sync-Entry-DN	the DN of the object that was added.
+	#  - &request.LDAP-Sync-DN		the base_dn of the sync.
+	#  - &request.LDAP-Sync-Entry-UUID	the UUID of the object.
+	#  - &request.LDAP-Sync-Entry-DN	the DN of the object that was added.
 	#  - &*:*				attributes mapped from the LDAP entry to FreeRADIUS
 	#					attributes using the update section within the sync.
-	#  - &request:LDAP-Sync-Filter		the filter of the sync (optional).
-	#  - &request:LDAP-Sync-Scope		the scope of the sync (optional).
-	#  - &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+	#  - &request.LDAP-Sync-Filter		the filter of the sync (optional).
+	#  - &request.LDAP-Sync-Scope		the scope of the sync (optional).
+	#  - &request.LDAP-Sync-attr		the attributes returned by the sync (optional).
 	#
 	#  The return code of this section is ignored (for now).
 	recv Add {
@@ -182,14 +182,14 @@ server ldap {
 	#
 	#  A request will be generated with the following attributes:
 	#
-	#  - &request:LDAP-Sync-DN		the base_dn of the sync.
-	#  - &request:LDAP-Sync-Entry-UUID	the UUID of the object.
-	#  - &request:LDAP-Sync-Entry-DN	the DN of the object that was added.
+	#  - &request.LDAP-Sync-DN		the base_dn of the sync.
+	#  - &request.LDAP-Sync-Entry-UUID	the UUID of the object.
+	#  - &request.LDAP-Sync-Entry-DN	the DN of the object that was added.
 	#  - &*:*				attributes mapped from the LDAP entry to FreeRADIUS
 	#					attributes using the update section within the sync.
-	#  - &request:LDAP-Sync-Filter		the filter of the sync (optional).
-	#  - &request:LDAP-Sync-Scope		the scope of the sync (optional).
-	#  - &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+	#  - &request.LDAP-Sync-Filter		the filter of the sync (optional).
+	#  - &request.LDAP-Sync-Scope		the scope of the sync (optional).
+	#  - &request.LDAP-Sync-attr		the attributes returned by the sync (optional).
 	#
 	#  The return code of this section is ignored (for now).
 	recv Modify {
@@ -206,12 +206,12 @@ server ldap {
 	#
 	#  A request will be generated with the following attributes:
 	#
-	#  - &request:LDAP-Sync-DN		the base_dn of the sync.
-	#  - &request:LDAP-Sync-Entry-UUID	the UUID of the object.
-	#  - &request:LDAP-Sync-Entry-DN	the DN of the object that was added (optional).
-	#  - &request:LDAP-Sync-Filter		the filter of the sync (optional).
-	#  - &request:LDAP-Sync-Scope		the scope of the sync (optional).
-	#  - &request:LDAP-Sync-attr		the attributes returned by the sync (optional).
+	#  - &request.LDAP-Sync-DN		the base_dn of the sync.
+	#  - &request.LDAP-Sync-Entry-UUID	the UUID of the object.
+	#  - &request.LDAP-Sync-Entry-DN	the DN of the object that was added (optional).
+	#  - &request.LDAP-Sync-Filter		the filter of the sync (optional).
+	#  - &request.LDAP-Sync-Scope		the scope of the sync (optional).
+	#  - &request.LDAP-Sync-attr		the attributes returned by the sync (optional).
 	#
 	#  The return code of this section is ignored (for now).
 	recv Delete {

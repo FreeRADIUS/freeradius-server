@@ -71,6 +71,6 @@ cache cache_eap {
 	#
 	update reply {
 		&reply: += &reply:
-		&control:State := &request:State
+		&control:State := &request.State
 	}
 }

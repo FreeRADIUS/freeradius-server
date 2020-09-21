@@ -2,37 +2,37 @@
 # PRE: update if
 #
 update {
-	&request:Tmp-String-0 := "This is a string"
-	&request:Tmp-String-0 += "This is another one"
-	&request:Tmp-Octets-0 := 0x000504030201
-	&request:Tmp-Integer-0 := 7331
+	&request.Tmp-String-0 := "This is a string"
+	&request.Tmp-String-0 += "This is another one"
+	&request.Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-Integer-0 := 7331
 }
 
 update {
-	&request:Tmp-String-1 := "%{concat:, %{pairs:request:[*]}}"
-	&request:Tmp-String-2 := "%{pairs:Tmp-String-0}"
-	&request:Tmp-String-3 := "%{concat:, %{pairs:Tmp-String-0[*]}}"
-	&request:Tmp-String-4 := "%{pairs:control:}"
-	&request:Tmp-String-5 := "%{pairs:control:User-Name}"
+	&request.Tmp-String-1 := "%{concat:, %{pairs:request.[*]}}"
+	&request.Tmp-String-2 := "%{pairs:Tmp-String-0}"
+	&request.Tmp-String-3 := "%{concat:, %{pairs:Tmp-String-0[*]}}"
+	&request.Tmp-String-4 := "%{pairs:control:}"
+	&request.Tmp-String-5 := "%{pairs:control:User-Name}"
 }
 
-if (&request:Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
+if (&request.Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
 	test_fail
 }
 
-if (&request:Tmp-String-2 != "Tmp-String-0 = \"This is a string\"") {
+if (&request.Tmp-String-2 != "Tmp-String-0 = \"This is a string\"") {
 	test_fail
 }
 
-if (&request:Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
+if (&request.Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
 	test_fail
 }
 
-if (&request:Tmp-String-4 != "Cleartext-Password = \"hello\"") {
+if (&request.Tmp-String-4 != "Cleartext-Password = \"hello\"") {
 	test_fail
 }
 
-if (&request:Tmp-String-5 != '') {
+if (&request.Tmp-String-5 != '') {
 	test_fail
 }
 

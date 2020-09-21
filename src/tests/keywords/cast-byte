@@ -2,7 +2,7 @@
 #  PRE: update if
 #
 update {
-       &request:Class := 0xad
+       &request.Class := 0xad
 }
 
 if (<byte>&Class == 173) {

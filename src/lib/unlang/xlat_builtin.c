@@ -831,7 +831,7 @@ done:
  *
  * Example:
 @verbatim
-"%{debug_attr:&request:[*]}"
+"%{debug_attr:&request.[*]}"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2157,8 +2157,8 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example:
 @verbatim
-"%{pairs:request:[*]}" == "User-Name = 'foo'User-Password = 'bar'"
-"%{concat:, %{pairs:request:[*]}}" == "User-Name = 'foo', User-Password = 'bar'"
+"%{pairs:request.[*]}" == "User-Name = 'foo'User-Password = 'bar'"
+"%{concat:, %{pairs:request.[*]}}" == "User-Name = 'foo', User-Password = 'bar'"
 @endverbatim
  *
  * @see #xlat_func_concat

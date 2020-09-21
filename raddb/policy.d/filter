@@ -133,7 +133,7 @@ filter_inner_identity {
 	#
 	#  No names, reject.
 	#
-	if (!&outer.request:User-Name || !&User-Name) {
+	if (!&outer.request.User-Name || !&User-Name) {
 		update request {
 			&Module-Failure-Message += "User-Name is required for tunneled authentication"
 		}
@@ -147,11 +147,11 @@ filter_inner_identity {
 	#  If the NAIs are the same, it violates user privacy,
 	#  but is allowed.
 	#
-	if (&outer.request:User-Name != &User-Name) {
+	if (&outer.request.User-Name != &User-Name) {
 		#
 		#  Get the outer realm.
 		#
-		if (&outer.request:User-Name =~ /@([^@]+)$/) {
+		if (&outer.request.User-Name =~ /@([^@]+)$/) {
 			update request {
 				&Outer-Realm-Name = "%{1}"
 			}
@@ -163,7 +163,7 @@ filter_inner_identity {
 			#  We don't check for the full "anonymous", because
 			#  some vendors don't follow the standards.
 			#
-			if (&outer.request:User-Name !~ /^(anon|@)/) {
+			if (&outer.request.User-Name !~ /^(anon|@)/) {
 				update request {
 					&Module-Failure-Message += "User-Name is not anonymized"
 				}
@@ -178,7 +178,7 @@ filter_inner_identity {
 		#  Otherwise, you could log in as outer "bob", and inner "doug",
 		#  and we'd have no idea which one was correct.
 		#
-		elsif (&outer.request:User-Name !~ /^anon/) {
+		elsif (&outer.request.User-Name !~ /^anon/) {
 			update request {
 				&Module-Failure-Message += "User-Name is not anonymized"
 			}

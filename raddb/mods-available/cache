@@ -167,7 +167,7 @@ cache {
 	#  add_stats::
 	#
 	#  If `yes` the following attributes will be added to the request:
-	#  * `&request:Cache-Entry-Hits` - The number of times this entry
+	#  * `&request.Cache-Entry-Hits` - The number of times this entry
 	#  has been retrieved.
 	#
 	#  NOTE: Not supported by the `rlm_cache_memcached` module.

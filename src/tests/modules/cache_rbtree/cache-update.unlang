@@ -2,7 +2,7 @@
 #  PRE: cache-logic
 #
 update {
-	&request:Tmp-String-0 := 'testkey'
+	&request.Tmp-String-0 := 'testkey'
 
 	# Reply attributes
 	&reply:Reply-Message := 'hello'

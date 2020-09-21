@@ -2,50 +2,50 @@
 # PRE: update if
 #
 update {
-	&request:Tmp-String-0 := "This is a string\n"
-	&request:Tmp-Octets-0 := 0x000504030201
-	&request:Tmp-String-1 := "what do ya want for nothing?"
-	&request:Tmp-String-2 := "Jefe"
-	&request:Tmp-String-3 := ""
+	&request.Tmp-String-0 := "This is a string\n"
+	&request.Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-String-1 := "what do ya want for nothing?"
+	&request.Tmp-String-2 := "Jefe"
+	&request.Tmp-String-3 := ""
 }
 
 update {
-	&request:Tmp-Octets-2 := "%{sha1:This is a string\n}"
-	&request:Tmp-Octets-3 := "%{sha1:%{Tmp-String-0}}"
-	&request:Tmp-Octets-4 := "%{sha1:%{request.Tmp-String-0}}"
-	&request:Tmp-Octets-5 := "%{sha1:%{request.Tmp-Octets-9}}"
-	&request:Tmp-Octets-6 := "%{hmacsha1:%{Tmp-String-1} %{Tmp-String-2}}"
-	&request:Tmp-Octets-7 := "%{hmacsha1:%{Tmp-String-3} %{Tmp-String-3}}"
-	&request:Tmp-Octets-8 := "%{hmacsha1:%{Tmp-String-1} }"
+	&request.Tmp-Octets-2 := "%{sha1:This is a string\n}"
+	&request.Tmp-Octets-3 := "%{sha1:%{Tmp-String-0}}"
+	&request.Tmp-Octets-4 := "%{sha1:%{request.Tmp-String-0}}"
+	&request.Tmp-Octets-5 := "%{sha1:%{request.Tmp-Octets-9}}"
+	&request.Tmp-Octets-6 := "%{hmacsha1:%{Tmp-String-1} %{Tmp-String-2}}"
+	&request.Tmp-Octets-7 := "%{hmacsha1:%{Tmp-String-3} %{Tmp-String-3}}"
+	&request.Tmp-Octets-8 := "%{hmacsha1:%{Tmp-String-1} }"
 }
 
 #
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
 #
-if (&request:Tmp-Octets-2 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&request.Tmp-Octets-2 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-3 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&request.Tmp-Octets-3 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-4 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&request.Tmp-Octets-4 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
 #
 # SHA1 of empty string
 #
-if (&request:Tmp-Octets-5 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
+if (&request.Tmp-Octets-5 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
 	test_fail
 }
 
 #
 #  SHA1 HMAC with attribute references
 #
-if (&request:Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
+if (&request.Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
 	test_fail
 }
 

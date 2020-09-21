@@ -26,8 +26,8 @@ if (updated) {
 #  Attempt to reserve an IP address by performing a renew
 #
 update {
-	&request:Framed-IP-Address := 192.168.0.1
-	&request:NAS-IP-Address := 127.0.0.1
+	&request.Framed-IP-Address := 192.168.0.1
+	&request.NAS-IP-Address := 127.0.0.1
 	&control:Pool-Action := Renew
 }
 redis_ippool

@@ -50,6 +50,6 @@ the child is running, the parent is suspended.  Once the child
 finishes, it is deleted, and is no longer accessible to the parent.
 
 .Examples
-`&parent.request:User-Name` +
+`&parent.request.User-Name` +
 `&parent.reply:Reply-Message` +
 `&parent.parent.session-state:Filter-Id`

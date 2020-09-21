@@ -36,7 +36,7 @@ if (&reply:Framed-IP-Address == 192.168.0.1) {
 #  Release the IP address
 #
 update {
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
+	&request.Framed-IP-Address := &reply:Framed-IP-Address
 	&control:Pool-Action := Release
 }
 redis_ippool {
@@ -99,7 +99,7 @@ if ("%{expr:%{redis:ZSCORE '{%{control.Pool-Name}%}:pool' '%{reply.Framed-IP-Add
 #  Release the IP address again (should still be fine)
 #
 update {
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
+	&request.Framed-IP-Address := &reply:Framed-IP-Address
 	&control:Pool-Action := Release
 }
 redis_ippool {

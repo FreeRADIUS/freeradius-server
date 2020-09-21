@@ -60,7 +60,7 @@ permit_only_eap {
 		#  PEAP and EAP-FAST require EAP inside of
 		#  the tunnel, so this check is OK.
 		#  If so, then there MUST be an outer EAP message.
-		if (!&outer.request || !&outer.request:EAP-Message) {
+		if (!&outer.request || !&outer.request.EAP-Message) {
 			reject
 		}
 	}
@@ -92,8 +92,8 @@ remove_reply_message_if_eap {
 #
 copy_request_to_tunnel {
 	update request {
-		Calling-Station-Id = &outer.request:Calling-Station-Id
-		Called-Station-Id = &outer.request:Called-Station-Id
+		Calling-Station-Id = &outer.request.Calling-Station-Id
+		Called-Station-Id = &outer.request.Called-Station-Id
 	}
 }
 

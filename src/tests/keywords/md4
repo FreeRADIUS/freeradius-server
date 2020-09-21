@@ -2,11 +2,11 @@
 # PRE: update if
 #
 update {
-	&request:Tmp-String-0 := "This is a string\n"
-	&request:Tmp-Octets-0 := 0x000504030201
-	&request:Tmp-String-1 := "what do ya want for nothing?"
-	&request:Tmp-String-2 := "Jefe"
-	&request:Tmp-String-3 := ""
+	&request.Tmp-String-0 := "This is a string\n"
+	&request.Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-String-1 := "what do ya want for nothing?"
+	&request.Tmp-String-2 := "Jefe"
+	&request.Tmp-String-3 := ""
 }
 
 

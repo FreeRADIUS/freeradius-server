@@ -27,7 +27,7 @@ update control {
 }
 
 foreach &control:Calling-Station-Id {
-	if (&request:Calling-Station-Id == "%{Foreach-Variable-0}") {
+	if (&request.Calling-Station-Id == "%{Foreach-Variable-0}") {
 		success
 		break
 	}

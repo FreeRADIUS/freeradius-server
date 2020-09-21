@@ -67,8 +67,8 @@ how it works.
 #	User-Name
 #	Acct-Session-Id
 #	subrequest Disconnect-Request {
-#	       &User-Name = &parent.request:User-Name
-#	       &Acct-Session-Id = &parent.request:Acct-Session-Id
+#	       &User-Name = &parent.request.User-Name
+#	       &Acct-Session-Id = &parent.request.Acct-Session-Id
 #	       &NAS-IP-Address = &parent.NAS-IP-Address}
 #	       ...
 #	}
@@ -85,13 +85,13 @@ server originate-coa.example.com {
 recv Accounting-Request {
 	subrequest Disconnect-Request {
 		update request {
-			&User-Name := &parent.request:User-Name
-			&Acct-Session-Id := &parent.request:Acct-Session-Id
-			&NAS-Identifier := &parent.request:NAS-Identifier
-			&NAS-IP-Address := &parent.request:NAS-IP-Addres
-			&NAS-IPv6-Address := &parent.request:NAS-IPv6-Address
-			&NAS-Port := &parent.request:NAS-Port
-			&Framed-IP-Address := &parent.request:Framed-IP-Address
+			&User-Name := &parent.request.User-Name
+			&Acct-Session-Id := &parent.request.Acct-Session-Id
+			&NAS-Identifier := &parent.request.NAS-Identifier
+			&NAS-IP-Address := &parent.request.NAS-IP-Addres
+			&NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
+			&NAS-Port := &parent.request.NAS-Port
+			&Framed-IP-Address := &parent.request.Framed-IP-Address
 		}
 		radius.coa
 	}

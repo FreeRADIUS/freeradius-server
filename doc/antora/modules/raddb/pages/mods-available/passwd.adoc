@@ -56,7 +56,7 @@ passwd file.
   * Attributes marked as `=` are added to the `&reply:` list,
 instead of default `&control:` list.
 
-  * Attributes marked as `~` are added to the `&request:` list.
+  * Attributes marked as `~` are added to the `&request.` list.
 
   * Field marked as `,` may contain a comma separated list of attributes.
 

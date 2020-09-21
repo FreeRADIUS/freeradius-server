@@ -4,8 +4,8 @@
 #  Check explode works correctly
 #
 update {
-	&request:Class := '1=1|my_attr=2|my_attr=hello|'
-	&request:Calling-Station-ID += '|'
+	&request.Class := '1=1|my_attr=2|my_attr=hello|'
+	&request.Calling-Station-ID += '|'
 	&control:User-Name += '|hello|goodbye'
 	&control:User-Name += '|morning|night|1|'
 	&control:Reply-Message := 'Can\'t touch this'

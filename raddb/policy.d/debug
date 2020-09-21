@@ -11,7 +11,7 @@ debug_control {
 #  Outputs the contents of the request list in debugging (-X) mode
 #
 debug_request {
-	if ("%{debug_attr:request:[*]}" == '') {
+	if ("%{debug_attr:request.[*]}" == '') {
 		noop
 	}
 }

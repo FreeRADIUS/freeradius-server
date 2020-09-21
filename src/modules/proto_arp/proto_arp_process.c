@@ -79,7 +79,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 
 		dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint16(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request:ARP-Operation");
+			REDEBUG("Failed to find value for &request.ARP-Operation");
 			return RLM_MODULE_FAIL;
 		}
 

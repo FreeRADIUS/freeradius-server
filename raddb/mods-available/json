@@ -244,7 +244,7 @@ json {
 #  .Example
 #
 #  ```
-#  %{json_encode:&request:[*] !&User-Password}
+#  %{json_encode:&request.[*] !&User-Password}
 #  ```
 #
 #  In another (contrived) example, all the attributes in the RADIUS request will
@@ -254,7 +254,7 @@ json {
 #  .Example
 #
 #  ```
-#  %{json_encode:&request:[*] !&reply:[*] &control:User-Name}
+#  %{json_encode:&request.[*] !&reply:[*] &control:User-Name}
 #  ```
 #
 #  #### Output format modes

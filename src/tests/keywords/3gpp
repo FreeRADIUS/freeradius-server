@@ -6,12 +6,12 @@ update request {
 }
 
 #
-#  "request:[0-9]" should be parsed as a list followed
+#  "request.[0-9]" should be parsed as a list followed
 #  by an attribute.
 #
 update control {
 	&Tmp-String-0 := &3GPP-IMSI
-	&Tmp-String-1 := &request:3GPP-IMSI
+	&Tmp-String-1 := &request.3GPP-IMSI
 }
 
 success

@@ -2,21 +2,21 @@
 # PRE: update if
 #
 update {
-	&request:Tmp-String-0 := "ab c"
-	&request:Tmp-String-0 += "de fg"
-	&request:Tmp-Integer-0 := 123
+	&request.Tmp-String-0 := "ab c"
+	&request.Tmp-String-0 += "de fg"
+	&request.Tmp-Integer-0 := 123
 }
 
 update {
-	&request:Tmp-String-1 := "%{concat:, %{request[*]}}"
-	&request:Tmp-String-2 := "%{concat:, %{Tmp-String-0[*]}}"
+	&request.Tmp-String-1 := "%{concat:, %{request[*]}}"
+	&request.Tmp-String-2 := "%{concat:, %{Tmp-String-0[*]}}"
 }
 
-if (&request:Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
+if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 	test_fail
 }
 
-if (&request:Tmp-String-2 != "ab c, de fg") {
+if (&request.Tmp-String-2 != "ab c, de fg") {
 	test_fail
 }
 

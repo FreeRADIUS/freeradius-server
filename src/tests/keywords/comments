@@ -16,22 +16,22 @@ update {					#}'{ Opening block with extra special chars {} '"
        &control:User-Name := 'whatever'		# do some random stuff
 }						#{'} Closing block with extra special chars {} '"
 
-update { &request:Tmp-String-0 := 'candy' }	# Comment after unicorn block
+update { &request.Tmp-String-0 := 'candy' }	# Comment after unicorn block
 
 update request {
-	&request:Reply-Message += 'I am #literally a comment #'
-	&request:Reply-Message += "I am #literally a comment #"
+	&request.Reply-Message += 'I am #literally a comment #'
+	&request.Reply-Message += "I am #literally a comment #"
 }
 
-if (&request:Tmp-String-0 != 'candy') {
+if (&request.Tmp-String-0 != 'candy') {
 	test_fail
 }
 
-if (&request:Reply-Message[0] != 'I am #literally a comment #') {
+if (&request.Reply-Message[0] != 'I am #literally a comment #') {
 	test_fail
 }
 
-if (&request:Reply-Message[1] != "I am #literally a comment #") {
+if (&request.Reply-Message[1] != "I am #literally a comment #") {
 	test_fail
 }
 

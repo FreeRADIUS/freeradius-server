@@ -172,7 +172,7 @@ server coa {
 							#  The subrequest begins empty, so initially copy all attributes
 							#  from the incoming request.
 							#
-							&request := &parent.request:[*]
+							&request := &parent.request.[*]
 
 							#
 							#  Add/override the session identification attributes looked up

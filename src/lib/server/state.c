@@ -616,7 +616,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	 */
 	vp = fr_pair_find_by_da(request->packet->vps, state->da);
 	if (!vp) {
-		RDEBUG3("No &request:State attribute, can't restore &session-state");
+		RDEBUG3("No &request.State attribute, can't restore &session-state");
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
 		return;
 	}

@@ -1,6 +1,6 @@
 imap_try_tls.authenticate
 
-# if (&request:cert-attrs.Issuer) {
+# if (&request.cert-attrs.Issuer) {
 #        test_fail
 #}
 # else {
@@ -17,7 +17,7 @@ else {
     reject
 }
 
-if (&request:TLS-Cert-Issuer =~ /@example\.org/) {
+if (&request.TLS-Cert-Issuer =~ /@example\.org/) {
         test_pass
 } else {
 	test_fail

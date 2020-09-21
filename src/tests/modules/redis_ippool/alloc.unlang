@@ -95,9 +95,9 @@ if (&reply:Session-Timeout == 30) {
 }
 
 update {
-	&request:Pool-Range := &reply:Pool-Range
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
-	&request:Session-Timeout := &reply:Session-Timeout # We should get the same lease time
+	&request.Pool-Range := &reply:Pool-Range
+	&request.Framed-IP-Address := &reply:Framed-IP-Address
+	&request.Session-Timeout := &reply:Session-Timeout # We should get the same lease time
 	&reply: !* ANY
 }
 
@@ -121,7 +121,7 @@ if (updated) {
 #
 #  Check the ranges are the same
 #
-if (&request:Pool-Range == &reply:Pool-Range) {
+if (&request.Pool-Range == &reply:Pool-Range) {
 	test_pass
 } else {
 	test_fail
@@ -130,7 +130,7 @@ if (&request:Pool-Range == &reply:Pool-Range) {
 #
 #  Check the IP addresses are the same
 #
-if (&request:Framed-IP-Address == &reply:Framed-IP-Address) {
+if (&request.Framed-IP-Address == &reply:Framed-IP-Address) {
 	test_pass
 } else {
 	test_fail
@@ -142,7 +142,7 @@ if (&request:Framed-IP-Address == &reply:Framed-IP-Address) {
 #  The fudge factor is to allow for delays running ippool tool and script interpretation
 #  as we should be allocating the same lesase as before, but its TTL could be slightly lower.
 #
-if ("%{expr:&request:Session-Timeout - &reply:Session-Timeout}" < 5) {
+if ("%{expr:&request.Session-Timeout - &reply:Session-Timeout}" < 5) {
 	test_pass
 } else {
 	test_fail

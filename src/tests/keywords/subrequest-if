@@ -3,7 +3,7 @@
 #
 subrequest Access-Request {
 	update request {
-		&User-Name := &parent.request:User-Name
+		&User-Name := &parent.request.User-Name
 	}
 
 	if (!&User-Name) {

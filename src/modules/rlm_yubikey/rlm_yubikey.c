@@ -315,11 +315,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 
 		RINDENT();
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("&request:%pP", vp);
-			RDEBUG3("&request:%pP", password);
+			RDEBUG3("&request.%pP", vp);
+			RDEBUG3("&request.%pP", password);
 		} else {
-			RDEBUG2("&request:%s := <<< secret >>>", vp->da->name);
-			RDEBUG2("&request:%s := <<< secret >>>", password->da->name);
+			RDEBUG2("&request.%s := <<< secret >>>", vp->da->name);
+			RDEBUG2("&request.%s := <<< secret >>>", password->da->name);
 		}
 		REXDENT();
 

@@ -47,37 +47,37 @@ update control {
 #
 #  Mmmm O(N^2)
 #
-if (&request:Tmp-String-0[*] != &control:Tmp-String-0[*]) {
+if (&request.Tmp-String-0[*] != &control:Tmp-String-0[*]) {
 	test_fail
 }
 
-if (&request:Tmp-String-0[*] == &control:Tmp-String-1[*]) {
+if (&request.Tmp-String-0[*] == &control:Tmp-String-1[*]) {
 	test_fail
 }
 
-if (&request:Tmp-String-1[*] == &control:Tmp-String-0[*]) {
+if (&request.Tmp-String-1[*] == &control:Tmp-String-0[*]) {
 	test_fail
 }
 
 #
 #  Integer comparison and normalisation
 #
-if (&request:Tmp-Integer-0 != &control:Tmp-Integer-0) {
+if (&request.Tmp-Integer-0 != &control:Tmp-Integer-0) {
 	test_fail
 }
 
 #
-#  if any value of request:Tmp-Integer-0 > any value of
-#  request:Tmp-Integer-1 then evaluate to true
+#  if any value of request.Tmp-Integer-0 > any value of
+#  request.Tmp-Integer-1 then evaluate to true
 #
-if (&request:Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
+if (&request.Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
 	test_fail
 }
 
 #
 #  Compiled regex comparisons
 #
-if (&request:Tmp-String-1[*] !~ /PEONS$/) {
+if (&request.Tmp-String-1[*] !~ /PEONS$/) {
 	test_fail
 }
 
@@ -92,19 +92,19 @@ if (&control:Tmp-String-1 =~ /DINKS$/) {
 #
 #  Dynamic regex comparisons
 #
-if (&request:Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
+if (&request.Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
 	test_fail
 }
 
-if (&request:Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
+if (&request.Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
 	test_fail
 }
 
-if (&request:Tmp-String-1 !~ /%{Tmp-String-2[2]}$/) {
+if (&request.Tmp-String-1 !~ /%{Tmp-String-2[2]}$/) {
 	test_fail
 }
 
-if (&request:Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
+if (&request.Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
 	test_fail
 }
 
@@ -126,11 +126,11 @@ if (&control:Tmp-String-1[*] == 'foo') {
 	test_fail
 }
 
-if (&request:Tmp-Integer-0[*] > 10) {
+if (&request.Tmp-Integer-0[*] > 10) {
 	test_fail
 }
 
-if (!(&request:Tmp-Integer-0[*] < 10)) {
+if (!(&request.Tmp-Integer-0[*] < 10)) {
 	test_fail
 }
 

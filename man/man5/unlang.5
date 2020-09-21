@@ -313,7 +313,7 @@ parent.
 .br
 		update request {
 .br
-			&User-Name = &parent.request:User-Name
+			&User-Name = &parent.request.User-Name
 .br
 			...
 .br
@@ -473,7 +473,7 @@ an attribute of the given name.  Some examples are:
 .DS
 	User-Name
 .br
-	request:User-Name # same as above
+	request.User-Name # same as above
 .br
 	reply:User-Name
 .br
@@ -481,7 +481,7 @@ an attribute of the given name.  Some examples are:
 .br
 	Cisco-AVPAir[2]
 .br
-	outer.request:User-Name # from inside of a TTLS/PEAP tunnel
+	outer.request.User-Name # from inside of a TTLS/PEAP tunnel
 .DE
 Note that unlike C, there is no way to define new attributes at
 run-time.  They MUST be declared in a dictionary file, and loaded when
@@ -968,7 +968,7 @@ Generate HMAC-SHA1 of input data.
 .IP %{pairs:<list_or_attr>}
 Serialize attributes as comma-delimited string
 
-e.g. "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."
+e.g. "%{pairs:request.}" == "User-Name = 'foo', User-Password = 'bar', ..."
 
 .IP %{base64:<string>}
 Encode string as base64.
@@ -1095,7 +1095,7 @@ string.
 When the value is an an attribute reference, it must take the form of
 "&Attribute-Name".  The leading "&" signifies that the value is a
 reference.  The "Attribute-Name" is an attribute name, such as
-"User-Name" or "request:User-Name".  When an attribute reference is
+"User-Name" or "request.User-Name".  When an attribute reference is
 used, both attributes must have the same data type.  For example,
 "User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
 and "NAS-Port" is an integer.

@@ -760,7 +760,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 	if (t->username) {
 		vp = fr_pair_copy(fake->packet, t->username);
 		fr_pair_add(&fake->packet->vps, vp);
-		RDEBUG2("Setting &request:User-Name from tunneled (inner) identity \"%s\"",
+		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");

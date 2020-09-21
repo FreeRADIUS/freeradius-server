@@ -2,7 +2,7 @@
 #  PRE:
 #
 update {
-	&request:Tmp-String-0 := 'testkey'
+	&request.Tmp-String-0 := 'testkey'
 }
 
 
@@ -22,7 +22,7 @@ else {
 }
 
 # 1. Check the module didn't perform a merge
-if (&request:Tmp-String-1) {
+if (&request.Tmp-String-1) {
 	test_fail
 }
 else {
@@ -59,7 +59,7 @@ else {
 }
 
 # 5.
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -80,7 +80,7 @@ else {
 }
 
 # 7.
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -184,7 +184,7 @@ else {
 }
 
 # 17.
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -208,7 +208,7 @@ else {
 }
 
 # 19. Request Tmp-String-1 shouldn't have been updated yet
-if (&request:Tmp-String-1 == &control:Tmp-String-1) {
+if (&request.Tmp-String-1 == &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -228,7 +228,7 @@ else {
 }
 
 # 21. Request Tmp-String-1 still shouldn't have been updated yet
-if (&request:Tmp-String-1 == &control:Tmp-String-1) {
+if (&request.Tmp-String-1 == &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -245,7 +245,7 @@ else {
 }
 
 # 23. Request Tmp-String-1 should now have been updated
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -267,7 +267,7 @@ else {
 }
 
 # 25. Request Tmp-String-1 should now have been updated
-if (&request:Tmp-String-1 != &control:Tmp-String-1) {
+if (&request.Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
@@ -275,7 +275,7 @@ else {
 }
 
 # 26. Check Cache-Entry-Hits is updated as we expect
-if (&request:Cache-Entry-Hits != 0) {
+if (&request.Cache-Entry-Hits != 0) {
 	test_fail
 }
 else {
@@ -283,7 +283,7 @@ else {
 }
 
 cache
-if (&request:Cache-Entry-Hits != 1) {
+if (&request.Cache-Entry-Hits != 1) {
 	test_fail
 }
 else {

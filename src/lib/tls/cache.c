@@ -41,7 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  * Adds the following attributes to the request:
  *
- *	- &request:Session-Id
+ *	- &request.Session-Id
  *
  * Session identity will contain the binary session key used to create, retrieve
  * and delete cache entries related to the SSL session.

@@ -44,10 +44,10 @@ and can create any kind of packet.
 ----
 subrequest Disconnect-Request {
     update request {
-        &User-Name := &parent.request:User-Name
-        &NAS-IP-Address := &parent.request:NAS-IP-Address
-        &NAS-Port := &parent.request:NAS-Port
-        &Acct-Session-Id := &parent.request:Acct-Session-Id
+        &User-Name := &parent.request.User-Name
+        &NAS-IP-Address := &parent.request.NAS-IP-Address
+        &NAS-Port := &parent.request.NAS-Port
+        &Acct-Session-Id := &parent.request.Acct-Session-Id
     }
 
     radius
@@ -67,7 +67,7 @@ parsed in the context of the new protocol.
 ----
 subrequest dhcpv4.DHCP-Discover {
     update request {
-        &DHCP-Your-IP-Address := &parent.request:Framed-IP-Address
+        &DHCP-Your-IP-Address := &parent.request.Framed-IP-Address
         ...
     }
 
@@ -97,10 +97,10 @@ request, the child can no longer access any attributes in the parent.
 ----
 subrequest Disconnect-Request {
     update request {
-        &User-Name := &parent.request:User-Name
-        &NAS-IP-Address := &parent.request:NAS-IP-Address
-        &NAS-Port := &parent.request:NAS-Port
-        &Acct-Session-Id := &parent.request:Acct-Session-Id
+        &User-Name := &parent.request.User-Name
+        &NAS-IP-Address := &parent.request.NAS-IP-Address
+        &NAS-Port := &parent.request.NAS-Port
+        &Acct-Session-Id := &parent.request.Acct-Session-Id
     }
 
     detach

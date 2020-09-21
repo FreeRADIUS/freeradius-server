@@ -137,15 +137,15 @@ a different way from the parent `User-Name`, and it sees a
 parallel empty {
     group {
         update request {
-            &User-Name := "%{&parent.request:User-Name}@example.org"
+            &User-Name := "%{&parent.request.User-Name}@example.org"
             &User-Password := "hello"
         }
         radius1
     }
     group {
         update request {
-            &User-Name := "%{&parent.request:User-Name}@example.com"
-            &User-Password := &parent.request:User-Password
+            &User-Name := "%{&parent.request.User-Name}@example.com"
+            &User-Password := &parent.request.User-Password
         }
         radius2
     }

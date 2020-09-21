@@ -136,7 +136,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example:
 @verbatim
-%{dhcpv4_encode:&request:[*]}
+%{dhcpv4_encode:&request.[*]}
 @endverbatim
  *
  * @ingroup xlat_functions

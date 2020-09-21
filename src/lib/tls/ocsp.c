@@ -122,7 +122,7 @@ static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
 
 /** Store OCSP response as a TLS-OCSP-Response attribute
  *
- * @note Adds &request:TLS-OCSP-Response to the current request, and adds
+ * @note Adds &request.TLS-OCSP-Response to the current request, and adds
  *	stapling data to the current SSL session.
  *
  * @param out		Where to write the TLS-OCSP-Response attribute.  Will also

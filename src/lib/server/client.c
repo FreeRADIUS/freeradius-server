@@ -963,7 +963,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 	fr_cursor_init(&cursor, &request->control);
 
-	RDEBUG2("Converting &request:control to client {...} section");
+	RDEBUG2("Converting &request.control to client {...} section");
 	RINDENT();
 
 	for (vp = fr_cursor_init(&cursor, &request->control);

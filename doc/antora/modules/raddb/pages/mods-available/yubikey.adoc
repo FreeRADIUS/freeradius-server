@@ -25,8 +25,8 @@ Yubikey defaults to a 6 byte ID (2 * 6 = 12)
 split:: If true, the authorize method of `rlm_yubikey` will attempt to split the
 value of `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`, into the user's password, and the OTP token.
 
-NOTE: If enabled and successful, the value of `&request:User-Password` will be
-truncated and `&request:Yubikey-OTP` will be added.
+NOTE: If enabled and successful, the value of `&request.User-Password` will be
+truncated and `&request.Yubikey-OTP` will be added.
 
 
 
@@ -77,7 +77,7 @@ These attributes are available after `authorization`:
 [options="header,autowidth"]
 |===
 | Attributes                   | Description
-| `&request:Yubikey-Public-ID` | The public portion of the OTP string.
+| `&request.Yubikey-Public-ID` | The public portion of the OTP string.
                                  The value is a `id_len` modhex string.
 |===
 
@@ -86,7 +86,7 @@ and additionally if 'split' is set:
 [options="header,autowidth"]
 |===
 | Attributes             | Description
-| `&request:Yubikey-OTP` | The OTP portion of `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`.
+| `&request.Yubikey-OTP` | The OTP portion of `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`.
 |===
 
 These attributes are available after authentication (if successful):
@@ -94,19 +94,19 @@ These attributes are available after authentication (if successful):
 [options="header,autowidth"]
 |===
 | Attributes                    | Description
-| `&request:Yubikey-Private-ID` | The encrypted ID included in OTP data,
+| `&request.Yubikey-Private-ID` | The encrypted ID included in OTP data,
                                   should be verified for increased security.
                                   The value is a `6-byte` binary blob.
-| `&request:Yubikey-Counter`    | The last counter value (should be recorded).
+| `&request.Yubikey-Counter`    | The last counter value (should be recorded).
                                   The value is a concatenation of the 16-bit
                                   session count & `8-bit` use count which form a
                                   `24-bit` monotonically strictly increasing
                                   integer (until the individual count ceilings
                                   are hit)
-| `&request:Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
+| `&request.Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
                                   The value is a 24-bit increasing `integer @ 8 Hz`
                                   with rollover which is randomly initialized each session.
-| `&request:Yubikey-Random`     | Randomly generated value from the token.
+| `&request.Yubikey-Random`     | Randomly generated value from the token.
                                   The value is a 16-bit integer.
 |===
 
