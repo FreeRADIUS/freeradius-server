@@ -337,17 +337,17 @@ typedef struct {
 
 	union {
 		struct {
-			fr_dict_attr_t		* _CONST da;		//!< Unknown dictionary attribute.
+			fr_dict_attr_t	* _CONST da;		//!< Unknown dictionary attribute.
 		} unknown;
 
 		struct {
-			char			* _CONST name;		//!< Undefined  ref type.
-			bool			is_raw;			//!< User wants the leaf to be raw.
+			char		* _CONST name;		//!< Undefined reference type.
+			bool		_CONST is_raw;		//!< User wants the leaf to be raw.
 		} unresolved;
 	};
 
 	int16_t			_CONST num;		//!< For array references.
-	tmpl_attr_type_t	_CONST type;
+	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
 } tmpl_attr_t;
 
 /** An element in a list of request references
@@ -355,7 +355,7 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		_CONST entry;		//!< Entry in the doubly linked list
-							///< of requestreferences.
+							///< of request references.
 
 	request_ref_t		_CONST request;
 } tmpl_request_t;
