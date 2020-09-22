@@ -16,13 +16,25 @@ dhcp_common {
 #  To use this enable the "dhcp_files" module
 #dhcp_group_options {
 #	foreach &control:DHCP-Group-Name {
-#		update control {
-#		       Tmp-String-0 := "%{Foreach-Variable-0}"
-#		}
 #		dhcp_set_group_options
 #	}
 #}
 
+#  Policy to override DHCP-Network-IP-Address
+#
+#  Typical use may be IP telephony where a specific subnet is
+#  assigned to telephony devices, distinct from other clients
+#  on the network.
+#
+#  Set DHCP-Network-IP-Address to any address within the desired
+#  network
+#dhcp_override_network {
+#	if (&DHCP-Vendor-Class-Identifier && &DHCP-Vendor-Class-Identifier == "SIP100")
+#		update request {
+#			DHCP-Network-IP-Address := 10.10.0.0
+#		}
+#	}
+#}
 
 #  Assign compatibility data to request for sqlippool for DHCP Request
 dhcp_sqlippool_request {
