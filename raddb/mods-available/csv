@@ -49,6 +49,18 @@ csv {
 	header = no
 
 	#
+	#  allow_multiple_keys:: Whether the file can have multiple entries
+	#  which match the same key.
+	#
+	#  The default is `no`.
+	#
+	#  If set to `yes`, then multiple entries are allowed.  When a
+	#  key matches, each entry is applied in the order it appears
+	#  in the file.
+	#
+	allow_multiple_keys = no
+
+	#
 	#  fields:: A string which defines field names.
 	#
 	#  This configuration item is used only when `header = no`.

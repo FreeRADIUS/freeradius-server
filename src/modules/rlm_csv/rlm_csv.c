@@ -51,6 +51,7 @@ typedef struct {
 	fr_type_t	data_type;
 
 	bool		header;
+	bool		allow_multiple_keys;
 
 	int		num_fields;
 	int		used_fields;
@@ -81,6 +82,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", FR_TYPE_STRING , rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", FR_TYPE_BOOL, rlm_csv_t, header) },
+	{ FR_CONF_OFFSET("allow_multiple_keys", FR_TYPE_BOOL, rlm_csv_t, allow_multiple_keys) },
 	{ FR_CONF_OFFSET("index_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, index_field_name) },
 	{ FR_CONF_OFFSET("data_type", FR_TYPE_STRING, rlm_csv_t, data_type_name) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_csv_t, key) },
@@ -166,12 +168,30 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 	return false;
 }
 
+static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *key)
+{
+	rlm_csv_entry_t my_e;
+
+	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
+		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
+
+	}
+
+	if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
+	}
+
+	memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
+
+	return rbtree_finddata(inst->tree, &my_e);
+}
+
 /*
  *	Convert a buffer to a CSV entry
  */
-static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buffer)
+static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buffer)
 {
-	rlm_csv_entry_t *e;
+	rlm_csv_entry_t *e, *old;
 	int i;
 	char *p, *q;
 
@@ -182,14 +202,14 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
 			cf_log_err(conf, "Malformed entry in file %s line %d", inst->filename, lineno);
-			return NULL;
+			return false;
 		}
 
 		if (q) *(q++) = '\0';
 
 		if (i >= inst->num_fields) {
 			cf_log_err(conf, "Too many fields at file %s line %d", inst->filename, lineno);
-			return NULL;
+			return false;
 		}
 
 		/*
@@ -202,8 +222,9 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
+			fail:
 				talloc_free(e);
-				return NULL;
+				return false;
 			}
 			continue;
 		}
@@ -223,8 +244,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 			if (fr_value_box_from_str(e, &box, &type, NULL, p, -1, 0, false) < 0) {
 				cf_log_err(conf, "Failed parsing field '%s' in file %s line %d - %s", inst->field_names[i],
 					   inst->filename, lineno, fr_strerror());
-				talloc_free(e);
-				return NULL;
+				goto fail;
 			}
 
 			fr_value_box_clear(&box);
@@ -235,33 +255,46 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 
 	if (i < inst->num_fields) {
 		cf_log_err(conf, "Too few fields in file %s at line %d (%d < %d)", inst->filename, lineno, i, inst->num_fields);
-		return NULL;
+		goto fail;
+	}
+
+	old = find_entry(inst, e->key);
+	if (old) {
+		if (!inst->allow_multiple_keys) {
+			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
+			goto fail;
+		}
+
+		/*
+		 *	Save this entry at the tail of the matching
+		 *	entries.
+		 */
+		while (old->next) old = old->next;
+		old->next = e;
+		return e;
 	}
 
 	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
-			return NULL;
+			goto fail;
 		}
 
 	} else if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
-			return NULL;
+			goto fail;
 		}
 
 	} else if (!rbtree_insert(inst->tree, e)) {
-		/*
-		 *	@todo - allow duplicate keys later
-		 */
 		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
 			      inst->filename, lineno);
-		return NULL;
+		goto fail;
 	}
 
-	return e;
+	return true;
 }
 
 
@@ -696,10 +729,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Read the rest of the file.
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		rlm_csv_entry_t *e;
-
-		e = file2csv(conf, inst, lineno, buffer);
-		if (!e) {
+		if (!file2csv(conf, inst, lineno, buffer)) {
 			fclose(fp);
 			return -1;
 		}
@@ -725,9 +755,6 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	fr_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);
 
-	/*
-	 *	FIXME: allow multiple entries.
-	 */
 	if (tmpl_is_attr(map->lhs)) {
 		da = tmpl_da(map->lhs);
 
@@ -786,24 +813,13 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
 	rlm_csv_entry_t		*e;
 	vp_map_t const		*map;
 
-	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
-		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
-
-	} else if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
-		e = fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
-
-	} else {
-		rlm_csv_entry_t my_e;
-
-		memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
-
-		e = rbtree_finddata(inst->tree, &my_e);
-	}
+	e = find_entry(inst, key);
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
 	}
 
+redo:
 	RINDENT();
 	for (map = maps;
 	     map != NULL;
@@ -848,6 +864,11 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
 	}
 
 	REXDENT();
+
+	if (e->next) {
+		e = e->next;
+		goto redo;
+	}
 
 finish:
 	return rcode;
