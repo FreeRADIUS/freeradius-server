@@ -1,0 +1,20 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  An instance of the passwd module designed for looking up
+#  DHCP client membership.  This example is based on hardware
+#  address.
+#  The "groups" file should be of the format:
+#  <group name>|<hardware address>,<hardware address>,<hardware address>
+#  <group name>|<hardware address>,<hardware address>,<hardware address>
+#
+#  See the passwd module for more details.
+
+passwd dhcp_group_membership {
+	filename = "${modconfdir}/files/dhcp_groups"
+	format = "DHCP-Group-Name:*,DHCP-Client-Hardware-Address"
+	hash_size = 100
+	allow_multiple_keys = yes
+	delimiter = "|"
+}
