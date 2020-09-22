@@ -139,6 +139,15 @@ dhcp DHCP-Discover {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
+
 	#  Use a "files" module to lookup host specific options
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
@@ -221,6 +230,15 @@ dhcp DHCP-Request {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
+
 	#  Use a "files" module to lookup host specific options
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
@@ -298,6 +316,15 @@ dhcp DHCP-Inform {
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
+
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
 
 	#  Use a "files" module to lookup host specific options
 	#  Enable mods-available/dhcp_files to use this

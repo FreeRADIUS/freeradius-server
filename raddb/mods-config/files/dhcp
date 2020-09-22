@@ -27,12 +27,19 @@ network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "visitors"
 	DHCP-Domain-Name := "guests.example.org",
 	DHCP-IP-Address-Lease-Time := 3600
 
+#
+#  Set group specific options
+#
+group1
+	DHCP-Server-Host-Name := "terminal-booter.example.org",
+	DHCP-Boot-Filename := "bootfile.pxe"
+
 
 #
 #  Set host specific options
 #
 host-00:10:20:30:40:50
-	DHCP-Filename := "customboot.pxe"
+	DHCP-Boot-Filename := "customboot.pxe"
 
 host-10:90:80:70:aa:bb
 	DHCP-Font-Server := 10.20.1.10,

@@ -11,6 +11,19 @@ dhcp_common {
 	}
 }
 
+#  Lookup DHCP group based options.  This policy allows  for membership
+#  of multiple groups so can cover the ISC concepts of "group" and "class"
+#  To use this enable the "dhcp_files" module
+#dhcp_group_options {
+#	foreach &control:DHCP-Group-Name {
+#		update control {
+#		       Tmp-String-0 := "%{Foreach-Variable-0}"
+#		}
+#		dhcp_set_group_options
+#	}
+#}
+
+
 #  Assign compatibility data to request for sqlippool for DHCP Request
 dhcp_sqlippool_request {
 
