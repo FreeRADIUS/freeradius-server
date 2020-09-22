@@ -190,7 +190,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	dict->root = dict_attr_alloc_name(dict, name);
+	dict->root = dict_attr_alloc_name(dict, NULL, name);
 	if (!dict->root) return -1;
 
 	dict_attr_init(dict->root, NULL, proto_number, FR_TYPE_TLV, &flags);

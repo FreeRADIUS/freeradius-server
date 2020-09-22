@@ -171,7 +171,7 @@ static inline void dict_attr_init(fr_dict_attr_t *da,
 	}
 }
 
-fr_dict_attr_t 		*dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name);
+fr_dict_attr_t 		*dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_dict_attr_t const *parent,

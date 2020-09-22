@@ -46,7 +46,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Allocate an attribute.
 	 */
-	n = dict_attr_alloc_name(ctx, da->name);
+	n = dict_attr_alloc_name(ctx, da->parent, da->name);
 	if (!n) return NULL;
 
 	/*
@@ -464,7 +464,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	 *	or more of the leading components may, in fact, be
 	 *	known.
 	 */
-	n = dict_attr_alloc_name(ctx, oid_str);
+	n = dict_attr_alloc_name(ctx, parent, oid_str);
 
 	/*
 	 *	While the name of this attribu

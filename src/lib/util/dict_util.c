@@ -365,28 +365,49 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 /** Allocate a dictionary attribute and assign a name
  *
  * @param[in] ctx		to allocate attribute in.
+ * @param[in] parent		of this da
  * @param[in] name		to set.
  * @return
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
  */
-fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
+fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name)
 {
-	fr_dict_attr_t *da;
+	int		depth = 0;
+	fr_dict_attr_t	*da;
 
 	if (!name) {
 		fr_strerror_printf("No attribute name provided");
 		return NULL;
 	}
 
-	da = talloc_zero(ctx, fr_dict_attr_t);
+	if (parent) depth = parent->depth + 1;
+
+	da = talloc_zero_size(ctx, sizeof(fr_dict_attr_t) + sizeof(da->tlv_stack[0]) * depth);
 	if (!da) return NULL;
+
+	talloc_set_type(da, fr_dict_attr_t);
 
 	da->name = talloc_typed_strdup(da, name);
 	if (!da->name) {
 		talloc_free(da);
 		fr_strerror_printf("Out of memory");
 		return NULL;
+	}
+
+	/*
+	 *	Set up parent / child relationship, and copy the
+	 *	tlv_stack from the parent.
+	 */
+	if (parent) {
+		da->parent = parent;
+		da->depth = depth;
+
+		fr_assert(depth > 0);
+
+		memcpy(&da->tlv_stack[0], &parent->tlv_stack[0],
+		       sizeof(da->tlv_stack[0]) * (depth - 1));
+		da->tlv_stack[depth - 1] = parent;
 	}
 
 	return da;
@@ -437,9 +458,9 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 			return NULL;
 		}
 
-		n = dict_attr_alloc_name(ctx, buffer);
+		n = dict_attr_alloc_name(ctx, parent, buffer);
 	} else {
-		n = dict_attr_alloc_name(ctx, name);
+		n = dict_attr_alloc_name(ctx, parent, name);
 	}
 
 	dict_attr_init(n, parent, attr, type, flags);
@@ -460,7 +481,7 @@ static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in
 {
 	fr_dict_attr_t *n;
 
-	n = dict_attr_alloc_name(ctx, in->name);
+	n = dict_attr_alloc_name(ctx, in->parent, in->name);
 	if (!n) return NULL;
 
 	dict_attr_init(n, in->parent, in->attr, in->type, &in->flags);
@@ -601,8 +622,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	/*
 	 *	Setup fields in the child
 	 */
-	child->parent = parent;
-	child->depth = parent->depth + 1;
+	fr_assert(child->parent == parent);
 
 	DA_VERIFY(child);
 
