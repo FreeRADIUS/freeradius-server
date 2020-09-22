@@ -383,7 +383,7 @@ fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *pare
 
 	if (parent) depth = parent->depth + 1;
 
-	da = talloc_zero_size(ctx, sizeof(fr_dict_attr_t) + sizeof(da->tlv_stack[0]) * (depth + 1));
+	da = talloc_zero_size(ctx, sizeof(fr_dict_attr_t) + sizeof(da->da_stack[0]) * (depth + 1));
 	if (!da) return NULL;
 
 	talloc_set_type(da, fr_dict_attr_t);
@@ -397,20 +397,20 @@ fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *pare
 
 	/*
 	 *	Set up parent / child relationship, and copy the
-	 *	tlv_stack from the parent.
+	 *	da_stack from the parent.
 	 */
 	if (parent) {
 		da->parent = parent;
 		da->depth = depth;
 
-		memcpy(&da->tlv_stack[0], &parent->tlv_stack[0],
-		       sizeof(da->tlv_stack[0]) * depth);
+		memcpy(&da->da_stack[0], &parent->da_stack[0],
+		       sizeof(da->da_stack[0]) * depth);
 	}
 
 	/*
 	 *	Always set the last stack entry to ourselves.
 	 */
-	da->tlv_stack[depth] = da;
+	da->da_stack[depth] = da;
 
 	return da;
 }

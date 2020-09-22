@@ -135,7 +135,7 @@ struct dict_attr_s {
 		fr_dict_attr_t const	*ref;			//!< reference
 	};
 
-	fr_dict_attr_t const	*tlv_stack[0];			//!< load-time TLV stacks
+	fr_dict_attr_t const	*da_stack[0];			//!< load-time TLV stacks
 };
 
 /** Value of an enumerated attribute
