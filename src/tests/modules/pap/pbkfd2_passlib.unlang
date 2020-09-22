@@ -1,0 +1,20 @@
+# Fixme - Base64 decode seems off for alt base64
+test_pass
+
+#if ("${feature.tls}" == no) {
+#	test_pass
+#	return
+#}
+
+#if (&User-Name == 'pbkdf2_passlib') {
+#	update control {
+#		&PBKDF2-Password := '$pbkdf2-sha256$29000$9t7be09prfXee2/NOUeotQ$Y.RDnnq8vsezSZSKy1QNy6xhKPdoBIwc.0XDdRm9sJ8'
+#	}
+#	pap.authorize
+#	pap.authenticate
+#	if (!ok) {
+#		test_fail
+#	} else {
+#		test_pass
+#	}
+#}

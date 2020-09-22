@@ -1,0 +1,19 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (&User-Name == 'pbkdf2_salt0') {
+	update control {
+		&PBKDF2-Password := 'HMACSHA2+256:AAAnEA::4RJEKVFQ5nE8126aURI0cJO9tqy/DIAhq64piBEwshA='
+	}
+	pap.authorize
+	pap.authenticate {
+		invalid = 1
+	}
+	if (invalid) {
+		test_pass
+	} else {
+		test_fail
+	}
+}
