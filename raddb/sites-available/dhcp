@@ -123,6 +123,16 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
+#  An internal attribute of DHCP-Network-IP-Address is set to provide
+#  a basis for determining the network that a client belongs to.  This
+#  is a hierarchical assignment based on:
+#
+#  - DHCP-Relay-Link-Selection
+#  - DHCP-Subnet-Selection-Option
+#  - DHCP-Gateway-IP-Address
+#  - DHCP-Client-IP-Address
+
+
 dhcp DHCP-Discover {
 
 	#  The DHCP Server Identifier is set here since is returned in OFFERs
@@ -132,6 +142,12 @@ dhcp DHCP-Discover {
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
+
+	#  If clients need to be assigned to a particular network based on
+	#  an attribute in the packet rather than the calculated
+	#  DHCP-Network-IP-Address described above, then call a policy
+	#  (defined in policy.d/dhcp) to perform the override
+	#dhcp_override_network
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
@@ -224,6 +240,10 @@ dhcp DHCP-Request {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
+
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
 	#  Enable mods-available/dhcp_files to use this
@@ -310,6 +330,10 @@ dhcp DHCP-Decline {
 dhcp DHCP-Inform {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
