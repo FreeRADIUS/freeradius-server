@@ -1,0 +1,19 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (&User-Name == 'pbkdf2_iter_small') {
+	update control {
+		&PBKDF2-Password := 'HMACSHA2+256:AAAAA:E+VXOSsE8RwyYGdygQoW9Q==:UivlvrwHML4VtZHMJLiT/xlH7oyoyvbXQceivptq9TI='
+	}
+	pap.authorize
+	pap.authenticate {
+		invalid = 1
+	}
+	if (invalid) {
+		test_pass
+	} else {
+		test_fail
+	}
+}
