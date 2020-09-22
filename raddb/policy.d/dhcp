@@ -22,12 +22,18 @@ dhcp_common {
 
 #  Policy to override DHCP-Network-IP-Address
 #
-#  Typical use may be IP telephony where a specific subnet is
-#  assigned to telephony devices, distinct from other clients
-#  on the network.
+#  Some network configurations have "shared-networks" in which multiple IP
+#  subnets may co-exist in a single Layer 2 network (or VLAN).  This may be
+#  due to discontinuous extension of the original address plan or it may be
+#  to provide loose segregation between classes of devices such as local
+#  network atached storage or IP telephony.
 #
-#  Set DHCP-Network-IP-Address to any address within the desired
-#  network
+#  By default DHCP-Network-IP-Address is populated such that it normally
+#  refers to the Layer 2 network from which the DHCP query originates - it
+#  cannot know the intended subnet for the device without policy input.
+#  Override DHCP-Network-IP-Address to be an address within the desired
+#  subnet to force selection of particular network parameters including
+#  the address pool
 #dhcp_override_network {
 #	if (&DHCP-Vendor-Class-Identifier && &DHCP-Vendor-Class-Identifier == "SIP100")
 #		update request {
