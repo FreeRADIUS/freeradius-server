@@ -31,12 +31,20 @@ RCSIDH(other_h, "$Id$")
 #define CURL_NO_OLDIES 1
 #include <curl/curl.h>
 
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
+
 #ifdef HAVE_JSON
 #  if defined(HAVE_JSONMC_JSON_H)
 #    include <json-c/json.h>
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>
 #  endif
+#endif
+
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
 #endif
 
 #define REST_URI_MAX_LEN		2048
