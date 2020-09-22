@@ -25,7 +25,13 @@
  */
 RCSIDH(atomic_queue_h, "$Id$")
 
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
 #include <talloc.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 #include <stdbool.h>
 
 #ifdef HAVE_STDATOMIC_H

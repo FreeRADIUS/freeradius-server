@@ -57,7 +57,13 @@ RCSIDH(libradius_h, "$Id$")
  *  Talloc memory allocation is used in preference to malloc throughout
  *  the libraries and server.
  */
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
 #include <talloc.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 
 /*
  *  Defines signatures for any missing functions.
