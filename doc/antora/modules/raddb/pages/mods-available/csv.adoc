@@ -39,12 +39,31 @@ must contain the field names.
 
 
 
+allow_multiple_keys:: Whether the file can have multiple entries
+which match the same key.
+
+The default is `no`.
+
+If set to `yes`, then multiple entries are allowed.  When a
+key matches, each entry is applied in the order it appears
+in the file.
+
+
+
 fields:: A string which defines field names.
 
 This configuration item is used only when `header = no`.
 The content of the `fields` item must be the same as in https://tools.ietf.org/html/rfc4180[RFC 4180].
 That is, a list of field names, separated by the `delimiter`
 character.
+
+The `csv` module can be used to read files such as `/etc/group`
+By setting `delimiter = ":"`, and by using `fields = "group:::,user"`
+
+The special character `,` can be used *only* for the `key`
+field, and *only* if the `key` field is the last field.
+This special syntax means "add multiple entries for this
+line, one for each `key`".
 
 [NOTE]
 =====
@@ -171,6 +190,7 @@ csv {
 	filename = ${modconfdir}/csv/${.:instance}
 	delimiter = ","
 	header = no
+	allow_multiple_keys = no
 	fields = "name,size,color,count"
 	index_field = "name"
 	data_type = string

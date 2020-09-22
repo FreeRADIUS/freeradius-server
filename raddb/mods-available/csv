@@ -68,6 +68,14 @@ csv {
 	#  That is, a list of field names, separated by the `delimiter`
 	#  character.
 	#
+	#  The `csv` module can be used to read files such as `/etc/group`
+	#  By setting `delimiter = ":"`, and by using `fields = "group:::,user"`
+	#
+	#  The special character `,` can be used *only* for the `key`
+	#  field, and *only* if the `key` field is the last field.
+	#  This special syntax means "add multiple entries for this
+	#  line, one for each `key`".
+	#
 	#  [NOTE]
 	#  =====
 	#  * the header MUST have the same number of fields as are in the CSV file.

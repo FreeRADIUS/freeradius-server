@@ -52,6 +52,7 @@ typedef struct {
 
 	bool		header;
 	bool		allow_multiple_keys;
+	bool		multiple_index_fields;
 
 	int		num_fields;
 	int		used_fields;
@@ -186,12 +187,85 @@ static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *
 	return rbtree_finddata(inst->tree, &my_e);
 }
 
+static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e, int lineno)
+{
+	rlm_csv_entry_t *old;
+
+	old = find_entry(inst, e->key);
+	if (old) {
+		if (!inst->allow_multiple_keys && !inst->multiple_index_fields) {
+			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
+			goto fail;
+		}
+
+		/*
+		 *	Save this entry at the tail of the matching
+		 *	entries.
+		 */
+		while (old->next) old = old->next;
+		old->next = e;
+		return e;
+	}
+
+	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
+		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
+			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
+				   inst->filename, lineno, fr_strerror());
+		fail:
+			talloc_free(e);
+			return false;
+		}
+
+	} else if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
+			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
+				   inst->filename, lineno, fr_strerror());
+			goto fail;
+		}
+
+	} else if (!rbtree_insert(inst->tree, e)) {
+		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
+			      inst->filename, lineno);
+		goto fail;
+	}
+
+	return true;
+}
+
+
+static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *old, char *p, int lineno)
+{
+	int i;
+	fr_type_t type = inst->data_type;
+	rlm_csv_entry_t *e;
+
+	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst, uint8_t,
+						     sizeof(*e) + (inst->used_fields * sizeof(e->data[0]))));
+	talloc_set_type(e, rlm_csv_entry_t);
+
+	e->key = talloc_zero(e, fr_value_box_t);
+	if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+		cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
+			   fr_strerror());
+		return false;
+	}
+
+	/*
+	 *	Copy the other fields;
+	 */
+	for (i = 0; i < inst->used_fields; i++) {
+		if (old->data[i]) MEM(e->data[i] = talloc_strdup(old, old->data[i]));
+	}
+
+	return insert_entry(conf, inst, e, lineno);
+}
+
 /*
  *	Convert a buffer to a CSV entry
  */
 static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buffer)
 {
-	rlm_csv_entry_t *e, *old;
+	rlm_csv_entry_t *e;
 	int i;
 	char *p, *q;
 
@@ -218,14 +292,45 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 		if (i == inst->index_field) {
 			fr_type_t type = inst->data_type;
 
-			e->key = talloc_zero(e, fr_value_box_t);
-			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
-				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
+			/*
+			 *	Check for /etc/group style keys.
+			 */
+			if (!inst->multiple_index_fields) {
+				e->key = talloc_zero(e, fr_value_box_t);
+				if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+					cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
-			fail:
+				fail:
+					talloc_free(e);
+					return false;
+				}
+			} else {
+				char *l;
+
+				/*
+				 *	Check & smash ','.  duplicate
+				 *	'e', and insert it into the
+				 *	hash table / trie.
+				 */
+				l = strchr(p, ',');
+				while (true) {
+					if (l) *l = '\0';
+
+					if (!duplicate_entry(conf, inst, e, p, lineno)) goto fail;
+
+					if (!l) break;
+					p = l + 1;
+					l = strchr(p, ',');
+				}
+
+				/*
+				 *	The key field MUST be the last
+				 *	one in the line.
+				 */
 				talloc_free(e);
-				return false;
+				return true;
 			}
+
 			continue;
 		}
 
@@ -258,43 +363,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 		goto fail;
 	}
 
-	old = find_entry(inst, e->key);
-	if (old) {
-		if (!inst->allow_multiple_keys) {
-			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
-			goto fail;
-		}
-
-		/*
-		 *	Save this entry at the tail of the matching
-		 *	entries.
-		 */
-		while (old->next) old = old->next;
-		old->next = e;
-		return e;
-	}
-
-	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
-		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
-			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
-				   inst->filename, lineno, fr_strerror());
-			goto fail;
-		}
-
-	} else if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
-		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
-			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
-				   inst->filename, lineno, fr_strerror());
-			goto fail;
-		}
-
-	} else if (!rbtree_insert(inst->tree, e)) {
-		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
-			      inst->filename, lineno);
-		goto fail;
-	}
-
-	return true;
+	return insert_entry(conf, inst, e, lineno);
 }
 
 
@@ -462,8 +531,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char const *p;
 	char *q;
 	char *fields;
-	FILE *fp;
-	char buffer[8192];
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -493,12 +560,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		MEM(inst->tree = rbtree_talloc_alloc(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0));
 	}
 
-	/*
-	 *	Read just the header.
-	 */
-	fp = fopen(inst->filename, "r");
-	if (!fp) {
-		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
+	if ((*inst->index_field_name == ',') || (*inst->index_field_name == *inst->delimiter)) {
+		cf_log_err(conf, "Field names cannot begin with the '%c' character", *inst->index_field_name);
+		return -1;
+	}
+
+	if (inst->delimiter[1] != '\0') {
+		cf_log_err(conf, "The 'delimiter' field MUST be one character long");
 		return -1;
 	}
 
@@ -506,6 +574,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	If there is a header in the file, then read that first.
 	 */
 	if (inst->header) {
+		FILE *fp;
+		char buffer[8192];
+
+		fp = fopen(inst->filename, "r");
+		if (!fp) {
+			cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
+			return -1;
+		}
+
 		p = fgets(buffer, sizeof(buffer), fp);
 		if (!p) {
 		error_eof:
@@ -524,6 +601,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	header from the file.
 		 */
 		inst->fields = talloc_strdup(inst, buffer);
+		fclose(fp);
 	}
 
 	/*
@@ -536,7 +614,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (inst->num_fields < 2) {
 		cf_log_err(conf, "The CSV file MUST have at least a key field and data field");
-		fclose(fp);
 		return -1;
 	}
 
@@ -575,7 +652,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			if ((*q == '\'') || (*q == '"')) {
 				cf_log_err(conf, "Field %d name cannot have quotation marks.",
 					   i + 1);
-				fclose(fp);
 				return -1;
 			}
 
@@ -587,7 +663,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			if (isspace((int) *q)) {
 				cf_log_err(conf, "Field %d name cannot have spaces.",
 					   i + 1);
-				fclose(fp);
 				return -1;
 			}
 
@@ -612,8 +687,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	mapping betweeen CSV file fields, and fields
 		 *	in the map.
 		 */
-		if (strcmp(p, inst->index_field_name) == 0) {
+		if (last_field && (*p == ',') && (strcmp(p + 1, inst->index_field_name) == 0)) {
 			inst->index_field = i;
+			p++;
+
+			inst->multiple_index_fields = true;
+
+		} else if (strcmp(p, inst->index_field_name) == 0) {
+			inst->index_field = i;
+
+		} else if ((*p == ',') || (*p == *inst->delimiter)) {
+			cf_log_err(conf, "Field names MUST NOT begin with the '%c' character", *p);
+			return -1;
+
 		} else {
 			inst->field_offsets[i] = inst->used_fields++;
 		}
@@ -631,7 +717,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	if (inst->index_field < 0) {
-		fclose(fp);
 		cf_log_err(conf, "index_field '%s' does not appear in the list of field names",
 			   inst->index_field_name);
 		return -1;
@@ -641,8 +726,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Set the data type of the index field.
 	 */
 	inst->field_types[inst->index_field] = inst->data_type;
-
-	fclose(fp);
 
 	/*
 	 *	And register the `map csv <key> { ... }` function.
