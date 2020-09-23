@@ -63,7 +63,7 @@ size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
 
 
 /* Some short names for debugging output */
-char const * const comp2str[] = {
+static char const * const comp2str[] = {
 	"authenticate",
 	"authorize",
 	"preacct",

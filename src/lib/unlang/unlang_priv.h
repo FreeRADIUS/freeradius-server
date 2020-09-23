@@ -286,8 +286,6 @@ extern unlang_op_t unlang_ops[];
 
 #define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
 
-extern char const *const comp2str[];
-
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
 
