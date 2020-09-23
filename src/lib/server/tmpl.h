@@ -281,6 +281,8 @@ typedef enum {
  *
  */
 struct tmpl_rules_s {
+	tmpl_rules_t const     	*parent;		//!< for parent / child relationships
+
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 

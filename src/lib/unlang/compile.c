@@ -2782,6 +2782,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	parse_rules = *unlang_ctx->rules;
+	parse_rules.parent = unlang_ctx->rules;
 	parse_rules.dict_def = dict;
 	parse_rules.allow_foreign = true; /* the parent is _by definition_ in a different dictionary */
 
@@ -2873,6 +2874,8 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_token_t		type;
 	char const     		*name;
 	fr_dict_t const		*dict;
+	unlang_compile_t	unlang_ctx2;
+	tmpl_rules_t		parent_rules, parse_rules;
 
 	name = cf_section_name2(cs);
 	if (!name) {
@@ -2892,7 +2895,24 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALLER);
+	/*
+	 *	Create a new parent context with the new dictionary.
+	 */
+	memcpy(&parent_rules, unlang_ctx->rules, sizeof(parent_rules));
+	memcpy(&parse_rules, unlang_ctx->rules, sizeof(parse_rules));
+	parent_rules.dict_def = dict;
+	parse_rules.parent = &parent_rules;
+
+	/*
+	 *	We don't want to modify the context we were passed, so
+	 *	we just clone it
+	 */
+	memcpy(&unlang_ctx2, unlang_ctx, sizeof(unlang_ctx2));
+	unlang_ctx2.rules = &parse_rules;
+	unlang_ctx2.section_name1 = "caller";
+	unlang_ctx2.section_name2 = name;
+
+	c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_CALLER);
 	if (!c) return NULL;
 
 	/*
