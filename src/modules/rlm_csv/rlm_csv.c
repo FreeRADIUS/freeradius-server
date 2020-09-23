@@ -254,7 +254,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	 *	Copy the other fields;
 	 */
 	for (i = 0; i < inst->used_fields; i++) {
-		if (old->data[i]) MEM(e->data[i] = talloc_strdup(old, old->data[i]));
+		if (old->data[i]) e->data[i] = old->data[i]; /* no need to dup it, it's never freed... */
 	}
 
 	return insert_entry(conf, inst, e, lineno);
@@ -295,16 +295,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			/*
 			 *	Check for /etc/group style keys.
 			 */
-			if (!inst->multiple_index_fields) {
-				e->key = talloc_zero(e, fr_value_box_t);
-				if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
-					cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
-					   fr_strerror());
-				fail:
-					talloc_free(e);
-					return false;
-				}
-			} else {
+			if (inst->multiple_index_fields) {
 				char *l;
 
 				/*
@@ -313,8 +304,8 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 				 *	hash table / trie.
 				 */
 				l = strchr(p, ',');
-				while (true) {
-					if (l) *l = '\0';
+				while (l) {
+					*l = '\0';
 
 					if (!duplicate_entry(conf, inst, e, p, lineno)) goto fail;
 
@@ -322,15 +313,19 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 					p = l + 1;
 					l = strchr(p, ',');
 				}
-
-				/*
-				 *	The key field MUST be the last
-				 *	one in the line.
-				 */
-				talloc_free(e);
-				return true;
 			}
 
+			/*
+			 *	Set the last entry to use 'e'
+			 */
+			e->key = talloc_zero(e, fr_value_box_t);
+			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
+					   fr_strerror());
+			fail:
+				talloc_free(e);
+				return false;
+			}
 			continue;
 		}
 
