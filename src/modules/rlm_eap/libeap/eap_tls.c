@@ -753,18 +753,32 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 
 #ifdef TLS1_3_VERSION
 	/*
-	 *	draft-ietf-emu-eap-tls13-10 section 2.5
+	 *	https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
 	 *
 	 *	We need to signal the other end that TLS negotiation
 	 *	is done.  We can't send a zero-length application data
 	 *	message, so we send application data which is one byte
 	 *	of zero.
+	 *
+	 *	Note this is only done for when there is no application
+	 *	data to be sent. So this is done always for EAP-TLS but
+	 *	notibly not for PEAP even on resumption.
 	 */
-	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION) &&
-	    (handler->type == PW_EAP_TLS)) {
-		RDEBUG("TLS send Commitment Message");
-		tls_session->record_plus(&tls_session->clean_in, "\0", 1);
-		tls_handshake_send(request, tls_session);
+	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION)) {
+		switch (handler->type) {
+		case PW_EAP_PEAP:
+			break;
+
+		default:
+			if (!SSL_session_reused(tls_session->ssl)) break;
+			/* FALL-THROUGH */
+
+		case PW_EAP_TLS:
+			RDEBUG("TLS send Commitment Message");
+			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+			tls_handshake_send(request, tls_session);
+			break;
+		}
 	}
 #endif
 
