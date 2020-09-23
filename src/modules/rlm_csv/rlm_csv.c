@@ -537,11 +537,24 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (!inst->data_type_name || !*inst->data_type_name) {
 		inst->data_type = FR_TYPE_STRING;
+
 	} else {
 		inst->data_type = fr_table_value_by_str(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
 		if (!inst->data_type) {
+		invalid_type:
 			cf_log_err(conf, "Invalid data_type '%s'", inst->data_type_name);
 			return -1;
+		}
+
+		/*
+		 *	Can't switch over TLV, group, VSA, etc.
+		 */
+		switch (inst->data_type) {
+		case FR_TYPE_VALUE:
+			break;
+
+		default:
+			goto invalid_type;
 		}
 	}
 
