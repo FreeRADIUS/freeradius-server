@@ -535,8 +535,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+
 	if (!inst->data_type_name || !*inst->data_type_name) {
-		inst->data_type = FR_TYPE_STRING;
+		if (inst->key && tmpl_is_attr(inst->key)) {
+			inst->data_type = tmpl_da(inst->key)->type;
+		} else {
+			inst->data_type = FR_TYPE_STRING;
+		}
 
 	} else {
 		inst->data_type = fr_table_value_by_str(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
@@ -556,7 +561,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		default:
 			goto invalid_type;
 		}
+
+		if (inst->key && tmpl_is_attr(inst->key) && (tmpl_da(inst->key)->type != inst->data_type)) {
+			cf_log_err(conf, "The data type of 'key' does not match data_type '%s'",
+				   inst->data_type_name);
+			return -1;
+		}
 	}
+
 
 	/*
 	 *	IP addresses go into tries.  Everything else into binary tries.
