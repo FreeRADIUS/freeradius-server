@@ -169,7 +169,45 @@ static void *check_path(char *filename, char const *name, size_t namelen,
 	return check_symbol(handle, symbol);
 }
 
+/*
+ *	Get the filename from the linker information.  We don't care
+ *	about the filename we used to open the library.  If the linker
+ *	information differs from the filename we used, well, there's
+ *	little we can do about that.
+ */
+static char *get_filename(void *handle)
+{
+	struct link_map *link_map = NULL;
+
+#ifdef __linux__
+	/*
+	 *	RTLD_DI_ORIGIN returns the folder.  This
+	 *	function returns the full pathname.  And,
+	 *	returns a "struct link_map" which
+	 *	coincidentally is also what's available on
+	 *	OSX.
+	 */
+	(void) dlinfo(handle, RTLD_DI_LINKMAP, &link_map);
+#else
+
+	/*
+	 *	On OSX, the handle is just a `struct link_map`
+	 *	pointer.  So we cast the handle to that, and
+	 *	access the fields directly.
+	 */
+	link_map = (struct link_map *) handle;
+#endif
+
+	if (!link_map) return NULL;
+
+	return strdup(link_map->l_name);
+}
+
+
 /** Call dlopen as a GNU make function
+ *
+ *  This function opens a library (without extension!), and returns
+ *  the directory where the library was found.
  *
  *	$(dlopen libfoo)
  *		open it, letting the dynamic linker figure it out
@@ -347,37 +385,7 @@ static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
 	lib->handle = handle;
 	lib->name = libname;
 
-	/*
-	 *	Set lib->filename from the linker information.  We
-	 *	don't care about the filename we used to open the
-	 *	library.  If the linker information differs from the
-	 *	filename we used, well, there's little we can do about
-	 *	that.
-	 */
-	{
-		struct link_map *link_map = NULL;
-
-#ifdef __linux__
-		/*
-		 *	RTLD_DI_ORIGIN returns the folder.  This
-		 *	function returns the full pathname.  And,
-		 *	returns a "struct link_map" which
-		 *	coincidentally is also what's available on
-		 *	OSX.
-		 */
-		(void) dlinfo(handle, RTLD_DI_LINKMAP, &link_map);
-#else
-
-		/*
-		 *	On OSX, the handle is just a `struct link_map`
-		 *	pointer.  So we cast the handle to that, and
-		 *	access the fields directly.
-		 */
-		link_map = (struct link_map *) handle;
-#endif
-
-		if (link_map) lib->filename = strdup(link_map->l_name);
-        }
+	lib->filename = get_filename(handle);
 
 	libs = lib;
 
