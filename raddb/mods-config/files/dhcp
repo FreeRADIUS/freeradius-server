@@ -42,5 +42,5 @@ host-00:10:20:30:40:50
 	DHCP-Boot-Filename := "customboot.pxe"
 
 host-10:90:80:70:aa:bb
-	DHCP-Font-Server := 10.20.1.10,
+	DHCP-X-Window-Font-Server := 10.20.1.10,
 	DHCP-Impress-Server := 10.20.1.20
