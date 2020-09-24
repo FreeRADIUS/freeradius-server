@@ -100,5 +100,5 @@ the comparison will match.  If the comparison had been performed via
 string equality checks, then the comparison would fail, because the
 strings `00` and `0` are different.
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

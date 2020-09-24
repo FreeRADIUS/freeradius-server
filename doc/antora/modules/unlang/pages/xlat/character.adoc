@@ -76,5 +76,5 @@ Request timestamp in _ctime_ format, `Www Mmm dd HH:MM:SS YYYY`.
 Request timestamp in ISO format, `YYYY-mm-ddTHH:MM:SS.000`.
 
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

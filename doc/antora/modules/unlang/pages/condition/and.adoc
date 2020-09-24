@@ -17,5 +17,5 @@ returns `true` is _condition-2_ evaluated and its result returned.
 if (&User-Name && &EAP-Message) { ...
 ----
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

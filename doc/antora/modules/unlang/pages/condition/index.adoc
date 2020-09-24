@@ -81,5 +81,5 @@ selectively load (or not) certain policies.  If the condition above
 was used in version 2, then the configuration inside of the `if` statement
 would be loaded, even though it would never be used.
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

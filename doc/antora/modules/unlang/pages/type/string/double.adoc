@@ -61,7 +61,7 @@ represent in datastores, or the FreeRADIUS configuration files.
 // Licenced under CC-by-NC 4.0.
 // Copyright (C) 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
 // Copyright (C) 2019 The FreeRADIUS project.
-// Copyright (C) 2019 Network RADIUS SAS.
+// Copyright (C) 2020 Network RADIUS SAS.
 
 
 

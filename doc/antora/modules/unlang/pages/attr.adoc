@@ -105,5 +105,5 @@ parse the configuration files correctly in all cases.
 Adding the leading `&` character means that attribute references are
 now easily distinguishable from literal strings.
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

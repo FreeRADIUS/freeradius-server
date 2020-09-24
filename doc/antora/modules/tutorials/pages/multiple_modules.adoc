@@ -65,5 +65,5 @@ information is logged in them, you may stop the server.
 
 1.  Why is it useful to have multiple versions of a module?
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

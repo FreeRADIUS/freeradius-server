@@ -55,5 +55,5 @@ to the proxy contains CHAP-Password instead of User-Password?
 3.  Since the User-Password is encrypted with the RADIUS shared secret,
 what happens to it when a request is proxied?
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
