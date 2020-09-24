@@ -299,6 +299,14 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 				char *l;
 
 				/*
+				 *	Silently omit empty entries.
+				 */
+				if (!*p) {
+					talloc_free(e);
+					return true;
+				}
+
+				/*
 				 *	Check & smash ','.  duplicate
 				 *	'e', and insert it into the
 				 *	hash table / trie.
