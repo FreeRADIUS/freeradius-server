@@ -107,8 +107,9 @@ VALUE	Packet-Type			DHCP-Bulk-Lease-Query	14
 VALUE	Packet-Type			DHCP-Lease-Query-Done	15
 
 # This address is assigned on a hierarchical basis to then determine
-# the subnet which the client belongs to
-ATTRIBUTE	DHCP-Network-IP-Address			274	ipaddr
+# the subnet which the client belongs to.  Stored as a prefix to
+# enable closest subnet matching
+ATTRIBUTE	DHCP-Network-IP-Address			274	ipv4prefix
 # This is a name for the group(s) a client belongs to, used for
 # looking up of options
 ATTRIBUTE	DHCP-Group-Name				275	string
