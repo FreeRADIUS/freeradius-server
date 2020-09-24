@@ -454,5 +454,18 @@ module_t rlm_files = {
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
-};
+	.method_names = (module_method_names_t[]){
+		/*
+		 * Use mod_authorize for all DHCP processing - for consistent
+		 * use of data in the file referenced by "filename"
+		 */
+		{ "recv",	"DHCP-Discover",	mod_authorize },
+		{ "recv",	"DHCP-Request",		mod_authorize },
+		{ "recv",	"DHCP-Inform",		mod_authorize },
+		{ "recv",	"DHCP-Release",		mod_authorize },
+		{ "recv",	"DHCP-Decline",		mod_authorize },
 
+		MODULE_NAME_TERMINATOR
+	}
+
+};
