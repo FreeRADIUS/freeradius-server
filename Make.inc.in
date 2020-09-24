@@ -173,3 +173,14 @@ else
 	TESTBINDIR = ./$(BUILD_DIR)/bin
 	TESTBIN    = ./$(BUILD_DIR)/bin
 endif
+
+
+#
+#  For creating documentation via doc/all.mk
+#
+ASCIIDOCTOR := @ASCIIDOCTOR@
+PANDOC := @PANDOC@
+PANDOC_ENGINE := @PANDOC_ENGINE@
+DOXYGEN := @DOXYGEN@
+GRAPHVIZ_DOT := @GRAPHVIZ_DOT@
+ANTORA := @ANTORA@
