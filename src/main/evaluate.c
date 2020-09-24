@@ -804,6 +804,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
 	VALUE_PAIR *append, **append_tail;
+	VALUE_PAIR *prepend;
 	VALUE_PAIR *to_copy;
 	bool *edited = NULL;
 	REQUEST *fixup = NULL;
@@ -836,6 +837,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
+
+	prepend = NULL;
 
 	append = NULL;
 	append_tail = &append;
@@ -882,6 +885,20 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 */
 		if (from_list[i]->op == T_OP_ADD) goto do_append;
 
+		/*
+		 *	The attribute needs to be prepended to the "to"
+		 *	list - store it in the prepend list
+		 */
+
+		if (from_list[i]->op == T_OP_PREPEND) {
+			RDEBUG4("::: PREPENDING %s FROM %d TO %d",
+			       from_list[i]->da->name, i, tailto);
+			from_list[i]->next = prepend;
+			prepend = from_list[i];
+			prepend->op = T_OP_EQ;
+			from_list[i] = NULL;
+			continue;
+		}
 		found = false;
 		for (j = 0; j < to_count; j++) {
 			if (edited[j] || !to_list[j] || !from_list[i]) continue;
@@ -1038,7 +1055,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 */
 	for (i = 0; i < from_count; i++) {
 		if (!from_list[i]) continue;
-
 		fr_pair_list_free(&from_list[i]);
 	}
 	talloc_free(from_list);
@@ -1057,6 +1073,17 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		fixup = request->parent;
 	}
 
+	/*
+	 *	Walk the list of "prepend" attributes first
+	 */
+	for (vp = prepend; vp != NULL; vp = vp->next) {
+		*last = vp;
+		last = &(*last)->next;
+	}
+
+	/*
+	 *	Next add on remaining items in the "to" list
+	 */
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 
