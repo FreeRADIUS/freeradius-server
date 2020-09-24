@@ -287,22 +287,26 @@ static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t const *list_h
  *	- The head of the list if ptr is NULL.
  *	- NULL if ptr is the tail of the list (no more items).
  */
-static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void const *ptr)
 {
-	fr_dlist_t *entry;
-	fr_dlist_t const *head;
+	fr_dlist_t const	*entry;
+	fr_dlist_t const	*head;
+	fr_dlist_t		*m_entry;
 
 	if (!ptr) return fr_dlist_head(list_head);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	entry = (fr_dlist_t const *)(((uint8_t const *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
 	if (entry->next == head) return NULL;
 	entry = entry->next;
-	return (void *) (((uint8_t *) entry) - list_head->offset);
+
+	memcpy(&m_entry, &entry, sizeof(m_entry));
+
+	return (void *) (((uint8_t *) m_entry) - list_head->offset);
 }
 
 /** Get the previous item in a list
@@ -318,10 +322,11 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *lis
  *	- The tail of the list if ptr is NULL.
  *	- NULL if ptr is the head of the list (no more items).
  */
-static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t const *list_head, void const *ptr)
 {
-	fr_dlist_t *entry;
-	fr_dlist_t *head;
+	fr_dlist_t const	*entry;
+	fr_dlist_t const	*head;
+	fr_dlist_t		*m_entry;
 
 	if (!ptr) return fr_dlist_tail(list_head);
 
@@ -329,12 +334,15 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t *list_head
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
 
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	entry = (fr_dlist_t const *)(((uint8_t const *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
 	if (entry->prev == head) return NULL;
 	entry = entry->prev;
-	return (void *) (((uint8_t *) entry) - list_head->offset);
+
+	memcpy(&m_entry, &entry, sizeof(m_entry));
+
+	return (void *) (((uint8_t *)m_entry) - list_head->offset);
 }
 
 /** Remove an item from the list
