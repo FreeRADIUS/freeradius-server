@@ -550,10 +550,11 @@ done:
  */
 static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
 {
-	VALUE_PAIR	*vp = NULL;
-	fr_value_box_t	*value;
+	VALUE_PAIR		*vp = NULL;
+	fr_value_box_t		*value;
 
-	fr_cursor_t	cursor;
+	fr_cursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
@@ -563,7 +564,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 	 *	This allows users to manipulate virtual attributes as if
 	 *	they were real ones.
 	 */
-	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 
 	/*
 	 *	We didn't find the VP in a list, check to see if it's
@@ -580,6 +581,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 			if (!value) {
 			oom:
 				fr_strerror_printf("Out of memory");
+				tmpl_cursor_clear(&cc);
 				return XLAT_ACTION_FAIL;
 			}
 			value->datum.int32 = 0;
@@ -599,9 +601,9 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 	 */
 	case NUM_COUNT:
 	{
-		uint32_t count = 0;
+		uint32_t		count = 0;
 
-		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+		for (vp = fr_cursor_current(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) count++;
 
@@ -609,6 +611,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 		value->datum.uint32 = count;
 		fr_cursor_append(out, value);
 		fr_cursor_next(out);				/* Advance to our first value */
+		tmpl_cursor_clear(&cc);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -631,6 +634,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 			fr_cursor_append(out, value);
 		}
 		fr_cursor_next(out);				/* Advance to our first value */
+		tmpl_cursor_clear(&cc);
 
 		return XLAT_ACTION_DONE;
 
@@ -646,6 +650,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_cursor_append(out, value);
 		fr_cursor_next(out);				/* Advance to our first value */
+		tmpl_cursor_clear(&cc);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -1247,8 +1252,6 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const 
 			talloc_free(str);
 			return NULL;
 		}
-		RDEBUG2("EXPAND X %s", node->call.func->name);
-		RDEBUG2("   --> %s", str);
 		break;
 
 	case XLAT_FUNC:

@@ -29,6 +29,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/types.h>
@@ -297,6 +298,39 @@ ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out
 							 fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t const *da);
+/** @} */
+
+/** @name Attribute comparisons
+ *
+ * @ {
+ */
+static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+{
+	int8_t ret;
+
+	/*
+	 *	Comparing unknowns or raws is expensive
+	 *	because we need to check the lineage.
+	 */
+	if (a->flags.is_unknown | a->flags.is_raw | b->flags.is_unknown | b->flags.is_raw) {
+		ret = STABLE_COMPARE(a->depth, b->depth);
+		if (ret != 0) return ret;
+
+		ret = STABLE_COMPARE(a->attr, b->attr);
+		if (ret != 0) return ret;
+
+		ret = (a->parent == NULL) - (b->parent == NULL);
+		if ((ret != 0) || !a->parent) return ret;
+
+		return fr_dict_attr_cmp(a->parent, b->parent);
+	}
+
+	/*
+	 *	Comparing knowns is cheap because the
+	 *	DAs are unique.
+	 */
+	return STABLE_COMPARE(a, b);
+}
 /** @} */
 
 /** @name Attribute lineage

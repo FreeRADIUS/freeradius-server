@@ -562,12 +562,13 @@ build_vector:
 	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
-		fr_cursor_t	cursor;
-		VALUE_PAIR	*vp;
-		int		alloced = VECTOR_INCREMENT, i;
+		fr_cursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
+		VALUE_PAIR		*vp;
+		int			alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
-		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
+		for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
 		     vp;
 		     vp = fr_cursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
@@ -599,6 +600,7 @@ build_vector:
 				vector[i].iov_len = inst->delimiter_len;
 			}
 		}
+		tmpl_cursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
 	}

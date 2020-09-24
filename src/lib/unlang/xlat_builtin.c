@@ -151,9 +151,10 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char c
 int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 		       bool *tainted, REQUEST *request, char const *fmt)
 {
-	tmpl_t	*vpt;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	*cursor;
+	tmpl_t			*vpt;
+	VALUE_PAIR		*vp;
+	fr_cursor_t		*cursor;
+	tmpl_cursor_ctx_t	cc;
 
 	fr_skip_whitespace(fmt);	/* Not binary safe, but attr refs should only contain printable chars */
 
@@ -168,7 +169,8 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 
 	MEM(cursor = talloc(ctx, fr_cursor_t));
 	talloc_steal(cursor, vpt);
-	vp = tmpl_cursor_init(NULL, cursor, request, vpt);
+	vp = tmpl_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
+	tmpl_cursor_clear(&cc);
 	*out = cursor;
 
 	if (!tainted) return 0;
@@ -840,9 +842,10 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 				    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				    REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor;
-	tmpl_t	*vpt;
+	VALUE_PAIR		*vp;
+	fr_cursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
+	tmpl_t			*vpt;
 
 	if (!RDEBUG_ENABLED2) return 0;	/* NOOP if debugging isn't enabled */
 
@@ -860,14 +863,14 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 
 	RINDENT();
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		fr_dict_vendor_t const		*vendor;
 		fr_table_num_ordered_t const	*type;
 		size_t				i;
 
-		RIDEBUG2("&%s:%s %s %pV",
+		RIDEBUG2("&%s.%s %s %pV",
 			fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
 			vp->da->name,
 			fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
@@ -933,6 +936,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 			talloc_free(dst);
 		}
 	}
+	tmpl_cursor_clear(&cc);
 	REXDENT();
 
 	talloc_free(vpt);
@@ -971,14 +975,15 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
-	tmpl_t	*vpt = NULL;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor, to_merge;
-	VALUE_PAIR	*head = NULL;
-	ssize_t		slen;
-	int		count = 0;
-	char const	*p = fmt;
-	char		delim;
+	tmpl_t			*vpt = NULL;
+	VALUE_PAIR		*vp;
+	fr_cursor_t		cursor, to_merge;
+	tmpl_cursor_ctx_t	cc;
+	VALUE_PAIR		*head = NULL;
+	ssize_t			slen;
+	int			count = 0;
+	char const		*p = fmt;
+	char			delim;
 
 	/*
 	 *  Trim whitespace
@@ -1009,7 +1014,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	fr_cursor_init(&to_merge, &head);
 
-	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	while (vp) {
 		VALUE_PAIR *nvp;
 		char const *end;
@@ -1080,6 +1085,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	next:
 		vp = fr_cursor_next(&cursor);
 	}
+	tmpl_cursor_clear(&cc);
 
 	fr_cursor_head(&to_merge);
 	fr_cursor_merge(&cursor, &to_merge);
@@ -2169,9 +2175,10 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
-	tmpl_t	*vpt = NULL;
-	fr_cursor_t	cursor;
-	fr_value_box_t	*vb;
+	tmpl_t			*vpt = NULL;
+	fr_cursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
+	fr_value_box_t		*vb;
 
 	/*
 	 *	If there's no input, there's no output
@@ -2194,7 +2201,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		fr_token_t op = vp->op;
@@ -2211,7 +2218,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		fr_cursor_append(out, vb);
 	}
-
+	tmpl_cursor_clear(&cc);
 	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;

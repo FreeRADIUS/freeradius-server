@@ -517,10 +517,11 @@ do {\
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR *vp;
-		fr_cursor_t cursor;
+		VALUE_PAIR		*vp;
+		fr_cursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
 
-		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
+		for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 		     vp;
 	     	     vp = fr_cursor_next(&cursor)) {
 			rhs = &vp->data;
@@ -534,6 +535,7 @@ do {\
 
 			fr_value_box_clear(&rhs_cast);
 		}
+		tmpl_cursor_clear(&cc);
 	}
 		break;
 
@@ -645,8 +647,9 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR *vp;
-		fr_cursor_t cursor;
+		VALUE_PAIR		*vp;
+		fr_cursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
 		/*
 		 *	Legacy paircmp call, skip processing the magic attribute
 		 *	if it's the LHS and cast RHS to the same type.
@@ -658,7 +661,7 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 			rcode = cond_normalise_and_cmp(request, c, NULL);
 			break;
 		}
-		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
+		for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
 		     vp;
 	     	     vp = fr_cursor_next(&cursor)) {
 			/*
@@ -669,6 +672,8 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 	     		rcode = cond_normalise_and_cmp(request, c, &vp->data);
 	     		if (rcode != 0) break;
 		}
+
+		tmpl_cursor_clear(&cc);
 	}
 		break;
 

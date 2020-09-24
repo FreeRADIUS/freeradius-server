@@ -376,8 +376,8 @@ cast_ok:
  */
 static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs)
 {
-	tmpl_t	*attr, *data, *xlat, *unresolved, *xlat_unresolved, *exec, *vpt;
-	tmpl_t	*lhs = c->data.map->lhs, *rhs = c->data.map->rhs;
+	tmpl_t		*attr, *data, *xlat, *unresolved, *xlat_unresolved, *exec, *vpt;
+	tmpl_t		*lhs = c->data.map->lhs, *rhs = c->data.map->rhs;
 	fr_token_t	op = c->data.map->op;
 
 /** True if one operand is of _type_a and the other of _type_b

@@ -254,6 +254,7 @@ typedef struct tmpl_s tmpl_t;
 
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
 
 /*
@@ -452,6 +453,62 @@ struct tmpl_s {
 	tmpl_rules_t	_CONST rules;
 };
 
+typedef struct tmpl_cursor_ctx_s tmpl_cursor_ctx_t;
+typedef struct tmpl_cursor_nested_s tmpl_cursor_nested_t;
+
+typedef VALUE_PAIR *(*tmpl_cursor_eval_t)(VALUE_PAIR **prev, VALUE_PAIR *current, tmpl_cursor_nested_t *ns);
+
+/** State for traversing an attribute reference
+ *
+ */
+struct tmpl_cursor_nested_s {
+	fr_dlist_t		entry;		//!< Entry in the dlist.
+	tmpl_attr_t const	*ar;		//!< Attribute reference this state
+						///< entry is associated with.  Mainly for debugging.
+	tmpl_cursor_eval_t	func;		//!< Function used to evaluate this attribute reference.
+
+	union {
+		struct {
+			fr_da_stack_t		da_stack;		//!< fr_dict_attr_t hierarchy
+									///< between a->b.
+			fr_cursor_stack_t	*cursor_stack;		//!< Track state as we traverse VPs.
+		} tlv;
+
+		struct {
+			fr_cursor_t		cursor;			//!< Group traversal is much easier
+									///< but we still need to keep track
+									///< where we are in the list in case
+									///< we're doing counts.
+		} group;
+
+		struct {
+			VALUE_PAIR		**list_head;		//!< Head of the list we're currently
+									///< iterating over.
+		} leaf;
+	};
+};
+
+/** Maintains state between cursor calls
+ *
+ */
+struct tmpl_cursor_ctx_s {
+	TALLOC_CTX		*ctx;		//!< Temporary allocations go here.
+
+	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
+
+	REQUEST			*request;	//!< Result of following the request references.
+	VALUE_PAIR		**list;		//!< List within the request.
+
+	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
+						///< one of these so it doesn't make sense to
+						///< allocate it later.
+
+	fr_dlist_head_t		nested;		//!< Nested state.  These are allocated when we
+						///< need to maintain state between multiple
+						///< cursor calls for a particular attribute
+						///< reference.
+};
+
 extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_unquoted;
 extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_unquoted;
 extern fr_sbuff_parse_rules_t const tmpl_parse_rules_single_unquoted;
@@ -598,9 +655,10 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  *
  * Example:
  @code{.c}
-   static tmpl_t list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
-   fr_cursor_t cursor;
-   VALUE_PAIR *vp;
+   static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   fr_cursor_t       cursor;
+   tmpl_cursor_ctx_t cc,
+   VALUE_PAIR        *vp;
 
    // Iterate over all pairs in the request list
    for (vp = tmpl_cursor_init(NULL, &cursor, request, &list);
@@ -608,6 +666,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    	vp = tmpl_cursor_next(&cursor, &list)) {
    	// Do something
    }
+   tmpl_cursor_clear(&cc);
  @endcode
  *
  * @param _request to locate the list in.
@@ -863,8 +922,11 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
-VALUE_PAIR		*tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request,
+VALUE_PAIR		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+					  fr_cursor_t *cursor, REQUEST *request,
 					  tmpl_t const *vpt);
+
+void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 				      tmpl_t const *vpt);
@@ -872,7 +934,6 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
-
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
 				      fr_token_t *type, char const **error,

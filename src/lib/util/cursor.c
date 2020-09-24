@@ -745,13 +745,13 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
 	void **v;
 
 	memcpy(&v, &head, sizeof(v));			/* stupid const hacks */
-
-	cursor->head = v;
-	cursor->tail = *v;
-	cursor->prev = cursor->current = NULL;
-	cursor->iter = iter;
-	cursor->offset = offset;
-	cursor->type = type;
+	*cursor = (fr_cursor_t){
+		.head = v,
+		.tail = *v,
+		.iter = iter,
+		.offset = offset,
+		.type = type
+	};
 	memcpy(&cursor->uctx, &uctx, sizeof(cursor->uctx));
 
 	if (*head) return fr_cursor_next(cursor);	/* Initialise current */

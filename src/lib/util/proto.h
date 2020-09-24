@@ -52,9 +52,10 @@ do { \
  *
  */
 typedef struct {
-	fr_dict_attr_t const	*da[FR_DICT_MAX_TLV_STACK + 1];		//!< The stack.
 	uint8_t			depth;					//!< Deepest attribute in the stack.
+	fr_dict_attr_t const	*da[FR_DICT_MAX_TLV_STACK + 1];		//!< The stack.
 } fr_da_stack_t;
+
 void fr_proto_print(char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 
 void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, size_t data_len, char const *fmt, ...);

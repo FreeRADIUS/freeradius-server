@@ -12,10 +12,13 @@ update {
 	&request.Tmp-IP-Address-0 += 192.0.2.4
 }
 
+debug_request
 
 update request {
 	&Tmp-IP-Address-0[3] -= 192.0.2.2
 }
+
+debug_request
 
 # Only the 1st, 2nd, 3rd and 5th Tmp-IP-Address attributes should still be in the list
 if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \

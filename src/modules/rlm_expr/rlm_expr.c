@@ -215,10 +215,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	 *	Look for an attribute.
 	 */
 	if (*p == '&') {
-		int		i, max, err;
-		ssize_t		slen;
-		VALUE_PAIR	*vp;
-		fr_cursor_t	cursor;
+		int			i, max, err;
+		ssize_t			slen;
+		VALUE_PAIR		*vp;
+		fr_cursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
 
 		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
 					      &FR_SBUFF_IN(p, strlen(p)),
@@ -243,7 +244,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		}
 
 		x = 0;
-		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, vpt);
+		for (i = 0, vp = tmpl_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
 		     i++, vp = fr_cursor_next(&cursor)) {
 			int64_t		y;
@@ -253,6 +254,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
+				error:
+					tmpl_cursor_clear(&cc);
 					return false;
 				}
 				if (value.vb_uint64 > INT64_MAX) {
@@ -260,7 +263,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 					talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%pV) would overflow a signed 64bit integer "
 						"(our internal arithmetic type)", (int)vpt->len, vpt->name, &value);
-					return false;
+					goto error;
 				}
 				y = (int64_t)value.vb_uint64;
 
@@ -288,6 +291,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 			x += y;
 		} /* loop over all found VPs */
+		tmpl_cursor_clear(&cc);
 
 		if (err != 0) {
 			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);

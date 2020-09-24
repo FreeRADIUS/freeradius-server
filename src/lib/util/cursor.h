@@ -70,6 +70,11 @@ typedef struct {
 	char const		*type;		//!< If set, used for explicit runtime type safety checks.
 } fr_cursor_t;
 
+typedef struct {
+	uint8_t			depth;		//!< Which cursor is currently in use.
+	fr_cursor_t		cursor[];	//!< Stack of cursors.
+} fr_cursor_stack_t;
+
 void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in) CC_HINT(nonnull);
 
 void *fr_cursor_head(fr_cursor_t *cursor);
@@ -174,6 +179,26 @@ static inline void fr_cursor_free_item(fr_cursor_t *cursor)
 	if (!cursor) return;
 
 	talloc_free(fr_cursor_remove(cursor));
+}
+
+/** Allocate a stack of cursors for traversing trees
+ *
+ * @param[in] ctx	to allocate the cursor stack in.
+ * @param[in] depth	Maximum depth of the cursor stack.
+ * @return
+ *	- A new cursor stack.
+ *	- NULL on error.
+ */
+static inline fr_cursor_stack_t *fr_cursor_stack_alloc(TALLOC_CTX *ctx, uint8_t depth)
+{
+	fr_cursor_stack_t *stack;
+
+	stack = talloc_array_size(ctx, sizeof(fr_cursor_stack_t) + (sizeof(fr_cursor_t) * depth), 1);
+	if (unlikely(!stack)) return NULL;
+
+	talloc_set_name_const(stack, "fr_cursor_stack_t");
+
+	return stack;
 }
 
 #ifdef __cplusplus

@@ -1,8 +1,8 @@
 TARGET		:= libfreeradius-server.a
 
 SOURCES	:= \
-	base.c \
 	auth.c \
+	base.c \
 	cf_file.c \
 	cf_parse.c \
 	cf_util.c \
@@ -19,9 +19,9 @@ SOURCES	:= \
 	log.c \
 	main_config.c \
 	main_loop.c \
+	map.c \
 	map_async.c \
 	map_proc.c \
-	map.c \
 	module.c \
 	paircmp.c \
 	pairmove.c \
@@ -29,12 +29,13 @@ SOURCES	:= \
 	pool.c \
 	rcode.c \
 	regex.c \
-	request_data.c \
 	request.c \
+	request_data.c \
 	snmp.c \
 	state.c \
 	stats.c \
-	tmpl.c \
+	tmpl_eval.c \
+	tmpl_tokenize.c \
 	trigger.c \
 	trunk.c \
 	users_file.c \
