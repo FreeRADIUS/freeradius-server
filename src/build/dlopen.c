@@ -580,7 +580,7 @@ static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv
 {
 	char *p, *q, *r;
 	char const *name;
-	void *symbol;
+	void *symbol = NULL;
 	void *handle;
 
 	/*
