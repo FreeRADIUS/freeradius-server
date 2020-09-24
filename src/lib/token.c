@@ -42,6 +42,7 @@ const FR_NAME_NUMBER fr_tokens[] = {
 	{ "=*", T_OP_CMP_TRUE,  },
 	{ "!*", T_OP_CMP_FALSE, },
 	{ "==",	T_OP_CMP_EQ,	},
+	{ "^=", T_OP_PREPEND,	},
 	{ "=",	T_OP_EQ,	},
 	{ "!=",	T_OP_NE,	},
 	{ ">=",	T_OP_GE,	},
@@ -67,20 +68,21 @@ const bool fr_assignment_op[] = {
 	true,		/* += */
 	true,		/* -=  		10 */
 	true,		/* := */
+	true,		/* ^= */
 	true,		/* = */
 	false,		/* != */
-	false,		/* >= */
-	false,		/* > 		15 */
+	false,		/* >= 		15 */
+	false,		/* > */
 	false,		/* <= */
 	false,		/* < */
 	false,		/* =~ */
-	false,		/* !~ */
-	false,		/* =* 		20 */
+	false,		/* !~ 		20 */
+	false,		/* =* */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -100,20 +102,21 @@ const bool fr_equality_op[] = {
 	false,		/* += */
 	false,		/* -=  		10 */
 	false,		/* := */
+	false,		/* ^= */
 	false,		/* = */
 	true,		/* != */
-	true,		/* >= */
-	true,		/* > 		15 */
+	true,		/* >= 		15 */
+	true,		/* > */
 	true,		/* <= */
 	true,		/* < */
 	true,		/* =~ */
-	true,		/* !~ */
-	true,		/* =* 		20 */
+	true,		/* !~		20 */
+	true,		/* =* */
 	true,		/* !* */
 	true,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -133,20 +136,21 @@ const bool fr_str_tok[] = {
 	false,		/* += */
 	false,		/* -=  		10 */
 	false,		/* := */
+	false,		/* ^= */
 	false,		/* = */
 	false,		/* != */
-	false,		/* >= */
-	false,		/* > 		15 */
+	false,		/* >= 		15 */
+	false,		/* > */
 	false,		/* <= */
 	false,		/* < */
 	false,		/* =~ */
-	false,		/* !~ */
-	false,		/* =* 		20 */
+	false,		/* !~		20 */
+	false,		/* =* */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	true,		/* bare word */
-	true,		/* "foo" 	25 */
+	false,		/* # */
+	true,		/* bare word 	25 */
+	true,		/* "foo" */
 	true,		/* 'foo' */
 	true,		/* `foo` */
 	false
