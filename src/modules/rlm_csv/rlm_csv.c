@@ -109,7 +109,7 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 		*out = strchr(buf + 1, *inst->delimiter);
 
 		if (!*out) {	/* mash CR / LF */
-			for (p = buf + 1; *p != '\0'; p++) {
+			for (p = buf; *p != '\0'; p++) {
 				if (*p < ' ') {
 					*p = '\0';
 					break;
