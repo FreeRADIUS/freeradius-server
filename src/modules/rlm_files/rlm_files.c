@@ -373,6 +373,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			 */
 			if (!fall_through(pl->reply)) break;
 		}
+
+		/* Ensure temporary check list is clear before next match */
+		fr_pair_list_free(&check_tmp);
 	}
 
 	/*
