@@ -5,10 +5,6 @@
 #  $Id$
 #
 
-#
-#  A bunch of errors, in the order that the error strings
-#  appear in parser.c
-#
 proto-dictionary radius
 
 condition &request.User-Name == &reply.User-Name
