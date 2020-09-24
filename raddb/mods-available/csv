@@ -128,6 +128,10 @@ csv {
 	#  parsed to the final data type only when the `csv` module
 	#  is run, either in-place, or as a `map`.
 	#
+	#  If the `key` below is an attribute, then the `data_type`
+	#  configuration can be omitted  The module will then take the
+	#  `data_type` value from the data type defined in the attribute.
+	#
 	data_type = string
 
 	#
