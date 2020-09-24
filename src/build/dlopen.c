@@ -469,6 +469,14 @@ static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char 
 
 /** Call dlsym as a GNU make function
  *
+ *  This function opens a library (without extension!), and returns
+ *  the directory where the library was found.
+ *
+ *	$(dlsymb libfoo,symbol)
+ *		Checks a library previously opened with $(dlopen ...)
+ *		for the existence of "symbol"
+ *
+ *
  * @param nm the name of the function
  * @param argc argument count
  * @param argv NULL-terminated array of pointers to arguments
@@ -535,6 +543,179 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
 	return p;
 }
 
+#if 0
+#define DEBUG(...) fprintf(stderr, ## __VA_ARGS__ )
+#else
+#define DEBUG(...)
+#endif
+
+/** Search libraries without using $(dlopen ...)
+ *
+ *  The output is empty if the symbol wasn't found.
+ *
+ *  Otherwise, the output is the LDFLAGS changes needed
+ *  to link to the symbol.  If no LDFLAGS are necessary,
+ *  then the output is a space character.
+ *
+ *	$(dlsearch symbol)
+ *		to to find a symbol in a library already loaded
+ *
+ *	$(dlsearch symbol,libfoo)
+ *		to to find a symbol in a specific library which
+ *
+ *	$(dlsearch symbol,libfoo,libbar)
+ *		to to find a symbol in a specific set of libraries
+ *
+ * @param nm the name of the function
+ * @param argc argument count
+ * @param argv NULL-terminated array of pointers to arguments
+ * @return a string
+ *
+ * @note the prototype of gmk_add_function() requires argc to be unsigned int
+ *       to avoid a warning; this differs from the GNU make docs example.
+ * @note argv[0] is really the first argument--if this followed C conventions
+ *       for main(), argv[0] would be what's passed here in nm.
+ */
+static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv)
+{
+	char *p, *q, *r;
+	char const *name;
+	void *symbol;
+	void *handle;
+
+	/*
+	 *	Get the symbol name
+	 */
+	name = argv[0];
+	while (isspace((int) *name)) name++;
+
+	DEBUG("Searching for symbol %s\n", name);
+
+	if (argc == 1 ) {
+		symbol = dlsym(RTLD_DEFAULT, name);
+		handle = NULL;
+
+		DEBUG("\tSearching in application\n");
+
+	} else {
+		unsigned int i;
+		char *path, *libname;
+
+		for (i = 1; i < argc; i++) {
+			DEBUG("\tchecking ::%s::\n", argv[i]);
+			handle = NULL;
+
+			if (*argv[i] == '\0') {
+				symbol = dlsym(RTLD_DEFAULT, name);
+				if (symbol) {
+					DEBUG("\tfound in RTLD_DEFAULT\n");
+					break;
+				}
+				DEBUG("\tdid not find in RTLD_DEFAULT\n");
+				continue;
+			}
+
+			/*
+			 *	Get the full path name
+			 *
+			 *	libfoo -> /path/libfoo.so
+			 */
+			path = argv2lib(argv[i], &libname);
+			if (!path) {
+				DEBUG("\tfailed getting path from %s\n", argv[i]);
+				continue;
+			}
+
+			/*
+			 *	If this succeeds, we can get the full
+			 *	pathname from the handle.
+			 */
+			handle = dlopen(path, RTLD_NOW);
+			FREE(path);
+			if (!handle) {
+				DEBUG("\tdlopen failed for %s\n", path);
+				continue;
+			}
+
+			/*
+			 *	Not found, oh well.
+			 */
+			symbol = dlsym(handle, name);
+			if (!symbol) {
+				DEBUG("\tsymbol not found");
+				dlclose(handle);
+				continue;
+			}
+
+			DEBUG("\tfound in %s\n", argv[i]);
+			name = argv[i];
+			break;
+		}
+	}
+
+	if (!symbol) {
+		DEBUG("\tnot found\n");
+		return NULL;
+	}
+
+	/*
+	 *	Found in the application. The search path is " ".
+	 */
+	if (!handle) {
+		p = gmk_alloc(2);
+		if (!p) return NULL;
+
+		p[0] = ' ';
+		p[1] = '\0';
+		return p;
+	}
+
+	DEBUG("\tfound symbol '%s' in '%s'\n", argv[0], name);
+
+	/*
+	 *	Convert "libfoo" to "-lfoo"
+	 */
+	if (strncmp(name, "lib", 3) == 0) {
+		dlclose(handle);
+
+		p = gmk_alloc(strlen(name));
+		if (!p) return NULL;
+
+		p[0] = '-';
+		p[1] = 'l';
+		strcpy(p + 2, name + 3);
+		return p;
+	}
+
+	/*
+	 *	We should now have a path.  If we don't, die
+	 */
+	q = strrchr(name, '/');
+	if (!q || (strncmp(q, "/lib", 4) != 0)) {
+		dlclose(handle);
+		return NULL;
+	}
+
+	/*
+	 *	path/to/libfoo
+	 *	/path/to/libfoo
+	 *
+	 *	Convert to "-Lpath/to -lfoo"
+	 */
+	p = gmk_alloc(strlen(name) + 5);
+	p[0] = '-';
+	p[1] = 'L';
+	memcpy(p + 2, name , (q - name));
+	r = p + 2 + (q - name);
+	r[0] = ' ';
+	r[1] = '-';
+	r[2] = 'l';
+	strcpy(r + 3, q + 4);
+
+	return p;
+}
+
+
 /** Register function(s) with make.
  *
  * @return non-zero value on success, or zero on failure.
@@ -547,6 +728,7 @@ int dlopen_gmk_setup(void)
 	gmk_add_function("dlclose", &make_dlclose, 1, 1, 0); /* min 1, max 1, please expand the input string */
 	gmk_add_function("dlsym", &make_dlsym, 2, 2, 0); /* min 2, max 2, please expand the input string */
 	gmk_add_function("dlerror", &make_dlerror, 0, 0, 0); /* no arguments */
+	gmk_add_function("dlsearch", &make_dlsearch, 1, 0, 0); /* min 2, max 2, please expand the input string */
 
 	return 1;
 }
