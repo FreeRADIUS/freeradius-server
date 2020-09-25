@@ -327,7 +327,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 			p_op = PyTuple_GET_ITEM(p_tuple_element, 1);
 			if (PyUnicode_CheckExact(p_op)) {
 				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(p_op), 0))) {
-					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
+					ERROR("%s - Invalid operator %s.%s %s %s, falling back to '='",
 					      funcname, list_name, s1, PyUnicode_AsUTF8(p_op), s2);
 					op = T_OP_EQ;
 				}
@@ -336,14 +336,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 
 				py_op = PyLong_AsLong(p_op);
 				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
-					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
+					ERROR("%s - Invalid operator %s.%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
 				} else {
 					op = (fr_token_t)py_op;
 				}
 			} else {
-				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
+				ERROR("%s - Invalid operator type for %s.%s ? %s, using default '='",
 				      funcname, list_name, s1, s2);
 			}
 		}
@@ -353,12 +353,12 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
-			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
 			continue;
 		}
 
 		if (radius_request(&current, tmpl_request(dst)) < 0) {
-			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
+			ERROR("%s - Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
 			      funcname, list_name, s1);
 			talloc_free(dst);
 			continue;
@@ -369,10 +369,10 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
-			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
+			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		} else {
-			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
+			DEBUG("%s - '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 

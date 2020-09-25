@@ -633,13 +633,13 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
-		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
+		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> '%s'", hash_name, vp->da->name, *i,
 		        list_name, vp->da->name, vp->vp_strvalue);
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case FR_TYPE_OCTETS:
-		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> 0x%pH", hash_name, vp->da->name, *i,
+		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> 0x%pH", hash_name, vp->da->name, *i,
 		        list_name, vp->da->name, &vp->data);
 		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
@@ -652,7 +652,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
 		if (slen < 0) return;
 
-		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> '%pV'", hash_name, vp->da->name, *i,
+		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> '%pV'", hash_name, vp->da->name, *i,
 		        list_name, vp->da->name, fr_box_strvalue_len(buffer, (size_t)slen));
 		sv = newSVpvn(buffer, (size_t)slen);
 	}
@@ -713,13 +713,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
-			RDEBUG2("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name, list_name,
+			RDEBUG2("$%s{'%s'} = &%s.%s -> '%pV'", hash_name, vp->da->name, list_name,
 			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		case FR_TYPE_OCTETS:
-			RDEBUG2("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name, list_name,
+			RDEBUG2("$%s{'%s'} = &%s.%s -> %pV", hash_name, vp->da->name, list_name,
 			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
@@ -731,7 +731,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			ssize_t slen;
 
 			slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
-			RDEBUG2("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name,
+			RDEBUG2("$%s{'%s'} = &%s.%s -> '%pV'", hash_name, vp->da->name,
 			        list_name, vp->da->name, fr_box_strvalue_len(buffer, (size_t)slen));
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, (size_t)(slen)), 0);
@@ -761,7 +761,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 	vp = fr_pair_make(ctx, request->dict, vps, key, NULL, op);
 	if (!vp) {
 	fail:
-		REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
+		REDEBUG("Failed to create pair %s.%s %s %s", list_name, key,
 			fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"), val);
 		return -1;
 	}
@@ -781,7 +781,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 	VP_VERIFY(vp);
 
-	RDEBUG2("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"),
+	RDEBUG2("&%s.%s %s $%s{'%s'} -> '%s'", list_name, key, fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"),
 	        hash_name, key, val);
 	return 0;
 }
