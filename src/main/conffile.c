@@ -2794,6 +2794,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
+		case T_OP_PREPEND:
 			while (isspace((int) *ptr)) ptr++;
 
 			/*
