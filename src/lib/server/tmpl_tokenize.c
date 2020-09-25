@@ -1519,7 +1519,8 @@ check_attr:
 		 */
 		if (found_in != fr_dict_internal() &&
 		    !rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
-			fr_strerror_printf("Only attributes from the %s protocol are allowed here",
+			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
+					   fr_dict_root(found_in)->name,
 					   fr_dict_root(rules->dict_def)->name);
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
