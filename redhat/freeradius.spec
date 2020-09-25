@@ -163,8 +163,6 @@ Group: System Environment/Daemons
 Summary: FreeRADIUS utilities
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: libpcap >= 0.9.4
-Requires: perl-Net-IP
-Requires: perl-Template-Toolkit
 
 %description utils
 The FreeRADIUS server has a number of features found in other servers,
