@@ -1774,7 +1774,7 @@ finish:
 			fr_pool_connection_release(node->pool, request, *conn);
 			goto again;	/* New map, try again */
 		}
-		RPDEBUG2("");
+		RPDEBUG2("%s", "");
 	}
 
 	state->node = node;
@@ -1858,7 +1858,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		 *	remap_needed flag.
 		 */
 		if (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)
-		RPDEBUG2("");
+		RPDEBUG2("%s", "");
 	}
 
 	/*
@@ -1946,7 +1946,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		fr_assert(*reply);
 
 		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)) {
-			RPDEBUG2("");
+			RPDEBUG2("%s", "");
 		}
 		FALL_THROUGH;
 

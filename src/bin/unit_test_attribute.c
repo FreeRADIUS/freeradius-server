@@ -2734,7 +2734,7 @@ static void commands_print(void)
 	for (i = 0; i < commands_len; i++) {
 		INFO("  %s:", ((command_entry_t const *)commands[i].value)->usage);
 		INFO("    %s.", ((command_entry_t const *)commands[i].value)->description);
-		INFO("");
+		INFO("%s", "");
 	}
 }
 
