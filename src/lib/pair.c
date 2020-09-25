@@ -888,13 +888,15 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
+ * @param[in] op operator for move.
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
+void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, FR_TOKEN op)
 {
 	VALUE_PAIR *i, *found;
 	VALUE_PAIR *head_new, **tail_new;
+	VALUE_PAIR *head_prepend;
 	VALUE_PAIR **tail_from;
 
 	if (!to || !from || !*from) return;
@@ -907,6 +909,12 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	head_new = NULL;
 	tail_new = &head_new;
+
+	/*
+	 *	Any attributes that are requested to be prepended
+	 *	are added to a temporary list here
+	 */
+	head_prepend = NULL;
 
 	/*
 	 *	We're looping over the "from" list, moving some
@@ -1020,13 +1028,36 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			fr_pair_steal(ctx, i);
 			tail_new = &(i->next);
 			continue;
+		case T_OP_PREPEND:
+			i->next = head_prepend;
+			head_prepend = i;
+			fr_pair_steal(ctx, i);
+			continue;
 		}
 	} /* loop over the "from" list. */
 
 	/*
-	 *	Take the "new" list, and append it to the "to" list.
+	 * 	If the op parameter was prepend, add the "new" list
+	 *	attributes first as those whose individual operator
+	 *	is prepend should be prepended to the resulting list
 	 */
-	fr_pair_add(to, head_new);
+	if (op == T_OP_PREPEND) {
+		fr_pair_prepend(to, head_new);
+	}
+
+	/*
+	 *	If there are any items in the prepend list prepend
+	 *	it to the "to" list
+	 */
+	fr_pair_prepend(to, head_prepend);
+
+	/*
+	 *	If the op parameter was not prepend, take the "new"
+	 *	list, and append it to the "to" list.
+	 */
+	if (op != T_OP_PREPEND) {
+		fr_pair_add(to, head_new);
+	}
 }
 
 /** Move matching pairs between VALUE_PAIR lists
