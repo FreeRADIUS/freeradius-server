@@ -2008,8 +2008,14 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 {
 	fr_dict_attr_t const *bin;
 
+#ifndef NDEBUG
+	/*
+	 *	Asserts parent is not NULL in non-debug
+	 *	builds, but parent is marked as nonnull
+	 *	so we get complaints.
+	 */
 	DA_VERIFY(parent);
-
+#endif
 	if (!parent->children) return NULL;
 
 	/*
