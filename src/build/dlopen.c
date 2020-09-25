@@ -543,11 +543,111 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
 	return p;
 }
 
+
 #if 0
 #define DEBUG(...) fprintf(stderr, ## __VA_ARGS__ )
 #else
 #define DEBUG(...)
 #endif
+
+static void ad_have_feature(char const *symbol)
+{
+	char *def, *p;
+	size_t len;
+
+	len = strlen(symbol);
+
+	def = malloc(len + 5 + 2 + 1);
+	if (!def) return;
+
+	memcpy(def, "HAVE_", 5);
+	memcpy(def + 5, symbol, len);
+	strcpy(def + 5 + len, "=1");
+
+	for (p = def + 5; *p != '\0'; p++) {
+		if (islower((int) *p)) {
+			*p = toupper((int) *p);
+
+		} else if (*p == '-') {
+			*p = '_';
+		}
+	}
+
+	gmk_eval(def, NULL);
+	free(def);
+}
+
+
+static void ad_update_variable(char const *name, char *value)
+{
+	size_t name_len, value_len;
+	char *old, *p, *expand;
+
+	DEBUG("Update %s with %s\n", name, value);
+
+	if (!value || !*value || (*value == ' ')) return;
+
+	name_len = strlen(name);
+
+	expand = gmk_alloc(name_len + 4);
+	if (!expand) return;
+
+	/*
+	 *	Expand the variable.
+	 */
+	expand[0] = '$';
+	expand[1] = '(';
+	memcpy(expand + 2, name, name_len);
+	expand[2 + name_len] = ')';
+	expand[2 + name_len + 1] = '\0';
+
+	old = gmk_expand(expand);
+	gmk_free(expand);
+	if (!old) return;
+
+	/*
+	 *	It already contains "value", so that's OK.
+	 *
+	 *	But check for the *whole* value.  i.e. if there's
+	 *	"-lfoo", and we're asked to add "-lfood", then we need
+	 *	to add "-lfood".
+	 */
+	value_len = strlen(value);
+
+	p = strstr(old, value);
+	if (p) {
+		if (!p[value_len] || isspace((int) p[value_len])) {
+			gmk_free(old);
+			return;
+		}
+
+		gmk_free(old);
+	}
+
+	expand = gmk_alloc(name_len + 4 + name_len + 2 + value_len + 1);
+	if (!expand) return;
+
+	/*
+	 *	Because sprintf() is for weenies :)
+	 */
+	p = expand;
+	memcpy(p, name, name_len);
+	p += name_len;
+	*p++ = ':';
+	*p++ = '=';
+	*p++ = '$';
+	*p++ = '(';
+	memcpy(p, name, name_len);
+	p += name_len;
+	*p++ = ')';
+	*p++ = ' ';
+	strcpy(p, value);
+
+	DEBUG("RESULT ASKED TO EVAL - %s\n", expand);
+	gmk_eval(expand, NULL);
+	gmk_free(expand);
+}
+
 
 /** Search libraries without using $(dlopen ...)
  *
@@ -557,13 +657,13 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
  *  to link to the symbol.  If no LDFLAGS are necessary,
  *  then the output is a space character.
  *
- *	$(dlsearch symbol)
+ *	$(ad_search_libs symbol)
  *		to to find a symbol in a library already loaded
  *
- *	$(dlsearch symbol,libfoo)
+ *	$(ad_search_libs symbol,libfoo)
  *		to to find a symbol in a specific library which
  *
- *	$(dlsearch symbol,libfoo,libbar)
+ *	$(ad_search_libs symbol,libfoo,/path/to/libbar)
  *		to to find a symbol in a specific set of libraries
  *
  * @param nm the name of the function
@@ -576,7 +676,7 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char **argv)
 {
 	char *p, *q, *r;
 	char const *name;
@@ -631,11 +731,12 @@ static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv
 			 *	pathname from the handle.
 			 */
 			handle = dlopen(path, RTLD_NOW);
-			FREE(path);
 			if (!handle) {
 				DEBUG("\tdlopen failed for %s\n", path);
+				FREE(path);
 				continue;
 			}
+			FREE(path);
 
 			/*
 			 *	Not found, oh well.
@@ -657,6 +758,11 @@ static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv
 		DEBUG("\tnot found\n");
 		return NULL;
 	}
+
+	/*
+	 *	Define HAVE_foo = 1
+	 */
+	ad_have_feature(name);
 
 	/*
 	 *	Found in the application. The search path is " ".
@@ -684,6 +790,10 @@ static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv
 		p[0] = '-';
 		p[1] = 'l';
 		strcpy(p + 2, name + 3);
+
+		ad_update_variable("LIBS", p);
+		ad_have_feature(p);
+
 		return p;
 	}
 
@@ -705,12 +815,20 @@ static char *make_dlsearch(UNUSED char const *nm, unsigned int argc, char **argv
 	p = gmk_alloc(strlen(name) + 5);
 	p[0] = '-';
 	p[1] = 'L';
+
 	memcpy(p + 2, name , (q - name));
 	r = p + 2 + (q - name);
+
+	r[0] = '\0';
+	ad_update_variable("LDFLAGS", p);
+	ad_have_feature(p);
+
 	r[0] = ' ';
 	r[1] = '-';
 	r[2] = 'l';
 	strcpy(r + 3, q + 4);
+
+	ad_update_variable("LIBS", r);
 
 	return p;
 }
@@ -728,7 +846,7 @@ int dlopen_gmk_setup(void)
 	gmk_add_function("dlclose", &make_dlclose, 1, 1, 0); /* min 1, max 1, please expand the input string */
 	gmk_add_function("dlsym", &make_dlsym, 2, 2, 0); /* min 2, max 2, please expand the input string */
 	gmk_add_function("dlerror", &make_dlerror, 0, 0, 0); /* no arguments */
-	gmk_add_function("dlsearch", &make_dlsearch, 1, 0, 0); /* min 2, max 2, please expand the input string */
+	gmk_add_function("ad_search_libs", &make_ad_search_libs, 1, 0, 0); /* min 2, max 2, please expand the input string */
 
 	return 1;
 }
