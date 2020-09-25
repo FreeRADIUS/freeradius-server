@@ -97,7 +97,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 			decoded++;
 		}
 
-		fr_pair_list_move(request->packet, &(request->packet->vps), &head);
+		fr_pair_list_move(request->packet, &(request->packet->vps), &head, T_OP_ADD);
 
 		/* Free any unmoved pairs */
 		fr_pair_list_free(&head);

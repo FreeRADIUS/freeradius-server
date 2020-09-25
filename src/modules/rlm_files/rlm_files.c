@@ -422,7 +422,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			/* ctx may be reply or proxy */
 			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			fr_pair_list_move(request, &request->config, &check_tmp);
+			fr_pair_list_move(request, &request->config, &check_tmp, T_OP_ADD);
 			fr_pair_list_free(&check_tmp);
 
 			/*
