@@ -286,6 +286,43 @@ void fr_pair_add(VALUE_PAIR **first, VALUE_PAIR *add)
 	i->next = add;
 }
 
+/** Add a VP to the start of the list.
+ *
+ * Links the new VP to 'first', then points 'first' at the new VP.
+ *
+ * @param[in] first VP in linked list. Will add new VP to the start of this list.
+ * @param[in] add VP to add to list.
+ */
+void fr_pair_prepend(VALUE_PAIR **first, VALUE_PAIR *add)
+{
+	VALUE_PAIR *i;
+
+	if (!add) return;
+
+	VERIFY_VP(add);
+
+	if (*first == NULL) {
+		*first = add;
+		return;
+	}
+
+	/*
+	 *	Find the end of the list to be prepended
+	 */
+	for (i = add; i->next; i = i->next) {
+#ifdef WITH_VERIFY_PTR
+		VERIFY_VP(i);
+		/*
+		 *	The same VP should never by added multiple times
+		 *	to the same list.
+		 */
+		fr_assert(*first != i);
+#endif
+	}
+	i->next = *first;
+	*first = add;
+}
+
 /** Replace all matching VPs
  *
  * Walks over 'first', and replaces the first VP that matches 'replace'.
