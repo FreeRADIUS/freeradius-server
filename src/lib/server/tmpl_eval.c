@@ -993,6 +993,7 @@ VALUE_PAIR *_tmpl_cursor_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, tmpl_cursor_c
 	 *	Get the last instance
 	 */
 	case NUM_LAST:
+		vp = NULL;
 		while ((iter = ns->func(prev, iter, ns))) {
 			vp = iter;
 
@@ -1055,7 +1056,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 	tmpl_t const		*vpt = cc->vpt;
 
 	VALUE_PAIR		*vp;
-	VALUE_PAIR		**list_head = cc->list;
+	VALUE_PAIR		**list_head;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
