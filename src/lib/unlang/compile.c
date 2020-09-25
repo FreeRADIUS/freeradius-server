@@ -2674,7 +2674,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 
-	char const		*namespace, *packet_name, *component_name, *p;
+	char const		*namespace, *packet_name, *component_name, *p = NULL;
 
 	char			buffer[64];
 	char			buffer2[64];
