@@ -946,7 +946,7 @@ static int command_walk(UNUSED void *ctx, fr_cmd_walk_info_t *info)
 
 	printf(":%s ", info->name);
 	if (info->syntax) printf("%s", info->syntax);
-	printf("");
+	printf("%s", "");
 
 	return 1;
 }
