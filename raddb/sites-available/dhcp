@@ -304,6 +304,10 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
+
 	#  Use a "files" module to lookup global and subnet options
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
@@ -372,6 +376,10 @@ dhcp DHCP-Inform {
 #}
 
 dhcp DHCP-Release {
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
