@@ -1177,6 +1177,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				fr_pair_list_free(&head);
 			}
 			goto finish;
+		case T_OP_PREPEND:
+			fr_pair_list_move(parent, list, &head, T_OP_PREPEND);
+			fr_pair_list_free(&head);
+			goto finish;
 
 		default:
 			fr_pair_list_free(&head);
