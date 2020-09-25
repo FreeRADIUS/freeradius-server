@@ -2684,37 +2684,36 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 *	subrequests can specify the dictionary if they want to.
 	 */
 	name2 = cf_section_name2(cs);
-	if (!name2) {
+	if (name2) {
+		p = strchr(name2, '.');
+		if (!p) {
+			dict = unlang_ctx->rules->dict_def;
+			namespace = fr_dict_root(dict)->name;
+			packet_name = name2;
+
+		} else {
+			if ((size_t) (p - name2) >= sizeof(buffer)) {
+				cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
+				return NULL;
+			}
+
+			memcpy(buffer, name2, p - name2);
+			buffer[p - name2] = '\0';
+
+			dict = fr_dict_by_protocol_name(buffer);
+			if (!dict) {
+				cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
+				return NULL;
+			}
+
+			namespace = buffer;
+			p++;
+			packet_name = p;	// need to quiet a stupid compiler
+		}
+	} else {
 		dict = unlang_ctx->rules->dict_def;
 		namespace = fr_dict_root(dict)->name;
 		packet_name = unlang_ctx->section_name2;
-		goto resolve;
-	}
-
-	p = strchr(name2, '.');
-	if (!p) {
-		dict = unlang_ctx->rules->dict_def;
-		namespace = fr_dict_root(dict)->name;
-		packet_name = name2;
-
-	} else {
-		if ((size_t) (p - name2) >= sizeof(buffer)) {
-			cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
-			return NULL;
-		}
-
-		memcpy(buffer, name2, p - name2);
-		buffer[p - name2] = '\0';
-
-		dict = fr_dict_by_protocol_name(buffer);
-		if (!dict) {
-			cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
-			return NULL;
-		}
-
-		namespace = buffer;
-		p++;
-		packet_name = p;	// need to quiet a stupid compiler
 	}
 
 	da = fr_dict_attr_by_name(dict, "Packet-Type");
