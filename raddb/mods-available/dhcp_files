@@ -5,13 +5,23 @@
 # Instances of the "files" module for managing DHCP options
 #
 files dhcp_network {
-	#  The file containing DHCP options mapping
+	#  The file containing network-specific DHCP options mapping
 	filename = ${modconfdir}/files/dhcp
 
 	#  For network lookups we use a fixed key.  Matching
 	#  actual networks is done by additional filtering within
 	#  the file
 	key = "network"
+}
+
+files dhcp_subnet {
+	#  The file containing subnet-specific DHCP options mapping
+	filename = ${modconfdir}/files/dhcp
+
+	#  For subnet lookups we use a fixed key.  Matching
+	#  actual subnets is done by additional filtering within
+	#  the file
+	key = "subnet"
 }
 
 files dhcp_set_group_options {
