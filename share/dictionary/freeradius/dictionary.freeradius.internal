@@ -345,95 +345,106 @@ ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
 ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
 
 #
-#	Range: 1800-1899
-#	       Temporary attributes, for local storage.
+#	Range: 1700-1899
+#		Temporary attributes, for local storage.
 #
-ATTRIBUTE	Tmp-String-0				1800	string
-ATTRIBUTE	Tmp-String-1				1801	string
-ATTRIBUTE	Tmp-String-2				1802	string
-ATTRIBUTE	Tmp-String-3				1803	string
-ATTRIBUTE	Tmp-String-4				1804	string
-ATTRIBUTE	Tmp-String-5				1805	string
-ATTRIBUTE	Tmp-String-6				1806	string
-ATTRIBUTE	Tmp-String-7				1807	string
-ATTRIBUTE	Tmp-String-8				1808	string
-ATTRIBUTE	Tmp-String-9				1809	string
+ATTRIBUTE	Tmp-Group-0				1700	group
+ATTRIBUTE	Tmp-Group-1				1701	group
+ATTRIBUTE	Tmp-Group-2				1702	group
+ATTRIBUTE	Tmp-Group-3				1703	group
+ATTRIBUTE	Tmp-Group-4				1704	group
+ATTRIBUTE	Tmp-Group-5				1705	group
+ATTRIBUTE	Tmp-Group-6				1706	group
+ATTRIBUTE	Tmp-Group-7				1707	group
+ATTRIBUTE	Tmp-Group-8				1708	group
+ATTRIBUTE	Tmp-Group-9				1709	group
 
-ATTRIBUTE	Tmp-Integer-0				1810	integer
-ATTRIBUTE	Tmp-Integer-1				1811	integer
-ATTRIBUTE	Tmp-Integer-2				1812	integer
-ATTRIBUTE	Tmp-Integer-3				1813	integer
-ATTRIBUTE	Tmp-Integer-4				1814	integer
-ATTRIBUTE	Tmp-Integer-5				1815	integer
-ATTRIBUTE	Tmp-Integer-6				1816	integer
-ATTRIBUTE	Tmp-Integer-7				1817	integer
-ATTRIBUTE	Tmp-Integer-8				1818	integer
-ATTRIBUTE	Tmp-Integer-9				1819	integer
+ATTRIBUTE	Tmp-String-0				1710	string
+ATTRIBUTE	Tmp-String-1				1711	string
+ATTRIBUTE	Tmp-String-2				1712	string
+ATTRIBUTE	Tmp-String-3				1713	string
+ATTRIBUTE	Tmp-String-4				1714	string
+ATTRIBUTE	Tmp-String-5				1715	string
+ATTRIBUTE	Tmp-String-6				1716	string
+ATTRIBUTE	Tmp-String-7				1717	string
+ATTRIBUTE	Tmp-String-8				1718	string
+ATTRIBUTE	Tmp-String-9				1719	string
 
-ATTRIBUTE	Tmp-IP-Address-0			1820	ipaddr
-ATTRIBUTE	Tmp-IP-Address-1			1821	ipaddr
-ATTRIBUTE	Tmp-IP-Address-2			1822	ipaddr
-ATTRIBUTE	Tmp-IP-Address-3			1823	ipaddr
-ATTRIBUTE	Tmp-IP-Address-4			1824	ipaddr
-ATTRIBUTE	Tmp-IP-Address-5			1825	ipaddr
-ATTRIBUTE	Tmp-IP-Address-6			1826	ipaddr
-ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr
-ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr
-ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
+ATTRIBUTE	Tmp-Integer-0				1720	integer
+ATTRIBUTE	Tmp-Integer-1				1721	integer
+ATTRIBUTE	Tmp-Integer-2				1722	integer
+ATTRIBUTE	Tmp-Integer-3				1723	integer
+ATTRIBUTE	Tmp-Integer-4				1724	integer
+ATTRIBUTE	Tmp-Integer-5				1725	integer
+ATTRIBUTE	Tmp-Integer-6				1726	integer
+ATTRIBUTE	Tmp-Integer-7				1727	integer
+ATTRIBUTE	Tmp-Integer-8				1728	integer
+ATTRIBUTE	Tmp-Integer-9				1729	integer
 
-ATTRIBUTE	Tmp-Octets-0				1830	octets
-ATTRIBUTE	Tmp-Octets-1				1831	octets
-ATTRIBUTE	Tmp-Octets-2				1832	octets
-ATTRIBUTE	Tmp-Octets-3				1833	octets
-ATTRIBUTE	Tmp-Octets-4				1834	octets
-ATTRIBUTE	Tmp-Octets-5				1835	octets
-ATTRIBUTE	Tmp-Octets-6				1836	octets
-ATTRIBUTE	Tmp-Octets-7				1837	octets
-ATTRIBUTE	Tmp-Octets-8				1838	octets
-ATTRIBUTE	Tmp-Octets-9				1839	octets
+ATTRIBUTE	Tmp-IP-Address-0			1730	ipaddr
+ATTRIBUTE	Tmp-IP-Address-1			1731	ipaddr
+ATTRIBUTE	Tmp-IP-Address-2			1732	ipaddr
+ATTRIBUTE	Tmp-IP-Address-3			1733	ipaddr
+ATTRIBUTE	Tmp-IP-Address-4			1734	ipaddr
+ATTRIBUTE	Tmp-IP-Address-5			1735	ipaddr
+ATTRIBUTE	Tmp-IP-Address-6			1736	ipaddr
+ATTRIBUTE	Tmp-IP-Address-7			1737	ipaddr
+ATTRIBUTE	Tmp-IP-Address-8			1738	ipaddr
+ATTRIBUTE	Tmp-IP-Address-9			1739	ipaddr
 
-ATTRIBUTE	Tmp-Date-0				1840	date
-ATTRIBUTE	Tmp-Date-1				1841	date
-ATTRIBUTE	Tmp-Date-2				1842	date
-ATTRIBUTE	Tmp-Date-3				1843	date
-ATTRIBUTE	Tmp-Date-4				1844	date
-ATTRIBUTE	Tmp-Date-5				1845	date
-ATTRIBUTE	Tmp-Date-6				1846	date
-ATTRIBUTE	Tmp-Date-7				1847	date
-ATTRIBUTE	Tmp-Date-8				1848	date
-ATTRIBUTE	Tmp-Date-9				1849	date
+ATTRIBUTE	Tmp-Octets-0				1740	octets
+ATTRIBUTE	Tmp-Octets-1				1741	octets
+ATTRIBUTE	Tmp-Octets-2				1742	octets
+ATTRIBUTE	Tmp-Octets-3				1743	octets
+ATTRIBUTE	Tmp-Octets-4				1744	octets
+ATTRIBUTE	Tmp-Octets-5				1745	octets
+ATTRIBUTE	Tmp-Octets-6				1746	octets
+ATTRIBUTE	Tmp-Octets-7				1747	octets
+ATTRIBUTE	Tmp-Octets-8				1748	octets
+ATTRIBUTE	Tmp-Octets-9				1749	octets
+
+ATTRIBUTE	Tmp-Date-0				1750	date
+ATTRIBUTE	Tmp-Date-1				1751	date
+ATTRIBUTE	Tmp-Date-2				1752	date
+ATTRIBUTE	Tmp-Date-3				1753	date
+ATTRIBUTE	Tmp-Date-4				1754	date
+ATTRIBUTE	Tmp-Date-5				1755	date
+ATTRIBUTE	Tmp-Date-6				1756	date
+ATTRIBUTE	Tmp-Date-7				1757	date
+ATTRIBUTE	Tmp-Date-8				1758	date
+ATTRIBUTE	Tmp-Date-9				1759	date
 
 #
 #  Attributes 1850 through 1850 + FR_TYPE_MAX are reserved.
 #
 
-ATTRIBUTE	Tmp-Integer64-0				1850	integer64
-ATTRIBUTE	Tmp-Integer64-1				1851	integer64
-ATTRIBUTE	Tmp-Integer64-2				1852	integer64
-ATTRIBUTE	Tmp-Integer64-3				1853	integer64
-ATTRIBUTE	Tmp-Integer64-4				1854	integer64
-ATTRIBUTE	Tmp-Integer64-5				1855	integer64
-ATTRIBUTE	Tmp-Integer64-6				1856	integer64
-ATTRIBUTE	Tmp-Integer64-7				1857	integer64
-ATTRIBUTE	Tmp-Integer64-8				1858	integer64
-ATTRIBUTE	Tmp-Integer64-9				1859	integer64
+ATTRIBUTE	Tmp-Integer64-0				1760	integer64
+ATTRIBUTE	Tmp-Integer64-1				1761	integer64
+ATTRIBUTE	Tmp-Integer64-2				1762	integer64
+ATTRIBUTE	Tmp-Integer64-3				1763	integer64
+ATTRIBUTE	Tmp-Integer64-4				1764	integer64
+ATTRIBUTE	Tmp-Integer64-5				1765	integer64
+ATTRIBUTE	Tmp-Integer64-6				1766	integer64
+ATTRIBUTE	Tmp-Integer64-7				1767	integer64
+ATTRIBUTE	Tmp-Integer64-8				1768	integer64
+ATTRIBUTE	Tmp-Integer64-9				1769	integer64
 
-ATTRIBUTE	Tmp-Signed-0				1860	signed
-ATTRIBUTE	Tmp-Signed-1				1861	signed
-ATTRIBUTE	Tmp-Signed-2				1862	signed
-ATTRIBUTE	Tmp-Signed-3				1863	signed
-ATTRIBUTE	Tmp-Signed-4				1864	signed
-ATTRIBUTE	Tmp-Signed-5				1865	signed
-ATTRIBUTE	Tmp-Signed-6				1866	signed
-ATTRIBUTE	Tmp-Signed-7				1867	signed
-ATTRIBUTE	Tmp-Signed-8				1868	signed
-ATTRIBUTE	Tmp-Signed-9				1869	signed
+ATTRIBUTE	Tmp-Signed-0				1770	signed
+ATTRIBUTE	Tmp-Signed-1				1771	signed
+ATTRIBUTE	Tmp-Signed-2				1772	signed
+ATTRIBUTE	Tmp-Signed-3				1773	signed
+ATTRIBUTE	Tmp-Signed-4				1774	signed
+ATTRIBUTE	Tmp-Signed-5				1775	signed
+ATTRIBUTE	Tmp-Signed-6				1776	signed
+ATTRIBUTE	Tmp-Signed-7				1777	signed
+ATTRIBUTE	Tmp-Signed-8				1778	signed
+ATTRIBUTE	Tmp-Signed-9				1779	signed
 
-ATTRIBUTE	Tmp-Ethernet-0				1870	ether
-ATTRIBUTE	Tmp-Ethernet-1				1871	ether
-ATTRIBUTE	Tmp-Ethernet-2				1872	ether
-ATTRIBUTE	Tmp-Ethernet-3				1873	ether
-ATTRIBUTE	Tmp-Ethernet-4				1874	ether
+ATTRIBUTE	Tmp-Ethernet-0				1780	ether
+ATTRIBUTE	Tmp-Ethernet-1				1781	ether
+ATTRIBUTE	Tmp-Ethernet-2				1782	ether
+ATTRIBUTE	Tmp-Ethernet-3				1783	ether
+ATTRIBUTE	Tmp-Ethernet-4				1784	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
 
@@ -578,8 +589,8 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 ATTRIBUTE	Request-Authenticator			2201	octets
 
 #
-#       Range:  2220-2259
-#               Attributes used as trigger arguments
+#	Range:  2220-2259
+#		 Attributes used as trigger arguments
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string
 ATTRIBUTE	Connection-Pool-Port			2221	short
