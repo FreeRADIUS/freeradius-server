@@ -2663,14 +2663,19 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	char const		*name2;
+
 	unlang_t		*c;
 	unlang_group_t		*g;
+
 	unlang_compile_t	unlang_ctx2;
 	tmpl_rules_t		parse_rules;
+
 	fr_dict_t const		*dict;
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
+
 	char const		*namespace, *packet_name, *component_name, *p;
+
 	char			buffer[64];
 	char			buffer2[64];
 	char			buffer3[64];
@@ -2680,8 +2685,10 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 */
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err(cs, "Invalid syntax: expected <namespace>.<packet>");
-		return NULL;
+		dict = unlang_ctx->rules->dict_def;
+		namespace = fr_dict_root(dict)->name;
+		packet_name = unlang_ctx->section_name2;
+		goto resolve;
 	}
 
 	p = strchr(name2, '.');
