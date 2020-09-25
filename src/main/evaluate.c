@@ -790,7 +790,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t c
 
 
 /*
- *	The fr_pair_list_move() function in src/lib/valuepair.c does all sorts of
+ *	The fr_pair_list_move() function in src/lib/pair.c does all sorts of
  *	extra magic that we don't want here.
  *
  *	FIXME: integrate this with the code calling it, so that we
