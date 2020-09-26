@@ -785,7 +785,7 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 	/*
 	 *	Define HAVE_foo = 1
 	 */
-	ad_have_feature(name);
+	ad_have_feature(argv[0]);
 
 	/*
 	 *	Found in the application. The search path is " ".
@@ -815,7 +815,7 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 		strcpy(p + 2, name + 3);
 
 		ad_update_variable("LIBS", p);
-		ad_have_feature(p);
+		ad_have_feature(name);
 
 		return p;
 	}
