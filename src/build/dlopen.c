@@ -550,21 +550,30 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
 #define DEBUG(...)
 #endif
 
+typedef struct ad_define_s {
+	struct ad_define_s *next;
+	size_t		    len;
+	char		    name[0];
+} ad_define_t;
+
+static ad_define_t *ad_define_head = NULL;
+
 static void ad_have_feature(char const *symbol)
 {
-	char *def, *p;
+	char *p;
+	ad_define_t *def, **last;
 	size_t len;
 
 	len = strlen(symbol);
 
-	def = malloc(len + 5 + 2 + 1);
+	def = malloc(sizeof(ad_define_t) + len + 5 + 2 + 1);
 	if (!def) return;
 
-	memcpy(def, "HAVE_", 5);
-	memcpy(def + 5, symbol, len);
-	strcpy(def + 5 + len, "=1");
+	memcpy(def->name, "HAVE_", 5);
+	memcpy(def->name + 5, symbol, len);
+	strcpy(def->name + 5 + len, "=1");
 
-	for (p = def + 5; *p != '\0'; p++) {
+	for (p = def->name + 5; *p != '\0'; p++) {
 		if (islower((int) *p)) {
 			*p = toupper((int) *p);
 
@@ -573,8 +582,22 @@ static void ad_have_feature(char const *symbol)
 		}
 	}
 
-	gmk_eval(def, NULL);
-	free(def);
+	gmk_eval(def->name, NULL);
+
+	/*
+	 *	O(N^2) is OK if we're not doing 1000's of definitions.
+	 */
+	for (last = &ad_define_head; *last != NULL; last = &(*last)->next) {
+		if (strcmp(def->name + 4, (*last)->name + 4) > 0) continue;
+		break;
+	}
+
+	/*
+	 *	Remember which definitions we printed.
+	 */
+	def->next = *last;
+	def->len = len;
+	*last = def;
 }
 
 
