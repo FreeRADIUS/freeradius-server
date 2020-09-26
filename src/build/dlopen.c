@@ -28,6 +28,7 @@ RCSIDH(time_h, "$Id$")
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <gnumake.h>
 
@@ -856,6 +857,64 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 	return p;
 }
 
+/**  Dump definitions for Make or CPP
+ *
+ *	$(ad_dump_defs )
+ *		dump to stdout.  Note the final space!
+ *		$(ad_dump_defs) is a variable expansion, not a function call.
+ *
+ *	$(ad_dump_defs foo.mak)
+ *		dump definitions in Makefile format	HAVE_FOO=1
+ *
+ *	$(ad_dump_defs foo.h)
+ *		dump definitions in CPP format		#define HAVE_FOO (1)
+ *
+ *	@todo - allow multiple filenames?
+ */
+static char *make_ad_dump_defs(UNUSED char const *nm, unsigned int argc, char **argv)
+{
+	ad_define_t *def;
+	FILE *fp;
+
+	if ((argc == 0) || !*argv[0] || isspace((int) *argv[0])) {
+		fp = stdout;
+
+	} else {
+		char *p;
+
+		fp = fopen(argv[0], "w");
+		if (!fp) {
+			fprintf(stderr, "ad_dump_defs: Failed opening %s - %s\n",
+				argv[0], strerror(errno));
+		}
+
+		/*
+		 *	If the file ends in ".h", it's a header file.
+		 *	So dump the definitions in C preprocessor
+		 *	format.
+		 */
+		p = strrchr(argv[0], '.');
+		if (p && (p[1] == 'h') && !p[2]) {
+			for (def = ad_define_head; def != NULL; def = def->next) {
+				fprintf(fp, "#define %.*s (1)\n", (int) def->len + 5, def->name);
+			}
+
+			fclose(fp);
+			return NULL;
+		}
+	}
+
+	/*
+	 *	Print Makefile rules to redefine the variables we've created.
+	 */
+	for (def = ad_define_head; def != NULL; def = def->next) {
+		fprintf(fp, "%s\n", def->name);
+	}
+
+	if (fp != stdout) fclose(fp);
+
+	return NULL;
+}
 
 /** Register function(s) with make.
  *
@@ -869,7 +928,8 @@ int dlopen_gmk_setup(void)
 	gmk_add_function("dlclose", &make_dlclose, 1, 1, 0); /* min 1, max 1, please expand the input string */
 	gmk_add_function("dlsym", &make_dlsym, 2, 2, 0); /* min 2, max 2, please expand the input string */
 	gmk_add_function("dlerror", &make_dlerror, 0, 0, 0); /* no arguments */
-	gmk_add_function("ad_search_libs", &make_ad_search_libs, 1, 0, 0); /* min 2, max 2, please expand the input string */
+	gmk_add_function("ad_search_libs", &make_ad_search_libs, 1, 0, 0);
+	gmk_add_function("ad_dump_defs", &make_ad_dump_defs, 0,1, 0);
 
 	return 1;
 }
