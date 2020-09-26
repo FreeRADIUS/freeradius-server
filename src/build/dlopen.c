@@ -673,6 +673,63 @@ static void ad_update_variable(char const *name, char *value)
 }
 
 
+static void *ad_try_dlopen(char const *name, char const *dir, void **handle)
+{
+	void *symbol;
+	char *path, *libname;
+
+	DEBUG("\tchecking ::%s::\n", dir);
+	*handle = NULL;
+
+	if (*dir == '\0') {
+		symbol = dlsym(RTLD_DEFAULT, name);
+		if (symbol) {
+			DEBUG("\tfound in RTLD_DEFAULT\n");
+			return symbol;
+		}
+
+		DEBUG("\tdid not find in RTLD_DEFAULT\n");
+		return NULL;
+	}
+
+	/*
+	 *	Get the full path name
+	 *
+	 *	libfoo -> /path/libfoo.so
+	 */
+	path = argv2lib(dir, &libname);
+	if (!path) {
+		DEBUG("\tfailed getting path from %s\n", dir);
+		return NULL;
+	}
+
+	/*
+	 *	If this succeeds, we can get the full
+	 *	pathname from the handle.
+	 */
+	*handle = dlopen(path, RTLD_NOW);
+	if (!*handle) {
+		DEBUG("\tdlopen failed for %s\n", path);
+		FREE(path);
+		return NULL;
+	}
+	FREE(path);
+
+	/*
+	 *	Not found, oh well.
+	 */
+	symbol = dlsym(*handle, name);
+	if (!symbol) {
+		DEBUG("\tsymbol not found");
+		dlclose(*handle);
+		*handle = NULL;
+		return NULL;
+	}
+
+	DEBUG("\tfound in %s\n", dir);
+	return symbol;
+}
+
 /** Search libraries without using $(dlopen ...)
  *
  *  The output is empty if the symbol wasn't found.
@@ -723,56 +780,11 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 
 	} else {
 		unsigned int i;
-		char *path, *libname;
 
 		for (i = 1; i < argc; i++) {
-			DEBUG("\tchecking ::%s::\n", argv[i]);
-			handle = NULL;
+			symbol = ad_try_dlopen(name, argv[i], &handle);
+			if (!symbol) continue;
 
-			if (*argv[i] == '\0') {
-				symbol = dlsym(RTLD_DEFAULT, name);
-				if (symbol) {
-					DEBUG("\tfound in RTLD_DEFAULT\n");
-					break;
-				}
-				DEBUG("\tdid not find in RTLD_DEFAULT\n");
-				continue;
-			}
-
-			/*
-			 *	Get the full path name
-			 *
-			 *	libfoo -> /path/libfoo.so
-			 */
-			path = argv2lib(argv[i], &libname);
-			if (!path) {
-				DEBUG("\tfailed getting path from %s\n", argv[i]);
-				continue;
-			}
-
-			/*
-			 *	If this succeeds, we can get the full
-			 *	pathname from the handle.
-			 */
-			handle = dlopen(path, RTLD_NOW);
-			if (!handle) {
-				DEBUG("\tdlopen failed for %s\n", path);
-				FREE(path);
-				continue;
-			}
-			FREE(path);
-
-			/*
-			 *	Not found, oh well.
-			 */
-			symbol = dlsym(handle, name);
-			if (!symbol) {
-				DEBUG("\tsymbol not found");
-				dlclose(handle);
-				continue;
-			}
-
-			DEBUG("\tfound in %s\n", argv[i]);
 			name = argv[i];
 			break;
 		}
@@ -915,6 +927,7 @@ static char *make_ad_dump_defs(UNUSED char const *nm, unsigned int argc, char **
 
 	return NULL;
 }
+
 
 /** Register function(s) with make.
  *
