@@ -98,11 +98,21 @@ static char *argv2lib(char const *argv, char **libname)
 
 	len = strlen(argv);
 
-	name = malloc(len + sizeof(DL_EXTENSION)); /* sizeof includes the trailing NULL */
-	if (!name) return NULL;
+	if ((len > 3) && (memcmp(argv, "lib", 3) == 0)) {
+		name = malloc(len + sizeof(DL_EXTENSION)); /* sizeof includes the trailing NULL */
+		if (!name) return NULL;
 
-	memcpy(name, argv, len);
-	memcpy(name + len, DL_EXTENSION, sizeof(DL_EXTENSION));
+		memcpy(name, argv, len);
+		memcpy(name + len, DL_EXTENSION, sizeof(DL_EXTENSION));
+	} else {
+		name = malloc(len + 3 + sizeof(DL_EXTENSION)); /* sizeof includes the trailing NULL */
+		if (!name) return NULL;
+
+		memcpy(name, "lib", 3);
+		memcpy(name + 3, argv, len);
+		memcpy(name + 3 + len, DL_EXTENSION, sizeof(DL_EXTENSION));
+
+	}
 
 	/*
 	 *	We want to be flexible, and allow loading by absolute
@@ -834,12 +844,29 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 	}
 
 	/*
-	 *	We should now have a path.  If we don't, die
+	 *	If the library is just "m" instead of "libm", allow
+	 *	it.
 	 */
 	q = strrchr(name, '/');
 	if (!q || (strncmp(q, "/lib", 4) != 0)) {
+		size_t len = strlen(name);
+
 		dlclose(handle);
-		return NULL;
+
+		p = gmk_alloc(len + 4);
+		if (!p) return NULL;
+
+		memcpy(p, "lib", 3);
+		memcpy(p + 3, name, len + 1);
+		ad_have_feature(p);
+
+		p[0] = '-';
+		p[1] = 'l';
+		memcpy(p + 2, name, len + 1);
+
+		ad_update_variable("LIBS", p);
+
+		return p;
 	}
 
 	/*
