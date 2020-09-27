@@ -792,6 +792,68 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 		unsigned int i;
 
 		for (i = 1; i < argc; i++) {
+			bool has_dash_l = false;
+
+			r = argv[i] + strlen(argv[i]);
+
+			/*
+			 *	As a special case, we allow the caller
+			 *	to pass in $(LDFLAGS).  We look for
+			 *	"-Lfoo", and pass "foo" to the
+			 *	ad_try_dlopen() function.  Any other
+			 *	options are ignored.
+			 *
+			 *	This functionality means that there is
+			 *	a _lot_ less magic inside of GNU Make
+			 *	macros.
+			 */
+			p = argv[i];
+			while (p < r) {
+				while (isspace((int) *p)) p++;
+
+				if ((p[0] == '-') && (p[1] == 'L')) {
+					has_dash_l = true;
+
+					/*
+					 *	-L  /path/to/foo is OK
+					 */
+					q = p + 2;
+					while (isspace((int) *q)) q++;
+
+					/*
+					 *	@todo - deal with
+					 *	quotes and backslashes
+					 *	in file names.
+					 */
+					while (*q && !isspace((int) *q)) q++;
+
+					*q = '\0';
+
+					symbol = ad_try_dlopen(name, p + 2, &handle);
+					if (symbol) {
+						name = p;
+						goto found;
+					}
+
+					/*
+					 *	Go to the character *after* the -L /path/to/foo
+					 */
+					p = q + 1;
+					continue;
+				}
+
+				/*
+				 *	The argument isn't -L foo, skip it.
+				 */
+				while (*p && !isspace((int) *p)) p++;
+			}
+
+			/*
+			 *	If the argument has -L/path/to/foo, then ignore
+			 *	everything in it that *isn't* -L/path/to/foo
+			 */
+			if (has_dash_l) continue;
+
 			symbol = ad_try_dlopen(name, argv[i], &handle);
 			if (!symbol) continue;
 
@@ -805,6 +867,7 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 		return NULL;
 	}
 
+found:
 	/*
 	 *	Define HAVE_foo = 1
 	 */
