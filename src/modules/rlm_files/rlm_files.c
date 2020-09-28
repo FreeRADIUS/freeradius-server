@@ -32,30 +32,45 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+/*
+ *	Files data is stored either in a tree or trie
+ *	depending on data type
+ */
+
+typedef union {
+	rbtree_t	*whole;
+	fr_trie_t	*prefix;
+} fr_rlm_files_tree_t;
+
+typedef enum {
+      FR_RB_TREE = 0,
+      FR_PATRICIA_TRIE
+} fr_tree_in_use_t;
+
 typedef struct {
 	tmpl_t		*key;
 	fr_type_t	key_data_type;
 
 	char const 	*filename;
-	rbtree_t 	*common;
+	fr_rlm_files_tree_t	common;
 
 	/* autz */
 	char const 	*usersfile;
-	rbtree_t 	*users;
-
+	fr_rlm_files_tree_t	users;
 
 	/* authenticate */
 	char const	*auth_usersfile;
-	rbtree_t	*auth_users;
+	fr_rlm_files_tree_t	auth_users;
 
 	/* preacct */
 	char const	*acct_usersfile;
-	rbtree_t	*acct_users;
+	fr_rlm_files_tree_t	acct_users;
 
 	/* post-authenticate */
 	char const	*postauth_usersfile;
-	rbtree_t	*postauth_users;
+	fr_rlm_files_tree_t	postauth_users;
 
+	fr_tree_in_use_t	tree_in_use;
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -94,17 +109,34 @@ static int pairlist_cmp(void const *a, void const *b)
 	return fr_value_box_cmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
+static PAIR_LIST *find_entry(rlm_files_t const *inst, fr_value_box_t *key, fr_rlm_files_tree_t ptree)
+{
+	PAIR_LIST my_e;
+
+	switch (inst->key_data_type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+		return fr_trie_lookup(ptree.prefix, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+		return fr_trie_lookup(ptree.prefix, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
+	default:
+		my_e.name = key;
+		return rbtree_finddata(ptree.whole, &my_e);
+	}
+}
+
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rlm_files_tree_t *ptree)
 {
 	rlm_files_t *inst = ctx;
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
 	PAIR_LIST *user_list, *default_list, **default_tail;
-	rbtree_t *tree;
+	fr_rlm_files_tree_t tree;
 
 	if (!filename) {
-		*ptree = NULL;
+		ptree->whole = NULL;
 		return 0;
 	}
 
@@ -189,11 +221,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	good warning message.
 			 */
 			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\"\n"
-				     "\tfound in reply item list for key \"%pV\".\n"
-				     "\tThis attribute MUST go on the first line"
-				     " with the other check items", entry->filename, entry->lineno, da->name,
-				     entry->name);
+				WARN("%s[%d] Check item \"%s\" found in reply item list for key \"%pV\".  "
+				     "This attribute MUST go on the first line with the other check items",
+				     entry->filename, entry->lineno, da->name, entry->name);
 			}
 
 			/*
@@ -209,10 +239,18 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		entry = entry->next;
 	}
 
-	tree = rbtree_alloc(ctx, PAIR_LIST, node, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
-	if (!tree) {
-		pairlist_free(&users);
-		return -1;
+	if (inst->tree_in_use == FR_PATRICIA_TRIE) {
+		tree.prefix = fr_trie_alloc(inst);
+		if (!tree.prefix) {
+			pairlist_free(&users);
+			return -1;
+		}
+	} else {
+		tree.whole = rbtree_alloc(ctx, PAIR_LIST, node, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+		if (!tree.whole) {
+			pairlist_free(&users);
+			return -1;
+		}
 	}
 
 	default_list = NULL;
@@ -230,9 +268,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		next = entry->next;
 		entry->next = NULL;
 
-		char *str;
-		fr_value_box_aprint(NULL, &str, entry->name, NULL);
-
 		/*
 		 *	@todo - loop over entry->reply, calling
 		 *	unlang_fixup_update() or unlang_fixup_filter()
@@ -247,18 +282,19 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		/*
 		 *	DEFAULT entries get their own list.
 		 */
-		if (strcmp(str, "DEFAULT") == 0) {
+		if ((entry->name->type == FR_TYPE_STRING) &&
+		    (strcmp(entry->name->vb_strvalue, "DEFAULT") == 0)) {
 			if (!default_list) {
 				default_list = entry;
 
 				/*
 				 *	Insert the first DEFAULT into the tree.
 				 */
-				if (!rbtree_insert(tree, entry)) {
+				if (!rbtree_insert(tree.whole, entry)) {
 				error:
 					pairlist_free(&entry);
 					pairlist_free(&next);
-					talloc_free(tree);
+					talloc_free(tree.whole);
 					return -1;
 				}
 
@@ -273,17 +309,38 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			default_tail = &entry->next;
 			continue;
 		}
-		talloc_free(str);
 
 		/*
 		 *	Not DEFAULT, must be a normal user.
 		 */
-		user_list = rbtree_finddata(tree, entry);
+		user_list = find_entry(inst, entry->name, tree);
+		if ((user_list) && (inst->tree_in_use == FR_PATRICIA_TRIE)) {
+			/*
+			 * With subnets, overlapping entries have non-desired results depending
+			 * on their order in the source data so check if what we've found is an
+			 * exact match - if not we need to enter a new node
+			 */
+			if ( fr_value_box_cmp(user_list->name, entry->name) != 0) user_list = NULL;
+		}
+
 		if (!user_list) {
 			/*
 			 *	Insert the first one.
 			 */
-			if (!rbtree_insert(tree, entry)) goto error;
+			switch (inst->key_data_type) {
+			case FR_TYPE_IPV4_ADDR:
+			case FR_TYPE_IPV4_PREFIX:
+				if (fr_trie_insert(tree.prefix, &entry->name->vb_ip.addr.v4.s_addr,
+						   entry->name->vb_ip.prefix, entry) < 0) goto error;
+				break;
+			case FR_TYPE_IPV6_ADDR:
+			case FR_TYPE_IPV6_PREFIX:
+				if (fr_trie_insert(tree.prefix, &entry->name->vb_ip.addr.v6.s6_addr,
+						   entry->name->vb_ip.prefix, entry) < 0) goto error;
+				break;
+			default:
+				if (!rbtree_insert(tree.whole, entry)) goto error;
+			}
 		} else {
 			/*
 			 *	Find the tail of this list, and add it
@@ -333,6 +390,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->key_data_type = FR_TYPE_STRING;
 	}
 
+	inst->tree_in_use = ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX) ||
+			     (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) ? FR_PATRICIA_TRIE : FR_RB_TREE;
+
 	return 0;
 }
 
@@ -360,7 +420,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
-				   request_t *request, char const *filename, rbtree_t *tree)
+				   request_t *request, char const *filename, fr_rlm_files_tree_t tree)
 {
 	char const		*name;
 	PAIR_LIST const 	*user_pl, *default_pl;
@@ -374,17 +434,25 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		RETURN_MODULE_FAIL;
 	}
 
-	if (!tree) RETURN_MODULE_NOOP;
+	/*
+	 *	If the relevant tree / trie is empty, nothing to do
+	 */
+	if (inst->tree_in_use == FR_PATRICIA_TRIE) {
+		if (!tree.prefix) RETURN_MODULE_NOOP;
+	} else {
+		if (!tree.whole) RETURN_MODULE_NOOP;
+	}
 
 	my_pl.name = fr_value_box_alloc_null(NULL);
 	fr_value_box_from_str(my_pl.name, my_pl.name, &type, NULL, name, -1, 0, false);
-	user_pl = rbtree_finddata(tree, &my_pl);
+	user_pl = find_entry(inst, my_pl.name, tree);
 	if (type == FR_TYPE_STRING) {
-		fr_value_box_from_str(NULL, my_pl.name, &type, NULL, "DEFAULT", -1, 0, false);
-		default_pl = rbtree_finddata(tree, &my_pl);
+		fr_value_box_from_str(my_pl.name, my_pl.name, &type, NULL, "DEFAULT", -1, 0, false);
+		default_pl = rbtree_finddata(tree.whole, &my_pl);
 	} else {
 		default_pl = NULL;
 	}
+	talloc_free(my_pl.name);
 
 	/*
 	 *	Find the entry for the user.
@@ -513,7 +581,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->filename,
-			   inst->users ? inst->users : inst->common);
+			   inst->users.whole ? inst->users : inst->common);
 }
 
 
@@ -527,7 +595,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->acct_usersfile,
-			   inst->acct_users ? inst->acct_users : inst->common);
+			   inst->acct_users.whole ? inst->acct_users : inst->common);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -535,7 +603,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->auth_usersfile,
-			   inst->auth_users ? inst->auth_users : inst->common);
+			   inst->auth_users.whole ? inst->auth_users : inst->common);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -543,7 +611,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->postauth_usersfile,
-			   inst->postauth_users ? inst->postauth_users : inst->common);
+			   inst->postauth_users.whole ? inst->postauth_users : inst->common);
 }
 
 
