@@ -353,8 +353,9 @@ if (fail) {
 
 === CoA and Originate-Coa
 
-The `sites-available/originate-coa` virtual server has been removed.
-The functionality has been replaced with the `fork` keyword.
+The `sites-available/originate-coa` virtual server has been updated to
+use the new `subrequest` feature.  Please see that virtual server, and
+the `subrequest` keyword for details.
 
 == Dictionaries
 
@@ -367,6 +368,39 @@ The dictionary parser includes many more sanity checks and helpful
 messages for people who create new dictionaries.
 
 Dictionaries are now split up by protocol.  e.g._`share/freeradius/radius/dictionary...`
+
+== "Tagged" RADIUS attributes
+
+The old-style "tagged" RADIUS format has been removed.  Instead of using
+
+[source,unlang]
+----
+Tunnel-Type:1 = PPTP
+----
+
+you should use
+
+[source,unlang]
+----
+Tag-1.Tunnel-Type = PPTP
+----
+
+It is also possible to "group" tagged attributes together, as in the
+following example:
+
+[source,unlang]
+----
+Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
+----
+
+There are 31 such attributes, `Tag-1` through `Tag-31`.  There is no
+`Tag-0` attribute, as it is not needed.
+
+After much effort, it was unfortunately impossible to continue
+supporting the `:tag` syntax for attributes.  This change requires
+modifications to all configuration files and databases which use tags.
+This change means also that `detail` files from v3 will not be
+readable by v4.
 
 == Attribute references
 
@@ -393,6 +427,11 @@ still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed
 in version 4. The server would never produce such names, and enabling
 them made attribute parsing significantly more complex.
+
+=== List references
+
+The old-style `request:` and `reply:` syntax for lists has been
+deprecated.  Please use `request.` and `reply.` instead.
 
 == Update sections
 
@@ -486,7 +525,7 @@ The module can send multiple packet types to one home server.
 e.g. Access-Request and Accounting-Request.
 
 This module also replaces the old `coa` and `originate-coa`
-configuration. See also `fork` for creating child requests that are
+configuration. See also `subrequest` for creating child requests that are
 different from the parent requests.
 
 Unlike v3, the module can do asynchronous proxying. That is, proxying
