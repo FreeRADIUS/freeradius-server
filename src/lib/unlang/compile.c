@@ -2688,13 +2688,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
-		packet_name = NULL;
-		name2 = unlang_ctx->section_name2;
-
-		/*
-		 *	Tell the run-time interpreter to use request->packet->code
-		 */
-		type_enum = NULL;
+		packet_name = name2 = unlang_ctx->section_name2;
 		goto get_packet_type;
 	}
 
@@ -2739,14 +2733,12 @@ get_packet_type:
 		return NULL;
 	}
 
-	if (packet_name) {
-		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
-		if (!type_enum) {
-			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-				   packet_name, fr_dict_root(dict)->name);
-			talloc_free(namespace);
-			return NULL;
-		}
+	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+	if (!type_enum) {
+		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
+			   packet_name, fr_dict_root(dict)->name);
+		talloc_free(namespace);
+		return NULL;
 	}
 	talloc_free(namespace);		/* no longer needed */
 

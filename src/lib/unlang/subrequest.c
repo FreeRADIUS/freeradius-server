@@ -217,11 +217,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	 *	Set the packet type.
 	 */
 	MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
-	if (g->type_enum) {
-		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
-	} else {
-		child->packet->code = request->packet->code;
-	}
+	child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
 	fr_pair_add(&child->packet->vps, vp);
 
 	/*

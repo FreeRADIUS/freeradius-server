@@ -1,0 +1,10 @@
+#
+#  PRE: subrequest
+#
+
+subrequest {
+	ok.accounting
+	ok.authorize
+}
+
+success
