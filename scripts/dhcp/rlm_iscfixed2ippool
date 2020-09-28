@@ -24,7 +24,6 @@
 
 use warnings;
 use strict;
-use Template;
 
 my $dns_available = 0;
 my $resolver;
@@ -197,8 +196,17 @@ unless (defined $template->{$opts->{dialect}}) {
 if ($opts->{radius_db}) {
 	&call_database($opts, $queries, @hosts);
 } else {
-	my $tt=Template->new();
-	$tt->process(\$template->{$opts->{dialect}}, {tablename => $opts->{table_name}, hosts => \@hosts}) || die $tt->error();
+	my $tt_available = 0;
+	eval {
+		require Template;
+		$tt_available = 1;
+	};
+	if ($tt_available) {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {tablename => $opts->{table_name}, hosts => \@hosts}) || die $tt->error();
+	} else {
+		die "ERROR: Template Toolkit is not available. Install the Template Perl module.";
+	}
 }
 
 exit(0);

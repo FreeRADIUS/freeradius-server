@@ -173,6 +173,15 @@ of the server, and let you decide if they satisfy your needs.
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
+%package perl-util
+Group: System Environment/Daemons
+Summary: FreeRADIUS Perl utilities
+Requires: perl-Net-IP
+
+%description perl-util
+This package provides Perl utilities for managing IP pools stored in
+SQL databases.
+
 %package json
 Summary: JSON support for FreeRADIUS
 Requires: %{name}%{?_isa} = %{version}-%{release}
@@ -798,7 +807,16 @@ fi
 
 %files utils
 %defattr(-,root,root)
-/usr/bin/*
+/usr/bin/smbencrypt
+/usr/bin/radclient
+/usr/bin/radwho
+/usr/bin/radsniff
+/usr/bin/radlast
+/usr/bin/radtest
+/usr/bin/radzap
+/usr/bin/radsqlrelay
+/usr/bin/radcrypt
+/usr/bin/rlm_redis_ippool_tool
 # man-pages
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
@@ -807,6 +825,11 @@ fi
 %doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
+
+%files perl-util
+%defattr(-,root,root)
+/usr/bin/rlm_sqlippool_tool
+#man-pages
 %doc %{_mandir}/man8/rlm_sqlippool_tool.8.gz
 
 %files json
