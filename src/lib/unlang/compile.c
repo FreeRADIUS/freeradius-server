@@ -2688,12 +2688,13 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
+		packet_name = NULL;
 
 		/*
 		 *	Tell the run-time interpreter to use request->packet->code
 		 */
 		type_enum = NULL;
-		goto compile_it;
+		goto get_packet_type;
 	}
 
 	/*
@@ -2729,6 +2730,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	/*
 	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
 	 */
+get_packet_type:
 	da = fr_dict_attr_by_name(dict, "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
@@ -2736,16 +2738,17 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		return NULL;
 	}
 
-	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
-	if (!type_enum) {
-		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-			   packet_name, fr_dict_root(dict)->name);
-		talloc_free(namespace);
-		return NULL;
+	if (packet_name) {
+		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+		if (!type_enum) {
+			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
+				   packet_name, fr_dict_root(dict)->name);
+			talloc_free(namespace);
+			return NULL;
+		}
 	}
 	talloc_free(namespace);		/* no longer needed */
 
-compile_it:
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	parse_rules = *unlang_ctx->rules;
