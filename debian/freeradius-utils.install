@@ -9,4 +9,3 @@ usr/bin/radtest
 usr/bin/radzap
 usr/bin/radsqlrelay
 usr/bin/radcrypt
-usr/bin/rlm_sqlippool_tool
