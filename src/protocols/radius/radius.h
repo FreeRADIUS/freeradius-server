@@ -157,12 +157,18 @@ int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 void		_fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {
+	VALUE_PAIR	*parent;
+	fr_cursor_t	cursor;
+} fr_radius_tag_ctx_t;
+
+typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint8_t const		*vector;		//!< vector for encryption / decryption of data
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;
+	fr_radius_tag_ctx_t    	**tags;			//!< for decoding / encoding tagged attributes
 } fr_radius_ctx_t;
 
 /*

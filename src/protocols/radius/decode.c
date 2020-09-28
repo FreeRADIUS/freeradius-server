@@ -28,6 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/protocol/radius/freeradius.internal.h>
+
 #include "attrs.h"
 
 static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
@@ -1003,7 +1005,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 				    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 				    void *decoder_ctx)
 {
-//	int8_t			tag = 0;
+	int8_t			tag = 0;
 	size_t			data_len;
 	ssize_t			rcode;
 	uint32_t		vendor;
@@ -1053,12 +1055,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		}
 
 		/*
-		 *	If the attribute is capable of
-		 *	encoding a tag, and there's room for the tag, and
-		 *	there is a tag, or it's encrypted with Tunnel-Password,
-		 *	then decode the tag.
+		 *	Tag values MUST be less than 32.
 		 */
-		if ((p[0] < 0x20) || flag_tunnel_password(&parent->flags)) {
+		if (p[0] < 0x20) {
 			/*
 			 *	Only "short" attributes can be encrypted.
 			 */
@@ -1066,12 +1065,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 			if (parent->type == FR_TYPE_STRING) {
 				memcpy(buffer, p + 1, data_len - 1);
-				//tag = p[0];
+				tag = p[0];
 				data_len -= 1;
 
 			} else if (parent->type == FR_TYPE_UINT32) {
 				memcpy(buffer, p, attr_len);
-				//tag = buffer[0];
+				tag = buffer[0];
 				buffer[0] = 0;
 			}
 
@@ -1421,7 +1420,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			return -1;
 		}
-		//tag = 0;
+		tag = 0;
 #ifndef NDEBUG
 		/*
 		 *	Fix for Coverity.
@@ -1440,7 +1439,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 */
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
-//	vp->tag = tag;
 
 	switch (parent->type) {
 	case FR_TYPE_OCTETS:
@@ -1562,10 +1560,57 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 		return -1;
 	}
+
 	vp->type = VT_DATA;
 	vp->vp_tainted = true;
-	fr_cursor_append(cursor, vp);
 
+	if (!tag) {
+		fr_cursor_append(cursor, vp);
+		return attr_len;
+	}
+
+	if (!packet_ctx->tags) {
+		packet_ctx->tags = talloc_zero_array(packet_ctx->tmp_ctx, fr_radius_tag_ctx_t *, 32);
+		if (!packet_ctx->tags) {
+			fr_pair_list_free(&vp);
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+			return -1;
+		}
+	}
+
+	fr_assert(tag < 0x20);
+
+	if (!packet_ctx->tags[tag]) {
+		VALUE_PAIR *group;
+		fr_dict_attr_t const *group_da;
+
+		packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
+		if (!packet_ctx->tags[tag]) {
+			fr_pair_list_free(&vp);
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+			return -1;
+		}
+
+		group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
+		if (!group_da) {
+			fr_pair_list_free(&vp);
+			fr_strerror_printf("Failed finding attribute 'Tag-%u'", tag);
+			return -1;
+		}
+
+		group = fr_pair_afrom_da(ctx, group_da);
+		if (!group) {
+			fr_pair_list_free(&vp);
+			return -1;
+		}
+
+		fr_cursor_append(cursor, group);
+		packet_ctx->tags[tag]->parent = group;
+		fr_cursor_init(&packet_ctx->tags[tag]->cursor, &group->vp_group);
+	}
+
+	talloc_steal(packet_ctx->tags[tag]->parent, vp);
+	fr_cursor_append(&packet_ctx->tags[tag]->cursor, vp);
 	return attr_len;
 }
 

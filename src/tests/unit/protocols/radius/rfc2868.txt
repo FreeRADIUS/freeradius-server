@@ -45,6 +45,21 @@ match 40 06 00 00 00 01
 decode-pair -
 match Tunnel-Type = PPTP
 
+decode-pair 40 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP }
+
+#
+#  Two of the same tags, they're grouped together.
+#
+decode-pair 40 06 01 00 00 01 41 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
+
+#
+# tag1, tag2, tag1 --> { tag1, tag1 }, tag2
+#
+decode-pair 40 06 01 00 00 01 40 06 02 00 00 01 41 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }, Tag-2 = { Tunnel-Type = PPTP }
+
 #encode-pair Tunnel-Type:1 = PPTP
 #match 40 06 01 00 00 01
 
@@ -79,4 +94,4 @@ match Tunnel-Client-Endpoint = "foo"
 #match Tunnel-Client-Endpoint = "\001\002\003"
 
 count
-match 24
+match 30
