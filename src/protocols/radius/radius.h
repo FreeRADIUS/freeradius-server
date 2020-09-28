@@ -168,7 +168,9 @@ typedef struct {
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;
-	fr_radius_tag_ctx_t    	**tags;			//!< for decoding / encoding tagged attributes
+
+	uint8_t			tag;			//!< current tag for encoding
+	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
 } fr_radius_ctx_t;
 
 /*

@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/protocol/radius/freeradius.internal.h>
 
 static uint32_t instance_count = 0;
 
@@ -895,6 +896,29 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	return 0;
 }
 
+void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx);
+
+void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
+{
+	VALUE_PAIR	*c, *p;
+	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
+
+	if (!to_eval) return NULL;
+
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+		VP_VERIFY(c);
+		if ((c->da->dict == dict) &&
+		    (!c->da->flags.internal || ((c->da->attr > FR_TAG_BASE) && (c->da->attr < (FR_TAG_BASE + 0x20))))) {
+			break;
+		}
+	}
+
+	*prev = p;
+
+	return c;
+}
+
+
 /** Encode VPS into a raw RADIUS packet.
  *
  */
@@ -990,7 +1014,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, VALUE_PAIR);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_radius_next_encodable, dict_radius, VALUE_PAIR);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 

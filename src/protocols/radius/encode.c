@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/protocol/radius/freeradius.internal.h>
 #include "attrs.h"
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
@@ -342,6 +343,33 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t encode_tags(fr_dbuff_t *dbuff, VALUE_PAIR *vps, void *encoder_ctx)
+{
+	ssize_t			slen;
+	VALUE_PAIR const	*vp;
+	fr_cursor_t		cursor;
+
+	/*
+	 *	Note that we skip tags inside of tags!
+	 */
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, VALUE_PAIR);
+	while ((vp = fr_cursor_current(&cursor))) {
+		VP_VERIFY(vp);
+
+		/*
+		 *	Encode an individual VP
+		 */
+		slen = encode_pair_dbuff(dbuff, &cursor, encoder_ctx);
+		if (slen < 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) continue;
+			return slen;
+		}
+	}
+
+	return fr_dbuff_used(dbuff);
+}
+
+
 /** Encodes the data portion of an attribute
  *
  * @return
@@ -461,9 +489,16 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	is zero.
 	 */
 	if ((vp->da->type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
-		CHECK_FREESPACE(out_end - out_p, 1);
-//		*out_p++ = vp->tag;
-		value_start = out_p;
+		if (packet_ctx->tag) {
+			CHECK_FREESPACE(out_end - out_p, 1);
+			*out_p++ = packet_ctx->tag;
+			value_start = out_p;
+
+		} else if (TAG_VALID(vp->vp_strvalue[0])) {
+			CHECK_FREESPACE(out_end - out_p, 1);
+			*out_p++ = 0;
+			value_start = out_p;
+		}
 	}
 
 	/*
@@ -698,7 +733,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			fr_strerror_printf("Integer overflow for tagged uint32 attribute");
 			return PAIR_ENCODE_SKIPPED;
 		}
-//		value_start[0] = vp->tag;
+		value_start[0] = packet_ctx->tag;
 	}
 
 	FR_PROTO_HEX_DUMP(out, out_p - out, "value %s",
@@ -1368,6 +1403,31 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 	}
 
 	/*
+	 *	Tags are *top-level*, and are never nested.
+	 */
+	if (vp->da->type == FR_TYPE_GROUP) {
+		fr_radius_ctx_t	*packet_ctx = encoder_ctx;
+
+		if (!vp->da->flags.internal ||
+		    !((vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20)))) {
+			fr_cursor_next(cursor);
+			return PAIR_ENCODE_SKIPPED;
+		}
+
+		packet_ctx->tag = vp->da->attr - FR_TAG_BASE;
+		fr_assert(packet_ctx->tag > 0);
+		fr_assert(packet_ctx->tag < 0x20);
+
+		// recurse to encode the children of this attribute
+		len = encode_tags(&work_dbuff, vp->vp_group, encoder_ctx);
+		packet_ctx->tag = 0;
+		if (len < 0) return len;
+
+		fr_cursor_next(cursor); /* skip the tag attribute */
+		return fr_dbuff_set(dbuff, &work_dbuff);
+	}
+
+	/*
 	 *	We allow zero-length strings in "unlang", but skip
 	 *	them (except for CUI, thanks WiMAX!) on all other
 	 *	attributes.
@@ -1534,12 +1594,18 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 }
 
 /*
+ *	No one else should be using this.
+ */
+extern void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx);
+
+/*
  *	Test points
  */
 extern fr_test_point_pair_encode_t radius_tp_encode_pair;
 fr_test_point_pair_encode_t radius_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
-	.func		= fr_radius_encode_pair
+	.func		= fr_radius_encode_pair,
+	.next_encodable	= fr_radius_next_encodable,
 };
 
 
