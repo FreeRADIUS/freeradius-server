@@ -911,7 +911,7 @@ found:
 	 *	it.
 	 */
 	q = strrchr(name, '/');
-	if (!q || (strncmp(q, "/lib", 4) != 0)) {
+	if (!q) {
 		size_t len = strlen(name);
 
 		dlclose(handle);
@@ -931,6 +931,15 @@ found:
 
 		return p;
 	}
+
+	/*
+	 *	foo/bar ??? what the heck is that?
+	 */
+	if (strncmp(q, "/lib", 4) != 0) {
+		dlclose(handle);
+		return NULL;
+	}
+
 
 	/*
 	 *	path/to/libfoo
@@ -955,6 +964,7 @@ found:
 	strcpy(r + 3, q + 4);
 
 	ad_update_variable("LIBS", r);
+	dlclose(handle);
 
 	return p;
 }
