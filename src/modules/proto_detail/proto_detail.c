@@ -22,12 +22,14 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/io/application.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
+
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
@@ -580,6 +582,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;
 	inst->self = &proto_detail;
+
+	virtual_server_dict_set(inst->server_cs, inst->dict, false);
 
 	/*
 	 *	Bootstrap the process module.

@@ -169,7 +169,7 @@ static int _virtual_server_dict_free(virtual_server_dict_t *cd)
 }
 
 
-static void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
+void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
 {
 	virtual_server_dict_t *p;
 	CONF_DATA const *cd;
@@ -567,11 +567,9 @@ int virtual_servers_instantiate(void)
 			if (!found) {
 				char const *value = cf_pair_value(ns);
 
-				if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) {
-					PERROR("Failed loading dictionary %s", value);
-					return -1;
+				if (fr_dict_protocol_afrom_file(&dict, value, NULL) == 0) {
+					virtual_server_dict_set(server_cs, dict, true);
 				}
-				virtual_server_dict_set(server_cs, dict, true);
 			}
 		}
 
