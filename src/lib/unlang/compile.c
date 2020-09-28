@@ -2674,8 +2674,8 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 
-	char const		*namespace, *packet_name;
-	char			*p, *buffer = NULL;
+	char const		*packet_name;
+	char			*p, *namespace = NULL;
 
 	/*
 	 *	subrequest { ... }
@@ -2688,7 +2688,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
-		namespace = fr_dict_root(dict)->name;
 
 		/*
 		 *	Tell the run-time interpreter to use request->packet->code
@@ -2705,7 +2704,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	p = strchr(name2, '.');
 	if (!p) {
 		dict = unlang_ctx->rules->dict_def;
-		namespace = fr_dict_root(dict)->name;
 		packet_name = name2;
 
 	} else {
@@ -2714,36 +2712,38 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		 *
 		 *	Change to dictionary "foo", packet type "bar".
 		 */
-		MEM(buffer = talloc_strdup(parent, name2)); /* get a modifiable copy */
+		MEM(namespace = talloc_strdup(parent, name2)); /* get a modifiable copy */
 
-		namespace = buffer;
-		p = buffer + (p - name2);
+		p = namespace + (p - name2);
 		*(p++) = '\0';
 		packet_name = p;
 
 		dict = fr_dict_by_protocol_name(namespace);
 		if (!dict) {
 			cf_log_err(cs, "Unknown namespace '%s'", namespace);
-			talloc_free(buffer);
+			talloc_free(namespace);
 			return NULL;
 		}
 	}
 
+	/*
+	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
+	 */
 	da = fr_dict_attr_by_name(dict, "Packet-Type");
 	if (!da) {
-		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", namespace);
-		talloc_free(buffer);
+		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
+		talloc_free(namespace);
 		return NULL;
 	}
 
 	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
 	if (!type_enum) {
 		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-			   packet_name, namespace);
-		talloc_free(buffer);
+			   packet_name, fr_dict_root(dict)->name);
+		talloc_free(namespace);
 		return NULL;
 	}
-	talloc_free(buffer);		/* no longer needed */
+	talloc_free(namespace);		/* no longer needed */
 
 compile_it:
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
