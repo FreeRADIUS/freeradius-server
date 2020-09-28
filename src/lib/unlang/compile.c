@@ -2674,117 +2674,78 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 
-	char const		*namespace, *packet_name, *component_name, *p = NULL;
-
-	char			buffer[64];
-	char			buffer2[64];
-	char			buffer3[64];
+	char const		*namespace, *packet_name;
+	char			*p, *buffer = NULL;
 
 	/*
-	 *	subrequests can specify the dictionary if they want to.
+	 *	subrequest { ... }
+	 *
+	 *	Create a subrequest which is of the same dictionary
+	 *	and packet type as the current request.
+	 *
+	 *	We assume that the Packet-Type attribute exists.
 	 */
 	name2 = cf_section_name2(cs);
-	if (name2) {
-		p = strchr(name2, '.');
-		if (!p) {
-			dict = unlang_ctx->rules->dict_def;
-			namespace = fr_dict_root(dict)->name;
-			packet_name = name2;
-
-		} else {
-			if ((size_t) (p - name2) >= sizeof(buffer)) {
-				cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
-				return NULL;
-			}
-
-			memcpy(buffer, name2, p - name2);
-			buffer[p - name2] = '\0';
-
-			dict = fr_dict_by_protocol_name(buffer);
-			if (!dict) {
-				cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
-				return NULL;
-			}
-
-			namespace = buffer;
-			p++;
-			packet_name = p;	// need to quiet a stupid compiler
-		}
-	} else {
+	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
 		namespace = fr_dict_root(dict)->name;
-		packet_name = unlang_ctx->section_name2;
+
+		/*
+		 *	Tell the run-time interpreter to use request->packet->code
+		 */
+		type_enum = NULL;
+		goto compile_it;
+	}
+
+	/*
+	 *	subrequest foo { ... }
+	 *
+	 *	Change packet types without changing dictionaries.
+	 */
+	p = strchr(name2, '.');
+	if (!p) {
+		dict = unlang_ctx->rules->dict_def;
+		namespace = fr_dict_root(dict)->name;
+		packet_name = name2;
+
+	} else {
+		/*
+		 *	subrequest foo.bar { ... }
+		 *
+		 *	Change to dictionary "foo", packet type "bar".
+		 */
+		MEM(buffer = talloc_strdup(parent, name2)); /* get a modifiable copy */
+
+		namespace = buffer;
+		p = buffer + (p - name2);
+		*(p++) = '\0';
+		packet_name = p;
+
+		dict = fr_dict_by_protocol_name(namespace);
+		if (!dict) {
+			cf_log_err(cs, "Unknown namespace '%s'", namespace);
+			talloc_free(buffer);
+			return NULL;
+		}
 	}
 
 	da = fr_dict_attr_by_name(dict, "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", namespace);
+		talloc_free(buffer);
 		return NULL;
-	}
-
-	/*
-	 *	Get the packet name.
-	 */
-	if (p) {
-		packet_name = p;
-		p = strchr(packet_name, '.');
-		if (p) {
-			if ((size_t) (p - packet_name) >= sizeof(buffer2)) {
-				cf_log_err(cs, "No such value '%.*s' for attribute 'Packet-Type' in namespace '%s'",
-					   (int) (p - packet_name), packet_name, namespace);
-				return NULL;
-			}
-
-			memcpy(buffer2, packet_name, p - packet_name);
-			buffer[p - packet_name] = '\0';
-			packet_name = buffer2;
-			p++;
-		}
 	}
 
 	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
 	if (!type_enum) {
 		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
 			   packet_name, namespace);
+		talloc_free(buffer);
 		return NULL;
 	}
+	talloc_free(buffer);		/* no longer needed */
 
-	unlang_ctx2.component = unlang_ctx->component;
-
-	/*
-	 *	Figure out the component name we're supposed to call.
-	 *	Which isn't necessarily the same as the one from the
-	 *	parent request.
-	 */
-	if (p) {
-		component_name = p;
-		p = strchr(component_name, '.');
-		if (p) {
-			rlm_components_t i;
-
-			if ((size_t) (p - component_name) >= sizeof(buffer3)) {
-			unknown_component:
-				cf_log_err(cs, "No such component '%.*s",
-					   (int) (p - component_name), component_name);
-				return NULL;
-			}
-
-			memcpy(buffer3, component_name, p - component_name);
-			buffer[p - component_name] = '\0';
-			component_name = buffer3;
-
-			for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-				if (strcmp(comp2str[i], component_name) == 0) {
-				break;
-				}
-			}
-
-			if (i == MOD_COUNT) goto unknown_component;
-
-			unlang_ctx2.component = i;
-		}
-	}
-
+compile_it:
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	parse_rules = *unlang_ctx->rules;
@@ -2795,12 +2756,12 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	unlang_ctx2.actions = unlang_ctx->actions;
 
 	/*
-	 *	@todo - for named methods, we really need to determine
-	 *	what methods we're calling here.
+	 *	Update the new compilation context.
 	 */
 	unlang_ctx2.section_name1 = "subrequest";
 	unlang_ctx2.section_name2 = name2;
 	unlang_ctx2.rules = &parse_rules;
+	unlang_ctx2.component = unlang_ctx->component;
 
 	/*
 	 *	Compile the subsection with a *different* default dictionary.
