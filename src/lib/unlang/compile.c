@@ -2689,6 +2689,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
 		packet_name = NULL;
+		name2 = unlang_ctx->section_name2;
 
 		/*
 		 *	Tell the run-time interpreter to use request->packet->code
