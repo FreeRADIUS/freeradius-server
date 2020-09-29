@@ -1162,6 +1162,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 			}
 		error:
 			memset(cc, 0, sizeof(*cc));	/* so tmpl_cursor_clear doesn't explode */
+			fr_dlist_init(&cc->nested, tmpl_cursor_nested_t, entry);
 			return NULL;
 		}
 	}
