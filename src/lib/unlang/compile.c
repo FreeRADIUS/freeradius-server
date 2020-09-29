@@ -560,30 +560,6 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
 	 *	Enforce parent-child relationships in nested maps.
 	 */
 	if (parent) {
-		if (tmpl_is_attr(map->lhs)) {
-			if (tmpl_da(map->lhs)->parent != parent) {
-				cf_log_err(map->ci, "Attribute %s is not a child of parent %s",
-					   tmpl_da(map->lhs)->name, parent->name);
-				return false;
-			}
-
-			/*
-			 *	Ensure that the child map doesn't have
-			 *	a reference to a different request or pair
-			 *	list.  It MUST be unqualified.
-			 *
-			 *	This check isn't strictyly necessary for
-			 *	things parsed from the configuration files, as
-			 *	map_afrom_cs() already updates the rules with
-			 *	disallow_qualifiers.
-			 */
-			if (strcmp(map->lhs->name + 1, tmpl_da(map->lhs)->name) != 0) {
-				cf_log_err(map->ci, "Attribute %s contains invalid reference to list / request",
-					   map->lhs->name);
-				return false;
-			}
-		}
-
 		if (map->op != T_OP_EQ) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in nested map section.  "
 				   "Only '=' is allowed",

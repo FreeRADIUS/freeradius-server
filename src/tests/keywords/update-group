@@ -3,22 +3,10 @@
 #
 update reply {
 	#
-	#  This is a TLV, so it's allowed.
+	#  Update the contents of a group
 	#
-	#  For now, the grouped attributes are skipped, so they don't
-	#  change the test results.
-	#
-	&WiMAX-Capability := {
-		&WiMAX-Release = "1.0"
-	}
-}
-
-update reply {
-	&WiMAX-Capability += {
-		#
-		#  Operators are not allowed here.
-		#
-		&WiMAX-Release = "1.0"
+	&Tmp-Group-0 := {
+		Tmp-String-0 = "foo"
 	}
 }
 

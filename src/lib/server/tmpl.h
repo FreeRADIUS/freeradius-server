@@ -293,6 +293,12 @@ struct tmpl_rules_s {
 	pair_list_t		list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
+	fr_dict_attr_t const	*attr_parent;		//!< Point in dictionary tree to resume parsing
+							///< from.  If this is provided then dict_def
+							///< request_def and list_def will be ignored
+							///< and the presence of any of those qualifiers
+							///< will be treated as an error.
+
 	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 

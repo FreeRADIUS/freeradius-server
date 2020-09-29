@@ -1669,7 +1669,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 		return -1;
 	}
 
-	if (t_rules->disallow_qualifiers) {
+	if (t_rules->attr_parent || t_rules->disallow_qualifiers) {
 		fr_strerror_printf("It is not permitted to specify a request reference here");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		return -1;
@@ -1824,7 +1824,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
 				       &our_name, t_rules->list_def);
 
-	if (t_rules->disallow_qualifiers && (list_len > 0)) {
+	if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
 		fr_strerror_printf("It is not permitted to specify a pair list here");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		talloc_free(vpt);
@@ -1842,7 +1842,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	    (((fr_sbuff_next_if_char(&our_name, ':') && (vpt->data.attribute.old_list_sep = true)) ||
 	     fr_sbuff_next_if_char(&our_name, '.')) && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
-						  vpt, NULL, &our_name, t_rules, 0);
+						  vpt, t_rules->attr_parent, &our_name, t_rules, 0);
 		if (ret < 0) goto error;
 
 		/*

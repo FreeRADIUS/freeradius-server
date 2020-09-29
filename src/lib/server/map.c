@@ -422,19 +422,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			}
 
 			if (tmpl_da(map->lhs)->flags.is_unknown) {
-				cf_log_err(ci, "Unknown attribute '%s'",
-					   map->lhs->name);
-				talloc_free(map);
-				goto error; /* re-do "goto marker" stuff to print out spaces ? */
-			}
-
-			/*
-			 *	Only TLV and GROUP can be grouped.
-			 */
-			if ((tmpl_da(map->lhs)->type != FR_TYPE_TLV) &&
-			    (tmpl_da(map->lhs)->type != FR_TYPE_GROUP)) {
-				cf_log_err(ci, "Attribute '%s' MUST be of type 'tlv' or 'group'",
-					   map->lhs->name);
+				cf_log_err(ci, "Unknown attribute '%s'", map->lhs->name);
 				talloc_free(map);
 				goto error; /* re-do "goto marker" stuff to print out spaces ? */
 			}
@@ -446,6 +434,14 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 			 *	parent one.
 			 */
 			our_lhs_rules.disallow_qualifiers = true;
+
+			/*
+			 *	The leaf reference of the outer section
+			 *	is used as the parsing context of the
+			 *	inner section.
+			 */
+			our_lhs_rules.attr_parent = tmpl_da(map->lhs);
+			our_lhs_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;
 
 			/*
 			 *	This prints out any relevant error
