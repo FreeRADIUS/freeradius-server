@@ -112,6 +112,11 @@ typedef struct {
 	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
 } fr_log_t;
 
+typedef struct {
+	char const		*first_prefix;	//!< Prefix for the first line printed.
+	char const		*subsq_prefix;	//!< Prefix for subsequent lines.
+} fr_log_perror_format_t;
+
 extern fr_log_t default_log;
 extern bool fr_log_rate_limit;
 
@@ -128,17 +133,21 @@ static inline bool fr_rate_limit_enabled(void)
 
 int	fr_log_init(fr_log_t *log, bool daemonize);
 
+TALLOC_CTX	*fr_log_pool_init(void);
+
 int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
 
 int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
 
-int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1));
+int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
+		       char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (1));
 
-int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
-	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1));
+int	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
+		      char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, ...)
+	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1));
 
 void	fr_log_hex(fr_log_t const *log, fr_log_type_t type,
 		   char const *file, int line,

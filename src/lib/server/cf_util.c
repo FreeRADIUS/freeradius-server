@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #include <freeradius-devel/util/cursor.h>
 
@@ -1843,39 +1844,84 @@ void _cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] ci	#CONF_ITEM to print file/lineno for.
+ * @param[in] f_rules	Additional optional formatting controls.
  * @param[in] fmt	of the message.
  * @param[in] ...	Message args.
  */
-void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...)
+void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+		  fr_log_perror_format_t const *f_rules, char const *fmt, ...)
 {
-	va_list	ap;
+	va_list			ap;
 
 	if ((type == L_DBG) && !DEBUG_ENABLED) return;
 
 	if (!ci || !ci->filename) {
 		va_start(ap, fmt);
-		fr_vlog_perror(LOG_DST, type, file, line, fmt, ap);
+		fr_vlog_perror(LOG_DST, type, file, line, f_rules, fmt, ap);
 		va_end(ap);
 		return;
 	}
 
 	{
-		char const	*e, *p;
-		int		len;
-		char		*msg = NULL;
+		char const		*e, *p;
+		int			len;
+		char			*prefix;
+		TALLOC_CTX		*thread_log_pool;
+		TALLOC_CTX		*pool;
+		fr_log_perror_format_t	our_f_rules;
+
+		if (f_rules) {
+			our_f_rules = *f_rules;
+		} else {
+			our_f_rules = (fr_log_perror_format_t){};
+		}
+
+		/*
+		 *	Get some scratch space from the logging code
+		 */
+		thread_log_pool = fr_log_pool_init();
+		pool = talloc_new(thread_log_pool);
 
 		truncate_filename(&e, &p, &len, ci->filename);
 
-		if (fmt) {
-			va_start(ap, fmt);
-			msg = fr_vasprintf(NULL, fmt, ap);
-			va_end(ap);
+		/*
+		 *	Create the file location string
+		 */
+		prefix = fr_asprintf(pool, "%s%.*s[%d]: ", e, len, p, ci->lineno);
+
+		/*
+		 *	Prepend it to an existing first prefix
+		 */
+		if (f_rules && f_rules->first_prefix) {
+			char *first;
+
+			first = talloc_bstrdup(pool, prefix);
+			talloc_buffer_append_buffer(pool, first, f_rules->first_prefix);
+
+			our_f_rules.first_prefix = first;
+		} else {
+			our_f_rules.first_prefix = prefix;
 		}
 
-		fr_log_perror(LOG_DST, type, file, line, "%s%.*s[%d]%s%s", e, len, p, ci->lineno,
-			      msg ? ": " : "", msg ? msg : "");
+		/*
+		 *	Prepend it to an existing subsq prefix
+		 */
+		if (f_rules && f_rules->subsq_prefix) {
+			char *subsq;
 
-		if (fmt) talloc_free(msg);
+			subsq = talloc_bstrdup(pool, prefix);
+			talloc_buffer_append_buffer(pool, subsq, f_rules->subsq_prefix);
+
+			our_f_rules.subsq_prefix = subsq;
+		} else {
+			our_f_rules.subsq_prefix = prefix;
+		}
+
+		va_start(ap, fmt);
+		fr_vlog_perror(LOG_DST, type, file, line, &our_f_rules, fmt, ap);
+		va_end(ap);
+
+		talloc_free(pool);
 	}
 }
 

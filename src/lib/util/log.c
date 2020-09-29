@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
@@ -44,7 +45,7 @@ RCSID("$Id$")
 FILE	*fr_log_fp = NULL;
 int	fr_debug_lvl = 0;
 
-static _Thread_local TALLOC_CTX *fr_vlog_pool;
+static _Thread_local TALLOC_CTX *fr_log_pool;
 
 static uint32_t location_indent = 30;
 
@@ -208,10 +209,34 @@ fr_log_t default_log = {
 /** Cleanup the memory pool used by vlog_request
  *
  */
-static void _fr_vlog_pool_free(void *arg)
+static void _fr_log_pool_free(void *arg)
 {
 	talloc_free(arg);
-	fr_vlog_pool = NULL;
+	fr_log_pool = NULL;
+}
+
+/** talloc ctx to use when composing log messages
+ *
+ * Functions must ensure that they allocate a new ctx from the one returned
+ * here, and that this ctx is freed before the function returns.
+ *
+ * @return talloc pool to use for scratch space.
+ */
+TALLOC_CTX *fr_log_pool_init(void)
+{
+	TALLOC_CTX	*pool;
+
+	pool = fr_log_pool;
+	if (unlikely(!pool)) {
+		pool = talloc_pool(NULL, 16384);
+		if (!pool) {
+			fr_perror("Failed allocating memory for vlog_request_pool");
+			return NULL;
+		}
+		fr_thread_local_set_destructor(fr_log_pool, _fr_log_pool_free, pool);
+	}
+
+	return pool;
 }
 
 /** Send a server log message to its destination
@@ -227,7 +252,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 {
 	int		colourise = log->colourise;
 	char		*buffer;
-	TALLOC_CTX	*pool;
+	TALLOC_CTX	*pool, *thread_log_pool;
 	int		ret = 0;
 	char const	*fmt_colour = "";
 	char const	*fmt_location = "";
@@ -246,19 +271,8 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	 */
 	if (log->dst == L_DST_NULL) return 0;
 
-	/*
-	 *	Allocate a thread local, 4k pool so we don't
-	 *      need to keep allocating memory on the heap.
-	 */
-	pool = fr_vlog_pool;
-	if (!pool) {
-		pool = talloc_pool(NULL, 4096);
-		if (!pool) {
-			fr_perror("Failed allocating memory for vlog_request_pool");
-			return -1;
-		}
-		fr_thread_local_set_destructor(fr_vlog_pool, _fr_vlog_pool_free, pool);
-	}
+	thread_log_pool = fr_log_pool_init();
+	pool = talloc_new(thread_log_pool);	/* Track our local allocations */
 
 	/*
 	 *	Set colourisation
@@ -477,7 +491,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		break;
 	}
 
-	talloc_free_children(pool);	/* clears all temporary allocations */
+	talloc_free(pool);	/* clears all temporary allocations */
 
 	return ret;
 }
@@ -510,64 +524,115 @@ int fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, 
 
 /** Drain any outstanding messages from the fr_strerror buffers
  *
- * This function drains any messages from fr_strerror buffer adding a prefix (fmt)
- * to the first message.
+ * This function drains any messages from fr_strerror buffer prefixing
+ * the first message with fmt + args.
+ *
+ * If a prefix is specified in rules, this is prepended to all lines
+ * logged.  The prefix is useful for adding context, i.e. configuration
+ * file and line number information.
  *
  * @param[in] log	destination.
  * @param[in] type	of log message.
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
+ * @param[in] f_rules	for printing multiline errors.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
+int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		   fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
 {
-	char const *strerror;
-	int ret;
+	char const				*error;
+	int					ret;
+	static fr_log_perror_format_t		default_f_rules;
+
+	TALLOC_CTX			        *thread_log_pool = fr_log_pool_init();
+	fr_sbuff_marker_t			prefix_m;
+
+	fr_sbuff_t				sbuff;
+	fr_sbuff_uctx_talloc_t			tctx;
+
+	if (!f_rules) f_rules = &default_f_rules;
+
+	/*
+	 *	Setup the aggregation buffer
+	 */
+	fr_sbuff_init_talloc(thread_log_pool, &sbuff, &tctx, 1024, 16384);
 
 	/*
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
 	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
 
-	strerror = fr_strerror_pop();
-	if (!strerror) {
+	/*
+	 *	Add the prefix for the first line
+	 */
+	if (f_rules->first_prefix) fr_sbuff_in_strcpy(&sbuff, f_rules->first_prefix);
+
+	/*
+	 *	Add the (optional) message, and/or (optional) error
+	 *	with the error_sep.
+	 *	i.e. <msg>: <error>
+	 */
+	error = fr_strerror_pop();
+	if (error) {
+		if (fmt) {
+			va_list aq;
+
+			va_copy(aq, ap);
+			fr_sbuff_in_vsprintf(&sbuff, fmt, aq);
+			va_end(aq);
+
+			fr_sbuff_in_strcpy(&sbuff, ": ");
+			fr_sbuff_in_bstrcpy_buffer(&sbuff, error);
+			error = fr_sbuff_start(&sbuff);
+		}
+	/*
+	 *	No error, just print the fmt string
+	 */
+	} else {
 		va_list aq;
+
 		if (!fmt) return 0;	/* NOOP */
 
 		va_copy(aq, ap);
-		ret = fr_vlog(log, type, file, line, fmt, aq);
+		fr_sbuff_in_vsprintf(&sbuff, fmt, ap);
 		va_end(aq);
 
-		return ret;		/* DONE */
+		error = fr_sbuff_start(&sbuff);
 	}
 
 	/*
-	 *	Concatenate fmt with fr_strerror()
+	 *	Log the first line
 	 */
-	if (fmt) {
-		va_list aq;
-		char *tmp;
+	ret = fr_log(log, type, file, line, "%s", error);
+	if (ret < 0) {
+	error:
+		talloc_free(sbuff.buff);
+		return ret;
+	}
 
-		va_copy(aq, ap);
-		tmp = talloc_vasprintf(NULL, fmt, ap);
-		va_end(aq);
-
-		if (!tmp) return -1;
-
-		fr_log(log, type, file, line, "%s: %s", tmp, strerror);
-		talloc_free(tmp);
-	} else {
-		fr_log(log, type, file, line, "%s", strerror);
+	fr_sbuff_set_to_start(&sbuff);
+	if (f_rules->subsq_prefix) {
+		fr_sbuff_in_strcpy(&sbuff, f_rules->subsq_prefix);
+		fr_sbuff_marker(&prefix_m, &sbuff);
 	}
 
 	/*
-	 *	Only the first message gets the prefix
+	 *	Print out additional error lines
 	 */
-	while ((strerror = fr_strerror_pop())) {
-		ret = fr_log(log, type, file, line, "%s", strerror);
-		if (ret < 0) return ret;
+	while ((error = fr_strerror_pop())) {
+		if (f_rules->subsq_prefix) {
+			fr_sbuff_set(&sbuff, &prefix_m);
+			fr_sbuff_in_bstrcpy_buffer(&sbuff, error);
+			error = fr_sbuff_start(&sbuff);
+		}
+
+		ret = fr_log(log, type, file, line, "%s", error);
+		if (ret < 0) goto error;
 	}
+
+	talloc_free(sbuff.buff);
 
 	return 0;
 }
@@ -581,16 +646,18 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
  * @param[in] type	of log message.
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
+ * @param[in] rules	for printing multiline errors.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		  fr_log_perror_format_t const *rules, char const *fmt, ...)
 {
 	int	ret;
 	va_list ap;
 
 	va_start(ap, fmt);
-	ret = fr_vlog_perror(log, type, file, line, fmt, ap);
+	ret = fr_vlog_perror(log, type, file, line, rules, fmt, ap);
 	va_end(ap);
 
 	return ret;
@@ -600,17 +667,17 @@ DIAG_OFF(format-nonliteral)
 void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		uint8_t const *data, size_t data_len, char const *fmt, ...)
 {
-	size_t	i, j, len;
-	char	*p;
-	char	buffer[(0x10 * 3) + 1];
-
-	char	*prefix = NULL;
+	size_t		i, j, len;
+	char		*p;
+	char		buffer[(0x10 * 3) + 1];
+	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
+	char		*prefix = NULL;
 
 	if (fmt) {
 		va_list ap;
 
 		va_start(ap, fmt);
-		prefix = talloc_asprintf(NULL, fmt, ap);
+		prefix = talloc_asprintf(thread_log_pool, fmt, ap);
 		va_end(ap);
 	}
 
@@ -638,6 +705,7 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 	size_t		i, j, len;
 	char		*p;
 	char		buffer[(0x10 * 3) + 1];
+	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
 
 	char		*prefix = NULL;
 	static char	spaces[3 * 0x10];	/* Bytes per line */
@@ -650,7 +718,7 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 		va_list ap;
 
 		va_start(ap, fmt);
-		prefix = talloc_asprintf(NULL, fmt, ap);
+		prefix = talloc_asprintf(thread_log_pool, fmt, ap);
 		va_end(ap);
 	}
 

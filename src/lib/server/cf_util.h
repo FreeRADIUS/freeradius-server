@@ -215,8 +215,10 @@ int		cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t t
 void		_cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, va_list ap) CC_HINT(format (printf, 5, 0));
 void		_cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
 
-#define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
-void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
+#define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
+void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+			     fr_log_perror_format_t const *f_rules, char const *fmt, ...)
+		CC_HINT(format (printf, 6, 7));
 
 #define		cf_log_debug_prefix(_cf, _fmt, ...) _cf_log_with_filename(L_DBG, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));

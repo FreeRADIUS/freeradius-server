@@ -130,7 +130,7 @@ void	log_global_free(void);
 #  define LOG_DST &default_log
 #endif
 #define _FR_LOG_DST(_lvl, _fmt, ...) fr_log(LOG_DST, _lvl, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
-#define _FR_LOG_DST_PERROR(_lvl, _fmt, ...) fr_log_perror(LOG_DST, _lvl, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+#define _FR_LOG_DST_PERROR(_lvl, _fmt, ...) fr_log_perror(LOG_DST, _lvl, __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
 #define _FR_LOG_DST_FATAL(_fmt, ...) log_fatal(LOG_DST, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 
 /*

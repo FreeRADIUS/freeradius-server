@@ -1209,8 +1209,13 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 static int mod_load(void)
 {
-#define LOAD_INFO(_fmt, ...) fr_log_perror(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
-#define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
+					   &(fr_log_perror_format_t){ \
+					   	.first_prefix = "rlm_python - ", \
+					   	.subsq_prefix = "rlm_python - ", \
+					   }, \
+					   _fmt,  ## __VA_ARGS__)
 
 	fr_assert(!Py_IsInitialized());
 
