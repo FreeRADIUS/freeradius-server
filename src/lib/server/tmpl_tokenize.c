@@ -1308,9 +1308,9 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
  *	- 0 on success.
  */
 static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-						  tmpl_t *vpt,
-						  fr_dict_attr_t const *parent,
-						  fr_sbuff_t *name, tmpl_rules_t const *rules, unsigned int depth)
+					      tmpl_t *vpt,
+					      fr_dict_attr_t const *parent,
+					      fr_sbuff_t *name, tmpl_rules_t const *rules, unsigned int depth)
 {
 	uint32_t		oid = 0;
 	ssize_t			slen;
