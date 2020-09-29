@@ -2733,6 +2733,8 @@ get_packet_type:
 		return NULL;
 	}
 
+	fr_assert(packet_name);	/* Should not be NULL by this point */
+
 	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
 	if (!type_enum) {
 		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
@@ -3084,7 +3086,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->dict_def &&
 	    (unlang_ctx->rules->dict_def != fr_dict_internal()) &&
-	    (*inst->module->dict != unlang_ctx->rules->dict_def)) {
+	    (*(inst->module->dict) != unlang_ctx->rules->dict_def)) {
 		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
 			   inst->module->name,
 			   fr_dict_root(*inst->module->dict)->name,
@@ -3110,7 +3112,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	single = talloc_zero(parent, unlang_module_t);
+	MEM(single = talloc_zero(parent, unlang_module_t));
 	single->module_instance = inst;
 	single->method = method;
 
