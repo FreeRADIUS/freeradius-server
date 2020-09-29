@@ -546,23 +546,25 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	int					ret;
 	static fr_log_perror_format_t		default_f_rules;
 
-	TALLOC_CTX			        *thread_log_pool = fr_log_pool_init();
+	TALLOC_CTX			        *thread_log_pool;
 	fr_sbuff_marker_t			prefix_m;
 
 	fr_sbuff_t				sbuff;
 	fr_sbuff_uctx_talloc_t			tctx;
 
+	/*
+	 *	Non-debug message, or debugging is enabled.  Log it.
+	 */
+	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
+
 	if (!f_rules) f_rules = &default_f_rules;
+
+	thread_log_pool = fr_log_pool_init();
 
 	/*
 	 *	Setup the aggregation buffer
 	 */
 	fr_sbuff_init_talloc(thread_log_pool, &sbuff, &tctx, 1024, 16384);
-
-	/*
-	 *	Non-debug message, or debugging is enabled.  Log it.
-	 */
-	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
 
 	/*
 	 *	Add the prefix for the first line
