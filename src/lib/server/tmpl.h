@@ -910,7 +910,7 @@ ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix
 /** @name Expand the tmpl, returning one or more values
  * @{
  */
-fr_type_t		tmpl_data_type(tmpl_t const *vpt);
+fr_type_t		tmpl_expanded_type(tmpl_t const *vpt);
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,

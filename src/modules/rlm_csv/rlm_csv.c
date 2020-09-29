@@ -542,7 +542,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	if (inst->key) {
-		inst->key_data_type = tmpl_data_type(inst->key);
+		inst->key_data_type = tmpl_expanded_type(inst->key);
 		switch (inst->key_data_type) {
 		case FR_TYPE_VALUE:
 			break;

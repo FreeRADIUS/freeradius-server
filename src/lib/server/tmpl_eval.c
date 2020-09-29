@@ -201,7 +201,7 @@ int radius_request(REQUEST **context, request_ref_t name)
  *	- The data type we'd expect the #tmpl_t to produce at runtime
  *	  when expanded.
  */
-fr_type_t tmpl_data_type(tmpl_t const *vpt)
+fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 {
 	/*
 	 *	Casts take precedence over everything.
