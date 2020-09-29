@@ -706,13 +706,13 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 					     char const **name1, char const **name2,
 					     char const *name)
 {
-	char			*p, *q, *inst_name;
-	size_t			len;
-	int			j;
-	rlm_components_t	i;
-	module_instance_t	*mi;
+	char				*p, *q, *inst_name;
+	size_t				len;
+	int				j;
+	rlm_components_t		i;
+	module_instance_t		*mi;
 	module_method_names_t const	*methods;
-	char const		*method_name1, *method_name2;
+	char const			*method_name1, *method_name2;
 
 	if (method) *method = NULL;
 
