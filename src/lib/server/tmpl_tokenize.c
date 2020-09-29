@@ -1463,7 +1463,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	errors from the dictionary code.
 	 */
 	if (!rules->allow_unresolved) {
-		fr_strerror_printf_push("Unparsed attributes not allowed here");
+		fr_strerror_printf_push("Unresolved attributes not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
 		goto error;
