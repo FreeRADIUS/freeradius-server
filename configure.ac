@@ -28,6 +28,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/main/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
 m4_include([m4/ax_cc.m4])
+m4_include([m4/ax_prog_perl_modules.m4])
 
 dnl #############################################################
 dnl #
@@ -63,6 +64,55 @@ dnl #  Override some of the default autoconf variables such as
 dnl #  CFLAGS if were building in developer mode
 dnl #
 dnl #############################################################
+
+dnl #
+dnl # check for JSON.pm, ASCIIDOCTOR and pandoc
+dnl #
+AC_PATH_PROG(ASCIIDOCTOR, asciidoctor)
+if test "x$ac_cv_path_ASCIIDOCTOR" = "x"; then
+  AC_MSG_WARN([asciidoctor not found - Please install if you want build the docs])
+fi
+
+AC_PATH_PROG(PANDOC, pandoc)
+if test "x$ac_cv_path_PANDOC" = "x"; then
+  AC_MSG_WARN([pandoc not found - Please install if you want build the docs])
+else
+  #
+  #  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
+  #
+  if pandoc --help 2>&1 | grep -q "latex-engine"; then
+    PANDOC_ENGINE=latex
+  else
+    PANDOC_ENGINE=pdf
+  fi
+  AC_SUBST(PANDOC_ENGINE)
+fi
+
+# pandoc and asciidoctor is defined? then check it.
+if test "x$ac_cv_path_PANDOC" != "x" && test "x$ac_cv_path_ASCIIDOCTOR" != "x"; then
+  AX_PROG_PERL_MODULES(JSON, , AC_MSG_WARN([Perl JSON module not found - Please install if you want build the docs]))
+fi
+
+dnl #
+dnl # check for doxygen
+dnl #
+AC_PATH_PROG(DOXYGEN, doxygen)
+if test "x$ac_cv_path_DOXYGEN" != "x"; then
+  AC_PATH_PROG(GRAPHVIZ_DOT, dot)
+  if test "x$ac_cv_path_GRAPHVIZ_DOT" = "x"; then
+    AC_MSG_WARN([dot not found - Please install the graphviz if you want to build the docs/source])
+  fi
+else
+  AC_MSG_WARN([doxygen not found - Please install if you want build the docs/source])
+fi
+
+dnl #
+dnl # check for Antora
+dnl #
+AC_PATH_PROG(ANTORA, antora)
+if test "x$ac_cv_path_ANTORA" = "x"; then
+  AC_MSG_WARN([antora not found - Please install if you want build the site])
+fi
 
 dnl #
 dnl #  Enable developer features like debugging symbols.

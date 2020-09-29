@@ -315,6 +315,10 @@ dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
+	@if [ `grep version doc/antora/antora.yml | sed 's/^.*version: //'` != "'$(RADIUSD_VERSION_STRING)'" ]; then \
+		echo doc/antora/antora.yml needs to be updated with: version '$(RADIUSD_VERSION_STRING)'; \
+		exit 1; \
+	fi
 
 dist: dist-check freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 

@@ -25,7 +25,7 @@ install.doc: $(DOCINSTALL)
 
 .PHONY: clean.doc
 clean.doc:
-	@rm -f *~ rfc/*~ examples/*~
+	@rm -rf doc/*~ doc/rfc/*~ build/docsite
 
 #
 #  Deal with these later
@@ -36,5 +36,20 @@ DOCRST := $(wildcard *.rst)
 
 .PHONY: html
 html: $(DOCRST:.rst=.html)
+
+#
+#  antora rebuilds the entire documentation site on each run
+#  so we need to pick a single file to compare dependency
+#  timestamps against.
+#
+#  we use sitemap.xml as it'll be regenerated on every antora
+#  run.
+#
+build/docsite/sitemap.xml: $(ADOC_FILES)
+	@echo ANTORA site.yml
+	${Q}$(ANTORA) site.yml
+
+
+docsite: build/docsite/sitemap.xml
 
 endif

@@ -123,6 +123,16 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
+#  An internal attribute of DHCP-Network-IP-Address is set to provide
+#  a basis for determining the network that a client belongs to.  This
+#  is a hierarchical assignment based on:
+#
+#  - DHCP-Relay-Link-Selection
+#  - DHCP-Subnet-Selection-Option
+#  - DHCP-Gateway-IP-Address
+#  - DHCP-Client-IP-Address
+
+
 dhcp DHCP-Discover {
 
 	#  The DHCP Server Identifier is set here since is returned in OFFERs
@@ -130,30 +140,34 @@ dhcp DHCP-Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.2
 	}
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
-
-	#  Set the type of packet to send in reply.
-	#
-	#  The server will look at the DHCP-Message-Type attribute to
-	#  determine which type of packet to send in reply. Common
-	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
-	#  dictionary.dhcp for all the possible values.
-	#
-	#  DHCP-Do-Not-Respond can be used to tell the server to not
-	#  respond.
-	#
-	#  In the event that DHCP-Message-Type is not set then the
-	#  server will fall back to determining the type of reply
-	#  based on the rcode of this section.
-	#
-	#update reply {
-	#       DHCP-Message-Type = DHCP-Offer
-	#}
-
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
+
+	#  If clients need to be assigned to a particular network based on
+	#  an attribute in the packet rather than the calculated
+	#  DHCP-Network-IP-Address described above, then call a policy
+	#  (defined in policy.d/dhcp) to perform the override
+	#dhcp_override_network
+
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
+
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -218,10 +232,6 @@ dhcp DHCP-Request {
 		do_not_respond
 	}
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
-
 	#  Response packet type. See DHCP-Discover section above.
 	#update reply {
 	#       &DHCP-Message-Type = DHCP-Ack
@@ -229,6 +239,30 @@ dhcp DHCP-Request {
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
+
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
+
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
@@ -270,9 +304,10 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
+	#  Use a "files" module to lookup global and subnet options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
@@ -293,13 +328,33 @@ dhcp DHCP-Decline {
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
 dhcp DHCP-Inform {
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
-
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
-  
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
+
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
+
+	#  Use a "passwd" module to determine group membership
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Use a "files" module to lookup group specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_group_options
+
+	#  Use a "files" module to lookup host specific options
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_hosts
+
 	ok
 }
 
@@ -318,9 +373,11 @@ dhcp DHCP-Inform {
 
 dhcp DHCP-Release {
 
-	#  If multiple subnets are being served, use a policy (defined in
-	#  policy.d/dhcp) to determine the subnet name.
-	#  dhcp_determine_subnet
+	#  Use a "files" module to lookup global and subnet options
+	#  For multiple subnets use this in place of dhcp_common
+	#  Enable mods-available/dhcp_files to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_network
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.

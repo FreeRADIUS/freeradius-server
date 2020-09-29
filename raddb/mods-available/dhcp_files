@@ -1,0 +1,46 @@
+# -*- text -*-
+#
+#  $Id$
+
+# Instances of the "files" module for managing DHCP options
+#
+files dhcp_network {
+	#  The file containing DHCP options mapping
+	filename = ${modconfdir}/files/dhcp
+
+	#  For network lookups we use a fixed key.  Matching
+	#  actual networks is done by additional filtering within
+	#  the file
+	key = "network"
+}
+
+files dhcp_set_group_options {
+	#  An example of looking up DHCP group options.  This
+	#  is designed to be called from a policy configured in
+	#  policy.d/dhcp.
+	#
+	#  If clients are never members of more than one group,
+	#  then this could be simplified such that DHCP-Group-Name
+	#  is used here in place of Foreach-Variable-0 and this
+	#  module instance called directly rather than the policy
+
+	#  Use the same file as for subnets - could be split
+	#  for large, complex installations
+	filename = ${modconfdir}/files/dhcp
+
+	#  The key is a temporary string populated by the calling policy
+	#  which uses a foreach loop.
+	key = "%{Foreach-Variable-0}"
+}
+
+files dhcp_hosts {
+	#  An example of a DHCP host mapping for option setting
+
+	#  Use the same file as for subnets - could be split
+	#  for large, complex installations
+	filename = ${modconfdir}/files/dhcp
+
+	#  If a different identifier is needed for looking up
+	#  host specific entries then amend this key.
+	key = "host-%{DHCP-Client-Hardware-Address}"
+}

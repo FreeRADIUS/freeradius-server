@@ -1,0 +1,46 @@
+#
+#  Global and network specific parameters
+#
+
+#
+#  First set default global attributes.
+#  These can be overwritten by subnets below.
+#  This is all made up and needs to be set appropriate to the network
+#  being served.
+#
+network
+	DHCP-Domain-Name-Server := 192.0.1.100,
+	DHCP-Domain-Name-Server += 192.0.1.101,
+	DHCP-Time-Server := 192.0.1.200,
+	DHCP-Domain-Name := "example.org",
+	DHCP-IP-Address-Lease-Time := 7200,
+	Fall-Through := yes
+
+#
+#  Set options relevant to subnets
+#
+network	DHCP-Network-IP-Address < 10.20.0.0/16, Pool-Name := "staff"
+	DHCP-Router-Address := 10.20.1.1
+
+network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "visitors"
+	DHCP-Router-Address := 10.30.1.1,
+	DHCP-Domain-Name := "guests.example.org",
+	DHCP-IP-Address-Lease-Time := 3600
+
+#
+#  Set group specific options
+#
+group1
+	DHCP-Server-Host-Name := "terminal-booter.example.org",
+	DHCP-Boot-Filename := "bootfile.pxe"
+
+
+#
+#  Set host specific options
+#
+host-00:10:20:30:40:50
+	DHCP-Boot-Filename := "customboot.pxe"
+
+host-10:90:80:70:aa:bb
+	DHCP-Font-Server := 10.20.1.10,
+	DHCP-Impress-Server := 10.20.1.20

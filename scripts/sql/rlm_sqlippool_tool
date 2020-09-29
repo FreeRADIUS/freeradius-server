@@ -17,6 +17,8 @@
 #
 #  Note: Direct connection to databases is done using Perl DBI.  You may need
 #        to install the appropriate Perl DBD driver to enable this functionality.
+#        Formatted SQL output is produced using Perl Template::Toolkit which
+#        will need to be installed if this output is required.
 #
 #
 #  Use with a single address range
@@ -163,7 +165,6 @@
 
 use strict;
 use Net::IP qw/ip_bintoip ip_iptobin ip_bincomp ip_binadd ip_is_ipv4 ip_is_ipv6/;
-use Template;
 
 #
 #  Option defaults
@@ -347,11 +348,9 @@ sub process_commandline {
 	if ($opts->{radius_db}) {
 		&call_database($opts, $queries, @entries);
 	} else {
-		my $tt=Template->new();
-		$tt->process(\$template->{$opts->{dialect}}, {ranges => [{pool_name => $opts->{pool_name}, ips => \@entries}], batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+		&output_sql($template->{$opts->{dialect}}, {ranges => [{pool_name => $opts->{pool_name}, ips => \@entries}], batchsize => 100, tablename => $opts->{table_name}});
 	}
 }
-
 
 sub process_yaml_file {
 
@@ -389,8 +388,24 @@ sub process_yaml_file {
 	if ($opts->{radius_db}) {
 		&call_database($opts, $queries, @entries);
 	} else {
+		&output_sql($template->{$opts->{dialect}}, {ranges => \@ranges, batchsize => 100, tablename => $opts->{table_name}});
+	}
+}
+
+sub output_sql {
+	my $template = shift();
+	my $vars = shift();
+
+	my $tt_available = 0;
+	eval {
+		require Template;
+		$tt_available = 1;
+	};
+	if ($tt_available) {
 		my $tt=Template->new();
-		$tt->process(\$template->{$opts->{dialect}}, {ranges => \@ranges, batchsize => 100, tablename => $opts->{table_name}}) || die $tt->error();
+		$tt->process(\$template, $vars) || die $tt->error();
+	} else {
+		die "ERROR: Template Toolkit is not available. Install the Template Perl module.";
 	}
 }
 

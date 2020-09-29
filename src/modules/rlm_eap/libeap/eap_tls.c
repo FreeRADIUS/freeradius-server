@@ -139,7 +139,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
  */
 int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
-	EAPTLS_PACKET	reply;
+	EAPTLS_PACKET reply;
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
@@ -187,14 +187,14 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 			return 0;
 			break;
 		}
-		eaptls_gen_mppe_keys(handler->request,
+		eaptls_gen_mppe_keys(request,
 				     tls_session->ssl, tls_session->label,
 				     context, context_size);
 	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
-	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl, handler->type);
+	eaptls_gen_eap_key(handler);
 
 	return 1;
 }
@@ -753,27 +753,31 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 
 #ifdef TLS1_3_VERSION
 	/*
-	 *	draft-ietf-emu-eap-tls13-10 section 2.5
+	 *	https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
 	 *
 	 *	We need to signal the other end that TLS negotiation
 	 *	is done.  We can't send a zero-length application data
 	 *	message, so we send application data which is one byte
 	 *	of zero.
+	 *
+	 *	Note this is only done for when there is no application
+	 *	data to be sent. So this is done always for EAP-TLS but
+	 *	notibly not for PEAP even on resumption.
 	 */
-	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION) &&
-	    (handler->type == PW_EAP_TLS)) {
-		fr_tls_server_conf_t *conf;
+	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION)) {
+		switch (handler->type) {
+		case PW_EAP_PEAP:
+			break;
 
-		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
-		fr_assert(conf != NULL);
+		default:
+			if (!SSL_session_reused(tls_session->ssl)) break;
+			/* FALL-THROUGH */
 
-		if (conf->tls13_send_zero) {
+		case PW_EAP_TLS:
 			RDEBUG("TLS send Commitment Message");
 			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
 			tls_handshake_send(request, tls_session);
-		} else {
-			RDEBUG("TLS sending close_notify");
-			SSL_shutdown(tls_session->ssl);
+			break;
 		}
 	}
 #endif

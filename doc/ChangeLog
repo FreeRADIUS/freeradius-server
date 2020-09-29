@@ -37,6 +37,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add support for DHCP-Decline.
 	* More RFC complaince for various corner cases of DHCP,
 	* Treat DHCP Discover and Request differently for lease allocation times.
+	* Add support for PBKDF2 keys. Fixes #2649
+	* Update dictionary.mikrotik
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.

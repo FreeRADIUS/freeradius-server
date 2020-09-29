@@ -1,0 +1,137 @@
+= Introduction
+
+This is the documentation for FreeRADIUS, version 3. The documentation
+is available under the Creative Commons Non-Commercial license, as given
+in the `LICENSE` file in this directory.
+
+FreeRADIUS is a complex piece of software with many configuration
+options. However, we have taken great care to make the default
+configuration work in most circumstances. The result is that for most
+simple systems, it is trivial to install and configure the server. For
+those situations, this documentation will serve to answer basic
+questions about functionality, configuration, etc.
+
+For more complex requirements, FreeRADIUS can be difficult to
+configure. The reason for this difficulty is that the server can do
+almost anything, which means that there are a near-infinite number of
+ways to configure it. The question for an administrator, then, is what
+piece of the configuration to change, and how to change it.
+
+This documentation will answer those questions. The FreeRADIUS team has
+put substantial effort into writing the documentation for this release.
+Everything in the server is fully documented, and there are many
+`how-to` guides available.
+
+The documentation is split into sections by subject area, oganized by
+desired outcome. At a high level, the subject areas describe:
+
+* xref:concepts:index.adoc[Concepts] and introduction for newcomers.
+* xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
+* The syntax of the xref:unlang:index.adoc[unlang] processing language.
+* The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
+* Various xref:howto:index.adoc[how-to] guides.
+* xref:developers:index.adoc[Developer documentation].
+
+This organization means that for example, the `ldap` module will have
+documention located in multiple places. We feel that organizing the
+documentation by desired _goal_ is better than the alternatives.
+
+Within each section, the documentation is split into small pages, which
+are generally no more than a few screens worth of information. We feel
+that having multiple small pages with cross-links is more helpful than
+having a smaller number of enormous pages. This division ensures that
+(for example) the `how-to` guides are split into a series of small
+steps, each of which can be performed quickly.
+
+We hope that this extended documentation will address any lingering
+concerns about the quality of the FreeRADIUS documentation.
+
+== Changes From Earlier Versions
+
+Administrators who have version 2 and wish to upgrade to version 3
+should read the xref:installation:upgrade.adoc[upgrading] documentation.
+That documentation explains the differences between the two versions, and
+how an existing configuration can be reproduced in the latest
+release. We do _not_ recommend using version 2 configuration files
+with version 3. The configuration files are _not_ compatible across a
+major version upgrade.
+
+== Getting Started with FreeRADIUS
+
+FreeRADIUS can be installed using the pre-built packages available
+from http://packages.networkradius.com[Network RADIUS,
+window="_blank"]. That page contains packages for all common OS
+distributions.  New packages are available as soon as a new version
+has been released.  Packages for older releases are also available for
+historical purposes.
+
+FreeRADIUS can also be installed from the source code.  Please see the
+xref:installation:index.adoc[installation guide] for instructions.
+
+WARNING: Many Operating System distributions ship versions of FreeRADIUS
+which are years out of date. Those versions may contain bugs which have
+been fixed in newer releases. We recommend using the
+http://packages.networkradius.com[Network RADIUS, window="_blank"] packages where
+possible.
+
+Administrators who are new to FreeRADIUS should read the
+xref:concepts:index.adoc[concepts section] as it describes the concepts behind
+FreeRADIUS. It is vital for newcomers to understand these concepts, as the rest
+of the documentation assumes familiarity with them.
+
+A detailed xref:unlang:index.adoc[unlang] reference guide is also available.
+This section describes the syntax and functionality of the keywords,
+data types, etc. used in the `unlang` processing language.
+
+All of the xref:raddb:index.adoc[configuration files] are available in
+hypertext format. In can often be easier to read the configuration files
+in a nicely formatted version, instead of as a fixed-width font in a
+text editor.
+
+For specific problem solving, we recommend the xref:howto:index.adoc[how-to]
+guides. These guides give instructions for reaching high-level goals, or
+for configuring and testing individual xref:howto:modules/index.adoc[modules].
+
+There is also xref:developers:index.adoc[developer documentation]. This section
+documents the APIs for developers. Most people can ignore it.
+
+== Debugging
+
+If you have ANY problems, concerns, or surprises when running the
+server, the the server should be run in debugging mode as root, from the
+command line:
+
+```
+# radiusd -X
+```
+
+It will produce a large number of messages. The answers to many
+questions, and the solution to many problems, can usually be found in
+these messages. When run in a terminal window, error messages will be
+shown in red text, and warning messages will be shown in yellow text.
+
+For other use-cases, please look for `ERROR` or `WARNING` in the
+debug output. In many cases, those messages describe exactly what is
+going wrong, and how to fix it.
+
+For further details, about the debug output see the
+http://wiki.freeradius.org/radiusd-X[radiusd-X, window="_blank"] page on the
+http://wiki.freeradius.org[wiki, window="_blank"].
+
+== Getting Help
+
+We also recommend joining the
+http://lists.freeradius.org/mailman/listinfo/freeradius-users[mailing
+list] in order to ask questions and receive answers. The developers are
+not on Stack Overflow, IRC, or other web sites. While the FreeRADIUS
+source is available on
+https://github.com/FreeRADIUS/freeradius-server/[GitHub, window="_blank"], questions
+posted there will not be answered.
+
+Before posting to the list, please read the
+http://wiki.freeradius.org/list-help[list help, window="_blank"] page. That page explains
+how to run the server in debugging mode; how to understand the debug
+output; and what information to post to the list.
+
+Commercial support for FreeRADIUS is available from
+https://networkradius.com/freeradius-support/[Network RADIUS, window="_blank"].

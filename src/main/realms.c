@@ -2659,7 +2659,8 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *	came from this server.  Don't re-proxy it
 		 *	there.
 		 */
-		if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+		if (request->listener &&
+		    (request->listener->type == RAD_LISTEN_DETAIL) &&
 		    (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
 			continue;

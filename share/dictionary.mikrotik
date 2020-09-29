@@ -45,9 +45,11 @@ ATTRIBUTE	Mikrotik-Wireless-Comment		21	string
 ATTRIBUTE	Mikrotik-Delegated-IPv6-Pool		22	string
 ATTRIBUTE	Mikrotik-DHCP-Option-Set		23	string
 ATTRIBUTE	Mikrotik-DHCP-Option-Param-STR1		24	string
-ATTRIBUTE	Mikrotik-DHCP-Option-ParamSTR2		25	string
+ATTRIBUTE	Mikrotik-DHCP-Option-Param-STR2		25	string
+ATTRIBUTE	Mikrotik-DHCP-Option-ParamSTR2 		25	string
 ATTRIBUTE	Mikrotik-Wireless-VLANID		26	integer
-ATTRIBUTE	Mikrotik-Wireless-VLANID-Type		27	integer
+ATTRIBUTE	Mikrotik-Wireless-VLANIDtype		27	integer
+ATTRIBUTE	Mikrotik-Wireless-VLANID-Type 		27	integer
 ATTRIBUTE	Mikrotik-Wireless-Minsignal		28	string
 ATTRIBUTE	Mikrotik-Wireless-Maxsignal		29	string
 ATTRIBUTE	Mikrotik-Switching-Filter		30	string
@@ -59,5 +61,8 @@ VALUE	Mikrotik-Wireless-Enc-Algo	40-bit-WEP		1
 VALUE	Mikrotik-Wireless-Enc-Algo	104-bit-WEP		2
 VALUE	Mikrotik-Wireless-Enc-Algo	AES-CCM			3
 VALUE	Mikrotik-Wireless-Enc-Algo	TKIP			4
+
+VALUE	Mikrotik-Wireless-VLANIDtype	802.1q			0
+VALUE	Mikrotik-Wireless-VLANIDtype	802.1ad			1
 
 END-VENDOR	Mikrotik

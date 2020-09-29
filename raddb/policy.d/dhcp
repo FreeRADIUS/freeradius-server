@@ -1,50 +1,46 @@
-#  Determine subnet name to use in looking up options
-dhcp_determine_subnet {
-
-	#
-	#  If multiple subnets are in use, configure logic here to choose the
-	#  appropriate one.  DHCP-Network-IP-Address contains the address
-	#  to match into subnets, based on data provided in the DHCP packet.
-	#
-	#  With IP addresses the "<" operator can be used to match addresses
-	#  to subnets.
-	#
-	#  This is a made up example that should be customised to the real
-	#  Network environment
-	#
-
-	#  if (&DHCP-Network-IP-Address < 10.1.0.0/16) {
-	#	update control {
-	#		&DHCP-Subnet-Name = network1
-	#	}
-	#  } elsif (&DHCP-Network-IP-Address < 10.2.0.0/16) {
-	#	update control {
-	#		&DHCP-Subnet-Name = network2
-	#	}
-	#  } else {
-	#	update control {
-	#	       &DHCP-Subnet-Name = default
-	#	}
-	#  }
-}
-
 #  Assign common DHCP reply packet options
 dhcp_common {
 	#  The contents here are invented.  Change them!
-	#  Lease time should either be set here or can
-	#  reference the lease time set in the named
-	#  sqlipppol module instance configuration if that
-	#  is in use for lease management
 	update reply {
 		&DHCP-Domain-Name-Server = 127.0.0.1
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
 		&DHCP-IP-Address-Lease-Time = 7200
-#		&DHCP-IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
 		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
 	}
 }
+
+#  Lookup DHCP group based options.  This policy allows  for membership
+#  of multiple groups so can cover the ISC concepts of "group" and "class"
+#  To use this enable the "dhcp_files" module
+#dhcp_group_options {
+#	foreach &control:DHCP-Group-Name {
+#		dhcp_set_group_options
+#	}
+#}
+
+#  Policy to override DHCP-Network-IP-Address
+#
+#  Some network configurations have "shared-networks" in which multiple IP
+#  subnets may co-exist in a single Layer 2 network (or VLAN).  This may be
+#  due to discontinuous extension of the original address plan or it may be
+#  to provide loose segregation between classes of devices such as local
+#  network atached storage or IP telephony.
+#
+#  By default DHCP-Network-IP-Address is populated such that it normally
+#  refers to the Layer 2 network from which the DHCP query originates - it
+#  cannot know the intended subnet for the device without policy input.
+#  Override DHCP-Network-IP-Address to be an address within the desired
+#  subnet to force selection of particular network parameters including
+#  the address pool
+#dhcp_override_network {
+#	if (&DHCP-Vendor-Class-Identifier && &DHCP-Vendor-Class-Identifier == "SIP100")
+#		update request {
+#			DHCP-Network-IP-Address := 10.10.0.0
+#		}
+#	}
+#}
 
 #  Assign compatibility data to request for sqlippool for DHCP Request
 dhcp_sqlippool_request {

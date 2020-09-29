@@ -138,8 +138,6 @@ Group: System Environment/Daemons
 Summary: FreeRADIUS utilities
 Requires: %{name} = %{version}-%{release}
 Requires: libpcap >= 0.9.4
-Requires: perl-Net-IP
-Requires: perl-Template-Toolkit
 
 %description utils
 The FreeRADIUS server has a number of features found in other servers,
@@ -149,6 +147,15 @@ of the server, and let you decide if they satisfy your needs.
 
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
+
+%package perl-util
+Group: System Environment/Daemons
+Summary: FreeRADIUS Perl utilities
+Requires: perl-Net-IP
+
+%description perl-util
+This package provides Perl utilities for managing IP pools stored in
+SQL databases.
 
 %package ldap
 Summary: LDAP support for FreeRADIUS
@@ -761,7 +768,17 @@ fi
 
 %files utils
 %defattr(-,root,root)
-/usr/bin/*
+/usr/bin/rlm_ippool_tool
+/usr/bin/smbencrypt
+/usr/bin/radclient
+/usr/bin/radeapclient
+/usr/bin/radwho
+/usr/bin/radsniff
+/usr/bin/radlast
+/usr/bin/radtest
+/usr/bin/radzap
+/usr/bin/radsqlrelay
+/usr/bin/radcrypt
 # man-pages
 %doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
@@ -772,7 +789,12 @@ fi
 %doc %{_mandir}/man1/radwho.1.gz
 %doc %{_mandir}/man1/radzap.1.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
-%doc %{_mandir}/man8/rlm_ippool_tool.8.gz
+
+%files perl-util
+%defattr(-,root,root)
+/usr/bin/rlm_sqlippool_tool
+#man-pages
+%doc %{_mandir}/man8/rlm_sqlippool_tool.8.gz
 
 %if %{?_with_rlm_cache_memcached:1}%{!?_with_rlm_cache_memcached:0}
 %files memcached
