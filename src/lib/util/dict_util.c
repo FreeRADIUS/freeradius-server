@@ -1777,7 +1777,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	da = fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Unknown attribute '%s'", buffer);
+		fr_strerror_printf("Attribute '%s' not found in the %s dictionary", buffer, fr_dict_root(dict)->name);
 		return 0;
 	}
 
@@ -2054,13 +2054,13 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 
 	DA_VERIFY(parent);
 
-	if (!parent->children) return NULL;
-
 	/*
 	 *	We return the child of the referenced attribute, and
 	 *	not of the "group" attribute.
 	 */
 	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
+
+	if (!parent->children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
@@ -2109,16 +2109,17 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 
 	DA_VERIFY(parent);
 
-	if (!parent->children) {
-		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
-		return 0;
-	}
-
 	/*
 	 *	We return the child of the referenced attribute, and
 	 *	not of the "group" attribute.
 	 */
 	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
+
+	if (!parent->children) {
+		fr_strerror_printf("%s has no children", parent->name);
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return 0;
+	}
 
 	slen = fr_dict_attr_by_name_substr(err, out, fr_dict_by_da(parent), name);
 	if (slen <= 0) return slen;
@@ -2126,6 +2127,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	if (is_direct_decendent) {
 		if ((*out)->parent != parent) {
 		not_decendent:
+			fr_strerror_printf("%s is not a descendent of %s", parent->name, (*out)->name);
 			if (err) *err = FR_DICT_ATTR_NOT_DESCENDENT;
 			*out = NULL;
 			return 0;
