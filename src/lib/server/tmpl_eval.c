@@ -746,7 +746,7 @@ static VALUE_PAIR *_tmpl_cursor_tlv_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR *c
 	VALUE_PAIR		*vp;
 
 	cs = ns->tlv.cursor_stack;
-	cursor = &cs->cursor[cs->depth];
+	cursor = &cs->cursor[cs->depth - 1];
 
 	/*
 	 *	Our final stopping condition is when the shallowest
