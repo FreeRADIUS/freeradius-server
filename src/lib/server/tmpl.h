@@ -861,7 +861,7 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_parse_rules_t const *p_rules,
 					  tmpl_rules_t const *t_rules);
 
-ssize_t			tmpl_cast_from_substr(fr_type_t *vpt, fr_sbuff_t *in);	/* Parses cast string */
+ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in);	/* Parses cast string */
 
 int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type);		/* Sets cast type */
 
@@ -907,6 +907,11 @@ ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix);
 /** @} */
 
+/** @name Expand the tmpl, returning one or more values
+ * @{
+ */
+fr_type_t		tmpl_data_type(tmpl_t const *vpt);
+
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
 				      REQUEST *request,
@@ -934,6 +939,7 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
+/** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
 				      fr_token_t *type, char const **error,

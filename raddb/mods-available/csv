@@ -111,35 +111,34 @@ csv {
 	index_field = "name"
 
 	#
-	#  data_type:: The data type of the index_field.
-	#
-	#  This data type MUST be one of the data types known to FreeRADIUS.
-	#  e.g. "string", "ipaddr", etc.
-	#
-	#  When the `data_type` is one of: `ipaddr`, `ipv4prefix`,
-	#  `ipv6addr`, or `ipv6prefix`, then the rows are stored in a
-	#  prefix trie.
-	#
-	#  For all other values of `data_type`, the rows are stored in
-	#  a binary tree.
-	#
-	#  Note that the individual fields of the CSV file do not have
-	#  data types.  They are stored internally as strings, and are
-	#  parsed to the final data type only when the `csv` module
-	#  is run, either in-place, or as a `map`.
-	#
-	#  If the `key` below is an attribute, then the `data_type`
-	#  configuration can be omitted  The module will then take the
-	#  `data_type` value from the data type defined in the attribute.
-	#
-	data_type = string
-
-	#
 	#  key:: The key string used to look up entries via the `index_field`.
 	#
 	#  When the `csv` module is listed in a processing section,
 	#  the `key` is used to find the appropriate entry.  The `update`
 	#  section below is then applied.
+	#
+	#  The data type of the key is used to determine the type
+	#  of structure used to store the `index_field` values.
+	#
+	#  When the key data type is one of: `ipaddr`, `ipv4prefix`,
+	#  `ipv6addr`, or `ipv6prefix`, then the rows are stored in a
+	#  prefix trie.
+	#
+	#  For all other key data types, the rows are stored in a binary
+	#  tree.
+	#
+	#  If a data type other than the native type of `key` expression
+	#  is needed, the casting operator can be used.
+	#  For example:
+	#  a key value of `<ipv4prefix>&reply.Reply-Message`.
+	#  would result in a prefix trie being used for lookups, and the
+	#  `string` value of the `Reply-Message` attribute being parsed as
+	#  CIDR notation.
+	#
+	#  Note that the individual fields of the CSV file do not have
+	#  data types.  They are stored internally as strings, and are
+	#  parsed to the final data type only when the `csv` module
+	#  is run, either in-place, or as a `map`.
 	#
 	key = &User-Name
 

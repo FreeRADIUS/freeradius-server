@@ -180,39 +180,49 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 						.allow_unresolved = true,
 						.allow_foreign = true
 					};
+		fr_type_t		cast = FR_TYPE_INVALID;
+		fr_sbuff_t		sbuff = FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp)));
 
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 
 		/*
-		 *	This is so we produce TMPL_TYPE_ATTR_UNRESOLVED template that
-		 *	the bootstrap functions can use to create an attribute.
-		 *
-		 *	For other types of template such as xlats, we don't bother.
-		 *	There's no reason bootstrap functions need access to the raw
-		 *	xlat strings.
+		 *	Parse the cast operator for barewords
 		 */
-		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cf_pair_value(cp), &rules);
-		} else {
-			slen = tmpl_afrom_substr(cp, &vpt, &FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp))),
-						 cf_pair_value_quote(cp),
-						 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
-						 &rules);
-		}
+		if (cf_pair_value_quote(cp) == T_BARE_WORD) {
+			slen = tmpl_cast_from_substr(&cast, &sbuff);
+			if (slen < 0) {
+				char *spaces, *text;
+			tmpl_error:
+				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
 
-		if (slen < 0) {
-			char *spaces, *text;
+				cf_log_err(cp, "Failed parsing attribute reference:");
+				cf_log_err(cp, "%s", text);
+				cf_log_perr(cp, "%s^", spaces);
 
-			fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
-
-			cf_log_err(cp, "Failed parsing attribute reference:");
-			cf_log_err(cp, "%s", text);
-			cf_log_perr(cp, "%s^", spaces);
-
-			talloc_free(spaces);
-			talloc_free(text);
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+		} else if (attribute) {
+			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
 			goto error;
 		}
+
+		slen = tmpl_afrom_substr(cp, &vpt, &sbuff,
+					 cf_pair_value_quote(cp),
+					 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
+					 &rules);
+		if (slen < 0) goto tmpl_error;
+
+		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
+			cf_log_err(cp, "Expected attr got %s",
+				   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+			return -1;
+		}
+
+		tmpl_cast_set(vpt, cast);
+
 		*(tmpl_t **)out = vpt;
 
 		goto finish;

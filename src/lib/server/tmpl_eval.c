@@ -193,6 +193,51 @@ int radius_request(REQUEST **context, request_ref_t name)
  * @{
  */
 
+/** Return the native data type of the expression
+ *
+ * @param[in] vpt	to determine the type of.
+ * @return
+ *	- FR_TYPE_INVALID if the type of the #tmpl_t can't be determined.
+ *	- The data type we'd expect the #tmpl_t to produce at runtime
+ *	  when expanded.
+ */
+fr_type_t tmpl_data_type(tmpl_t const *vpt)
+{
+	/*
+	 *	Casts take precedence over everything.
+	 */
+	if (vpt->cast != FR_TYPE_INVALID) return vpt->cast;
+
+	/*
+	 *	Double quoted values default to
+	 *	FR_TYPE_STRING, unless there's an
+	 *	explicit cast.
+	 */
+	if (vpt->quote == T_DOUBLE_QUOTED_STRING) return FR_TYPE_STRING;
+
+	/*
+	 *	Regexes can't be expanded
+	 */
+	if (tmpl_contains_regex(vpt)) return FR_TYPE_INVALID;
+
+	switch (vpt->type) {
+	case TMPL_TYPE_ATTR:
+		return tmpl_da(vpt)->type;
+
+	case TMPL_TYPE_DATA:
+		return tmpl_value_type(vpt);
+
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_EXEC:
+		return FR_TYPE_STRING;
+
+	default:
+		break;
+	}
+
+	return FR_TYPE_INVALID;
+}
+
 /** Expand a #tmpl_t to a string writing the result to a buffer
  *
  * The intended use of #tmpl_expand and #tmpl_aexpand is for modules to easily convert a #tmpl_t

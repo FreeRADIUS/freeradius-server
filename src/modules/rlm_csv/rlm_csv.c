@@ -46,9 +46,6 @@ typedef struct {
 	char const	*delimiter;
 	char const	*fields;
 	char const	*index_field_name;
-	char const	*data_type_name;
-
-	fr_type_t	data_type;
 
 	bool		header;
 	bool		allow_multiple_keys;
@@ -65,6 +62,8 @@ typedef struct {
 	fr_trie_t	*trie;
 
 	tmpl_t		*key;
+	fr_type_t	key_data_type;
+
 	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
@@ -85,7 +84,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("header", FR_TYPE_BOOL, rlm_csv_t, header) },
 	{ FR_CONF_OFFSET("allow_multiple_keys", FR_TYPE_BOOL, rlm_csv_t, allow_multiple_keys) },
 	{ FR_CONF_OFFSET("index_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, index_field_name) },
-	{ FR_CONF_OFFSET("data_type", FR_TYPE_STRING, rlm_csv_t, data_type_name) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };
@@ -173,12 +171,12 @@ static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *
 {
 	rlm_csv_entry_t my_e;
 
-	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
+	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
 		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
 
 	}
 
-	if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+	if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
 	}
 
@@ -207,7 +205,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		return e;
 	}
 
-	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX)) {
+	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
@@ -216,7 +214,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 			return false;
 		}
 
-	} else if ((inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+	} else if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
@@ -236,7 +234,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *old, char *p, int lineno)
 {
 	int i;
-	fr_type_t type = inst->data_type;
+	fr_type_t type = inst->key_data_type;
 	rlm_csv_entry_t *e;
 
 	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst, uint8_t,
@@ -290,7 +288,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 		 *	This is the key field.
 		 */
 		if (i == inst->index_field) {
-			fr_type_t type = inst->data_type;
+			fr_type_t type = inst->key_data_type;
 
 			/*
 			 *	Check for /etc/group style keys.
@@ -543,46 +541,31 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-
-	if (!inst->data_type_name || !*inst->data_type_name) {
-		if (inst->key && tmpl_is_attr(inst->key)) {
-			inst->data_type = tmpl_da(inst->key)->type;
-		} else {
-			inst->data_type = FR_TYPE_STRING;
-		}
-
-	} else {
-		inst->data_type = fr_table_value_by_str(fr_value_box_type_table, inst->data_type_name, FR_TYPE_INVALID);
-		if (!inst->data_type) {
-		invalid_type:
-			cf_log_err(conf, "Invalid data_type '%s'", inst->data_type_name);
-			return -1;
-		}
-
-		/*
-		 *	Can't switch over TLV, group, VSA, etc.
-		 */
-		switch (inst->data_type) {
+	if (inst->key) {
+		inst->key_data_type = tmpl_data_type(inst->key);
+		switch (inst->key_data_type) {
 		case FR_TYPE_VALUE:
 			break;
 
-		default:
-			goto invalid_type;
-		}
+		case FR_TYPE_INVALID:
+			cf_log_err(conf, "Can't determine key data_type. 'key' must be an expression of type "
+				   "xlat, attr, or data");
+			return -1;
 
-		if (inst->key && tmpl_is_attr(inst->key) && (tmpl_da(inst->key)->type != inst->data_type)) {
-			cf_log_err(conf, "The data type of 'key' does not match data_type '%s'",
-				   inst->data_type_name);
+		default:
+			cf_log_err(conf, "Invalid key data type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "<INVALID>"));
 			return -1;
 		}
+	} else {
+		inst->key_data_type = FR_TYPE_STRING;
 	}
-
 
 	/*
 	 *	IP addresses go into tries.  Everything else into binary tries.
 	 */
-	if ((inst->data_type == FR_TYPE_IPV4_ADDR) || (inst->data_type == FR_TYPE_IPV4_PREFIX) ||
-	    (inst->data_type == FR_TYPE_IPV6_ADDR) || (inst->data_type == FR_TYPE_IPV6_PREFIX)) {
+	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX) ||
+	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		MEM(inst->trie = fr_trie_alloc(inst));
 	} else {
 		MEM(inst->tree = rbtree_talloc_alloc(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0));
@@ -753,7 +736,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Set the data type of the index field.
 	 */
-	inst->field_types[inst->index_field] = inst->data_type;
+	inst->field_types[inst->index_field] = inst->key_data_type;
 
 	/*
 	 *	And register the `map csv <key> { ... }` function.
@@ -1008,8 +991,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
-	if ((inst->data_type == FR_TYPE_OCTETS) || (inst->data_type == FR_TYPE_STRING)) {
-		if (fr_value_box_list_concat(request, *key, key, inst->data_type, true) < 0) {
+	if ((inst->key_data_type == FR_TYPE_OCTETS) || (inst->key_data_type == FR_TYPE_STRING)) {
+		if (fr_value_box_list_concat(request, *key, key, inst->key_data_type, true) < 0) {
 			REDEBUG("Failed parsing key");
 			return RLM_MODULE_FAIL;
 		}
@@ -1042,17 +1025,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 	 *	If the output data was string and we wanted non-string
 	 *	data, convert it now.
 	 */
-	if (key->type != inst->data_type) {
+	if (key->type != inst->key_data_type) {
 		fr_value_box_t tmp;
 
 		fr_value_box_copy(request, &tmp, key);
 
-		slen = fr_value_box_cast(request, key, inst->data_type, NULL, &tmp);
+		slen = fr_value_box_cast(request, key, inst->key_data_type, NULL, &tmp);
 		fr_value_box_clear(&tmp);
 		if (slen < 0) {
 			talloc_free(key);
 			DEBUG("Failed casting %pV to data type '%s'",
-			      &key, inst->data_type_name);
+			      &key, fr_table_str_by_value(tmpl_type_table, inst->key_data_type, "<INVALID>"));
 			return RLM_MODULE_FAIL;
 		}
 	}
