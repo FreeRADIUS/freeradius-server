@@ -1212,6 +1212,23 @@ done:
 	return result;
 }
 
+static char *next_word(char **in)
+{
+	char *out = *in;
+	char *p = out;
+
+	if (!in || !*in) return NULL;
+
+	while (*p && !isspace((int) *p)) p++;
+	if (!*p) {
+		*in = NULL;
+	} else {
+		*(p++) = '\0';
+		*in = p;
+	}
+
+	return out;
+}
 
 static char *make_ad_check_headers(char const *nm, unsigned int argc, char **argv)
 {
@@ -1223,22 +1240,19 @@ static char *make_ad_check_headers(char const *nm, unsigned int argc, char **arg
 	my_argv[2] = strdup(ad_includes_default);
 
 	for (i = 0; i < argc; i++) {
-		char *name, *p;
+		char *p;
 
 		/*
-		 *	Allow spaces.
+		 *	Allow spaces.  Because Make uses "," to
+		 *	separate arguments to functions *but* also
+		 *	uses spaces for similar things.
+		 *
+		 *	Instead of punishing the poor admin with GNU
+		 *	Make stupidities, we just do the Right Thing.
 		 */
 		p = argv[i];
 		while (p) {
-			name = p;
-			while (*p && !isspace((int) *p)) p++;
-			if (!*p) {
-				p = NULL;
-			} else {
-				*(p++) = '\0';
-			}
-
-			my_argv[1] = name;
+			my_argv[1] = next_word(&p);
 			(void) make_ad_fn_c_check_header_compile(nm, 3, my_argv);
 		}
 	}
