@@ -73,7 +73,8 @@ int fr_cap_set(cap_value_t cap)
 
 	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &state) < 0) {
 		char *cap_name = cap_to_name(cap);
-		fr_strerror_printf("Failed getting %s effective state: %s", cap_name, fr_syserror(errno));
+		fr_strerror_printf("Failed getting %s effective state from working set: %s",
+				   cap_name, fr_syserror(errno));
 		cap_free(cap_name);
 		goto done;
 	}
@@ -89,8 +90,14 @@ int fr_cap_set(cap_value_t cap)
 
 		if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
 			char *cap_name = cap_to_name(cap);
-			fr_strerror_printf("Failed setting %s effective state: %s", cap_name, fr_syserror(errno));
+			fr_strerror_printf("Failed setting %s effective state in worker set: %s",
+					   cap_name, fr_syserror(errno));
 			cap_free(cap_name);
+			goto done;
+		}
+
+		if (cap_set_proc(caps) < 0) {
+			fr_strerror_printf("Failed setting %s effective state: %s", cap_name, fr_syserror(errno));
 			goto done;
 		}
 
