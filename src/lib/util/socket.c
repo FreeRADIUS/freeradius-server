@@ -940,6 +940,8 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			 */
 			my_ipaddr.scope_id = scope_id;
 			bound = true;
+		} else {
+			bound = true;
 		}
 #else
 		struct ifaddrs *list = NULL;
