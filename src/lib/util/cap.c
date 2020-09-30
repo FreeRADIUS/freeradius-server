@@ -77,9 +77,11 @@ int fr_cap_set(cap_value_t cap)
 	 */
 	if (state == CAP_CLEAR) {
 		char *cap_name = cap_to_name(cap);
-		fr_strerror_printf("This program may not function correctly it lacks the %s capability", cap_name);
-		fr_strerror_printf_push("Use the following command to allow this capability "
-					"setcap %s+ep <path_to_binary>", cap_name);
+		/*
+		 *	Messages printed in the inverse order
+		 *	to the order they're printed.
+		 */
+		fr_strerror_printf("Use \"setcap %s+ep <path_to_binary>\" to grant the %s capability", cap_name);
 		cap_free(cap_name);
 		goto done;
 	}
