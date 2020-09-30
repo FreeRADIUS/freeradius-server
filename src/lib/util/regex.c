@@ -220,7 +220,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (len == 0) {
 		fr_strerror_printf("Empty expression");
@@ -309,7 +309,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (regmatch) {
 #ifdef PCRE2_COPY_MATCHED_SUBJECT
@@ -439,7 +439,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	/*
 	 *	Internally pcre2_substitute just calls pcre2_match to
@@ -611,7 +611,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return NULL;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return NULL;
 
 	regmatch = talloc(ctx, fr_regmatch_t);
 	if (!regmatch) {
