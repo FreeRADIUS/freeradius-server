@@ -110,7 +110,9 @@ int fr_cap_set(cap_value_t cap)
 		}
 
 		if (cap_set_proc(caps) < 0) {
+			char *cap_name = cap_to_name(cap);
 			fr_strerror_printf("Failed setting %s effective state: %s", cap_name, fr_syserror(errno));
+			cap_free(cap_name);
 			goto done;
 		}
 
