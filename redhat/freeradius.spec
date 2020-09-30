@@ -71,7 +71,7 @@ BuildRequires: freeradius-openssl, freeradius-openssl-devel
 BuildRequires: openssl, openssl-devel
 %endif
 
-BuildRequires: libcurl-devel >= 7.45.0
+BuildRequires: libcap-devel
 BuildRequires: libkqueue-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
@@ -100,11 +100,12 @@ Requires: freeradius-openssl
 Requires: openssl, openssl-perl
 %endif
 
-Requires: libpcap
-Requires: readline
-Requires: libtalloc
+Requires: libcap
 Requires: libkqueue
+Requires: libpcap
+Requires: libtalloc
 Requires: net-snmp
+Requires: readline
 %if %{?_with_wbclient:1}%{!?_with_wbclient:0}
 %{?el7:Requires: libwbclient}
 %endif
@@ -217,6 +218,8 @@ Requires: freeradius-libfreeradius-util = %{version}-%{release}
 
 %description libfreeradius-curl
 Integrates libcurl with FreeRADIUS' internal event loop.
+Requires: libcurl >= 7.45.0
+BuildRequires: libcurl-devel >= 7.45.0
 
 %package libfreeradius-util
 Summary: Utility library used by all other FreeRADIUS libraries
