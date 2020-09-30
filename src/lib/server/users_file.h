@@ -38,7 +38,7 @@ extern "C" {
 typedef struct pair_list {
 	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.
 
-	char const		*name;
+	fr_value_box_t		*name;
 	map_t			*check;
 	map_t			*reply;
 	int			order;
@@ -48,7 +48,7 @@ typedef struct pair_list {
 } PAIR_LIST;
 
 /* users_file.c */
-int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain);
+int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain, fr_type_t data_type);
 void		pairlist_free(PAIR_LIST **);
 
 #ifdef __cplusplus

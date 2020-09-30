@@ -33,27 +33,29 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 typedef struct {
-	tmpl_t *key;
+	tmpl_t		*key;
+	fr_type_t	key_data_type;
 
-	char const *filename;
-	rbtree_t *common;
+	char const 	*filename;
+	rbtree_t 	*common;
 
 	/* autz */
-	char const *usersfile;
-	rbtree_t *users;
+	char const 	*usersfile;
+	rbtree_t 	*users;
 
 
 	/* authenticate */
-	char const *auth_usersfile;
-	rbtree_t *auth_users;
+	char const	*auth_usersfile;
+	rbtree_t	*auth_users;
 
 	/* preacct */
-	char const *acct_usersfile;
-	rbtree_t *acct_users;
+	char const	*acct_usersfile;
+	rbtree_t	*acct_users;
 
 	/* post-authenticate */
-	char const *postauth_usersfile;
-	rbtree_t *postauth_users;
+	char const	*postauth_usersfile;
+	rbtree_t	*postauth_users;
+
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -89,11 +91,12 @@ static const CONF_PARSER module_config[] = {
 
 static int pairlist_cmp(void const *a, void const *b)
 {
-	return strcmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
+	return fr_value_box_cmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
 }
 
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
+	rlm_files_t *inst = ctx;
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
@@ -105,7 +108,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		return 0;
 	}
 
-	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1, inst->key_data_type);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -152,7 +155,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 */
 			if ((fr_dict_vendor_num_by_da(da) != 0) ||
 			    (da->attr < 0x100)) {
-				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for key %pV",
 				     entry->filename, entry->lineno,
 				     da->name, da->name,
 				     entry->name);
@@ -187,7 +190,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 */
 			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
 				WARN("%s[%d] Check item \"%s\"\n"
-				     "\tfound in reply item list for user \"%s\".\n"
+				     "\tfound in reply item list for key \"%pV\".\n"
 				     "\tThis attribute MUST go on the first line"
 				     " with the other check items", entry->filename, entry->lineno, da->name,
 				     entry->name);
@@ -227,6 +230,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		next = entry->next;
 		entry->next = NULL;
 
+		char *str;
+		fr_value_box_aprint(NULL, &str, entry->name, NULL);
+
 		/*
 		 *	@todo - loop over entry->reply, calling
 		 *	unlang_fixup_update() or unlang_fixup_filter()
@@ -241,7 +247,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		/*
 		 *	DEFAULT entries get their own list.
 		 */
-		if (strcmp(entry->name, "DEFAULT") == 0) {
+		if (strcmp(str, "DEFAULT") == 0) {
 			if (!default_list) {
 				default_list = entry;
 
@@ -267,6 +273,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			default_tail = &entry->next;
 			continue;
 		}
+		talloc_free(str);
 
 		/*
 		 *	Not DEFAULT, must be a normal user.
@@ -299,6 +306,36 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 }
 
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_files_t *inst = instance;
+
+	/*
+	 * Determine the data type which "key" will expand to
+	 */
+	if (inst->key) {
+		inst->key_data_type = tmpl_expanded_type(inst->key);
+		switch (inst->key_data_type) {
+		case FR_TYPE_VALUE:
+			break;
+
+		case FR_TYPE_INVALID:
+			cf_log_err(conf, "Can't determine key data type. 'key' must be an expression of type "
+				   "xlat, attr, or data");
+			return -1;
+
+		default:
+			cf_log_err(conf, "Invalid key data type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "<INVALID>"));
+			return -1;
+		}
+	} else {
+		inst->key_data_type = FR_TYPE_STRING;
+	}
+
+	return 0;
+}
+
 
 /*
  *	(Re-)read the "users" file into memory.
@@ -330,6 +367,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	bool			found = false;
 	PAIR_LIST		my_pl;
 	char			buffer[256];
+	fr_type_t		type = inst->key_data_type;
 
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
 		REDEBUG("Failed expanding key %s", inst->key->name);
@@ -338,10 +376,15 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 	if (!tree) RETURN_MODULE_NOOP;
 
-	my_pl.name = name;
+	my_pl.name = fr_value_box_alloc_null(NULL);
+	fr_value_box_from_str(my_pl.name, my_pl.name, &type, NULL, name, -1, 0, false);
 	user_pl = rbtree_finddata(tree, &my_pl);
-	my_pl.name = "DEFAULT";
-	default_pl = rbtree_finddata(tree, &my_pl);
+	if (type == FR_TYPE_STRING) {
+		fr_value_box_from_str(NULL, my_pl.name, &type, NULL, "DEFAULT", -1, 0, false);
+		default_pl = rbtree_finddata(tree, &my_pl);
+	} else {
+		default_pl = NULL;
+	}
 
 	/*
 	 *	Find the entry for the user.
@@ -402,7 +445,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			continue;
 		}
 
-		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
+		RDEBUG2("Found match \"%pV\" on line %d of %s", pl->name, pl->lineno, filename);
 		found = true;
 		fall_through = false;
 
@@ -511,6 +554,7 @@ module_t rlm_files = {
 	.name		= "files",
 	.inst_size	= sizeof(rlm_files_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

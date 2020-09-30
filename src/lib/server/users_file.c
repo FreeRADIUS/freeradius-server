@@ -145,7 +145,7 @@ static fr_sbuff_parse_rules_t const rhs_term = {
  *	Caller saw a $INCLUDE at the start of a line.
  */
 static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST **last,
-			 char const *file, int lineno)
+			 char const *file, int lineno, fr_type_t data_type)
 {
 	size_t		len;
 	char		*newfile, *p, c;
@@ -226,7 +226,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Read the $INCLUDEd file recursively.
 	 */
-	if (pairlist_read(ctx, dict, newfile, last, 0) != 0) {
+	if (pairlist_read(ctx, dict, newfile, last, 0, data_type) != 0) {
 		ERROR("%s[%d]: Could not read included file %s: %s",
 		      file, lineno, newfile, fr_syserror(errno));
 		talloc_free(newfile);
@@ -241,7 +241,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
-int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain)
+int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain, fr_type_t data_type)
 {
 	char			*q;
 	PAIR_LIST		*pl = NULL;
@@ -330,7 +330,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	$INCLUDE filename
 		 */
 		if (fr_sbuff_is_str(&sbuff, "$INCLUDE", 8)) {
-			if (users_include(ctx, dict, &sbuff, &t, file, lineno) < 0) goto fail;
+			if (users_include(ctx, dict, &sbuff, &t, file, lineno, data_type) < 0) goto fail;
 
 			/*
 			 *	The file may have read no entries, one
@@ -373,7 +373,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			talloc_free(t);
 			break;
 		}
-		t->name = q;
+		t->name = talloc_zero(t, fr_value_box_t);
+		fr_value_box_from_str(t, t->name, &data_type, NULL, q, -1, 0, false);
 		map_tail = &t->check;
 
 		lhs_rules.list_def = PAIR_LIST_CONTROL;

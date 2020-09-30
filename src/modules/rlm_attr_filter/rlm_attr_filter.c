@@ -109,7 +109,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	PAIR_LIST *entry;
 	map_t *map;
 
-	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1, FR_TYPE_STRING);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -122,7 +122,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 		 *	We apply the rules in the reply items.
 		 */
 		if (entry->check) {
-			WARN("%s[%d] Check list is not empty for entry \"%s\".\n",
+			WARN("%s[%d] Check list is not empty for entry \"%pV\".\n",
 			     filename, entry->lineno, entry->name);
 		}
 
@@ -145,7 +145,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 			 * then bitch about it, giving a good warning message.
 			 */
 			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
+				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%pV\".\n",
 				     filename, entry->lineno, da->name, entry->name);
 			}
 		}
@@ -223,16 +223,20 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 
 		fr_pair_list_init(&tmp_list);
 		/*
+		 *  attr_filter only supports strings as the key type
+		 */
+		if (pl->name->type != FR_TYPE_STRING) continue;
+		/*
 		 *  If the current entry is NOT a default,
 		 *  AND the realm does NOT match the current entry,
 		 *  then skip to the next entry.
 		 */
-		if ((strcmp(pl->name, "DEFAULT") != 0) &&
-		    (strcmp(keyname, pl->name) != 0))  {
+		if ((strcmp(pl->name->vb_strvalue, "DEFAULT") != 0) &&
+		    (strcmp(keyname, pl->name->vb_strvalue) != 0))  {
 			continue;
 		}
 
-		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
+		RDEBUG2("Matched entry %s at line %d", pl->name->vb_strvalue, pl->lineno);
 		found = 1;
 
 		fr_pair_list_init(&check_list);
