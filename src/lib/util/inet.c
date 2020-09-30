@@ -207,7 +207,7 @@ void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
  */
 int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 {
-	int rcode;
+	int ret;
 	struct addrinfo hints, *ai = NULL, *alt = NULL, *res = NULL;
 
 	/*
@@ -255,22 +255,22 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 		hints.ai_family = af;
 	}
 
-	if ((rcode = getaddrinfo(hostname, NULL, &hints, &res)) != 0) {
+	if ((ret = getaddrinfo(hostname, NULL, &hints, &res)) != 0) {
 		switch (af) {
 		default:
 		case AF_UNSPEC:
 			fr_strerror_printf("Failed resolving \"%s\" to IP address: %s",
-					   hostname, gai_strerror(rcode));
+					   hostname, gai_strerror(ret));
 			return -1;
 
 		case AF_INET:
 			fr_strerror_printf("Failed resolving \"%s\" to IPv4 address: %s",
-					   hostname, gai_strerror(rcode));
+					   hostname, gai_strerror(ret));
 			return -1;
 
 		case AF_INET6:
 			fr_strerror_printf("Failed resolving \"%s\" to IPv6 address: %s",
-					   hostname, gai_strerror(rcode));
+					   hostname, gai_strerror(ret));
 			return -1;
 		}
 	}
@@ -288,9 +288,9 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 		return -1;
 	}
 
-	rcode = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen, out, NULL);
+	ret = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen, out, NULL);
 	freeaddrinfo(res);
-	if (rcode < 0) {
+	if (ret < 0) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr");
 		return -1;
 	}
@@ -1392,7 +1392,7 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 {
 	struct ifaddrs *list = NULL;
 	struct ifaddrs *i;
-	int rcode = -1;
+	int ret = -1;
 
 	if (getifaddrs(&list) < 0) return -1;
 
@@ -1405,7 +1405,7 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
 
 		/*
-		 *	If we ask for a link local address, then give
+		 *	If they ask for a link local address, then give
 		 *	it to them.
 		 */
 		if (link_local) {
@@ -1414,12 +1414,12 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 		}
 
 		*ipaddr = my_ipaddr;
-		rcode = 0;
+		ret = 0;
 		break;
 	}
 
 	freeifaddrs(list);
-	return rcode;
+	return ret;
 }
 
 /*
@@ -1434,7 +1434,7 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 {
 	struct ifaddrs *list = NULL;
 	struct ifaddrs *i;
-	int rcode = -1;
+	int ret = -1;
 
 	if (getifaddrs(&list) < 0) return -1;
 
@@ -1458,10 +1458,10 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 
 		memcpy(ethernet, LLADDR(ll), 6);
 #endif
-		rcode = 0;
+		ret = 0;
 		break;
 	}
 
 	freeifaddrs(list);
-	return rcode;
+	return ret;
 }
