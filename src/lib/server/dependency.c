@@ -353,9 +353,13 @@ void dependency_features_init(CONF_SECTION *cs)
 {
 	default_feature_cs = cs;
 
-	dependency_feature_add(cs, "accounting", true);
-
-	dependency_feature_add(cs, "authentication", true);
+	dependency_feature_add(cs, "cap",
+#ifdef HAVE_CAPABILITY_H
+				true
+#else
+				false
+#endif
+				);
 
 	dependency_feature_add(cs, "regex-pcre",
 #ifdef HAVE_REGEX_PCRE
