@@ -24,11 +24,17 @@ dhcp_common {
 #  Policy to override DHCP-Network-IP-Address
 #
 #  Some network configurations have "shared-networks" in which multiple IP
-#  subnets may co-exist in a single Layer 2 network (or VLAN) for the purpose
-#  of provide loose segregation between classes of devices such as local
-#  network atached storage or IP telephony. (There may be valid reasons why
-#  each of the subnets is not seperately VLANed, such as to enable the use of
-#  ICMP redirects to avoid routing cross-subnet traffic via a gateway.)
+#  subnets may co-exist in a single Layer 2 network (or VLAN).
+#
+#  In enterprise environments this is often for the purpose of providing loose
+#  segregation between classes of devices such as local network-attached
+#  storage or IP telephony. There are valid reasons why each of the subnets is
+#  not seperately VLANed, such as to enable the use of ICMP redirects to avoid
+#  hairpinning of cross-subnet traffic via a gateway.
+#
+#  In ISP environments this is a common configuration for edge networks whose
+#  access is provided by DOCSIS cable modems that share a VLAN with the devices
+#  they provide a service to but are seperately addressed.
 #
 #  Where it is necessary to force the selection of a particular subnet for a
 #  device, multiple pools must be configured for each subnet and referenced
