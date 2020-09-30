@@ -1016,7 +1016,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) {
-		fr_strerror_printf_push("Bind failed with source address %pV:%pV, interface %s: %s",
+		fr_strerror_printf_push("Bind failed with source address %pV:%pV on interface %s: %s",
 					src_ipaddr ? fr_box_ipaddr(*src_ipaddr) : fr_box_strvalue("*"),
 					src_port ? fr_box_int16(*src_port) : fr_box_strvalue("*"),
 					interface ? interface : "*",
