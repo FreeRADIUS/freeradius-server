@@ -806,17 +806,22 @@ fi
 %endif
 
 %files utils
+%exclude /usr/bin/*_tests
+%exclude /usr/bin/unit_test_*
 %defattr(-,root,root)
-/usr/bin/smbencrypt
+/usr/bin/dhcpclient
 /usr/bin/radclient
-/usr/bin/radwho
-/usr/bin/radsniff
-/usr/bin/radlast
-/usr/bin/radtest
-/usr/bin/radzap
-/usr/bin/radsqlrelay
 /usr/bin/radcrypt
+/usr/bin/radict
+/usr/bin/radlast
+/usr/bin/radsniff
+/usr/bin/radsnmp
+/usr/bin/radsqlrelay
+/usr/bin/radtest
+/usr/bin/radwho
+/usr/bin/radzap
 /usr/bin/rlm_redis_ippool_tool
+/usr/bin/smbencrypt
 # man-pages
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
