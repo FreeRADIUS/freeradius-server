@@ -930,7 +930,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 			if (rcode < 0) {
-				fr_strerror_printf_push("Failed binding to interface %s: %s",
+				fr_strerror_printf_push("Bind failed on interface %s: %s",
 							interface, fr_syserror(errno));
 				return -1;
 			} /* else it worked. */
@@ -998,7 +998,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			 *	IPv4: no link local addresses,
 			 *	and no bind to device.
 			 */
-			fr_strerror_printf_push("Failed binding to interface %s: \"bind to device\" is unsupported",
+			fr_strerror_printf_push("Bind failed on interface %s: \"bind to device\" is unsupported",
 						interface);
 			return -1;
 		}
@@ -1016,7 +1016,11 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) {
-		fr_strerror_printf_push("Bind failed: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Bind failed with source address %pV:%pV, interface %s: %s",
+					src_ipaddr ? fr_box_ipaddr(*src_ipaddr) : fr_box_strvalue("*"),
+					src_port ? fr_box_int16(*src_port) : fr_box_strvalue("*"),
+					interface ? interface : "*",
+					fr_syserror(errno));
 		return rcode;
 	}
 
