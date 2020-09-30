@@ -1700,7 +1700,7 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 	return rbtree_walk(ci->ident2, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
 }
 
-static inline void truncate_filename(char const **e, char const **p, int *len, char const *filename)
+static inline CC_HINT(nonnull) void truncate_filename(char const **e, char const **p, int *len, char const *filename)
 {
 	size_t flen;
 	char const *q;
