@@ -1409,7 +1409,7 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 		 *	it to them.
 		 */
 		if (link_local) {
-			if (af != AF_INET6) continue;
+			if (my_ipaddr.af != AF_INET6) continue;
 			if (!IN6_IS_ADDR_LINKLOCAL(&my_ipaddr.addr.v6)) continue;
 		}
 
