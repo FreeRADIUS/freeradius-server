@@ -773,7 +773,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	 *	underneath the workers!
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
-		DEBUG2("Scheduler - Waiting for semaphore indicating worker exit %u/%u", i,
+		DEBUG2("Scheduler - Waiting for semaphore indicating worker exit %u/%u", i + 1,
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->worker_sem);
 	}
