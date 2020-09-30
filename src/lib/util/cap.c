@@ -28,6 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <pthread.h>
+
 /** Set CAP_NET_* if possible.
  *
  * A negative return from this function should NOT always
@@ -45,6 +47,17 @@ int fr_cap_set(cap_value_t cap)
 	int			rcode = -1;
 	cap_t			caps;
 	cap_flag_value_t	state;
+	static pthread_mutex_t	mutex = PTHREAD_MUTEX_INITIALIZER;
+
+	/*
+	 *	This function may be called by multiple
+	 *      threads each binding to their own network
+	 *	sockets.  There's no guarantee that those
+	 *	threads will be requesting the same
+	 *	capabilities at the same time, so we could
+	 *	suffer from a lost update problem.
+	 */
+	pthread_mutex_lock(&mutex);
 
 	caps = cap_get_proc();
 	if (!caps) {
@@ -110,6 +123,8 @@ int fr_cap_set(cap_value_t cap)
 	}
 
 done:
+	pthread_mutex_unlock(&mutex);
+
 	if (caps) cap_free(caps);
 
 	return rcode;
