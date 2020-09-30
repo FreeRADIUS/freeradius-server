@@ -31,6 +31,7 @@ RCSIDH(time_h, "$Id$")
 #include <ctype.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <unistd.h>
 #include <gnumake.h>
 
 #ifdef __linux__
@@ -589,6 +590,9 @@ static void ad_have_feature(char const *symbol)
 		if (islower((int) *p)) {
 			*p = toupper((int) *p);
 
+		} else if ((*p == '/') || (*p == '.')) {
+			*p = '_';
+
 		} else if (*p == '-') {
 			*p = '_';
 		}
@@ -600,7 +604,9 @@ static void ad_have_feature(char const *symbol)
 	 *	O(N^2) is OK if we're not doing 1000's of definitions.
 	 */
 	for (last = &ad_define_head; *last != NULL; last = &(*last)->next) {
-		if (strcmp(def->name + 4, (*last)->name + 4) > 0) continue;
+		if (def->name[5] > (*last)->name[5]) continue; /* avoid strcmp() for the common case */
+
+		if (strcmp(def->name + 5, (*last)->name + 5) > 0) continue;
 		break;
 	}
 
@@ -972,19 +978,19 @@ found:
 
 /**  Dump definitions for Make or CPP
  *
- *	$(ad_dump_defs )
+ *	$(ad_dump_definess )
  *		dump to stdout.  Note the final space!
  *		$(ad_dump_defs) is a variable expansion, not a function call.
  *
- *	$(ad_dump_defs foo.mak)
+ *	$(ad_dump_defines foo.mak)
  *		dump definitions in Makefile format	HAVE_FOO=1
  *
- *	$(ad_dump_defs foo.h)
+ *	$(ad_dump_defines foo.h)
  *		dump definitions in CPP format		#define HAVE_FOO (1)
  *
  *	@todo - allow multiple filenames?
  */
-static char *make_ad_dump_defs(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_ad_dump_defines(UNUSED char const *nm, unsigned int argc, char **argv)
 {
 	ad_define_t *def;
 	FILE *fp;
@@ -1029,6 +1035,223 @@ static char *make_ad_dump_defs(UNUSED char const *nm, unsigned int argc, char **
 	return NULL;
 }
 
+/*
+ *	If the error file has non-zero size, then rewrite it
+ *	by removing all lines which are only spaces.
+ *
+ *	Log the command which was run, and the error status.
+ *
+ *	If the command returned 0, and CPPFLAGS is not using
+ *	-Werror, then return success.  Otherwise, if CPPFLAGS
+ *	is using -Werror and the argv[0].err file is
+ *	non-empty, then that's a success too.
+ *
+ *
+ *	try_compile has exactly the same checks, but it also
+ *	checks for a non-zero object file.
+ *
+ */
+static char *run_cmd(char const *cmd, char *filename)
+{
+	size_t len1, len2;
+	char *str, *result;
+
+	len1 = strlen(cmd);
+	len2 = strlen(filename);
+
+	/*
+	 *	This is a lot more CPU time than running fork / exec /
+	 *	waitpid ourselves.  But it's less work for the programmer. :)
+	 */
+	str = malloc(8 + len1 + 1 + len2 + 2 + len2 + 7 + len2 + 15);
+	if (!str) return NULL;
+
+	sprintf(str, "$(shell %s %s >%s.out 2>%s.err;echo $$?)", cmd, filename, filename, filename);
+
+	/*
+	 *	Expand it, running the shell.
+	 */
+	result = gmk_expand(str);
+	free(str);
+
+	return result;
+}
+
+static void ad_unlink(char const *filename, char const *ext)
+{
+	size_t len, len2;
+	char *str;
+
+	len = strlen(filename);
+	len2 = 5;
+
+	if (ext) {
+		len2 = strlen(ext) + 1;
+		if (len2 < 5) len2 = 5;
+	} else {
+		len2 = 5;
+	}
+
+	str = malloc(len + len2);
+	if (!str) return;
+
+	memcpy(str, filename, len);
+	strcpy(str + len, ".out");
+	(void) unlink(str);
+	strcpy(str + len, ".err");
+	(void) unlink(str);
+
+	/*
+	 *	Maybe unlink a ".o" or a ".dylib" file, too.
+	 */
+	if (ext) {
+		strcpy(str + len, ext);
+		(void) unlink(str);
+	}
+
+	free(str);
+}
+
+static char const *ad_includes_default = \
+"#include <stdio.h>\n"
+"#ifdef HAVE_SYS_TYPES_H\n"
+"# include <sys/types.h>\n"
+"#endif\n"
+"#ifdef HAVE_SYS_STAT_H\n"
+"# include <sys/stat.h>\n"
+"#endif\n"
+"#ifdef STDC_HEADERS\n"
+"# include <stdlib.h>\n"
+"# include <stddef.h>\n"
+"#else\n"
+"# ifdef HAVE_STDLIB_H\n"
+"#  include <stdlib.h>\n"
+"# endif\n"
+"#endif\n"
+"#ifdef HAVE_STRING_H\n"
+"# if !defined STDC_HEADERS && defined HAVE_MEMORY_H\n"
+"#  include <memory.h>\n"
+"# endif\n"
+"# include <string.h>\n"
+"#endif\n"
+"#ifdef HAVE_STRINGS_H\n"
+"# include <strings.h>\n"
+"#endif\n"
+"#ifdef HAVE_INTTYPES_H\n"
+"# include <inttypes.h>\n"
+"#endif\n"
+"#ifdef HAVE_STDINT_H\n"
+"# include <stdint.h>\n"
+"#endif\n"
+"#ifdef HAVE_UNISTD_H\n"
+"# include <unistd.h>\n"
+"#endif\n";
+
+static char *make_ad_fn_c_try_cpp(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
+{
+	char *result;
+
+	result = run_cmd("${CPP} ${CPPFLAGS} %s", argv[0]);
+	ad_unlink(argv[0], NULL);
+	return result;
+}
+
+
+/*
+ *	filename, include [, includes ]
+ */
+static char *make_ad_fn_c_check_header_compile(UNUSED char const *nm, unsigned int argc, char **argv)
+{
+	unsigned int i;
+	char *result;
+	FILE *fp;
+
+	fp = fopen(argv[0], "w+");
+	if (!fp) {
+		/* @todo - error */
+		return NULL;
+	}
+
+	/*
+	 *	@todo - pull in common confdefs.h ?
+	 */
+
+	for (i = 2; i < argc; i++) {
+		if (!strchr(argv[i], '\n')) {
+			fprintf(fp, "#include <%s>\n", argv[i]);
+		} else {
+			fprintf(fp, "%s\n", argv[i]);
+		}
+	}
+
+	fprintf(fp, "#include <%s>\n", argv[1]);
+	fclose(fp);
+
+	result = run_cmd("${CC} -c ${CFLAGS} ${CPPFLAGS}", argv[0]);
+	if (!result) goto done;
+
+	/*
+	 *	Define HAVE_FOO_H for foo.h
+	 */
+	if (strcmp(result, "0") == 0) {
+		ad_have_feature(argv[1]);
+	}
+	gmk_free(result);
+
+done:
+	(void) unlink(argv[0]);
+	ad_unlink(argv[0], DL_EXTENSION);
+
+	/*
+	 *	Return the empty string, so that make doesn't get
+	 *	excited over the use of the bare function.
+	 */
+	result = gmk_alloc(1);
+	if (!result) return NULL;
+	*result = '\0';
+	return result;
+}
+
+
+static char *make_ad_check_headers(char const *nm, unsigned int argc, char **argv)
+{
+	unsigned int i;
+	char *result;
+	char *my_argv[3];
+
+	my_argv[0] = strdup("conftest.c");
+	my_argv[2] = strdup(ad_includes_default);
+
+	for (i = 0; i < argc; i++) {
+		char *name, *p;
+
+		/*
+		 *	Allow spaces.
+		 */
+		p = argv[i];
+		while (p) {
+			name = p;
+			while (*p && !isspace((int) *p)) p++;
+			if (!*p) {
+				p = NULL;
+			} else {
+				*(p++) = '\0';
+			}
+
+			my_argv[1] = name;
+			(void) make_ad_fn_c_check_header_compile(nm, 3, my_argv);
+		}
+	}
+
+	free(my_argv[0]);
+	free(my_argv[2]);
+
+	result = gmk_alloc(1);
+	if (!result) return NULL;
+
+	*result = '\0';
+	return result;
+}
 
 /** Register function(s) with make.
  *
@@ -1043,7 +1266,11 @@ int dlopen_gmk_setup(void)
 	gmk_add_function("dlsym", &make_dlsym, 2, 2, 0); /* min 2, max 2, please expand the input string */
 	gmk_add_function("dlerror", &make_dlerror, 0, 0, 0); /* no arguments */
 	gmk_add_function("ad_search_libs", &make_ad_search_libs, 1, 0, 0);
-	gmk_add_function("ad_dump_defs", &make_ad_dump_defs, 0,1, 0);
+	gmk_add_function("ad_dump_defines", &make_ad_dump_defines, 0,1, 0);
+
+	gmk_add_function("ad_fn_c_try_cpp", &make_ad_fn_c_try_cpp, 1, 1, 0);
+	gmk_add_function("ad_fn_c_check_header_compile", &make_ad_fn_c_check_header_compile, 2, 0, 0);
+	gmk_add_function("ad_check_headers", &make_ad_check_headers, 1, 0, 0);
 
 	return 1;
 }
