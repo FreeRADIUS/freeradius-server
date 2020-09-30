@@ -23,8 +23,9 @@ dhcp_common {
 
 #  Policy to override DHCP-Network-IP-Address
 #
-#  Some network configurations have "shared-networks" in which multiple IP
-#  subnets may co-exist in a single Layer 2 network (or VLAN).
+#  Some networks have a "shared-network" or "multinet" configuration (as
+#  defined by some other DHCP servers) in which multiple IP subnets may
+#  co-exist in a single Layer 2 network (or VLAN).
 #
 #  In enterprise environments this is often for the purpose of providing loose
 #  segregation between classes of devices such as local network-attached
