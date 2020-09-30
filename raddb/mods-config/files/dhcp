@@ -32,8 +32,8 @@ network
 #  The following examples set options specific to the Layer 2 network, matched
 #  on whether the internal attribute DHCP-Network-IP-Address (that acts as a
 #  network identifier) is within the indicated range. This is equivalent to a
-#  "shared-network" (i.e. one that is possibly composed of multiple subnets) as
-#  defined by some other DHCP servers.
+#  "shared-network" or "multinet" configuration (i.e. one that is possibly
+#  composed of multiple subnets) as defined by some other DHCP servers.
 #
 
 #

@@ -147,10 +147,13 @@ listen {
 #  define the required IP allocated policy, DHCP-Network-IP-Address may be
 #  overridden to force the selection of a particular pool.
 #
-#  The IP addresses belonging to a single pool covering a shared-network may be
-#  members of different subnets in which case the dhcp_subnet policy can be
-#  used to set the correct DHCP-Subnet-Mask, DHCP-Router-Address and
-#  DHCP-Broadcast-Address options based on the allocated IP.
+#  IP addresses belonging to a single pool that is designated for a Layer 2
+#  network containing multiple subnets (a "shared-network" or "multinet"
+#  configuration as defined by some other DHCP servers), will by definition be
+#  members of distinct subnets that require their own DHCP reply parameters. In
+#  this case the dhcp_subnet policy can be used to set the correct
+#  DHCP-Subnet-Mask, DHCP-Router-Address and DHCP-Broadcast-Address options
+#  based on the allocated IP.
 
 dhcp DHCP-Discover {
 
