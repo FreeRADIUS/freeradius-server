@@ -1710,11 +1710,6 @@ static inline CC_HINT(nonnull) void truncate_filename(char const **e, char const
 	*p = filename;
 	*e = "";
 
-	if (!filename || !*filename) {
-		*len = 0;
-		return;
-	}
-
 	flen = talloc_array_length(filename) - 1;
 	if (flen <= FILENAME_TRUNCATE) {
 		*len = (int)flen;
