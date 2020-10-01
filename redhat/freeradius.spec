@@ -444,7 +444,7 @@ export CXXFLAGS="$CFLAGS"
 # used, so we do that below.
 #
 # This flag has only been supported since clang10 and gcc8, so ensure a recent compiler is being used.
-export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version}-%{release}.%{_arch}"
+export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version}-%{release}.%{_arch}/src/"
 
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
 # the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
