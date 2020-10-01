@@ -47,6 +47,7 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("=*"), 	T_OP_CMP_TRUE	},
 	{ L("!*"), 	T_OP_CMP_FALSE	},
 	{ L("=="),	T_OP_CMP_EQ	},
+	{ L("^="),	T_OP_PREPEND	},
 	{ L("="),	T_OP_EQ		},
 	{ L("!="),	T_OP_NE		},
 	{ L(">="),	T_OP_GE		},
@@ -94,6 +95,7 @@ char const *fr_tokens[] = {
 	"=*",
 	"!*",
 	"==",
+	"^=",
 	"#",
 	"<BARE-WORD>",
 	"<\"STRING\">",
@@ -132,9 +134,10 @@ const char fr_token_quote[] = {
 	'?',		/* =* 		20 */
 	'?',		/* !* */
 	'?',		/* == */
-	'?',				/* # */
-	'\0',		/* bare word */
-	'"',		/* "foo" 	25 */
+	'?',		/* ^= */
+	'?',		/* # */
+	'\0',		/* bare word 	25 */
+	'"',		/* "foo" */
 	'\'',		/* 'foo' */
 	'`',		/* `foo` */
 	'/',		/* /foo/ */
@@ -166,9 +169,10 @@ const bool fr_assignment_op[] = {
 	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	true,		/* ^= */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -199,9 +203,10 @@ const bool fr_equality_op[] = {
 	true,		/* =* 		20 */
 	true,		/* !* */
 	true,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	false,		/* ^= */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -232,9 +237,10 @@ const bool fr_str_tok[] = {
 	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	true,		/* bare word */
-	true,		/* "foo" 	25 */
+	false,		/* ^= */
+	false,		/* # */
+	true,		/* bare word 	25 */
+	true,		/* "foo" */
 	true,		/* 'foo' */
 	true,		/* `foo` */
 	false

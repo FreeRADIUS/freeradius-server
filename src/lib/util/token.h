@@ -60,9 +60,10 @@ typedef enum fr_token {
 	T_OP_CMP_TRUE,			/* =* 		20 */
 	T_OP_CMP_FALSE,			/* !* */
 	T_OP_CMP_EQ,			/* == */
+	T_OP_PREPEND,			/* ^= */
 	T_HASH,				/* # */
-	T_BARE_WORD,			/* bare word */
-	T_DOUBLE_QUOTED_STRING,		/* "foo" 	25 */
+	T_BARE_WORD,			/* bare word 	25 */
+	T_DOUBLE_QUOTED_STRING,		/* "foo" */
 	T_SINGLE_QUOTED_STRING,		/* 'foo' */
 	T_BACK_QUOTED_STRING,		/* `foo` */
 	T_SOLIDUS_QUOTED_STRING,	/* /foo/ */
@@ -70,7 +71,7 @@ typedef enum fr_token {
 } fr_token_t;
 
 #define T_EQSTART	T_OP_ADD
-#define	T_EQEND		(T_OP_CMP_EQ + 1)
+#define	T_EQEND		(T_OP_PREPEND + 1)
 
 /** Macro to use as dflt
  *
