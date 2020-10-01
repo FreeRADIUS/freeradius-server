@@ -893,8 +893,6 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
 	if (interface) {
-		bool bound = false;
-
 #ifdef HAVE_NET_IF_H
 		uint32_t scope_id;
 
@@ -939,12 +937,15 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			 *	Set the scope ID.
 			 */
 			my_ipaddr.scope_id = scope_id;
-			bound = true;
-		} else {
-			bound = true;
 		}
+		/*
+		 *	SO_BINDTODEVICE succeeded, so we're always
+		 *	bound to the socket.
+		 */
+
 #else
 		struct ifaddrs *list = NULL;
+		bool bound = false;
 
 		/*
 		 *	Troll through all interfaces to see if there's
@@ -992,19 +993,23 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			}
 
 			freeifaddrs(list);
-		}
-#endif
 
-		if (!bound) {
-			/*
-			 *	IPv4: no link local addresses,
-			 *	and no bind to device.
-			 */
-			fr_strerror_printf_push("Bind failed on interface %s: \"bind to device\" is unsupported",
-						interface);
+			if (!bound) {
+				/*
+				 *	IPv4: no link local addresses,
+				 *	and no bind to device.
+				 */
+				fr_strerror_printf_push("Bind to interface %s failed: Unable to match interface with the given IP address.",
+							interface);
+				return -1;
+			}
+		} else {
+			fr_strerror_printf_push("Bind to interface %s failed, unable to get list of interfaces: %s",
+						interface, fr_syserror(errno));
 			return -1;
 		}
-	} /* else no interface */
+#endif
+	} /* else no interface was passed in */
 
 	/*
 	 *	Don't bind to an IP address if there's no src IP address.
