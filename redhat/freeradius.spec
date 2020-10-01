@@ -423,9 +423,24 @@ export CFLAGS="$CFLAGS -g3 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
 
-# Fix the paths in the debugging symbols to point to where the src files are actually installed by
-# the debuginfo packages.
-export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/"
+# The build system seems to feed the compiler relative paths for the source files.  This is usually fine
+# but it means the source paths in the ELF headers of the binaries are also relative.
+#
+# As a post install step a helper script (find-debuginfo.sh) is called to create the debug info files and
+# perform stripping on the original binaries.
+#
+# find-debuginfo.sh calls another utility (debugedit) to rewrite the source paths in the ELF headers of
+# the binaries so they'll match where the source files will actually be installed.
+#
+# find-debuginfo.sh assumes that the paths in the ELF headers will be '$RPM_BUILD_DIR/src', but because the
+# compiler only gets relative paths, they end up being 'src/'.
+#
+# The easiest way to fix this is to change the path the compiler writes into the ELF headers of the binary.
+# debugedit can then find the path prefix it expects and correct it to where the source files will be
+# installed.
+#
+# This flag has only been supported since clang10 and gcc8, so ensure a recent compiler is being used.
+export CFLAGS="$CFLAGS -ffile-prefix-map=src/=$RPM_BUILD_ROOT/src/"
 
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
 # the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
