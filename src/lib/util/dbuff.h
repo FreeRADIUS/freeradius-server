@@ -226,8 +226,6 @@ _fr_dbuff_init(_out, \
 
 /** Creates a compound literal to pass into functions which accept a dbuff
  *
- * @note This should only be used as a temporary measure when refactoring code.
- *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
  *
