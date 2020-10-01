@@ -251,7 +251,7 @@ int fr_cap_disable(cap_value_t cap, cap_flag_t set)
 	}
 
 	if (state == CAP_SET) {
-		if (cap_clear_flag(cap, set) < 0) {
+		if (cap_clear_flag(caps, set) < 0) {
 			char *cap_name = cap_to_name(cap);
 			fr_strerror_printf("Failed clearing %s %s state in working set: %s",
 					   cap_name,
