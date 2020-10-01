@@ -132,11 +132,6 @@ more.  Using RADIUS allows authentication and authorization for a network to
 be centralized, and minimizes the amount of re-configuration which has to be
 done when adding or deleting new users.
 
-# CentOS defines debug package by default. Only define it if not already defined
-%if 0%{!?_enable_debug_packages:1}
-%debug_package
-%endif
-
 %if %{?_with_rlm_cache_memcached:1}%{?!_with_rlm_cache_memcached:0}
 %package memcached
 Summary: Memcached support for freeRADIUS
@@ -410,12 +405,16 @@ BuildRequires: ykclient-devel >= 2.10
 This plugin provides YubiCloud support for the FreeRADIUS server project.
 %endif
 
+# CentOS defines debug package by default. Only define it if not already defined
+# This apparently needs to come _after_ all the package definitions
+%if 0%{!?_enable_debug_packages:1}
+%debug_package
+%endif
 
 %prep
 %setup -q -n freeradius-server-%{version}
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
-
 
 %build
 # Retain CFLAGS from the environment...
