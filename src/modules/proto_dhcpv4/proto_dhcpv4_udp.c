@@ -188,8 +188,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	packet = (dhcp_packet_t *) buffer;
 	memcpy(&ipaddr, &packet->giaddr, 4);
 	if ((packet->opcode == 2) && (ipaddr != address->dst_ipaddr.addr.v4.s_addr)) {
-		DEBUG2("Ignoring server reply which was not meant for us (was for 0x%x).",
-		       ntohl(address->dst_ipaddr.addr.v4.s_addr));
+		DEBUG2("Ignoring server reply which was not meant for us (was for %pV).",
+		       fr_box_ipaddr(address->dst_ipaddr));
 		return 0;
 	}
 
