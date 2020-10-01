@@ -161,12 +161,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
-		PERROR("Read error (%zd)", data_size);
+		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
 	}
 
 	if (!data_size) {
-		WARN("Got no data - ignoring");
+		RATE_LIMIT_GLOBAL(WARN, "Got no data - ignoring");
 		return 0;
 	}
 
@@ -175,7 +175,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	packet may be smaller than the parent UDP packet.
 	 */
 	if (!fr_dhcpv4_ok(buffer, data_size, &message_type, &xid)) {
-		PWARN("Invalid packet - ignoring");
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring");
 		return 0;
 	}
 
@@ -189,7 +189,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	memcpy(&ipaddr, &packet->giaddr, 4);
 	if ((packet->opcode == 2) && (ipaddr != address->dst_ipaddr.addr.v4.s_addr)) {
 		DEBUG2("Ignoring server reply which was not meant for us (was for 0x%x).",
-			ntohl(address->dst_ipaddr.addr.v4.s_addr));
+		       ntohl(address->dst_ipaddr.addr.v4.s_addr));
 		return 0;
 	}
 
