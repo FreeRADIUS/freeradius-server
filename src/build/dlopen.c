@@ -1083,7 +1083,6 @@ static void ad_unlink(char const *filename, char const *ext)
 	char *str;
 
 	len = strlen(filename);
-	len2 = 5;
 
 	if (ext) {
 		len2 = strlen(ext) + 1;
