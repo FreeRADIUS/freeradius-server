@@ -1340,7 +1340,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	}
 
 	/*
-	 *	No parent means we need to go hunting through all the dctionaries
+	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!parent) {
 		slen = fr_dict_attr_by_qualified_name_substr(NULL, &da,
@@ -2266,7 +2266,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 			vb->vb_int64 = (int64_t)a_int;
 		}
 	/*
-	 *	Pick the widest signed type
+	 *	Pick the narrowest unsigned type
 	 */
 	} else {
 		uint64_t	a_uint;
