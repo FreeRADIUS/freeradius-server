@@ -435,12 +435,16 @@ export CXXFLAGS="$CFLAGS"
 # find-debuginfo.sh assumes that the paths in the ELF headers will be '$RPM_BUILD_DIR/src', but because the
 # compiler only gets relative paths, they end up being 'src/'.
 #
-# The easiest way to fix this is to change the path the compiler writes into the ELF headers of the binary.
-# debugedit can then find the path prefix it expects and correct it to where the source files will be
-# installed.
+# Unfortunately another helper utility (check-buildroot) gets excited when it finds $RPM_BUILD_ROOT in the
+# any binaries due to be installed, and as debugedit doesn't do a perfect job of correcting the paths
+# and we record the CFLAGS freeradius was built with, it fires and fails the build if we try to rewrite
+# the paths to $RPM_BUILD_ROOT/src/.
+#
+# The only remaining option is to rewrite the paths at the compiler level, to what debugedit would have
+# used, so we do that below.
 #
 # This flag has only been supported since clang10 and gcc8, so ensure a recent compiler is being used.
-export CFLAGS="$CFLAGS -ffile-prefix-map=src/=$RPM_BUILD_ROOT/src/"
+export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version}-%{release}.%{_arch}"
 
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
 # the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
