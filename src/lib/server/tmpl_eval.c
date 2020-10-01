@@ -204,21 +204,21 @@ int radius_request(REQUEST **context, request_ref_t name)
 fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 {
 	/*
+	 *	Regexes can't be expanded
+	 */
+	if (tmpl_contains_regex(vpt)) return FR_TYPE_INVALID;
+
+	/*
 	 *	Casts take precedence over everything.
 	 */
 	if (vpt->cast != FR_TYPE_INVALID) return vpt->cast;
 
 	/*
-	 *	Double quoted values default to
-	 *	FR_TYPE_STRING, unless there's an
-	 *	explicit cast.
+	 *	Anything that's not a bare word will
+	 *	be a string unless there's a casting
+	 *	operator.
 	 */
-	if (vpt->quote == T_DOUBLE_QUOTED_STRING) return FR_TYPE_STRING;
-
-	/*
-	 *	Regexes can't be expanded
-	 */
-	if (tmpl_contains_regex(vpt)) return FR_TYPE_INVALID;
+	if (vpt->quote != T_BARE_WORD) return FR_TYPE_STRING;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
