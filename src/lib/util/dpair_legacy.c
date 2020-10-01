@@ -22,9 +22,9 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static fr_sbuff_term_t const 	bareword_terminals =
+fr_sbuff_term_t const 		bareword_terminals =
 				FR_SBUFF_TERMS(
 					L("\t"),
 					L("\n"),
@@ -180,7 +180,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
-		if (vps) fr_pair_append(vps, vp);
+		if (vps) fr_pair_add(vps, vp);
 		return vp;
 	}
 
@@ -255,7 +255,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 		return NULL;
 	}
 
-	if (vps) fr_pair_append(vps, vp);
+	if (vps) fr_pair_add(vps, vp);
 	return vp;
 }
 
@@ -269,30 +269,23 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @param[in] ctx	for talloc
  * @param[in] parent	parent to start referencing from
  * @param[in] buffer	to read valuepairs from.
- * @param[in] end	end of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
- * @param[in,out] relative_vp for relative attributes
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
-					 fr_pair_list_t *list, fr_token_t *token, int depth, fr_pair_t **relative_vp)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer,
+					 fr_pair_list_t *list, fr_token_t *token, int depth)
 {
-	fr_pair_list_t		tmp_list;
-	fr_pair_t		*vp = NULL;
-	fr_pair_t		*my_relative_vp;
-	char const		*p, *q, *next;
-	fr_token_t		quote, last_token = T_INVALID;
-	fr_pair_t_RAW		raw;
-	fr_dict_attr_t const	*internal = NULL;
-	fr_pair_list_t		*my_list;
-	TALLOC_CTX		*my_ctx;
+	fr_pair_list_t	tmp_list;
+	fr_pair_t	*vp;
+	char const	*p, *next;
+	fr_token_t	last_token = T_INVALID;
+	fr_pair_t_RAW	raw;
+	fr_dict_attr_t	const *internal = fr_dict_root(fr_dict_internal());
 
-	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
-	if (!internal && !parent) return 0;
 	if (internal == parent) internal = NULL;
 
 	/*
@@ -324,60 +317,33 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		}
 
 		/*
-		 *	Stop at '}', too, if we're inside of a group.
-		 */
-		if ((depth > 0) && (*p == '}')) {
-			last_token = T_RCBRACE;
-			break;
-		}
-
-		/*
 		 *	Hacky hack...
 		 */
 		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
 
-		if (*p == '.') {
-			p++;
-
-			if (!*relative_vp) {
-				fr_strerror_const("Relative attributes can only be used immediately after an attribute of type 'group'");
-				goto error;
-			}
-
-			slen = fr_dict_attr_by_oid_substr(NULL, &da, (*relative_vp)->da,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if (slen <= 0) goto error;
-
-			my_list = &(*relative_vp)->vp_group;
-			my_ctx = *relative_vp;
-		} else {
-			/*
-			 *	Parse the name.
-			 */
-			slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if ((slen <= 0) && internal) {
-				slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			}
+		/*
+		 *	Parse the name.
+		 */
+		slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
+						  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+		if ((slen <= 0) && internal) {
+			slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
+							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+		}
+		if (slen <= 0) {
+		do_unknown:
+			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
+								&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
 			if (slen <= 0) {
-			do_unknown:
-				slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
-									&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-				if (slen <= 0) {
-					p += -slen;
+				p += -slen;
 
-				error:
-					fr_pair_list_free(&tmp_list);
-					*token = T_INVALID;
-					return -(p - buffer);
-				}
-
-				da = da_unknown;
+			error:
+				fr_pair_list_free(&tmp_list);
+				*token = T_INVALID;
+				return -(p - buffer);
 			}
 
-			my_list = &tmp_list;
-			my_ctx = ctx;
+			da = da_unknown;
 		}
 
 		next = p + slen;
@@ -410,15 +376,14 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		/*
 		 *	Allow grouping attributes.
 		 */
-		switch (da->type) {
-		case FR_TYPE_NON_LEAF:
+		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV) || (da->type == FR_TYPE_STRUCT)) {
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
 				goto error;
 			}
 			p++;
 
-			vp = fr_pair_afrom_da(my_ctx, da);
+			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) goto error;
 
 			/*
@@ -427,13 +392,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			parent = fr_dict_attr_ref(da);
 			if (!parent) parent = da;
 
-			/*
-			 *	Parse nested attributes, but the
-			 *	attributes here are relative to each
-			 *	other, and not to our parent relative VP.
-			 */
-			my_relative_vp = NULL;
-			slen = fr_pair_list_afrom_substr(vp, vp->da, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
+			slen = fr_pair_list_afrom_substr(vp, parent, p, &vp->vp_group, &last_token, depth + 1);
 			if (slen <= 0) {
 				talloc_free(vp);
 				goto error;
@@ -451,14 +410,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (*p != '}') goto failed_group;
 			p++;
 
-			/*
-			 *	Cache which VP is now the one for
-			 *	relative references.
-			 */
-			*relative_vp = vp;
-			break;
+		} else {
+			fr_token_t quote;
+			char const *q;
 
-		case FR_TYPE_LEAF:
 			/*
 			 *	Get the RHS thing.
 			 */
@@ -504,60 +459,57 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	@todo - note that they will also be escaped,
 			 *	so we may need to fix that later.
 			 */
-			vp = fr_pair_afrom_da(my_ctx, da);
-			if (!vp) goto error;
-			vp->op = raw.op;
-
 			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-				fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false);
+				vp = fr_pair_afrom_da(ctx, da);
+				if (!vp) goto error;
+				vp->op = raw.op;
 
-			} else if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) {
+				fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false);
+			} else {
+				/*
+				 *	All other attributes get the name
+				 *	parsed.
+				 */
+				vp = fr_pair_afrom_da(ctx, da);
+				if (!vp) goto error;
+				vp->op = raw.op;
+
 				/*
 				 *	We don't care what the value is, so
 				 *	ignore it.
 				 */
-				break;
+				if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) goto next;
 
 				/*
 				 *	fr_pair_raw_from_str() only returns this when
 				 *	the input looks like it needs to be xlat'd.
 				 */
-			} if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+				if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+					if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+						talloc_free(vp);
+						goto error;
+					}
+
+					/*
+					 *	Parse it ourselves.  The RHS
+					 *	might NOT be tainted, but we
+					 *	don't know.  So just mark it
+					 *	as such to be safe.
+					 */
+				} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
 					talloc_free(vp);
 					goto error;
 				}
-
-				/*
-				 *	Parse it ourselves.  The RHS
-				 *	might NOT be tainted, but we
-				 *	don't know.  So just mark it
-				 *	as such to be safe.
-				 */
-			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
-				talloc_free(vp);
-				goto error;
 			}
-			break;
 		}
 
+	next:
 		/*
 		 *	Free the unknown attribute, we don't need it any more.
 		 */
 		fr_dict_unknown_free(&da);
 
-		fr_assert(vp != NULL);
-		fr_pair_append(my_list, vp);
-
-		/*
-		 *	If there's a relative VP, and it's not the one
-		 *	we just added above, and we're not adding this
-		 *	VP to the relative one, then nuke the relative
-		 *	VP.
-		 */
-		if (*relative_vp && (vp != *relative_vp) && (my_ctx != *relative_vp)) {
-			*relative_vp = NULL;
-		}
+		fr_pair_add(&tmp_list, vp);
 
 		/*
 		 *	Now look for EOL, hash, etc.
@@ -588,7 +540,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		last_token = T_COMMA;
 	}
 
-	if (!fr_pair_list_empty(&tmp_list)) fr_pair_list_append(list, &tmp_list);
+	if (!fr_pair_list_empty(&tmp_list)) fr_tmp_pair_list_move(list, &tmp_list);
 
 	/*
 	 *	And return the last token which we read.
@@ -607,16 +559,14 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
  * @param[in] ctx	for talloc
  * @param[in] dict	to resolve attributes in.
  * @param[in] buffer	to read valuepairs from.
- * @param[in] len	length of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, size_t len, fr_pair_list_t *list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list)
 {
 	fr_token_t token;
-	fr_pair_t	*relative_vp = NULL;
 
-	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, buffer + len, list, &token, 0, &relative_vp);
+	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, list, &token, 0);
 	return token;
 }
 
@@ -636,7 +586,6 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 	fr_token_t	last_token = T_EOL;
 	bool		found = false;
 	char		buf[8192];
-	fr_pair_t	*relative_vp = NULL;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		fr_pair_list_t tmp_list;
@@ -664,33 +613,10 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *	If we get nothing but an EOL, it's likely OK.
 		 */
 		fr_pair_list_init(&tmp_list);
-
-		/*
-		 *	Call our internal function, instead of the public wrapper.
-		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, buf + sizeof(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
-			goto fail;
-		}
-
-		/*
-		 *	@todo - rely on actually checking the syntax, and "OK" result, instead of guessing.
-		 *
-		 *	The main issue is that it's OK to read no
-		 *	attributes on a particular line, but only if
-		 *	it's comments.
-		 */
+		last_token = fr_pair_list_afrom_str(ctx, dict, buf, &tmp_list);
 		if (fr_dlist_empty(&tmp_list.head)) {
 			if (last_token == T_EOL) break;
 
-			/*
-			 *	This is allowed for relative attributes.
-			 */
-			if (relative_vp && (last_token == T_COMMA)) {
-				found = true;
-				continue;
-			}
-
-		fail:
 			/*
 			 *	Didn't read anything, but the previous
 			 *	line wasn't EOL.  The input file has a
@@ -702,7 +628,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		}
 
 		found = true;
-		fr_pair_list_append(out, &tmp_list);
+		fr_tmp_pair_list_move(out, &tmp_list);
 	}
 
 	*pfiledone = true;
@@ -720,7 +646,6 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
  *
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
- * @param[in] op operator for list move.
  *
  * @see radius_pairmove
  */
@@ -738,11 +663,6 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 	 *	them during the editing process.
 	 */
 	fr_pair_list_init(&head_new);
-
-	/*
-	 *	Any attributes that are requested to be prepended
-	 *	are added to a temporary list here
-	 */
 	fr_pair_list_init(&head_prepend);
 
 	/*
@@ -783,7 +703,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = fr_pair_find_by_da(to, i->da, 0);
+			found = fr_pair_find_by_da(to, i->da);
 			if (!found) goto do_add;
 
 			i = fr_pair_list_next(from, i);
@@ -794,7 +714,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = fr_pair_find_by_da(to, i->da, 0);
+			found = fr_pair_find_by_da(to, i->da);
 			if (!found) goto do_add;
 
 			/*
@@ -812,7 +732,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 	do_add:
 			j = fr_pair_list_next(from, i);
 			fr_pair_remove(from, i);
-			fr_pair_append(&head_new, i);
+			fr_pair_add(&head_new, i);
 			i = j;
 			continue;
 		case T_OP_PREPEND:
@@ -825,22 +745,21 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 	} /* loop over the "from" list. */
 
 	/*
-	 *	If the op parameter was prepend, add the "new list
+	 *	If the op parameter was prepend add the "new" list
 	 *	attributes first as those whose individual operator
 	 *	is prepend should be prepended to the resulting list
 	 */
-	if (op == T_OP_PREPEND) fr_pair_list_prepend(to, &head_new);
+	if (op == T_OP_PREPEND) fr_tmp_pair_list_move_head(to, &head_new);
 
 	/*
 	 *	If there are any items in the prepend list prepend
 	 *	it to the "to" list
 	 */
-	fr_pair_list_prepend(to, &head_prepend);
+	fr_tmp_pair_list_move_head(to, &head_prepend);
 
 	/*
 	 *	If the op parameter was not prepend, take the "new"
-	 *	list, and append it to the "to" list.
+	 *	list and append it to the "to" list
 	 */
-	if (op != T_OP_PREPEND) fr_pair_list_append(to, &head_new);
-
+	if (op != T_OP_PREPEND) fr_tmp_pair_list_move(to, &head_new);
 }

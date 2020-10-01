@@ -1477,7 +1477,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	The delay is so we can detect retransmissions.
 			 */
 			original->linked = talloc_steal(original, packet);
-			fr_pair_list_move(&original->link_vps, &decoded);	/* Move the vps over */
+			fr_pair_list_move(&original->link_vps, &decoded, T_OP_ADD);	/* Move the vps over */
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
 			if (fr_event_timer_at(NULL, event->list, &original->event,
 					      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
@@ -1670,7 +1670,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_pair_list_free(&original->packet_vps);
 			fr_radius_packet_free(&original->packet);
 			original->packet = talloc_steal(original, packet);
-			fr_pair_list_move(&original->packet_vps, &decoded);
+			fr_pair_list_move(&original->packet_vps, &decoded, T_OP_ADD);
 
 			/* Request may need to be reinserted as the 5 tuple of the response may of changed */
 			if (rs_packet_cmp(original, &search) != 0) {
@@ -1681,7 +1681,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_pair_list_free(&original->expect_vps);
 			fr_radius_packet_free(&original->expect);
 			original->expect = talloc_steal(original, search.expect);
-			fr_pair_list_move(&original->expect_vps, &search.expect_vps);
+			fr_pair_list_move(&original->expect_vps, &search.expect_vps, T_OP_ADD);
 
 			/* Disarm the timer for the cleanup event for the original request */
 			fr_event_timer_delete(&original->event);
@@ -1698,10 +1698,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->capture_p = original->capture;
 
 			original->packet = talloc_steal(original, packet);
-			fr_pair_list_move(&original->packet_vps, &decoded);
+			fr_pair_list_move(&original->packet_vps, &decoded, T_OP_ADD);
 
 			original->expect = talloc_steal(original, search.expect);
-			fr_pair_list_move(&original->expect_vps, &search.expect_vps);
+			fr_pair_list_move(&original->expect_vps, &search.expect_vps, T_OP_ADD);
 
 			if (!fr_pair_list_empty(&search.link_vps)) {
 				bool ret;
@@ -1712,7 +1712,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				     vp = fr_pair_list_next(&search.link_vps, vp)) {
 					fr_pair_steal(original, vp);
 				}
-				fr_pair_list_move(&original->link_vps, &search.link_vps);
+				fr_pair_list_move(&original->link_vps, &search.link_vps, T_OP_ADD);
 
 				/* We should never have conflicts */
 				ret = fr_rb_insert(link_tree, original);
