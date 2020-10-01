@@ -2,13 +2,24 @@
 #  PRE: update
 #
 update reply {
-       &Reply-Message := "foo"
+       &Tmp-String-0 := "foo"
 
        #
        #  This is a string, so it's NOT allowed.
        #
-       &Filter-ID := {		# ERROR
-       		 &WiMAX-Release := "1.0"
+       &Tmp-String-1 := {		# ERROR
+       		 Tmp-String-2 := "1.0"
+       }
+}
+
+update reply {
+       &Tmp-String-0 := "foo"
+
+       #
+       #  Reference prefix not allowed for sub attributes
+       #
+       &Tmp-Group-0 := {
+       		 &Tmp-String-2 := "1.0" # ERROR
        }
 }
 
