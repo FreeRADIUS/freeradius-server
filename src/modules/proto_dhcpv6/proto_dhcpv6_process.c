@@ -49,27 +49,26 @@ fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
 };
 
 static int reply_ok[] = {
-	[0]			= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_SOLICIT]	= FR_DHCPV6_ADVERTISE,
-	[FR_DHCPV6_REQUEST]	= FR_DHCPV6_CONFIRM,
-	[FR_DHCPV6_RENEW]	= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_REBIND]	= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_RELEASE]	= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_DECLINE]	= FR_DHCPV6_REPLY,
+	[0]				= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_ADVERTISE,
+	[FR_DHCPV6_REQUEST]		= FR_DHCPV6_CONFIRM,
+	[FR_DHCPV6_RENEW]		= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_REBIND]		= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_REPLY,
 	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_REPLY,
 };
 
 static int reply_fail[] = {
-	[0]			= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_SOLICIT]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_RENEW]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_REBIND]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_RELEASE]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_DECLINE]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[0]				= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_REQUEST]		= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_RENEW]		= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_REBIND]		= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
 };
-
 
 /*
  *	Debug the packet if requested.
@@ -104,7 +103,7 @@ static void dhcpv6_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 		    packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 		    packet->if_index ? " " : ""
 #endif
-		       );
+		    );
 
 	if (received) {
 		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
@@ -115,10 +114,10 @@ static void dhcpv6_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 
 static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	VALUE_PAIR *vp;
+	rlm_rcode_t		rcode;
+	CONF_SECTION		*unlang;
+	fr_dict_enum_t const	*dv;
+	VALUE_PAIR		*vp;
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
@@ -273,7 +272,6 @@ static const virtual_server_compile_t compile_list[] = {
 		.name2 = "Request",
 		.component = MOD_POST_AUTH,
 	},
-
 	{
 		.name = "send",
 		.name2 = "Confirm",
@@ -284,7 +282,6 @@ static const virtual_server_compile_t compile_list[] = {
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 	},
-
 	{
 		.name = "recv",
 		.name2 = "Renew",
