@@ -68,18 +68,18 @@ const bool fr_assignment_op[] = {
 	true,		/* += */
 	true,		/* -=  		10 */
 	true,		/* := */
-	true,		/* ^= */
 	true,		/* = */
 	false,		/* != */
-	false,		/* >= 		15 */
-	false,		/* > */
+	false,		/* >= */
+	false,		/* > 		15 */
 	false,		/* <= */
 	false,		/* < */
 	false,		/* =~ */
-	false,		/* !~ 		20 */
-	false,		/* =* */
+	false,		/* !~ */
+	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
+	true,		/* ^= */
 	false,		/* # */
 	false,		/* bare word 	25 */
 	false,		/* "foo" */
@@ -102,18 +102,18 @@ const bool fr_equality_op[] = {
 	false,		/* += */
 	false,		/* -=  		10 */
 	false,		/* := */
-	false,		/* ^= */
 	false,		/* = */
 	true,		/* != */
-	true,		/* >= 		15 */
-	true,		/* > */
+	true,		/* >= */
+	true,		/* > 		15 */
 	true,		/* <= */
 	true,		/* < */
 	true,		/* =~ */
-	true,		/* !~		20 */
-	true,		/* =* */
+	true,		/* !~ */
+	true,		/* =*		20 */
 	true,		/* !* */
 	true,		/* == */
+	false,		/* ^= */
 	false,		/* # */
 	false,		/* bare word 	25 */
 	false,		/* "foo" */
@@ -136,18 +136,18 @@ const bool fr_str_tok[] = {
 	false,		/* += */
 	false,		/* -=  		10 */
 	false,		/* := */
-	false,		/* ^= */
 	false,		/* = */
 	false,		/* != */
-	false,		/* >= 		15 */
-	false,		/* > */
+	false,		/* >= */
+	false,		/* > 		15 */
 	false,		/* <= */
 	false,		/* < */
 	false,		/* =~ */
-	false,		/* !~		20 */
-	false,		/* =* */
+	false,		/* !~ */
+	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
+	false,		/* ^= */
 	false,		/* # */
 	true,		/* bare word 	25 */
 	true,		/* "foo" */
