@@ -411,6 +411,20 @@ This plugin provides YubiCloud support for the FreeRADIUS server project.
 %debug_package
 %endif
 
+# Disable _debugsource_packages.  If you're installing the debuginfo you probably want the source files
+# otherwise they're pretty much useless.
+#
+# Disable _debuginfo_subpackage.  They don't work. rpbuild doesn't split out the debug info for the files
+# into the subpackages.  It also doesn't split out the source files.
+%if 0%{?fedora} >= 27
+%undefine _debugsource_packages
+%undefine _debuginfo_subpackages
+%endif
+%if 0%{?rhel} >= 8
+%undefine _debugsource_packages
+%undefine _debuginfo_subpackages
+%endif
+
 %prep
 %setup -q -n freeradius-server-%{version}
 # Some source files mistakenly have execute permissions set
