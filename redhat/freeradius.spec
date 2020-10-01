@@ -423,6 +423,10 @@ export CFLAGS="$CFLAGS -g3 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
 
+# Fix the paths in the debugging symbols to point to where the src files are actually installed by
+# the debuginfo packages.
+export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/"
+
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
 # the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
