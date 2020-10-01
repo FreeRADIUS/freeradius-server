@@ -22,6 +22,8 @@
  * @copyright 2018 The Freeradius server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
+#define LOG_PREFIX "proto_dhcpv4 - "
+
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/module.h>
@@ -82,8 +84,6 @@ static int reply_fail[] = {
 static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
 	int i;
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];
 #endif
@@ -91,7 +91,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%s%s:%i to %s%s%s:%i "
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif
@@ -100,11 +100,11 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 		       dhcp_message_types[packet->code],
 		       packet->id,
 		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+		       fr_box_ipaddr(packet->src_ipaddr),
 		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->src_port,
 		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+		       fr_box_ipaddr(packet->dst_ipaddr),
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)

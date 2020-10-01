@@ -302,22 +302,19 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  */
 static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
-
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
-	RDEBUG("%s %s Sync Id %i from %s%s%s:%i to %s%s%s:%i",
+	RDEBUG("%s %s Sync Id %i from %s%pV%s:%i to %s%pV%s:%i",
 	       received ? "Received" : "Sent",
 	       fr_table_str_by_value(ldap_sync_code_table, packet->code, "<INVALID>"),
 	       packet->id,
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+	       fr_box_ipaddr(packet->src_ipaddr),
 	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->src_port,
 	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+	       fr_box_ipaddr(packet->dst_ipaddr),
 	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->dst_port);
 

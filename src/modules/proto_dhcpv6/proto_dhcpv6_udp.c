@@ -23,12 +23,10 @@
  */
 #define LOG_PREFIX "proto_dhcpv6_udp - "
 
-#include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -162,12 +160,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
-		PERROR("Read error %zd", data_size);
+		PERROR("Read error (%zd)", data_size);
 		return data_size;
 	}
 
 	if ((size_t) data_size < sizeof(fr_dhcpv6_packet_t)) {
-		WARN("Insufficient data: ignoring");
+		WARN("Insufficient data - ignoring");
 		return 0;
 	}
 
@@ -179,7 +177,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	packet = (fr_dhcpv6_packet_t *) buffer;
 	if (!packet->code || (packet->code >= FR_DHCPV6_MAX_CODE)) {
-		WARN("Unsupported packet code %d: ignoring", packet->code);
+		WARN("Unsupported packet code %d - ignoring", packet->code);
 		return 0;
 	}
 
@@ -191,7 +189,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		if ((packet->code == FR_DHCPV6_SOLICIT) ||
 		    (packet->code == FR_DHCPV6_REBIND) ||
 		    (packet->code == FR_DHCPV6_CONFIRM)) {
-			WARN("Unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
+			WARN("Unicast packet %s - ignoring", fr_dhcpv6_packet_types[packet->code]);
 			return 0;
 		}
 	} /* else it was multicast... remember that */

@@ -25,7 +25,6 @@
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>

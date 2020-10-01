@@ -22,12 +22,13 @@
  * @copyright 2018 The FreeRADIUS server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
+#define LOG_PREFIX "proto_dhcpv4_udp - "
+
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -160,12 +161,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
-		DEBUG2("proto_dhvpv4_udp got read error %zd: %s", data_size, fr_strerror());
+		PERROR("Read error (%zd)", data_size);
 		return data_size;
 	}
 
 	if (!data_size) {
-		DEBUG2("proto_dhcpv4_udp got no data: ignoring");
+		WARN("Got no data - ignoring");
 		return 0;
 	}
 
@@ -174,8 +175,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	packet may be smaller than the parent UDP packet.
 	 */
 	if (!fr_dhcpv4_ok(buffer, data_size, &message_type, &xid)) {
-		DEBUG2("proto_dhcpv4_udp got invalid packet, ignoring it - %s",
-			fr_strerror());
+		PWARN("Invalid packet - ignoring");
 		return 0;
 	}
 
@@ -200,8 +200,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_dhcpv4_udp - Received %s XID %08x length %d %s",
-	       dhcp_message_types[message_type], xid,
+	DEBUG2("Received %s XID %08x length %d %s", dhcp_message_types[message_type], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;
@@ -256,7 +255,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		code = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_message_type);
 		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] > FR_DHCP_LEASE_ACTIVE)) {
-			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
+			WARN("Silently discarding reply due to invalid or missing message type");
 			return 0;
 		}
 
@@ -293,7 +292,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	to?
 		 */
 		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
-			DEBUG("WARNING - silently discarding client request, as we do not know where to send it.");
+			WARN("Silently discarding client request, as we do not know where to send it");
 			return 0;
 		}
 
@@ -469,7 +468,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			break;
 
 		default:
-			DEBUG("WARNING - silently discarding reply due to unimplemented message type %d", code[2]);
+			WARN("Silently discarding reply due to unimplemented message type %d", code[2]);
 			return 0;
 		}
 	}
