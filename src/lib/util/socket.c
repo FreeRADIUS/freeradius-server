@@ -886,7 +886,9 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	check capabilities.  If we're root, we already have
 	 *	equivalent capabilities so we don't need to check.
 	 */
-	if (src_port && (*src_port < 1024) && (geteuid() != 0)) (void)fr_cap_set(CAP_NET_BIND_SERVICE);
+	if (src_port && (*src_port < 1024) && (geteuid() != 0)) {
+		(void)fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
+	}
 #endif
 
 	/*

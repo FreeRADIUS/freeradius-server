@@ -31,9 +31,13 @@ extern "C" {
 
 #ifdef HAVE_CAPABILITY_H
 #  include <sys/capability.h>
+#  include <stdbool.h>
 
-int	fr_cap_set(cap_value_t cap);
+bool	fr_cap_is_enabled(cap_value_t cap, cap_flag_t set);
 
+int	fr_cap_enable(cap_value_t cap, cap_flag_t set);
+
+int	fr_cap_disable(cap_value_t cap, cap_flag_t set);
 #endif
 
 #ifdef __cplusplus

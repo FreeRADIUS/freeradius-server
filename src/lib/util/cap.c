@@ -27,27 +27,86 @@ RCSID("$Id$")
 #include <freeradius-devel/util/cap.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/table.h>
 
 #include <pthread.h>
 
-/** Set CAP_NET_* if possible.
+static fr_table_num_sorted_t const cap_set_table[] = {
+	{ L("effective"),	CAP_EFFECTIVE	},
+	{ L("inherited"),	CAP_INHERITABLE	},
+	{ L("permitted"),	CAP_PERMITTED	}
+};
+size_t cap_set_table_len = NUM_ELEMENTS(cap_set_table);
+
+/** Ensure we don't loose updates, and the threads have a consistent view of the capability set
+ *
+ * This is needed because capabilities are process wide, but may be modified by multiple threads.
+ */
+static pthread_mutex_t	cap_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/** Return whether a given capability is in a capabilities set
+ *
+ * @param[in] cap	to query.
+ * @param[in] set	One of the following sets of capabilities:
+ *			- CAP_EFFECTIVE		capabilities we currently have.
+ *			- CAP_INHERITABLE	capabilities inherited across exec.
+ *			- CAP_PERMITTED		capabilities we can request.
+ * @return
+ *	- true if CAP_SET (enabled) in the specified set.
+ *	- false if CAP_CLEAR (disabled) in the specified set.
+ */
+bool fr_cap_is_enabled(cap_value_t cap, cap_flag_t set)
+{
+	cap_t			caps;
+	cap_flag_value_t	state = CAP_CLEAR;
+
+	pthread_mutex_lock(&cap_mutex);
+
+	caps = cap_get_proc();
+	if (!caps) {
+		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
+		goto done;
+	}
+
+	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &state) < 0) {
+		char *cap_name = cap_to_name(cap);
+		fr_strerror_printf("Failed getting %s %s state from working set: %s",
+				   cap_name,
+				   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+				   fr_syserror(errno));
+		cap_free(cap_name);
+		goto done;
+	}
+
+done:
+	pthread_mutex_unlock(&cap_mutex);
+
+	if (caps) cap_free(caps);
+
+	return (state == CAP_SET);
+}
+
+/** Add a CAP_* to the effective or inheritable set
  *
  * A negative return from this function should NOT always
  * be interpreted as an error.  The server MAY already be running as
- * root, OR the system may not support CAP_NET_RAW.  It is almost
+ * root, OR the system may not support CAP_*.  It is almost
  * always better to use a negative return value to print a warning
- * message as to why CAP_NET_RAW was not set.
+ * message as to why CAP_* was not set.
  *
+ * @param[in] cap	to enable.
+ * @param[in] set	One of the following sets of capabilities:
+ *			- CAP_EFFECTIVE		capabilities we currently have.
+ *			- CAP_INHERITABLE	capabilities inherited across exec.
  * @return
  *	- <0 on "cannot set it"
- *	- 0 on "can set it"
+ *	- 0 on "can set it (or it was already set)"
  */
-int fr_cap_set(cap_value_t cap)
+int fr_cap_enable(cap_value_t cap, cap_flag_t set)
 {
 	int			rcode = -1;
 	cap_t			caps;
 	cap_flag_value_t	state;
-	static pthread_mutex_t	mutex = PTHREAD_MUTEX_INITIALIZER;
 
 	/*
 	 *	This function may be called by multiple
@@ -57,7 +116,12 @@ int fr_cap_set(cap_value_t cap)
 	 *	capabilities at the same time, so we could
 	 *	suffer from a lost update problem.
 	 */
-	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&cap_mutex);
+
+	if (set == CAP_PERMITTED) {
+		fr_strerror_printf("Can't modify permitted capabilities");
+		goto done;
+	}
 
 	caps = cap_get_proc();
 	if (!caps) {
@@ -81,39 +145,48 @@ int fr_cap_set(cap_value_t cap)
 		 *	Messages printed in the inverse order
 		 *	to the order they're printed.
 		 */
-		fr_strerror_printf("Use \"setcap %s+ep <path_to_binary>\" to grant the %s capability", cap_name, cap_name);
+		fr_strerror_printf("Use \"setcap %s+ep <path_to_binary>\" to grant the %s capability",
+				   cap_name, cap_name);
 		cap_free(cap_name);
 		goto done;
 	}
 
-	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &state) < 0) {
+	if (cap_get_flag(caps, cap, set, &state) < 0) {
 		char *cap_name = cap_to_name(cap);
-		fr_strerror_printf("Failed getting %s effective state from working set: %s",
-				   cap_name, fr_syserror(errno));
+		fr_strerror_printf("Failed getting %s %s state from working set: %s",
+				   cap_name,
+				   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+				   fr_syserror(errno));
 		cap_free(cap_name);
 		goto done;
 	}
 
 	/*
-	 *	Permitted bit is high effective bit is low, see
-	 *	if we can fix that.
+	 *	Permitted bit is high but the capability
+	 *      isn't in the specified set, see if we can
+	 *	fix that.
 	 */
 	if (state == CAP_CLEAR) {
 		cap_value_t const to_set[] = {
 			cap
 		};
 
-		if (cap_set_flag(caps, CAP_EFFECTIVE, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
+		if (cap_set_flag(caps, set, NUM_ELEMENTS(to_set), to_set, CAP_SET) < 0) {
 			char *cap_name = cap_to_name(cap);
-			fr_strerror_printf("Failed setting %s effective state in worker set: %s",
-					   cap_name, fr_syserror(errno));
+			fr_strerror_printf("Failed setting %s %s state in working set: %s",
+					   cap_name,
+					   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+					   fr_syserror(errno));
 			cap_free(cap_name);
 			goto done;
 		}
 
 		if (cap_set_proc(caps) < 0) {
 			char *cap_name = cap_to_name(cap);
-			fr_strerror_printf("Failed setting %s effective state: %s", cap_name, fr_syserror(errno));
+			fr_strerror_printf("Failed setting %s %s state: %s",
+					   cap_name,
+					   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+					   fr_syserror(errno));
 			cap_free(cap_name);
 			goto done;
 		}
@@ -127,7 +200,84 @@ int fr_cap_set(cap_value_t cap)
 	}
 
 done:
-	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&cap_mutex);
+
+	if (caps) cap_free(caps);
+
+	return rcode;
+}
+
+/** Remove a CAP_* from the permitted, effective or inheritable set
+ *
+ * @param[in] cap	to disable.
+ * @param[in] set	One of the following sets of capabilities:
+ *			- CAP_EFFECTIVE		capabilities we currently have.
+ *			- CAP_INHERITABLE	capabilities inherited across exec.
+ *			- CAP_PERMITTED		capabilities we can request.
+ * @return
+ *	- <0 on "cannot unset it"
+ *	- 0 on "unset it (or it was already set)"
+ */
+int fr_cap_disable(cap_value_t cap, cap_flag_t set)
+{
+	int			rcode = -1;
+	cap_t			caps;
+	cap_flag_value_t	state;
+
+	/*
+	 *	This function may be called by multiple
+	 *      threads each binding to their own network
+	 *	sockets.  There's no guarantee that those
+	 *	threads will be requesting the same
+	 *	capabilities at the same time, so we could
+	 *	suffer from a lost update problem.
+	 */
+	pthread_mutex_lock(&cap_mutex);
+
+	caps = cap_get_proc();
+	if (!caps) {
+		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
+		goto done;
+	}
+
+	if (cap_get_flag(caps, cap, set, &state) < 0) {
+		char *cap_name = cap_to_name(cap);
+		fr_strerror_printf("Failed getting %s %s state from working set: %s",
+				   cap_name,
+				   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+				   fr_syserror(errno));
+		cap_free(cap_name);
+		goto done;
+	}
+
+	if (state == CAP_SET) {
+		if (cap_clear_flag(cap, set) < 0) {
+			char *cap_name = cap_to_name(cap);
+			fr_strerror_printf("Failed clearing %s %s state in working set: %s",
+					   cap_name,
+					   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+					   fr_syserror(errno));
+			cap_free(cap_name);
+			goto done;
+		}
+
+		if (cap_set_proc(caps) < 0) {
+			char *cap_name = cap_to_name(cap);
+			fr_strerror_printf("Failed setting %s %s state: %s",
+					   cap_name,
+					   fr_table_str_by_value(cap_set_table, set, "<INVALID>"),
+					   fr_syserror(errno));
+			cap_free(cap_name);
+			goto done;
+		}
+
+		rcode = 0;
+	} else {
+		rcode = 0;
+	}
+
+done:
+	pthread_mutex_unlock(&cap_mutex);
 
 	if (caps) cap_free(caps);
 
