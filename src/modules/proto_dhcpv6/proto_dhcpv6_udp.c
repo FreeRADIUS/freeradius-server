@@ -285,7 +285,7 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 }
 
 
-/** Open a UDP listener for DHCPV4
+/** Open a UDP listener for DHCPv6
  *
  */
 static int mod_open(fr_listen_t *li)
@@ -479,7 +479,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	/*
 	 *	Remember if we're a multicast socket.
 	 */
-	inst->multicast = (inst->ipaddr.addr.v6.s6_addr[0] == 0xff);
+	inst->multicast = (fr_ipaddr_is_multicast(&inst->ipaddr) == 1);
 
 	/*
 	 *	Set src_ipaddr to ipaddr if not otherwise specified
@@ -507,7 +507,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		} else {
 			/*
-			 *	Multicase addresses MUST specify an interface.
+			 *	Multicast addresses MUST specify an interface.
 			 */
 			if (!inst->interface) goto interface_fail;
 

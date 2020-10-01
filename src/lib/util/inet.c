@@ -82,6 +82,36 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 	return 0;
 }
 
+/** Determine if an address is a multicast address
+ *
+ * @param ipaddr to check.
+ * @return
+ *	- 0 if it's not.
+ *	- 1 if it is.
+ *	- -1 on error.
+ */
+int fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr)
+{
+	if (ipaddr->af == AF_INET) {
+		/*
+		 *	224.0.0.0 (3758096384) - 239.255.255.255 (4026531839)
+		 */
+		if ((ipaddr->addr.v4.s_addr >= 3758096384) && (ipaddr->addr.v4.s_addr <= 4026531839)) return 1;
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (ipaddr->af == AF_INET6) {
+		if (IN6_IS_ADDR_MULTICAST(&(ipaddr->addr.v6))) {
+			return 1;
+		}
+#endif
+
+	} else {
+		fr_strerror_printf("Unknown address family");
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Determine if an address is a prefix
  *
  * @param ipaddr to check.

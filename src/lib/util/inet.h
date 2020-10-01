@@ -113,6 +113,7 @@ extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
  *	Utility functions
  */
 int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr);
+int	fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr);
 int	fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr);
 
 /*
