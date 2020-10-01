@@ -21,6 +21,8 @@
  *
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
+#define LOG_PREFIX "proto_dhcpv6_udp - "
+
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
@@ -160,12 +162,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, recv_time_p);
 	if (data_size < 0) {
-		DEBUG2("proto_dhvpv4_udp got read error %zd: %s", data_size, fr_strerror());
+		PERROR("Read error %zd", data_size);
 		return data_size;
 	}
 
 	if ((size_t) data_size < sizeof(fr_dhcpv6_packet_t)) {
-		DEBUG2("proto_dhcpv6_udp got insufficient data: ignoring");
+		WARN("Insufficient data: ignoring");
 		return 0;
 	}
 
@@ -177,7 +179,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	packet = (fr_dhcpv6_packet_t *) buffer;
 	if (!packet->code || (packet->code >= FR_DHCPV6_MAX_CODE)) {
-		DEBUG2("proto_dhcpv6_udp got unsupported packet code %d: ignoring", packet->code);
+		WARN("Unsupported packet code %d: ignoring", packet->code);
 		return 0;
 	}
 
@@ -189,7 +191,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		if ((packet->code == FR_DHCPV6_SOLICIT) ||
 		    (packet->code == FR_DHCPV6_REBIND) ||
 		    (packet->code == FR_DHCPV6_CONFIRM)) {
-			DEBUG2("proto_dhcpv6_udp got unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
+			WARN("Unicast packet %s: ignoring", fr_dhcpv6_packet_types[packet->code]);
 			return 0;
 		}
 	} /* else it was multicast... remember that */
@@ -203,8 +205,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_dhcpv6_udp - Received %s XID %08x length %d %s",
-	       fr_dhcpv6_packet_types[packet->code], xid,
+	DEBUG2("Received %s XID %08x length %d %s", fr_dhcpv6_packet_types[packet->code], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;
@@ -350,7 +351,8 @@ static int mod_open(fr_listen_t *li)
 		if (inst->hop_limit) {
 			int hop_limit = inst->hop_limit;
 
-			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *) &hop_limit, sizeof(hop_limit)) < 0) {
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
+				       (char *) &hop_limit, sizeof(hop_limit)) < 0) {
 				ERROR("Failed to set multicast hop_limit: %s", fr_syserror(errno));
 				goto close_error;
 			}
@@ -393,7 +395,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	uint8_t const *option;
 	size_t track_size = sizeof(*track);
 	size_t option_len = 0;
-	
+
 	option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
 	if (option) {
 		option_len = (option[2] << 8) | option[3];
@@ -498,7 +500,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 				inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
 				if (!inst->interface) {
 				interface_fail:
-					cf_log_err(cs, "No 'interface' specified, and we cannot determine one for 'ipaddr = %pV'",
+					cf_log_err(cs, "No 'interface' specified, and we cannot "
+						   "determine one for 'ipaddr = %pV'",
 						   fr_box_ipaddr(inst->ipaddr));
 					return -1;
 				}
@@ -511,8 +514,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (!inst->interface) goto interface_fail;
 
 			if (fr_interface_to_ipaddr(inst->interface, &inst->src_ipaddr, AF_INET6, true) < 0) {
-				cf_log_err(cs, "No 'src_ipaddr' specified, and we cannot determine one for 'ipaddr = %pV and interface '%s'",
-				       fr_box_ipaddr(inst->ipaddr), inst->interface);
+				cf_log_err(cs, "No 'src_ipaddr' specified, and we cannot determine "
+					   "one for 'ipaddr = %pV and interface '%s'",
+					   fr_box_ipaddr(inst->ipaddr), inst->interface);
 				return -1;
 			}
 		}
@@ -564,7 +568,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	num = talloc_array_length(inst->allow);
 	if (!num) {
 		if (inst->dynamic_clients) {
-			cf_log_err(cs, "The 'allow' subsection MUST contain at least one 'network' entry when 'dynamic_clients = true'.");
+			cf_log_err(cs, "The 'allow' subsection MUST contain at least one 'network' entry when "
+				   "'dynamic_clients = true'.");
 			return -1;
 		}
 	} else {
