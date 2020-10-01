@@ -1812,6 +1812,7 @@ static int parse_input(cf_stack_t *stack)
 
 	case T_OP_EQ:
 	case T_OP_SET:
+	case T_OP_PREPEND:
 		fr_skip_whitespace(ptr);
 		op_token = name2_token;
 		break;
