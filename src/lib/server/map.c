@@ -1558,6 +1558,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		break;
 
 	/*
+	 *	^= - Prepend src_list attributes to the destination
+	 */
+	case T_OP_PREPEND:
+		fr_pair_list_prepend(list, &src_list);
+		fr_pair_list_free(&src_list);
+		break;
+
+	/*
 	 *	+= - Add all src_list attributes to the destination
 	 */
 	case T_OP_ADD:
