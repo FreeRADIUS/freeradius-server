@@ -167,6 +167,8 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 #define option_len(_x) ((_x[2] << 8) | _x[3])
 
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes);
+
 static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay)
 {
 	size_t attributes;
@@ -191,14 +193,17 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 		 *	only if the outer packet was a relayed message.
 		 */
 		if (allow_relay && (p[0] == 0) && (p[1] == attr_relay_message->attr)) {
-			if (len < 2 + 32) return -(p - packet);
+			ssize_t child;
 
 			/*
 			 *	Recurse to check the encapsulated packet.
 			 */
-			if (!fr_dhcpv6_ok(p + 4, len, max_attributes - attributes)) {
-				return -(p - packet);
+			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes);
+			if (child <= 0) {
+				return -((p + 4) - packet) + child;
 			}
+
+			attributes += child;
 		}
 
 		p += 4 + len;
@@ -207,22 +212,12 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	return attributes;
 }
 
-/** See if the data pointed to by PTR is a valid DHCPv6 packet.
- *
- * @param[in] packet		to check.
- * @param[in] packet_len	The size of the packet data.
- * @param[in] max_attributes	to allow in the packet.
- * @return
- *	- True on success.
- *	- False on failure.
- */
-bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
-		  uint32_t max_attributes)
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes)
 {
 	uint8_t const *p;
-	uint8_t const *end;
 	ssize_t attributes;
 	bool allow_relay;
+	size_t packet_len = end - packet;
 
 	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
 	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
@@ -243,6 +238,24 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 
 	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay);
 	if (attributes < 0) return false;
+
+	return true;
+}
+
+
+/** See if the data pointed to by PTR is a valid DHCPv6 packet.
+ *
+ * @param[in] packet		to check.
+ * @param[in] packet_len	The size of the packet data.
+ * @param[in] max_attributes	to allow in the packet.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
+		  uint32_t max_attributes)
+{
+	if (fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes) <= 0) return false;
 
 	return true;
 }
