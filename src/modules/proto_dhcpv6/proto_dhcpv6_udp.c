@@ -398,12 +398,22 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 
 	if (packet[0] ==  FR_DHCPV6_RELAY_FORWARD) {
 		uint8_t const *relay;
+		uint8_t const *relay_options;
 
 		relay = fr_dhcpv6_option_find(packet, packet + packet_len, attr_relay_message->attr);
 		if (!relay) return NULL;
 
 		option_len = (relay[2] << 8) | relay[3];
-		option = fr_dhcpv6_option_find(relay, relay + option_len, attr_client_id->attr);
+
+		if (relay[0] == FR_DHCPV6_RELAY_FORWARD) {
+			relay_options = relay + 2 + 32;
+			option_len -= 2 + 32;
+		} else {
+			relay_options = relay + 4;
+			option_len -= 4;
+		}
+
+		option = fr_dhcpv6_option_find(relay_options, relay + option_len, attr_client_id->attr);
 
 	} else {
 		option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
