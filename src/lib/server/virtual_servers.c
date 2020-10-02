@@ -659,10 +659,18 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	 */
 	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
 		char const *server_name;
+		CONF_SECTION *bad;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
 			cf_log_err(cs, "server sections must have a name");
+			return -1;
+		}
+
+		bad = cf_section_find_next(config, cs, "server", server_name);
+		if (bad) {
+			cf_log_err(bad, "Duplicate virtual servers are forbidden.");
+			cf_log_err(cs, "Previous definition occurs here.");
 			return -1;
 		}
 
