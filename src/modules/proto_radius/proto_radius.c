@@ -688,13 +688,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, <=, fr_time_delta_from_sec(600));
 
 	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, <=, fr_time_delta_from_sec(30));
+	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, >, fr_time_delta_from_sec(0));
 
+#if 0
 	/*
 	 *	No Access-Request packets, then no cleanup delay.
 	 */
 	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay = 0;
 	}
+#endif
 
 	/*
 	 *	Tell the master handler about the main protocol instance.
