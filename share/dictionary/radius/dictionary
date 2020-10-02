@@ -144,7 +144,6 @@ $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
-$INCLUDE dictionary.alcatel.sr
 $INCLUDE dictionary.alcatel-lucent.aaa
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
@@ -246,6 +245,8 @@ $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nokia
+$INCLUDE dictionary.nokia.sr
+
 #
 #  Commented out because of attribute conflicts.
 #

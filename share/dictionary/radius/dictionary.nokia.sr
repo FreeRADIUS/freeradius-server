@@ -4,7 +4,7 @@
 # Version $Id$
 ##############################################################################
 #
-#	Alcatel-Lucent Service Router dictionary.
+#	Nokia (Formerly Alcatel-Lucent) Service Router dictionary.
 #
 #	$Id$
 #
@@ -13,9 +13,9 @@
 #
 ##############################################################################
 
-VENDOR		Alcatel-Lucent-Service-Router	6527
+VENDOR		Nokia-Service-Router	6527
 
-BEGIN-VENDOR	Alcatel-Lucent-Service-Router
+BEGIN-VENDOR	Nokia-Service-Router
 
 # Alcatel Timetra attributes
 ATTRIBUTE	Timetra-Access				1	integer
