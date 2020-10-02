@@ -404,14 +404,15 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 		if (!relay) return NULL;
 
 		option_len = (relay[2] << 8) | relay[3];
+		relay += 4;
 
 		if (relay[0] == FR_DHCPV6_RELAY_FORWARD) {
-			relay_options = relay + 4 + 2 + 32;
+			relay_options = relay + 2 + 32;
 			if (option_len < (2 + 32)) return NULL;
 
 			option_len -= 2 + 32;
 		} else {
-			relay_options = relay + 4 + 4;
+			relay_options = relay + 4;
 
 			if (option_len < 4) return NULL;
 			option_len -= 4;
