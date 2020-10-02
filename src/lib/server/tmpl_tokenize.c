@@ -1359,6 +1359,9 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	switch (dict_err) {
 	case FR_DICT_ATTR_NO_CHILDREN:
+		if (parent && parent->flags.is_unknown) break;
+		goto error;
+
 	case FR_DICT_ATTR_NOT_DESCENDENT:
 		goto error;
 
