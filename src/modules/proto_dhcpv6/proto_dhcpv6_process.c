@@ -57,6 +57,7 @@ static int reply_ok[] = {
 	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_REPLY,
 	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_REPLY,
 	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_REPLY,
+	[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_RELAY_REPLY
 };
 
 static int reply_fail[] = {
@@ -68,6 +69,7 @@ static int reply_fail[] = {
 	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_DO_NOT_RESPOND,
 	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
+	[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_DO_NOT_RESPOND
 };
 
 /*
@@ -310,6 +312,16 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "send",
 		.name2 = "Reply",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Relay-Forward",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Relay-Reply",
 		.component = MOD_POST_AUTH,
 	},
 

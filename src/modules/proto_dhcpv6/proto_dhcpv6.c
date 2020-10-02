@@ -49,6 +49,8 @@ static const CONF_PARSER priority_config[] = {
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	{ FR_CONF_OFFSET("Information-Request", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Relay-Forward", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
+	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 
