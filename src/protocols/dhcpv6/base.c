@@ -167,6 +167,55 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 #define option_len(_x) ((_x[2] << 8) | _x[3])
 
+static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, uint32_t max_attributes, bool allow_relay)
+{
+	size_t attributes;
+	uint8_t const *p;
+
+	attributes = 0;
+	p = packet;
+
+	while (p < end) {
+		uint16_t len;
+
+		if ((end - p) < 4) return -(p - packet);
+
+		len = option_len(p);
+		if ((end - p) < (4 + len)) return -(p - packet);
+
+		attributes++;
+		if (attributes > (size_t) max_attributes) return -(p - packet);
+
+		/*
+		 *	Recurse into the Relay-Message attribute, but
+		 *	only if the outer packet was a relayed message.
+		 */
+		if (allow_relay && (p[0] == 0) && (p[1] == attr_relay_message->attr)) {
+			if (len < 2 + 32) return -(p - packet);
+
+			/*
+			 *	Relay packets can't contain other relay packets.
+			 */
+			if ((p[4] == FR_DHCPV6_RELAY_FORWARD) ||
+			    (p[4] == FR_DHCPV6_RELAY_REPLY)) {
+				p += 4;
+				return -(p - packet);
+			}
+
+			/*
+			 *	Recurse to check the encapsulated packet.
+			 */
+			if (!fr_dhcpv6_ok(p + 4, len, max_attributes - attributes)) {
+				return -(p - packet);
+			}
+		}
+
+		p += 4 + len;
+	}
+
+	return attributes;
+}
+
 /** See if the data pointed to by PTR is a valid DHCPv6 packet.
  *
  * @param[in] packet		to check.
@@ -181,13 +230,16 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 {
 	uint8_t const *p;
 	uint8_t const *end;
-	uint32_t attributes;
+	ssize_t attributes;
+	bool allow_relay;
 
 	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
 	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
 		if (packet_len < 2 + 32) return false;
 
 		p = packet + 2 + 32;
+		allow_relay = true;
+
 	} else {
 		/*
 		 *	8 bit code + 24 bits of transaction ID
@@ -195,24 +247,11 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 		if (packet_len < 4) return false;
 
 		p = packet + 4;
+		allow_relay = false;
 	}
 
-	attributes = 0;
-	end = packet + packet_len;
-
-	while (p < end) {
-		uint16_t len;
-
-		if ((end - p) < 4) return false;
-
-		len = option_len(p);
-		if ((end - p) < (4 + len)) return false;
-
-		attributes++;
-		if (attributes > max_attributes) return false;
-
-		p += 4 + len;
-	}
+	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay);
+	if (attributes < 0) return false;
 
 	return true;
 }
