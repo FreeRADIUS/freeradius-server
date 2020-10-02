@@ -167,7 +167,7 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 #define option_len(_x) ((_x[2] << 8) | _x[3])
 
-static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, uint32_t max_attributes, bool allow_relay)
+static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay)
 {
 	size_t attributes;
 	uint8_t const *p;
@@ -190,7 +190,9 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, u
 		 *	Recurse into the Relay-Message attribute, but
 		 *	only if the outer packet was a relayed message.
 		 */
-		if (allow_relay && (p[0] == 0) && (p[1] == attr_relay_message->attr)) {
+		if ((p[0] == 0) && (p[1] == attr_relay_message->attr)) {
+			if (!allow_relay) return -(p - packet);
+
 			if (len < 2 + 32) return -(p - packet);
 
 			/*
