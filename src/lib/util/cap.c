@@ -105,7 +105,7 @@ done:
 int fr_cap_enable(cap_value_t cap, cap_flag_t set)
 {
 	int			rcode = -1;
-	cap_t			caps;
+	cap_t			caps = NULL;
 	cap_flag_value_t	state;
 
 	/*
