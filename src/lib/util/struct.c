@@ -118,7 +118,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		child = fr_dict_attr_child_by_num(parent, child_num);
 		if (!child) break;
 
-		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - child %d", child->attr);
+		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - child %s (%d)", child->name, child->attr);
 
 		/*
 		 *	Check for bit fields.
