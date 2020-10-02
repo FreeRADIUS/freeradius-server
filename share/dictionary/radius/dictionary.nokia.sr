@@ -524,4 +524,4 @@ ATTRIBUTE	Alc-Dhcp6-Rebind-Time		203	integer
 # in both authentication and accounting
 ATTRIBUTE	Alc-Wlan-SSID-VLAN			206	string
 
-END-VENDOR	Alcatel-Lucent-Service-Router
+END-VENDOR	Nokia-Service-Router
