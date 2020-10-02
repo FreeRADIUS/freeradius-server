@@ -127,6 +127,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		[FR_DHCPV6_RELEASE]	= "process",
 		[FR_DHCPV6_DECLINE]	= "process",
 		[FR_DHCPV6_INFORMATION_REQUEST]	= "process",
+		[FR_DHCPV6_RELAY_FORWARD] = "process"
 	};
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
