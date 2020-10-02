@@ -83,7 +83,7 @@ ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested opti
 
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
-ATTRIBUTE	Relay-Message				9	octets
+ATTRIBUTE	Relay-Message				9	group
 ATTRIBUTE	Auth					11	struct
 MEMBER		Auth-Protocol				uint8 key
 MEMBER		Auth-Algorithm				uint8
