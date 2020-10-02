@@ -121,11 +121,13 @@ fr_dict_autoload_t proto_dhcpv6_udp_dict[] = {
 
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_client_id;
+static fr_dict_attr_t const *attr_relay_message;
 
 extern fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
 	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
+	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
 
@@ -394,10 +396,22 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	size_t track_size = sizeof(*track);
 	size_t option_len = 0;
 
-	option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
-	if (option) {
-		option_len = (option[2] << 8) | option[3];
+	if (packet[0] ==  FR_DHCPV6_RELAY_FORWARD) {
+		uint8_t const *relay;
+
+		relay = fr_dhcpv6_option_find(packet, packet + packet_len, attr_relay_message->attr);
+		if (!relay) return NULL;
+
+		option_len = (relay[2] << 8) | relay[3];
+		option = fr_dhcpv6_option_find(relay, relay + option_len, attr_client_id->attr);
+
+	} else {
+		option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
 	}
+
+	if (!option) return NULL;
+
+	option_len = (option[2] << 8) | option[3];
 
 	track = (proto_dhcpv6_track_t *) talloc_zero_array(ctx, uint8_t, track_size + option_len);
 	if (!track) return NULL;
