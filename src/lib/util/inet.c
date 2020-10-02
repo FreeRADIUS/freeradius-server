@@ -638,7 +638,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 *	Allow '*' as the wildcard address
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
-			memset(out->addr.v6.s6_addr, 0, sizeof(out->addr.v6.s6_addr));
+			out->addr.v6 = (struct in6_addr)IN6ADDR_ANY_INIT;
 		} else if (!resolve) {
 			if (inet_pton(AF_INET6, value, out->addr.v6.s6_addr) <= 0) {
 				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
