@@ -183,15 +183,21 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 	uint8_t const *end;
 	uint32_t attributes;
 
-	/*
-	 *	8 bit code + 24 bits of transaction ID
-	 */
-	if (packet_len < 4) return false;
+	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
+	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
+		if (packet_len < 2 + 32) return false;
 
-	if (packet_len == 4) return true;
+		p = packet + 2 + 32;
+	} else {
+		/*
+		 *	8 bit code + 24 bits of transaction ID
+		 */
+		if (packet_len < 4) return false;
+
+		p = packet + 4;
+	}
 
 	attributes = 0;
-	p = packet + 4;
 	end = packet + packet_len;
 
 	while (p < end) {
