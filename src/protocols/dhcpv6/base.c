@@ -190,19 +190,8 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 		 *	Recurse into the Relay-Message attribute, but
 		 *	only if the outer packet was a relayed message.
 		 */
-		if ((p[0] == 0) && (p[1] == attr_relay_message->attr)) {
-			if (!allow_relay) return -(p - packet);
-
+		if (allow_relay && (p[0] == 0) && (p[1] == attr_relay_message->attr)) {
 			if (len < 2 + 32) return -(p - packet);
-
-			/*
-			 *	Relay packets can't contain other relay packets.
-			 */
-			if ((p[4] == FR_DHCPV6_RELAY_FORWARD) ||
-			    (p[4] == FR_DHCPV6_RELAY_REPLY)) {
-				p += 4;
-				return -(p - packet);
-			}
 
 			/*
 			 *	Recurse to check the encapsulated packet.
