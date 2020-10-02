@@ -531,9 +531,25 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		}
 
 		/*
-		 *	Not yet supported.
+		 *	Decode the header fields.
 		 */
-		return -1;
+		vp = fr_pair_afrom_da(ctx, attr_hop_count);
+		if (!vp) goto fail;
+		(void) fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 1, packet_len - 1, true);
+		fr_cursor_append(&cursor, vp);
+
+		vp = fr_pair_afrom_da(ctx, attr_relay_link_address);
+		if (!vp) goto fail;
+		(void) fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2, packet_len - 2, true);
+		fr_cursor_append(&cursor, vp);
+
+		vp = fr_pair_afrom_da(ctx, attr_relay_peer_address);
+		if (!vp) goto fail;
+		(void) fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2 + 16, packet_len - 2 - 16, true);
+		fr_cursor_append(&cursor, vp);
+
+		p = packet + 2 + 32;
+		goto decode_options;
 	}
 
 	/*
@@ -541,21 +557,24 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_transaction_id);
 	if (!vp) {
+	fail:
 		fr_pair_list_free(vps);
 		return -1;
 	}
 
 	/*
-	 *	The internal attribute is 64-bits, but the ID is 24 bits.
+	 *	Copy 3 octets over.
 	 */
 	(void) fr_pair_value_memdup(vp, packet + 1, 3, false);
 
 	vp->type = VT_DATA;
 	fr_cursor_append(&cursor, vp);
 
-	p = packet + 4;
-	end = packet + packet_len;
 
+	p = packet + 4;
+
+decode_options:
+	end = packet + packet_len;
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/*
@@ -659,13 +678,13 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		if (packet_len < 2 + 32) return -1;
 
 		vp = fr_pair_find_by_da(vps, attr_hop_count);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 1, packet_len, &vp->data);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 1, packet_len - 1, &vp->data);
 
 		vp = fr_pair_find_by_da(vps, attr_relay_link_address);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 2, packet_len, &vp->data);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 2, packet_len - 2, &vp->data);
 
 		vp = fr_pair_find_by_da(vps, attr_relay_peer_address);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 2 + 16, packet_len, &vp->data);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 2 + 16, packet_len - 2 - 16, &vp->data);
 
 		p = packet + 2 + 32;
 		goto encode_options;
