@@ -519,9 +519,11 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 	option = (data[0] << 8) | data[1];
 	len = (data[2] << 8) | data[3];
-	if ((len + 4) > data_len) {
-		fr_strerror_printf("%s: Option overflows input", __FUNCTION__);
-		return 0;
+	if (len > (data_len - 4)) {
+		fr_strerror_printf("%s: Option overflows input.  "
+				   "Optional length must be less than %zu bytes, got %zu bytes",
+				   __FUNCTION__, data_len - 4, len);
+		return PAIR_DECODE_FATAL_ERROR;
 	}
 
 	da = fr_dict_attr_child_by_num(parent, option);
