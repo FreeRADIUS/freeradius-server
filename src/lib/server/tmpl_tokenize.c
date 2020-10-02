@@ -1183,7 +1183,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 	return TMPL_ATTR_REF_HAS_FILTER;
 }
 
-/** Parse an attribute reference, either an OID or attribute name
+/** Parse an unresolved attribute, i.e. one which can't be found in the current dictionary
  *
  * This function calls itself recursively to process additional OID
  * components once we've failed to resolve one component.
@@ -1201,9 +1201,9 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  *	- 0 on success.
  */
 static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-							     tmpl_t *vpt,
-							     fr_sbuff_t *name, tmpl_rules_t const *rules,
-							     unsigned int depth)
+							 tmpl_t *vpt,
+							 fr_sbuff_t *name, tmpl_rules_t const *rules,
+							 unsigned int depth)
 {
 	tmpl_attr_t		*ar = NULL;
 	fr_dlist_head_t		*list = &vpt->data.attribute.ar;
