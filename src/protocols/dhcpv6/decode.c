@@ -545,6 +545,8 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &vp->vp_group);
 		if (rcode < 0) talloc_free(vp);
+
+		fr_cursor_insert(cursor, vp);
 	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
 		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
