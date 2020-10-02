@@ -169,7 +169,7 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
 
-static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay)
+static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay, int depth)
 {
 	size_t attributes;
 	uint8_t const *p;
@@ -198,7 +198,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 			/*
 			 *	Recurse to check the encapsulated packet.
 			 */
-			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes);
+			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1);
 			if (child <= 0) {
 				return -((p + 4) - packet) + child;
 			}
@@ -238,7 +238,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		allow_relay = false;
 	}
 
-	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay);
+	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth);
 	if (attributes < 0) return -(p - packet) + attributes;
 
 	return attributes;
