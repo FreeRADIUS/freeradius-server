@@ -53,12 +53,20 @@ fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_transaction_id;
 static fr_dict_attr_t const *attr_option_request;
+static fr_dict_attr_t const *attr_hop_count;
+static fr_dict_attr_t const *attr_relay_link_address;
+static fr_dict_attr_t const *attr_relay_peer_address;
+static fr_dict_attr_t const *attr_relay_message;
 
 
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
 	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
+	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
@@ -326,6 +334,18 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		 */
 		break;
 
+	case FR_DHCPV6_RELAY_REPLY:
+		if (packet_len < 2 + 32) {
+			fr_strerror_printf("Relay-Reply message is too small");
+			return false;
+		}
+
+		if (!fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE)) {
+			fr_strerror_printf("Packet does not contain a Relay-Message option");
+			return false;
+		}
+		break;
+
 	case FR_PACKET_TYPE_VALUE_SOLICIT:
 	case FR_PACKET_TYPE_VALUE_REQUEST:
 	case FR_PACKET_TYPE_VALUE_CONFIRM:
@@ -416,6 +436,18 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		}
 		break;
 
+	case FR_DHCPV6_RELAY_FORWARD:
+		if (packet_len < 2 + 32) {
+			fr_strerror_printf("Relay-Forward message is too small");
+			return false;
+		}
+
+		if (!fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE)) {
+			fr_strerror_printf("Packet does not contain a Relay-Message option");
+			return false;
+		}
+		break;
+
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 	case FR_PACKET_TYPE_VALUE_REPLY:
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
@@ -440,9 +472,9 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 		      bool from_server)
 {
 	/*
-	 *	We don't support relaying or lease querying for now.
+	 *	We support up to relaying.
 	 */
-	if ((packet[0] == 0) || (packet[0] > FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST)) return false;
+	if ((packet[0] == 0) || (packet[0] > FR_PACKET_TYPE_VALUE_RELAY_REPLY)) return false;
 
 	if (!packet_ctx->duid) return false;
 
@@ -489,12 +521,20 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	vp->type = VT_DATA;
 	fr_cursor_append(&cursor, vp);
 
-	/*
-	 *	@todo - skip over hop-count, IPv6 link address and
-	 *	IPv6 peer address for Relay-forward and Relay-reply
-	 *	messages.  There is no transaction ID in those
-	 *	packets.
-	 */
+	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
+	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
+		/*
+		 *	Just for sanity check.
+		 */
+		if (packet_len < 2 + 32) {
+			return -1;
+		}
+
+		/*
+		 *	Not yet supported.
+		 */
+		return -1;
+	}
 
 	/*
 	 *	And the transaction ID.
