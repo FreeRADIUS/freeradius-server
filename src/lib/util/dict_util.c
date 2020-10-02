@@ -2110,13 +2110,29 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	DA_VERIFY(parent);
 
 	/*
+	 *	Check the parent can is a grouping attribute
+	 */
+	switch (parent->type) {
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table,
+				   			 parent->type, "?Unknown?"));
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return 0;
+	}
+
+	/*
 	 *	We return the child of the referenced attribute, and
 	 *	not of the "group" attribute.
 	 */
 	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
 
 	if (!parent->children) {
-		fr_strerror_printf("%s has no children", parent->name);
+		fr_strerror_printf("Parent (%s) has no children", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		return 0;
 	}
@@ -2127,7 +2143,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	if (is_direct_decendent) {
 		if ((*out)->parent != parent) {
 		not_decendent:
-			fr_strerror_printf("%s is not a descendent of %s", parent->name, (*out)->name);
+			fr_strerror_printf("%s is not a descendent of parent (%s)", parent->name, (*out)->name);
 			if (err) *err = FR_DICT_ATTR_NOT_DESCENDENT;
 			*out = NULL;
 			return 0;
