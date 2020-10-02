@@ -50,13 +50,13 @@ fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_transaction_id;
-static fr_dict_attr_t const *attr_option_request;
-static fr_dict_attr_t const *attr_hop_count;
-static fr_dict_attr_t const *attr_relay_link_address;
-static fr_dict_attr_t const *attr_relay_peer_address;
-static fr_dict_attr_t const *attr_relay_message;
+fr_dict_attr_t const *attr_packet_type;
+fr_dict_attr_t const *attr_transaction_id;
+fr_dict_attr_t const *attr_option_request;
+fr_dict_attr_t const *attr_hop_count;
+fr_dict_attr_t const *attr_relay_link_address;
+fr_dict_attr_t const *attr_relay_peer_address;
+fr_dict_attr_t const *attr_relay_message;
 
 
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
@@ -551,8 +551,7 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 /** Decode a DHCPv6 packet
  *
  */
-ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
-			 VALUE_PAIR **vps)
+ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps)
 {
 	ssize_t			slen;
 	fr_cursor_t		cursor;

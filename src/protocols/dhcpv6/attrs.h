@@ -29,6 +29,14 @@ RCSIDH(dhcpv6_attrs_h, "$Id$")
 
 extern fr_dict_t const *dict_dhcpv6;
 
+extern fr_dict_attr_t const *attr_packet_type;
+extern fr_dict_attr_t const *attr_transaction_id;
+extern fr_dict_attr_t const *attr_option_request;
+extern fr_dict_attr_t const *attr_hop_count;
+extern fr_dict_attr_t const *attr_relay_link_address;
+extern fr_dict_attr_t const *attr_relay_peer_address;
+extern fr_dict_attr_t const *attr_relay_message;
+
 /*
  *	A private function that is used only in base.c and encode.c
  */
