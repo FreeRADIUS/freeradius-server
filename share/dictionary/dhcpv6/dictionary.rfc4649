@@ -11,4 +11,6 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Relay-Agent-Remote-ID			37	octets		# Complex struct see RFC 4649
+ATTRIBUTE	Relay-Agent-Remote-ID			37	struct
+MEMBER		Relay-Agent-Remote-ID-Vendor			uint32
+MEMBER		Relay-Agent-Remote-ID-Value			octets
