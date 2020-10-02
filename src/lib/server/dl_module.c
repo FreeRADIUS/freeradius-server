@@ -118,6 +118,7 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 #else
 			PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 #endif
+			return -1;
 		}
 	}
 
