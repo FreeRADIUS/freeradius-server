@@ -533,7 +533,19 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+	/*
+	 *	Relay messages are weird, and contain complete DHCPv6
+	 *	packets, copied verbatim from the DHCPv6 client.
+	 */
+	if (da == attr_relay_message) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_afrom_da(ctx, attr_relay_message);
+		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &vp->vp_group);
+		if (rcode < 0) talloc_free(vp);
+	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
 		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->flags.array) {
