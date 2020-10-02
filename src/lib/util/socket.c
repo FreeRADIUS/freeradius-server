@@ -923,12 +923,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 *	and set the scope_id.
 		 */
 		if (!my_ipaddr.scope_id) {
-			struct ifreq ifreq;
-
-			memset(&ifreq, 0, sizeof(ifreq));
-			strlcpy(ifreq.ifr_name, interface, sizeof(ifreq.ifr_name));
-
-			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
+			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
 			if (rcode < 0) {
 				fr_strerror_printf_push("Bind failed on interface %s: %s",
 							interface, fr_syserror(errno));
