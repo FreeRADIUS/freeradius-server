@@ -167,7 +167,7 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 #define option_len(_x) ((_x[2] << 8) | _x[3])
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes);
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
 
 static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay)
 {
@@ -212,16 +212,18 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	return attributes;
 }
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes)
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth)
 {
 	uint8_t const *p;
 	ssize_t attributes;
 	bool allow_relay;
 	size_t packet_len = end - packet;
 
+	if (depth > 8) return 0;
+
 	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
 	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
-		if (packet_len < 2 + 32) return false;
+		if (packet_len < 2 + 32) return 0;
 
 		p = packet + 2 + 32;
 		allow_relay = true;
@@ -230,16 +232,16 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		/*
 		 *	8 bit code + 24 bits of transaction ID
 		 */
-		if (packet_len < 4) return false;
+		if (packet_len < 4) return 0;
 
 		p = packet + 4;
 		allow_relay = false;
 	}
 
 	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay);
-	if (attributes < 0) return false;
+	if (attributes < 0) return -(p - packet) + attributes;
 
-	return true;
+	return attributes;
 }
 
 
@@ -255,7 +257,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 		  uint32_t max_attributes)
 {
-	if (fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes) <= 0) return false;
+	if (fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0) <= 0) return false;
 
 	return true;
 }
