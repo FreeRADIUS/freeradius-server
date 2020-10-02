@@ -407,7 +407,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			VALUE_PAIR *child = NULL;
 
 			if (*p != '{') {
-				fr_strerror_printf("Group list MUST start with '{'");
+				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
 				goto error;
 			}
 			p++;
