@@ -645,6 +645,32 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	packet[0] = msg_type;
 
+	if (msg_type == FR_DHCPV6_RELAY_REPLY) {
+		if (packet_len < 2 + 32) return -1;
+		if (!original) return -1;
+
+		memcpy(packet + 1, original + 1, 1 + 32);
+
+		p = packet + 2 + 32;
+		goto encode_options;
+	}
+
+	if (msg_type == FR_DHCPV6_RELAY_FORWARD) {
+		if (packet_len < 2 + 32) return -1;
+
+		vp = fr_pair_find_by_da(vps, attr_hop_count);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 1, packet_len, &vp->data);
+
+		vp = fr_pair_find_by_da(vps, attr_relay_link_address);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 2, packet_len, &vp->data);
+
+		vp = fr_pair_find_by_da(vps, attr_relay_peer_address);
+		if (vp) (void) fr_value_box_to_network(NULL, packet + 2 + 16, packet_len, &vp->data);
+
+		p = packet + 2 + 32;
+		goto encode_options;
+	}
+
 	/*
 	 *	Copy over original transaction ID if we have it.
 	 */
@@ -666,12 +692,13 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		}
 	}
 
-	packet_ctx.root = root;
-
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, VALUE_PAIR);
 	p = packet + 4;
+
+encode_options:
+	packet_ctx.root = root;
 	end = packet + packet_len;
 
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, VALUE_PAIR);
 	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
 		switch (slen) {
