@@ -458,6 +458,17 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 			if (value) value[-1] = '='; /* hackity hack */
 
+			/*
+			 *	Protocol should use strings
+			 *	"key1,key2" to allow for multiple
+			 *	flags.
+			 */
+			if (flags->subtype) {
+				fr_strerror_printf("Cannot add flag '%s' - another flag is already set",
+						   key);
+				return -1;
+			}
+
 			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
 			if (subtype < 0) goto unknown_option;
 
