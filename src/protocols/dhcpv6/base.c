@@ -270,7 +270,7 @@ uint8_t const *fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, u
 	uint8_t const *p = start;
 
 	while (p < end) {
-		uint16_t found = (p[0] << 8) | p[1];
+		uint16_t found;
 		uint16_t len;
 
 		if ((end - p) < 4) return NULL;
