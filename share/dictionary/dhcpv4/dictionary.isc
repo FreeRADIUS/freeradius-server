@@ -8,7 +8,7 @@
 #
 #	dhcp-options https://www.isc.org/wp-content/uploads/2017/08/dhcp41options.html
 #
-#	It was used that below code to generate the entries.
+#	The code at the link below was used to generate these entries:
 #	https://gist.github.com/jpereira/ab05d733afc519ae929286d6f270e5f8
 #
 #	$Id$
