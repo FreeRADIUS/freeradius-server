@@ -2162,7 +2162,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (buffer_len == 1) {
 			track->do_not_respond = true;
-			packet_expiry_timer(el, 0, track);
 			goto setup_timer;
 		}
 
