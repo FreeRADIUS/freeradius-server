@@ -603,7 +603,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_EXTENDED:
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:

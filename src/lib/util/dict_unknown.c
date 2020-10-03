@@ -503,7 +503,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					break;
 
 				case FR_TYPE_TLV:
-				case FR_TYPE_EXTENDED:
 				is_root:
 					if (fr_dict_unknown_attr_afrom_num(n, &our_da, our_parent, num) < 0) {
 						goto error;

@@ -161,10 +161,6 @@ for i in ${RESOLVED[*]}; do
 		TYPE="FR_TYPE_DATE"
 		;;
 
-	'extended')
-		TYPE="FR_TYPE_EXTENDED"
-		;;
-
 	'tlv')
 		TYPE="FR_TYPE_TLV"
 		;;

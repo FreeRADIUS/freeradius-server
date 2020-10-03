@@ -536,7 +536,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_EXTENDED:
 		break;
 
 		/*

@@ -140,8 +140,6 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("tlv"),		FR_TYPE_TLV		},
 	{ L("struct"),        	FR_TYPE_STRUCT		},
 
-	{ L("extended"),      	FR_TYPE_EXTENDED	},
-
 	{ L("vsa"),          	FR_TYPE_VSA		},
 	{ L("vendor"),        	FR_TYPE_VENDOR		},
 	{ L("group"),        	FR_TYPE_GROUP		},
@@ -4822,7 +4820,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
-	case FR_TYPE_EXTENDED:		/* Not a box type */
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_VALUE_BOX:

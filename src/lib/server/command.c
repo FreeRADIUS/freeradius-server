@@ -85,7 +85,7 @@ static int split(char **input, char **output, bool syntax_string);
 
 #define FR_TYPE_VARARGS		FR_TYPE_TLV
 #define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
-#define FR_TYPE_ALTERNATE	FR_TYPE_EXTENDED
+#define FR_TYPE_ALTERNATE	FR_TYPE_VSA
 #define FR_TYPE_ALTERNATE_CHOICE FR_TYPE_GROUP
 
 /** Find a command

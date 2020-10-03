@@ -174,7 +174,6 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Children of TLVs are encoded in the context
 	 *	of the TLV.
 	 */
-	case FR_TYPE_EXTENDED:	/* Just another type of TLV */
 	case FR_TYPE_TLV:
 		/*
 		 *	We've done the complete stack.

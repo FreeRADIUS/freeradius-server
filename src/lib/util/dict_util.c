@@ -87,8 +87,6 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_TLV]		= {2, ~0},
 	[FR_TYPE_STRUCT]	= {1, ~0},
 
-	[FR_TYPE_EXTENDED]	= {1, ~0},
-
 	[FR_TYPE_VSA]		= {4, ~0},
 
 	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
@@ -121,7 +119,6 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
 bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_TLV] = true,
 	[FR_TYPE_STRUCT] = true,
-	[FR_TYPE_EXTENDED] = true,
 	[FR_TYPE_VSA] = true,
 	[FR_TYPE_VENDOR] = true
 };
@@ -633,7 +630,6 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_STRUCT:
-	case FR_TYPE_EXTENDED:
 		break;
 
 	case FR_TYPE_UINT8:

@@ -171,10 +171,6 @@ void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 		name = "VSA";
 		break;
 
-	case FR_TYPE_EXTENDED:
-		name = "EXTENDED";
-		break;
-
 	case FR_TYPE_TLV:
 		name = "TLV";
 		break;

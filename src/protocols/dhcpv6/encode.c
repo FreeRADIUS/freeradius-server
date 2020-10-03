@@ -171,7 +171,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	switch (da->type) {
 	case FR_TYPE_TLV:
-	case FR_TYPE_EXTENDED:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
@@ -424,7 +423,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case FR_TYPE_INVALID:
-	case FR_TYPE_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_VSA:
