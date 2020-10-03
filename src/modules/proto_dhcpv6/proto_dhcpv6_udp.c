@@ -394,36 +394,34 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	proto_dhcpv6_track_t *track;
 	uint8_t const *option;
 	size_t track_size = sizeof(*track);
-	size_t option_len = 0;
+	size_t option_len;
 
-	if (packet[0] ==  FR_DHCPV6_RELAY_FORWARD) {
-		uint8_t const *relay;
-		uint8_t const *relay_options;
+	/*
+	 *	Relay packets can be nested to almost any depth.
+	 */
+	while (packet[0] ==  FR_DHCPV6_RELAY_FORWARD) {
+		if (packet_len < (2 + 32)) return NULL;
 
-		relay = fr_dhcpv6_option_find(packet, packet + packet_len, attr_relay_message->attr);
-		if (!relay) return NULL;
+		/*
+		 *	fr_dhcpv6_option_find() ensures that the
+		 *	option header and data are contained within
+		 *	the given packet.
+		 */
+		option = fr_dhcpv6_option_find(packet + 2 + 32, packet + packet_len, attr_relay_message->attr);
+		if (!option) return NULL;
 
-		option_len = (relay[2] << 8) | relay[3];
-		relay += 4;
+		option_len = (option[2] << 8) | option[3];
 
-		if (relay[0] == FR_DHCPV6_RELAY_FORWARD) {
-			relay_options = relay + 2 + 32;
-			if (option_len < (2 + 32)) return NULL;
-
-			option_len -= 2 + 32;
-		} else {
-			relay_options = relay + 4;
-
-			if (option_len < 4) return NULL;
-			option_len -= 4;
-		}
-
-		option = fr_dhcpv6_option_find(relay_options, relay + option_len, attr_client_id->attr);
-
-	} else {
-		option = fr_dhcpv6_option_find(packet, packet + packet_len, attr_client_id->attr);
+		packet = option + 4; /* skip option header */
+		packet_len = option_len;
 	}
 
+	if (packet_len <= 4) return NULL;
+
+	/*
+	 *	Search the packet options.
+	 */
+	option = fr_dhcpv6_option_find(packet + 4, packet + packet_len, attr_client_id->attr);
 	if (!option) return NULL;
 
 	option_len = (option[2] << 8) | option[3];
