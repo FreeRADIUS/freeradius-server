@@ -165,7 +165,8 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 	}
 }
 
-#define get16(_x) (((_x)[2] << 8) | (_x)[3])
+#define get_option_num(_x) (((_x)[0] << 8) | (_x)[1])
+#define get_option_len(_x) (((_x)[2] << 8) | (_x)[3])
 
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
 
@@ -182,7 +183,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 
 		if ((end - p) < 4) return -(p - packet);
 
-		len = get16(p);
+		len = get_option_len(p);
 		if ((end - p) < (4 + len)) return -(p - packet);
 
 		attributes++;
@@ -275,8 +276,8 @@ uint8_t const *fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, u
 
 		if ((end - p) < 4) return NULL;
 
-		found = get16(p);
-		len = get16(p + 2);
+		found = get_option_num(p);
+		len = get_option_len(p);
 
 		if ((p + 4 + len) > end) return NULL;
 
@@ -292,7 +293,7 @@ static bool duid_match(uint8_t const *option, fr_dhcpv6_decode_ctx_t const *pack
 {
 	uint16_t len;
 
-	len = get16(option);
+	len = get_option_len(option);
 	if (len != packet_ctx->duid_len) return false;
 	if (memcmp(option + 4, packet_ctx->duid, packet_ctx->duid_len) != 0) return false;
 
@@ -405,7 +406,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 			fr_strerror_printf("Packet does not contain a Relay-Message option");
 			return false;
 		}
-		return verify_to_client(option + 4, get16(option + 2), packet_ctx);
+		return verify_to_client(option + 4, get_option_len(option), packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_SOLICIT:
 	case FR_PACKET_TYPE_VALUE_REQUEST:
@@ -510,7 +511,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 			return false;
 		}
 
-		return verify_from_client(option + 4, get16(option + 2), packet_ctx);
+		return verify_from_client(option + 4, get_option_len(option), packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 	case FR_PACKET_TYPE_VALUE_REPLY:
