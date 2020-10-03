@@ -406,36 +406,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
-	case FR_TYPE_EXTENDED:
-		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
-			fr_strerror_printf("The 'extended' type can only be used in the RADIUS dictionary.");
-			return false;
-		}
-
-		if (attr && (!parent->flags.is_root || (*attr < 241))) {
-			fr_strerror_printf("Attributes of type 'extended' MUST be "
-					   "RFC attributes with value >= 241.");
-			return false;
-		}
-		break;
-
-	case FR_TYPE_VSA:
-		if (parent->flags.is_root) break;
-
-		if (parent->type == FR_TYPE_EXTENDED) {
-			if (*attr != 26) {
-				fr_strerror_printf("Attributes of type 'vsa' with parent of type 'extended' "
-						   "MUST have number 26, instead of '%d'", *attr);
-				return false;
-			}
-
-			break;
-		}
-
-		fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
-		return false;
-
 	case FR_TYPE_COMBO_IP_ADDR:
 		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
 			fr_strerror_printf("The 'combo-ip' type can only be used in the RADIUS dictionary.");

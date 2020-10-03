@@ -117,8 +117,6 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_TLV]			= {2, ~0},
 	[FR_TYPE_STRUCT]		= {1, ~0},
 
-	[FR_TYPE_EXTENDED]		= {2, ~0},
-
 	[FR_TYPE_VSA]			= {4, ~0},
 
 	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
@@ -1155,7 +1153,8 @@ void fr_radius_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("long"),			FLAG_LONG_EXTENDED_ATTR },
+	{ L("long-extended"),  		FLAG_LONG_EXTENDED_ATTR },
+	{ L("extended"),       		FLAG_EXTENDED_ATTR },
 	{ L("concat"),			FLAG_CONCAT },
 	{ L("has_tag"),			FLAG_HAS_TAG },
 	{ L("has_tag,encrypt=2"),	FLAG_TAGGED_TUNNEL_PASSWORD },
@@ -1181,7 +1180,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	if (parent->type == FR_TYPE_STRUCT) {
-		if (type == FR_TYPE_EXTENDED) {
+		if (flag_extended(flags)) {
 			fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
 			return false;
 		}
@@ -1260,9 +1259,9 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return true;
 	}
 
-	if (flag_long_extended(flags)) {
-		if (type != FR_TYPE_EXTENDED) {
-			fr_strerror_printf("The 'long' flag can only be used for attributes of type 'extended'");
+	if (flag_extended(flags)) {
+		if (type != FR_TYPE_TLV) {
+			fr_strerror_printf("The 'long' or 'extended' flag can only be used for attributes of type 'tlv'");
 			return false;
 		}
 
@@ -1311,25 +1310,6 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		return false;
-	}
-
-	/*
-	 *	The Tunnel-Password encryption method can be used anywhere.
-	 *
-	 *	We forbid User-Password and Ascend-Send-Secret
-	 *	methods in the extended space.
-	 */
-	if (!flag_tunnel_password(flags) && !flags->internal && !parent->flags.internal) {
-		fr_dict_attr_t const *v;
-
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == FR_TYPE_EXTENDED) {
-				fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
-						   "of type '%s'", flags->subtype,
-						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-				return false;
-			}
-		}
 	}
 
 	return true;

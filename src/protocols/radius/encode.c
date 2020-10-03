@@ -599,11 +599,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case FR_TYPE_INVALID:
-	case FR_TYPE_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_EXTENDED:
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
@@ -875,25 +875,15 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode the header for "short" or "long" attributes
 	 */
-	switch (attr_type) {
-	case FR_TYPE_EXTENDED:
-		FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, (size_t)(3 + extra));
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, (size_t)(3 + extra));
 
-		/*
-		 *	Encode which extended attribute it is.
-		 */
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+	/*
+	 *	Encode which extended attribute it is.
+	 */
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
-		if (extra) fr_dbuff_bytes_in(&work_dbuff, 0);	/* flags start off at zero */
-		break;
-
-	default:
-		fr_strerror_printf("%s : Called for non-extended attribute type %s",
-				   __FUNCTION__, fr_table_str_by_value(fr_value_box_type_table,
-				   da_stack->da[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
+	if (extra) fr_dbuff_bytes_in(&work_dbuff, 0);	/* flags start off at zero */
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -920,7 +910,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	 *	"outlen" can be larger than 255 here, but only for the
 	 *	"long" extended type.
 	 */
-	attr_dbuff = ((attr_type == FR_TYPE_EXTENDED) && !extra) ? &FR_DBUFF_MAX(&work_dbuff, 255) : &work_dbuff;
+	attr_dbuff = !extra ? &FR_DBUFF_MAX(&work_dbuff, 255) : &work_dbuff;
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
 		slen = encode_tlv_hdr_internal(attr_dbuff, da_stack, depth, cursor, encoder_ctx);
@@ -1303,7 +1293,6 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	switch (da_stack->da[depth]->type) {
-	case FR_TYPE_EXTENDED:
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
@@ -1470,7 +1459,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 
 	da = da_stack.da[0];
 	switch (da->type) {
-	default:
+	case FR_TYPE_OCTETS:
 		if (flag_concat(&da->flags)) {
 			/*
 			 *	Attributes like EAP-Message are marked as
@@ -1482,6 +1471,9 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 			if (len < 0) return len;
 			break;
 		}
+		FALL_THROUGH;
+
+	default:
 		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
 		if (len < 0) return len;
 		break;
@@ -1503,12 +1495,11 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 		break;
 
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
-		if (len < 0) return len;
-		break;
-
-	case FR_TYPE_EXTENDED:
-		len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		if (!flag_extended(&da->flags)) {
+			len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		} else {
+			len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, attr_len), &da_stack, 0, cursor, encoder_ctx);
+		}
 		if (len < 0) return len;
 		break;
 

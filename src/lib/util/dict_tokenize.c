@@ -2123,13 +2123,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 					goto error;
 				}
 
-				if (da->parent->type != FR_TYPE_EXTENDED) {
-					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
-								"Attribute '%s' should be parented from an attribute of type 'extended', but is '%s'", p,
-								fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-					goto error;
-				}
-
 				vsa_da = da;
 
 			} else if (!ctx->dict->vsa_parent) {

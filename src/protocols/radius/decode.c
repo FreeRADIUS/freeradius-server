@@ -1217,7 +1217,91 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		parent = child;	/* re-write it */
 		break;
 
-	case FR_TYPE_EXTENDED:
+	case FR_TYPE_VSA:
+		/*
+		 *	VSAs in the RFC space are encoded one way.
+		 *	VSAs in the "extended" space are different.
+		 */
+		if (!parent->parent || !flag_extended(&parent->parent->flags)) {
+			/*
+			 *	VSAs can be WiMAX, in which case they don't
+			 *	fit into one attribute.
+			 */
+			rcode = decode_vsa(ctx, cursor, dict, parent, p, attr_len, packet_len, decoder_ctx);
+			if (rcode < 0) goto raw;
+			return rcode;
+
+		} else {
+			fr_dict_attr_t const *vendor_child;
+
+			if (data_len < 6) goto raw; /* vid, vtype, value */
+
+			memcpy(&vendor, p, 4);
+			vendor = ntohl(vendor);
+
+			/*
+			 *	For simplicity in our attribute tree, vendors are
+			 *	represented as a subtlv(ish) of an EVS or VSA
+			 *	attribute.
+			 */
+			vendor_child = fr_dict_attr_child_by_num(parent, vendor);
+			if (!vendor_child) {
+				/*
+				 *	If there's no child, it means the vendor is unknown
+				 *	which means the child attribute is unknown too.
+				 *
+				 *	fr_dict_unknown_afrom_fields will do the right thing
+				 *	and create both an unknown vendor and an unknown
+				 *	attr.
+				 *
+				 *	This can be used later by the encoder to rebuild
+				 *	the attribute header.
+				 */
+				parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, vendor, p[4]);
+				p += 5;
+				data_len -= 5;
+				break;
+			}
+
+			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
+			if (!child) {
+				/*
+				 *	Vendor exists but child didn't, again
+				 *	fr_dict_unknown_afrom_fields will do the right thing
+				 *	and only create the unknown attr.
+				 */
+				parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, vendor, p[4]);
+				p += 5;
+				data_len -= 5;
+				break;
+			}
+
+			/*
+			 *	Everything was found in the dictionary, we can
+			 *	now recurse to decode the value.
+			 */
+			rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
+							    child, p + 5, attr_len - 5, attr_len - 5,
+							    decoder_ctx);
+			if (rcode < 0) goto raw;
+			return attr_len;
+		}
+
+	case FR_TYPE_TLV:
+		if (!flag_extended(&parent->flags)) {
+				/*
+				 *	We presume that the TLVs all fit into one
+				 *	attribute, OR they've already been grouped
+				 *	into a contiguous memory buffer.
+				 */
+				rcode = fr_radius_decode_tlv(ctx, cursor, dict, parent, p, attr_len, decoder_ctx);
+				if (rcode < 0) goto raw;
+				return attr_len;
+		}
+
+		/*
+		 *	Extended attributes
+		 */
 		min = 1 + extra;
 
 		/*
@@ -1294,82 +1378,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 						    p + min, attr_len - min, attr_len - min,
 						    decoder_ctx);
 		if (rcode < 0) return -1;
-		return attr_len;
-
-	case FR_TYPE_VSA:
-		if (!parent->parent || (parent->parent->type != FR_TYPE_EXTENDED)) {
-			/*
-			 *	VSAs can be WiMAX, in which case they don't
-			 *	fit into one attribute.
-			 */
-			rcode = decode_vsa(ctx, cursor, dict, parent, p, attr_len, packet_len, decoder_ctx);
-			if (rcode < 0) goto raw;
-			return rcode;
-
-		} else {
-			fr_dict_attr_t const *vendor_child;
-
-			if (data_len < 6) goto raw; /* vid, vtype, value */
-
-			memcpy(&vendor, p, 4);
-			vendor = ntohl(vendor);
-
-			/*
-			 *	For simplicity in our attribute tree, vendors are
-			 *	represented as a subtlv(ish) of an EVS or VSA
-			 *	attribute.
-			 */
-			vendor_child = fr_dict_attr_child_by_num(parent, vendor);
-			if (!vendor_child) {
-				/*
-				 *	If there's no child, it means the vendor is unknown
-				 *	which means the child attribute is unknown too.
-				 *
-				 *	fr_dict_unknown_afrom_fields will do the right thing
-				 *	and create both an unknown vendor and an unknown
-				 *	attr.
-				 *
-				 *	This can be used later by the encoder to rebuild
-				 *	the attribute header.
-				 */
-				parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, vendor, p[4]);
-				p += 5;
-				data_len -= 5;
-				break;
-			}
-
-			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
-			if (!child) {
-				/*
-				 *	Vendor exists but child didn't, again
-				 *	fr_dict_unknown_afrom_fields will do the right thing
-				 *	and only create the unknown attr.
-				 */
-				parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, vendor, p[4]);
-				p += 5;
-				data_len -= 5;
-				break;
-			}
-
-			/*
-			 *	Everything was found in the dictionary, we can
-			 *	now recurse to decode the value.
-			 */
-			rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
-							    child, p + 5, attr_len - 5, attr_len - 5,
-							    decoder_ctx);
-			if (rcode < 0) goto raw;
-			return attr_len;
-		}
-
-	case FR_TYPE_TLV:
-		/*
-		 *	We presume that the TLVs all fit into one
-		 *	attribute, OR they've already been grouped
-		 *	into a contiguous memory buffer.
-		 */
-		rcode = fr_radius_decode_tlv(ctx, cursor, dict, parent, p, attr_len, decoder_ctx);
-		if (rcode < 0) goto raw;
 		return attr_len;
 
 	case FR_TYPE_STRUCT:

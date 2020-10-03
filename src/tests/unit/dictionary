@@ -32,9 +32,9 @@ ATTRIBUTE	Unit-TLV-Delta-Sec	254.3		time_delta seconds
 #
 #  Copied here for simplicity
 #
-ATTRIBUTE	Extended-Attribute-1			241	extended
-ATTRIBUTE	Extended-Attribute-2			242	extended
-ATTRIBUTE	Extended-Attribute-5			245	extended long
+ATTRIBUTE	Extended-Attribute-1			241	tlv extended
+ATTRIBUTE	Extended-Attribute-2			242	tlv extended
+ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
 ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
 ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
 

@@ -85,6 +85,7 @@ typedef enum {
  */
 enum {
 	FLAG_NONE = 0,					//!< No extra flags
+	FLAG_EXTENDED_ATTR,	      			//!< the attribute is an extended attribute
 	FLAG_LONG_EXTENDED_ATTR,	      		//!< the attribute is a long extended attribute
 	FLAG_CONCAT,					//!< the attribute is concatenated
 	FLAG_HAS_TAG,					//!< the attribute has a tag
@@ -99,6 +100,7 @@ enum {
 #define flag_has_tag(_flags)	     (!(_flags)->extra && (((_flags)->subtype == FLAG_HAS_TAG) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 #define flag_concat(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_CONCAT)
 #define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_TAGGED_TUNNEL_PASSWORD)
+#define flag_extended(_flags)        (!(_flags)->extra && (((_flags)->subtype == FLAG_EXTENDED_ATTR) || (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR))
 #define flag_long_extended(_flags)   (!(_flags)->extra && (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR)
 #define flag_tunnel_password(_flags) (!(_flags)->extra && (((_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 
