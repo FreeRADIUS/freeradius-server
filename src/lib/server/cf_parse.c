@@ -122,7 +122,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
 
-	fr_ipaddr_t	*ipaddr;
 	ssize_t		slen;
 
 	int		type = rule->type;
@@ -364,7 +363,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t *ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
@@ -376,11 +376,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t *ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
@@ -392,64 +394,59 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_COMBO_IP_ADDR:
-		/*
-		 *	Allow casting to <ipv4addr> or <ipv6addr>, so that we
-		 *	don't need endless configuration options to do similar things.
-		 *
-		 *	This also makes our new "radclient" easier to write. :)
-		 */
-		if (cp->value && (*cp->value == '<')) {
-			int af;
-			size_t ip_outlen;
-			char const *ip_out, *error;
-			fr_dict_attr_t const *cast_da = NULL;
-			fr_token_t token;
-
-			slen = tmpl_preparse(&ip_out, &ip_outlen, cp->value, talloc_array_length(cp->value) - 1,
-					     &token, &error, &cast_da, false, false);
-			if (slen <= 0) {
-				cf_log_perr(cp, "Failed parsing config item");
-				rcode = -1;
-				goto error;
-			}
-
-			if (cast_da->type == FR_TYPE_IPV4_ADDR) {
-				af = AF_INET;
-				type = cast_da->type;
-
-			} else if (cast_da->type == FR_TYPE_IPV6_ADDR) {
-				af = AF_INET6;
-				type = cast_da->type;
-
-			} else {
-				cf_log_perr(cp, "Invalid cast, expecting 'ipv4addr' or 'ipv6addr'");
-				rcode = -1;
-				goto error;
-			}
-
-			ipaddr = out;
-
-			if (fr_inet_pton(ipaddr, ip_out, ip_outlen, af, true, true) < 0) {
-				cf_log_perr(cp, "Failed parsing config item");
-				rcode = -1;
-				goto error;
-			}
-			/* Also prints the IP to the log */
-			if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, ip_out, ipaddr) < 0) {
-				rcode = -1;
-				goto error;
-			}
-			break;
-		}
-		FALL_THROUGH;
-
 	case FR_TYPE_COMBO_IP_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t	*ipaddr = out;
+		int		af = AF_UNSPEC;
+		fr_type_t	our_type = FR_TYPE_INVALID;
+		fr_sbuff_t	sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
+		slen = tmpl_cast_from_substr(&our_type, &sbuff);
+		if (slen < 0) {
+			cf_log_perr(cp, "Failed parsing config item");
+			rcode = -1;
+			goto error;
+		}
+
+		if (slen > 0) {
+			if (type == FR_TYPE_COMBO_IP_ADDR) {
+				switch (our_type) {
+				case FR_TYPE_IPV4_ADDR:
+					af = AF_INET;
+					break;
+
+				case FR_TYPE_IPV6_ADDR:
+					af = AF_INET6;
+					break;
+
+				default:
+					cf_log_perr(cp, "Invalid cast, expecting 'ipv4addr' or 'ipv6addr'");
+					rcode = -1;
+					goto error;
+				}
+			} else if (type == FR_TYPE_COMBO_IP_PREFIX) {
+				switch (our_type) {
+				case FR_TYPE_IPV4_PREFIX:
+					af = AF_INET;
+					break;
+
+				case FR_TYPE_IPV6_PREFIX:
+					af = AF_INET6;
+					break;
+
+				default:
+					cf_log_perr(cp, "Invalid cast, expecting 'ipv4prefix' or 'ipv6prefix'");
+					rcode = -1;
+					goto error;
+				}
+			}
+		}
+
+		if (fr_inet_pton(ipaddr, cp->value, -1, af, true, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
@@ -459,6 +456,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_TIME_DELTA:
