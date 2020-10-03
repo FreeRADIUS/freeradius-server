@@ -96,12 +96,12 @@ ATTRIBUTE	slp-directory-agent			78	octets
 ATTRIBUTE	slp-service-scope			79	octets
 ATTRIBUTE	fqdn					81	octets array
 ATTRIBUTE	relay-agent-information			82	tlv
-ATTRIBUTE	agent.circuit-id			82.1	octets
-ATTRIBUTE	agent.remote-id				82.2	octets
-ATTRIBUTE	agent.agent-id				82.3	ipaddr
-ATTRIBUTE	agent.DOCSIS-device-class		82.4	integer
-ATTRIBUTE	agent.link-selection			82.5	ipaddr
-ATTRIBUTE	agent.relay-port			82.19	short
+ATTRIBUTE	circuit-id				82.1	octets
+ATTRIBUTE	remote-id				82.2	octets
+ATTRIBUTE	agent-id				82.3	ipaddr
+ATTRIBUTE	DOCSIS-device-class			82.4	integer
+ATTRIBUTE	link-selection				82.5	ipaddr
+ATTRIBUTE	relay-port				82.19	short
 ATTRIBUTE	nds-servers				85	ipaddr array
 ATTRIBUTE	nds-tree-name				86	string
 ATTRIBUTE	nds-context				87	string
