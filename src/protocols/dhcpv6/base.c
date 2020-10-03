@@ -860,7 +860,6 @@ void fr_dhcpv6_global_free(void)
 
 static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
 	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL },
 };
 
