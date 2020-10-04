@@ -229,8 +229,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	fr_assert(track->reply_len == 0);
-
 	/*
 	 *	Swap src/dst IP/port
 	 */
