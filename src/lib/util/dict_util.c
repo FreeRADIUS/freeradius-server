@@ -2907,7 +2907,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 	 */
 	if ((len > 5) && (memcmp(name, "Attr-", 5) == 0)) unknown = true;
 
-	do {
+	while (p < end) {
 		if ((*p == '.') && unknown) p++;
 
 		if (!fr_dict_attr_allowed_chars[(uint8_t)*p]) {
@@ -2917,7 +2917,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 			return -(p - name);
 		}
 		p++;
-	} while (p < end);
+	}
 
 	return len;
 }
