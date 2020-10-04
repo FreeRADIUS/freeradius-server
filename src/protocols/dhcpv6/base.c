@@ -168,9 +168,11 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 #define get_option_num(_x) (((_x)[0] << 8) | (_x)[1])
 #define get_option_len(_x) (((_x)[2] << 8) | (_x)[3])
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
+				     char const **error);
 
-static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes, bool allow_relay, int depth)
+static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes,
+				    bool allow_relay, int depth, char const **error)
 {
 	size_t attributes;
 	uint8_t const *p;
@@ -181,13 +183,22 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	while (p < end) {
 		uint16_t len;
 
-		if ((end - p) < 4) return -(p - packet);
+		if ((end - p) < 4) {
+			*error = "Not enough room for option header";
+			return -(p - packet);
+		}
 
 		len = get_option_len(p);
-		if ((end - p) < (4 + len)) return -(p - packet);
+		if ((end - p) < (4 + len)) {
+			*error = "Option length overflows the packet";
+			return -(p - packet);
+		}
 
 		attributes++;
-		if (attributes > (size_t) max_attributes) return -(p - packet);
+		if (attributes > (size_t) max_attributes) {
+			*error = "Too many attributes";
+			return -(p - packet);
+		}
 
 		/*
 		 *	Recurse into the Relay-Message attribute, but
@@ -199,7 +210,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 			/*
 			 *	Recurse to check the encapsulated packet.
 			 */
-			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1);
+			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1, error);
 			if (child <= 0) {
 				return -((p + 4) - packet) + child;
 			}
@@ -213,18 +224,25 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	return attributes;
 }
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth)
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
+				     char const **error)
 {
 	uint8_t const *p;
 	ssize_t attributes;
 	bool allow_relay;
 	size_t packet_len = end - packet;
 
-	if (depth > 8) return 0;
+	if (depth > 8) {
+		*error = "Too many layers forwarded packets";
+		return 0;
+	}
 
 	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
 	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
-		if (packet_len < 2 + 32) return 0;
+		if (packet_len < 2 + 32) {
+			*error = "Packet is too small for relay header";
+			return 0;
+		}
 
 		p = packet + 2 + 32;
 		allow_relay = true;
@@ -233,13 +251,16 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		/*
 		 *	8 bit code + 24 bits of transaction ID
 		 */
-		if (packet_len < 4) return 0;
+		if (packet_len < 4) {
+			*error = "Packet is too small for DHCPv6 header";
+			return 0;
+		}
 
 		p = packet + 4;
 		allow_relay = false;
 	}
 
-	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth);
+	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth, error);
 	if (attributes < 0) return -(p - packet) + attributes;
 
 	return attributes;
@@ -258,7 +279,14 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 		  uint32_t max_attributes)
 {
-	if (fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0) <= 0) return false;
+	ssize_t slen;
+	char const *error;
+
+	slen = fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0, &error);
+	if (slen <= 0) {
+		fr_strerror_printf("Invalid DHCPv6 packet starting at offset %zd - %s", -slen, error);
+		return false;
+	}
 
 	return true;
 }
