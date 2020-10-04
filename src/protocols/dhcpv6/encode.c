@@ -827,8 +827,10 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 
 	vp = fr_cursor_current(cursor);
 
-	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, FR_DHCPV6_RELAY_REPLY, vp->vp_group);
+	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, 0, vp->vp_group);
 	if (len <= 0) return -1;
+
+	fr_dbuff_advance(&work_dbuff, len);
 
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
@@ -836,7 +838,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done RFC header");
+	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done Relay-Message header");
 #endif
 
 	vp = fr_cursor_next(cursor);
