@@ -844,7 +844,6 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 				   fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	fr_type_t		attr_type;
 #ifndef NDEBUG
 	fr_type_t		vsa_type;
 	int			jump = 3;
@@ -863,7 +862,6 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	@fixme: check depth of stack
 	 */
-	attr_type = da_stack->da[0]->type;
 #ifndef NDEBUG
 	vsa_type = da_stack->da[1]->type;
 	if (fr_debug_lvl > 3) {
