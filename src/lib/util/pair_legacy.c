@@ -547,6 +547,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 		/*
+		 *	Check for nested groups.
+		 */
+		if ((depth > 0) && (p[0] == ' ') && (p[1] == '}')) p++;
+
+		/*
 		 *	Stop at '}', too, if we're inside of a group.
 		 */
 		if ((depth > 0) && (*p == '}')) {
@@ -555,7 +560,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 		if (*p != ',') {
-			fr_strerror_printf("Unexpected input");
+			fr_strerror_printf("Expected ',', got '%c' at offset %zu", *p, p - buffer);
 			goto error;
 		}
 		p++;
