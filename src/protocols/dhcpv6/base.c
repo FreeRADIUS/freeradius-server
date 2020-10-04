@@ -280,7 +280,7 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 		  uint32_t max_attributes)
 {
 	ssize_t slen;
-	char const *error;
+	char const *error = NULL;
 
 	slen = fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0, &error);
 	if (slen <= 0) {
