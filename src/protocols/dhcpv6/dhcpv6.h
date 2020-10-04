@@ -112,6 +112,8 @@ typedef struct CC_HINT(__packed__) {
 
 typedef struct {
 	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
+	uint8_t const		*original;			//!< original packet
+	size_t			original_length;		//!< length of the original packet
 } fr_dhcpv6_encode_ctx_t;
 
 typedef struct {
@@ -134,7 +136,7 @@ bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
 				 bool from_server);
 
-ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
 				 int msg_type, VALUE_PAIR *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,

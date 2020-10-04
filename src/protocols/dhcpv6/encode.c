@@ -727,7 +727,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	Copy in the 32bit PEN (Private Enterprise Number)
+(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);	 *	Copy in the 32bit PEN (Private Enterprise Number)
 	 */
 	fr_dbuff_advance(&work_dbuff, OPT_HDR_LEN);
 	fr_dbuff_in(&work_dbuff, dv->attr);
@@ -770,6 +770,77 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
 #endif
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+/** Encode a Relay-Message
+ *
+ *	Header + stuff
+ */
+static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
+				    fr_da_stack_t *da_stack, unsigned int depth,
+				    fr_cursor_t *cursor, void *encoder_ctx)
+{
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	ssize_t			len;
+	uint8_t const		*original = NULL;
+	size_t			original_length = 0;
+	VALUE_PAIR		*vp;
+	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	vp = fr_cursor_current(cursor);
+	if (!vp->vp_group) {
+		vp = fr_cursor_next(cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		return PAIR_ENCODE_SKIPPED;
+	}
+
+	/*
+	 *	Make space for the header...
+	 */
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, OPT_HDR_LEN);
+
+	/*
+	 *	Pass the original packet to the packet encode routine.
+	 */
+	if (packet_ctx->original) {
+		uint8_t const *options;
+
+		if (packet_ctx->original[0] == FR_DHCPV6_RELAY_FORWARD) {
+			options = packet_ctx->original + 2 + 32;
+		} else {
+			options = packet_ctx->original + 4;
+		}
+
+		original = fr_dhcpv6_option_find(options, packet_ctx->original + packet_ctx->original_length,
+						 attr_relay_message->attr);
+		if (original) {
+			original_length = (original[2] << 8) | original[3];
+			original += 4;
+		}
+	}
+
+	vp = fr_cursor_current(cursor);
+
+	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, FR_DHCPV6_RELAY_REPLY, vp->vp_group);
+	if (len <= 0) return -1;
+
+	/*
+	 *	Write out the option number and length (before the value we just wrote)
+	 */
+	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
+
+#ifndef NDEBUG
+	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done RFC header");
+#endif
+
+	vp = fr_cursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -830,6 +901,13 @@ static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * enco
 		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
 		break;
 
+	case FR_TYPE_GROUP:
+		if (da_stack.da[depth] == attr_relay_message) {
+			len = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+			break;
+		}
+		FALL_THROUGH;
+
 	default:
 		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
 		break;
@@ -870,7 +948,7 @@ static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, u
 {
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 
-	return fr_dhcpv6_encode(data, data_len, NULL, 0, vps);
+	return fr_dhcpv6_encode(data, data_len, NULL, 0, 0, vps);
 }
 
 /*

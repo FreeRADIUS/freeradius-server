@@ -739,7 +739,7 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 /** Encode a DHCPv6 packet
  *
  */
-ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
 			 int msg_type, VALUE_PAIR *vps)
 {
 	VALUE_PAIR *vp;
@@ -816,6 +816,9 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 encode_options:
 	packet_ctx.root = root;
+	packet_ctx.original = original;
+	packet_ctx.original_length = length;
+
 	end = packet + packet_len;
 
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, VALUE_PAIR);
