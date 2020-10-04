@@ -58,7 +58,6 @@ fr_dict_attr_t const *attr_relay_link_address;
 fr_dict_attr_t const *attr_relay_peer_address;
 fr_dict_attr_t const *attr_relay_message;
 
-
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
@@ -844,7 +843,94 @@ encode_options:
 	return p - packet;
 }
 
+/**  Bootstrap a reply from the request
+ *
+ *  We should arguably operate on VPs instead of raw packets.
+ *  However, that would prevent us from properly copying structures.
+ *
+ * @param[in] ctx	the context to use for allocations
+ * @param[out] reply	the reply attributes to create
+ * @param[in] packet	the input packet to check
+ * @param[in] packet_len the length of the input packet.
+ */
+int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t const *packet, size_t packet_len)
+{
+	uint8_t const		*option, *options, *end;
+	ssize_t			slen;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	fr_dhcpv6_decode_ctx_t	packet_ctx;
 
+	end = packet + packet_len;
+	fr_cursor_init(&cursor, reply);
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
+
+	/*
+	 *	For normal packets, echo the Client-Id back in the
+	 *	reply.  Note that the Client-Id attribute doesn't
+	 *	always need to exist
+	 */
+	if (packet[0] != FR_DHCPV6_RELAY_FORWARD) {
+		options = packet + 4;
+
+		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
+		if (!option) return 0;
+
+		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, option, end - option, &packet_ctx);
+		talloc_free(packet_ctx.tmp_ctx);
+		return slen;
+	}
+
+	/*
+	 *	Relay-Forward packets MAY include an Interface-ID.  In
+	 *	which case it MUST be echoed in the reply/
+	 */
+	options = packet + 2 + 32;
+	option = fr_dhcpv6_option_find(options, end, FR_INTERFACE_ID);
+	if (option) {
+		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, option, end - option, &packet_ctx);
+		if (slen <= 0) {
+			talloc_free(packet_ctx.tmp_ctx);
+			return slen;
+		}
+	}
+
+	/*
+	 *	The reply to a Relay-Forward is a Relay-Reply.
+	 *
+	 *	Since we call ourselves recursively, we have to add
+	 *	this to the reply now.  We can't rely on
+	 *	proto_dhcpv6_process() to do it for us.
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_packet_type);
+	if (!vp) goto fail;
+
+	vp->vp_uint32 = FR_DHCPV6_RELAY_REPLY;
+	fr_cursor_append(&cursor, vp);	
+
+	/*
+	 *	A Relay-Forward message MUST contain a Relay-Message
+	 */
+	option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
+	if (!option) goto fail;
+	
+	vp = fr_pair_afrom_da(ctx, attr_relay_message);
+	if (!vp) goto fail;
+
+	fr_cursor_append(&cursor, vp);	
+
+	/*
+	 *	Recurse to create the appropriate nested VPs.
+	 */
+	if (fr_dhcpv6_reply_initialize(vp, &vp->vp_group, option + 4, get_option_len(option)) < 0) {
+	fail:
+		talloc_free(packet_ctx.tmp_ctx);
+		return -1;
+	}
+
+	talloc_free(packet_ctx.tmp_ctx);
+	return 0;
+}
 
 int fr_dhcpv6_global_init(void)
 {
