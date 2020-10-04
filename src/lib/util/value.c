@@ -4194,18 +4194,6 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		fr_assert(name);
 
-		/*
-		 *	Check the name name is valid first before bothering
-		 *	to look it up.
-		 *
-		 *	Catches any embedded \0 bytes that might cause
-		 *	incorrect results.
-		 */
-		if (fr_dict_valid_name(name, name_len) <= 0) {
-			if (tmp) talloc_free(tmp);
-			goto parse;
-		}
-
 		enumv = fr_dict_enum_by_name(dst_enumv, name, name_len);
 		if (tmp) talloc_free(tmp);
 		if (!enumv) goto parse;
