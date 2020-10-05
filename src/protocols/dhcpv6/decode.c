@@ -626,6 +626,8 @@ static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 
 	if (!fr_dhcpv6_ok(data, packet_len, 200)) return -1;
 
+	*vps = NULL;
+
 	return fr_dhcpv6_decode(ctx, data, packet_len, vps);
 }
 
