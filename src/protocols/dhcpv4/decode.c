@@ -359,6 +359,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	ssize_t			len;
 	uint32_t		pen;
 	fr_dict_attr_t const	*da;
+	uint8_t const		*end;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
 
@@ -377,6 +378,9 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 		return decode_value(ctx, cursor, parent, data, data_len);
 	}
 
+	end = data + data_len;
+
+next:
 	memcpy(&pen, data, sizeof(pen));
 	pen = htonl(pen);
 
@@ -407,6 +411,9 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	 */
 	len = decode_tlv(ctx, cursor, da, data + 5, data[4]);
 	if (len <= 0) return len;
+
+	data += 5 + len;
+	if (data < end) goto next;
 
 	/*
 	 *	Tell the caller we read all of it, even if we didn't.
