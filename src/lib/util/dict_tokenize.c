@@ -2137,7 +2137,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				vsa_da = da;
 
 			} else if (!ctx->dict->vsa_parent) {
-				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s",
+				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
 							ctx->dict->root->name);
 				goto error;
 
