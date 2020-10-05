@@ -26,7 +26,7 @@ if (("%{Tmp-String-0[0]}" != 'boink') || ("%{Tmp-String-0[1]}" != 'foo') || ("%{
 	}
 }
 
-if ("%{Tmp-String-0[#]}" != 3)
+if ("%{Tmp-String-0[#]}" != 3) {
 	update reply {
 		Filter-Id += "fail 1a"
 	}
@@ -45,7 +45,7 @@ update {
 debug_request
 
 # The attributes should now be "wibble", "foo", "baz", "boink", "foo", "baz"
-if (("%{Tmp-String-0[0]}" != 'wibble') || ("%{Tmp-String-0[1]}" != 'foo') || ("%{Tmp-String-0[2]}" != 'baz') || ("%{Tmp-String-0[3]}" != 'boink') || ("%{Tmp-String-0[4]}" != 'foo') || ("%{Tmp-String-0[5]}" != 'baz'))
+if (("%{Tmp-String-0[0]}" != 'wibble') || ("%{Tmp-String-0[1]}" != 'foo') || ("%{Tmp-String-0[2]}" != 'baz') || ("%{Tmp-String-0[3]}" != 'boink') || ("%{Tmp-String-0[4]}" != 'foo') || ("%{Tmp-String-0[5]}" != 'baz')) {
 	update reply {
 		Filter-Id += "fail 2"
 	}
