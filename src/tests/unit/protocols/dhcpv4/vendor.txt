@@ -13,5 +13,8 @@ match Cisco-Indirect-Image-Filename = "aa.txt"
 decode-pair 7d 1a 00 00 00 09 08 05 06 61 61 2e 74 78 74 00 00 00 09 08 05 06 62 62 2e 74 78 74
 match Cisco-Indirect-Image-Filename = "aa.txt", Cisco-Indirect-Image-Filename = "bb.txt"
 
+encode-pair -
+match 7d 15 00 00 00 09 10 05 06 61 61 2e 74 78 74 05 06 62 62 2e 74 78 74
+
 count
-match 8
+match 10

@@ -392,11 +392,12 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
+	fr_dbuff_t		hdr_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
 	ssize_t			len;
+	VALUE_PAIR		*vp;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -452,23 +453,34 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *    +-+-+-+-+-+-+-+-+ option-data1  |
 	 *    /                               /
 	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
 	 */
 
-	/*
-	 *	Encode the different data types
-	 *
-	 *	@todo - encode all options which have the same parent vendor.
-	 */
-	if (da->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 4 - 1 - 2), da_stack, depth + 1, cursor, encoder_ctx);
-	} else {
+	da = da_stack->da[depth + 1];
+
+	while (true) {
 		/*
-		 *	Normal vendor option
+		 *	Encode the different data types
+		 *
+		 *	@todo - encode all options which have the same parent vendor.
 		 */
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 4 - 1 - 2), da_stack, depth + 1, cursor, encoder_ctx);
+		if (da->type == FR_TYPE_TLV) {
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		} else {
+			/*
+			 *	Normal vendor option
+			 */
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		}
+		if (len < 0) return len;
+
+		vp = fr_cursor_current(cursor);
+		if (!vp) break;
+
+		/*
+		 *	Encode all attributes which match this vendor.
+		 */
+		if (vp->da->parent != da->parent) break;
 	}
-	if (len < 0) return len;
 
 	hdr_dbuff.p[1] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN;
 	hdr_dbuff.p[6] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN - 4 - 1;
