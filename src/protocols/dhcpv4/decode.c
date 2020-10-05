@@ -404,11 +404,6 @@ next:
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	/*
-	 *	@todo - if data[4] < (datalen - 5), then the data
-	 *	after that is another PEN, followed by data-len2,
-	 *	followed by more TLVs.
-	 */
 	len = decode_tlv(ctx, cursor, da, data + 5, data[4]);
 	if (len <= 0) return len;
 
