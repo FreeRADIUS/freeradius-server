@@ -33,6 +33,8 @@ $INCLUDE dictionary.freeradius.internal
 # Fixme should be broken out into separate RFCs
 $INCLUDE dictionary.rfc2131
 
+$INCLUDE dictionary.adsl_forum
+$INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cisco
 
 END-PROTOCOL 	DHCPv4
