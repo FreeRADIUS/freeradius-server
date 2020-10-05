@@ -1,0 +1,12 @@
+0.0.0.0/0
+	Reply-Message := "default"
+
+10.1.0.0/16
+	Reply-Message := "10.1/16 subnet",
+	Fall-Through = yes
+
+10.0.0.0/8
+	Reply-Message := "10/8 subnet"
+
+10.1.0.0/16	Password.Cleartext == "hello"
+	Reply-Message := "2nd 10.1/16 subnet"
