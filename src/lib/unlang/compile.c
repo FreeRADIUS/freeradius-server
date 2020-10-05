@@ -2764,6 +2764,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const     		*server;
 	CONF_SECTION		*server_cs;
 	fr_dict_t const		*dict;
+	fr_dict_attr_t const	*attr_packet_type;
 
 	server = cf_section_name2(cs);
 	if (!server) {
@@ -2789,8 +2790,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	dict = virtual_server_namespace(server);
 	if (dict && (dict != fr_dict_internal()) && fr_dict_internal() &&
 	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
-		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s'",
+		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s' - they have incompatible protocols",
 			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		return NULL;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(dict, "Packet-Type");
+	if (!attr_packet_type) {
+		cf_log_err(cs, "Cannot call namespace '%s' - it has no Packet-Type attribute",
+			   fr_dict_root(dict)->name);
 		return NULL;
 	}
 
@@ -2803,6 +2811,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	g = unlang_generic_to_group(c);
 	g->server_cs = server_cs;
+	g->attr_packet_type = attr_packet_type;
 
 	return c;
 }
