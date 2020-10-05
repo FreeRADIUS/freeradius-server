@@ -409,11 +409,9 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	if (len <= 0) return len;
 
 	/*
-	 *	2 - option header 
-	 *	4 - PEN
-	 *	1 - data-len1
+	 *	Tell the caller we read all of it, even if we didn't.
 	 */
-	return 7 + len;
+	return data_len + 2;
 }
 
 /** Decode DHCP option
