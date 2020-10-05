@@ -63,7 +63,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill
 	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(eval OUT := $(patsubst %.conf,%.log,$@))
+	$(eval OUT := $(patsubst %.ok,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	${Q}if ! $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):";	\
@@ -76,6 +76,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		$(MAKE) test.eap.radiusd_kill;						\
 		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) METHOD=$(notdir $(patsubst %.conf,%,$<)) TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -n servers -d $(dir $<)config -D share/dictionary/ -lstdout -f";\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
+		echo "           log is in $(OUT)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
 		$(MAKE) --no-print-directory test.eap.radiusd_kill;			\
 		exit 1;\
