@@ -244,7 +244,7 @@ ATTRIBUTE	DHCP-GeoConf-Option			123	octets
 #
 ATTRIBUTE	DHCP-V-I-Vendor-Class			124	octets
 # Vendor-Specific
-ATTRIBUTE	DHCP-V-I-Vendor-Specific		125	octets # tlv
+ATTRIBUTE	DHCP-V-I-Vendor-Specific		125	vsa
 
 ATTRIBUTE	DHCP-Etherboot				128	ether
 # (for IP Phone software load)

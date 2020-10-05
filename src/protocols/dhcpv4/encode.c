@@ -386,6 +386,100 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+#define OPT_HDR_LEN (2)
+
+static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
+			       fr_da_stack_t *da_stack, unsigned int depth,
+			       fr_cursor_t *cursor, void *encoder_ctx)
+{
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	fr_dict_attr_t const	*dv;
+	ssize_t			len;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	/*
+	 *	DA should be a VSA type with the value of OPTION_VENDOR_OPTS.
+	 */
+	if (da->type != FR_TYPE_VSA) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	Check if we have enough for an option header plus the
+	 *	enterprise-number, plus the data length, plus at least
+	 *	one option header.
+	 */
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN + sizeof(uint32_t) + 3);
+
+	/*
+	 *	Now process the vendor ID part (which is one attribute deeper)
+	 */
+	dv = da_stack->da[++depth];
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	if (dv->type != FR_TYPE_VENDOR) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_table_str_by_value(fr_value_box_type_table, dv->type, "?Unknown?"));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	Copy in the 32bit PEN (Private Enterprise Number)
+	 *
+	 *	And leave room for data-len1
+	 */
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0);
+	fr_dbuff_in(&work_dbuff, dv->attr);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0);
+
+	/*
+	 *	https://tools.ietf.org/html/rfc3925#section-4
+	 *
+	 *                         1 1 1 1 1 1
+	 *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *    |  option-code  |  option-len   |
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *    |      enterprise-number1       |
+	 *    |                               |
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *    |   data-len1   |               |
+	 *    +-+-+-+-+-+-+-+-+ option-data1  |
+	 *    /                               /
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+	 */
+
+	/*
+	 *	Encode the different data types
+	 *
+	 *	@todo - encode all options which have the same parent vendor.
+	 */
+	if (da->type == FR_TYPE_TLV) {
+		len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 4 - 1 - 2), da_stack, depth + 1, cursor, encoder_ctx);
+	} else {
+		/*
+		 *	Normal vendor option
+		 */
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 4 - 1 - 2), da_stack, depth + 1, cursor, encoder_ctx);
+	}
+	if (len < 0) return len;
+
+	hdr_dbuff.p[1] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN;
+	hdr_dbuff.p[6] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN - 4 - 1;
+
+#ifndef NDEBUG
+	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
+#endif
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 /** Encode a DHCP option and any sub-options.
  *
  * @param[out] out		Where to write encoded DHCP attributes.
@@ -430,6 +524,10 @@ static ssize_t encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void 
 	 *	We only have two types of options in DHCPv4
 	 */
 	switch (da_stack.da[depth]->type) {
+	case FR_TYPE_VSA:
+		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		break;
+
 	case FR_TYPE_TLV:
 		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
 		break;
