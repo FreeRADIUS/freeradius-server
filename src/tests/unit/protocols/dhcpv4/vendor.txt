@@ -16,5 +16,8 @@ match Cisco-Indirect-Image-Filename = "aa.txt", Cisco-Indirect-Image-Filename = 
 encode-pair -
 match 7d 15 00 00 00 09 10 05 06 61 61 2e 74 78 74 05 06 62 62 2e 74 78 74
 
+encode-pair ADSL-Manufacturer-OUI = 0x01, ADSL-Device-Serial-Number = 0x02, ADSL-Device-Product-Class = 0x03
+match 7d 0e 00 00 0d e9 09 01 01 01 02 01 02 03 01 03
+
 count
-match 10
+match 12
