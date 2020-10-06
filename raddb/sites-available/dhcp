@@ -205,6 +205,9 @@ dhcp DHCP-Discover {
 	#
 	#  Set any subnet-specific parameters using this policy.
 	#
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this.
+	#
 	#dhcp_subnet
 
 	#  Use a "passwd" module to determine group membership
@@ -277,7 +280,8 @@ dhcp DHCP-Request {
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
-	#  Enable mods-available/dhcp_files to use this
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
@@ -387,7 +391,8 @@ dhcp DHCP-Inform {
 
 	#  Use a policy with calls a "files" module of the same name to lookup
 	#  subnet options
-	#  Enable mods-available/dhcp_files to use this
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_subnet
 
