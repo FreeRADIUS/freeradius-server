@@ -2854,8 +2854,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type != FR_TYPE_INVALID)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 	if (!fr_cond_assert(src != dst)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
 	if (fr_dict_non_data_types[dst_type]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
