@@ -87,6 +87,7 @@ fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
 	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_state, .name = "TACACS-State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -335,32 +336,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
-{
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-
-	fr_assert(process_app_cs);
-	fr_assert(listen_cs);
-
-	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	if (!attr_tacacs_state) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		flags.internal = true;
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_tacacs), fr_dict_root(dict_tacacs),
-				     "TACACS-State", -1, FR_TYPE_OCTETS, &flags) < 0) {
-			cf_log_err(listen_cs, "Failed creating TACACS-State: %s", fr_strerror());
-			return -1;
-		}
-
-		attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	}
-
-	return 0;
-}
-
 static virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
@@ -392,7 +367,6 @@ fr_app_worker_t proto_tacacs_acct = {
 	.config		= proto_tacacs_acct_config,
 	.inst_size	= sizeof(proto_tacacs_acct_t),
 
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 	.compile_list	= compile_list,
