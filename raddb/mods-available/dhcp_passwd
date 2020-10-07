@@ -13,7 +13,7 @@
 
 passwd dhcp_group_membership {
 	filename = "${modconfdir}/files/dhcp_groups"
-	format = "DHCP-Group-Name:*,DHCP-Client-Hardware-Address"
+	format = "~DHCP-Group-Name:*,DHCP-Client-Hardware-Address"
 	hash_size = 100
 	allow_multiple_keys = yes
 	delimiter = "|"

@@ -16,7 +16,7 @@ dhcp_common {
 #  of multiple groups so can cover the ISC concepts of "group" and "class"
 #  To use this enable the "dhcp_files" module
 #dhcp_group_options {
-#	foreach &control:DHCP-Group-Name {
+#	foreach &request:DHCP-Group-Name {
 #		dhcp_set_group_options
 #	}
 #}
