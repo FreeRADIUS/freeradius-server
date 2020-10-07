@@ -1,0 +1,376 @@
+#
+# PRE: update
+#
+#  Check substring xlat works correctly
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tmp-String-0      := 'foo bar'
+	Tmp-Integer-0     := 54786512
+	Tmp-IP-Address-0  := 192.168.56.34
+	Tmp-Cast-Ethernet := 01:23:45:67:89:ab
+}
+
+update request {
+	Tmp-String-1 := "%{substring:&Tmp-String-0 2 3}"
+	Tmp-String-2 := "%{substring:&Tmp-String-0 -3 2}"
+	Tmp-String-3 := "%{substring:&Tmp-String-0 1 -3}"
+	Tmp-String-4 := "%{substring:&Tmp-String-0 -4 -1}"
+	Tmp-String-5 := "%{substring:&Tmp-String-0 8 5}"
+	Tmp-String-6 := "%{substring:&Tmp-String-0 4 -10}"
+	Tmp-String-7 := "%{substring:&Tmp-String-0 0 7}"
+	Tmp-String-8 := "%{substring:&Tmp-String-0 3 0}"
+}
+
+if (Tmp-String-1 != 'o b') {
+	update reply {
+		Filter-Id += 'fail 0.1'
+	}
+}
+
+if (Tmp-String-2 != 'ba') {
+	update reply {
+		Filter-Id += 'fail 0.2'
+	}
+}
+
+if (Tmp-String-3 != 'oo ') {
+	update reply {
+		Filter-Id += 'fail 0.3'
+	}
+}
+
+if (Tmp-String-4 != ' ba') {
+	update reply {
+		Filter-Id += 'fail 0.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 0.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 0.6'
+	}
+}
+
+if (Tmp-String-7 != 'foo bar') {
+	update reply {
+		Filter-Id += 'fail 0.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 0.8'
+	}
+}
+
+update request {
+	Tmp-String-0      := ' foo bar '
+}
+
+update request {
+	Tmp-String-1 := "%{substring: &Tmp-String-0 2 3}"
+	Tmp-String-2 := "%{substring:&Tmp-String-0 -3 2}"
+	Tmp-String-3 := "%{substring:&Tmp-String-0 1 -3}"
+	Tmp-String-4 := "%{substring:&Tmp-String-0 -4 -1}"
+	Tmp-String-5 := "%{substring:&Tmp-String-0 10 5}"
+	Tmp-String-6 := "%{substring:&Tmp-String-0 4 -10}"
+	Tmp-String-7 := "%{substring:&Tmp-String-0 0 9}"
+	Tmp-String-8 := "%{substring:&Tmp-String-0 3 0}"
+}
+
+if (Tmp-String-1 != 'oo ') {
+	update reply {
+		Filter-Id += 'fail 1.1'
+	}
+}
+
+if (Tmp-String-2 != 'ar') {
+	update reply {
+		Filter-Id += 'fail 1.2'
+	}
+}
+
+if (Tmp-String-3 != 'foo b') {
+	update reply {
+		Filter-Id += 'fail 1.3'
+	}
+}
+
+if (Tmp-String-4 != 'bar') {
+	update reply {
+		Filter-Id += 'fail 1.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 1.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 1.6'
+	}
+}
+
+if (Tmp-String-7 != ' foo bar ') {
+	update reply {
+		Filter-Id += 'fail 1.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 1.8'
+	}
+}
+
+update request {
+	Tmp-String-1 := "%{substring:&Tmp-Integer-0 2 3}"
+	Tmp-String-2 := "%{substring:&Tmp-Integer-0 -3 2}"
+	Tmp-String-3 := "%{substring:&Tmp-Integer-0 1 -3}"
+	Tmp-String-4 := "%{substring:&Tmp-Integer-0 -4 -1}"
+	Tmp-String-5 := "%{substring:&Tmp-Integer-0 8 5}"
+	Tmp-String-6 := "%{substring:&Tmp-Integer-0 4 -10}"
+	Tmp-String-7 := "%{substring:&Tmp-Integer-0 0 8}"
+	Tmp-String-8 := "%{substring:&Tmp-Integer-0 5 0}"
+}
+
+if (Tmp-String-1 != '786') {
+	update reply {
+		Filter-Id += 'fail 2.1'
+	}
+}
+
+if (Tmp-String-2 != '51') {
+	update reply {
+		Filter-Id += 'fail 2.2'
+	}
+}
+
+if (Tmp-String-3 != '4786') {
+	update reply {
+		Filter-Id += 'fail 2.3'
+	}
+}
+
+if (Tmp-String-4 != '651') {
+	update reply {
+		Filter-Id += 'fail 2.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 2.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 2.6'
+	}
+}
+
+if (Tmp-String-7 != '54786512') {
+	update reply {
+		Filter-Id += 'fail 2.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 2.8'
+	}
+}
+
+update request {
+	Tmp-String-1 := "%{substring:&Tmp-IP-Address-0 2 3}"
+	Tmp-String-2 := "%{substring:&Tmp-IP-Address-0 -3 2}"
+	Tmp-String-3 := "%{substring:&Tmp-IP-Address-0 1 -3}"
+	Tmp-String-4 := "%{substring:&Tmp-IP-Address-0 -4 -1}"
+	Tmp-String-5 := "%{substring:&Tmp-IP-Address-0 15 5}"
+	Tmp-String-6 := "%{substring:&Tmp-IP-Address-0 4 -20}"
+	Tmp-String-7 := "%{substring:&Tmp-IP-Address-0 0 13}"
+	Tmp-String-8 := "%{substring:&Tmp-IP-Address-0 6 0}"
+}
+
+if (Tmp-String-1 != '2.1') {
+	update reply {
+		Filter-Id += 'fail 3.1'
+	}
+}
+
+if (Tmp-String-2 != '.3') {
+	update reply {
+		Filter-Id += 'fail 3.2'
+	}
+}
+
+if (Tmp-String-3 != '92.168.56') {
+	update reply {
+		Filter-Id += 'fail 3.3'
+	}
+}
+
+if (Tmp-String-4 != '6.3') {
+	update reply {
+		Filter-Id += 'fail 3.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 3.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 3.6'
+	}
+}
+
+if (Tmp-String-7 != '192.168.56.34') {
+	update reply {
+		Filter-Id += 'fail 3.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 3.8'
+	}
+}
+
+update request {
+	Tmp-String-1 := "%{substring:&Tmp-Cast-Ethernet 2 3}"
+	Tmp-String-2 := "%{substring:&Tmp-Cast-Ethernet -3 2}"
+	Tmp-String-3 := "%{substring:&Tmp-Cast-Ethernet 1 -3}"
+	Tmp-String-4 := "%{substring:&Tmp-Cast-Ethernet -4 -1}"
+	Tmp-String-5 := "%{substring:&Tmp-Cast-Ethernet 20 5}"
+	Tmp-String-6 := "%{substring:&Tmp-Cast-Ethernet 4 -20}"
+	Tmp-String-7 := "%{substring:&Tmp-Cast-Ethernet 0 17}"
+	Tmp-String-8 := "%{substring:&Tmp-Cast-Ethernet 8 0}"
+}
+
+if (Tmp-String-1 != ':23') {
+	update reply {
+		Filter-Id += 'fail 4.1'
+	}
+}
+
+if (Tmp-String-2 != ':a') {
+	update reply {
+		Filter-Id += 'fail 4.2'
+	}
+}
+
+if (Tmp-String-3 != '1:23:45:67:89') {
+	update reply {
+		Filter-Id += 'fail 4.3'
+	}
+}
+
+if (Tmp-String-4 != '9:a') {
+	update reply {
+		Filter-Id += 'fail 4.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 4.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 4.6'
+	}
+}
+
+if (Tmp-String-7 != '01:23:45:67:89:ab') {
+	update reply {
+		Filter-Id += 'fail 4.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 4.8'
+	}
+}
+
+update request {
+	Tmp-String-1 := "%{substring:foo bar 2 3}"
+	Tmp-String-2 := "%{substring:foo bar -3 2}"
+	Tmp-String-3 := "%{substring:foo bar 1 -3}"
+	Tmp-String-4 := "%{substring:foo bar -4 -1}"
+	Tmp-String-5 := "%{substring:foo bar 8 5}"
+	Tmp-String-6 := "%{substring:foo bar 4 -10}"
+	Tmp-String-7 := "%{substring: foo bar  0 9}"
+	Tmp-String-8 := "%{substring: foo bar  5 0}"
+}
+
+debug_request
+
+if (Tmp-String-1 != 'o b') {
+	update reply {
+		Filter-Id += 'fail 5.1'
+	}
+}
+
+if (Tmp-String-2 != 'ba') {
+	update reply {
+		Filter-Id += 'fail 5.2'
+	}
+}
+
+if (Tmp-String-3 != 'oo ') {
+	update reply {
+		Filter-Id += 'fail 5.3'
+	}
+}
+
+if (Tmp-String-4 != ' ba') {
+	update reply {
+		Filter-Id += 'fail 5.4'
+	}
+}
+
+if (Tmp-String-5 != '') {
+	update reply {
+		Filter-Id += 'fail 5.5'
+	}
+}
+
+if (Tmp-String-6 != '') {
+	update reply {
+		Filter-Id += 'fail 5.6'
+	}
+}
+
+if (Tmp-String-7 != ' foo bar ') {
+	update reply {
+		Filter-Id += 'fail 5.7'
+	}
+}
+
+if (Tmp-String-8 != '') {
+	update reply {
+		Filter-Id += 'fail 5.8'
+	}
+}
