@@ -50,6 +50,10 @@ extern "C" {
 #  define LIST_VERIFY(_x)
 #endif
 
+#define request_list	packet->vps
+#define	reply_list	reply->vps
+#define control_list	control
+
 /** The type of value a VALUE_PAIR contains
  *
  * This is used to add structure to nested VALUE_PAIRs and specifies what type of node it is (set, list, data).
