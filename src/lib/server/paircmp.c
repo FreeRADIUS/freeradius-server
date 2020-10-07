@@ -129,8 +129,8 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 
 	if (!request) return -1;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name);
-	if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_stripped_user_name);
+	if (!username) username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) return -1;
 
 	VP_VERIFY(check);

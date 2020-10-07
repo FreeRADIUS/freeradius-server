@@ -176,7 +176,7 @@ int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
 	} ptr;
 	ptr.to_info = NULL;
 
-	fr_cursor_init(&list, &request->packet->vps);
+	fr_cursor_init(&list, &request->request_pairs);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {

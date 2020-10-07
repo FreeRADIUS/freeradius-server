@@ -63,7 +63,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+			log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 		}
 
 		request->component = "radius";

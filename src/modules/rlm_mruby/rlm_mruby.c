@@ -405,7 +405,7 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 
 	mruby_request = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
 	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
-	mruby_set_vps(request, mrb, mruby_request, "@request", &request->packet->vps);
+	mruby_set_vps(request, mrb, mruby_request, "@request", &request->request_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state);

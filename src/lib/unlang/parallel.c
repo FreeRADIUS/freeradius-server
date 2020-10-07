@@ -113,7 +113,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 				 */
 				if ((fr_pair_list_copy(child->packet,
 						       &child->packet->vps,
-						       request->packet->vps) < 0) ||
+						       request->request_pairs) < 0) ||
 				    (fr_pair_list_copy(child->reply,
 						       &child->reply->vps,
 						       request->reply_pairs) < 0) ||

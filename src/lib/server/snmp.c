@@ -932,8 +932,8 @@ int fr_snmp_process(REQUEST *request)
 
 	VALUE_PAIR		*op;
 
-	fr_cursor_init(&request_cursor, &request->packet->vps);
-	fr_cursor_iter_by_da_init(&op_cursor, &request->packet->vps, attr_snmp_operation);
+	fr_cursor_init(&request_cursor, &request->request_pairs);
+	fr_cursor_iter_by_da_init(&op_cursor, &request->request_pairs, attr_snmp_operation);
 	fr_cursor_init(&reply_cursor, &request->reply_pairs);
 	fr_cursor_init(&out_cursor, &head);
 
@@ -979,7 +979,7 @@ int fr_snmp_process(REQUEST *request)
 		vp->da = da;
 	}
 
-	for (vp = fr_cursor_iter_by_ancestor_init(&request_cursor, &request->packet->vps, attr_snmp_root);
+	for (vp = fr_cursor_iter_by_ancestor_init(&request_cursor, &request->request_pairs, attr_snmp_root);
 	     vp;
 	     vp = fr_cursor_next(&request_cursor)) {
 		fr_proto_da_stack_build(&da_stack, vp->da);

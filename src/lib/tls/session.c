@@ -1840,7 +1840,7 @@ fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	 *	just too much.
 	 */
 	session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_da(request->packet->vps, attr_framed_mtu);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_framed_mtu);
 	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < session->mtu)) {
 		RDEBUG2("Setting fragment_len to %u from &Framed-MTU", vp->vp_uint32);
 		session->mtu = vp->vp_uint32;

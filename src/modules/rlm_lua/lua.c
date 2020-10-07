@@ -326,7 +326,7 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, da);
+	fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, da);
 
 	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
 		vp = fr_cursor_next(&cursor);
@@ -375,7 +375,7 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, da);
+	fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, da);
 
 	for (index = lua_tointeger(L, -2); index >= 0; index--) {
 		vp = fr_cursor_next(&cursor);
@@ -457,7 +457,7 @@ static int _lua_pair_iterator_init(lua_State *L)
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_iter_by_da_init(cursor, &request->packet->vps, da);	/* @FIXME: Shouldn't use list head */
+	fr_cursor_iter_by_da_init(cursor, &request->request_pairs, da);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushcclosure(L, _lua_pair_iterator, 1);
 
@@ -505,7 +505,7 @@ static int _lua_list_iterator_init(lua_State *L)
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
+	fr_cursor_init(cursor, &request->request_pairs);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
@@ -545,7 +545,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 	 *	for v in request[User-Name].pairs() do
 	 */
 	lua_newtable(L);
-	lua_pushlightuserdata(L, request->packet->vps);
+	lua_pushlightuserdata(L, request->request_pairs);
 	lua_pushlightuserdata(L, up);
 	lua_pushcclosure(L, _lua_pair_iterator_init, 2);
 	lua_setfield(L, -2, "pairs");
@@ -717,8 +717,8 @@ static void _lua_fr_request_register(lua_State *L, REQUEST *request)
 		fr_cursor_t 	cursor;
 
 		/* Attribute list table */
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da);
-		fr_cursor_init(&cursor, &request->packet->vps);
+		fr_pair_list_sort(&request->request_pairs, fr_pair_cmp_by_da);
+		fr_cursor_init(&cursor, &request->request_pairs);
 
 		/*
 		 *	Setup the environment

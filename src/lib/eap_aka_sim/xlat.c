@@ -488,7 +488,7 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	} else if ((id_len >= AKA_SIM_IMSI_MIN_LEN) && (id_len <= AKA_SIM_IMSI_MAX_LEN)) {
 		VALUE_PAIR *eap_type;
 
-		eap_type = fr_pair_find_by_da(request->packet->vps, attr_eap_type);
+		eap_type = fr_pair_find_by_da(request->request_pairs, attr_eap_type);
 		if (!eap_type) {
 			REDEBUG("SIM ID does not contain method hint, and no &control.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");

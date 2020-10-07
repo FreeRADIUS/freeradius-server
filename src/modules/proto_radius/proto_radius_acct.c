@@ -62,7 +62,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+			log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 		}
 
 		request->component = "radius";
@@ -119,7 +119,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		/*
 		 *	Run accounting foo { ... }
 		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
 		if (!vp) goto setup_send;
 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);

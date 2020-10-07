@@ -279,7 +279,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 */
 	if (fr_tacacs_decode(request->packet, request->packet->data, request->packet->data_len,
 			     NULL, client->secret, talloc_array_length(client->secret) - 1,
-			     &request->packet->vps) < 0) {
+			     &request->request_pairs) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -316,7 +316,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 		fr_assert(client->dynamic);
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp != NULL;
 		     vp = fr_cursor_next(&cursor)) {
 			if (!vp->da->flags.subtype) {
@@ -357,7 +357,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 
 		/*
 		 *	Maybe the shared secret is wrong?
@@ -365,7 +365,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		if (client->active &&
 		    ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
 		    RDEBUG_ENABLED2 &&
-		    ((vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_user_name)) != NULL) &&
+		    ((vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_user_name)) != NULL) &&
 		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
 			RWDEBUG("Unprintable characters in the %s. "
 				"Double-check the shared secret on the server "

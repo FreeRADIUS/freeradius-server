@@ -2496,7 +2496,7 @@ static rlm_rcode_t common_reauthentication_response_process(module_ctx_t const *
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*mac, *checkcode;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
@@ -2614,7 +2614,7 @@ static rlm_rcode_t aka_challenge_response_process(module_ctx_t const *mctx,
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*vp = NULL, *mac, *checkcode;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
@@ -2743,7 +2743,7 @@ static rlm_rcode_t sim_challenge_response_process(module_ctx_t const *mctx,
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*mac;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	memcpy(p, eap_aka_sim_session->keys.gsm.vector[0].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE);
 	p += AKA_SIM_VECTOR_GSM_SRES_SIZE;
@@ -2823,7 +2823,7 @@ static rlm_rcode_t aka_identity_response_process(module_ctx_t const *mctx,
 									     eap_aka_sim_session_t);
 	bool			user_set_id_req;
 	VALUE_PAIR		*identity_type;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 	/*
 	 *	Digest the identity response
 	 */
@@ -3004,7 +3004,7 @@ static rlm_rcode_t sim_start_response_process(module_ctx_t const *mctx,
 	bool			user_set_id_req;
 	VALUE_PAIR		*identity_type;
 
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	/*
 	 *	See if the user wants us to request another
@@ -3335,7 +3335,7 @@ static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
 
 	int			ret;
 
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	fr_cursor_tail(&cursor);
 
 	ret = fr_aka_sim_decode(request,
@@ -3937,7 +3937,7 @@ static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST 
 										     eap_aka_sim_session_t);
 	VALUE_PAIR			*eap_type, *method, *identity_type;
 	fr_aka_sim_method_hint_t	running, hinted;
-	VALUE_PAIR			*from_peer = request->packet->vps;
+	VALUE_PAIR			*from_peer = request->request_pairs;
 
 	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 

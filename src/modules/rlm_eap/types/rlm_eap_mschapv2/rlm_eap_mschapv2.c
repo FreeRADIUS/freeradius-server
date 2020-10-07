@@ -521,7 +521,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 			}
 
 			RDEBUG2("Built change password packet");
-			log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, request->request_pairs, NULL);
 
 			/*
 			 * jump to "authentication"
@@ -720,7 +720,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name)) != NULL) &&
+		    ((auth_challenge = fr_pair_find_by_da(request->request_pairs, attr_user_name)) != NULL) &&
 		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.

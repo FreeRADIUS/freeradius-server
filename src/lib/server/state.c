@@ -558,7 +558,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	fr_state_entry_t	*entry;
 	VALUE_PAIR		*vp;
 
-	vp = fr_pair_find_by_da(request->packet->vps, state->da);
+	vp = fr_pair_find_by_da(request->request_pairs, state->da);
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
@@ -614,7 +614,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	/*
 	 *	No State, don't do anything.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, state->da);
+	vp = fr_pair_find_by_da(request->request_pairs, state->da);
 	if (!vp) {
 		RDEBUG3("No &request.State attribute, can't restore &session-state");
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
@@ -685,7 +685,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state.");
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, state->da);
+	vp = fr_pair_find_by_da(request->request_pairs, state->da);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	if (vp) old = state_entry_find(state, request, &vp->data);

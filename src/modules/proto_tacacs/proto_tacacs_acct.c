@@ -151,7 +151,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			vp = fr_pair_afrom_da(request->packet, attr_tacacs_state);
 			if (vp) {
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
-				fr_pair_add(&request->packet->vps, vp);
+				fr_pair_add(&request->request_pairs, vp);
 			}
 
 			fr_state_to_request(inst->state_tree, request);
@@ -195,7 +195,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Run accounting foo { ... }
 		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_accounting_flags);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_accounting_flags);
 		if (!vp) goto setup_send;
 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);

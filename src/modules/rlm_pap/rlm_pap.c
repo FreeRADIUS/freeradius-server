@@ -131,7 +131,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		return RLM_MODULE_NOOP;
 	}
 
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 	if (!password) {
 		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
 		return RLM_MODULE_NOOP;
@@ -854,7 +854,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;
 
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 	if (!password) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;

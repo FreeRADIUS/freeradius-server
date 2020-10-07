@@ -190,7 +190,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 
 	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {

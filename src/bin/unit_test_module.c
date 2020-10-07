@@ -192,7 +192,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->packet->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
 		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
@@ -213,7 +213,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->dst_port = 1812;
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
@@ -250,7 +250,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	}
 
 	if (fr_debug_lvl) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			/*
@@ -547,7 +547,7 @@ static REQUEST *request_clone(REQUEST *old)
 	if (!request->reply) request->reply = fr_radius_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->packet->vps, old->packet->vps);
+	(void) fr_pair_list_copy(request->packet, &request->request_pairs, old->packet->vps);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 

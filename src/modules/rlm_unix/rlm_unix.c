@@ -112,7 +112,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 	/*
 	 *	No user name, can't compare.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) return -1;
 
 	if (rad_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
@@ -202,7 +202,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) return RLM_MODULE_NOOP;
 
 	name = username->vp_strvalue;
@@ -373,7 +373,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) == NULL) {
 		RDEBUG2("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
@@ -390,7 +390,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (fr_pair_find_by_da(request->packet->vps, attr_user_name) == NULL)
+	if (fr_pair_find_by_da(request->request_pairs, attr_user_name) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = fr_time_to_sec(request->packet->timestamp);
@@ -399,7 +399,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da == attr_user_name) {

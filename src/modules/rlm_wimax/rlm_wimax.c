@@ -123,7 +123,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_calling_station_id);
 	if (vp && (vp->vp_length == 6)) {
 		int	i;
 		char	*p;
@@ -248,7 +248,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = fr_pair_find_by_da(request->packet->vps, attr_wimax_mn_nai);
+	mn_nai = fr_pair_find_by_da(request->request_pairs, attr_wimax_mn_nai);
 	if (!mn_nai) mn_nai = fr_pair_find_by_da(request->reply_pairs, attr_wimax_mn_nai);
 	if (!mn_nai) {
 		RWDEBUG("%s was not found in the request or in the reply", attr_wimax_mn_nai->name);
@@ -402,7 +402,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *
 	 *	WiMAX-RRQ-MN-HA-SPI
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_rrq_mn_ha_spi);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_wimax_rrq_mn_ha_spi);
 	if (vp) {
 		REDEBUG2("Client requested MN-HA key: Should use SPI to look up key from storage");
 		if (!mn_nai) {
@@ -412,14 +412,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		/*
 		 *	WiMAX-RRQ-HA-IP
 		 */
-		if (!fr_pair_find_by_da(request->packet->vps, attr_wimax_rrq_ha_ip)) {
+		if (!fr_pair_find_by_da(request->request_pairs, attr_wimax_rrq_ha_ip)) {
 			RWDEBUG("HA-IP was not found!");
 		}
 
 		/*
 		 *	WiMAX-HA-RK-Key-Requested
 		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_ha_rk_key_requested);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_wimax_ha_rk_key_requested);
 		if (vp && (vp->vp_uint32 == 1)) {
 			REDEBUG2("Client requested HA-RK: Should use IP to look it up from storage");
 		}

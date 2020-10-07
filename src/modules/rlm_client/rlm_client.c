@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->src_port != 0) || (request->packet->vps != NULL) ||
+	if ((request->packet->src_port != 0) || (request->request_pairs != NULL) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
 		return RLM_MODULE_NOOP;

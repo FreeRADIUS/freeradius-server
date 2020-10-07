@@ -312,8 +312,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	long		odResult = eDSAuthFailed;
 	VALUE_PAIR *username, *password;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -400,7 +400,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) {
 		RDEBUG2("OpenDirectory requires a User-Name attribute");
 		return RLM_MODULE_NOOP;

@@ -623,8 +623,8 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		}
 
 		if (fr_pair_list_copy(eap_session->subrequest->packet,
-				      &eap_session->subrequest->packet->vps,
-				      request->packet->vps) < 0) goto list_copy_fail;
+				      &eap_session->subrequest->request_pairs,
+				      request->request_pairs) < 0) goto list_copy_fail;
 	}
 
 	/*
@@ -670,7 +670,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 	eap_packet_raw_t	*eap_packet;
 	rlm_rcode_t		rcode;
 
-	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message)) {
+	if (!fr_pair_find_by_da(request->request_pairs, attr_eap_message)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -680,7 +680,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 	 *	attribute.  The relevant decoder should have already
 	 *	concatenated the fragments into a single buffer.
 	 */
-	eap_packet = eap_packet_from_vp(request, request->packet->vps);
+	eap_packet = eap_packet_from_vp(request, request->request_pairs);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
@@ -863,7 +863,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 			eap_session_destroy(&eap_session);
 		}
 
-		username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+		username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 
 		/*
 		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
@@ -901,7 +901,7 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
@@ -931,7 +931,7 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 	 */
 	if (request->reply->code != FR_CODE_ACCESS_REJECT) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message)) {
+	if (!fr_pair_find_by_da(request->request_pairs, attr_eap_message)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}

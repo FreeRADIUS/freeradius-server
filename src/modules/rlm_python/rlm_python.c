@@ -508,7 +508,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	 */
 	tuple_len = 0;
 	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) tuple_len++;
 	}
@@ -523,7 +523,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor), i++) {
 			PyObject *pp;

@@ -46,7 +46,7 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 
 #include "radclient.h"
 
-#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->packet->vps, _da)
+#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->request_pairs, _da)
 
 static int retries = 3;
 static fr_time_delta_t timeout = ((fr_time_delta_t) 5) * NSEC;
@@ -388,7 +388,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (fr_pair_list_afrom_file(request->packet, dict_radius,
-					    &request->packet->vps, packets, &packets_done) < 0) {
+					    &request->request_pairs, packets, &packets_done) < 0) {
 			char const *input;
 
 			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
@@ -404,7 +404,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Skip empty entries
 		 */
-		if (!request->packet->vps) {
+		if (!request->request_pairs) {
 			WARN("Skipping \"%s\": No Attributes", files->packets);
 			talloc_free(request);
 			continue;
@@ -472,7 +472,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Process special attributes
 		 */
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			/*
@@ -834,10 +834,10 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			VALUE_PAIR *vp;
 
-			if ((vp = fr_pair_find_by_da(request->packet->vps, attr_user_password)) != NULL) {
+			if ((vp = fr_pair_find_by_da(request->request_pairs, attr_user_password)) != NULL) {
 				fr_pair_value_strdup(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_da(request->packet->vps,
+			} else if ((vp = fr_pair_find_by_da(request->request_pairs,
 							    attr_chap_password)) != NULL) {
 				uint8_t buffer[17];
 
@@ -847,8 +847,8 @@ static int send_one_packet(rc_request_t *request)
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-			} else if (fr_pair_find_by_da(request->packet->vps, attr_ms_chap_password) != NULL) {
-				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
+			} else if (fr_pair_find_by_da(request->request_pairs, attr_ms_chap_password) != NULL) {
+				mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
 
 			} else {
 				DEBUG("WARNING: No password in the request");

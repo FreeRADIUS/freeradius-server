@@ -93,7 +93,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	/*
 	 *	Find the first attribute which is parented by Digest-Attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->parent == attr_digest_attributes) break;
@@ -152,7 +152,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	We require access to the Digest-Nonce-Value
 	 */
-	nonce = fr_pair_find_by_da(request->packet->vps, attr_digest_nonce);
+	nonce = fr_pair_find_by_da(request->request_pairs, attr_digest_nonce);
 	if (!nonce) {
 		REDEBUG("No Digest-Nonce: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -161,7 +161,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	A1 = Digest-User-Name ":" Realm ":" Password
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_user_name);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_digest_user_name);
 	if (!vp) {
 		REDEBUG("No Digest-User-Name: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -172,7 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	a1[a1_len] = ':';
 	a1_len++;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_realm);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_digest_realm);
 	if (!vp) {
 		REDEBUG("No Digest-Realm: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -198,7 +198,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	 *	See which variant we calculate.
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	algo = fr_pair_find_by_da(request->packet->vps, attr_digest_algorithm);
+	algo = fr_pair_find_by_da(request->request_pairs, attr_digest_algorithm);
 	if ((!algo) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
@@ -243,7 +243,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		a1[a1_len] = ':';
 		a1_len++;
 
-		vp = fr_pair_find_by_da(request->packet->vps, attr_digest_cnonce);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_digest_cnonce);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -271,7 +271,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	A2 = Digest-Method ":" Digest-URI
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_method);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_digest_method);
 	if (!vp) {
 		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -282,7 +282,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	a2[a2_len] = ':';
 	a2_len++;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_uri);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_digest_uri);
 	if (!vp) {
 		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -293,7 +293,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *  QOP is "auth-int", tack on ": Digest-Body-Digest"
 	 */
-	qop = fr_pair_find_by_da(request->packet->vps, attr_digest_qop);
+	qop = fr_pair_find_by_da(request->request_pairs, attr_digest_qop);
 	if (qop) {
 		if (strcasecmp(qop->vp_strvalue, "auth-int") == 0) {
 			VALUE_PAIR *body;
@@ -307,7 +307,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 			/*
 			 *  Must be a hex representation of an MD5 digest.
 			 */
-			body = fr_pair_find_by_da(request->packet->vps, attr_digest_body_digest);
+			body = fr_pair_find_by_da(request->request_pairs, attr_digest_body_digest);
 			if (!body) {
 				REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
 				return RLM_MODULE_INVALID;
@@ -370,7 +370,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = fr_pair_find_by_da(request->packet->vps, attr_digest_nonce_count);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_digest_nonce_count);
 		if (!vp) {
 			REDEBUG("No Digest-Nonce-Count: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -381,7 +381,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = fr_pair_find_by_da(request->packet->vps, attr_digest_cnonce);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_digest_cnonce);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -423,7 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	Get the binary value of Digest-Response
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_digest_response);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_digest_response);
 	if (!vp) {
 		REDEBUG("No Digest-Response attribute in the request.  Cannot perform digest authentication");
 		return RLM_MODULE_INVALID;

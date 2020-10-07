@@ -35,7 +35,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED module_ctx_t const *mc
 	VALUE_PAIR	*vp;
 	fr_cursor_t	cursor;
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->vp_type != FR_TYPE_STRING) continue;

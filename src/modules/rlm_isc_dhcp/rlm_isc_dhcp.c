@@ -1620,7 +1620,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_client_identifier);
 	if (vp) {
 		isc_host_uid_t *client, my_client;
 
@@ -1634,7 +1634,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	}
 
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_client_hardware_address);
 	if (!vp) return NULL;
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));

@@ -556,7 +556,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	 *	and a query to find whether it is available then try that
 	 */
 	if (allocation_len == 0 && inst->alloc_requested && *inst->alloc_requested &&
-	    fr_pair_find_by_da(request->packet->vps, inst->req_framed_ip_address) != NULL) {
+	    fr_pair_find_by_da(request->request_pairs, inst->req_framed_ip_address) != NULL) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_requested, &handle,
 						  inst, request, (char *) NULL, 0);
@@ -817,7 +817,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 
 	int			acct_status_type;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

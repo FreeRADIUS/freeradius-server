@@ -473,8 +473,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	VALUE_PAIR		*username, *password;
 	VALUE_PAIR		*vp;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE

@@ -59,7 +59,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %08x", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 
 		request->component = "vmps";
 

@@ -302,7 +302,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = fr_pair_find_by_da(request->packet->vps, attr_eap_message);
+	eap_msg = fr_pair_find_by_da(request->request_pairs, attr_eap_message);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -312,7 +312,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_eap_type);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_eap_type);
 	if (vp && vp->vp_uint32 == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return RLM_MODULE_NOOP;

@@ -878,7 +878,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircmp(request, request->packet->vps, check_tmp, &request->reply_pairs) != 0)) {
+			    (paircmp(request, request->request_pairs, check_tmp, &request->reply_pairs) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -1259,7 +1259,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, request->packet->vps, check_tmp, &request->reply_pairs) != 0) {
+		if (paircmp(request, request->request_pairs, check_tmp, &request->reply_pairs) != 0) {
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skip_reply;

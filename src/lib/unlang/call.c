@@ -163,7 +163,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	if ((fr_pair_list_copy(child->packet,
 			       &child->packet->vps,
-			       request->packet->vps) < 0) ||
+			       request->request_pairs) < 0) ||
 	    (fr_pair_list_copy(child->reply,
 			       &child->reply->vps,
 			       request->reply_pairs) < 0) ||
