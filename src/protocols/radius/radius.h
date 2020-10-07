@@ -184,6 +184,8 @@ void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENG
 
 ssize_t		fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
+ssize_t		fr_radius_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
+
 /*
  *	protocols/radius/decode.c
  */

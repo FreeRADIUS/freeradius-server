@@ -48,8 +48,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
-static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
-
 /** Encode a CHAP password
  *
  * @param[out] out		An output buffer of 17 bytes (id + digest).
@@ -347,7 +345,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, VALUE_PAIR *vps, void *encoder_ctx
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = encode_pair_dbuff(dbuff, &cursor, encoder_ctx);
+		slen = fr_radius_encode_pair_dbuff(dbuff, &cursor, encoder_ctx);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
@@ -1300,10 +1298,10 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
  */
 ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	return encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
+	return fr_radius_encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
 }
 
-static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const	*vp;
 	ssize_t			len;
