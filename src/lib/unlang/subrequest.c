@@ -199,6 +199,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 
 	child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
 	if (!child) {
+	fail:
 		rcode = RLM_MODULE_FAIL;
 
 		/*
@@ -217,7 +218,52 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	 *	Set the packet type.
 	 */
 	MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
-	child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+
+	if (g->type_enum) {
+		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+	} else {
+		fr_dict_enum_t const *type_enum;
+		VALUE_PAIR *attr;
+
+		if (tmpl_find_vp(&attr, request, g->vpt) < 0) {
+			RDEBUG("Failed finding attribute %s", g->vpt->name);
+			goto fail;
+		}
+
+		if (tmpl_da(g->vpt)->type == FR_TYPE_STRING) {
+			type_enum = fr_dict_enum_by_name(g->attr_packet_type, attr->vp_strvalue, attr->vp_length);
+			if (!type_enum) {
+				RDEBUG("Unknown Packet-Type %pV", &attr->data);
+				goto fail;
+			}
+
+			child->packet->code = vp->vp_uint32 = type_enum->value->vb_uint32;
+		} else {
+			fr_value_box_t box;
+
+			fr_value_box_init(&box, FR_TYPE_UINT32, NULL, false);
+			if (fr_value_box_cast(request, &box, FR_TYPE_UINT32, NULL, &attr->data) < 0) {
+				RDEBUG("Failed casting value from %pV to data type uint32", &attr->data);
+				goto fail;
+			}
+
+			/*
+			 *	Check that the value is known to the server.
+			 *
+			 *	If it isn't known, then there's no
+			 *	"recv foo" section for it and we can't
+			 *	do anything with this packet.
+			 */
+			type_enum = fr_dict_enum_by_value(g->attr_packet_type, &box);
+			if (!type_enum) {
+				RDEBUG("Invalid value %pV for Packet-Type", &box);
+				goto fail;
+			}
+
+			child->packet->code = vp->vp_uint32 = box.vb_uint32;
+		}
+
+	}
 	fr_pair_add(&child->packet->vps, vp);
 
 	/*
