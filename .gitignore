@@ -75,3 +75,6 @@ run.sh
 # rpm packages
 rpmbuild/
 /install
+
+# fuzzer output files
+crash-*
