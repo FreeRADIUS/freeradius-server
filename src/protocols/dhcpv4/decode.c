@@ -522,7 +522,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	ssize_t rcode;
-//	fr_dhcpv4_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv4_ctx_t);
 	RADIUS_PACKET *packet;
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return -1;
@@ -532,7 +531,7 @@ static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 
 	memcpy(&packet->data, &data, sizeof(packet->data)); /* const issues */
 	packet->data_len = data_len;
-	rcode = fr_dhcpv4_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code);
+	rcode = fr_dhcpv4_decode(ctx, packet->data, packet->data_len, &packet->vps, &packet->code);
 
 	(void) fr_pair_list_copy(ctx, vps, packet->vps);
 	talloc_free(packet);
