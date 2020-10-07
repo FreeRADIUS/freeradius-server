@@ -268,6 +268,128 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	return len;
 }
 
+/** Return a substring from a starting character for a given length
+ *
+ * Example: "%{substring:foobar 2 3}" == "oba"
+ * Example: "%{substring:foobar -3 2}" == "ba"
+ * Example: "%{substring:foobar 1 -1}" == "ooba"
+ *
+ * Syntax: "%{substring:<string|attribute> <start> <len>}"
+ */
+static ssize_t substring_xlat(UNUSED void *instance, REQUEST *request,
+			    char const *fmt, char *out, size_t outlen)
+{
+	ssize_t slen;
+	long start, len;
+	char const *p = fmt;
+	char *end, *buffer;
+
+	/*
+	 *  Trim whitespace
+	 */
+	while (isspace(*p) && p++);
+
+	/*
+	 * Find numeric parameters at the end.
+	 * Start with final space in fmt
+	 */
+	end = strrchr(p, ' ');
+	if (!end) {
+	arg_error:
+		REDEBUG("substring needs exactly three arguments: &ref <start> <len>");
+		return -1;
+	}
+	if (end == fmt) goto arg_error;
+
+	/*
+	 * Walk back for previous space
+	 */
+	end--;
+	while ((end >= p) && (*end != ' ') && end--);
+	if (*end != ' ') goto arg_error;
+	/*
+	 * Store the total length of fmt up to the parameters including
+	 * leading whitespace - if we're given a plain string we need the
+	 * whole thing
+	 */
+	slen = end - fmt;
+
+	end++;
+	start = strtol(end, &end, 10);
+	end++;
+	len = strtol(end, &end, 10);
+
+	/*
+	 * Check for an attribute
+	 */
+	if (*p == '&') {
+		vp_tmpl_t vpt;
+		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+		if (slen <= 0) {
+			REDEBUG("%s", fr_strerror());
+			return -1;
+		}
+
+		slen = tmpl_aexpand(NULL, &buffer, request, &vpt, NULL, NULL);
+		if (slen < 0) {
+			talloc_free(buffer);
+			REDEBUG("Unable to expand substring value");
+			return -1;
+		}
+
+	} else {
+		/*
+		 * Input is a string, copy it to the workspace
+		 */
+		buffer = talloc_array(NULL, char, slen + 1);
+		strncpy(buffer, fmt, slen);
+		buffer[slen] = '\0';
+	}
+	/*
+	 * Negative start counts in from the end of the string,
+	 * calculate the actual start position
+	 */
+	if (start < 0) {
+		if ((0 - start) > slen) {
+			start = 0;
+		} else {
+			start = slen + start;
+		}
+	}
+
+	if (start > slen) {
+		*out = '\0';
+		talloc_free(buffer);
+		WARN("Start position %li is after end of string length of %li", start, slen);
+		return 0;
+	}
+
+	/*
+	 * Negative length drops characters from the end of the string,
+	 * calculate the actual length
+	 */
+	if (len < 0) len = slen - start + len;
+
+	if (len < 0) {
+		WARN("String length of %li too short for substring parameters", slen);
+		len = 0;
+	}
+
+	/*
+	 * Reduce length to match available string length
+	 */
+	if (len > (slen - start)) len = slen - start;
+
+	/*
+	 * Reduce length to "out" capacity
+	 */
+	if (len > (long) outlen) len = outlen;
+
+	strncpy(out, buffer + start, len);
+	out[len] = '\0';
+	talloc_free(buffer);
+	return len;
+}
 
 /*
  *	Register the xlats
@@ -277,6 +399,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (cf_section_name2(conf)) return 0;
 
 	xlat_register("unpack", unpack_xlat, NULL, instance);
+	xlat_register("substring", substring_xlat, NULL, instance);
 
 	return 0;
 }

@@ -3,9 +3,17 @@
 #  $Id$
 
 #
-#  This module is useful only for 'xlat'.  To use it,
-#  add it to the raddb/mods-enabled/ directory.  Then,
-#  use it on the right-hand side of a variable assignment.
+#  This module is useful only for 'xlat'.
+#  To use it, add it to the raddb/mods-enabled/ directory.
+#
+#  Two xlat functions are provided by this module:
+#    - unpack
+#    - substring
+#
+#  Both are for use on the right-hand side of a variable assignment.
+#
+#  unpack
+#  ======
 #
 #  ... = "%{unpack:data 1 integer}"
 #
@@ -60,5 +68,38 @@
 #
 #  Will return the hex string "02030405"
 #
+#
+#  substring
+#  =========
+#
+#  substring will return a substring of a string or attribute using
+#  the syntax
+#
+#	%{substring:data start len}
+#
+#	data
+#		Either an attribute name or string data.  String data
+#		can have leading or trailing spaces.  Only a single
+#		space before "start" is taken as the separator.
+#
+#  	start
+#		the zero based offset for the start of the substring.
+#		A negative value will count in from the end of the
+#		string.
+#
+#	len
+#		the number of characters to return.  A Negative value
+#		will remove that number of characters from the end.
+#		If len is more than the available number of characters
+#		then only the available number will be returned.
+#
+#  Examples:
+#
+#	"%{substring:foobar 2 3}" == "oba"
+#	"%{substring:foobar -3 2}" == "ba"
+#	"%{substring:foobar 1 -1}" == "ooba"
+#	if User-Name is "foobar" "%{substring:&User-Name 1 -2}" == "oob"
+#
+
 unpack {
 }
