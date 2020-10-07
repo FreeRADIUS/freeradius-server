@@ -303,9 +303,9 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 	 *	client belongs to based on packet data.  The sequence here
 	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
 	 *	store the found address in an internal attribute of
-	 *	DHCP-Network-IP-Address.
+	 *	DHCP-Network-Subnet
 	 */
-	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_ip_address);
+	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_subnet);
 	/*
 	 *	First look for Relay-Link-Selection
 	 */
