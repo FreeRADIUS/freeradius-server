@@ -178,7 +178,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, NULL);
 		break;
 
 	default:

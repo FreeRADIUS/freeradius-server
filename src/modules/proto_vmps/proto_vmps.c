@@ -371,7 +371,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 #endif
 
 	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
-				  request->reply->code, request->reply->id, request->reply->vps);
+				  request->reply->code, request->reply->id, request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");
 		return -1;

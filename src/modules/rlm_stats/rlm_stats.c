@@ -249,7 +249,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 	/*
 	 *	Create attributes based on the statistics.
 	 */
-	fr_cursor_init(&cursor, &request->reply->vps);
+	fr_cursor_init(&cursor, &request->reply_pairs);
 
 	MEM(pair_update_reply(&vp, attr_freeradius_stats4_type) >= 0);
 	vp->vp_uint32 = stats_type;

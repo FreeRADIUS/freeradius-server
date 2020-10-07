@@ -173,8 +173,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t			mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = fr_pair_find_by_da(request->reply->vps, attr_eap_msk);
-	emsk = fr_pair_find_by_da(request->reply->vps, attr_eap_emsk);
+	msk = fr_pair_find_by_da(request->reply_pairs, attr_eap_msk);
+	emsk = fr_pair_find_by_da(request->reply_pairs, attr_eap_emsk);
 	if (!msk || !emsk) {
 		REDEBUG2("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
 		return RLM_MODULE_NOOP;
@@ -249,7 +249,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *	Calculate mobility keys
 	 */
 	mn_nai = fr_pair_find_by_da(request->packet->vps, attr_wimax_mn_nai);
-	if (!mn_nai) mn_nai = fr_pair_find_by_da(request->reply->vps, attr_wimax_mn_nai);
+	if (!mn_nai) mn_nai = fr_pair_find_by_da(request->reply_pairs, attr_wimax_mn_nai);
 	if (!mn_nai) {
 		RWDEBUG("%s was not found in the request or in the reply", attr_wimax_mn_nai->name);
 		RWDEBUG("We cannot calculate MN-HA keys");
@@ -259,7 +259,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *	WiMAX-IP-Technology
 	 */
 	vp = NULL;
-	if (mn_nai) vp = fr_pair_find_by_da(request->reply->vps, attr_wimax_ip_technology);
+	if (mn_nai) vp = fr_pair_find_by_da(request->reply_pairs, attr_wimax_ip_technology);
 	if (!vp) {
 		RWDEBUG("%s not found in reply", attr_wimax_ip_technology->name);
 		RWDEBUG("Not calculating MN-HA keys");
@@ -270,7 +270,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip4);
+		ip = fr_pair_find_by_da(request->reply_pairs, attr_wimax_hha_ip_mip4);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-PMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
@@ -304,7 +304,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip4);
+		ip = fr_pair_find_by_da(request->reply_pairs, attr_wimax_hha_ip_mip4);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
@@ -338,7 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP6
 		 */
-		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip6);
+		ip = fr_pair_find_by_da(request->reply_pairs, attr_wimax_hha_ip_mip6);
 		if (!ip) {
 			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP6 key", attr_wimax_hha_ip_mip6->name);
 			break;
@@ -377,7 +377,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *
 	 *	FA-RK= H(MIP-RK, "FA-RK")
 	 */
-	fa_rk = fr_pair_find_by_da(request->reply->vps, attr_wimax_fa_rk_key);
+	fa_rk = fr_pair_find_by_da(request->reply_pairs, attr_wimax_fa_rk_key);
 	if (fa_rk && (fa_rk->vp_length <= 1)) {
 		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 

@@ -485,7 +485,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, request->reply->vps);
+				    request->reply->code, request->reply->id, request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;
@@ -508,7 +508,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
 	}
 
 	return data_len;

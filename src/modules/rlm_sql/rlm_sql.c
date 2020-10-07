@@ -878,7 +878,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
+			    (paircmp(request, request->packet->vps, check_tmp, &request->reply_pairs) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -938,7 +938,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
-			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+			radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 			reply_tmp = NULL;
 		/*
 		 *	If there's no reply query configured, then we assume
@@ -1259,7 +1259,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+		if (paircmp(request, request->packet->vps, check_tmp, &request->reply_pairs) != 0) {
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skip_reply;
@@ -1308,7 +1308,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 
 		log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
-		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+		radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		reply_tmp = NULL;

@@ -38,7 +38,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	fr_cursor_t		cursor;
 
 	total = 0;
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
+	for (vp = fr_cursor_init(&cursor, &request->reply_pairs);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
@@ -80,13 +80,13 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ptr[3] = CHBIND_NSID_RADIUS;
 
 	RDEBUG2("Sending chbind response: code %i", (int )(ptr[0]));
-	log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, NULL);
 
 	/* Encode the chbind attributes into the response */
 	ptr += 4;
 	end = ptr + total;
 
-	fr_cursor_init(&cursor, &request->reply->vps);
+	fr_cursor_init(&cursor, &request->reply_pairs);
 	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.

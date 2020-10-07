@@ -2427,11 +2427,11 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
 			VALUE_PAIR	*vp;
 
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
+			vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
-				fr_pair_add(&request->reply->vps, vp);
+				fr_pair_add(&request->reply_pairs, vp);
 			}
 		}
 
@@ -2454,12 +2454,12 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
 			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
-			fr_pair_add(&request->reply->vps, vp);
+			fr_pair_add(&request->reply_pairs, vp);
 		}
 
 		treq->request->reply->code = code;
 		r->rcode = radius_code_to_rcode[code];
-		fr_pair_add(&request->reply->vps, reply);
+		fr_pair_add(&request->reply_pairs, reply);
 		fr_trunk_request_signal_complete(treq);
 	}
 }

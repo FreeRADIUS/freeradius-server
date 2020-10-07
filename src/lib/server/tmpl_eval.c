@@ -59,7 +59,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 
 	case PAIR_LIST_REPLY:
 		if (!request->reply) return NULL;
-		return &request->reply->vps;
+		return &request->reply_pairs;
 
 	case PAIR_LIST_CONTROL:
 		return &request->control_pairs;

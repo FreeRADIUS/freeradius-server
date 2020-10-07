@@ -906,10 +906,10 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name);
+		vp = fr_pair_find_by_da(request->reply_pairs, attr_user_name);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply, username);
-			fr_pair_add(&request->reply->vps, vp);
+			fr_pair_add(&request->reply_pairs, vp);
 		}
 
 		/*
@@ -936,7 +936,7 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(request->reply->vps, attr_eap_message)) {
+	if (fr_pair_find_by_da(request->reply_pairs, attr_eap_message)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}

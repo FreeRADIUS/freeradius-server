@@ -590,7 +590,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, inst, request, &request->reply->vps,
+		mod_vptuple(request->reply, inst, request, &request->reply_pairs,
 			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
 		mod_vptuple(request, inst, request, &request->control_pairs,

@@ -708,7 +708,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG2("sending chbind response");
-			fr_pair_add(&request->reply->vps,
+			fr_pair_add(&request->reply_pairs,
 				    eap_chbind_packet2vp(request->reply, req->response));
 		} else {
 			RDEBUG2("no chbind response");

@@ -239,7 +239,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	Don't add a Message-Authenticator if
 	 *	it's already there.
 	 */
-	vp = fr_pair_find_by_da(request->reply->vps, attr_message_authenticator);
+	vp = fr_pair_find_by_da(request->reply_pairs, attr_message_authenticator);
 	if (!vp) {
 		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
@@ -505,8 +505,8 @@ rlm_rcode_t eap_fail(eap_session_t *eap_session)
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_eap_message);
-	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_state);
+	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_eap_message);
+	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_state);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);

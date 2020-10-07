@@ -840,7 +840,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	{
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_find_by_da(request->reply->vps, attr_ldap_sync_cookie);
+		vp = fr_pair_find_by_da(request->reply_pairs, attr_ldap_sync_cookie);
 		if (!vp) {
 			if (config->allow_refresh) RDEBUG2("No &reply.Cookie attribute found.  All entries matching "
 							   "sync configuration will be returned");

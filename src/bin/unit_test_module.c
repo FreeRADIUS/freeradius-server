@@ -278,7 +278,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	request->reply->vps = NULL;
+	request->reply_pairs = NULL;
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
@@ -991,7 +991,7 @@ int main(int argc, char *argv[])
 		vp->vp_uint32 = request->reply->code;
 
 
-		if (!fr_pair_validate(failed, filter_vps, request->reply->vps)) {
+		if (!fr_pair_validate(failed, filter_vps, request->reply_pairs)) {
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : input_file, filter_file);

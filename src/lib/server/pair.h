@@ -43,7 +43,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_add_reply(_attr, _da) fr_pair_add_by_da(request->reply, _attr, &request->reply->vps, _da)
+#define pair_add_reply(_attr, _da) fr_pair_add_by_da(request->reply, _attr, &request->reply_pairs, _da)
 
 /** Allocate a VALUE_PAIR in the control list
  *
@@ -85,7 +85,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_reply(_attr, _da) fr_pair_update_by_da(request->reply, _attr, &request->reply->vps, _da)
+#define pair_update_reply(_attr, _da) fr_pair_update_by_da(request->reply, _attr, &request->reply_pairs, _da)
 
 /** Return or allocate a VALUE_PAIR in the control list
  *
@@ -138,7 +138,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- >0 the number of pairs deleted.
  *	- 0 if no pairs were deleted.
  */
-#define pair_delete_reply(_pair) pair_delete(&request->reply->vps, _pair)
+#define pair_delete_reply(_pair) pair_delete(&request->reply_pairs, _pair)
 
 /** Delete a VALUE_PAIR in the control list
  *

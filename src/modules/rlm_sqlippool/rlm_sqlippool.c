@@ -514,7 +514,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address) != NULL) {
+	if (fr_pair_find_by_da(request->reply_pairs, inst->framed_ip_address) != NULL) {
 		RDEBUG2("%s already exists", inst->framed_ip_address->name);
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
@@ -643,7 +643,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	}
 
 	RDEBUG2("Allocated IP %s", allocation);
-	fr_pair_add(&request->reply->vps, vp);
+	fr_pair_add(&request->reply_pairs, vp);
 
 	/*
 	 *	UPDATE

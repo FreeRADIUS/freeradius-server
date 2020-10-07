@@ -181,7 +181,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 					p[4] = 'N';
 					p[3] = 'A';
 					p[2] = 'P';
-					fr_pair_add(&request->reply->vps, vp);
+					fr_pair_add(&request->reply_pairs, vp);
 
 				} else {
 					RDEBUG2("SoH decoding NAP from DHCP request");

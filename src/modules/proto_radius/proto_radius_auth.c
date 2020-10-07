@@ -380,7 +380,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			/*
 			 *	Allow for over-ride of reply code.
 			 */
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
+			vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 				goto setup_send;
@@ -493,12 +493,12 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
+		vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 	setup_send:
 		if (!request->reply->code) {
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
+			vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 			} else {
@@ -515,7 +515,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	"send Access-Challenge" section.
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
-		    !(vp = fr_pair_find_by_da(request->reply->vps, attr_state))) {
+		    !(vp = fr_pair_find_by_da(request->reply_pairs, attr_state))) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
@@ -664,7 +664,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		}
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
-			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
 		}
 		break;
 

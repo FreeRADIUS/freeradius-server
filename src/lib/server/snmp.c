@@ -934,7 +934,7 @@ int fr_snmp_process(REQUEST *request)
 
 	fr_cursor_init(&request_cursor, &request->packet->vps);
 	fr_cursor_iter_by_da_init(&op_cursor, &request->packet->vps, attr_snmp_operation);
-	fr_cursor_init(&reply_cursor, &request->reply->vps);
+	fr_cursor_init(&reply_cursor, &request->reply_pairs);
 	fr_cursor_init(&out_cursor, &head);
 
 	RDEBUG2("Processing SNMP stats request");
