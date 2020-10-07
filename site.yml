@@ -1,0 +1,17 @@
+site:
+  title: The FreeRADIUS project - Documentation
+content:
+  sources:
+  - url: .
+    branches: v3.0.x
+    start_path: doc/antora
+asciidoc:
+  attributes:
+    attribute-missing: skip
+ui:
+  bundle:
+    url: https://github.com/FreeRADIUS/freeradius-docs-ui/blob/master-releases/ui-bundle.zip?raw=true
+    snapshot: true
+output:
+  clean: true
+  dir: ./build/docsite
