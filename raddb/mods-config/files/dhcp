@@ -68,6 +68,14 @@ network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "bigdept"
 	DHCP-Domain-Name := "bigdept.example.org"
 
 
+#
+#  Here is an example for a network that has a dedicated pool for admin staff
+#  and a seperate pool for everything else.
+#
+network	DHCP-Network-IP-Address < 192.0.2.0/24, DHCP-Group-Name == "admin", Pool-Name := "admin-only"
+network	DHCP-Network-IP-Address < 192.0.2.0/24, Pool-Name := "general"
+
+
 ################################
 #  Subnet-specific parameters  #
 ################################
@@ -107,9 +115,9 @@ subnet	DHCP-Network-IP-Address < 10.30.20.0/24
 #  Note: This section is matched by calling the dhcp_group_options policy.
 #
 #  It should be called *after* defining the device's group memberships in
-#  DHCP-Group-Name control attributes. In the default dhcp virtual server
-#  this is demonstrated with the help of the dhcp_group_membership instance of
-#  the passwd module.
+#  DHCP-Group-Name request attributes. In the default dhcp virtual server this
+#  is demonstrated with the help of the dhcp_group_membership instance of the
+#  passwd module.
 #
 
 #
