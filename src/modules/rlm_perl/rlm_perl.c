@@ -930,7 +930,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		if ((get_hv_content(request->state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
 			fr_pair_list_free(&request->state);
-			request->state = vp;
+			request->state_pairs = vp;
 			vp = NULL;
 		}
 	}

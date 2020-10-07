@@ -587,7 +587,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	 *	in  one of the later sections.
 	 */
 	TALLOC_FREE(request->state_ctx);
-	request->state = NULL;
+	request->state_pairs = NULL;
 
 	MEM(request->state_ctx = talloc_init_const("session-state"));
 
@@ -609,7 +609,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	TALLOC_CTX		*old_ctx = NULL;
 	VALUE_PAIR		*vp;
 
-	fr_assert(request->state == NULL);
+	fr_assert(request->state_pairs == NULL);
 
 	/*
 	 *	No State, don't do anything.
@@ -636,7 +636,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 
 		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
-		request->state = entry->vps;
+		request->state_pairs = entry->vps;
 		request_data_restore(request, &entry->data);
 
 		entry->ctx = NULL;
@@ -664,7 +664,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 
 /** Transfer ownership of the state VALUE_PAIRs and ctx, back to a state entry
  *
- * Put request->state into the State attribute.  Put the State attribute
+ * Put request->state_pairs into the State attribute.  Put the State attribute
  * into the vps list.  Delete the original entry, if it exists
  *
  * Also creates a new state entry.
@@ -678,7 +678,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
 
-	if (!request->state && fr_dlist_empty(&data)) return 0;
+	if (!request->state_pairs && fr_dlist_empty(&data)) return 0;
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
@@ -707,7 +707,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	fr_dlist_move(&entry->data, &data);
 
 	request->state_ctx = NULL;
-	request->state = NULL;
+	request->state_pairs = NULL;
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
@@ -746,7 +746,7 @@ void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int uniq
 		 */
 		request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
 					request->state, true, false, true);
-		request->state = NULL;
+		request->state_pairs = NULL;
 	}
 
 	/*
@@ -755,7 +755,7 @@ void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int uniq
 	 *	fr_state_store_in_parent and fr_state_restore_to_child.
 	 */
 	if (request_data_store_in_parent(request, unique_ptr, unique_int) < 0) {
-		request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
+		request->state_pairs = request_data_get(request, (void *)fr_state_store_in_parent, 0);
 		return;
 	}
 }
@@ -785,7 +785,7 @@ void fr_state_restore_to_child(REQUEST *request, void const *unique_ptr, int uni
 	/*
 	 *	Get the state vps back
 	 */
-	request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
+	request->state_pairs = request_data_get(request, (void *)fr_state_store_in_parent, 0);
 }
 
 /** Move all request data and session-state VPs into a new state_ctx
@@ -833,7 +833,7 @@ void fr_state_detach(REQUEST *request, bool will_free)
 	(void) fr_pair_list_copy(new_state_ctx, &vps, request->state);
 	fr_pair_list_free(&request->state);
 
-	request->state = vps;
+	request->state_pairs = vps;
 
 	/*
 	 *	...again, should probably
