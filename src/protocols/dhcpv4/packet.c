@@ -332,9 +332,10 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 		}
 	} else {
 		/*
-		 *	Store whichever address we found from options and ensure the data type.
+		 *	Store whichever address we found from options and ensure
+		 *	the data type matches the pair, i.e address to prefix
+		 *	conversion.
 		 */
-		fr_value_box_copy(vp, &vp->data, &netaddr->data);
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &netaddr->data);
 	}
 	fr_cursor_append(&cursor, vp);
