@@ -39,8 +39,6 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
-static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx);
-
 static ssize_t encode_value_dbuff(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_cursor_t *cursor, void *encoder_ctx);
@@ -860,10 +858,10 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
  */
 ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	return encode_option(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
+	return fr_dhcpv6_encode_option_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
 }
 
-static ssize_t encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx)
+ssize_t fr_dhcpv6_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
