@@ -584,14 +584,14 @@ free_urldesc:
  * @param request Current request.
  * @param thing Unknown.
  * @param check Which group to check for user membership.
- * @param check_pairs Unknown.
- * @param reply_pairs Unknown.
+ * @param check_list Unknown.
+ * @param reply_list Unknown.
  * @return
  *	- 1 on failure (or if the user is not a member).
  *	- 0 on success.
  */
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
-			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+			     UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
@@ -1021,7 +1021,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_da(request->control, attr_cleartext_password)) goto skip_edir;
+	if (fr_pair_find_by_da(request->control_pairs, attr_cleartext_password)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory

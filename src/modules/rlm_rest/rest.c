@@ -1791,7 +1791,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control, attr_rest_http_header);
+	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 	     header;
 	     header = fr_cursor_next(&headers)) {
 		header = fr_cursor_remove(&headers);

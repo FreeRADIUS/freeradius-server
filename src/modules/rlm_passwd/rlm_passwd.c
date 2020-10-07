@@ -563,7 +563,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 		if (!pw) continue;
 
 		do {
-			result_add(request, inst, request, &request->control, pw, 0, "config");
+			result_add(request, inst, request, &request->control_pairs, pw, 0, "config");
 			result_add(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
 			result_add(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));

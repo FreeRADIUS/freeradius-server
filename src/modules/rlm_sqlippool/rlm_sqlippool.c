@@ -520,7 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_da(request->control, attr_pool_name) == NULL) {
+	if (fr_pair_find_by_da(request->control_pairs, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);

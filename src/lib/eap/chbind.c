@@ -65,7 +65,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_chbind_response_code);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_chbind_response_code);
 	if (vp) {
 		ptr[0] = vp->vp_uint32;
 	} else {

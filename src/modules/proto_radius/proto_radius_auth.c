@@ -221,7 +221,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 		if (!password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_da(request->control, attr_auth_type);
+			auth_type = fr_pair_find_by_da(request->control_pairs, attr_auth_type);
 			if (auth_type) {
 				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
 					 fr_dict_enum_name_by_value(auth_type->da, &auth_type->data));
@@ -348,7 +348,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {

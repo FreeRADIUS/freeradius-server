@@ -79,7 +79,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
  *      Compare the current time to a range.
  */
 static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+		   UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
 {
 	/*
 	 *      If there's a request, use that timestamp.
@@ -94,8 +94,8 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
  *	Time-Of-Day support
  */
 static int time_of_day(UNUSED void *instance, REQUEST *request,
-		       UNUSED VALUE_PAIR *request_pairs, VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+		       UNUSED VALUE_PAIR *request_list, VALUE_PAIR *check,
+		       UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
 {
 	int		scan;
 	int		hhmmss, when;
@@ -157,7 +157,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	VALUE_PAIR		*ends, *vp;
 	int32_t			left;
 
-	ends = fr_pair_find_by_da(request->control, attr_login_time);
+	ends = fr_pair_find_by_da(request->control_pairs, attr_login_time);
 	if (!ends) return RLM_MODULE_NOOP;
 
 	/*

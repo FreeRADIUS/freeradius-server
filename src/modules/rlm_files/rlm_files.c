@@ -363,7 +363,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 				MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
 				radius_pairmove(request, &reply->vps, reply_tmp, true);
 			}
-			fr_pair_list_move(&request->control, &check_tmp);
+			fr_pair_list_move(&request->control_pairs, &check_tmp);
 
 			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
 			fr_pair_list_free(&check_tmp);

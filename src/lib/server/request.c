@@ -545,7 +545,7 @@ void request_verify(char const *file, int line, REQUEST const *request)
 			    "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
 			    file, line, sizeof(REQUEST), talloc_get_size(request));
 
-	fr_pair_list_verify(file, line, request, request->control);
+	fr_pair_list_verify(file, line, request, request->control_pairs);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 
 	fr_assert(request->server_cs != NULL);

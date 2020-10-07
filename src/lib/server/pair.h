@@ -53,7 +53,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_add_control(_attr, _da) fr_pair_add_by_da(request, _attr, &request->control, _da)
+#define pair_add_control(_attr, _da) fr_pair_add_by_da(request, _attr, &request->control_pairs, _da)
 
 /** Allocate a VALUE_PAIR in the session-state list
  *
@@ -96,7 +96,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_control(_attr, _da) fr_pair_update_by_da(request, _attr, &request->control, _da)
+#define pair_update_control(_attr, _da) fr_pair_update_by_da(request, _attr, &request->control_pairs, _da)
 
 /** Return or allocate a VALUE_PAIR in the session_state list
  *
@@ -147,7 +147,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- >0 the number of pairs deleted.
  *	- 0 if no pairs were deleted.
  */
-#define pair_delete_control(_pair) pair_delete(&request->control, _pair)
+#define pair_delete_control(_pair) pair_delete(&request->control_pairs, _pair)
 
 /** Delete a VALUE_PAIR in the session_state list
  *

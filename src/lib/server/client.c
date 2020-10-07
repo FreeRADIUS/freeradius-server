@@ -961,12 +961,12 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
 
-	fr_cursor_init(&cursor, &request->control);
+	fr_cursor_init(&cursor, &request->control_pairs);
 
 	RDEBUG2("Converting &request.control to client {...} section");
 	RINDENT();
 
-	for (vp = fr_cursor_init(&cursor, &request->control);
+	for (vp = fr_cursor_init(&cursor, &request->control_pairs);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
 		CONF_PAIR	*cp = NULL;

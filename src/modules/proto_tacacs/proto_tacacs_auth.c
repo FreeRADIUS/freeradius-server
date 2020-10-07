@@ -239,7 +239,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	Find TACACS-Authentication-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {

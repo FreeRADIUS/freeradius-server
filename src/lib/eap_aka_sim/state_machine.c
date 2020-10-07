@@ -1135,11 +1135,11 @@ static rlm_rcode_t common_reauthentication_request_compose(module_ctx_t const *m
 	 *	Not seen any doing this for re-authentication
 	 *	but you never know...
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Generating new session keys");
@@ -1322,11 +1322,11 @@ static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Acquiring UMTS vector(s)");
@@ -1361,7 +1361,7 @@ static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 	 *	Get vectors from attribute or generate
 	 *	them using COMP128-* or Milenage.
 	 */
-	if (fr_aka_sim_vector_umts_from_attrs(request, request->control, &eap_aka_sim_session->keys, &src) != 0) {
+	if (fr_aka_sim_vector_umts_from_attrs(request, request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		goto failure;
 	}
@@ -1525,19 +1525,19 @@ static rlm_rcode_t sim_challenge_request_compose(module_ctx_t const *mctx,
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Acquiring GSM vector(s)");
-	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control, 0,
+	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 0,
 					      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control, 1,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 1,
 	    				      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control, 2,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 2,
 	    				      &eap_aka_sim_session->keys, &src) != 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		return RLM_MODULE_FAIL;
@@ -3267,7 +3267,7 @@ static rlm_rcode_t aka_synchronization_failure_recv_resume(module_ctx_t const *m
 	 *	We couldn't generate an SQN and the user didn't provide one,
 	 *	so we need to fail.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_sim_sqn);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_sim_sqn);
 	if (!vp) {
 		REDEBUG("No &control.SQN value provided after resynchronisation, cannot continue");
 		goto failure;
@@ -3946,7 +3946,7 @@ static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST 
 	 *	This must be done before we enter
 	 *	the submodule.
 	 */
-	eap_type = fr_pair_find_by_da(request->control, attr_eap_type);
+	eap_type = fr_pair_find_by_da(request->control_pairs, attr_eap_type);
 	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
 
 	method = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_method_hint);

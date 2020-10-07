@@ -169,7 +169,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 			       request->reply->vps) < 0) ||
 	    (fr_pair_list_copy(child,
 			       &child->control,
-			       request->control) < 0)) {
+			       request->control_pairs) < 0)) {
 		REDEBUG("failed copying lists to child");
 
 		*presult = RLM_MODULE_FAIL;

@@ -101,7 +101,7 @@ static void fr_exec_pair_to_env(REQUEST *request, VALUE_PAIR *input_pairs, char 
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 		if (da) {
-			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
+			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, da);
 			     vp && (i < (envlen - 1));
 			     vp = fr_cursor_next(&cursor)) {
 				DEBUG3("export %pV", &vp->data);

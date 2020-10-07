@@ -593,7 +593,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		mod_vptuple(request->reply, inst, request, &request->reply->vps,
 			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, inst, request, &request->control,
+		mod_vptuple(request, inst, request, &request->control_pairs,
 			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
 
 	} else if (PyNumber_Check(p_ret)) {

@@ -105,7 +105,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	VALUE_PAIR		*vp;
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}

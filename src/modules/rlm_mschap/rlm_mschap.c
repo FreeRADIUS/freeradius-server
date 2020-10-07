@@ -1853,7 +1853,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 #endif
 		peer_challenge = response->vp_octets + 2;
 
-		peer_challenge_attr = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge);
+		peer_challenge_attr = fr_pair_find_by_da(request->control_pairs, attr_ms_chap_peer_challenge);
 		if (peer_challenge_attr) {
 			RDEBUG2("Overriding peer challenge");
 			peer_challenge = peer_challenge_attr->vp_octets;
@@ -1950,7 +1950,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	want to suppress it.
 	 */
 	if (method != AUTH_INTERNAL) {
-		VALUE_PAIR *vp = fr_pair_find_by_da(request->control, attr_ms_chap_use_ntlm_auth);
+		VALUE_PAIR *vp = fr_pair_find_by_da(request->control_pairs, attr_ms_chap_use_ntlm_auth);
 		if (vp && vp->vp_bool == false) method = AUTH_INTERNAL;
 	}
 
@@ -1958,11 +1958,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = fr_pair_find_by_da(request->control, attr_smb_account_ctrl);
+	smb_ctrl = fr_pair_find_by_da(request->control_pairs, attr_smb_account_ctrl);
 	if (!smb_ctrl) {
 		VALUE_PAIR *smb_account_ctrl_text;
 
-		smb_account_ctrl_text = fr_pair_find_by_da(request->control, attr_smb_account_ctrl_text);
+		smb_account_ctrl_text = fr_pair_find_by_da(request->control_pairs, attr_smb_account_ctrl_text);
 		if (smb_account_ctrl_text) {
 			MEM(pair_add_control(&smb_ctrl, attr_smb_account_ctrl) >= 0);
 			smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(smb_account_ctrl_text->vp_strvalue);

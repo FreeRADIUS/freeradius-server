@@ -259,7 +259,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_eap_type);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_eap_type);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -540,7 +540,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_type);
+		vp = fr_pair_find_by_da(eap_session->request->control_pairs, attr_eap_type);
 		if (vp) {
 			RDEBUG2("Using method from &control.EAP-Type");
 			next = vp->vp_uint32;
@@ -615,7 +615,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 
 	if (method->submodule->clone_parent_lists) {
 		if (fr_pair_list_copy(eap_session->subrequest,
-				      &eap_session->subrequest->control, request->control) < 0) {
+				      &eap_session->subrequest->control_pairs, request->control_pairs) < 0) {
 		list_copy_fail:
 			RERROR("Failed copying parent's attribute list");
 			TALLOC_FREE(eap_session->subrequest);

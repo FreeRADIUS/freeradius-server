@@ -135,14 +135,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	 *	We require access to the plain-text password, or to the
 	 *	Digest-HA1 parameter.
 	 */
-	passwd = fr_pair_find_by_da(request->control, attr_digest_ha1);
+	passwd = fr_pair_find_by_da(request->control_pairs, attr_digest_ha1);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
 			REDEBUG("Digest-HA1 has invalid length, authentication failed");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
-		passwd = fr_pair_find_by_da(request->control, attr_cleartext_password);
+		passwd = fr_pair_find_by_da(request->control_pairs, attr_cleartext_password);
 	}
 	if (!passwd) {
 		REDEBUG("Cleartext-Password or Digest-HA1 is required for authentication");
