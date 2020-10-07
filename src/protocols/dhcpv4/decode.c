@@ -367,20 +367,23 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
-	/*
-	 *	Enterprise code + data-len1 + at least one option header
-	 */
-	if ((data_len < 4 + 1 + 2) ||
-	    (data[5] == 0) || (data[5] > data_len - 5)) {
-		da = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), parent->attr);
-		if (!da) return -1;
-
-		return decode_value(ctx, cursor, parent, data, data_len);
-	}
-
 	end = data + data_len;
 
 next:
+	/*
+	 *	Enterprise code + data-len + at least one option header
+	 */
+	if (((end - data) < 4 + 1 + 2) ||
+	    (data[4] == 0) || ((data + data[4]) > end)) {
+		da = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), parent->attr);
+		if (!da) return -1;
+
+		len = decode_value(ctx, cursor, parent, data, end - data);
+		if (len <= 0) return len;
+
+		return data_len + 2; /* decoded the whole thing */
+	}
+
 	memcpy(&pen, data, sizeof(pen));
 	pen = htonl(pen);
 
