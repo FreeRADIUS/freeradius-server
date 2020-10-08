@@ -82,7 +82,7 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->src_ipaddr = packet->dst_ipaddr;
 	reply->dst_port = packet->src_port;
 	reply->src_port = packet->dst_port;
-	reply->if_index = packet->if_index;
+	reply->ifindex = packet->ifindex;
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
 	memset(reply->vector, 0,

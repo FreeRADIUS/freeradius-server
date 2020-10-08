@@ -211,8 +211,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		 *
 		 *	We do this first, as it's the most specific error.
 		 */
-		pcap->if_index = if_nametoindex(pcap->name);
-		if (!pcap->if_index) {
+		pcap->ifindex = if_nametoindex(pcap->name);
+		if (!pcap->ifindex) {
 			fr_strerror_printf("Unknown interface \"%s\"", pcap->name);
 			return -1;
 		}

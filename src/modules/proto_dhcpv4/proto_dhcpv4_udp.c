@@ -157,9 +157,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
 	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->src_ipaddr, &address->src_port,
-			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, recv_time_p);
+			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
+			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
+			     &address->socket.inet.ifindex, recv_time_p);
 	if (data_size < 0) {
 		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
@@ -187,9 +187,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	packet = (dhcp_packet_t *) buffer;
 	memcpy(&ipaddr, &packet->giaddr, 4);
-	if ((packet->opcode == 2) && (ipaddr != address->dst_ipaddr.addr.v4.s_addr)) {
+	if ((packet->opcode == 2) && (ipaddr != address->socket.inet.dst_ipaddr.addr.v4.s_addr)) {
 		DEBUG2("Ignoring server reply which was not meant for us (was for %pV).",
-		       fr_box_ipaddr(address->dst_ipaddr));
+		       fr_box_ipaddr(address->socket.inet.dst_ipaddr));
 		return 0;
 	}
 
@@ -232,11 +232,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	Swap src/dst IP/port
 	 */
-	address.src_ipaddr = track->address->dst_ipaddr;
-	address.src_port = track->address->dst_port;
-	address.dst_ipaddr = track->address->src_ipaddr;
-	address.dst_port = track->address->src_port;
-	address.if_index = track->address->if_index;
+	address.socket.inet.src_ipaddr = track->address->socket.inet.dst_ipaddr;
+	address.socket.inet.src_port = track->address->socket.inet.dst_port;
+	address.socket.inet.dst_ipaddr = track->address->socket.inet.src_ipaddr;
+	address.socket.inet.dst_port = track->address->socket.inet.src_port;
+	address.socket.inet.ifindex = track->address->socket.inet.ifindex;
 
 	/*
 	 *	Figure out which kind of packet we're sending.
@@ -262,26 +262,26 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *
 		 *	- if src_ipaddr is unicast, use that
 		 *	- else if socket wasn't bound to *, then use that
-		 *	- else if we have if_index, get main IP from that interface and use that.
+		 *	- else if we have ifindex, get main IP from that interface and use that.
 		 *	- else for offer/ack, look at option 54, for Server Identification and use that
-		 *	- else leave source IP as whatever is already in "address.src_ipaddr".
+		 *	- else leave source IP as whatever is already in "address.socket.inet.src_ipaddr".
 		 */
 		if (inst->src_ipaddr.addr.v4.s_addr != INADDR_ANY) {
-			address.src_ipaddr = inst->src_ipaddr;
+			address.socket.inet.src_ipaddr = inst->src_ipaddr;
 
 		} else if (inst->ipaddr.addr.v4.s_addr != INADDR_ANY) {
-			address.src_ipaddr = inst->ipaddr;
+			address.socket.inet.src_ipaddr = inst->ipaddr;
 
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
-		} else if ((address->if_index > 0) &&
-			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &address.dst_ipaddr.af,
-						   &address.if_index) == 0)) {
-			address.src_ipaddr = primary;
+		} else if ((address->socket.inet.ifindex > 0) &&
+			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &address.socket.inet.dst_ipaddr.af,
+						   &address.socket.inet.ifindex) == 0)) {
+			address.socket.inet.src_ipaddr = primary;
 #endif
 		} else if (((code[2] == FR_DHCP_OFFER) || (code[2] == FR_DHCP_ACK)) &&
 			   ((sid = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_dhcp_server_identifier)) != NULL) &&
 			   (sid[1] == 4)) {
-			memcpy(&address.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
+			memcpy(&address.socket.inet.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
 		}
 
 		/*
@@ -310,9 +310,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		if (packet->giaddr != INADDR_ANY) {
 			DEBUG("Reply will be sent to giaddr.");
-			address.dst_ipaddr.addr.v4.s_addr = packet->giaddr;
-			address.dst_port = inst->port;
-			address.src_port = inst->port;
+			address.socket.inet.dst_ipaddr.addr.v4.s_addr = packet->giaddr;
+			address.socket.inet.dst_port = inst->port;
+			address.socket.inet.src_port = inst->port;
 
 			/*
 			 *	Increase the hop count for client
@@ -341,7 +341,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		if (code[2] == FR_DHCP_NAK) {
 			DEBUG("Reply will be broadcast due to NAK.");
-			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			address.socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
 
@@ -358,7 +358,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		if (request->ciaddr != INADDR_ANY) {
 			DEBUG("Reply will be unicast to CIADDR from original packet.");
-			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &request->ciaddr, 4);
+			memcpy(&address.socket.inet.dst_ipaddr.addr.v4.s_addr, &request->ciaddr, 4);
 			goto send_reply;
 		}
 
@@ -375,7 +375,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		if (request->broadcast) {
 			DEBUG("Reply will be broadcast due to client request.");
-			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			address.socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
 
@@ -387,7 +387,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	This extension isn't in the RFC, but we find it useful.
 		 */
 		if ((packet->yiaddr == htonl(INADDR_ANY)) &&
-		    (address.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
+		    (address.socket.inet.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
 			DEBUG("Reply will be unicast to source IP from original packet.");
 			goto send_reply;
 		}
@@ -421,7 +421,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 *	This check simply makes sure that we
 			 *	don't needlessly update the ARP table.
 			 */
-			if (memcmp(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
+			if (memcmp(&address.socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
 				DEBUG("Reply will be unicast to YIADDR.");
 
 #ifdef SIOCSARP
@@ -444,16 +444,16 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 */
 				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) == 0) {
 					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
-					memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+					memcpy(&address.socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 				} else {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
-					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+					address.socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				}
 
 #endif
 			} else {
 				DEBUG("Reply will be broadcast as we do not create raw UDP sockets.");
-				address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				address.socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
 			break;
 
@@ -462,7 +462,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 */
 		case FR_DHCP_ACK:
 			DEBUG("Reply will be unicast to YIADDR.");
-			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+			memcpy(&address.socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 			break;
 
 		default:
@@ -476,9 +476,9 @@ send_reply:
 	 *	proto_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
 	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address.src_ipaddr, address.src_port,
-			     address.if_index,
-			     &address.dst_ipaddr, address.dst_port);
+			     &address.socket.inet.src_ipaddr, address.socket.inet.src_port,
+			     address.socket.inet.ifindex,
+			     &address.socket.inet.dst_ipaddr, address.socket.inet.dst_port);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -526,7 +526,7 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
@@ -583,7 +583,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr,
+					     thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 

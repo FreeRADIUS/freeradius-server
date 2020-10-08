@@ -46,12 +46,12 @@ RCSID("$Id$")
  * @param[in] flags to pass to send(), or sendto()
  * @param[in] src_ipaddr of the packet.
  * @param[in] src_port of the packet.
- * @param[in] if_index of the packet.
+ * @param[in] ifindex of the packet.
  * @param[in] dst_ipaddr of the packet.
  * @param[in] dst_port of the packet.
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int if_index,
+		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int ifindex,
 		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
@@ -83,7 +83,7 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 
 			rcode = sendfromto(sockfd, data, data_len, 0,
 					   (struct sockaddr *)&src, sizeof_src,
-					   (struct sockaddr *)&dst, sizeof_dst, if_index);
+					   (struct sockaddr *)&dst, sizeof_dst, ifindex);
 		} else
 #endif
 			rcode = sendto(sockfd, data, data_len, 0,
@@ -166,7 +166,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
  * @param[out] src_port of the packet.
  * @param[out] dst_ipaddr of the packet.
  * @param[out] dst_port of the packet.
- * @param[out] if_index of the interface that received the packet.
+ * @param[out] ifindex of the interface that received the packet.
  * @param[out] when the packet was received.
  * @return
  *	- > 0 on success (number of bytes read).
@@ -174,7 +174,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index,
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *ifindex,
 		 fr_time_t *when)
 {
 	int			sock_flags = 0;
@@ -206,7 +206,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		received = recvfromto(sockfd, data, data_len, sock_flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
-				      if_index, when);
+				      ifindex, when);
 		if (received <= 0) goto done;
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
@@ -225,7 +225,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		return -1;
 	}
 
-	if (if_index) *if_index = 0;
+	if (ifindex) *ifindex = 0;
 #endif
 
 	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {

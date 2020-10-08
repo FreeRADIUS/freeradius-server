@@ -130,9 +130,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
 	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->src_ipaddr, &address->src_port,
-			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, recv_time_p);
+			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
+			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
+			     &address->socket.inet.ifindex, recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_vmps_udp got read error %zd", data_size);
 		return data_size;
@@ -236,9 +236,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
 			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
-					&address->dst_ipaddr, address->dst_port,
-					address->if_index,
-					&address->src_ipaddr, address->src_port);
+					&address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
+					address->socket.inet.ifindex,
+					&address->socket.inet.src_ipaddr, address->socket.inet.src_port);
 		}
 
 		return buffer_len;
@@ -254,9 +254,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	sometimes we want to NOT send a reply...
 	 */
 	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address->dst_ipaddr, address->dst_port,
-			     address->if_index,
-			     &address->src_ipaddr, address->src_port);
+			     &address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
+			     address->socket.inet.ifindex,
+			     &address->socket.inet.src_ipaddr, address->socket.inet.src_port);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -312,13 +312,13 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
 	 *	listen on the same destination IP address.
 	 */
-	if (1) {
+	{
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
@@ -356,7 +356,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_vmps_udp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr, thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 

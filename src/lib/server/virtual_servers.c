@@ -432,7 +432,7 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	Check ports.
 	 */
-	rcode = a->app_io_addr->port - b->app_io_addr->port;
+	rcode = a->app_io_addr->inet.src_port - b->app_io_addr->inet.src_port;
 	if (rcode != 0) return rcode;
 
 	/*
@@ -444,31 +444,31 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	Different address families.
 	 */
-	rcode = a->app_io_addr->ipaddr.af - b->app_io_addr->ipaddr.af;
+	rcode = a->app_io_addr->inet.src_ipaddr.af - b->app_io_addr->inet.src_ipaddr.af;
 	if (rcode != 0) return rcode;
 
 	/*
 	 *	If both are bound to interfaces, AND the interfaces
 	 *	are different, then there is no conflict.
 	 */
-	if (a->app_io_addr->ipaddr.scope_id && b->app_io_addr->ipaddr.scope_id) {
-		rcode = a->app_io_addr->ipaddr.scope_id - b->app_io_addr->ipaddr.scope_id;
+	if (a->app_io_addr->inet.src_ipaddr.scope_id && b->app_io_addr->inet.src_ipaddr.scope_id) {
+		rcode = a->app_io_addr->inet.src_ipaddr.scope_id - b->app_io_addr->inet.src_ipaddr.scope_id;
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = a->app_io_addr->ipaddr.prefix - b->app_io_addr->ipaddr.prefix;
-	aip = a->app_io_addr->ipaddr;
-	bip = b->app_io_addr->ipaddr;
+	rcode = a->app_io_addr->inet.src_ipaddr.prefix - b->app_io_addr->inet.src_ipaddr.prefix;
+	aip = a->app_io_addr->inet.src_ipaddr;
+	bip = b->app_io_addr->inet.src_ipaddr;
 
 	/*
 	 *	Mask out the longer prefix to match the shorter
 	 *	prefix.
 	 */
 	if (rcode < 0) {
-		fr_ipaddr_mask(&bip, a->app_io_addr->ipaddr.prefix);
+		fr_ipaddr_mask(&bip, a->app_io_addr->inet.src_ipaddr.prefix);
 
 	} else if (rcode > 0) {
-		fr_ipaddr_mask(&aip, b->app_io_addr->ipaddr.prefix);
+		fr_ipaddr_mask(&aip, b->app_io_addr->inet.src_ipaddr.prefix);
 
 	}
 

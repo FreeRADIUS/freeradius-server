@@ -215,32 +215,6 @@ static int socket_dont_fragment(UNUSED int sockfd, UNUSED int af)
 }
 #endif	/* lots of things */
 
-/** Check the proto value is sane/supported
- *
- * @param[in] proto to check
- * @return
- *	- true if it is.
- *	- false if it's not.
- */
-bool fr_socket_is_valid_proto(int proto)
-{
-	/*
-	 *	Check the protocol is sane
-	 */
-	switch (proto) {
-	case IPPROTO_UDP:
-	case IPPROTO_TCP:
-#ifdef IPPROTO_SCTP
-	case IPPROTO_SCTP:
-#endif
-		return true;
-
-	default:
-		fr_strerror_printf("Unknown IP protocol %d", proto);
-		return false;
-	}
-}
-
 #ifdef HAVE_SYS_UN_H
 /** Open a Unix socket
  *

@@ -27,9 +27,10 @@ RCSIDH(io_h, "$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/channel.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/socket.h>
+#include <freeradius-devel/util/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -330,14 +331,9 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
  *	Structures and definitions for the master IO handler.
  */
 typedef struct {
-	fr_ipaddr_t			src_ipaddr;
-	fr_ipaddr_t			dst_ipaddr;
-	int				if_index;
+	fr_socket_addr_t		socket;		//!< src/dst ip and port.
 
-	uint16_t			src_port;
-	uint16_t 			dst_port;
-
-	RADCLIENT const			*radclient;		//!< old-style client definition
+	RADCLIENT const			*radclient;	//!< old-style client definition
 } fr_io_address_t;
 
 typedef int (*fr_io_connection_set_t)(fr_listen_t *li, fr_io_address_t *connection);

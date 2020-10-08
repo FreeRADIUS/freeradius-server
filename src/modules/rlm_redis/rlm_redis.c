@@ -180,7 +180,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, (*in)->vb_strvalue, (*in)->vb_length,
+	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, (*in)->vb_strvalue, (*in)->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
 		RPEDEBUG("Failed parsing node address");
 		return XLAT_ACTION_FAIL;
@@ -334,7 +334,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			return -1;
 		}
 
-		if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, p, q - p, AF_UNSPEC, true, true) < 0) {
+		if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, p, q - p, AF_UNSPEC, true, true) < 0) {
 			RPEDEBUG("Failed parsing node address");
 			return -1;
 		}

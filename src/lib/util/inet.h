@@ -74,20 +74,6 @@ typedef struct {
 						//!< be used.
 } fr_ipaddr_t;
 
-/** Holds information necessary for binding or connecting to a socket.
- *
- */
-typedef struct {
-	union {
-		struct {
-			fr_ipaddr_t	ipaddr;	//!< IP address to bind or connect to.
-			uint16_t	port;	//!< Port to bind or connect to.
-		};
-		char const *path;		//!< Unix socket path.
-	};
-	int proto;				//!< Protocol.
-} fr_socket_addr_t;
-
 #  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
 #    define WITH_IFINDEX_RESOLUTION 1
 #  endif
@@ -146,16 +132,16 @@ char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 uint8_t	*fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str);
 
 /*
- *	if_index and if_name resolution
+ *	ifindex and if_name resolution
  */
 int	fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name);
 
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
-char	*fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index);
+char	*fr_ifname_from_ifindex(char out[static IFNAMSIZ], int ifindex);
 #endif
 
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
-int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
+int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex);
 #endif
 
 char	*fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr);

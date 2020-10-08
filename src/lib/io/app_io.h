@@ -24,6 +24,7 @@
  * @copyright 2018 The FreeRADIUS project
  */
 
+#include <freeradius-devel/util/socket.h>
 
 /** Public structure describing an I/O path for a protocol
  *
@@ -81,7 +82,3 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 				  fr_ipaddr_t const *src_ipaddr, int src_port,
 				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
 				  char const *interface);
-/*
- *	A common function to get a machine readable socket name
- */
-fr_socket_addr_t *fr_app_io_socket_addr(TALLOC_CTX *ctx, int proto, fr_ipaddr_t const *ipaddr, int port);

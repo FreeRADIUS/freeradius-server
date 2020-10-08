@@ -225,19 +225,19 @@ static int8_t address_cmp(void const *one, void const *two)
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
 
-	rcode = STABLE_COMPARE(a->src_port, b->src_port);
+	rcode = STABLE_COMPARE(a->socket.inet.src_port, b->socket.inet.src_port);
 	if (rcode != 0) return rcode;
 
-	rcode = STABLE_COMPARE(a->dst_port, b->dst_port);
+	rcode = STABLE_COMPARE(a->socket.inet.dst_port, b->socket.inet.dst_port);
 	if (rcode != 0) return rcode;
 
-	rcode = STABLE_COMPARE(a->if_index, b->if_index);
+	rcode = STABLE_COMPARE(a->socket.inet.ifindex, b->socket.inet.ifindex);
 	if (rcode != 0) return rcode;
 
-	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
 	if (rcode != 0) return rcode;
 
-	return fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	return fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 }
 
 static uint32_t connection_hash(void const *ctx)
@@ -245,15 +245,14 @@ static uint32_t connection_hash(void const *ctx)
 	uint32_t hash;
 	fr_io_connection_t const *c = talloc_get_type_abort_const(ctx, fr_io_connection_t);
 
-	hash = fr_hash(&c->address->src_ipaddr, sizeof(c->address->src_ipaddr));
-	hash = fr_hash_update(&c->address->src_port, sizeof(c->address->src_port), hash);
+	hash = fr_hash(&c->address->socket.inet.src_ipaddr, sizeof(c->address->socket.inet.src_ipaddr));
+	hash = fr_hash_update(&c->address->socket.inet.src_port, sizeof(c->address->socket.inet.src_port), hash);
 
-	hash = fr_hash_update(&c->address->if_index, sizeof(c->address->if_index), hash);
+	hash = fr_hash_update(&c->address->socket.inet.ifindex, sizeof(c->address->socket.inet.ifindex), hash);
 
-	hash = fr_hash_update(&c->address->dst_ipaddr, sizeof(c->address->dst_ipaddr), hash);
-	return fr_hash_update(&c->address->dst_port, sizeof(c->address->dst_port), hash);
+	hash = fr_hash_update(&c->address->socket.inet.dst_ipaddr, sizeof(c->address->socket.inet.dst_ipaddr), hash);
+	return fr_hash_update(&c->address->socket.inet.dst_port, sizeof(c->address->socket.inet.dst_port), hash);
 }
-
 
 static int connection_cmp(void const *one, void const *two)
 {
@@ -540,7 +539,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	radclient->active = true;
 
 	/*
-	 *	address->client points to a "static" client.  We want
+	 *	address->socket.inet.client points to a "static" client.  We want
 	 *	to clean up everything associated with the connection
 	 *	when it closes.  So we need to point to our own copy
 	 *	of the client here.
@@ -559,8 +558,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	/*
 	 *	Clients for connected sockets are always a /32 or /128.
 	 */
-	connection->client->src_ipaddr = address->src_ipaddr;
-	connection->client->network = address->src_ipaddr;
+	connection->client->src_ipaddr = address->socket.inet.src_ipaddr;
+	connection->client->network = address->socket.inet.src_ipaddr;
 
 	/*
 	 *	Don't initialize mutex or hash table.
@@ -693,7 +692,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 			fd = connection->child->fd;
 
-			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
+			if (fr_ipaddr_to_sockaddr(&connection->address->socket.inet.src_ipaddr, connection->address->socket.inet.src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
 				talloc_free(dl_inst);
 				return NULL;
@@ -724,10 +723,10 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			connection->name = fr_asprintf(connection, "proto_%s from client %pV port "
 						       "%u to server %pV port %u",
 						       inst->app_io->name,
-						       fr_box_ipaddr(connection->address->src_ipaddr),
-						       connection->address->src_port,
-						       fr_box_ipaddr(connection->address->dst_ipaddr),
-						       connection->address->dst_port);
+						       fr_box_ipaddr(connection->address->socket.inet.src_ipaddr),
+						       connection->address->socket.inet.src_port,
+						       fr_box_ipaddr(connection->address->socket.inet.dst_ipaddr),
+						       connection->address->socket.inet.dst_port);
 		} else {
 			connection->name = inst->app_io->get_name(connection->child);
 		}
@@ -826,14 +825,14 @@ static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t 
 
 	MEM(radclient = talloc_zero(ctx, RADCLIENT));
 
-	fr_value_box_aprint(radclient, &shortname, fr_box_ipaddr(address->src_ipaddr), NULL);
+	fr_value_box_aprint(radclient, &shortname, fr_box_ipaddr(address->socket.inet.src_ipaddr), NULL);
 	radclient->longname = radclient->shortname = shortname;
 
 	radclient->secret = radclient->nas_type = talloc_strdup(radclient, "");
 
-	radclient->ipaddr = address->src_ipaddr;
+	radclient->ipaddr = address->socket.inet.src_ipaddr;
 
-	radclient->src_ipaddr = address->dst_ipaddr;
+	radclient->src_ipaddr = address->socket.inet.dst_ipaddr;
 
 	radclient->proto = ipproto;
 	radclient->dynamic = true;
@@ -1224,14 +1223,16 @@ redo:
 		 *	Get IP addresses only if we have IP addresses.
 		 */
 		if ((saremote.ss_family == AF_INET) || (saremote.ss_family == AF_INET6)) {
-			(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.src_ipaddr, &address.src_port);
+			(void) fr_ipaddr_from_sockaddr(&saremote, salen,
+						       &address.socket.inet.src_ipaddr, &address.socket.inet.src_port);
 			salen = sizeof(saremote);
 
 			/*
 			 *	@todo - only if the local listen address is "*".
 			 */
 			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
-			(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.dst_ipaddr, &address.dst_port);
+			(void) fr_ipaddr_from_sockaddr(&saremote, salen,
+						       &address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port);
 		}
 
 	} else {
@@ -1282,7 +1283,7 @@ do_read:
 			 *	listener?
 			 */
 			DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
-			       inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
+			       inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 			return 0;
 		}
 		*priority = value;
@@ -1310,7 +1311,8 @@ do_read:
 	 *	connected socket).
 	 */
 	if (!connection) {
-		client = fr_trie_lookup(thread->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+		client = fr_trie_lookup(thread->trie,
+					&address.socket.inet.src_ipaddr.addr, address.socket.inet.src_ipaddr.prefix);
 		fr_assert(!client || !client->connection);
 
 	} else {
@@ -1346,7 +1348,7 @@ do_read:
 		 */
 		fr_assert(!connection);
 
-		radclient = inst->app_io->client_find(thread->child, &address.src_ipaddr, inst->ipproto);
+		radclient = inst->app_io->client_find(thread->child, &address.socket.inet.src_ipaddr, inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
@@ -1361,11 +1363,11 @@ do_read:
 				if (accept_fd < 0) {
 					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
 					      "too many dynamic clients are defined",
-					      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
+					      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				} else {
 					DEBUG("proto_%s - ignoring connection attempt from client IP address %pV "
 					      "- too many dynamic clients are defined",
-					      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
+					      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 					close(accept_fd);
 				}
 				return 0;
@@ -1374,7 +1376,8 @@ do_read:
 			/*
 			 *	Look up the allowed networks.
 			 */
-			network = fr_trie_lookup(inst->networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+			network = fr_trie_lookup(inst->networks, &address.socket.inet.src_ipaddr.addr,
+						 address.socket.inet.src_ipaddr.prefix);
 			if (!network) goto ignore;
 
 			/*
@@ -1393,10 +1396,10 @@ do_read:
 		ignore:
 			if (accept_fd < 0) {
 				DEBUG("proto_%s - ignoring packet from unknown client IP address %pV",
-				      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
+				      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 			} else {
 				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %pV",
-				      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
+				      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				close(accept_fd);
 			}
 			return 0;
@@ -3001,7 +3004,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 			ERROR("Failed opening %s - that port is already in use by another listener in server %s { ... } - %s",
 			      child->name, cf_section_name2(other->server_cs), other->name);
 
-			ERROR("got socket %d %d\n", child->app_io_addr->port, other->app_io_addr->port);
+			ERROR("got socket %d %d\n", child->app_io_addr->inet.src_port, other->app_io_addr->inet.src_port);
 
 			talloc_free(li);
 			return -1;

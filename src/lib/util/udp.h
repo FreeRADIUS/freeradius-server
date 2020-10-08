@@ -40,7 +40,7 @@ extern "C" {
 #define UDP_FLAGS_PEEK		(1 << 1)
 
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 fr_ipaddr_t const *src_ipaddr, uint16_t src_port, int if_index,
+		 fr_ipaddr_t const *src_ipaddr, uint16_t src_port, int ifindex,
 		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port);
 
 int udp_recv_discard(int sockfd);
@@ -49,7 +49,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index,
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *ifindex,
 		 fr_time_t *when);
 
 #ifdef __cplusplus

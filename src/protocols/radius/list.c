@@ -95,7 +95,7 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 	request->dst_port = reply->src_port;
 	request->src_ipaddr = reply->dst_ipaddr;
 	request->dst_ipaddr = reply->src_ipaddr;
-	request->if_index = reply->if_index;
+	request->ifindex = reply->ifindex;
 }
 
 /*
@@ -836,7 +836,7 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 		        packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
 			received ? " " : "",
 #endif
 			packet->data_len);
@@ -860,7 +860,7 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 		        packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
 			received ? " " : "",
 #endif
 		        packet->data_len);

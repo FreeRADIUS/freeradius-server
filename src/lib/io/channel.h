@@ -50,10 +50,11 @@ typedef struct fr_listen fr_listen_t;
 }
 #endif
 
-#include <freeradius-devel/io/message.h>
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/base.h>
+#include <freeradius-devel/io/control.h>
+#include <freeradius-devel/io/message.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/log.h>
 
 #include <sys/types.h>
 #include <sys/event.h>

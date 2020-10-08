@@ -54,7 +54,7 @@ extern "C" {
  */
 typedef struct {
 	int			sockfd;			//!< Socket this packet was read from.
-	int			if_index;		//!< Index of receiving interface.
+	int			ifindex;		//!< Index of receiving interface.
 	fr_ipaddr_t		src_ipaddr;		//!< Src IP address of packet.
 	fr_ipaddr_t		dst_ipaddr;		//!< Dst IP address of packet.
 	uint16_t		src_port;		//!< Src port of packet.

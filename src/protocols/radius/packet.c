@@ -363,7 +363,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 	return udp_recv(sockfd, packet->data, packet->data_len, flags,
 			&packet->src_ipaddr, &packet->src_port,
 			&packet->dst_ipaddr, &packet->dst_port,
-			&packet->if_index, &packet->timestamp);
+			&packet->ifindex, &packet->timestamp);
 }
 
 
@@ -516,7 +516,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	And send it on it's way.
 	 */
 	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
-			&packet->src_ipaddr, packet->src_port, packet->if_index,
+			&packet->src_ipaddr, packet->src_port, packet->ifindex,
 			&packet->dst_ipaddr, packet->dst_port);
 }
 

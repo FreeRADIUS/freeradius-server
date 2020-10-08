@@ -576,9 +576,9 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-	       packet->if_index ? "via " : "",
-	       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-	       packet->if_index ? " " : "",
+	       packet->ifindex ? "via " : "",
+	       packet->ifindex ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
+	       packet->ifindex ? " " : "",
 #endif
 	       packet->data_len);
 

@@ -43,12 +43,12 @@ int	udpfromto_init(int s);
 int	recvfromto(int s, void *buf, size_t len, int flags,
 	       	   struct sockaddr *from, socklen_t *fromlen,
 		   struct sockaddr *to, socklen_t *tolen,
-		   int *if_index, fr_time_t *when);
+		   int *ifindex, fr_time_t *when);
 
 int	sendfromto(int s, void *buf, size_t len, int flags,
 		   struct sockaddr *from, socklen_t fromlen,
 		   struct sockaddr *to, socklen_t tolen,
-		   int if_index);
+		   int ifindex);
 #endif
 
 #ifdef __cplusplus

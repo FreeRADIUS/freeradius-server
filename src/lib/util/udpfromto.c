@@ -182,7 +182,7 @@ int udpfromto_init(int s)
  * @param[out] to	Where to write the destination address.  If NULL recvmsg()
  *			will be used instead.
  * @param[in] to_len	Length of the structure pointed to by to.
- * @param[out] if_index	The interface which received the datagram (may be NULL).
+ * @param[out] ifindex	The interface which received the datagram (may be NULL).
  *			Will only be populated if to is not NULL.
  * @param[out] when	the packet was received (may be NULL).  If SO_TIMESTAMP is
  *			not available or SO_TIMESTAMP Was not set on the socket,
@@ -194,7 +194,7 @@ int udpfromto_init(int s)
 int recvfromto(int fd, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t *from_len,
 	       struct sockaddr *to, socklen_t *to_len,
-	       int *if_index, fr_time_t *when)
+	       int *ifindex, fr_time_t *when)
 {
 	struct msghdr		msgh;
 	struct cmsghdr		*cmsg;
@@ -300,7 +300,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 
 	if (from_len) *from_len = msgh.msg_namelen;
 
-	if (if_index) *if_index = 0;
+	if (ifindex) *ifindex = 0;
 	if (when) *when = 0;
 
 	/* Process auxiliary received data in msgh */
@@ -316,7 +316,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 			((struct sockaddr_in *)to)->sin_addr = i->ipi_addr;
 			*to_len = sizeof(struct sockaddr_in);
 
-			if (if_index) *if_index = i->ipi_ifindex;
+			if (ifindex) *ifindex = i->ipi_ifindex;
 
 			break;
 		}
@@ -343,7 +343,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 			((struct sockaddr_in6 *)to)->sin6_addr = i->ipi6_addr;
 			*to_len = sizeof(struct sockaddr_in6);
 
-			if (if_index) *if_index = i->ipi6_ifindex;
+			if (ifindex) *ifindex = i->ipi6_ifindex;
 
 			break;
 		}
@@ -373,7 +373,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
  * @param[in] from_len	Length of the structure pointed to by from.
  * @param[in] to	The destination address.
  * @param[in] to_len	Length of the structure pointed to by to.
- * @param[in] if_index	The interface on which to send the datagram.
+ * @param[in] ifindex	The interface on which to send the datagram.
  *			If automatic interface selection is desired, value should be 0.
  * @return
  *	- 0 on success.
@@ -381,7 +381,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
  */
 int sendfromto(int fd, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t from_len,
-	       struct sockaddr *to, socklen_t to_len, int if_index)
+	       struct sockaddr *to, socklen_t to_len, int ifindex)
 {
 	struct msghdr	msgh;
 	struct iovec	iov;
@@ -474,7 +474,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi_spec_dst = s4->sin_addr;
-		pkt->ipi_ifindex = if_index;
+		pkt->ipi_ifindex = ifindex;
 
 #  elif defined(IP_SENDSRCADDR)
 		struct cmsghdr *cmsg;
@@ -512,7 +512,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi6_addr = s6->sin6_addr;
-		pkt->ipi6_ifindex = if_index;
+		pkt->ipi6_ifindex = ifindex;
 	}
 #  endif	/* IPV6_PKTINFO */
 
@@ -543,7 +543,7 @@ int main(int argc, char **argv)
 	char *destip = DESTIP;
 	uint16_t port = DEF_PORT;
 	int n, server_socket, client_socket, fl, tl, pid;
-	int if_index;
+	int ifindex;
 	fr_time_t when;
 
 	if (argc > 1) destip = argv[1];
@@ -583,7 +583,7 @@ int main(int argc, char **argv)
 	printf("server: waiting for packets on INADDR_ANY:%d\n", port);
 	if ((n = recvfromto(server_socket, buf, sizeof(buf), 0,
 	    (struct sockaddr *)&from, &fl,
-	    (struct sockaddr *)&to, &tl, &if_index, &when)) < 0) {
+	    (struct sockaddr *)&to, &tl, &ifindex, &when)) < 0) {
 		perror("server: recvfromto");
 		waitpid(pid, NULL, WNOHANG);
 		return 0;
@@ -593,7 +593,7 @@ int main(int argc, char **argv)
 	printf("(src ip:port %s:%d ",
 		inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 	printf(" dst ip:port %s:%d) via if %i\n",
-		inet_ntoa(to.sin_addr), ntohs(to.sin_port), if_index);
+		inet_ntoa(to.sin_addr), ntohs(to.sin_port), ifindex);
 
 	printf("server: replying from address packet was received on to source address\n");
 
@@ -627,14 +627,14 @@ client:
 
 	fr_assert_fatal_msg((n = recvfromto(client_socket, buf, sizeof(buf), 0,
 	    		    (struct sockaddr *)&from, &fl,
-	    		    (struct sockaddr *)&to, &tl, &if_index, NULL)) < 0,
+	    		    (struct sockaddr *)&to, &tl, &ifindex, NULL)) < 0,
 	    		    "client: recvfromto - %s", fr_syserror(errno));
 
 	printf("client: received a packet of %d bytes [%s] ", n, buf);
 	printf("(src ip:port %s:%d",
 		inet_ntoa(from.sin_addr), ntohs(from.sin_port));
 	printf(" dst ip:port %s:%d) via if %i\n",
-		inet_ntoa(to.sin_addr), ntohs(to.sin_port), if_index);
+		inet_ntoa(to.sin_addr), ntohs(to.sin_port), ifindex);
 
 	return EXIT_SUCCESS;
 }

@@ -158,9 +158,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
 	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->src_ipaddr, &address->src_port,
-			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, recv_time_p);
+			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
+			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
+			     &address->socket.inet.ifindex, recv_time_p);
 	if (data_size < 0) {
 		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
@@ -236,11 +236,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Send packets to the originator, EXCEPT that we always
 	 *	originate packets from our src_ipaddr.
 	 */
-	address.src_ipaddr = inst->src_ipaddr;
-	address.src_port = track->address->dst_port;
-	address.dst_ipaddr = track->address->src_ipaddr;
-	address.dst_port = track->address->src_port;
-	address.if_index = track->address->if_index;
+	address.socket.inet.src_ipaddr = inst->src_ipaddr;
+	address.socket.inet.src_port = track->address->socket.inet.dst_port;
+	address.socket.inet.dst_ipaddr = track->address->socket.inet.src_ipaddr;
+	address.socket.inet.dst_port = track->address->socket.inet.src_port;
+	address.socket.inet.ifindex = track->address->socket.inet.ifindex;
 
 	/*
 	 *	Figure out which kind of packet we're sending.
@@ -253,9 +253,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	proto_dhcpv6 takes care of suppressing do-not-respond, etc.
 	 */
 	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address.src_ipaddr, address.src_port,
-			     address.if_index,
-			     &address.dst_ipaddr, address.dst_port);
+			     &address.socket.inet.src_ipaddr, address.socket.inet.src_port,
+			     address.socket.inet.ifindex,
+			     &address.socket.inet.dst_ipaddr, address.socket.inet.dst_port);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -303,7 +303,7 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
@@ -380,7 +380,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv6_udp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr, thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 

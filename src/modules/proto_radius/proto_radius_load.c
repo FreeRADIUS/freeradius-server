@@ -134,8 +134,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	address = *address_p;
 
 	memset(address, 0, sizeof(*address));
-	address->src_ipaddr.af = AF_INET;
-	address->dst_ipaddr.af = AF_INET;
+	address->socket.inet.src_ipaddr.af = AF_INET;
+	address->socket.inet.dst_ipaddr.af = AF_INET;
 	address->radclient = inst->client;
 
 	*recv_time_p = thread->recv_time;
@@ -220,7 +220,7 @@ static int mod_open(fr_listen_t *li)
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &ipaddr, 0);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &ipaddr, 0);
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 

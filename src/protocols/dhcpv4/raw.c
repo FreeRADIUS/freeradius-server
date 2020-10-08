@@ -57,12 +57,12 @@
  *
  * @param[out] link_layer	A sockaddr_ll struct to populate.  Must be passed to other raw
  *				functions.
- * @param[in] if_index		of the interface we're binding to.
+ * @param[in] ifindex		of the interface we're binding to.
  * @return
  *	- >= 0 a file descriptor to read/write packets on.
  *	- <0 an error ocurred.
  */
-int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
+int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int ifindex)
 {
 	int fd;
 
@@ -81,7 +81,7 @@ int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
 
 	link_layer->sll_family = AF_PACKET;
 	link_layer->sll_protocol = htons(ETH_P_ALL);
-	link_layer->sll_ifindex = if_index;
+	link_layer->sll_ifindex = ifindex;
 	link_layer->sll_hatype = ARPHRD_ETHER;
 	link_layer->sll_pkttype = PACKET_OTHERHOST;
 	link_layer->sll_halen = 6;

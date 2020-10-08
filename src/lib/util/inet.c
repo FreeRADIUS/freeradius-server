@@ -1147,19 +1147,19 @@ int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, char const *na
 #endif
 
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
-/** Resolve if_index to interface name
+/** Resolve ifindex to interface name
  *
  * @param[out] out Buffer to use to store the name, must be at least IFNAMSIZ bytes.
- * @param[in] if_index to resolve to name.
+ * @param[in] ifindex to resolve to name.
  * @return
  *	- NULL on error.
  *	- a pointer to out on success.
  */
-char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index)
+char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int ifindex)
 {
 #ifdef HAVE_IF_INDEXTONAME
-	if (!if_indextoname(if_index, out)) {
-		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
+	if (!ifindextoname(ifindex, out)) {
+		fr_strerror_printf("Failed resolving interface index %i to name", ifindex);
 		return NULL;
 	}
 #else
@@ -1167,7 +1167,7 @@ char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index)
 	int		fd;
 
 	memset(&if_req, 0, sizeof(if_req));
-	if_req.ifr_ifindex = if_index;
+	if_req.ifr_ifindex = ifindex;
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
@@ -1184,7 +1184,7 @@ char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index)
 	 *	name.
 	 */
 	if (ioctl(fd, SIOCGIFNAME, &if_req) < 0) {
-		fr_strerror_printf("Failed resolving interface index %i to name: %s", if_index, fr_syserror(errno));
+		fr_strerror_printf("Failed resolving interface index %i to name: %s", ifindex, fr_syserror(errno));
 		goto error;
 	}
 	strlcpy(out, if_req.ifr_name, IFNAMSIZ);
@@ -1205,12 +1205,12 @@ char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int if_index)
  * @param[out] out Where to write the primary IP address.
  * @param[in] fd File descriptor of any datagram or raw socket.
  * @param[in] af to get interface for.
- * @param[in] if_index of interface to get IP address for.
+ * @param[in] ifindex of interface to get IP address for.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
+int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
 {
 	struct ifreq		if_req;
 	fr_ipaddr_t		ipaddr;
@@ -1219,7 +1219,7 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 	memset(out, 0, sizeof(*out));
 
 #ifdef SIOCGIFNAME
-	if_req.ifr_ifindex = if_index;
+	if_req.ifr_ifindex = ifindex;
 	/*
 	 *	First we resolve the interface index to the interface name
 	 *	Which is pretty inefficient, but it seems the only way to
@@ -1227,16 +1227,16 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 	 *	name.
 	 */
 	if (ioctl(fd, SIOCGIFNAME, &if_req) < 0) {
-		fr_strerror_printf("Failed resolving interface index %i to name: %s", if_index, fr_syserror(errno));
+		fr_strerror_printf("Failed resolving interface index %i to name: %s", ifindex, fr_syserror(errno));
 		return -1;
 	}
 #elif defined(HAVE_IF_INDEXTONAME)
-	if (!if_indextoname(if_index, if_req.ifr_name)) {
-		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
+	if (!ifindextoname(ifindex, if_req.ifr_name)) {
+		fr_strerror_printf("Failed resolving interface index %i to name", ifindex);
 		return -1;
 	}
 #else
-#  error Need SIOCGIFNAME or if_indextoname
+#  error Need SIOCGIFNAME or ifindextoname
 #endif
 
 	/*

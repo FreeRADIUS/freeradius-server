@@ -70,16 +70,3 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 		return talloc_typed_asprintf(ctx, "%s from client %s port %u to server %s port %u on interface %s",
 					     app_io->name, src_buf, src_port, dst_buf, dst_port, interface);
 }
-
-fr_socket_addr_t *fr_app_io_socket_addr(TALLOC_CTX *ctx, int proto, fr_ipaddr_t const *ipaddr, int port)
-{
-	fr_socket_addr_t *addr;
-
-	addr = talloc_zero(ctx, fr_socket_addr_t);
-
-	addr->proto = proto;
-	addr->ipaddr = *ipaddr;
-	addr->port = port;
-
-	return addr;
-}
