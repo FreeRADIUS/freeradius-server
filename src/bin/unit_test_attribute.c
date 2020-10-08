@@ -1290,6 +1290,8 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
+	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+
 	/*
 	 *	Run the input data through the test
 	 *	point to produce VALUE_PAIRs.
@@ -1301,20 +1303,24 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		cc->last_ret = slen;
 		if (slen <= 0) {
 			fr_pair_list_free(&head);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
 			fr_perror("Internal sanity check failed at %d", __LINE__);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 			CLEAR_TEST_POINT(cc);
 			RETURN_COMMAND_ERROR();
 		}
 		to_dec += slen;
 	}
+
 	/*
 	 *	Clear any spurious errors
 	 */
 	fr_strerror();
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
 	 *	Set p to be the output buffer
@@ -1402,18 +1408,23 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
+	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+
 	slen = tp->func(cc->tmp_ctx, &head,
 			(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
 	cc->last_ret = slen;
 	if (slen <= 0) {
+		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 		fr_pair_list_free(&head);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
+
 	/*
 	 *	Clear any spurious errors
 	 */
 	fr_strerror();
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
 	 *	Set p to be the output buffer
