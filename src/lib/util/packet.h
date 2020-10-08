@@ -54,7 +54,7 @@ extern "C" {
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct {
-	fr_socket_addr_t	socket;			//!< This packet was received on.
+	fr_socket_t	socket;			//!< This packet was received on.
 
 	int			id;			//!< Packet ID (used to link requests/responses).
 	unsigned int		code;			//!< Packet code (type).

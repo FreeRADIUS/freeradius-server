@@ -30,7 +30,7 @@ struct fr_listen {
 	void const    		*app_io_instance;	//!< I/O path configuration context.
 	void			*thread_instance;	//!< thread / socket context
 
-	fr_socket_addr_t	*app_io_addr;		//!< for tracking duplicate sockets
+	fr_socket_t	*app_io_addr;		//!< for tracking duplicate sockets
 
 	fr_app_t const		*app;
 	void const		*app_instance;

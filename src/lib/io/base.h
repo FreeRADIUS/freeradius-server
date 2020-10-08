@@ -331,7 +331,7 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
  *	Structures and definitions for the master IO handler.
  */
 typedef struct {
-	fr_socket_addr_t		socket;		//!< src/dst ip and port.
+	fr_socket_t		socket;		//!< src/dst ip and port.
 
 	RADCLIENT const			*radclient;	//!< old-style client definition
 } fr_io_address_t;

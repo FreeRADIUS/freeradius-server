@@ -164,7 +164,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_redis_t);
 
-	fr_socket_addr_t		node_addr;
+	fr_socket_t		node_addr;
 	fr_pool_t			*pool;
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
@@ -322,7 +322,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Hack to allow querying against a specific node for testing
 	 */
 	if (p[0] == '@') {
-		fr_socket_addr_t	node_addr;
+		fr_socket_t	node_addr;
 		fr_pool_t		*pool;
 
 		RDEBUG3("Overriding node selection");

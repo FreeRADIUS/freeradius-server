@@ -204,8 +204,8 @@ struct fr_redis_cluster_node_s {
 							//!< text for debug messages.
 	uint8_t			id;			//!< Node ID (index in node array).
 
-	fr_socket_addr_t	addr;			//!< Current node address.
-	fr_socket_addr_t	pending_addr;		//!< New node address to be applied when the pool
+	fr_socket_t	addr;			//!< Current node address.
+	fr_socket_t	pending_addr;		//!< New node address to be applied when the pool
 							//!< is reconnected.
 
 	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
@@ -428,7 +428,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
  *	- FR_REDIS_CLUSTER_RCODE_SUCCESS on success.
  *	- FR_REDIS_CLUSTER_RCODE_BAD_INPUT if the server returned an invalid redirect.
  */
-static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, fr_socket_addr_t *node_addr,
+static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, fr_socket_t *node_addr,
 						       redisReply *redirect)
 {
 	char		*p, *q;
@@ -2025,7 +2025,7 @@ try_again:
  *	- -1 if no such node exists.
  */
 int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *cluster,
-				       fr_socket_addr_t *node_addr, bool create)
+				       fr_socket_t *node_addr, bool create)
 {
 	fr_redis_cluster_node_t	find, *found;
 
@@ -2083,7 +2083,7 @@ typedef struct {
 	bool			is_master;
 	bool			is_slave;
 	uint8_t			count;
-	fr_socket_addr_t	*found;
+	fr_socket_t	*found;
 } addr_by_role_ctx_t;
 
 /** Walk all used pools, recording the IP addresses of ones matching the filter
@@ -2117,7 +2117,7 @@ static int _cluster_role_walk(void *data, void *uctx)
  * @param[in] is_slave		If true, include the addresses of all the slaves nodes.
  * @return the number of ip addresses written to out.
  */
-ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_addr_t *out[],
+ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave)
 {
 	addr_by_role_ctx_t context;
@@ -2131,7 +2131,7 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_addr_t *ou
 	context.is_master = is_master;
 	context.is_slave = is_slave;
 	context.count = 0;
-	context.found = talloc_zero_array(ctx, fr_socket_addr_t, in_use);
+	context.found = talloc_zero_array(ctx, fr_socket_t, in_use);
 	if (!context.found) {
 		fr_strerror_printf("Out of memory");
 		return -1;

@@ -78,7 +78,7 @@ typedef struct {
 	int proto;		//!< Protocol.
 
 	int fd;			//!< File descriptor if this is a live socket.
-} fr_socket_addr_t;
+} fr_socket_t;
 
 /** Check the proto value is sane/supported
  *
@@ -108,20 +108,20 @@ static inline bool fr_socket_is_inet(int proto)
 
 #define FR_SOCKET_ADDR_ALLOC_DEF_FUNC(_func, ...) \
 { \
-	fr_socket_addr_t *addr; \
-	addr = talloc(ctx, fr_socket_addr_t); \
+	fr_socket_t *addr; \
+	addr = talloc(ctx, fr_socket_t); \
 	if (unlikely(!addr)) return NULL; \
 	return _func(addr, ##__VA_ARGS__); \
 }
 
-/** Swap src/dst information of a fr_socket_addr_t
+/** Swap src/dst information of a fr_socket_t
  *
  * @param[out] dst	Where to write the swapped addresses. May be the same as src.
  * @param[in] src	Socket address to swap.
  */
-static inline void fr_socket_addr_swap(fr_socket_addr_t *dst, fr_socket_addr_t const *src)
+static inline void fr_socket_addr_swap(fr_socket_t *dst, fr_socket_t const *src)
 {
-	fr_socket_addr_t	tmp = *src;
+	fr_socket_t	tmp = *src;
 
 	if (dst != src) *dst = tmp;
 
@@ -142,7 +142,7 @@ static inline void fr_socket_addr_swap(fr_socket_addr_t *dst, fr_socket_addr_t c
 	}
 }
 
-/** Initialise a fr_socket_addr_t for connecting to a remote host using a specific src interface, address and port
+/** Initialise a fr_socket_t for connecting to a remote host using a specific src interface, address and port
  *
  * Can also be used to record information from an incoming packet so that we can
  * identify the correct return path later.
@@ -158,16 +158,16 @@ static inline void fr_socket_addr_swap(fr_socket_addr_t *dst, fr_socket_addr_t c
  * @param[in] dst_port		The destination port of the packet.
  * @return
  *	- NULL if invalid parameters are provided.
- *	- An initialised fr_socket_addr_t struct.
+ *	- An initialised fr_socket_t struct.
  */
-static inline fr_socket_addr_t *fr_socket_addr_init_inet(fr_socket_addr_t *addr,
+static inline fr_socket_t *fr_socket_addr_init_inet(fr_socket_t *addr,
 							 int proto,
 							 int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
 							 fr_ipaddr_t const *dst_ipaddr, int dst_port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
-	*addr = (fr_socket_addr_t){
+	*addr = (fr_socket_t){
 		.proto = proto,
 		.inet = {
 			.ifindex = ifindex,
@@ -181,13 +181,13 @@ static inline fr_socket_addr_t *fr_socket_addr_init_inet(fr_socket_addr_t *addr,
 	return addr;
 }
 
-static inline fr_socket_addr_t *fr_socket_addr_alloc_inet(TALLOC_CTX *ctx, int proto,
+static inline fr_socket_t *fr_socket_addr_alloc_inet(TALLOC_CTX *ctx, int proto,
 							  int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
 							  fr_ipaddr_t const *dst_ipaddr, int dst_port)
 FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
 			      proto, ifindex, src_ipaddr, src_port, dst_ipaddr, dst_port)
 
-/** Initialise a fr_socket_addr_t for binding to a local socket
+/** Initialise a fr_socket_t for binding to a local socket
  *
  * @param[out] addr		to initialise.
  * @param[in] proto		one of the IPPROTO_* macros, i.e. IPPROTO_TCP, IPPROTO_UDP
@@ -198,14 +198,14 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
  * @param[in] port		The source port to bind to.
  * @return
  *	- NULL if invalid parameters are provided.
- *	- An initialised fr_socket_addr_t struct.
+ *	- An initialised fr_socket_t struct.
  */
-static inline fr_socket_addr_t *fr_socket_addr_init_inet_src(fr_socket_addr_t *addr,
+static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
 							     int proto, int ifindex, fr_ipaddr_t const *ipaddr, int port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
-	*addr = (fr_socket_addr_t){
+	*addr = (fr_socket_t){
 		.proto = proto,
 		.inet = {
 			.ifindex = ifindex,
@@ -217,11 +217,11 @@ static inline fr_socket_addr_t *fr_socket_addr_init_inet_src(fr_socket_addr_t *a
 	return addr;
 }
 
-static inline fr_socket_addr_t *fr_socket_addr_alloc_inet_src(TALLOC_CTX *ctx, int proto,
+static inline fr_socket_t *fr_socket_addr_alloc_inet_src(TALLOC_CTX *ctx, int proto,
 							      int ifindex, fr_ipaddr_t const *ipaddr, int port)
 FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipaddr, port)
 
-/** Initialise a fr_socket_addr_t for connecting to a remote host
+/** Initialise a fr_socket_t for connecting to a remote host
  *
  * @param[out] addr		to initialise.
  * @param[in] proto		one of the IPPROTO_* macros, i.e. IPPROTO_TCP, IPPROTO_UDP
@@ -230,14 +230,14 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipad
  * @param[in] port		The source port to bind to.
  * @return
  *	- NULL if invalid parameters are provided.
- *	- An initialised fr_socket_addr_t struct.
+ *	- An initialised fr_socket_t struct.
  */
-static inline fr_socket_addr_t *fr_socket_addr_init_inet_dst(fr_socket_addr_t *addr,
+static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr,
 							     int proto, fr_ipaddr_t const *ipaddr, int port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
-	*addr = (fr_socket_addr_t){
+	*addr = (fr_socket_t){
 		.proto = proto,
 		.inet = {
 			.dst_ipaddr = *ipaddr,
@@ -248,7 +248,7 @@ static inline fr_socket_addr_t *fr_socket_addr_init_inet_dst(fr_socket_addr_t *a
 	return addr;
 }
 
-static inline fr_socket_addr_t *fr_socket_addr_alloc_inet_dst(TALLOC_CTX *ctx, int proto,
+static inline fr_socket_t *fr_socket_addr_alloc_inet_dst(TALLOC_CTX *ctx, int proto,
 							      fr_ipaddr_t const *ipaddr, int port)
 FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_dst, proto, ipaddr, port)
 

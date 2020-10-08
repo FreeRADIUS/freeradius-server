@@ -70,7 +70,7 @@ typedef enum bfd_auth_type_t {
 typedef struct {
 	int		number;
 
-	fr_socket_addr_t socket;
+	fr_socket_t socket;
 
 	fr_event_list_t *el;
 	CONF_SECTION	*server_cs;
