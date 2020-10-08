@@ -137,16 +137,16 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	ip_hdr->ip_sum = 0; /* Filled later */
 
 	/* saddr: Packet-Src-IP-Address (default: 0.0.0.0). */
-	ip_hdr->ip_src.s_addr = packet->src_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_src.s_addr = packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 
 	/* daddr: packet destination IP addr (should be 255.255.255.255 for broadcast). */
-	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_dst.s_addr = packet->socket.inet.dst_ipaddr.addr.v4.s_addr;
 
 	/* IP header checksum */
 	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
 
-	udp_hdr->src = htons(packet->src_port);
-	udp_hdr->dst = htons(packet->dst_port);
+	udp_hdr->src = htons(packet->socket.inet.src_port);
+	udp_hdr->dst = htons(packet->socket.inet.dst_port);
 
 	udp_hdr->len = htons(l4_len);
 	udp_hdr->checksum = 0; /* UDP checksum will be done after dhcp header */
@@ -159,7 +159,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE),
 					    ntohs(udp_hdr->len), udp_hdr->checksum,
-					    packet->src_ipaddr.addr.v4, packet->dst_ipaddr.addr.v4);
+					    packet->socket.inet.src_ipaddr.addr.v4, packet->socket.inet.dst_ipaddr.addr.v4);
 
 	return sendto(sockfd, dhcp_packet, (ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + packet->data_len),
 		      0, (struct sockaddr *) link_layer, sizeof(struct sockaddr_ll));
@@ -202,7 +202,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 		return NULL;
 	}
 
-	packet->sockfd = sockfd;
+	packet->socket.fd = sockfd;
 
 	/* a packet was received (but maybe it is not for us) */
 	sock_len = sizeof(struct sockaddr_ll);
@@ -325,13 +325,13 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	memcpy(packet->vector, packet->data + 28, packet->data[2]);
 	packet->vector[packet->data[2]] = packet->code & 0xff;
 
-	packet->src_port = udp_src_port;
-	packet->dst_port = udp_dst_port;
+	packet->socket.inet.src_port = udp_src_port;
+	packet->socket.inet.dst_port = udp_dst_port;
 
-	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.addr.v4.s_addr = ip_hdr->ip_src.s_addr;
-	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.addr.v4.s_addr = ip_hdr->ip_dst.s_addr;
+	packet->socket.inet.src_ipaddr.af = AF_INET;
+	packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip_hdr->ip_src.s_addr;
+	packet->socket.inet.dst_ipaddr.af = AF_INET;
+	packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip_hdr->ip_dst.s_addr;
 
 	return packet;
 }
