@@ -87,6 +87,7 @@ fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
 	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_state, .name = "TACACS-State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -100,7 +101,7 @@ static void accounting_failed(REQUEST *request, char const *msg)
 	/*
 	 *	Set the server reply message.
 	 */
-	if (!fr_pair_find_by_da(request->reply->vps, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Accounting failed");
 	}
@@ -150,7 +151,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			vp = fr_pair_afrom_da(request->packet, attr_tacacs_state);
 			if (vp) {
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
-				fr_pair_add(&request->packet->vps, vp);
+				fr_pair_add(&request->request_pairs, vp);
 			}
 
 			fr_state_to_request(inst->state_tree, request);
@@ -194,7 +195,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Run accounting foo { ... }
 		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_accounting_flags);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_accounting_flags);
 		if (!vp) goto setup_send;
 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);
@@ -335,32 +336,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
-{
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-
-	fr_assert(process_app_cs);
-	fr_assert(listen_cs);
-
-	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	if (!attr_tacacs_state) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		flags.internal = true;
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_tacacs), fr_dict_root(dict_tacacs),
-				     "TACACS-State", -1, FR_TYPE_OCTETS, &flags) < 0) {
-			cf_log_err(listen_cs, "Failed creating TACACS-State: %s", fr_strerror());
-			return -1;
-		}
-
-		attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	}
-
-	return 0;
-}
-
 static virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
@@ -392,7 +367,6 @@ fr_app_worker_t proto_tacacs_acct = {
 	.config		= proto_tacacs_acct_config,
 	.inst_size	= sizeof(proto_tacacs_acct_t),
 
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 	.compile_list	= compile_list,

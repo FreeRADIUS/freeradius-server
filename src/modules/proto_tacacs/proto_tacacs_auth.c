@@ -117,6 +117,7 @@ fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
 	{ .out = &attr_tacacs_remote_address, .name = "TACACS-Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_session_id, .name = "TACACS-Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_state, .name = "TACACS-State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -130,7 +131,7 @@ static void authentication_failed(REQUEST *request, char const *msg)
 	/*
 	 *	Set the server reply message.  Note that we do not tell the user *why* they failed authentication.
 	 */
-	if (!fr_pair_find_by_da(request->reply->vps, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Authentication failed");
 	}
@@ -193,7 +194,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			vp = fr_pair_afrom_da(request->packet, attr_tacacs_state);
 			if (vp) {
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
-				fr_pair_add(&request->packet->vps, vp);
+				fr_pair_add(&request->request_pairs, vp);
 			}
 
 			fr_state_to_request(inst->state_tree, request);
@@ -238,7 +239,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	Find TACACS-Authentication-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {
@@ -253,7 +254,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		 *	No Auth-Type, force it to reject.
 		 */
 		if (!auth_type) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_tacacs_authentication_type);
+			vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_authentication_type);
 			if (!vp) {
 				authentication_failed(request, "No Auth-Type or TACACS-Authentication-Type configured: rejecting authentication.");
 				goto setup_send;
@@ -482,22 +483,6 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
-
-	attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	if (!attr_tacacs_state) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		flags.internal = true;
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_tacacs), fr_dict_root(dict_tacacs),
-				     "TACACS-State", -1, FR_TYPE_OCTETS, &flags) < 0) {
-			cf_log_err(listen_cs, "Failed creating TACACS-State: %s", fr_strerror());
-			return -1;
-		}
-
-		attr_tacacs_state = fr_dict_attr_by_name(dict_tacacs, "TACACS-State");
-	}
 
 	return 0;
 }

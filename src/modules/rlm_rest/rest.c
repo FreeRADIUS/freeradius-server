@@ -546,7 +546,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	fr_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_afrom_pair_list(data, request->packet->vps, NULL);
+		encoded = fr_json_afrom_pair_list(data, request->request_pairs, NULL);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;
@@ -1791,7 +1791,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control, attr_rest_http_header);
+	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 	     header;
 	     header = fr_cursor_next(&headers)) {
 		header = fr_cursor_remove(&headers);
@@ -2020,7 +2020,7 @@ do {\
 
 	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
-		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
+		fr_cursor_init(&(ctx->request.cursor), &request->request_pairs);
 
 		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 

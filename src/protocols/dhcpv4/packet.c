@@ -111,6 +111,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*head = NULL, *vp;
 	VALUE_PAIR	*maxms, *mtu, *netaddr;
+	fr_value_box_t	box;
 
 	fr_cursor_init(&cursor, &head);
 
@@ -303,9 +304,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 	 *	client belongs to based on packet data.  The sequence here
 	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
 	 *	store the found address in an internal attribute of
-	 *	DHCP-Network-IP-Address.
+	 *	DHCP-Network-Subnet
+	 *
+	 *
+	 *	All of these options / fields are type "ipv4addr", so
+	 *	we need to decode them as that.  And then cast it to
+	 *	"ipv4prefix".
 	 */
-	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_ip_address);
+	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_subnet);
 	/*
 	 *	First look for Relay-Link-Selection
 	 */
@@ -316,26 +322,30 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 		 */
 		netaddr = fr_pair_find_by_da(head, attr_dhcp_subnet_selection_option);
 	}
-	if (!netaddr) {
-		if (giaddr != htonl(INADDR_ANY)) {
-			/*
-			 *	Gateway address is set - use that one
-			 */
-			fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-						  data + 24, 4, true);
-		} else {
-			/*
-			 *	else, store client address whatever it is
-			 */
-			fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-						  data + 12, 4, true);
-		}
+
+	if (netaddr) {
+		/*
+		 *	Store whichever address we found from options and ensure
+		 *	the data type matches the pair, i.e address to prefix
+		 *	conversion.
+		 */
+		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &netaddr->data);
+
+	} else if (giaddr != htonl(INADDR_ANY)) {
+		/*
+		 *	Gateway address is set - use that one
+		 */
+		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL, data + 24, 4, true);
+		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
+
 	} else {
 		/*
-		 *	Store whichever address we found from options
+		 *	else, store client address whatever it is
 		 */
-		fr_value_box_copy(vp, &vp->data, &netaddr->data);
+		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL, data + 12, 4, true);
+		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 	}
+
 	fr_cursor_append(&cursor, vp);
 
 	/*

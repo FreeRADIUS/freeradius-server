@@ -75,7 +75,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	 */
 	request->dict = dict_arp;
 
-	if (fr_arp_decode(request->packet, data, data_len, &request->packet->vps) < 0) {
+	if (fr_arp_decode(request->packet, data, data_len, &request->request_pairs) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -95,7 +95,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 		       fr_arp_packet_codes[request->packet->code],
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 	}
 
 	return 0;
@@ -127,7 +127,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return 1;
 	}
 
-	slen = fr_arp_encode(buffer, buffer_len, request->packet->data, request->reply->vps);
+	slen = fr_arp_encode(buffer, buffer_len, request->packet->data, request->reply_pairs);
 	if (slen <= 0) {
 		RPEDEBUG("Failed encoding reply");
 		return -1;
@@ -146,7 +146,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		       request->reply->code,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
 	}
 
 	return slen;

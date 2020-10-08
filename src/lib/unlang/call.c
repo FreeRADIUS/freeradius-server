@@ -93,8 +93,6 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	unlang_group_t			*g;
 
 	char const			*server;
-	fr_dict_t const			*dict;
-	fr_dict_attr_t const		*attr_packet_type;
 	fr_dict_enum_t const		*type_enum;
 
 	module_method_t			process_p;
@@ -128,33 +126,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		}
 	}
 
-	/*
-	 *	Get the server, then the dictionary, then the packet
-	 *	type, then the name of the packet type, and then
-	 *	process function for that named packet.
-	 */
-	dict = virtual_server_namespace(server);
-	if (!dict) {
-		REDEBUG("No 'namespace' in server %s", server);
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	if (dict != request->dict) {
-		REDEBUG("Request namespace does not match virtual server %s namespace",
-			server);
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	attr_packet_type = fr_dict_attr_by_name(dict, "Packet-Type");
-	if (!attr_packet_type) {
-		REDEBUG("No such attribute 'Packet-Type' for server %s", server);
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	type_enum = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
+	type_enum = fr_dict_enum_by_value(g->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
 		*presult = RLM_MODULE_FAIL;
@@ -167,7 +139,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	child = unlang_io_subrequest_alloc(request, dict, UNLANG_NORMAL_CHILD);
+	child = unlang_io_subrequest_alloc(request, request->dict, UNLANG_NORMAL_CHILD);
 	if (!child) {
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -191,13 +163,13 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	 */
 	if ((fr_pair_list_copy(child->packet,
 			       &child->packet->vps,
-			       request->packet->vps) < 0) ||
+			       request->request_pairs) < 0) ||
 	    (fr_pair_list_copy(child->reply,
 			       &child->reply->vps,
-			       request->reply->vps) < 0) ||
+			       request->reply_pairs) < 0) ||
 	    (fr_pair_list_copy(child,
 			       &child->control,
-			       request->control) < 0)) {
+			       request->control_pairs) < 0)) {
 		REDEBUG("failed copying lists to child");
 
 		*presult = RLM_MODULE_FAIL;

@@ -544,7 +544,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 
 		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &vp->vp_group);
-		if (rcode < 0) talloc_free(vp);
+		if (rcode < 0) {
+			talloc_free(vp);
+			return rcode;
+		}
 
 		fr_cursor_insert(cursor, vp);
 	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
@@ -625,6 +628,8 @@ static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 
 	if (!fr_dhcpv6_ok(data, packet_len, 200)) return -1;
+
+	*vps = NULL;
 
 	return fr_dhcpv6_decode(ctx, data, packet_len, vps);
 }

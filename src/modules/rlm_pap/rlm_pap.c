@@ -126,12 +126,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
 	VALUE_PAIR		*password;
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 	if (!password) {
 		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
 		return RLM_MODULE_NOOP;
@@ -854,7 +854,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;
 
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 	if (!password) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;

@@ -559,6 +559,14 @@ static inline ssize_t _fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *
  * How many bytes we've used in the buffer (calculated from marker)
  */
 #define fr_dbuff_marker_used(_marker) fr_dbuff_used(_marker)
+
+/* what is the end of the buffer (determined from marker)
+ *
+ */
+static inline uint8_t *fr_dbuff_marker_end(fr_dbuff_marker_t *m)
+{
+	return m->parent->end;
+}
 /** @} */
 
 /** @name copy data to dbuff
@@ -795,6 +803,39 @@ static inline ssize_t fr_dbuff_uint64v_in(fr_dbuff_t *dbuff, uint64_t num)
 
 	return fr_dbuff_memcpy_in(dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
+
+size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len);
+
+size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len);
+
+size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len);
+
+size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len);
+
+/** Copy in as many bytes as possible from one dbuff or marker to another
+ *
+ * @param[in] out	to copy into.
+ * @param[in] in	to copy from.
+ * @param[in] len	The maximum length to copy.
+ * @return Number of bytes to copy.
+ */
+#define fr_dbuff_move(_out, _in, _len) \
+	_Generic((_out), \
+		fr_dbuff_t *		: \
+			_Generic((_in), \
+				fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_dbuff((fr_dbuff_t *)_out, \
+											(fr_dbuff_t *)_in, _len), \
+				fr_dbuff_marker_t *	: _fr_dbuff_move_marker_to_dbuff((fr_dbuff_t *)_out, \
+											(fr_dbuff_marker_t *)_in, _len) \
+			), \
+	       fr_dbuff_marker_t *	: \
+			_Generic((_in), \
+				fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_marker((fr_dbuff_marker_t *)_out, \
+											 (fr_dbuff_t *)_in, _len), \
+				fr_dbuff_marker_t *	: _fr_dbuff_move_marker_to_marker((fr_dbuff_marker_t *)_out, \
+											  (fr_dbuff_marker_t *)_in, _len) \
+			) \
+	)
 /** @} */
 
 #ifdef __cplusplus

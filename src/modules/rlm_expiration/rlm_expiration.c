@@ -59,7 +59,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_da(request->control, attr_expiration);
+	check_item = fr_pair_find_by_da(request->control_pairs, attr_expiration);
 	if (check_item != NULL) {
 		uint32_t left;
 
@@ -111,7 +111,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
  *      Compare the expiration date.
  */
 static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+		     UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
 {
 	time_t now = 0;
 

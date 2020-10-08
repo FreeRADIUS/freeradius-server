@@ -1,0 +1,31 @@
+# -*- text -*-
+# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+
+#
+#  https://wiki.broadband-forum.org/display/BBF/Assigned+Names+and+Numbers
+#
+VENDOR		ADSL-Forum			3561
+
+BEGIN-VENDOR	ADSL-Forum
+
+ATTRIBUTE	ADSL-Manufacturer-OUI		1	octets
+ATTRIBUTE	ADSL-Device-Serial-Number	2	octets
+ATTRIBUTE	ADSL-Device-Product-Class	3	octets
+ATTRIBUTE	ADSL-Gateway-Manufacturer-OUI	4	octets
+ATTRIBUTE	ADSL-Gateway-Serial-Number	5	octets
+ATTRIBUTE	ADSL-Gateway-Product-Class	6	octets
+
+ATTRIBUTE	ADSL-ACS-URL			11	octets
+ATTRIBUTE	ADSL-Provisioning-Code		12	octets
+ATTRIBUTE	ADSL-CWMP-Retry-Minimum-Interval 13	octets
+ATTRIBUTE	ADSL-CWMP-Retry-Interval-Multiplier 14	octets
+
+ATTRIBUTE	ADSL-Tunnel-Type		21  	octets
+ATTRIBUTE	ADSL-Server-Endpoint		22	octets
+ATTRIBUTE	ADSL-Client-Endpoint		23	octets
+
+ATTRIBUTE	ADSL-Client-Type		24	octets
+
+END-VENDOR	ADSL-Forum

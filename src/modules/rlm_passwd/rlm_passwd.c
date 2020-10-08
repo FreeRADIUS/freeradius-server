@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 	fr_cursor_t		cursor;
 	int			found = 0;
 
-	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr);
+	key = fr_pair_find_by_da(request->request_pairs, inst->keyattr);
 	if (!key) return RLM_MODULE_NOTFOUND;
 
 	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
@@ -563,9 +563,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 		if (!pw) continue;
 
 		do {
-			result_add(request, inst, request, &request->control, pw, 0, "config");
-			result_add(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
-			result_add(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
+			result_add(request, inst, request, &request->control_pairs, pw, 0, "config");
+			result_add(request->reply, inst, request, &request->reply_pairs, pw, 1, "reply_items");
+			result_add(request->packet, inst, request, &request->request_pairs, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
 		found++;

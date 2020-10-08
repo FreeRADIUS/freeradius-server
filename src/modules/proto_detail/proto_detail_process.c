@@ -61,7 +61,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		RDEBUG("Received %s ID %i",
 		       fr_dict_enum_name_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
 		       request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 
 		request->component = "radius";
 
@@ -134,7 +134,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, inst->attr_packet_type);
+		vp = fr_pair_find_by_da(request->reply_pairs, inst->attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
@@ -184,7 +184,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 			       request->reply->id);
 		}
 
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
 		break;
 
 	default:

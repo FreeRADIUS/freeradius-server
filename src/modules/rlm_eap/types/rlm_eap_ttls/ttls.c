@@ -634,7 +634,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 	/*
 	 *	Add the tunneled attributes to the request request.
 	 */
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	if (eap_ttls_decode_pair(request->packet, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
@@ -649,14 +649,14 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 	/*
 	 *	No User-Name, try to create one from stored data.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
+	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) {
 		/*
 		 *	No User-Name in the stored data, look for
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_eap_message);
+			vp = fr_pair_find_by_da(request->request_pairs, attr_eap_message);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -684,14 +684,14 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 
 		if (t->username) {
 			vp = fr_pair_copy(request->packet, t->username);
-			fr_pair_add(&request->packet->vps, vp);
+			fr_pair_add(&request->request_pairs, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
 
 	/*
 	 *	Process channel binding.
 	 */
-	chbind = eap_chbind_vp2packet(request, request->packet->vps);
+	chbind = eap_chbind_vp2packet(request, request->request_pairs);
 	if (chbind) {
 		FR_CODE chbind_code;
 		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
@@ -708,7 +708,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG2("sending chbind response");
-			fr_pair_add(&request->reply->vps,
+			fr_pair_add(&request->reply_pairs,
 				    eap_chbind_packet2vp(request->reply, req->response));
 		} else {
 			RDEBUG2("no chbind response");

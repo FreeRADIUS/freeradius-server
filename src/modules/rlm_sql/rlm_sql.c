@@ -729,12 +729,12 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
  * username will then be checked with the passed check string.
  */
 static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
-			UNUSED VALUE_PAIR **reply_pairs) CC_HINT(nonnull (1, 2, 4));
+			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_list,
+			UNUSED VALUE_PAIR **reply_list) CC_HINT(nonnull (1, 2, 4));
 
 static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
-			UNUSED VALUE_PAIR **reply_pairs)
+			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_list,
+			UNUSED VALUE_PAIR **reply_list)
 {
 	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
@@ -878,7 +878,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
+			    (paircmp(request, request->request_pairs, check_tmp, &request->reply_pairs) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -901,7 +901,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 	RDEBUG2("&%pP", vp);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->control, check_tmp, true);
+			radius_pairmove(request, &request->control_pairs, check_tmp, true);
 
 			check_tmp = NULL;
 		}
@@ -938,7 +938,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
-			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+			radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 			reply_tmp = NULL;
 		/*
 		 *	If there's no reply query configured, then we assume
@@ -1259,7 +1259,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+		if (paircmp(request, request->request_pairs, check_tmp, &request->reply_pairs) != 0) {
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skip_reply;
@@ -1274,7 +1274,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 			RDEBUG2("&%pP", vp);
 		}
 		REXDENT();
-		radius_pairmove(request, &request->control, check_tmp, true);
+		radius_pairmove(request, &request->control_pairs, check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		check_tmp = NULL;
@@ -1308,7 +1308,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 
 		log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
-		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+		radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		reply_tmp = NULL;
@@ -1365,7 +1365,7 @@ skip_reply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_da(request->control, attr_user_profile);
+		user_profile = fr_pair_find_by_da(request->control_pairs, attr_user_profile);
 
 		profile = user_profile ?
 				      user_profile->vp_strvalue :

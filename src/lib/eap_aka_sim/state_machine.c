@@ -169,7 +169,7 @@ static bool identity_req_set_by_user(REQUEST *request, eap_aka_sim_session_t *ea
 	 *	then delete them so they don't screw
 	 *	up any of the other code.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
+	for (vp = fr_cursor_init(&cursor, &request->reply_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da == attr_eap_aka_sim_permanent_id_req) {
@@ -516,7 +516,7 @@ static rlm_rcode_t pseudonym_store_resume(module_ctx_t const *mctx, REQUEST *req
 
 	pair_delete_request(attr_eap_aka_sim_next_pseudonym);
 
-	vp = fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_next_reauth_id);
+	vp = fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_next_reauth_id);
 	if (vp) {
 		/*
 		 *	Generate a random fastauth string
@@ -642,7 +642,7 @@ static rlm_rcode_t session_and_pseudonym_store(module_ctx_t const *mctx,
 
 	request->rcode = RLM_MODULE_NOOP;	/* Needed because we may call resume functions directly */
 
-	vp = fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_next_pseudonym);
+	vp = fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_next_pseudonym);
 	if (vp) {
 		/*
 		 *	Generate a random pseudonym string
@@ -837,7 +837,7 @@ static int common_encode(REQUEST *request, eap_session_t *eap_session, uint16_t 
 		}
 	}
 
-	fr_cursor_init(&cursor, &request->reply->vps);
+	fr_cursor_init(&cursor, &request->reply_pairs);
 	fr_cursor_init(&to_encode, &head);
 
 	/*
@@ -931,7 +931,7 @@ static rlm_rcode_t common_failure_notification_send(module_ctx_t const *mctx,
 	 *	- FR_NOTIFICATION_VALUE_NOT_SUBSCRIBED
 	 *	  User has not subscribed to the requested service.
 	 */
-	notification_vp = fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_notification);
+	notification_vp = fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_notification);
 
 	/*
 	 *	Change the failure notification depending where
@@ -1121,7 +1121,7 @@ static rlm_rcode_t common_reauthentication_request_compose(module_ctx_t const *m
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
-	VALUE_PAIR		*to_peer = request->reply->vps, *vp;
+	VALUE_PAIR		*to_peer = request->reply_pairs, *vp;
 
 	VALUE_PAIR		*kdf_id;
 
@@ -1135,11 +1135,11 @@ static rlm_rcode_t common_reauthentication_request_compose(module_ctx_t const *m
 	 *	Not seen any doing this for re-authentication
 	 *	but you never know...
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Generating new session keys");
@@ -1164,7 +1164,7 @@ static rlm_rcode_t common_reauthentication_request_compose(module_ctx_t const *m
 			case AKA_SIM_ANY_ID_REQ:
 				RDEBUG2("Composing EAP-Request/Reauthentication failed.  Clearing reply attributes and "
 					"requesting additional Identity");
-				fr_pair_list_free(&request->reply->vps);
+				fr_pair_list_free(&request->reply_pairs);
 				eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 				return common_identity_enter(mctx, request, eap_session);
 
@@ -1310,7 +1310,7 @@ static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 						 REQUEST *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
-	VALUE_PAIR		*to_peer = request->reply->vps, *vp;
+	VALUE_PAIR		*to_peer = request->reply_pairs, *vp;
 	fr_aka_sim_vector_src_t	src = AKA_SIM_VECTOR_SRC_AUTO;
 
 	VALUE_PAIR		*kdf_id;
@@ -1322,11 +1322,11 @@ static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Acquiring UMTS vector(s)");
@@ -1361,7 +1361,7 @@ static rlm_rcode_t aka_challenge_request_compose(module_ctx_t const *mctx,
 	 *	Get vectors from attribute or generate
 	 *	them using COMP128-* or Milenage.
 	 */
-	if (fr_aka_sim_vector_umts_from_attrs(request, request->control, &eap_aka_sim_session->keys, &src) != 0) {
+	if (fr_aka_sim_vector_umts_from_attrs(request, request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		goto failure;
 	}
@@ -1513,7 +1513,7 @@ static rlm_rcode_t sim_challenge_request_compose(module_ctx_t const *mctx,
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
-	VALUE_PAIR		*to_peer = request->reply->vps, *vp;
+	VALUE_PAIR		*to_peer = request->reply_pairs, *vp;
 	fr_aka_sim_vector_src_t	src = AKA_SIM_VECTOR_SRC_AUTO;
 
 	VALUE_PAIR		*kdf_id;
@@ -1525,19 +1525,19 @@ static rlm_rcode_t sim_challenge_request_compose(module_ctx_t const *mctx,
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(request->control, attr_eap_aka_sim_kdf_identity);
+	kdf_id = fr_pair_find_by_da(request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	if (kdf_id) {
 		identity_to_crypto_identity(request, eap_aka_sim_session,
 					    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
-		fr_pair_delete_by_da(&request->control, attr_eap_aka_sim_kdf_identity);
+		fr_pair_delete_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity);
 	}
 
 	RDEBUG2("Acquiring GSM vector(s)");
-	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control, 0,
+	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 0,
 					      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control, 1,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 1,
 	    				      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control, 2,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 2,
 	    				      &eap_aka_sim_session->keys, &src) != 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		return RLM_MODULE_FAIL;
@@ -1712,7 +1712,7 @@ static rlm_rcode_t sim_start_request_send(module_ctx_t const *mctx,
 	 *	If the user provided no versions, then
 	 *      just add the default (1).
 	 */
-	if (!(fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_version_list))) {
+	if (!(fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_version_list))) {
 		MEM(pair_add_reply(&vp, attr_eap_aka_sim_version_list) >= 0);
 		vp->vp_uint16 = EAP_SIM_VERSION;
 	}
@@ -1721,7 +1721,7 @@ static rlm_rcode_t sim_start_request_send(module_ctx_t const *mctx,
 	 *	Iterate over the the versions adding them
 	 *      to the version list we use for keying.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &request->reply_pairs); vp; vp = fr_cursor_next(&cursor)) {
 		if (vp->da != attr_eap_aka_sim_version_list) continue;
 
 		if ((end - p) < 2) break;
@@ -1809,7 +1809,7 @@ static rlm_rcode_t common_eap_failure_enter(module_ctx_t const *mctx, REQUEST *r
 	/*
 	 *	Free anything we were going to send out...
 	 */
-	fr_pair_list_free(&request->reply->vps);
+	fr_pair_list_free(&request->reply_pairs);
 
 	/*
 	 *	If we're failing, then any identities
@@ -1844,7 +1844,7 @@ static rlm_rcode_t common_failure_notification_enter_resume(module_ctx_t const *
 	/*
 	 *	Free anything we were going to send out...
 	 */
-	fr_pair_list_free(&request->reply->vps);
+	fr_pair_list_free(&request->reply_pairs);
 
 	/*
 	 *	If there's an issue composing the failure
@@ -2017,7 +2017,7 @@ static rlm_rcode_t common_reauthentication_send_resume(module_ctx_t const *mctx,
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
-			fr_pair_list_free(&request->reply->vps);
+			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 
 			return common_identity_enter(mctx, request, eap_session);
@@ -2086,7 +2086,7 @@ static rlm_rcode_t session_load_resume(module_ctx_t const *mctx,
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
-			fr_pair_list_free(&request->reply->vps);
+			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 			return common_identity_enter(mctx, request, eap_session);
 
@@ -2160,7 +2160,7 @@ static rlm_rcode_t pseudonym_load_resume(module_ctx_t const *mctx,
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
-			fr_pair_list_free(&request->reply->vps);
+			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 			return common_identity_enter(mctx, request, eap_session);
 
@@ -2273,7 +2273,7 @@ static rlm_rcode_t aka_challenge_enter(module_ctx_t const *mctx,
 	 	 *	and send it to the peer.
 	 	 */
 		if (inst->network_name &&
-		    !fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_kdf_input)) {
+		    !fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_kdf_input)) {
 			MEM(pair_add_reply(&vp, attr_eap_aka_sim_kdf_input) >= 0);
 			fr_pair_value_bstrdup_buffer(vp, inst->network_name, false);
 		}
@@ -2285,7 +2285,7 @@ static rlm_rcode_t aka_challenge_enter(module_ctx_t const *mctx,
 		 *	Use the default bidding value we have configured
 		 */
 		if (eap_aka_sim_session->send_at_bidding_prefer_prime &&
-		    !fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_bidding)) {
+		    !fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_bidding)) {
 			MEM(pair_add_reply(&vp, attr_eap_aka_sim_bidding) >= 0);
 			vp->vp_uint16 = FR_BIDDING_VALUE_PREFER_AKA_PRIME;
 		}
@@ -2297,7 +2297,7 @@ static rlm_rcode_t aka_challenge_enter(module_ctx_t const *mctx,
 	 *	Set the defaults for protected result indicator
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
-	    !fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_result_ind)) {
+	    !fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_result_ind)) {
 	    	MEM(pair_add_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
@@ -2350,7 +2350,7 @@ static rlm_rcode_t sim_challenge_enter(module_ctx_t const *mctx,
 	 *	Set the defaults for protected result indicator
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
-	    !fr_pair_find_by_da(request->reply->vps, attr_eap_aka_sim_result_ind)) {
+	    !fr_pair_find_by_da(request->reply_pairs, attr_eap_aka_sim_result_ind)) {
 	    	MEM(pair_add_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
@@ -2496,7 +2496,7 @@ static rlm_rcode_t common_reauthentication_response_process(module_ctx_t const *
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*mac, *checkcode;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
@@ -2614,7 +2614,7 @@ static rlm_rcode_t aka_challenge_response_process(module_ctx_t const *mctx,
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*vp = NULL, *mac, *checkcode;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
@@ -2743,7 +2743,7 @@ static rlm_rcode_t sim_challenge_response_process(module_ctx_t const *mctx,
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*mac;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	memcpy(p, eap_aka_sim_session->keys.gsm.vector[0].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE);
 	p += AKA_SIM_VECTOR_GSM_SRES_SIZE;
@@ -2823,7 +2823,7 @@ static rlm_rcode_t aka_identity_response_process(module_ctx_t const *mctx,
 									     eap_aka_sim_session_t);
 	bool			user_set_id_req;
 	VALUE_PAIR		*identity_type;
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 	/*
 	 *	Digest the identity response
 	 */
@@ -3004,7 +3004,7 @@ static rlm_rcode_t sim_start_response_process(module_ctx_t const *mctx,
 	bool			user_set_id_req;
 	VALUE_PAIR		*identity_type;
 
-	VALUE_PAIR		*from_peer = request->packet->vps;
+	VALUE_PAIR		*from_peer = request->request_pairs;
 
 	/*
 	 *	See if the user wants us to request another
@@ -3267,7 +3267,7 @@ static rlm_rcode_t aka_synchronization_failure_recv_resume(module_ctx_t const *m
 	 *	We couldn't generate an SQN and the user didn't provide one,
 	 *	so we need to fail.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_sim_sqn);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_sim_sqn);
 	if (!vp) {
 		REDEBUG("No &control.SQN value provided after resynchronisation, cannot continue");
 		goto failure;
@@ -3335,7 +3335,7 @@ static rlm_rcode_t common_decode(VALUE_PAIR **subtype_vp, VALUE_PAIR **vps,
 
 	int			ret;
 
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	fr_cursor_tail(&cursor);
 
 	ret = fr_aka_sim_decode(request,
@@ -3937,7 +3937,7 @@ static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST 
 										     eap_aka_sim_session_t);
 	VALUE_PAIR			*eap_type, *method, *identity_type;
 	fr_aka_sim_method_hint_t	running, hinted;
-	VALUE_PAIR			*from_peer = request->packet->vps;
+	VALUE_PAIR			*from_peer = request->request_pairs;
 
 	section_rcode_process(mctx, request, eap_session, eap_aka_sim_session);
 
@@ -3946,7 +3946,7 @@ static rlm_rcode_t common_eap_identity_resume(module_ctx_t const *mctx, REQUEST 
 	 *	This must be done before we enter
 	 *	the submodule.
 	 */
-	eap_type = fr_pair_find_by_da(request->control, attr_eap_type);
+	eap_type = fr_pair_find_by_da(request->control_pairs, attr_eap_type);
 	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
 
 	method = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_method_hint);

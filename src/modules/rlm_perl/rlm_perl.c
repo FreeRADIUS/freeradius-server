@@ -867,9 +867,9 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
-		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
-		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, request, &request->control, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request->packet, request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request->reply, request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
+		perl_store_vps(request, request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
 		perl_store_vps(request->state_ctx, request, &request->state, rad_state_hv, "RAD_STATE", "session-state");
 
 		/*
@@ -911,26 +911,26 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		vp = NULL;
 		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
-			fr_pair_list_free(&request->packet->vps);
-			request->packet->vps = vp;
+			fr_pair_list_free(&request->request_pairs);
+			request->request_pairs = vp;
 			vp = NULL;
 		}
 
 		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
-			fr_pair_list_free(&request->reply->vps);
-			request->reply->vps = vp;
+			fr_pair_list_free(&request->reply_pairs);
+			request->reply_pairs = vp;
 			vp = NULL;
 		}
 
 		if ((get_hv_content(request, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
-			fr_pair_list_free(&request->control);
-			request->control = vp;
+			fr_pair_list_free(&request->control_pairs);
+			request->control_pairs = vp;
 			vp = NULL;
 		}
 
 		if ((get_hv_content(request->state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
 			fr_pair_list_free(&request->state);
-			request->state = vp;
+			request->state_pairs = vp;
 			vp = NULL;
 		}
 	}
@@ -958,7 +958,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	VALUE_PAIR		*pair;
 	int 			acct_status_type = 0;
 
-	pair = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
+	pair = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
 	if (pair != NULL) {
 		acct_status_type = pair->vp_uint32;
 	} else {

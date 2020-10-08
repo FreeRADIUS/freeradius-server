@@ -252,7 +252,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 	fr_assert(request->packet != NULL);
 
 	/* sanity check */
-	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) == NULL) {
 		/* log debug */
 		RDEBUG2("could not find status type in packet");
 		/* return */
@@ -332,7 +332,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 	switch (status) {
 	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
@@ -341,18 +341,18 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 
 	case FR_STATUS_STOP:
 		/* add stop time */
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_event_timestamp)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
 		}
 		/* check start timestamp and adjust if needed */
-		mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
+		mod_ensure_start_timestamp(cookie->jobj, request->request_pairs);
 		break;
 
 	case FR_STATUS_ALIVE:
 		/* check start timestamp and adjust if needed */
-		mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
+		mod_ensure_start_timestamp(cookie->jobj, request->request_pairs);
 		break;
 
 	default:
@@ -363,7 +363,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 	}
 
 	/* loop through pairs and add to json document */
-	for (vp = request->packet->vps; vp; vp = vp->next) {
+	for (vp = request->request_pairs; vp; vp = vp->next) {
 		/* map attribute to element */
 		if (mod_attribute_to_element(vp->da->name, inst->map, &element) == 0) {
 			/* debug */

@@ -1620,7 +1620,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_client_identifier);
 	if (vp) {
 		isc_host_uid_t *client, my_client;
 
@@ -1634,7 +1634,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 	}
 
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_client_hardware_address);
 	if (!vp) return NULL;
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
@@ -1758,7 +1758,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 	/*
 	 *	If there's already a fixed IP, don't do anything
 	 */
-	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address);
+	yiaddr = fr_pair_find_by_da(request->reply_pairs, attr_your_ip_address);
 	if (yiaddr) return 0;
 
 	host = get_host(request, inst->hosts_by_ether, inst->hosts_by_uid);
@@ -1779,7 +1779,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 
 		if (info->cmd->type != ISC_FIXED_ADDRESS) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address));
+		MEM(vp = fr_pair_afrom_da(request->reply_pairs, attr_your_ip_address));
 
 		rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 		if (rcode < 0) return rcode;
@@ -1787,7 +1787,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 		/*
 		 *	<sigh> I miss pair_add()
 		 */
-		(void) fr_cursor_init(&cursor, &request->reply->vps);
+		(void) fr_cursor_init(&cursor, &request->reply_pairs);
 		(void) fr_cursor_tail(&cursor);
 		fr_cursor_append(&cursor, vp);
 
@@ -1812,7 +1812,7 @@ static int apply(rlm_isc_dhcp_t const *inst, REQUEST *request, rlm_isc_dhcp_info
 	VALUE_PAIR *yiaddr;
 
 	rcode = 0;
-	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address);
+	yiaddr = fr_pair_find_by_da(request->reply_pairs, attr_your_ip_address);
 
 	/*
 	 *	First, apply any "host" options
@@ -1867,7 +1867,7 @@ recurse:
 		fr_cursor_t option_cursor;
 		fr_cursor_t reply_cursor;
 
-		(void) fr_cursor_init(&reply_cursor, &request->reply->vps);
+		(void) fr_cursor_init(&reply_cursor, &request->reply_pairs);
 		(void) fr_cursor_tail(&reply_cursor);
 
 		/*
@@ -1894,7 +1894,7 @@ recurse:
 		     vp = fr_cursor_next(&option_cursor)) {
 			VALUE_PAIR *reply;
 
-			reply = fr_pair_find_by_da(request->reply->vps, vp->da);
+			reply = fr_pair_find_by_da(request->reply_pairs, vp->da);
 			if (reply) continue;
 
 			/*

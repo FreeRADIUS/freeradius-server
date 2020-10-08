@@ -860,7 +860,7 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 	int		replaced = 0;
 	VALUE_PAIR	*known_good, *new;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control, attr_password_root);
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return -1;
@@ -932,7 +932,7 @@ static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *requ
  * VALUE_PAIR, or alternatively, a persistent ctx may be used and the value
  * of ephemeral checked.
  * If ephemeral is false the returned pair *MUST NOT BE FREED*, it may be an
- * attribute in the request->control list.  If ephemeral is true, the returned
+ * attribute in the request->control_pairs list.  If ephemeral is true, the returned
  * pair *MUST* be freed, or added to one of the pair lists appropriate to the
  * ctx passed in.
  *
@@ -956,7 +956,7 @@ VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*known_good;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control, attr_password_root);
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
 		password_info_t		*info;

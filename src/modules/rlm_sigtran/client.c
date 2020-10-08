@@ -302,7 +302,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED module_ctx_t const *mctx, RE
 		sigtran_vector_t	*vec;
 		sigtran_map_send_auth_info_res_t *res = talloc_get_type_abort(txn->response.data,
 									      sigtran_map_send_auth_info_res_t);
-		fr_cursor_init(&cursor, &request->control);
+		fr_cursor_init(&cursor, &request->control_pairs);
 
 		for (vec = res->vector; vec; vec = vec->next) {
 			switch (vec->type) {

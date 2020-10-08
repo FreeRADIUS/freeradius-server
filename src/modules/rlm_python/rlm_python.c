@@ -508,7 +508,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	 */
 	tuple_len = 0;
 	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) tuple_len++;
 	}
@@ -523,7 +523,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor), i++) {
 			PyObject *pp;
@@ -590,10 +590,10 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, inst, request, &request->reply->vps,
+		mod_vptuple(request->reply, inst, request, &request->reply_pairs,
 			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, inst, request, &request->control,
+		mod_vptuple(request, inst, request, &request->control_pairs,
 			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
 
 	} else if (PyNumber_Check(p_ret)) {

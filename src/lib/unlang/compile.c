@@ -2647,11 +2647,13 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	tmpl_rules_t		parse_rules;
 
 	fr_dict_t const		*dict;
-	fr_dict_attr_t const	*da;
-	fr_dict_enum_t const	*type_enum;
+	fr_dict_attr_t const	*da = NULL;
+	fr_dict_enum_t const	*type_enum = NULL;
 
-	char const		*packet_name;
+	char const		*packet_name = NULL;
 	char			*p, *namespace = NULL;
+
+	tmpl_t			*vpt = NULL;
 
 	/*
 	 *	subrequest { ... }
@@ -2665,6 +2667,50 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	if (!name2) {
 		dict = unlang_ctx->rules->dict_def;
 		packet_name = name2 = unlang_ctx->section_name2;
+		goto get_packet_type;
+	}
+
+	if (cf_section_name2_quote(cs) != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'subrequest' must be a name or an attribute reference");
+		return NULL;
+	}
+
+	if (name2[0] == '&') {
+		size_t slen;
+		fr_sbuff_t sbuff;
+
+		fr_sbuff_init(&sbuff, name2, talloc_array_length(name2));
+
+		slen = tmpl_afrom_substr(parent, &vpt, &sbuff, T_BARE_WORD, NULL, unlang_ctx->rules);
+		if (slen <= 0) {
+			cf_log_err(cs, "Invalid argument to 'subrequest' - %s", fr_strerror());
+			return NULL;
+		}
+
+		/*
+		 *	Anything resembling an integer or string is
+		 *	OK.  Nothing else makes sense.
+		 */
+		switch (tmpl_da(vpt)->type) {
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_INT8:
+		case FR_TYPE_INT16:
+		case FR_TYPE_INT32:
+		case FR_TYPE_INT64:
+		case FR_TYPE_STRING:
+			break;
+
+		default:
+			cf_log_err(cs, "Invalid data type for attribute %s.  Must be integer or string", name2 + 1);
+			talloc_free(vpt);
+			return NULL;
+		}
+
+		dict = unlang_ctx->rules->dict_def;
+		packet_name = NULL;
 		goto get_packet_type;
 	}
 
@@ -2705,27 +2751,32 @@ get_packet_type:
 	da = fr_dict_attr_by_name(dict, "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
+		talloc_free(vpt);
 		talloc_free(namespace);
 		return NULL;
 	}
 
-	fr_assert(packet_name);	/* Should not be NULL by this point */
-
-	type_enum = fr_dict_enum_by_name(da, packet_name, -1);
-	if (!type_enum) {
-		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-			   packet_name, fr_dict_root(dict)->name);
-		talloc_free(namespace);
-		return NULL;
+	if (packet_name) {
+		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+		if (!type_enum) {
+			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
+				   packet_name, fr_dict_root(dict)->name);
+			talloc_free(vpt);
+			talloc_free(namespace);
+			return NULL;
+		}
 	}
 	talloc_free(namespace);		/* no longer needed */
 
-	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+	if (!cf_item_next(cs, NULL)) {
+		talloc_free(vpt);
+		return UNLANG_IGNORE;
+	}
 
 	parse_rules = *unlang_ctx->rules;
 	parse_rules.parent = unlang_ctx->rules;
 	parse_rules.dict_def = dict;
-	parse_rules.allow_foreign = true; /* the parent is _by definition_ in a different dictionary */
+	parse_rules.allow_foreign = true;
 
 	unlang_ctx2.actions = unlang_ctx->actions;
 
@@ -2748,6 +2799,7 @@ get_packet_type:
 	 *	unlang_subrequest() how to process the request.
 	 */
 	g = unlang_generic_to_group(c);
+	if (vpt) g->vpt = talloc_steal(g, vpt);
 	g->dict = dict;
 	g->attr_packet_type = da;
 	g->type_enum = type_enum;
@@ -2764,6 +2816,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const     		*server;
 	CONF_SECTION		*server_cs;
 	fr_dict_t const		*dict;
+	fr_dict_attr_t const	*attr_packet_type;
 
 	server = cf_section_name2(cs);
 	if (!server) {
@@ -2789,8 +2842,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	dict = virtual_server_namespace(server);
 	if (dict && (dict != fr_dict_internal()) && fr_dict_internal() &&
 	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
-		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s'",
+		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s' - they have incompatible protocols",
 			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		return NULL;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(dict, "Packet-Type");
+	if (!attr_packet_type) {
+		cf_log_err(cs, "Cannot call namespace '%s' - it has no Packet-Type attribute",
+			   fr_dict_root(dict)->name);
 		return NULL;
 	}
 
@@ -2803,6 +2863,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	g = unlang_generic_to_group(c);
 	g->server_cs = server_cs;
+	g->attr_packet_type = attr_packet_type;
 
 	return c;
 }

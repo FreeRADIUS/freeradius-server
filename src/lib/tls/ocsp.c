@@ -377,7 +377,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_cert_valid);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_tls_ocsp_cert_valid);
 	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
 		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
@@ -391,7 +391,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	we need to run the full OCSP check.
 		 */
 		if (staple_response) {
-			vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_response);
+			vp = fr_pair_find_by_da(request->control_pairs, attr_tls_ocsp_response);
 			if (!vp) {
 				RDEBUG2("No &control.TLS-OCSP-Response attribute found, performing full OCSP check");
 				break;

@@ -1254,13 +1254,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	Pool-Action override
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_pool_action);
 	if (vp) return mod_action(inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type);
+	vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.Pool-Action, doing nothing...");
 		return RLM_MODULE_NOOP;
@@ -1292,7 +1292,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_pool_action);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1306,7 +1306,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_pool_action);
 	if (vp) {
 		if ((vp->vp_uint32 > 0) && (vp->vp_uint32 <= POOL_ACTION_BULK_RELEASE)) {
 			action = vp->vp_uint32;
@@ -1317,7 +1317,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 		}
 
 	} else if (request->dict == dict_dhcpv4) {
-		vp = fr_pair_find_by_da(request->control, attr_message_type);
+		vp = fr_pair_find_by_da(request->control_pairs, attr_message_type);
 		if (!vp) goto run;
 
 		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
@@ -1337,7 +1337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, REQUES
 	 *	when called by DHCP request
 	 */
 
-	vp = fr_pair_find_by_da(request->control, attr_pool_action);
+	vp = fr_pair_find_by_da(request->control_pairs, attr_pool_action);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
 }
 

@@ -473,7 +473,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	t->type->vp_uint32 = (uint32_t) type;
 	t->lvl->vp_uint32 = (uint32_t) lvl;
 
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	fr_cursor_prepend(&cursor, t->msg);
 	fr_cursor_prepend(&cursor, t->type);
 	fr_cursor_prepend(&cursor, t->lvl);

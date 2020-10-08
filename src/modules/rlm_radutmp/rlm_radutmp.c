@@ -204,7 +204,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
@@ -227,10 +227,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_time))
+		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_session_time))
 		     == NULL || vp->vp_uint32 == 0)
 			check1 = 1;
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_id))
+		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_session_id))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -250,7 +250,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if ((vp->da == attr_login_ip_host) ||

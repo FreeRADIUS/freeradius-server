@@ -189,6 +189,32 @@ finish:
 	return p - data;
 }
 
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
+			  uint8_t const *data, size_t data_len)
+{
+	ssize_t slen;
+	fr_dict_attr_t *child;
+
+	/*
+	 *	Build an unknown attr.  Note that we can't call
+	 *	fr_dict_unknown_acopy(), as it leaves the "child" da
+	 *	as FR_TYPE_TLV, when we want FR_TYPE_OCTETS.
+	 */
+	if (fr_dict_unknown_attr_afrom_num(ctx, &child, da->parent, da->attr) < 0) {
+		return -1;
+	}
+
+	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
+		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name,
+		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
+
+	slen = decode_value(ctx, cursor, child, data, data_len);
+	if (slen <= 0) talloc_free(child);
+
+	return slen;
+}
+
+
 /** RFC 4243 Vendor Specific Suboptions
  *
  * Vendor specific suboptions are in the format.
@@ -222,7 +248,10 @@ finish:
  * @param[in,out] cursor Where to write the decoded options.
  * @param[in] parent of sub TLVs.
  * @param[in] data to parse.
- * @param[in] data_len of data parsed.
+ * @param[in] data_len of the data to parse
+ * @return
+ *	<= 0 on error
+ *	data_len on success.
  */
 static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len)
@@ -242,37 +271,35 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	while (p < end) {
 		ssize_t tlv_len;
 
-		if (p[0] == 0) {
-			p++;
-			continue;
-		}
-
 		/*
 		 *	RFC 3046 is very specific about not allowing termination
 		 *	with a 255 sub-option. But it's required for decoding
 		 *	option 43, and vendors will probably screw it up
 		 *	anyway.
+		 *
+		 *	Similarly, option 0 is sometimes treated as
+		 *	"end of options".
 		 */
-		if (p[0] == 255) {
-			p++;
-			return p - data;
+		if ((p[0] == 0) || (p[0] == 255)) {
+			if ((p + 1) == end) return data_len;
+
+			/*
+			 *	There's stuff after the "end of
+			 *	options" option.  Return it as random crap.
+			 */
+		raw:
+			tlv_len = decode_raw(ctx, cursor, parent, p, end - p);
+			if (tlv_len <= 0) return tlv_len;
+
+			return data_len;
 		}
 
 		/*
 		 *	Everything else should be real options
 		 */
-		if ((end - p) < 2) {
-			fr_strerror_printf("%s: Insufficient data: Needed at least 2 bytes, got %zu",
-					   __FUNCTION__, (end - p));
-			return -1;
-		}
+		if ((end - p) < 2) goto raw;
 
-		if ((p[1] + 2) > (end - p)) {
-			fr_strerror_printf("%s: Suboption %02x would overflow option.  Remaining option data %zu byte(s) "
-					   "(from %zu), Suboption length %u",
-					   __FUNCTION__, p[0], (end - p), data_len, p[1]);
-			return -1;
-		}
+		if ((p[1] + 2) > (end - p)) goto raw;
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
@@ -303,7 +330,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	}
 	FR_PROTO_TRACE("tlv parsing complete, returning %zu byte(s)", p - data);
 
-	return p - data;
+	return data_len;
 }
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
@@ -351,6 +378,72 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	}
 
 	return p - data;
+}
+
+static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+			  uint8_t const *data, size_t const data_len)
+{
+	ssize_t			len;
+	uint32_t		pen;
+	fr_dict_attr_t const	*da;
+	uint8_t const		*end;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
+
+	if (!fr_cond_assert_msg(parent->type == FR_TYPE_VSA,
+				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
+
+	end = data + data_len;
+
+next:
+	/*
+	 *	Enterprise code + data-len + at least one option header
+	 */
+	if (((end - data) < 4 + 1 + 2) ||
+	    (data[4] == 0) || ((data + data[4]) > end)) {
+		da = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), parent->attr);
+		if (!da) return -1;
+
+		len = decode_value(ctx, cursor, parent, data, end - data);
+		if (len <= 0) return len;
+
+		return data_len + 2; /* decoded the whole thing */
+	}
+
+	memcpy(&pen, data, sizeof(pen));
+	pen = htonl(pen);
+
+	/*
+	 *	Verify that the parent (which should be a VSA)
+	 *	contains a fake attribute representing the vendor.
+	 *
+	 *	If it doesn't then this vendor is unknown, but we know
+	 *	vendor attributes have a standard format, so we can
+	 *	decode the data anyway.
+	 */
+	da = fr_dict_attr_child_by_num(parent, pen);
+	if (!da) {
+		fr_dict_attr_t *n;
+
+		if (fr_dict_unknown_vendor_afrom_num(ctx, &n, parent, pen) < 0) {
+			return PAIR_DECODE_OOM;
+		}
+		da = n;
+	}
+
+	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
+
+	len = decode_tlv(ctx, cursor, da, data + 5, data[4]);
+	if (len <= 0) return len;
+
+	data += 5 + len;
+	if (data < end) goto next;
+
+	/*
+	 *	Tell the caller we read all of it, even if we didn't.
+	 */
+	return data_len + 2;
 }
 
 /** Decode DHCP option
@@ -422,6 +515,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
+	if (child->type == FR_TYPE_VSA) return decode_vsa(ctx, cursor, child, data + 2, data[1]);
+
 	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
 	if (ret < 0) {
 		fr_dict_unknown_free(&child);
@@ -456,23 +551,13 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	ssize_t rcode;
-//	fr_dhcpv4_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv4_ctx_t);
-	RADIUS_PACKET *packet;
+	unsigned int	code;
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return -1;
 
-	packet = fr_dhcpv4_packet_alloc(data, data_len);
-	if (!packet) return -1;
+	*vps = NULL;
 
-	memcpy(&packet->data, &data, sizeof(packet->data)); /* const issues */
-	packet->data_len = data_len;
-	rcode = fr_dhcpv4_decode(packet, packet->data, packet->data_len, &packet->vps, &packet->code);
-
-	(void) fr_pair_list_copy(ctx, vps, packet->vps);
-	talloc_free(packet);
-
-	return rcode;
+	return fr_dhcpv4_decode(ctx, data, data_len, vps, &code);
 }
 
 /*

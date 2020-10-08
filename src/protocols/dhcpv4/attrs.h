@@ -51,4 +51,4 @@ extern fr_dict_attr_t const *attr_dhcp_overload;
 extern fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
 extern fr_dict_attr_t const *attr_dhcp_relay_link_selection;
 extern fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
-extern fr_dict_attr_t const *attr_dhcp_network_ip_address;
+extern fr_dict_attr_t const *attr_dhcp_network_subnet;

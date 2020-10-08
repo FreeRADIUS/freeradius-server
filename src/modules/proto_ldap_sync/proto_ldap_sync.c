@@ -359,7 +359,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, true);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 
 		request->server_cs = request->listener->server_cs;
 		request->component = "ldap";
@@ -840,7 +840,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	{
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_find_by_da(request->reply->vps, attr_ldap_sync_cookie);
+		vp = fr_pair_find_by_da(request->reply_pairs, attr_ldap_sync_cookie);
 		if (!vp) {
 			if (config->allow_refresh) RDEBUG2("No &reply.Cookie attribute found.  All entries matching "
 							   "sync configuration will be returned");

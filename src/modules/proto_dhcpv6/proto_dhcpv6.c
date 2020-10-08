@@ -391,7 +391,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	data_len = fr_dhcpv6_encode(buffer, buffer_len, request->packet->data, request->packet->data_len,
-				    request->reply->code, request->reply->vps);
+				    request->reply->code, request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPv6 reply");
 		return -1;

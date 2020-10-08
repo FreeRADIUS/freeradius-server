@@ -276,7 +276,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	lineno = 1;
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	fr_cursor_tail(&cursor);	/* Ensure we only free what we add on error */
 
 	/*

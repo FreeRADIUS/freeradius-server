@@ -308,7 +308,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 		RDEBUG2("Verifying client certificate with cmd");
 		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
-					request->packet->vps, true, true, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
+					request->request_pairs, true, true, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 			REDEBUG("Client certificate CN \"%s\" failed external verification", common_name);
 			my_ok = 0;
 		} else {

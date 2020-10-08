@@ -401,7 +401,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	Ensure that there's a NAS-Identifier, if one wasn't
 	 *	already added.
 	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_nas_identifier)) {
+	if (!fr_pair_find_by_da(request->request_pairs, attr_nas_identifier)) {
 		VALUE_PAIR *vp;
 
 		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
@@ -413,7 +413,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	at which the first packet is sent.  Or for
 	 *	Status-Server, the time of the current packet.
 	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_event_timestamp)) {
+	if (!fr_pair_find_by_da(request->request_pairs, attr_event_timestamp)) {
 		MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
 	}
 
@@ -425,7 +425,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	request->packet->code = u->code;
 
 	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_codes[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_3, request, request->request_pairs, NULL);
 
 	MEM(h->status_r = talloc_zero(request, udp_result_t));
 	h->status_u = u;
@@ -1326,7 +1326,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		VALUE_PAIR *vp;
 
 		proxy_state = 0;
-		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp);
+		vp = fr_pair_find_by_da(request->request_pairs, attr_event_timestamp);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
 		if (u->code == FR_CODE_STATUS_SERVER) u->can_retransmit = false;
@@ -1351,7 +1351,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 */
 	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1,
-				      u->code, id, request->packet->vps);
+				      u->code, id, request->request_pairs);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
 
@@ -1386,7 +1386,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	Add Proxy-State to the tail end of the packet.
 	 *
 	 *	We need to add it here, and NOT in
-	 *	request->packet->vps, because multiple modules
+	 *	request->request_pairs, because multiple modules
 	 *	may be sending the packets at the same time.
 	 */
 	if (proxy_state) {
@@ -1402,7 +1402,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 		 *	sure that it's a loop.
 		 */
 		if (DEBUG_ENABLED) {
-			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_proxy_state);
+			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {
 				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
@@ -1459,7 +1459,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	received the request.
 	 */
 	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
-	    (fr_pair_find_by_da(request->packet->vps, attr_acct_delay_time) != NULL)) {
+	    (fr_pair_find_by_da(request->request_pairs, attr_acct_delay_time) != NULL)) {
 		uint8_t *attr, *end;
 		uint32_t delay;
 		fr_time_t now;
@@ -1836,7 +1836,7 @@ static void request_mux(fr_event_list_t *el,
 			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 		}
 
-		log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, request->request_pairs, NULL);
 		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
 		/*
@@ -2427,11 +2427,11 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
 			VALUE_PAIR	*vp;
 
-			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type);
+			vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
-				fr_pair_add(&request->reply->vps, vp);
+				fr_pair_add(&request->reply_pairs, vp);
 			}
 		}
 
@@ -2454,12 +2454,12 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
 			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
-			fr_pair_add(&request->reply->vps, vp);
+			fr_pair_add(&request->reply_pairs, vp);
 		}
 
 		treq->request->reply->code = code;
 		r->rcode = radius_code_to_rcode[code];
-		fr_pair_add(&request->reply->vps, reply);
+		fr_pair_add(&request->reply_pairs, reply);
 		fr_trunk_request_signal_complete(treq);
 	}
 }
@@ -2703,7 +2703,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, RE
 	 *
 	 *	@todo - don't edit the input packet!
 	 */
-	if (fr_pair_find_by_da(request->packet->vps, attr_message_authenticator)) {
+	if (fr_pair_find_by_da(request->request_pairs, attr_message_authenticator)) {
 		u->require_ma = true;
 		pair_delete_request(attr_message_authenticator);
 	}

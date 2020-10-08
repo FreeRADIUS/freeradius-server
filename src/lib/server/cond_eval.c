@@ -342,7 +342,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 
 		fr_value_box_copy(vp, &vp->data, rhs);
 
-		rcode = paircmp(request, request->packet->vps, vp, NULL);
+		rcode = paircmp(request, request->request_pairs, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
 		talloc_free(vp);
 		goto finish;

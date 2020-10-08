@@ -192,7 +192,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->packet->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
 		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
@@ -213,7 +213,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->dst_port = 1812;
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
@@ -250,7 +250,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	}
 
 	if (fr_debug_lvl) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			/*
@@ -278,7 +278,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	request->reply->vps = NULL;
+	request->reply_pairs = NULL;
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
@@ -547,7 +547,7 @@ static REQUEST *request_clone(REQUEST *old)
 	if (!request->reply) request->reply = fr_radius_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->packet->vps, old->packet->vps);
+	(void) fr_pair_list_copy(request->packet, &request->request_pairs, old->packet->vps);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 
@@ -991,7 +991,7 @@ int main(int argc, char *argv[])
 		vp->vp_uint32 = request->reply->code;
 
 
-		if (!fr_pair_validate(failed, filter_vps, request->reply->vps)) {
+		if (!fr_pair_validate(failed, filter_vps, request->reply_pairs)) {
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : input_file, filter_file);

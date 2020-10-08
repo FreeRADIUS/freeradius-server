@@ -67,7 +67,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
 
 		request->component = "vmps";
 
@@ -159,10 +159,10 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		if (request->reply->code == CLIENT_ADD) {
 			VALUE_PAIR *vp;
 
-			vp = fr_pair_find_by_da(request->control, attr_freeradius_client_ip_address);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_address);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ip_prefix);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_prefix);
+			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_address);
+			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_address);
+			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_prefix);
+			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_prefix);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
@@ -178,7 +178,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, NULL);
 		break;
 
 	default:

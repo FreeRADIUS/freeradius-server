@@ -100,19 +100,19 @@ static void mppe_keys_store(REQUEST *request, mschapv2_opaque_t *data)
 	RDEBUG2("Storing attributes for final response");
 
 	RINDENT();
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
 				    attr_ms_mppe_encryption_policy) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_policy->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
 				    attr_ms_mppe_encryption_type) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_type->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
 				    attr_ms_mppe_recv_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_recv_key->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
 				    attr_ms_mppe_send_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_send_key->name);
 	}
@@ -292,7 +292,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success);
+		fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap2_success);
 		break;
 
 	default:
@@ -329,7 +329,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	MEM(fr_pair_list_copy(data, &data->reply, request->reply->vps) >= 0);
+	MEM(fr_pair_list_copy(data, &data->reply, request->reply_pairs) >= 0);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -361,14 +361,14 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *i
 	 *	return success or failure, depending on the result.
 	 */
 	if (rcode == RLM_MODULE_OK) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap2_success) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
 			return RLM_MODULE_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap_error) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap_error) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
 			return RLM_MODULE_FAIL;
 		}
@@ -521,7 +521,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 			}
 
 			RDEBUG2("Built change password packet");
-			log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, request->request_pairs, NULL);
 
 			/*
 			 * jump to "authentication"
@@ -720,7 +720,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name)) != NULL) &&
+		    ((auth_challenge = fr_pair_find_by_da(request->request_pairs, attr_user_name)) != NULL) &&
 		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
