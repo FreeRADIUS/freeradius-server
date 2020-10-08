@@ -193,20 +193,23 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			  uint8_t const *data, size_t data_len)
 {
 	ssize_t slen;
-	fr_dict_attr_t const *child;
+	fr_dict_attr_t *child;
 
 	/*
-	 *	Build an unknown attr
+	 *	Build an unknown attr.  Note that we can't call
+	 *	fr_dict_unknown_acopy(), as it leaves the "child" da
+	 *	as FR_TYPE_TLV, when we want FR_TYPE_OCTETS.
 	 */
-	child = fr_dict_unknown_acopy(ctx, da);
-	if (!child) return -1;
+	if (fr_dict_unknown_attr_afrom_num(ctx, &child, da->parent, da->attr) < 0) {
+		return -1;
+	}
 
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
 		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name,
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
 	slen = decode_value(ctx, cursor, child, data, data_len);
-	if (slen <= 0) fr_dict_unknown_free(&child);
+	if (slen <= 0) talloc_free(child);
 
 	return slen;
 }
