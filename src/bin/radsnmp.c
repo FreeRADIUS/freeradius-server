@@ -170,9 +170,9 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 	packet->id = conf->last_used_id;
 	conf->last_used_id = (conf->last_used_id + 1) & UINT8_MAX;
 
-	memcpy(&packet->dst_ipaddr, &conf->server_ipaddr, sizeof(packet->dst_ipaddr));
-	packet->dst_port = conf->server_port;
-	packet->sockfd = fd;
+	memcpy(&packet->socket.inet.dst_ipaddr, &conf->server_ipaddr, sizeof(packet->socket.inet.dst_ipaddr));
+	packet->socket.inet.dst_port = conf->server_port;
+	packet->socket.fd = fd;
 
 	return packet;
 }
@@ -794,7 +794,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = write(packet->sockfd, packet->data, packet->data_len);
+				rcode = write(packet->socket.fd, packet->data, packet->data_len);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
@@ -811,7 +811,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_packet_recv(packet, packet->sockfd, UDP_FLAGS_NONE,
+					reply = fr_radius_packet_recv(packet, packet->socket.fd, UDP_FLAGS_NONE,
 								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
 						fr_perror("Failed receiving reply");

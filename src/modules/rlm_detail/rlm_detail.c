@@ -290,21 +290,21 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		memset(&src_vp, 0, sizeof(src_vp));
 		memset(&dst_vp, 0, sizeof(dst_vp));
 
-		switch (packet->src_ipaddr.af) {
+		switch (packet->socket.inet.src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = attr_packet_src_ipv4_address;
-			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
 
 			dst_vp.da = attr_packet_dst_ipv4_address;
-			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
 			src_vp.da = attr_packet_src_ipv6_address;
-			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
 
 			dst_vp.da = attr_packet_dst_ipv6_address;
-			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
 			break;
 
 		default:
@@ -315,10 +315,10 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = attr_packet_src_port;
-		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
+		fr_value_box_shallow(&src_vp.data, packet->socket.inet.src_port, true);
 
 		dst_vp.da = attr_packet_dst_port;
-		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
+		fr_value_box_shallow(&dst_vp.data, packet->socket.inet.dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);

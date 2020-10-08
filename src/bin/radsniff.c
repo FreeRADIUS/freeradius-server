@@ -315,8 +315,8 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	char src[INET6_ADDRSTRLEN];
 	char dst[INET6_ADDRSTRLEN];
 
-	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
-	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
+	inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr, src, sizeof(src));
+	inet_ntop(packet->socket.inet.dst_ipaddr.af, &packet->socket.inet.dst_ipaddr.addr, dst, sizeof(dst));
 
 	status_str = fr_table_str_by_value(rs_events, status, NULL);
 	RS_ASSERT(status_str);
@@ -335,10 +335,10 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	if (is_radius_code(packet->code)) {
 		if (fr_sbuff_in_sprintf(&sbuff, "%s,%s,%s,%i,%s,%i,%i,",
 					fr_packet_codes[packet->code], handle->name,
-					src, packet->src_port, dst, packet->dst_port, packet->id) < 0) return;
+					src, packet->socket.inet.src_port, dst, packet->socket.inet.dst_port, packet->id) < 0) return;
 	} else {
 		if (fr_sbuff_in_sprintf(&sbuff, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
-					src, packet->src_port, dst, packet->dst_port, packet->id) < 0) return;
+					src, packet->socket.inet.src_port, dst, packet->socket.inet.dst_port, packet->id) < 0) return;
 	}
 
 	if (body) {
@@ -388,8 +388,8 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 	ssize_t len, s = sizeof(buffer);
 
-	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
-	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
+	inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr, src, sizeof(src));
+	inet_ntop(packet->socket.inet.dst_ipaddr.af, &packet->socket.inet.dst_ipaddr.addr, dst, sizeof(dst));
 
 	/* Only print out status str if something's not right */
 	if (status != RS_NORMAL) {
@@ -410,20 +410,20 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			       packet->id,
 			       handle->name,
 			       response ? dst : src,
-			       response ? packet->dst_port : packet->src_port,
+			       response ? packet->socket.inet.dst_port : packet->socket.inet.src_port,
 			       response ? "<-" : "->",
 			       response ? src : dst ,
-			       response ? packet->src_port : packet->dst_port);
+			       response ? packet->socket.inet.src_port : packet->socket.inet.dst_port);
 	} else {
 		len = snprintf(p, s, "%u Id %i %s:%s:%i %s %s:%i ",
 			       packet->code,
 			       packet->id,
 			       handle->name,
 			       response ? dst : src,
-			       response ? packet->dst_port : packet->src_port,
+			       response ? packet->socket.inet.dst_port : packet->socket.inet.src_port,
 			       response ? "<-" : "->",
 			       response ? src : dst ,
-			       response ? packet->src_port : packet->dst_port);
+			       response ? packet->socket.inet.src_port : packet->socket.inet.dst_port);
 	}
 	p += len;
 	s -= len;
@@ -1194,7 +1194,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	Pointers into the packet data we just received
 	 */
-	ssize_t len;
+	ssize_t			len;
 	uint8_t const		*p = data;
 
 	ip_header_t const	*ip = NULL;		/* The IP header */
@@ -1320,27 +1320,29 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	packet->data_len = header->caplen - (p - data);
 	memcpy(&packet->data, &p, sizeof(packet->data));
 
+	packet->socket.proto = IPPROTO_UDP;
+
 	/*
 	 *	Populate IP/UDP fields from PCAP data
 	 */
 	if (ip) {
-		packet->src_ipaddr.af = AF_INET;
-		packet->src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
+		packet->socket.inet.src_ipaddr.af = AF_INET;
+		packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
 
-		packet->dst_ipaddr.af = AF_INET;
-		packet->dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
+		packet->socket.inet.dst_ipaddr.af = AF_INET;
+		packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
 	} else {
-		packet->src_ipaddr.af = AF_INET6;
-		memcpy(packet->src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
-		       sizeof(packet->src_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.src_ipaddr.af = AF_INET6;
+		memcpy(packet->socket.inet.src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
+		       sizeof(packet->socket.inet.src_ipaddr.addr.v6.s6_addr));
 
-		packet->dst_ipaddr.af = AF_INET6;
-		memcpy(packet->dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
-		       sizeof(packet->dst_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.dst_ipaddr.af = AF_INET6;
+		memcpy(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
+		       sizeof(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr));
 	}
 
-	packet->src_port = ntohs(udp->src);
-	packet->dst_port = ntohs(udp->dst);
+	packet->socket.inet.src_port = ntohs(udp->src);
+	packet->socket.inet.dst_port = ntohs(udp->dst);
 
 	if (!fr_radius_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
 		fr_perror("radsniff");
@@ -1926,13 +1928,13 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	rcode = (int) a->expect->code - (int) b->expect->code;
 	if (rcode != 0) return rcode;
 
-	rcode = a->expect->sockfd - b->expect->sockfd;
+	rcode = a->expect->socket.fd - b->expect->socket.fd;
 	if (rcode != 0) return rcode;
 
-	rcode = fr_ipaddr_cmp(&a->expect->src_ipaddr, &b->expect->src_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.src_ipaddr, &b->expect->socket.inet.src_ipaddr);
 	if (rcode != 0) return rcode;
 
-	rcode = fr_ipaddr_cmp(&a->expect->dst_ipaddr, &b->expect->dst_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (rcode != 0) return rcode;
 
 	return fr_pair_list_cmp(a->link_vps, b->link_vps);

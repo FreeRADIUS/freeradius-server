@@ -215,7 +215,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	proto_dhcpv4_track_t		*request = talloc_get_type_abort(track->packet, proto_dhcpv4_track_t);
-	fr_io_address_t			address;
+	fr_io_address_t			address = {};
 
 	int				flags;
 	ssize_t				data_size;
@@ -232,11 +232,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	Swap src/dst IP/port
 	 */
-	address.socket.inet.src_ipaddr = track->address->socket.inet.dst_ipaddr;
-	address.socket.inet.src_port = track->address->socket.inet.dst_port;
-	address.socket.inet.dst_ipaddr = track->address->socket.inet.src_ipaddr;
-	address.socket.inet.dst_port = track->address->socket.inet.src_port;
-	address.socket.inet.ifindex = track->address->socket.inet.ifindex;
+	fr_socket_addr_swap(&address.socket, &track->address->socket);
 
 	/*
 	 *	Figure out which kind of packet we're sending.

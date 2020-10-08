@@ -351,11 +351,9 @@ static REQUEST *request_init_fake(char const *file, int line, REQUEST *request, 
 	/*
 	 *	Fill in the fake request.
 	 */
-	fake->packet->sockfd = -1;
-	fake->packet->src_ipaddr = request->packet->src_ipaddr;
-	fake->packet->src_port = request->packet->src_port;
-	fake->packet->dst_ipaddr = request->packet->dst_ipaddr;
-	fake->packet->dst_port = 0;
+	fake->packet->socket = request->packet->socket;
+	fake->packet->socket.inet.dst_port = 0;
+	fake->packet->socket.fd = -1;
 
 	/*
 	 *	This isn't STRICTLY required, as the fake request MUST NEVER
@@ -374,11 +372,7 @@ static REQUEST *request_init_fake(char const *file, int line, REQUEST *request, 
 	/*
 	 *	Fill in the fake reply, based on the fake request.
 	 */
-	fake->reply->sockfd = fake->packet->sockfd;
-	fake->reply->src_ipaddr = fake->packet->dst_ipaddr;
-	fake->reply->src_port = fake->packet->dst_port;
-	fake->reply->dst_ipaddr = fake->packet->src_ipaddr;
-	fake->reply->dst_port = fake->packet->src_port;
+	fr_socket_addr_swap(&fake->reply->socket, &fake->packet->socket);
 	fake->reply->id = fake->packet->id;
 	fake->reply->code = 0; /* UNKNOWN code */
 

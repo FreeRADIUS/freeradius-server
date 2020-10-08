@@ -166,7 +166,7 @@ static char *auth_name(char *buf, size_t buflen, REQUEST *request)
 	pair = fr_pair_find_by_da(request->request_pairs, attr_nas_port);
 	if (pair != NULL) port = pair->vp_uint32;
 
-	if (request->packet->dst_port == 0) tls = " via proxy to virtual server";
+	if (request->packet->socket.inet.dst_port == 0) tls = " via proxy to virtual server";
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 		 request->client->shortname, port,

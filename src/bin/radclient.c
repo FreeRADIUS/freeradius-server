@@ -374,11 +374,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			goto error;
 		}
 
-		request->packet->src_ipaddr = client_ipaddr;
-		request->packet->src_port = client_port;
-		request->packet->dst_ipaddr = server_ipaddr;
-		request->packet->dst_port = server_port;
-		request->packet->proto = ipproto;
+		request->packet->socket.inet.src_ipaddr = client_ipaddr;
+		request->packet->socket.inet.src_port = client_port;
+		request->packet->socket.inet.dst_ipaddr = server_ipaddr;
+		request->packet->socket.inet.dst_port = server_port;
+		request->packet->socket.proto = ipproto;
 
 		request->files = files;
 		request->packet->id = last_used_id;
@@ -494,19 +494,19 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			if (vp->da == attr_packet_type) {
 				request->packet->code = vp->vp_uint32;
 			} else if (vp->da == attr_packet_dst_port) {
-				request->packet->dst_port = vp->vp_uint16;
+				request->packet->socket.inet.dst_port = vp->vp_uint16;
 			} else if ((vp->da == attr_packet_dst_ip_address) ||
 				   (vp->da == attr_packet_dst_ipv6_address)) {
-				memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
+				memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
 			} else if (vp->da == attr_packet_src_port) {
 				if (vp->vp_uint16 < 1024) {
 					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint16);
 					goto error;
 				}
-				request->packet->src_port = vp->vp_uint16;
+				request->packet->socket.inet.src_port = vp->vp_uint16;
 			} else if ((vp->da == attr_packet_src_ip_address) ||
 				   (vp->da == attr_packet_src_ipv6_address)) {
-				memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
+				memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
 			} else if (vp->da == attr_request_authenticator) {
 				if (vp->vp_length > sizeof(request->packet->vector)) {
 					memcpy(request->packet->vector, vp->vp_octets, sizeof(request->packet->vector));
@@ -572,7 +572,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case FR_CODE_STATUS_SERVER:
-				switch (radclient_get_code(request->packet->dst_port)) {
+				switch (radclient_get_code(request->packet->socket.inet.dst_port)) {
 				case FR_CODE_ACCESS_REQUEST:
 					request->filter_code = FR_CODE_ACCESS_ACCEPT;
 					break;
@@ -632,9 +632,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Automatically set the dst port (if one wasn't already set).
 		 */
-		if (request->packet->dst_port == 0) {
-			radclient_get_port(request->packet->code, &request->packet->dst_port);
-			if (request->packet->dst_port == 0) {
+		if (request->packet->socket.inet.dst_port == 0) {
+			radclient_get_port(request->packet->code, &request->packet->socket.inet.dst_port);
+			if (request->packet->socket.inet.dst_port == 0) {
 				REDEBUG("Can't determine destination port");
 				goto error;
 			}
@@ -687,16 +687,16 @@ error:
  */
 static int radclient_sane(rc_request_t *request)
 {
-	if (request->packet->dst_port == 0) {
-		request->packet->dst_port = server_port;
+	if (request->packet->socket.inet.dst_port == 0) {
+		request->packet->socket.inet.dst_port = server_port;
 	}
-	if (request->packet->dst_ipaddr.af == AF_UNSPEC) {
+	if (request->packet->socket.inet.dst_ipaddr.af == AF_UNSPEC) {
 		if (server_ipaddr.af == AF_UNSPEC) {
 			ERROR("No server was given, and request %" PRIu64 " in file %s did not contain "
 			      "Packet-Dst-IP-Address", request->num, request->files->packets);
 			return -1;
 		}
-		request->packet->dst_ipaddr = server_ipaddr;
+		request->packet->socket.inet.dst_ipaddr = server_ipaddr;
 	}
 	if (request->packet->code == 0) {
 		if (packet_code == -1) {
@@ -706,7 +706,7 @@ static int radclient_sane(rc_request_t *request)
 		}
 		request->packet->code = packet_code;
 	}
-	request->packet->sockfd = -1;
+	request->packet->socket.fd = -1;
 
 	return 0;
 }
@@ -787,15 +787,15 @@ static int send_one_packet(rc_request_t *request)
 		 *	this packet.
 		 */
 	retry:
-		request->packet->src_ipaddr.af = server_ipaddr.af;
+		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
 
 			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL,
-								&request->packet->dst_ipaddr,
-								request->packet->dst_port, false);
+								&request->packet->socket.inet.dst_ipaddr,
+								request->packet->socket.inet.dst_port, false);
 				if (mysockfd < 0) {
 					fr_perror("Error opening socket");
 					return -1;
@@ -816,8 +816,8 @@ static int send_one_packet(rc_request_t *request)
 			}
 
 			if (!fr_packet_list_socket_add(packet_list, mysockfd, ipproto,
-						       &request->packet->dst_ipaddr,
-						       request->packet->dst_port, NULL)) {
+						       &request->packet->socket.inet.dst_ipaddr,
+						       request->packet->socket.inet.dst_port, NULL)) {
 				ERROR("Can't add new socket");
 				fr_exit_now(1);
 			}
@@ -898,7 +898,7 @@ static int send_one_packet(rc_request_t *request)
 			fr_packet_list_yank(packet_list, request->packet);
 
 			REDEBUG("No reply from server for ID %d socket %d",
-				request->packet->id, request->packet->sockfd);
+				request->packet->id, request->packet->socket.fd);
 			deallocate_id(request);
 
 			/*
@@ -982,8 +982,8 @@ static int recv_one_packet(fr_time_t wait_time)
 	 *	This only works if were not using any of the
 	 *	Packet-* attributes, or running with 'auto'.
 	 */
-	reply->dst_ipaddr = client_ipaddr;
-	reply->dst_port = client_port;
+	reply->socket.inet.dst_ipaddr = client_ipaddr;
+	reply->socket.inet.dst_port = client_port;
 
 	/*
 	 *	TCP sockets don't use recvmsg(), and thus don't get
@@ -992,14 +992,14 @@ static int recv_one_packet(fr_time_t wait_time)
 	 *	we connected to.
 	 */
 	if (ipproto == IPPROTO_TCP) {
-		reply->src_ipaddr = server_ipaddr;
-		reply->src_port = server_port;
+		reply->socket.inet.src_ipaddr = server_ipaddr;
+		reply->socket.inet.src_port = server_port;
 	}
 
 	packet_p = fr_packet_list_find_byreply(packet_list, reply);
 	if (!packet_p) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
-		      reply->id, reply->sockfd);
+		      reply->id, reply->socket.fd);
 		fr_radius_packet_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
@@ -1414,14 +1414,14 @@ int main(int argc, char **argv)
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
 	 */
-	if (request_head->packet->src_ipaddr.af == AF_UNSPEC) {
+	if (request_head->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
 		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
 		client_ipaddr.af = server_ipaddr.af;
 	} else {
-		client_ipaddr = request_head->packet->src_ipaddr;
+		client_ipaddr = request_head->packet->socket.inet.src_ipaddr;
 	}
 
-	if (client_port == 0) client_port = request_head->packet->src_port;
+	if (client_port == 0) client_port = request_head->packet->socket.inet.src_port;
 
 	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
@@ -1460,8 +1460,8 @@ int main(int argc, char **argv)
 	 *	everything.
 	 */
 	for (this = request_head; this != NULL; this = this->next) {
-		this->packet->src_ipaddr = client_ipaddr;
-		this->packet->src_port = client_port;
+		this->packet->socket.inet.src_ipaddr = client_ipaddr;
+		this->packet->socket.inet.src_port = client_port;
 		if (radclient_sane(this) != 0) {
 			fr_exit_now(1);
 		}

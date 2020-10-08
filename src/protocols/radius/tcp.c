@@ -34,7 +34,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 
 	if (!packet) return NULL;
 
-	packet->sockfd = sockfd;
+	packet->socket.fd = sockfd;
 
 	if (fr_tcp_read_packet(packet, RADIUS_MAX_ATTRIBUTES, flags) != 1) {
 		fr_radius_packet_free(&packet);
@@ -68,7 +68,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 	if (!packet->data) {
 		int packet_len;
 
-		len = recv(packet->sockfd, packet->vector + packet->data_len,
+		len = recv(packet->socket.fd, packet->vector + packet->data_len,
 			   4 - packet->data_len, 0);
 		if (len == 0) return -2; /* clean close */
 
@@ -117,7 +117,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 	/*
 	 *	Try to read more data.
 	 */
-	len = recv(packet->sockfd, packet->data + packet->partial,
+	len = recv(packet->socket.fd, packet->data + packet->partial,
 		   packet->data_len - packet->partial, 0);
 	if (len == 0) return -2; /* clean close */
 
@@ -153,15 +153,11 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 	if (fr_debug_lvl) {
 		char ip_buf[INET6_ADDRSTRLEN], buffer[256];
 
-		if (packet->src_ipaddr.af != AF_UNSPEC) {
-			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.addr,
-				  ip_buf, sizeof(ip_buf));
-			snprintf(buffer, sizeof(buffer), "host %s port %d",
-				 ip_buf, packet->src_port);
+		if (packet->socket.inet.src_ipaddr.af != AF_UNSPEC) {
+			inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr, ip_buf, sizeof(ip_buf));
+			snprintf(buffer, sizeof(buffer), "host %s port %d", ip_buf, packet->socket.inet.src_port);
 		} else {
-			snprintf(buffer, sizeof(buffer), "socket %d",
-				 packet->sockfd);
+			snprintf(buffer, sizeof(buffer), "socket %d", packet->socket.fd);
 		}
 
 	}

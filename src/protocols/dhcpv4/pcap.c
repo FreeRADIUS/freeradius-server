@@ -67,8 +67,8 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET 
 	ip_hdr->ip_p = 17;
 	ip_hdr->ip_sum = 0; /* Filled later */
 
-	ip_hdr->ip_src.s_addr = packet->src_ipaddr.addr.v4.s_addr;
-	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_src.s_addr = packet->socket.inet.src_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_dst.s_addr = packet->socket.inet.dst_ipaddr.addr.v4.s_addr;
 
 	/* IP header checksum */
 	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
@@ -77,8 +77,8 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET 
 	/* fill in UDP layer (L4) */
 	udp_hdr = (udp_header_t *)end;
 
-	udp_hdr->src = htons(packet->src_port);
-	udp_hdr->dst = htons(packet->dst_port);
+	udp_hdr->src = htons(packet->socket.inet.src_port);
+	udp_hdr->dst = htons(packet->socket.inet.dst_port);
 	l4_len = (UDP_HDR_SIZE + packet->data_len);
 	udp_hdr->len = htons(l4_len);
 	udp_hdr->checksum = 0; /* UDP checksum will be done after dhcp header */
@@ -91,8 +91,8 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET 
 
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)udp_hdr, ntohs(udp_hdr->len), udp_hdr->checksum,
-					    packet->src_ipaddr.addr.v4,
-					    packet->dst_ipaddr.addr.v4);
+					    packet->socket.inet.src_ipaddr.addr.v4,
+					    packet->socket.inet.dst_ipaddr.addr.v4);
 
 	ret = pcap_inject(pcap->handle, dhcp_packet, (end - dhcp_packet + packet->data_len));
 	if (ret < 0) {
@@ -213,15 +213,16 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	packet = fr_dhcpv4_packet_alloc(p, data_len);
 	if (!packet) return NULL;
 
-	packet->dst_port = dst_port;
-	packet->src_port = src_port;
+	packet->socket.inet.dst_port = dst_port;
+	packet->socket.inet.src_port = src_port;
 
-	packet->src_ipaddr = src_ipaddr;
-	packet->dst_ipaddr = dst_ipaddr;
+	packet->socket.inet.src_ipaddr = src_ipaddr;
+	packet->socket.inet.dst_ipaddr = dst_ipaddr;
+	packet->socket.inet.ifindex = pcap->ifindex;
 
 	packet->data = talloc_memdup(packet, p, packet->data_len);
 	packet->timestamp = fr_time_from_timeval(&header->ts);
-	packet->ifindex = pcap->ifindex;
+
 	return packet;
 }
 #endif	/* HAVE_LIBPCAP */

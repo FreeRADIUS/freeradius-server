@@ -448,10 +448,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	{
 		if (!rad_client) {
 			RDEBUG2("The client record could not be found for host %s",
-			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
+			       fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		} else {
 			RDEBUG2("The host %s does not have an access group",
-			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
+			       fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}
 

@@ -59,8 +59,8 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr_to_sockaddr(&packet->src_ipaddr, packet->src_port, &src, &sizeof_src);
-	fr_ipaddr_to_sockaddr(&packet->dst_ipaddr, packet->dst_port, &dst, &sizeof_dst);
+	fr_ipaddr_to_sockaddr(&packet->socket.inet.src_ipaddr, packet->socket.inet.src_port, &src, &sizeof_src);
+	fr_ipaddr_to_sockaddr(&packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port, &dst, &sizeof_dst);
 	if (packet->data_len == 0) {
 		fr_strerror_printf("No data to send");
 		return -1;
@@ -68,8 +68,8 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
 
 	errno = 0;
 
-	ret = sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			 (struct sockaddr *)&dst, sizeof_dst, packet->ifindex);
+	ret = sendfromto(packet->socket.fd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
+			 (struct sockaddr *)&dst, sizeof_dst, packet->socket.inet.ifindex);
 	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
 
 	return ret;
@@ -137,16 +137,12 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	packet = fr_dhcpv4_packet_alloc(data, data_len);
 	if (!packet) return NULL;
 
-	packet->dst_port = dst_port;
-	packet->src_port = src_port;
-
-	packet->src_ipaddr = src_ipaddr;
-	packet->dst_ipaddr = dst_ipaddr;
+	fr_socket_addr_init_inet(&packet->socket, IPPROTO_UDP, ifindex, &src_ipaddr, src_port, &dst_ipaddr, dst_port);
 
 	talloc_steal(packet, data);
 	packet->data = data;
-	packet->sockfd = sockfd;
-	packet->ifindex = ifindex;
+	packet->socket.fd = sockfd;
+
 	packet->timestamp = when;
 	return packet;
 }

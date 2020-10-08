@@ -178,12 +178,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 		/*
 		 *	Update source statistics
 		 */
-		mydata.ipaddr = request->packet->src_ipaddr;
+		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
 		stats = rbtree_finddata(t->src, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
-			stats->ipaddr = request->packet->src_ipaddr;
+			stats->ipaddr = request->packet->socket.inet.src_ipaddr;
 			stats->created = request->async->recv_time;
 
 			(void) rbtree_insert(t->src, stats);
@@ -196,12 +196,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 		/*
 		 *	Update destination statistics
 		 */
-		mydata.ipaddr = request->packet->dst_ipaddr;
+		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
 		stats = rbtree_finddata(t->dst, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
-			stats->ipaddr = request->packet->dst_ipaddr;
+			stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
 			stats->created = request->async->recv_time;
 
 			(void) rbtree_insert(t->dst, stats);

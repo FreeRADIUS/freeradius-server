@@ -87,7 +87,7 @@ typedef struct {
  *	- true if it is.
  *	- false if it's not.
  */
-static inline bool fr_socket_is_valid_inet_proto(int proto)
+static inline bool fr_socket_is_inet(int proto)
 {
 	/*
 	 *	Check the protocol is sane
@@ -165,7 +165,7 @@ static inline fr_socket_addr_t *fr_socket_addr_init_inet(fr_socket_addr_t *addr,
 							 int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
 							 fr_ipaddr_t const *dst_ipaddr, int dst_port)
 {
-	if (!fr_socket_is_valid_inet_proto(proto)) return NULL;
+	if (!fr_socket_is_inet(proto)) return NULL;
 
 	*addr = (fr_socket_addr_t){
 		.proto = proto,
@@ -203,7 +203,7 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
 static inline fr_socket_addr_t *fr_socket_addr_init_inet_src(fr_socket_addr_t *addr,
 							     int proto, int ifindex, fr_ipaddr_t const *ipaddr, int port)
 {
-	if (!fr_socket_is_valid_inet_proto(proto)) return NULL;
+	if (!fr_socket_is_inet(proto)) return NULL;
 
 	*addr = (fr_socket_addr_t){
 		.proto = proto,
@@ -235,7 +235,7 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipad
 static inline fr_socket_addr_t *fr_socket_addr_init_inet_dst(fr_socket_addr_t *addr,
 							     int proto, fr_ipaddr_t const *ipaddr, int port)
 {
-	if (!fr_socket_is_valid_inet_proto(proto)) return NULL;
+	if (!fr_socket_is_inet(proto)) return NULL;
 
 	*addr = (fr_socket_addr_t){
 		.proto = proto,

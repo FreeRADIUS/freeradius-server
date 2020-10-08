@@ -494,36 +494,44 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 
 	} else if (tmpl_da(vpt) == attr_packet_src_ip_address) {
 	src_ip_address:
-		if (packet->src_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
+		if (!fr_socket_is_inet(packet->socket.proto) ||
+		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->src_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.src_ipaddr, true);
 
 	} else if (tmpl_da(vpt) == attr_packet_dst_ip_address) {
-		if (packet->dst_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
+		if (!fr_socket_is_inet(packet->socket.proto) ||
+		    (packet->socket.inet.dst_ipaddr.af != AF_INET)) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->dst_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.dst_ipaddr, true);
 
 	} else if (tmpl_da(vpt) == attr_packet_src_ipv6_address) {
-		if (packet->src_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
+		if (!fr_socket_is_inet(packet->socket.proto) ||
+		    (packet->socket.inet.src_ipaddr.af != AF_INET6)) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->src_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.src_ipaddr, true);
 
 	} else if (tmpl_da(vpt) == attr_packet_dst_ipv6_address) {
-		if (packet->dst_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
+		if (!fr_socket_is_inet(packet->socket.proto) ||
+		    (packet->socket.inet.dst_ipaddr.af != AF_INET6)) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->dst_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.dst_ipaddr, true);
 
 	} else if (tmpl_da(vpt) == attr_packet_src_port) {
+		if (!fr_socket_is_inet(packet->socket.proto)) return XLAT_ACTION_DONE;
+
 		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
-		value->datum.uint16 = packet->src_port;
+		value->datum.uint16 = packet->socket.inet.src_port;
 
 	} else if (tmpl_da(vpt) == attr_packet_dst_port) {
+		if (!fr_socket_is_inet(packet->socket.proto)) return XLAT_ACTION_DONE;
+
 		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
-		value->datum.uint16 = packet->dst_port;
+		value->datum.uint16 = packet->socket.inet.dst_port;
 
 	} else {
 		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_da(vpt)->name);

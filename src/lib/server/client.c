@@ -955,7 +955,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 	if (!request) return NULL;
 
-	fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(request->packet->src_ipaddr), NULL);
+	fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
 
 	snprintf(buffer, sizeof(buffer), "dynamic_%i_%s", cnt++, src_buf);
 

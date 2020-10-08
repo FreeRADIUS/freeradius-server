@@ -291,17 +291,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 */
 	memcpy(&request->client, &client, sizeof(client)); /* const issues */
 
-	request->packet->ifindex = address->socket.inet.ifindex;
-	request->packet->src_ipaddr = address->socket.inet.src_ipaddr;
-	request->packet->src_port = address->socket.inet.src_port;
-	request->packet->dst_ipaddr = address->socket.inet.dst_ipaddr;
-	request->packet->dst_port = address->socket.inet.dst_port;
-
-	request->reply->ifindex = address->socket.inet.ifindex;
-	request->reply->src_ipaddr = address->socket.inet.dst_ipaddr;
-	request->reply->src_port = address->socket.inet.dst_port;
-	request->reply->dst_ipaddr = address->socket.inet.src_ipaddr;
-	request->reply->dst_port = address->socket.inet.src_port;
+	request->packet->socket = address->socket;
+	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
 	request->config = main_config;
 	REQUEST_VERIFY(request);

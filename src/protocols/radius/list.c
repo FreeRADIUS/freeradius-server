@@ -49,19 +49,19 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	if (a->id < b->id) return -1;
 	if (a->id > b->id) return +1;
 
-	if (a->sockfd < b->sockfd) return -1;
-	if (a->sockfd > b->sockfd) return +1;
+	if (a->socket.fd < b->socket.fd) return -1;
+	if (a->socket.fd > b->socket.fd) return +1;
 
 	/*
 	 *	Source ports are pretty much random.
 	 */
-	rcode = (int) a->src_port - (int) b->src_port;
+	rcode = (int) a->socket.inet.src_port - (int) b->socket.inet.src_port;
 	if (rcode != 0) return rcode;
 
 	/*
 	 *	Usually many client IPs, and few server IPs
 	 */
-	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
 	if (rcode != 0) return rcode;
 
 	/*
@@ -69,7 +69,7 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	 *	destination IPs, so we check that before checking the
 	 *	file descriptor.
 	 */
-	rcode = fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 	if (rcode != 0) return rcode;
 
 	/*
@@ -78,7 +78,7 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	 *	fields will make the socket unique, and the other is
 	 *	pretty much redundant.
 	 */
-	rcode = (int) a->dst_port - (int) b->dst_port;
+	rcode = (int) a->socket.inet.dst_port - (int) b->socket.inet.dst_port;
 	return rcode;
 }
 
@@ -88,45 +88,32 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 void fr_request_from_reply(RADIUS_PACKET *request,
 			   RADIUS_PACKET const *reply)
 {
-	request->sockfd = reply->sockfd;
+	fr_socket_addr_swap(&request->socket, &reply->socket);
 	request->id = reply->id;
-	request->proto = reply->proto;
-	request->src_port = reply->dst_port;
-	request->dst_port = reply->src_port;
-	request->src_ipaddr = reply->dst_ipaddr;
-	request->dst_ipaddr = reply->src_ipaddr;
-	request->ifindex = reply->ifindex;
 }
 
 /*
  *	We need to keep track of the socket & it's IP/port.
  */
 typedef struct {
-	int		sockfd;
-	void		*ctx;
-
-	uint32_t	num_outgoing;
+	fr_socket_addr_t	socket;
 
 	int		src_any;
-	fr_ipaddr_t	src_ipaddr;
-	uint16_t	src_port;
-
 	int		dst_any;
-	fr_ipaddr_t	dst_ipaddr;
-	uint16_t	dst_port;
+	void			*ctx;
 
-	bool		dont_use;
+	uint32_t		num_outgoing;
 
-	int		proto;
+	bool			dont_use;
 
-	uint8_t		id[32];
+	uint8_t			id[32];
 } fr_packet_socket_t;
 
 
 #define FNV_MAGIC_PRIME (0x01000193)
 #define MAX_SOCKETS (256)
 #define SOCKOFFSET_MASK (MAX_SOCKETS - 1)
-#define SOCK2OFFSET(sockfd) ((sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
+#define SOCK2OFFSET(_sockfd) ((_sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
 
 /*
  *	Structure defining a list of packets (incoming or outgoing)
@@ -147,15 +134,14 @@ struct fr_packet_list_s {
 /*
  *	Ugh.  Doing this on every sent/received packet is not nice.
  */
-static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
-					  int sockfd)
+static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl, int sockfd)
 {
 	int i, start;
 
 	i = start = SOCK2OFFSET(sockfd);
 
 	do {			/* make this hack slightly more efficient */
-		if (pl->sockets[i].sockfd == sockfd) return &pl->sockets[i];
+		if (pl->sockets[i].socket.fd == sockfd) return &pl->sockets[i];
 
 		i = (i + 1) & SOCKOFFSET_MASK;
 	} while (i != start);
@@ -207,7 +193,7 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 
 	if (ps->num_outgoing != 0) return false;
 
-	ps->sockfd = -1;
+	ps->socket.fd = -1;
 	pl->num_sockets--;
 
 	return true;
@@ -237,7 +223,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	i = start = SOCK2OFFSET(sockfd);
 
 	do {
-		if (pl->sockets[i].sockfd == -1) {
+		if (pl->sockets[i].socket.fd == -1) {
 			ps =  &pl->sockets[i];
 			break;
 		}
@@ -252,7 +238,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	memset(ps, 0, sizeof(*ps));
 	ps->ctx = ctx;
-	ps->proto = proto;
+	ps->socket.proto = proto;
 
 	/*
 	 *	Get address family, etc. first, so we know if we
@@ -263,30 +249,29 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	 */
 	sizeof_src = sizeof(src);
 	memset(&src, 0, sizeof_src);
-	if (getsockname(sockfd, (struct sockaddr *) &src,
-			&sizeof_src) < 0) {
+	if (getsockname(sockfd, (struct sockaddr *) &src, &sizeof_src) < 0) {
 		fr_strerror_printf("%s", fr_syserror(errno));
 		return false;
 	}
 
-	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->src_ipaddr, &ps->src_port) < 0) {
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->socket.inet.src_ipaddr, &ps->socket.inet.src_port) < 0) {
 		fr_strerror_printf("Failed to get IP");
 		return false;
 	}
 
-	ps->dst_ipaddr = *dst_ipaddr;
-	ps->dst_port = dst_port;
+	ps->socket.inet.dst_ipaddr = *dst_ipaddr;
+	ps->socket.inet.dst_port = dst_port;
 
-	ps->src_any = fr_ipaddr_is_inaddr_any(&ps->src_ipaddr);
+	ps->src_any = fr_ipaddr_is_inaddr_any(&ps->socket.inet.src_ipaddr);
 	if (ps->src_any < 0) return false;
 
-	ps->dst_any = fr_ipaddr_is_inaddr_any(&ps->dst_ipaddr);
+	ps->dst_any = fr_ipaddr_is_inaddr_any(&ps->socket.inet.dst_ipaddr);
 	if (ps->dst_any < 0) return false;
 
 	/*
 	 *	As the last step before returning.
 	 */
-	ps->sockfd = sockfd;
+	ps->socket.fd = sockfd;
 	pl->num_sockets++;
 
 	return true;
@@ -326,7 +311,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 	}
 
 	for (i = 0; i < MAX_SOCKETS; i++) {
-		pl->sockets[i].sockfd = -1;
+		pl->sockets[i].socket.fd = -1;
 	}
 
 	pl->alloc_id = alloc_id;
@@ -347,8 +332,7 @@ bool fr_packet_list_insert(fr_packet_list_t *pl,
 	return rbtree_insert(pl->tree, request_p);
 }
 
-RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
-				      RADIUS_PACKET *request)
+RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl, RADIUS_PACKET *request)
 {
 	if (!pl || !request) return 0;
 
@@ -367,45 +351,31 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET 
 
 	if (!pl || !reply) return NULL;
 
-	ps = fr_socket_find(pl, reply->sockfd);
+	ps = fr_socket_find(pl, reply->socket.fd);
 	if (!ps) return NULL;
+
+	/*
+	 *	TCP sockets are always bound to the correct src/dst IP/port
+	 */
+	if (ps->socket.proto == IPPROTO_TCP) {
+		fr_socket_addr_swap(&reply->socket, &ps->socket);
+		my_request.socket = ps->socket;
+	} else {
+		my_request.socket = ps->socket;
+
+		if (!ps->src_any) my_request.socket.inet.src_ipaddr = reply->socket.inet.dst_ipaddr;
+		my_request.socket.inet.dst_ipaddr = reply->socket.inet.src_ipaddr;
+		my_request.socket.inet.dst_port = reply->socket.inet.src_port;
+	}
 
 	/*
 	 *	Initialize request from reply, AND from the source
 	 *	IP & port of this socket.  The client may have bound
 	 *	the socket to 0, in which case it's some random port,
-	 *	that is NOT in the original request->src_port.
+	 *	that is NOT in the original request->socket.inet.src_port.
 	 */
-	my_request.sockfd = reply->sockfd;
+	my_request.socket.fd = reply->socket.fd;
 	my_request.id = reply->id;
-
-	/*
-	 *	TCP sockets are always bound to the correct src/dst IP/port
-	 */
-	if (ps->proto == IPPROTO_TCP) {
-		reply->dst_ipaddr = ps->src_ipaddr;
-		reply->dst_port = ps->src_port;
-		reply->src_ipaddr = ps->dst_ipaddr;
-		reply->src_port = ps->dst_port;
-
-		my_request.src_ipaddr = ps->src_ipaddr;
-		my_request.src_port = ps->src_port;
-		my_request.dst_ipaddr = ps->dst_ipaddr;
-		my_request.dst_port = ps->dst_port;
-
-	} else {
-		if (ps->src_any) {
-			my_request.src_ipaddr = ps->src_ipaddr;
-		} else {
-			my_request.src_ipaddr = reply->dst_ipaddr;
-		}
-		my_request.src_port = ps->src_port;
-
-		my_request.dst_ipaddr = reply->src_ipaddr;
-		my_request.dst_port = reply->src_port;
-	}
-
-	my_request.proto = reply->proto;
 	request = &my_request;
 
 	return rbtree_finddata(pl->tree, &request);
@@ -438,7 +408,7 @@ uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	0 == couldn't allocate ID.
  *
  *	Note that this ALSO assigns a socket to use, and updates
- *	packet->request->src_ipaddr && packet->request->src_port
+ *	packet->request->socket.inet.src_ipaddr && packet->request->socket.inet.src_port
  *
  *	In multi-threaded systems, the calls to id_alloc && id_free
  *	should be protected by a mutex.  This does NOT have to be
@@ -460,8 +430,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	fr_packet_socket_t *ps= NULL;
 	RADIUS_PACKET *request = *request_p;
 
-	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
-	    (request->dst_port == 0)) {
+	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
+	    (request->socket.inet.dst_port == 0)) {
 		fr_strerror_printf("No destination address/port specified");
 		return false;
 	}
@@ -469,12 +439,12 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	Special case: unspec == "don't care"
 	 */
-	if (request->src_ipaddr.af == AF_UNSPEC) {
-		memset(&request->src_ipaddr, 0, sizeof(request->src_ipaddr));
-		request->src_ipaddr.af = request->dst_ipaddr.af;
+	if (request->socket.inet.src_ipaddr.af == AF_UNSPEC) {
+		memset(&request->socket.inet.src_ipaddr, 0, sizeof(request->socket.inet.src_ipaddr));
+		request->socket.inet.src_ipaddr.af = request->socket.inet.dst_ipaddr.af;
 	}
 
-	src_any = fr_ipaddr_is_inaddr_any(&request->src_ipaddr);
+	src_any = fr_ipaddr_is_inaddr_any(&request->socket.inet.src_ipaddr);
 	if (src_any < 0) {
 		fr_strerror_printf("Can't check src_ipaddr");
 		return false;
@@ -483,7 +453,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	MUST specify a destination address.
 	 */
-	if (fr_ipaddr_is_inaddr_any(&request->dst_ipaddr) != 0) {
+	if (fr_ipaddr_is_inaddr_any(&request->socket.inet.dst_ipaddr) != 0) {
 		fr_strerror_printf("Must specify a dst_ipaddr");
 		return false;
 	}
@@ -515,7 +485,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 
 #define ID_i ((i + start_i) & SOCKOFFSET_MASK)
 	for (i = 0; i < MAX_SOCKETS; i++) {
-		if (pl->sockets[ID_i].sockfd == -1) continue; /* paranoia */
+		if (pl->sockets[ID_i].socket.fd == -1) continue; /* paranoia */
 
 		ps = &(pl->sockets[ID_i]);
 
@@ -531,33 +501,33 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 */
 		if (ps->num_outgoing == 256) continue;
 
-		if (ps->proto != proto) continue;
+		if (ps->socket.proto != proto) continue;
 
 		/*
 		 *	Address families don't match, skip it.
 		 */
-		if (ps->src_ipaddr.af != request->dst_ipaddr.af) continue;
+		if (ps->socket.inet.src_ipaddr.af != request->socket.inet.dst_ipaddr.af) continue;
 
 		/*
 		 *	MUST match dst port, if we have one.
 		 */
-		if ((ps->dst_port != 0) &&
-		    (ps->dst_port != request->dst_port)) continue;
+		if ((ps->socket.inet.dst_port != 0) &&
+		    (ps->socket.inet.dst_port != request->socket.inet.dst_port)) continue;
 
 		/*
 		 *	MUST match requested src port, if one has been given.
 		 */
-		if ((request->src_port != 0) &&
-		    (ps->src_port != request->src_port)) continue;
+		if ((request->socket.inet.src_port != 0) &&
+		    (ps->socket.inet.src_port != request->socket.inet.src_port)) continue;
 
 		/*
 		 *	We don't care about the source IP, but this
 		 *	socket is link local, and the requested
 		 *	destination is not link local.  Ignore it.
 		 */
-		if (src_any && (ps->src_ipaddr.af == AF_INET) &&
-		    (((ps->src_ipaddr.addr.v4.s_addr >> 24) & 0xff) == 127) &&
-		    (((request->dst_ipaddr.addr.v4.s_addr >> 24) & 0xff) != 127)) continue;
+		if (src_any && (ps->socket.inet.src_ipaddr.af == AF_INET) &&
+		    (((ps->socket.inet.src_ipaddr.addr.v4.s_addr >> 24) & 0xff) == 127) &&
+		    (((request->socket.inet.dst_ipaddr.addr.v4.s_addr >> 24) & 0xff) != 127)) continue;
 
 		/*
 		 *	We're sourcing from *, and they asked for a
@@ -571,8 +541,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 *	it.
 		 */
 		if (!ps->src_any && !src_any &&
-		    (fr_ipaddr_cmp(&request->src_ipaddr,
-				   &ps->src_ipaddr) != 0)) continue;
+		    (fr_ipaddr_cmp(&request->socket.inet.src_ipaddr,
+				   &ps->socket.inet.src_ipaddr) != 0)) continue;
 
 		/*
 		 *	UDP sockets are allowed to match
@@ -585,8 +555,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 *	so the first check always matches.
 		 */
 		if (!ps->dst_any &&
-		    (fr_ipaddr_cmp(&request->dst_ipaddr,
-				   &ps->dst_ipaddr) != 0)) continue;
+		    (fr_ipaddr_cmp(&request->socket.inet.dst_ipaddr,
+				   &ps->socket.inet.dst_ipaddr) != 0)) continue;
 
 		/*
 		 *	Otherwise, this socket is OK to use.
@@ -644,9 +614,9 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	request->id = id;
 
-	request->sockfd = ps->sockfd;
-	request->src_ipaddr = ps->src_ipaddr;
-	request->src_port = ps->src_port;
+	request->socket.fd = ps->socket.fd;
+	request->socket.inet.src_ipaddr = ps->socket.inet.src_ipaddr;
+	request->socket.inet.src_port = ps->socket.inet.src_port;
 
 	/*
 	 *	If we managed to insert it, we're done.
@@ -665,9 +635,9 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
 
 	request->id = -1;
-	request->sockfd = -1;
-	request->src_ipaddr.af = AF_UNSPEC;
-	request->src_port = 0;
+	request->socket.fd = -1;
+	request->socket.inet.src_ipaddr.af = AF_UNSPEC;
+	request->socket.inet.src_port = 0;
 
 	return false;
 }
@@ -685,7 +655,7 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 
 	if (yank && !fr_packet_list_yank(pl, request)) return false;
 
-	ps = fr_socket_find(pl, request->sockfd);
+	ps = fr_socket_find(pl, request->socket.fd);
 	if (!ps) return false;
 
 	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
@@ -694,8 +664,8 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	pl->num_outgoing--;
 
 	request->id = -1;
-	request->src_ipaddr.af = AF_UNSPEC; /* id_alloc checks this */
-	request->src_port = 0;
+	request->socket.inet.src_ipaddr.af = AF_UNSPEC; /* id_alloc checks this */
+	request->socket.inet.src_port = 0;
 
 	return true;
 }
@@ -723,10 +693,10 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
 	maxfd = -1;
 
 	for (i = 0; i < MAX_SOCKETS; i++) {
-		if (pl->sockets[i].sockfd == -1) continue;
-		FD_SET(pl->sockets[i].sockfd, set);
-		if (pl->sockets[i].sockfd > maxfd) {
-			maxfd = pl->sockets[i].sockfd;
+		if (pl->sockets[i].socket.fd == -1) continue;
+		FD_SET(pl->sockets[i].socket.fd, set);
+		if (pl->sockets[i].socket.fd > maxfd) {
+			maxfd = pl->sockets[i].socket.fd;
 		}
 	}
 
@@ -738,7 +708,7 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
 /*
  *	Round-robins the receivers, without priority.
  *
- *	FIXME: Add sockfd, if -1, do round-robin, else do sockfd
+ *	FIXME: Add socket.fd, if -1, do round-robin, else do socket.fd
  *		IF in fdset.
  */
 RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
@@ -753,14 +723,14 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t m
 		start++;
 		start &= SOCKOFFSET_MASK;
 
-		if (pl->sockets[start].sockfd == -1) continue;
+		if (pl->sockets[start].socket.fd == -1) continue;
 
-		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
+		if (!FD_ISSET(pl->sockets[start].socket.fd, set)) continue;
 
-		if (pl->sockets[start].proto == IPPROTO_TCP) {
-			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
+		if (pl->sockets[start].socket.proto == IPPROTO_TCP) {
+			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
 		} else
-			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE,
+			packet = fr_radius_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
 						       max_attributes, require_ma);
 		if (!packet) continue;
 
@@ -770,7 +740,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t m
 		 */
 
 		pl->last_recv = start;
-		packet->proto = pl->sockets[start].proto;
+		packet->socket.proto = pl->sockets[start].socket.proto;
 		return packet;
 	} while (start != pl->last_recv);
 
@@ -826,17 +796,17 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
-		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-			packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->src_port,
-		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->dst_port,
+		        packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->socket.inet.src_ipaddr),
+			packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		        packet->socket.inet.src_port,
+		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
+		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		        packet->socket.inet.dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 			received ? " " : "",
 #endif
 			packet->data_len);
@@ -850,17 +820,17 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
-		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-		        packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->src_port,
-		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->dst_port,
+		        packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->socket.inet.src_ipaddr),
+		        packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		        packet->socket.inet.src_port,
+		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
+		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		        packet->socket.inet.dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 			received ? " " : "",
 #endif
 		        packet->data_len);

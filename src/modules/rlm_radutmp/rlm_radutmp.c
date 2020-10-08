@@ -196,7 +196,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	char			*filename = NULL;
 	char			*expanded = NULL;
 
-	if (request->packet->src_ipaddr.af != AF_INET) {
+	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 not supported!");
 		return RLM_MODULE_NOOP;
 	}
@@ -292,10 +292,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	 *	originator's IP address.
 	 */
 	if (ut.nas_address == htonl(INADDR_NONE)) {
-		ut.nas_address = request->packet->src_ipaddr.addr.v4.s_addr;
+		ut.nas_address = request->packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 		nas = request->client->shortname;
 
-	} else if (request->packet->src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
+	} else if (request->packet->socket.inet.src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
 	/*

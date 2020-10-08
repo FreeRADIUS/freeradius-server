@@ -216,8 +216,8 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
 					   "(received %d, max %d are allowed)",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.addr,
+					   inet_ntop(packet->socket.inet.src_ipaddr.af,
+						     &packet->socket.inet.src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   num_attributes, max_attributes);
 			goto fail;
@@ -263,7 +263,7 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool re
 
 	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_ma, reason)) {
 		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
-					 inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+					 inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						   host_ipaddr, sizeof(host_ipaddr)));
 		return false;
 	}
@@ -297,7 +297,7 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	if (fr_radius_verify(packet->data, original_data,
 			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
 		fr_strerror_printf_push("Received invalid packet from %s",
-					inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+					inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						  buffer, sizeof(buffer)));
 		return -1;
 	}
@@ -347,7 +347,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 {
 	ssize_t			data_len;
 
-	data_len = fr_radius_recv_header(sockfd, &packet->src_ipaddr, &packet->src_port, &packet->code);
+	data_len = fr_radius_recv_header(sockfd, &packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, &packet->code);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
@@ -361,9 +361,9 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 	packet->data_len = data_len;
 
 	return udp_recv(sockfd, packet->data, packet->data_len, flags,
-			&packet->src_ipaddr, &packet->src_port,
-			&packet->dst_ipaddr, &packet->dst_port,
-			&packet->ifindex, &packet->timestamp);
+			&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port,
+			&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port,
+			&packet->socket.inet.ifindex, &packet->timestamp);
 }
 
 
@@ -372,7 +372,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
  */
 RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
 {
-	ssize_t data_len;
+	ssize_t			data_len;
 	RADIUS_PACKET		*packet;
 
 	/*
@@ -395,10 +395,10 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	/*
 	 *	Double-check that the fields we want are filled in.
 	 */
-	if ((packet->src_ipaddr.af == AF_UNSPEC) ||
-	    (packet->src_port == 0) ||
-	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
-	    (packet->dst_port == 0)) {
+	if ((packet->socket.inet.src_ipaddr.af == AF_UNSPEC) ||
+	    (packet->socket.inet.src_port == 0) ||
+	    (packet->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
+	    (packet->socket.inet.dst_port == 0)) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		fr_radius_packet_free(&packet);
 		return NULL;
@@ -441,7 +441,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	/*
 	 *	Remember which socket we read the packet from.
 	 */
-	packet->sockfd = fd;
+	packet->socket.fd = fd;
 
 	/*
 	 *	FIXME: Do even more filtering by only permitting
@@ -467,7 +467,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
 	 */
-	if (packet->sockfd < 0) {
+	if (packet->socket.fd < 0) {
 		return 0;
 	}
 
@@ -502,10 +502,10 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	worse, if UDPFROMTO is defined, we *can't* use it on
 	 *	TCP sockets.  So... just call write().
 	 */
-	if (packet->proto == IPPROTO_TCP) {
+	if (packet->socket.proto == IPPROTO_TCP) {
 		ssize_t rcode;
 
-		rcode = write(packet->sockfd, packet->data, packet->data_len);
+		rcode = write(packet->socket.fd, packet->data, packet->data_len);
 		if (rcode >= 0) return rcode;
 
 		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
@@ -515,9 +515,9 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	And send it on it's way.
 	 */
-	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
-			&packet->src_ipaddr, packet->src_port, packet->ifindex,
-			&packet->dst_ipaddr, packet->dst_port);
+	return udp_send(packet->socket.fd, packet->data, packet->data_len, 0,
+			&packet->socket.inet.src_ipaddr, packet->socket.inet.src_port, packet->socket.inet.ifindex,
+			&packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
 }
 
 void _fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line)
@@ -527,14 +527,14 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet,
 
 	if (!packet->data) return;
 
-	fr_log(log, L_DBG, file, line, "  Socket   : %d", packet->sockfd);
-	fr_log(log, L_DBG, file, line, "  Proto    : %d", packet->proto);
+	fr_log(log, L_DBG, file, line, "  Socket   : %d", packet->socket.fd);
+	fr_log(log, L_DBG, file, line, "  Proto    : %d", packet->socket.proto);
 
-	if ((packet->src_ipaddr.af == AF_INET) || (packet->src_ipaddr.af == AF_INET6)) {
-		fr_log(log, L_DBG, file, line, "  Src IP   : %pV", fr_box_ipaddr(packet->src_ipaddr));
-		fr_log(log, L_DBG, file, line, "  Src Port : %u", packet->src_port);
-		fr_log(log, L_DBG, file, line, "  Dst IP   : %pV", fr_box_ipaddr(packet->dst_ipaddr));
-		fr_log(log, L_DBG, file, line, "  Dst Port : %u", packet->dst_port);
+	if ((packet->socket.inet.src_ipaddr.af == AF_INET) || (packet->socket.inet.src_ipaddr.af == AF_INET6)) {
+		fr_log(log, L_DBG, file, line, "  Src IP   : %pV", fr_box_ipaddr(packet->socket.inet.src_ipaddr));
+		fr_log(log, L_DBG, file, line, "  Src Port : %u", packet->socket.inet.src_port);
+		fr_log(log, L_DBG, file, line, "  Dst IP   : %pV", fr_box_ipaddr(packet->socket.inet.dst_ipaddr));
+		fr_log(log, L_DBG, file, line, "  Dst Port : %u", packet->socket.inet.dst_port);
 	}
 
        if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_MAX_PACKET_CODE)) {

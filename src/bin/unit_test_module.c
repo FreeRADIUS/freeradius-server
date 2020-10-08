@@ -203,15 +203,16 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	 */
 	request->packet->code = access_request;
 
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.prefix = 32;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->src_port = 18120;
+	request->packet->socket.proto = IPPROTO_UDP;
+	request->packet->socket.inet.src_ipaddr.af = AF_INET;
+	request->packet->socket.inet.src_ipaddr.prefix = 32;
+	request->packet->socket.inet.src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->socket.inet.src_port = 18120;
 
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.prefix = 32;
-	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->dst_port = 1812;
+	request->packet->socket.inet.dst_ipaddr.af = AF_INET;
+	request->packet->socket.inet.dst_ipaddr.prefix = 32;
+	request->packet->socket.inet.dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
+	request->packet->socket.inet.dst_port = 1812;
 
 	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
@@ -229,15 +230,15 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		if (vp->da == attr_packet_type) {
 			request->packet->code = vp->vp_uint32;
 		} else if (vp->da == attr_packet_dst_port) {
-			request->packet->dst_port = vp->vp_uint16;
+			request->packet->socket.inet.dst_port = vp->vp_uint16;
 		} else if ((vp->da == attr_packet_dst_ip_address) ||
 			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
+			memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
 		} else if (vp->da == attr_packet_src_port) {
-			request->packet->src_port = vp->vp_uint16;
+			request->packet->socket.inet.src_port = vp->vp_uint16;
 		} else if ((vp->da == attr_packet_src_ip_address) ||
 			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
+			memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
 		}
 	} /* loop over the VP's we read in */
 
@@ -270,11 +271,8 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	/*
 	 *	Build the reply template from the request.
 	 */
-	request->reply->sockfd = request->packet->sockfd;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
-	request->reply->src_ipaddr = request->packet->dst_ipaddr;
-	request->reply->dst_port = request->packet->src_port;
-	request->reply->src_port = request->packet->dst_port;
+	fr_socket_addr_swap(&request->reply->socket, &request->packet->socket);
+
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));

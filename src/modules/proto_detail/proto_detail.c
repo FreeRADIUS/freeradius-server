@@ -251,13 +251,13 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Set default addresses
 	 */
-	request->packet->sockfd = -1;
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
-	request->packet->dst_ipaddr = request->packet->src_ipaddr;
+	request->packet->socket.fd = -1;
+	request->packet->socket.inet.src_ipaddr.af = AF_INET;
+	request->packet->socket.inet.src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	request->packet->socket.inet.dst_ipaddr = request->packet->socket.inet.src_ipaddr;
 
-	request->reply->src_ipaddr = request->packet->src_ipaddr;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
+	request->reply->socket.inet.src_ipaddr = request->packet->socket.inet.src_ipaddr;
+	request->reply->socket.inet.dst_ipaddr = request->packet->socket.inet.src_ipaddr;
 
 	end = data + data_len;
 
@@ -356,14 +356,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		if (vp) {
 			if ((vp->da == attr_packet_src_ip_address) ||
 			    (vp->da == attr_packet_src_ipv6_address)) {
-				request->packet->src_ipaddr = vp->vp_ip;
+				request->packet->socket.inet.src_ipaddr = vp->vp_ip;
 			} else if ((vp->da == attr_packet_dst_ip_address) ||
 				   (vp->da == attr_packet_dst_ipv6_address)) {
-				request->packet->dst_ipaddr = vp->vp_ip;
+				request->packet->socket.inet.dst_ipaddr = vp->vp_ip;
 			} else if (vp->da == attr_packet_src_port) {
-				request->packet->src_port = vp->vp_uint16;
+				request->packet->socket.inet.src_port = vp->vp_uint16;
 			} else if (vp->da == attr_packet_dst_port) {
-				request->packet->dst_port = vp->vp_uint16;
+				request->packet->socket.inet.dst_port = vp->vp_uint16;
 			} else if (vp->da == attr_protocol) {
 				request->dict = fr_dict_by_protocol_num(vp->vp_uint32);
 				if (!request->dict) {

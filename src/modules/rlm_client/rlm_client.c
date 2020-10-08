@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->src_port != 0) || (request->request_pairs != NULL) ||
+	if ((request->packet->socket.inet.src_port != 0) || (request->request_pairs != NULL) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
 		return RLM_MODULE_NOOP;
@@ -314,7 +314,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	}
 
 	memcpy(buffer, value, length + 1);
-	fr_inet_ntoh(&request->packet->src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
+	fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
 
 	/*
 	 *	Read the buffer and generate the client.

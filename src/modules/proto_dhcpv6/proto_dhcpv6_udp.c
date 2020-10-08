@@ -218,7 +218,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			address;
+	fr_io_address_t			address = {};
 
 	int				flags;
 	ssize_t				data_size;
@@ -236,11 +236,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Send packets to the originator, EXCEPT that we always
 	 *	originate packets from our src_ipaddr.
 	 */
+	fr_socket_addr_swap(&address.socket, &track->address->socket);
 	address.socket.inet.src_ipaddr = inst->src_ipaddr;
-	address.socket.inet.src_port = track->address->socket.inet.dst_port;
-	address.socket.inet.dst_ipaddr = track->address->socket.inet.src_ipaddr;
-	address.socket.inet.dst_port = track->address->socket.inet.src_port;
-	address.socket.inet.ifindex = track->address->socket.inet.ifindex;
 
 	/*
 	 *	Figure out which kind of packet we're sending.

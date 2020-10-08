@@ -69,7 +69,8 @@ typedef enum bfd_auth_type_t {
 
 typedef struct {
 	int		number;
-	int		sockfd;
+
+	fr_socket_addr_t socket;
 
 	fr_event_list_t *el;
 	CONF_SECTION	*server_cs;
@@ -82,11 +83,6 @@ typedef struct {
 	bfd_auth_type_t auth_type;
 	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
-
-	fr_ipaddr_t	local_ipaddr;
-	fr_ipaddr_t	remote_ipaddr;
-	uint16_t	local_port;
-	uint16_t	remote_port;
 
 	/*
 	 *	To simplify sending the packets.
@@ -388,18 +384,14 @@ static const char *bfd_state[] = {
 };
 
 
-static void bfd_request(bfd_state_t *session, REQUEST *request,
-		   RADIUS_PACKET *packet)
+static void bfd_request(bfd_state_t *session, REQUEST *request, RADIUS_PACKET *packet)
 {
 	memset(request, 0, sizeof(*request));
 	memset(packet, 0, sizeof(*packet));
 
 	request->packet = packet;
 	request->server_cs = session->server_cs;
-	packet->src_ipaddr = session->local_ipaddr;
-	packet->src_port = session->local_port;
-	packet->dst_ipaddr = session->remote_ipaddr;
-	packet->dst_port = session->remote_port;
+	packet->socket = session->socket;
 	/*	request->heap_offset = -1; */
 }
 
@@ -489,7 +481,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	 *	Initialize according to RFC.
 	 */
 	session->number = sock->number++;
-	session->sockfd = sockfd;
+	session->socket.fd = sockfd;
 	session->session_state = BFD_STATE_DOWN;
 	session->server_cs = sock->server_cs;
 	session->unlang = sock->unlang;
@@ -586,11 +578,11 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	And finally remember the session.
 	 */
-	session->remote_ipaddr = *ipaddr;
-	session->remote_port = port;
+	session->socket.inet.dst_ipaddr = *ipaddr;
+	session->socket.inet.dst_port = port;
 
-	session->local_ipaddr = sock->my_ipaddr;
-	session->local_port = sock->my_port;
+	session->socket.inet.src_ipaddr = sock->my_ipaddr;
+	session->socket.inet.src_port = sock->my_port;
 
 	fr_ipaddr_to_sockaddr(ipaddr, port,
 			   &session->remote_sockaddr, &session->salen);
@@ -903,7 +895,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *eel, UNUSED fr_time_t now, v
 
 	DEBUG("BFD %d sending packet state %s",
 	      session->number, bfd_state[session->session_state]);
-	if (sendto(session->sockfd, &bfd, bfd.length, 0,
+	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
@@ -1147,7 +1139,7 @@ static void bfd_poll_response(bfd_state_t *session)
 
 	bfd_sign(session, &bfd);
 
-	if (sendto(session->sockfd, &bfd, bfd.length, 0,
+	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
 		ERROR("Failed sending poll response: %s", fr_syserror(errno));
@@ -1360,15 +1352,11 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		memset(reply, 0, sizeof(*reply));
 
 		request->reply = reply;
-		request->reply->src_ipaddr = session->remote_ipaddr;
-		request->reply->src_port = session->remote_port;
-		request->reply->dst_ipaddr = session->local_ipaddr;
-		request->reply->dst_port = session->local_port;
+		fr_socket_addr_swap(&request->reply->socket, &session->socket);
 
 		/*
 		 *	FIXME: add my state, remote state as VPs?
 		 */
-
 		if (fr_debug_lvl) {
 			request->log.dst = talloc_zero(request, log_dst_t);
 			request->log.dst->func = vlog_request;
@@ -1493,9 +1481,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We SHOULD use "your_disc", but what the heck.
 	 */
-	fr_ipaddr_from_sockaddr(&src, sizeof_src,
-			   &my_session.remote_ipaddr,
-			   &my_session.remote_port);
+	fr_ipaddr_from_sockaddr(&src, sizeof_src, &my_session.socket.inet.dst_ipaddr, &my_session.socket.inet.dst_port);
 
 	session = rbtree_finddata(sock->session_tree, &my_session);
 	if (!session) {
@@ -1597,8 +1583,8 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 		       return -1;
 	       }
 
-	       my_session.remote_ipaddr = ipaddr;
-	       my_session.remote_port = port;
+	       my_session.socket.inet.dst_ipaddr = ipaddr;
+	       my_session.socket.inet.dst_port = port;
 	       if (rbtree_finddata(sock->session_tree, &my_session) != NULL) {
 		       cf_log_err(ci, "Peers must have unique IP addresses");
 		       return -1;
@@ -1639,7 +1625,7 @@ static int bfd_session_cmp(const void *one, const void *two)
 {
 	const bfd_state_t *a = one, *b = two;
 
-	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
+	return fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 }
 
 static fr_table_num_sorted_t const auth_types[] = {

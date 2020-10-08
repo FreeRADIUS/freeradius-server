@@ -210,18 +210,18 @@ static RADIUS_PACKET *request_init(char const *filename)
 			packet->code = vp->vp_uint32;
 
 		} else if (vp->da == attr_packet_dst_port) {
-			packet->dst_port = vp->vp_uint16;
+			packet->socket.inet.dst_port = vp->vp_uint16;
 
 		} else if ((vp->da == attr_packet_dst_ip_address) ||
 			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&packet->dst_ipaddr, &vp->vp_ip, sizeof(packet->src_ipaddr));
+			memcpy(&packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(packet->socket.inet.src_ipaddr));
 
 		} else if (vp->da == attr_packet_src_port) {
-			packet->src_port = vp->vp_uint16;
+			packet->socket.inet.src_port = vp->vp_uint16;
 
 		} else if ((vp->da == attr_packet_src_ip_address) ||
 			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&packet->src_ipaddr, &vp->vp_ip, sizeof(packet->src_ipaddr));
+			memcpy(&packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(packet->socket.inet.src_ipaddr));
 		} /* switch over the attribute */
 
 	} /* loop over the VP's we read in */
@@ -417,13 +417,13 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *packet)
 	} else
 #endif
 	{
-		sockfd = fr_socket_server_udp(&packet->src_ipaddr, &packet->src_port, NULL, false);
+		sockfd = fr_socket_server_udp(&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, NULL, false);
 		if (sockfd < 0) {
 			ERROR("Error opening socket - %s", fr_strerror());
 			return -1;
 		}
 
-		if (fr_socket_bind(sockfd, &packet->src_ipaddr, &packet->src_port, NULL) < 0) {
+		if (fr_socket_bind(sockfd, &packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, NULL) < 0) {
 			ERROR("Error binding socket - %s", fr_strerror());
 			return -1;
 		}
@@ -444,7 +444,7 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *packet)
 		ERROR("Can't set broadcast option: %s", fr_syserror(errno));
 		return -1;
 	}
-	packet->sockfd = sockfd;
+	packet->socket.fd = sockfd;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
@@ -501,8 +501,8 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *packet)
 		return -1;
 	}
 
-	fr_inet_ntoh(&packet->src_ipaddr, ip, sizeof(ip));
-	sprintf(pcap_filter, "udp and dst port %d", packet->src_port);
+	fr_inet_ntoh(&packet->socket.inet.src_ipaddr, ip, sizeof(ip));
+	sprintf(pcap_filter, "udp and dst port %d", packet->socket.inet.src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
 		ERROR("Failing setting filter");
@@ -563,22 +563,22 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 	       received ? "Received" : "Sending",
 	       dhcp_message_types[packet->code],
 	       packet->id,
-	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-	       inet_ntop(packet->src_ipaddr.af,
-			 &packet->src_ipaddr.addr,
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+	       inet_ntop(packet->socket.inet.src_ipaddr.af,
+			 &packet->socket.inet.src_ipaddr.addr,
 			 src_ipaddr, sizeof(src_ipaddr)),
-	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->src_port,
-	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-	       inet_ntop(packet->dst_ipaddr.af,
-			 &packet->dst_ipaddr.addr,
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.src_port,
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+	       inet_ntop(packet->socket.inet.dst_ipaddr.af,
+			 &packet->socket.inet.dst_ipaddr.addr,
 			 dst_ipaddr, sizeof(dst_ipaddr)),
-	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->dst_port,
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-	       packet->ifindex ? "via " : "",
-	       packet->ifindex ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
-	       packet->ifindex ? " " : "",
+	       packet->socket.inet.ifindex ? "via " : "",
+	       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
+	       packet->socket.inet.ifindex ? " " : "",
 #endif
 	       packet->data_len);
 
@@ -749,10 +749,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Set defaults if they weren't specified via pairs
 	 */
-	if (packet->src_port == 0) packet->src_port = server_port + 1;
-	if (packet->dst_port == 0) packet->dst_port = server_port;
-	if (packet->src_ipaddr.af == AF_UNSPEC) packet->src_ipaddr = client_ipaddr;
-	if (packet->dst_ipaddr.af == AF_UNSPEC) packet->dst_ipaddr = server_ipaddr;
+	if (packet->socket.inet.src_port == 0) packet->socket.inet.src_port = server_port + 1;
+	if (packet->socket.inet.dst_port == 0) packet->socket.inet.dst_port = server_port;
+	if (packet->socket.inet.src_ipaddr.af == AF_UNSPEC) packet->socket.inet.src_ipaddr = client_ipaddr;
+	if (packet->socket.inet.dst_ipaddr.af == AF_UNSPEC) packet->socket.inet.dst_ipaddr = server_ipaddr;
 	if (!packet->code) packet->code = packet_code;
 
 	/*

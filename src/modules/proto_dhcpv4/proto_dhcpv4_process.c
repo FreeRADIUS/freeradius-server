@@ -99,18 +99,18 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 		       received ? "Received" : "Sending",
 		       dhcp_message_types[packet->code],
 		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->src_ipaddr),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->dst_ipaddr),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.src_port,
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.dst_port
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-		       , packet->ifindex ? "via " : "",
-		       packet->ifindex ? fr_ifname_from_ifindex(if_name, packet->ifindex) : "",
-		       packet->ifindex ? " " : ""
+		       , packet->socket.inet.ifindex ? "via " : "",
+		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
+		       packet->socket.inet.ifindex ? " " : ""
 #endif
 		       );
 

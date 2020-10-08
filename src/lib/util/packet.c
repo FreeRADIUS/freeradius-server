@@ -77,12 +77,7 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	/*
 	 *	Initialize the fields from the request.
 	 */
-	reply->sockfd = packet->sockfd;
-	reply->dst_ipaddr = packet->src_ipaddr;
-	reply->src_ipaddr = packet->dst_ipaddr;
-	reply->dst_port = packet->src_port;
-	reply->src_port = packet->dst_port;
-	reply->ifindex = packet->ifindex;
+	fr_socket_addr_swap(&reply->socket, &packet->socket);
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
 	memset(reply->vector, 0,
@@ -90,7 +85,6 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->vps = NULL;
 	reply->data = NULL;
 	reply->data_len = 0;
-	reply->proto = packet->proto;
 
 	return reply;
 }
@@ -138,7 +132,7 @@ RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	/*
 	 *	Then reset necessary fields
 	 */
-	packet->sockfd = -1;
+	packet->socket.fd = -1;
 
 	packet->data = NULL;
 	packet->data_len = 0;

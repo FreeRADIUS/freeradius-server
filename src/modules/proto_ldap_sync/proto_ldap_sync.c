@@ -309,14 +309,14 @@ static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, boo
 	       received ? "Received" : "Sent",
 	       fr_table_str_by_value(ldap_sync_code_table, packet->code, "<INVALID>"),
 	       packet->id,
-	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_box_ipaddr(packet->src_ipaddr),
-	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->src_port,
-	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_box_ipaddr(packet->dst_ipaddr),
-	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->dst_port);
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.src_port,
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.dst_port);
 
 	return;
 }
@@ -498,12 +498,12 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
 	talloc_set_name_const(ctx, "ldap_inst_pool");
 
 	packet = fr_radius_alloc(ctx, false);
-	packet->sockfd = listen->fd;
+	packet->socket.fd = listen->fd;
 	packet->id = sync_id;
-	packet->src_ipaddr = inst->dst_ipaddr;
-	packet->src_port = inst->dst_port;
-	packet->dst_ipaddr = inst->src_ipaddr;
-	packet->dst_port = inst->src_port;
+	packet->socket.inet.src_ipaddr = inst->dst_ipaddr;
+	packet->socket.inet.src_port = inst->dst_port;
+	packet->socket.inet.dst_ipaddr = inst->src_ipaddr;
+	packet->socket.inet.dst_port = inst->src_port;
 
 	packet->timestamp = fr_time();
 

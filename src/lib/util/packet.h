@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
 
@@ -53,12 +54,7 @@ extern "C" {
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct {
-	int			sockfd;			//!< Socket this packet was read from.
-	int			ifindex;		//!< Index of receiving interface.
-	fr_ipaddr_t		src_ipaddr;		//!< Src IP address of packet.
-	fr_ipaddr_t		dst_ipaddr;		//!< Dst IP address of packet.
-	uint16_t		src_port;		//!< Src port of packet.
-	uint16_t		dst_port;		//!< DST Port of packet.
+	fr_socket_addr_t	socket;			//!< This packet was received on.
 
 	int			id;			//!< Packet ID (used to link requests/responses).
 	unsigned int		code;			//!< Packet code (type).
@@ -74,7 +70,6 @@ typedef struct {
 	uint32_t       		rounds;			//!< for State[0]
 
 	size_t			partial;
-	int			proto;
 } RADIUS_PACKET;
 
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
