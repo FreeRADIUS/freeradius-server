@@ -1143,7 +1143,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	client belongs to based on packet data.  The sequence here
 	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
 	 *	store the found address in an internal attribute of 274 -
-	 *	DHCP-Network-IP-Address.  This is stored as an IPv4 prefix
+	 *	DHCP-Network-Subnet.  This is stored as an IPv4 prefix
 	 *	with a /32 netmask allowing "closest containing subnet"
 	 *	matching in rlm_files
 	 */

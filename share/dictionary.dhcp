@@ -63,7 +63,7 @@ ATTRIBUTE	DHCP-Relay-IP-Address			272	ipaddr
 # This address is assigned on a hierarchical basis to then determine
 # the subnet which the client belongs to.  Stored as an ipv4prefix
 # to allow closest subnet matching in rlm_files
-ATTRIBUTE	DHCP-Network-IP-Address			274	ipv4prefix
+ATTRIBUTE	DHCP-Network-Subnet			274	ipv4prefix
 # This is a name for the group a client belongs to then used for
 # looking up of options
 ATTRIBUTE	DHCP-Group-Name				275	string
