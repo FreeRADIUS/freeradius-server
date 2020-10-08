@@ -30,7 +30,7 @@ network
 
 #
 #  The following examples set options specific to the Layer 2 network, matched
-#  on whether the internal attribute DHCP-Network-IP-Address (that acts as a
+#  on whether the internal attribute DHCP-Network-Subnet (that acts as a
 #  network identifier) is within the indicated range. This is equivalent to a
 #  "shared-network" or "multinet" configuration (i.e. one that is possibly
 #  composed of multiple subnets) as defined by some other DHCP servers.
@@ -46,7 +46,7 @@ network
 #  then by placing all subnet-related options here we can avoid calling the
 #  dhcp_subnet policy after IP allocation.
 #
-network	DHCP-Network-IP-Address < 10.20.0.0/16, Pool-Name := "smalldept"
+network	DHCP-Network-Subnet < 10.20.0.0/16, Pool-Name := "smalldept"
 	DHCP-IP-Address-Lease-Time := 3600,
 	DHCP-Domain-Name := "smalldept.example.org",
 	DHCP-Subnet-Mask := 255.255.0.0,
@@ -64,7 +64,7 @@ network	DHCP-Network-IP-Address < 10.20.0.0/16, Pool-Name := "smalldept"
 #  address has been allocated. Only then do we know which subnet parameters are
 #  required. See the next section.
 #
-network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "bigdept"
+network	DHCP-Network-Subnet < 10.30.0.0/16, Pool-Name := "bigdept"
 	DHCP-Domain-Name := "bigdept.example.org"
 
 
@@ -72,8 +72,8 @@ network	DHCP-Network-IP-Address < 10.30.0.0/16, Pool-Name := "bigdept"
 #  Here is an example for a network that has a dedicated pool for admin staff
 #  and a seperate pool for everything else.
 #
-network	DHCP-Network-IP-Address < 192.0.2.0/24, DHCP-Group-Name == "admin", Pool-Name := "admin-only"
-network	DHCP-Network-IP-Address < 192.0.2.0/24, Pool-Name := "general"
+network	DHCP-Network-Subnet < 192.0.2.0/24, DHCP-Group-Name == "admin", Pool-Name := "admin-only"
+network	DHCP-Network-Subnet < 192.0.2.0/24, Pool-Name := "general"
 
 
 ################################
@@ -82,7 +82,7 @@ network	DHCP-Network-IP-Address < 192.0.2.0/24, Pool-Name := "general"
 
 #
 #  Note: This section is matched by calling the dhcp_subnet policy which sets
-#  DHCP-Network-IP-Address to the allocated IP address of the device and then
+#  DHCP-Network-Subnet to the allocated IP address of the device and then
 #  calls the dhcp_subnet instance of the files module.
 #
 #  Layer 2 networks many contain multiple subnets, each with their own gateway.
@@ -96,12 +96,12 @@ network	DHCP-Network-IP-Address < 192.0.2.0/24, Pool-Name := "general"
 #  Subnet-specific options, matched on whether the allocated IP address is
 #  within the indicated range.
 #
-subnet	DHCP-Network-IP-Address < 10.30.10.0/24
+subnet	DHCP-Network-Subnet < 10.30.10.0/24
 	DHCP-Subnet-Mask := 255.255.255.0,
 	DHCP-Router-Address := 10.30.10.1,
 	DHCP-Broadcast-Address := 10.30.10.255
 
-subnet	DHCP-Network-IP-Address < 10.30.20.0/24
+subnet	DHCP-Network-Subnet < 10.30.20.0/24
 	DHCP-Subnet-Mask := 255.255.255.0,
 	DHCP-Router-Address := 10.30.20.1,
 	DHCP-Broadcast-Address := 10.30.20.255

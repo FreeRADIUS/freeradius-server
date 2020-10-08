@@ -123,7 +123,7 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
-#  An internal attribute of DHCP-Network-IP-Address is set to provide
+#  An internal attribute of DHCP-Network-Subnet is set to provide
 #  a basis for determining the network that a client belongs to.  This
 #  is a hierarchical assignment based on:
 #
@@ -140,11 +140,11 @@ listen {
 #  devices designated as users of the pool. During IP allocation the choice of
 #  pool is driven by setting the Pool-Name attribute which may either be
 #  specified directly or chosen (usually with the help of the dhcp_network
-#  module) based on the initial value of DHCP-Network-IP-Address.
+#  module) based on the initial value of DHCP-Network-Subnet.
 #
-#  DHCP-Network-IP-Address indicates the network from which the request is
+#  DHCP-Network-Subnet indicates the network from which the request is
 #  originating. In cases where the originating network alone is insufficent to
-#  define the required IP allocated policy, DHCP-Network-IP-Address may be
+#  define the required IP allocated policy, DHCP-Network-Subnet may be
 #  overridden to force the selection of a particular pool.
 #
 #  IP addresses belonging to a single pool that is designated for a Layer 2
@@ -171,7 +171,7 @@ dhcp DHCP-Discover {
 
 	#  If clients need to be assigned to a particular network based on
 	#  an attribute in the packet rather than the calculated
-	#  DHCP-Network-IP-Address described above, then call a policy
+	#  DHCP-Network-Subnet described above, then call a policy
 	#  (defined in policy.d/dhcp) to perform the override
 	#dhcp_override_network
 

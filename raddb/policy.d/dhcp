@@ -21,7 +21,7 @@ dhcp_common {
 #	}
 #}
 
-#  Policy to override DHCP-Network-IP-Address
+#  Policy to override DHCP-Network-Subnet
 #
 #  Some networks have a "shared-network" or "multinet" configuration (as
 #  defined by some other DHCP servers) in which multiple IP subnets may
@@ -42,12 +42,12 @@ dhcp_common {
 #  with unique identifiers in the *network-specific* section of
 #  mods-config/files/dhcp.
 #
-#  By default DHCP-Network-IP-Address is populated such that it normally
+#  By default DHCP-Network-Subnet is populated such that it normally
 #  refers to the Layer 2 network from which the DHCP query originates - we
 #  cannot know the intended subnet for the device without additional input to
 #  the policy.
 #
-#  Override DHCP-Network-IP-Address to be an address within the desired
+#  Override DHCP-Network-Subnet to be an address within the desired
 #  network to force selection of a particular address pool and/or network
 #  parameters.
 #
@@ -61,17 +61,17 @@ dhcp_common {
 #dhcp_override_network {
 #	if (&DHCP-Vendor-Class-Identifier && &DHCP-Vendor-Class-Identifier == "SIP100")
 #		update request {
-#			DHCP-Network-IP-Address := 10.10.0.0
+#			DHCP-Network-Subnet := 10.10.0.0
 #		}
 #	}
 #}
 
 
 #  Policy that calls the files instance of the same name after first making
-#  DHCP-Network-IP-Address specific to the allocated IP address of the client.
+#  DHCP-Network-Subnet specific to the allocated IP address of the client.
 #dhcp_subnet {
 #	update {
-#		&DHCP-Network-IP-Address := "%{%{reply:DHCP-Your-IP-Address}:-%{DHCP-Client-IP-Address}}"
+#		&DHCP-Network-Subnet := "%{%{reply:DHCP-Your-IP-Address}:-%{DHCP-Client-IP-Address}}"
 #	}
 #
 #	# Call the dhcp_subnet instance of the files module
