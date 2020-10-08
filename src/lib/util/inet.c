@@ -1158,7 +1158,7 @@ int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, char const *na
 char *fr_ifname_from_ifindex(char out[static IFNAMSIZ], int ifindex)
 {
 #ifdef HAVE_IF_INDEXTONAME
-	if (!ifindextoname(ifindex, out)) {
+	if (!if_indextoname(ifindex, out)) {
 		fr_strerror_printf("Failed resolving interface index %i to name", ifindex);
 		return NULL;
 	}
@@ -1231,12 +1231,12 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
 		return -1;
 	}
 #elif defined(HAVE_IF_INDEXTONAME)
-	if (!ifindextoname(ifindex, if_req.ifr_name)) {
+	if (!if_indextoname(ifindex, if_req.ifr_name)) {
 		fr_strerror_printf("Failed resolving interface index %i to name", ifindex);
 		return -1;
 	}
 #else
-#  error Need SIOCGIFNAME or ifindextoname
+#  error Need SIOCGIFNAME or if_indextoname
 #endif
 
 	/*
