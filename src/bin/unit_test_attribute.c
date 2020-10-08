@@ -1338,6 +1338,8 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	it if so.
 	 */
 	if (head) {
+		fr_cursor_init(&cursor, &head);
+
 		for (vp = fr_cursor_head(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -1349,7 +1351,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 			}
 			p += slen;
 
-			if (vp->next) {
+			if (fr_cursor_next_peek(&cursor)) {
 				slen = strlcpy(p, ", ", end - p);
 				if (is_truncated((size_t)slen, end - p)) goto oob;
 				p += slen;
@@ -1455,7 +1457,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 			}
 			p += slen;
 
-			if (vp->next) {
+			if (fr_cursor_next_peek(&cursor)) {
 				slen = strlcpy(p, ", ", end - p);
 				if (is_truncated((size_t)slen, end - p)) goto oob;
 				p += slen;
