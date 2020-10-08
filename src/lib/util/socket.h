@@ -114,6 +114,34 @@ static inline bool fr_socket_is_valid_inet_proto(int proto)
 	return _func(addr, ##__VA_ARGS__); \
 }
 
+/** Swap src/dst information of a fr_socket_addr_t
+ *
+ * @param[out] dst	Where to write the swapped addresses. May be the same as src.
+ * @param[in] src	Socket address to swap.
+ */
+static inline void fr_socket_addr_swap(fr_socket_addr_t *dst, fr_socket_addr_t const *src)
+{
+	fr_socket_addr_t	tmp = *src;
+
+	if (dst != src) *dst = tmp;
+
+	switch (src->proto) {
+	case IPPROTO_UDP:
+	case IPPROTO_TCP:
+#ifdef IPPROTO_SCTP
+	case IPPROTO_SCTP:
+#endif
+		dst->inet.dst_ipaddr = tmp.inet.src_ipaddr;
+		dst->inet.dst_port = tmp.inet.src_port;
+		dst->inet.src_ipaddr = tmp.inet.dst_ipaddr;
+		dst->inet.src_port = tmp.inet.dst_port;
+		break;
+
+	default:
+		return;
+	}
+}
+
 /** Initialise a fr_socket_addr_t for connecting to a remote host using a specific src interface, address and port
  *
  * Can also be used to record information from an incoming packet so that we can
