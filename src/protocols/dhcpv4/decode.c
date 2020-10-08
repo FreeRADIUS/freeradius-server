@@ -401,7 +401,7 @@ next:
 	 *	Enterprise code + data-len + at least one option header
 	 */
 	if (((end - data) < 4 + 1 + 2) ||
-	    (data[4] == 0) || ((data + data[4]) > end)) {
+	    (data[4] == 0) || ((data + 5 + data[4]) > end)) {
 		da = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), parent->attr);
 		if (!da) return -1;
 
