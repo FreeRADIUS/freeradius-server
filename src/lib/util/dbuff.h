@@ -258,13 +258,22 @@ _fr_dbuff_init(_out, \
 /** @name Length checks
  * @{
  */
-/** How many free bytes remain in the buffer
+/** Return the number of bytes remaining between the dbuff or marker and the end of the buffer
  *
+ * @note Do not use this in functions that may be used for stream parsing
+ *	 unless you're sure you know what you're doing.
+ *	 The value return does not reflect the number of bytes that may
+ *	 be potentially read from the stream, only the number of bytes
+ *	 until the end of the current chunk.
+ *
+ * @param[in] _dbuff_or_marker	to return the number of bytes remaining for.
+ * @return
+ *	- >0 the number of bytes remaining before we reach the end of the buffer.
+ *	- -0 we're at the end of the buffer.
  */
-static inline size_t fr_dbuff_remaining(fr_dbuff_t const *dbuff)
-{
-	return dbuff->end - dbuff->p;
-}
+#define fr_dbuff_remaining(_dbuff_or_marker) \
+	((size_t)(fr_dbuff_end(_dbuff_or_marker) < fr_dbuff_current(_dbuff_or_marker) ? \
+		0 : (fr_dbuff_end(_dbuff_or_marker) - fr_dbuff_current(_dbuff_or_marker))))
 
 /** Return a negative offset indicating how much additional space we would have required for fulfil #_need
  *
@@ -277,21 +286,24 @@ do { \
 	if (_need > _freespace) return -(_need - _freespace); \
 } while (0)
 
-/** How many bytes we've used in the buffer
+/** Return the number of bytes remaining between the start of the dbuff or marker and the current position
  *
+ * @param[in] _dbuff_or_marker	to return the number of bytes used for.
+ * @return
+ *	- >0 the number of bytes the current position has advanced past the start.
+ *	- -0 the current position is at the start of the buffer.
  */
-static inline size_t fr_dbuff_used(fr_dbuff_t const *dbuff)
-{
-	return dbuff->p - dbuff->start;
-}
+#define fr_dbuff_used(_dbuff_or_marker) \
+	((size_t)(fr_dbuff_start(_dbuff_or_marker) > fr_dbuff_current(_dbuff_or_marker) ? \
+		0 : (fr_dbuff_current(_dbuff_or_marker) - fr_dbuff_start(_dbuff_or_marker))))
 
-/** How many bytes in the buffer total
+/** The length of the underlying buffer
  *
+ * @param[in] _dbuff_or_marker	to return the length of.
+ * @return The length of the underlying buffer.
  */
-static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
-{
-	return dbuff->end - dbuff->start;
-}
+#define fr_dbuff_len(_dbuff_or_marker) \
+	((size_t)(fr_dbuff_end(_dbuff_or_marker) - fr_dbuff_start(_dbuff_or_marker)))
 /** @} */
 
 /** @name Accessors
@@ -303,20 +315,48 @@ static inline size_t fr_dbuff_len(fr_dbuff_t const *dbuff)
  * These functions should only be used to pass dbuff pointers into 3rd party
  * APIs.
  */
-static inline uint8_t *fr_dbuff_start(fr_dbuff_t *dbuff)
-{
-	return dbuff->start;
-}
 
-static inline uint8_t *fr_dbuff_current(fr_dbuff_t *dbuff)
-{
-	return dbuff->p;
-}
+/** Return a pointer to the 'start' position of a dbuff or one of its markers
+ *
+ * The start position is not necessarily the start of the buffer, and is
+ * advanced every time an sbuff is copied.
+ *
+ * @param[in] _dbuff_or_marker	to return the start position of.
+ * @return A pointer to the start position of the buffer.
+ */
+#define fr_dbuff_start(_dbuff_or_marker) \
+	(_Generic((_dbuff_or_marker), \
+		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->start, \
+		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->start, \
+		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start, \
+		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start \
+	))
 
-static inline uint8_t *fr_dbuff_end(fr_dbuff_t *dbuff)
-{
-	return dbuff->end;
-}
+/** Return a pointer to the 'current' position of a dbuff or one of its markers
+ *
+ * @param[in] _dbuff_or_marker	to return the current position of.
+ * @return A pointer to the current position of the buffer or marker.
+ */
+#define fr_dbuff_current(_dbuff_or_marker) \
+	(_Generic((_dbuff_or_marker), \
+		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->p, \
+		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->p, \
+		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p, \
+		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p \
+	))
+
+/** Return a pointer to the 'end' position of a dbuff or one of its markers
+ *
+ * @param[in] _dbuff_or_marker	to return the end position of.
+ * @return A pointer to the end position of the buffer or marker.
+ */
+#define fr_dbuff_end(_dbuff_or_marker) \
+	(_Generic((_dbuff_or_marker), \
+		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->end, \
+		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->end, \
+		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end, \
+		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end \
+	))
 /** @} */
 
 /** @name Position modification (recursive)
@@ -358,41 +398,46 @@ static inline ssize_t _fr_dbuff_set(fr_dbuff_t *dbuff, uint8_t const *p)
 	return p - c;
 }
 
-/** Set the position in a dbuff using another dbuff, a char pointer, or a length
+/** Set the position in a dbuff or marker using another dbuff or marker, a char pointer, or a length
  *
- * @param[out] _dst	dbuff to advance.
- * @param[in] _src	An dbuff, char pointer, or length value to advance
- *			_dst by.
+ * @param[in] _dst	dbuff or marker to set the position for.
+ * @param[in] _src	Variable to glean new position from.  Behaviour here
+ *			depends on the type of the variable.
+ *			- dbuff, the current position of the dbuff.
+ *			- marker, the current position of the marker.
+ *			- pointer, the position of the pointer.
+ *			- size_t, _dst->start + _src.
  * @return
- *	- 0	not advanced (_src out of range).
- *	- >0	the number of bytes the dbuff was advanced by.
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the sbuff was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
 #define fr_dbuff_set(_dst, _src) \
-_fr_dbuff_set(_dst, \
-	      _Generic(_src, \
-			fr_dbuff_t *	: ((fr_dbuff_t *)(_src))->p, \
-			uint8_t const *	: (_src), \
-			uint8_t *	: (_src), \
-			size_t		: ((_dst)->p += (uintptr_t)(_src)) \
-	      ))
+_Generic((_dst), \
+	 fr_dbuff_t *			: _fr_dbuff_set, \
+	 fr_dbuff_marker_t *		: _fr_dbuff_marker_set \
+)(_dst, \
+_Generic((_src), \
+	fr_dbuff_t *			: fr_dbuff_current((fr_dbuff_t const *)(_src)), \
+	fr_dbuff_t const *		: fr_dbuff_current((fr_dbuff_t const *)(_src)), \
+	fr_dbuff_marker_t *		: fr_dbuff_current((fr_dbuff_marker_t const *)(_src)), \
+	fr_dbuff_marker_t const *	: fr_dbuff_current((fr_dbuff_marker_t const *)(_src)), \
+	uint8_t const *			: (uint8_t const *)(_src), \
+	uint8_t *			: (uint8_t const *)(_src), \
+	size_t				: (fr_dbuff_start(_dst) + (uintptr_t)(_src)) \
+))
 #define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
 
-/** Advance position in dbuff by N bytes
+/** Advance position in dbuff or marker by N bytes
  *
- * @param[in] dbuff	to advance.
- * @param[in] n		How much to advance dbuff by.
+ * @param[in] _dbuff_or_marker	to advance.
+ * @param[in] n			How much to advance sbuff by.
  * @return
  *	- 0	not advanced.
- *	- >0	the number of bytes the dbuff was advanced by.
- *	- <0	the number of bytes required to complete the copy.
+ *	- >0	the number of bytes the dbuff or marker was advanced by.
+ *	- <0	the number of bytes required to complete the advancement
  */
-static inline ssize_t fr_dbuff_advance(fr_dbuff_t *dbuff, size_t n)
-{
-	if ((dbuff->p + n) > dbuff->end) return 0;
-	_fr_dbuff_set_recurse(dbuff, dbuff->p + n);
-	return n;
-}
+#define fr_dbuff_advance(_dbuff_or_marker, _n)  fr_dbuff_set(_dbuff_or_marker, (fr_dbuff_current(_dbuff_or_marker) + (_n)))
 #define FR_DBUFF_ADVANCE_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _inlen)
 
 /** Reset the current position of the dbuff to the start of the string
@@ -461,6 +506,13 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 #endif
 }
 
+/*
+ * Preserve current set interface for markers pro tempore;
+ * note that fr_dbuff_set() uses _fr_dbuff_marker_set(), so the
+ * former fr_dbuff_marker_set() function remains under the new name.
+ */
+#define fr_dbuff_marker_set(_marker, _p) fr_dbuff_set(_marker, _p)
+
 /** Change the position in the buffer a marker points to
  *
  * @param[in] m		marker to alter.
@@ -470,7 +522,7 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
  *	- >0 the number of bytes the marker advanced.
  *	- <0 the number of bytes the marker retreated.
  */
-static inline ssize_t fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p)
+static inline ssize_t _fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p)
 {
 	fr_dbuff_t 	*dbuff = m->parent;
 	uint8_t		*current = m->p;
@@ -483,53 +535,30 @@ static inline ssize_t fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *p
 	return p - current;
 }
 
-/** Change the position in the buffer a marker points to
- *
- * @param[in] m		marker to alter.
- * @param[in] len	how much to advance the marker by.
- * @return
- *	- 0 on failure (p out of range), marker position will remain unchanged.
- *	- >0 the number of bytes the marker advanced.
- *	- <0 the number of bytes the marker retreated.
+/*
+ * Change the position in the buffer a marker points to
  */
-static inline ssize_t fr_dbuff_marker_advance(fr_dbuff_marker_t *m, size_t len)
-{
-	return fr_dbuff_marker_set(m, m->p + len);
-}
+#define fr_dbuff_marker_advance(_marker) fr_dbuff_advance(_marker)
 
-/** Resets the position in an dbuff to specified marker
- *
+/*
+ * Reset the position in a dbuff to specified marker
  */
-static inline void fr_dbuff_set_to_marker(fr_dbuff_marker_t *m)
-{
-	fr_dbuff_t *dbuff = m->parent;
+#define fr_dbuff_set_to_marker(_marker) fr_dbuff_set(_marker->parent, _marker)
 
-	_fr_dbuff_set_recurse(dbuff, m->p);
-}
-
-/** Return the current position of the marker
- *
+/*
+ * Return the current position of a marker.
  */
-static inline uint8_t *fr_dbuff_marker_current(fr_dbuff_marker_t *m)
-{
-	return m->p;
-}
+#define fr_dbuff_marker_current(_marker) fr_dbuff_current(_marker)
 
-/** How many free bytes remain in the buffer (calculated from marker)
- *
+/*
+ * How many free bytes remain in the buffer (calculated from marker).
  */
-static inline size_t fr_dbuff_marker_remaining(fr_dbuff_marker_t *m)
-{
-	return m->parent->end - m->p;
-}
+#define fr_dbuff_marker_remaining(_marker) fr_dbuff_remaining(_marker)
 
-/** How many bytes we've used in the buffer (calculated from marker)
- *
+/*
+ * How many bytes we've used in the buffer (calculated from marker)
  */
-static inline size_t fr_dbuff_marker_used(fr_dbuff_marker_t *m)
-{
-	return m->p - m->parent->start;
-}
+#define fr_dbuff_marker_used(_marker) fr_dbuff_used(_marker)
 
 /* what is the end of the buffer (determined from marker)
  *
