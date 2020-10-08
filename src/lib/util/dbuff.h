@@ -538,7 +538,7 @@ static inline ssize_t _fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *
 /*
  * Change the position in the buffer a marker points to
  */
-#define fr_dbuff_marker_advance(_marker) fr_dbuff_advance(_marker)
+#define fr_dbuff_marker_advance(_marker, _n) fr_dbuff_advance(_marker, _n)
 
 /*
  * Reset the position in a dbuff to specified marker
