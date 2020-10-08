@@ -189,6 +189,29 @@ finish:
 	return p - data;
 }
 
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
+			  uint8_t const *data, size_t data_len)
+{
+	ssize_t slen;
+	fr_dict_attr_t const *child;
+
+	/*
+	 *	Build an unknown attr
+	 */
+	child = fr_dict_unknown_acopy(ctx, da);
+	if (!child) return -1;
+
+	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
+		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name,
+		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
+
+	slen = decode_value(ctx, cursor, child, data, data_len);
+	if (slen <= 0) fr_dict_unknown_free(&child);
+
+	return slen;
+}
+
+
 /** RFC 4243 Vendor Specific Suboptions
  *
  * Vendor specific suboptions are in the format.
@@ -222,7 +245,10 @@ finish:
  * @param[in,out] cursor Where to write the decoded options.
  * @param[in] parent of sub TLVs.
  * @param[in] data to parse.
- * @param[in] data_len of data parsed.
+ * @param[in] data_len of the data to parse
+ * @return
+ *	<= 0 on error
+ *	data_len on success.
  */
 static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len)
@@ -242,37 +268,35 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	while (p < end) {
 		ssize_t tlv_len;
 
-		if (p[0] == 0) {
-			p++;
-			continue;
-		}
-
 		/*
 		 *	RFC 3046 is very specific about not allowing termination
 		 *	with a 255 sub-option. But it's required for decoding
 		 *	option 43, and vendors will probably screw it up
 		 *	anyway.
+		 *
+		 *	Similarly, option 0 is sometimes treated as
+		 *	"end of options".
 		 */
-		if (p[0] == 255) {
-			p++;
-			return p - data;
+		if ((p[0] == 0) || (p[0] == 255)) {
+			if ((p + 1) == end) return data_len;
+
+			/*
+			 *	There's stuff after the "end of
+			 *	options" option.  Return it as random crap.
+			 */
+		raw:
+			tlv_len = decode_raw(ctx, cursor, parent, p, end - p);
+			if (tlv_len <= 0) return tlv_len;
+
+			return data_len;
 		}
 
 		/*
 		 *	Everything else should be real options
 		 */
-		if ((end - p) < 2) {
-			fr_strerror_printf("%s: Insufficient data: Needed at least 2 bytes, got %zu",
-					   __FUNCTION__, (end - p));
-			return -1;
-		}
+		if ((end - p) < 2) goto raw;
 
-		if ((p[1] + 2) > (end - p)) {
-			fr_strerror_printf("%s: Suboption %02x would overflow option.  Remaining option data %zu byte(s) "
-					   "(from %zu), Suboption length %u",
-					   __FUNCTION__, p[0], (end - p), data_len, p[1]);
-			return -1;
-		}
+		if ((p[1] + 2) > (end - p)) goto raw;
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
@@ -303,7 +327,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	}
 	FR_PROTO_TRACE("tlv parsing complete, returning %zu byte(s)", p - data);
 
-	return p - data;
+	return data_len;
 }
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
