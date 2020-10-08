@@ -59,6 +59,11 @@ typedef struct fr_request_s REQUEST;
 #include <limits.h>
 #include <sys/wait.h>
 
+#ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  define ASAN_POISON_MEMORY_REGION(_start, _end)
+#  define ASAN_UNPOISON_MEMORY_REGION(_start, _end)
+#endif
+
 #define EXIT_WITH_FAILURE \
 do { \
 	ret = EXIT_FAILURE; \
