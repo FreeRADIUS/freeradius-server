@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH dictionary 5 "14 May 2019"
+.TH dictionary 5 "09 Oct 2020"
 .SH NAME
 dictionary \- RADIUS dictionary file
 .SH DESCRIPTION
@@ -44,8 +44,23 @@ is treated as comment and ignored.
 .PP
 Each line of the file can contain one of the following strings:
 .TP 0.5i
+.B ALIAS new-name  old-name
+Define an alias \fInew-name\fP which is equivalent to \fIold-name\fP.
+
+The ALIAS keyword is used to define additional names for compatibility
+reasons.  As there is no standard behind dictionary names, different
+products may use different names for the same attribute.  The ALIAS
+keyword allows you to add "site local" aliases, so that FreeRADIUS can
+read attributes from pre-existing configurations.
+
+These ALIASes are used when the server reads configuration files, or
+attributes from a database.  However, when the server prints attribute
+names, it always uses the ATTRIBUTE definition from the FreeRADIUS
+dictionary files/
+
+.TP 0.5i
 .B ATTRIBUTE name  oid  type [flags]
-Define a RADIUS attribute name to number mapping.
+Define an attribute name to number mapping.
 
 The \fIname\fP field is a printable field, taken from various
 specifications or vendor definitions.  It is most commonly used as a

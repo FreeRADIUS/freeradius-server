@@ -519,6 +519,60 @@ static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 }
 
 /*
+ *	Process the ALIAS command
+ */
+static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int argc)
+{
+	fr_dict_attr_t const *da;
+
+	if (argc != 2) {
+		fr_strerror_printf("Invalid ALIAS syntax");
+		return -1;
+	}
+
+	/*
+	 *	Dictionaries need to have real names, not shitty ones.
+	 */
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
+		fr_strerror_printf("Invalid ALIAS name");
+		return -1;
+	}
+
+	da = dict_attr_by_name(ctx->dict, argv[0]);
+	if (da) {
+		fr_strerror_printf("Attribute %s already exists", argv[0]);
+		return -1;
+	}
+
+	/*
+	 *	The <src> can be a name.
+	 */
+	da = dict_attr_by_name(ctx->dict, argv[1]);
+	if (!da) {
+		fr_strerror_printf("Attribute %s does not exist", argv[1]);
+		return -1;
+
+	}
+
+	/*
+	 *	Note that we do NOT call fr_dict_attr_add() here.
+	 *	When that function adds two equivalent attributes the
+	 *	second one is prioritized for printing.  For ALIASes,
+	 *	we want the first one to be prioritized.
+	 */
+	da = dict_attr_alloc(ctx->dict->pool, da->parent, argv[0], da->attr, da->type, &da->flags);
+	if (!da) return -1;
+
+	if (!fr_hash_table_insert(ctx->dict->attributes_by_name, da)) {
+		fr_strerror_printf("Internal error storing attribute");
+		talloc_const_free(da);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc,
@@ -1759,6 +1813,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_strerror_printf_push("Error reading %s[%d]", fn, line);
 			fclose(fp);
 			return -1;
+		}
+
+		/*
+		 *	Perhaps this is an attribute.
+		 */
+		if (strcasecmp(argv[0], "ALIAS") == 0) {
+			if (dict_read_process_alias(ctx,
+						    argv + 1, argc - 1) == -1) goto error;
+			continue;
 		}
 
 		/*
