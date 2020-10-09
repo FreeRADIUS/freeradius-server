@@ -31,6 +31,10 @@ extern "C" {
 
 typedef struct {
 	tmpl_t			*vpt;
+
+	tmpl_t			*src;
+	tmpl_t			*dst;
+
 	fr_dict_t const		*dict;
 	fr_dict_attr_t const	*attr_packet_type;
 	fr_dict_enum_t const	*type_enum;

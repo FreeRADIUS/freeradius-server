@@ -2697,7 +2697,6 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	return c;
 }
 
-
 static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	char const			*name2;
@@ -2718,7 +2717,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	char const			*packet_name = NULL;
 	char				*p, *namespace = NULL;
 
-	tmpl_t				*vpt = NULL;
+	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
 
 	/*
 	 *	subrequest { ... }
@@ -2742,13 +2741,12 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 	if (name2[0] == '&') {
 		size_t slen;
-		fr_sbuff_t sbuff;
 
-		fr_sbuff_init(&sbuff, name2, talloc_array_length(name2));
-
-		slen = tmpl_afrom_substr(parent, &vpt, &sbuff, T_BARE_WORD, NULL, unlang_ctx->rules);
+		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
+					      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
+					      NULL, unlang_ctx->rules);
 		if (slen <= 0) {
-			cf_log_err(cs, "Invalid argument to 'subrequest' - %s", fr_strerror());
+			cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
 			return NULL;
 		}
 
@@ -2757,19 +2755,13 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		 *	OK.  Nothing else makes sense.
 		 */
 		switch (tmpl_da(vpt)->type) {
-		case FR_TYPE_UINT8:
-		case FR_TYPE_UINT16:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_UINT64:
-		case FR_TYPE_INT8:
-		case FR_TYPE_INT16:
-		case FR_TYPE_INT32:
-		case FR_TYPE_INT64:
+		case FR_TYPE_INTEGER_EXCEPT_BOOL:
 		case FR_TYPE_STRING:
 			break;
 
 		default:
-			cf_log_err(cs, "Invalid data type for attribute %s.  Must be integer or string", name2 + 1);
+			cf_log_err(cs, "Invalid data type for attribute %s.  "
+				   "Must be an integer type or string", name2 + 1);
 			talloc_free(vpt);
 			return NULL;
 		}
@@ -2833,8 +2825,58 @@ get_packet_type:
 	}
 	talloc_free(namespace);		/* no longer needed */
 
+	/*
+	 *	Source and destination arguments
+	 */
+	{
+		char const	*dst, *src;
+		ssize_t		slen;
+
+		src = cf_section_argv(cs, 0);
+		if (src) {
+			slen = tmpl_afrom_substr(parent, &src_vpt,
+						 &FR_SBUFF_IN(src, talloc_array_length(dst) - 1),
+						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
+			if (slen <= 0) {
+				cf_log_perr(cs, "Invalid argument 'subrequest', failed parsing source");
+			error:
+				talloc_free(vpt);
+				return NULL;
+			}
+
+			if (!tmpl_contains_attr(src_vpt)) {
+				cf_log_err(cs, "Invalid argument 'subrequest' source must be an attr or list, got %s",
+					   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
+				talloc_free(src_vpt);
+				goto error;
+			}
+
+			dst = cf_section_argv(cs, 1);
+			if (dst) {
+				slen = tmpl_afrom_substr(parent, &dst_vpt,
+							 &FR_SBUFF_IN(dst, talloc_array_length(src) - 1),
+							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
+				if (slen <= 0) {
+					cf_log_perr(cs, "Invalid argument 'subrequest', failed parsing destination");
+					goto error;
+				}
+
+				if (!tmpl_contains_attr(dst_vpt)) {
+					cf_log_err(cs, "Invalid argument 'subrequest' destination must be an "
+						   "attr or list, got %s",
+						   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
+					talloc_free(src_vpt);
+					talloc_free(dst_vpt);
+					goto error;
+				}
+			}
+		}
+	}
+
 	if (!cf_item_next(cs, NULL)) {
 		talloc_free(vpt);
+		talloc_free(src_vpt);
+		talloc_free(dst_vpt);
 		return UNLANG_IGNORE;
 	}
 
@@ -2870,6 +2912,8 @@ get_packet_type:
 	kctx->dict = dict;
 	kctx->attr_packet_type = da;
 	kctx->type_enum = type_enum;
+	kctx->src = src_vpt;
+	kctx->dst = dst_vpt;
 
 	return c;
 }
