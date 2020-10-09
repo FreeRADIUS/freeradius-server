@@ -186,7 +186,9 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 
 	rlm_rcode_t			rcode;
 	VALUE_PAIR			*vp;
+
 	unlang_group_t			*g;
+	unlang_subrequest_kctx_t	*kctx;
 
 	/*
 	 *	Initialize the state
@@ -196,8 +198,9 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+	kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
 
-	child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
+	child = state->child = unlang_io_subrequest_alloc(request, kctx->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
 		rcode = RLM_MODULE_FAIL;
@@ -217,21 +220,21 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	/*
 	 *	Set the packet type.
 	 */
-	MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
+	MEM(vp = fr_pair_afrom_da(child->packet, kctx->attr_packet_type));
 
-	if (g->type_enum) {
-		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+	if (kctx->type_enum) {
+		child->packet->code = vp->vp_uint32 = kctx->type_enum->value->vb_uint32;
 	} else {
-		fr_dict_enum_t const *type_enum;
-		VALUE_PAIR *attr;
+		fr_dict_enum_t const	*type_enum;
+		VALUE_PAIR		*attr;
 
-		if (tmpl_find_vp(&attr, request, g->vpt) < 0) {
-			RDEBUG("Failed finding attribute %s", g->vpt->name);
+		if (tmpl_find_vp(&attr, request, kctx->vpt) < 0) {
+			RDEBUG("Failed finding attribute %s", kctx->vpt->name);
 			goto fail;
 		}
 
-		if (tmpl_da(g->vpt)->type == FR_TYPE_STRING) {
-			type_enum = fr_dict_enum_by_name(g->attr_packet_type, attr->vp_strvalue, attr->vp_length);
+		if (tmpl_da(kctx->vpt)->type == FR_TYPE_STRING) {
+			type_enum = fr_dict_enum_by_name(kctx->attr_packet_type, attr->vp_strvalue, attr->vp_length);
 			if (!type_enum) {
 				RDEBUG("Unknown Packet-Type %pV", &attr->data);
 				goto fail;
@@ -254,7 +257,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 			 *	"recv foo" section for it and we can't
 			 *	do anything with this packet.
 			 */
-			type_enum = fr_dict_enum_by_value(g->attr_packet_type, &box);
+			type_enum = fr_dict_enum_by_value(kctx->attr_packet_type, &box);
 			if (!type_enum) {
 				RDEBUG("Invalid value %pV for Packet-Type", &box);
 				goto fail;

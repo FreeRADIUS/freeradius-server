@@ -18,30 +18,19 @@
 /**
  * $Id$
  *
- * @file unlang/subrequest_priv.h
+ * @file unlang/map_priv.h
  *
- * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2020 The FreeRADIUS server project
  */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/util/dict.h>
-
 typedef struct {
 	tmpl_t			*vpt;
-	fr_dict_t const		*dict;
-	fr_dict_attr_t const	*attr_packet_type;
-	fr_dict_enum_t const	*type_enum;
-} unlang_subrequest_kctx_t;
-
-void	unlang_subrequest_free(REQUEST **child);
-
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
-			    unlang_subrequest_session_t const *session, bool top_frame);
-
-int unlang_detached_child_init(REQUEST *request);
+	vp_map_t		*map;		//!< Head of the map list
+	map_proc_inst_t		*proc_inst;
+} unlang_map_kctx_t;
 
 #ifdef __cplusplus
 }

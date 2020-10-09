@@ -31,9 +31,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/unlang/base.h>
-#include "unlang_priv.h"
+
 #include "module_priv.h"
 #include "subrequest_priv.h"
+#include "unlang_priv.h"
+
 #include "tmpl.h"
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
@@ -610,7 +612,6 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 		state->signal = NULL;
 	}
 }
-
 
 /** Return UNLANG_CALCULATE_RESULT only for async async calls
  *

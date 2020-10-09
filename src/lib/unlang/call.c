@@ -25,6 +25,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
+
+#include "call_priv.h"
 #include "unlang_priv.h"
 #include "subrequest_priv.h"
 
@@ -91,7 +93,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	REQUEST				*child;
 
 	unlang_group_t			*g;
-
+	unlang_call_kctx_t		*kctx;
 	char const			*server;
 	fr_dict_enum_t const		*type_enum;
 
@@ -103,8 +105,9 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+	kctx = talloc_get_type_abort(g->kctx, unlang_call_kctx_t);
 
-	server = cf_section_name2(g->server_cs);
+	server = cf_section_name2(kctx->server_cs);
 
 	/*
 	 *	Check for loops.  We do this by checking the source of
@@ -126,14 +129,14 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 		}
 	}
 
-	type_enum = fr_dict_enum_by_value(g->attr_packet_type, fr_box_uint32(request->packet->code));
+	type_enum = fr_dict_enum_by_value(kctx->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	if (virtual_server_get_process_by_name(g->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
+	if (virtual_server_get_process_by_name(kctx->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
 		REDEBUG("Cannot call virtual server '%s' - %s", server, fr_strerror());
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -148,7 +151,7 @@ static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
 	/*
 	 *	Tell the child how to run.
 	 */
-	child->server_cs = g->server_cs;
+	child->server_cs = kctx->server_cs;
 	child->async->process = process_p;
 	child->async->process_inst = process_inst;
 

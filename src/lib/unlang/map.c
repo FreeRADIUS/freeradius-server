@@ -34,6 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 
 #include <freeradius-devel/server/map_proc_priv.h>
+
+#include "map_priv.h"
 #include "unlang_priv.h"
 
 typedef enum {
@@ -251,7 +253,10 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_map_kctx_t		*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+
 	unlang_frame_state_update_t	*update_state;
 
 	/*
@@ -262,7 +267,7 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
 
-	fr_cursor_init(&update_state->maps, &g->map);
+	fr_cursor_init(&update_state->maps, &kctx->map);
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 
@@ -279,8 +284,11 @@ static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_map_kctx_t		*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+
+	map_proc_inst_t			*inst = kctx->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
 	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
@@ -291,7 +299,7 @@ static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
 #ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
 #endif
-	*presult = map_proc(request, g->proc_inst, &map_proc_state->src_result);
+	*presult = map_proc(request, kctx->proc_inst, &map_proc_state->src_result);
 #ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
 #endif
@@ -305,7 +313,8 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_map_kctx_t		*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+	map_proc_inst_t			*inst = kctx->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
 	/*

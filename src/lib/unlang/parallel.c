@@ -382,18 +382,23 @@ static void unlang_parallel_signal(REQUEST *request, fr_state_signal_t action)
 
 static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-	unlang_parallel_state_t	*state;
-	int			i;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+
+	unlang_group_t			*g;
+	unlang_parallel_kctx_t		*kctx;
+	unlang_parallel_state_t		*state;
+
+	int				i;
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	kctx = talloc_get_type_abort(g->kctx, unlang_parallel_kctx_t);
 
 	/*
 	 *	Allocate an array for the children.
@@ -410,8 +415,8 @@ static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
 	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = RLM_MODULE_FAIL;
 	state->priority = -1;				/* as-yet unset */
-	state->detach = g->detach;
-	state->clone = g->clone;
+	state->detach = kctx->detach;
+	state->clone = kctx->clone;
 	state->num_children = g->num_children;
 
 	/*

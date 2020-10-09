@@ -28,8 +28,19 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/unlang/base.h>
-#include "unlang_priv.h"
+
+#include "call_priv.h"
+#include "caller_priv.h"
+#include "condition_priv.h"
+#include "foreach_priv.h"
+#include "load_balance_priv.h"
+#include "map_priv.h"
 #include "module_priv.h"
+#include "parallel_priv.h"
+#include "subrequest_priv.h"
+#include "switch_priv.h"
+
+#include "unlang_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -620,9 +631,10 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
  */
 static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
-	vp_map_t *map;
+	unlang_map_kctx_t	*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+	vp_map_t		*map;
 
-	for (map = g->map; map != NULL; map = map->next) {
+	for (map = kctx->map; map != NULL; map = map->next) {
 		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
 	}
 
@@ -634,6 +646,8 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
  */
 static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 {
+	unlang_map_kctx_t	*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+
 	/*
 	 *	Compile the map
 	 */
@@ -642,9 +656,9 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	/*
 	 *	Map sections don't need a VPT.
 	 */
-	if (!g->vpt) return true;
+	if (!kctx->vpt) return true;
 
-	return pass2_fixup_tmpl(g->map->ci, cf_section_to_item(g->cs), &g->vpt);
+	return pass2_fixup_tmpl(kctx->map->ci, cf_section_to_item(g->cs), &kctx->vpt);
 }
 
 static void unlang_dump(unlang_t *instruction, int depth)
@@ -675,15 +689,20 @@ static void unlang_dump(unlang_t *instruction, int depth)
 
 		case UNLANG_TYPE_MAP:
 		case UNLANG_TYPE_UPDATE:
+		{
+			unlang_map_kctx_t *kctx;
+
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 
 			g = unlang_generic_to_group(c);
-			for (map = g->map; map != NULL; map = map->next) {
+			kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+			for (map = kctx->map; map != NULL; map = map->next) {
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
 
 			DEBUG("%.*s}", depth, unlang_spaces);
+		}
 			break;
 
 		case UNLANG_TYPE_CALL:
@@ -1160,6 +1179,8 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 
 static int compile_map_name(unlang_group_t *g)
 {
+	unlang_map_kctx_t	*kctx = talloc_get_type_abort(g->kctx, unlang_map_kctx_t);
+
 	/*
 	 *	If the section has arguments beyond
 	 *	name1 and name2, they form input
@@ -1188,9 +1209,9 @@ static int compile_map_name(unlang_group_t *g)
 			break;
 		}
 
-		quoted_len = fr_snprint_len(g->vpt->name, g->vpt->len, quote);
+		quoted_len = fr_snprint_len(kctx->vpt->name, kctx->vpt->len, quote);
 		quoted_str = talloc_array(g, char, quoted_len);
-		fr_snprint(quoted_str, quoted_len, g->vpt->name, g->vpt->len, quote);
+		fr_snprint(quoted_str, quoted_len, kctx->vpt->name, kctx->vpt->len, quote);
 
 		g->self.name = talloc_typed_asprintf(g, "map %s %s", cf_section_name2(g->cs), quoted_str);
 		g->self.debug_name = g->self.name;
@@ -1208,14 +1229,17 @@ static int compile_map_name(unlang_group_t *g)
 static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
+
 	unlang_group_t		*g;
+	unlang_map_kctx_t	*kctx;
+
 	unlang_t		*c;
 	CONF_SECTION		*modules;
 	ssize_t			slen;
 	char const		*tmpl_str;
 
 	vp_map_t		*head;
-	tmpl_t		*vpt = NULL;
+	tmpl_t			*vpt = NULL;
 
 	map_proc_t		*proc;
 	map_proc_inst_t		*proc_inst;
@@ -1242,6 +1266,11 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		return NULL;
 	}
 
+	g = group_allocate(parent, cs, UNLANG_TYPE_MAP);
+	if (!g) return NULL;
+
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_map_kctx_t));
+
 	/*
 	 *	If there's a third string, it's the map src.
 	 *
@@ -1256,13 +1285,15 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		/*
 		 *	Try to parse the template.
 		 */
-		slen = tmpl_afrom_substr(cs, &vpt,
+		slen = tmpl_afrom_substr(kctx, &vpt,
 					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
 					 type,
 					 NULL,
 					 &parse_rules);
 		if (slen < 0) {
 			cf_log_perr(cs, "Failed parsing map");
+		error:
+			talloc_free(g);
 			return NULL;
 		}
 
@@ -1290,31 +1321,28 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(kctx, &head, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'map' sections cannot be empty");
-		return NULL;
+		goto error;
 	}
 
-	g = group_allocate(parent, cs, UNLANG_TYPE_MAP);
-	if (!g) return NULL;
 
 	/*
 	 *	Call the map's instantiation function to validate
 	 *	the map and perform any caching required.
 	 */
-	proc_inst = map_proc_instantiate(g, proc, cs, vpt, head);
+	proc_inst = map_proc_instantiate(kctx, proc, cs, vpt, head);
 	if (!proc_inst) {
-		talloc_free(g);
 		cf_log_err(cs, "Failed instantiating map function '%s'", name2);
-		return NULL;
+		goto error;
 	}
 	c = unlang_group_to_generic(g);
 
-	g->map = talloc_steal(g, head);
-	if (vpt) g->vpt = talloc_steal(g, vpt);
-	g->proc_inst = proc_inst;
+	kctx->map = head;
+	kctx->vpt = vpt;
+	kctx->proc_inst = proc_inst;
 
 	compile_map_name(g);
 
@@ -1325,19 +1353,20 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *	header?  Or ensure that the map is registered in the
 	 *	"boostrap" phase, so that it's always available here.
 	 */
-	if (!pass2_fixup_map_rhs(g, unlang_ctx->rules)) {
-		talloc_free(g);
-		return NULL;
-	}
+	if (!pass2_fixup_map_rhs(g, unlang_ctx->rules)) goto error;
 
 	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 
 static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
+
 	unlang_group_t		*g;
+	unlang_map_kctx_t	*kctx;
+
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
@@ -1351,21 +1380,24 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	parse_rules = *(unlang_ctx->rules);
 	parse_rules.allow_unknown = true;
 
-	/*
-	 *	This looks at cs->name2 to determine which list to update
-	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
-	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
-		cf_log_err(cs, "'update' sections cannot be empty");
-		return NULL;
-	}
-
 	g = group_allocate(parent, cs, UNLANG_TYPE_UPDATE);
 	if (!g) return NULL;
 
-	c = unlang_group_to_generic(g);
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_map_kctx_t));
 
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(kctx, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err(cs, "'update' sections cannot be empty");
+	error:
+		talloc_free(g);
+		return NULL;
+	}
+
+	c = unlang_group_to_generic(g);
 	if (name2) {
 		c->name = name2;
 		c->debug_name = talloc_typed_asprintf(c, "update %s", name2);
@@ -1374,21 +1406,22 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->debug_name = c->name;
 	}
 
-	g->map = talloc_steal(g, head);
+	kctx->map = head;
 
-	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
-		talloc_free(g);
-		return NULL;
-	}
+	if (!pass2_fixup_update(g, unlang_ctx->rules)) goto error;
 
 	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 
 static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
+
 	unlang_group_t		*g;
+	unlang_map_kctx_t	*kctx;
+
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
@@ -1402,18 +1435,20 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	parse_rules = *(unlang_ctx->rules);
 	parse_rules.allow_unknown = true;
 
+	g = group_allocate(parent, cs, UNLANG_TYPE_FILTER);
+	if (!g) return NULL;
+
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_map_kctx_t));
+
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
+	rcode = map_afrom_cs(kctx, &head, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'filter' sections cannot be empty");
 		return NULL;
 	}
-
-	g = group_allocate(parent, cs, UNLANG_TYPE_FILTER);
-	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
 
@@ -1425,7 +1460,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->debug_name = c->name;
 	}
 
-	g->map = talloc_steal(g, head);
+	kctx->map = head;
 
 	/*
 	 *	The fixups here occur whether or not it's UPDATE or FILTER
@@ -1436,6 +1471,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	}
 
 	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 
@@ -1601,10 +1637,10 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx)
 {
-	CONF_ITEM *ci = NULL;
-	unlang_t *c, *single;
-	bool was_if = false;
-	char const *skip_else = NULL;
+	CONF_ITEM	*ci = NULL;
+	unlang_t	*c, *single;
+	bool		was_if = false;
+	char const	*skip_else = NULL;
 
 	c = unlang_group_to_generic(g);
 
@@ -1651,7 +1687,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				 *	That's not allowed.
 				 */
 				if (!was_if) {
-					cf_log_err(ci, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement", name);
+					cf_log_err(ci, "Invalid location for '%s'.  There is no preceding "
+						   "'if' or 'elsif' statement", name);
 					talloc_free(c);
 					return NULL;
 				}
@@ -1661,7 +1698,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				 *	So we skip this "elsif" or "else".
 				 */
 				if (skip_else) {
-					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous '%s' being always being taken.",
+					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous "
+							    "'%s' being always being taken.",
 							    name, skip_else);
 					continue;
 				}
@@ -1726,10 +1764,13 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		case UNLANG_TYPE_IF:
 			was_if = true;
 			{
-				unlang_group_t *f;
+				unlang_group_t		*f;
+				unlang_cond_kctx_t	*kctx;
 
 				f = unlang_generic_to_group(single);
-				switch (f->cond->type) {
+				MEM(kctx = talloc_get_type_abort(f->kctx, unlang_cond_kctx_t));
+
+				switch (kctx->cond->type) {
 				case COND_TYPE_TRUE:
 					skip_else = single->debug_name;
 					break;
@@ -1784,6 +1825,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 *	set by an "actions" section above.
 	 */
 	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 
@@ -1794,9 +1836,9 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				 unlang_type_t mod_type)
 {
-	unlang_group_t *g;
-	unlang_t *c;
-	char const *name1, *name2;
+	unlang_group_t	*g;
+	unlang_t	*c;
+	char const	*name1, *name2;
 
 	/*
 	 *	We always create a group, even if the section is empty.
@@ -1843,15 +1885,18 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	CONF_ITEM *ci;
-	fr_token_t type;
-	char const *name1, *name2;
-	bool had_seen_default = false;
-	unlang_group_t *g;
-	unlang_t *c;
-	ssize_t slen;
+	CONF_ITEM		*ci;
+	fr_token_t		type;
+	char const		*name1, *name2;
+	bool			had_seen_default = false;
 
-	tmpl_rules_t	parse_rules;
+	unlang_group_t		*g;
+	unlang_switch_kctx_t	*kctx;
+
+	unlang_t		*c;
+	ssize_t			slen;
+
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1870,6 +1915,8 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 	g = group_allocate(parent, cs, UNLANG_TYPE_SWITCH);
 	if (!g) return NULL;
 
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_switch_kctx_t));
+
 	/*
 	 *	Create the template.  All attributes and xlats are
 	 *	defined by now.
@@ -1878,7 +1925,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 	 *	that the data types match.
 	 */
 	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_substr(g, &g->vpt,
+	slen = tmpl_afrom_substr(kctx, &kctx->vpt,
 				 &FR_SBUFF_IN(name2, strlen(name2)),
 				 type,
 				 NULL,
@@ -1908,7 +1955,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 	 *	This is so that compile_case() can do attribute type
 	 *	checks / casts against us.
 	 */
-	if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &g->vpt)) {
+	if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &kctx->vpt)) {
 		talloc_free(g);
 		return NULL;
 	}
@@ -1979,6 +2026,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 	}
 
 	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 
@@ -1987,8 +2035,9 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	int			i;
 	char const		*name2;
 	unlang_t		*c;
-	unlang_group_t		*g;
-	tmpl_t		*vpt = NULL;
+	unlang_group_t		*case_g;
+	unlang_switch_kctx_t	*case_kctx;
+	tmpl_t			*vpt = NULL;
 	tmpl_rules_t		parse_rules;
 
 	/*
@@ -2008,9 +2057,10 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
-		ssize_t slen;
-		fr_token_t type;
-		unlang_group_t *f;
+		ssize_t			slen;
+		fr_token_t		type;
+		unlang_group_t		*switch_g;
+		unlang_switch_kctx_t	*switch_kctx;
 
 		type = cf_section_name2_quote(cs);
 
@@ -2041,23 +2091,23 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			}
 		}
 
-		f = unlang_generic_to_group(parent);
-		fr_assert(f->vpt != NULL);
+		switch_g = unlang_generic_to_group(parent);
+		switch_kctx = talloc_get_type_abort(switch_g->kctx, unlang_switch_kctx_t);
+		fr_assert(switch_kctx->vpt != NULL);
 
 		/*
 		 *	Do type-specific checks on the case statement
 		 */
 
 		/*
-		 *	We're switching over an
-		 *	attribute.  Check that the
+		 *	We're switching over an attribute.  Check that the
 		 *	values match.
 		 */
 		if (tmpl_is_unresolved(vpt) &&
-		    tmpl_is_attr(f->vpt)) {
-			fr_assert(tmpl_da(f->vpt) != NULL);
+		    tmpl_is_attr(switch_kctx->vpt)) {
+			fr_assert(tmpl_da(switch_kctx->vpt) != NULL);
 
-			if (tmpl_cast_in_place(vpt, tmpl_da(f->vpt)->type, tmpl_da(f->vpt)) < 0) {
+			if (tmpl_cast_in_place(vpt, tmpl_da(switch_kctx->vpt)->type, tmpl_da(switch_kctx->vpt)) < 0) {
 				cf_log_perr(cs, "Invalid argument for case statement");
 				talloc_free(vpt);
 				return NULL;
@@ -2099,18 +2149,16 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-
-	g = unlang_generic_to_group(c);
-	g->vpt = talloc_steal(g, vpt);
+	case_g = unlang_generic_to_group(c);
+	MEM(case_kctx = case_g->kctx = talloc_zero(case_g, unlang_case_kctx_t));
+	case_kctx->vpt = talloc_steal(case_kctx, vpt);
 
 	/*
 	 *	Set all of it's codes to return, so that
 	 *	when we pick a 'case' statement, we don't
 	 *	fall through to processing the next one.
 	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		c->actions[i] = MOD_ACTION_RETURN;
-	}
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) c->actions[i] = MOD_ACTION_RETURN;
 
 	return c;
 }
@@ -2120,9 +2168,12 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	fr_token_t		type;
 	char const		*name2;
 	unlang_t		*c;
+
 	unlang_group_t		*g;
+	unlang_foreach_kctx_t	*kctx;
+
 	ssize_t			slen;
-	tmpl_t		*vpt;
+	tmpl_t			*vpt;
 
 	tmpl_rules_t		parse_rules;
 
@@ -2204,7 +2255,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	}
 
 	g = unlang_generic_to_group(c);
-	g->vpt = vpt;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_foreach_kctx_t));
+	kctx->vpt = vpt;
 
 	return c;
 }
@@ -2330,9 +2382,12 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				       unlang_type_t mod_type)
 {
-	unlang_t *c;
-	unlang_group_t *g;
-	fr_cond_t *cond;
+	unlang_t		*c;
+
+	unlang_group_t		*g;
+	unlang_cond_kctx_t	*kctx;
+
+	fr_cond_t		*cond;
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err(cs, "'%s' without condition", unlang_ops[mod_type].name);
@@ -2360,7 +2415,8 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	fr_assert(c != UNLANG_IGNORE);
 
 	g = unlang_generic_to_group(c);
-	g->cond = cond;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_cond_kctx_t));
+	kctx->cond = cond;
 
 	return c;
 }
@@ -2475,11 +2531,12 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 						 unlang_type_t mod_type)
 {
-	char const	*name2;
-	unlang_t	*c;
-	unlang_group_t	*g;
+	char const			*name2;
+	unlang_t			*c;
+	unlang_group_t			*g;
+	unlang_load_balance_kctx_t	*kctx;
 
-	tmpl_rules_t	parse_rules;
+	tmpl_rules_t			parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -2495,9 +2552,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		return NULL;
 	}
 
-	if (!validate_limited_subsection(cs, cf_section_name1(cs))) {
-		return NULL;
-	}
+	if (!validate_limited_subsection(cs, cf_section_name1(cs))) return NULL;
 
 	c = compile_section(parent, unlang_ctx, cs, mod_type);
 	if (!c) return NULL;
@@ -2525,7 +2580,8 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		 *	defined by now.
 		 */
 		type = cf_section_name2_quote(cs);
-		slen = tmpl_afrom_substr(g, &g->vpt,
+		MEM(g->kctx = kctx = talloc_zero(g, unlang_load_balance_kctx_t));
+		slen = tmpl_afrom_substr(kctx, &kctx->vpt,
 					 &FR_SBUFF_IN(name2, strlen(name2)),
 					 type,
 					 NULL,
@@ -2546,17 +2602,17 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 			return NULL;
 		}
 
-		fr_assert(g->vpt != NULL);
+		fr_assert(kctx->vpt != NULL);
 
 		/*
 		 *	Fixup the templates
 		 */
-		if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &g->vpt)) {
+		if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &kctx->vpt)) {
 			talloc_free(g);
 			return NULL;
 		}
 
-		switch (g->vpt->type) {
+		switch (kctx->vpt->type) {
 		default:
 			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
 			talloc_free(g);
@@ -2588,11 +2644,14 @@ static unlang_t *compile_redundant_load_balance(unlang_t *parent, unlang_compile
 
 static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	unlang_t *c;
-	char const *name2;
-	unlang_group_t *g;
-	bool clone = true;
-	bool detach = false;
+	unlang_t		*c;
+	char const		*name2;
+
+	unlang_group_t		*g;
+	unlang_parallel_kctx_t	*kctx;
+
+	bool			clone = true;
+	bool			detach = false;
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
@@ -2629,8 +2688,10 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
-	g->clone = clone;
-	g->detach = detach;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_parallel_kctx_t));
+
+	kctx->clone = clone;
+	kctx->detach = detach;
 
 	return c;
 }
@@ -2638,22 +2699,25 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	char const		*name2;
+	char const			*name2;
 
-	unlang_t		*c;
-	unlang_group_t		*g;
+	unlang_t			*c;
 
-	unlang_compile_t	unlang_ctx2;
-	tmpl_rules_t		parse_rules;
+	unlang_group_t			*g;
+	unlang_subrequest_kctx_t	*kctx;
 
-	fr_dict_t const		*dict;
-	fr_dict_attr_t const	*da = NULL;
-	fr_dict_enum_t const	*type_enum = NULL;
+	unlang_compile_t		unlang_ctx2;
 
-	char const		*packet_name = NULL;
-	char			*p, *namespace = NULL;
+	tmpl_rules_t			parse_rules;
 
-	tmpl_t			*vpt = NULL;
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*da = NULL;
+	fr_dict_enum_t const		*type_enum = NULL;
+
+	char const			*packet_name = NULL;
+	char				*p, *namespace = NULL;
+
+	tmpl_t				*vpt = NULL;
 
 	/*
 	 *	subrequest { ... }
@@ -2799,10 +2863,12 @@ get_packet_type:
 	 *	unlang_subrequest() how to process the request.
 	 */
 	g = unlang_generic_to_group(c);
-	if (vpt) g->vpt = talloc_steal(g, vpt);
-	g->dict = dict;
-	g->attr_packet_type = da;
-	g->type_enum = type_enum;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_subrequest_kctx_t));
+
+	if (vpt) kctx->vpt = talloc_steal(kctx, vpt);
+	kctx->dict = dict;
+	kctx->attr_packet_type = da;
+	kctx->type_enum = type_enum;
 
 	return c;
 }
@@ -2811,7 +2877,10 @@ get_packet_type:
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_t		*c;
+
 	unlang_group_t		*g;
+	unlang_call_kctx_t	*kctx;
+
 	fr_token_t		type;
 	char const     		*server;
 	CONF_SECTION		*server_cs;
@@ -2862,8 +2931,9 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	which virtual server to call.
 	 */
 	g = unlang_generic_to_group(c);
-	g->server_cs = server_cs;
-	g->attr_packet_type = attr_packet_type;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_call_kctx_t));
+	kctx->server_cs = server_cs;
+	kctx->attr_packet_type = attr_packet_type;
 
 	return c;
 }
@@ -2872,7 +2942,10 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_t		*c;
+
 	unlang_group_t		*g;
+	unlang_caller_kctx_t	*kctx;
+
 	fr_token_t		type;
 	char const     		*name;
 	fr_dict_t const		*dict;
@@ -2922,7 +2995,8 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	which virtual server to call.
 	 */
 	g = unlang_generic_to_group(c);
-	g->dict = dict;
+	MEM(g->kctx = kctx = talloc_zero(g, unlang_caller_kctx_t));
+	kctx->dict = dict;
 
 	if (!g->num_children) {
 		talloc_free(c);

@@ -25,8 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/request_data.h>
-#include "unlang_priv.h"
+
+#include "foreach_priv.h"
 #include "return_priv.h"
+#include "unlang_priv.h"
 
 static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 						  "Foreach-Variable-1",
@@ -126,13 +128,17 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	unlang_stack_frame_t		*frame;
 	unlang_t			*instruction;
 	unlang_frame_state_foreach_t	*foreach = NULL;
+
 	unlang_group_t			*g;
+	unlang_foreach_kctx_t		*kctx;
+
 	int				i, foreach_depth = 0;
 	VALUE_PAIR			*vps;
 
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);
+	kctx = talloc_get_type_abort(g->kctx, unlang_foreach_kctx_t);
 
 	/*
 	 *	Ensure any breaks terminate here...
@@ -162,7 +168,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	 *	behaviour if someone decides to add or remove VPs in the set we're
 	 *	iterating over.
 	 */
-	if (tmpl_copy_vps(frame->state, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
+	if (tmpl_copy_vps(frame->state, &vps, request, kctx->vpt) < 0) {	/* nothing to loop over */
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}

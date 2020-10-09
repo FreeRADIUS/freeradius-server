@@ -134,36 +134,7 @@ typedef struct {
 	CONF_SECTION		*cs;
 	int			num_children;
 
-	/*
-	 *	Hackity-hack.  We should probably just have a common
-	 *	group header, and then have type-specific structures.
-	 */
-	union {
-		struct {
-			tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP
-
-			union {
-				struct {
-					vp_map_t		*map;		//!< #UNLANG_TYPE_FILTER, #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP,
-					map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
-				};
-				struct {
-					union {
-						CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
-						fr_dict_t const		*dict;		//!< #UNLANG_TYPE_SUBREQUEST
-					};
-					fr_dict_attr_t const	*attr_packet_type;
-					fr_dict_enum_t const	*type_enum;
-				};
-			};
-		};
-		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
-
-		struct {				//!< #UNLANG_TYPE_PARALLEL
-			bool			clone;
-			bool			detach;
-		};
-	};
+	void			*kctx;		//!< Keyword specific data
 } unlang_group_t;
 
 /** A naked xlat

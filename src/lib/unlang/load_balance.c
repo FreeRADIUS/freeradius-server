@@ -24,8 +24,10 @@
  */
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rand.h>
-#include "unlang_priv.h"
+
+#include "load_balance_priv.h"
 #include "module_priv.h"
+#include "unlang_priv.h"
 
 #define unlang_redundant_load_balance unlang_load_balance
 
@@ -35,6 +37,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
+
 	unlang_group_t			*g;
 
 	g = unlang_generic_to_group(instruction);
@@ -112,7 +115,9 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
+
 	unlang_group_t			*g;
+	unlang_load_balance_kctx_t	*kctx = NULL;
 
 	uint32_t count = 0;
 
@@ -122,11 +127,16 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	/*
+	 *	Only set if there's name2
+	 */
+	if (g->kctx) kctx = talloc_get_type_abort(g->kctx, unlang_load_balance_kctx_t);
+
 	RDEBUG4("%s setting up", frame->instruction->debug_name);
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
-	if (g->vpt) {
+	if (kctx && kctx->vpt) {
 		uint32_t hash, start;
 		ssize_t slen;
 		char const *p = NULL;
@@ -136,20 +146,20 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		 *	Integer data types let the admin
 		 *	select which frame is being used.
 		 */
-		if (tmpl_is_attr(g->vpt) &&
-		    ((tmpl_da(g->vpt)->type == FR_TYPE_UINT8) ||
-		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT16) ||
-		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT32) ||
-		     (tmpl_da(g->vpt)->type == FR_TYPE_UINT64))) {
+		if (tmpl_is_attr(kctx->vpt) &&
+		    ((tmpl_da(kctx->vpt)->type == FR_TYPE_UINT8) ||
+		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT16) ||
+		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT32) ||
+		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT64))) {
 			VALUE_PAIR *vp;
 
-			slen = tmpl_find_vp(&vp, request, g->vpt);
+			slen = tmpl_find_vp(&vp, request, kctx->vpt);
 			if (slen < 0) {
-				REDEBUG("Failed finding attribute %s", g->vpt->name);
+				REDEBUG("Failed finding attribute %s", kctx->vpt->name);
 				goto randomly_choose;
 			}
 
-			switch (tmpl_da(g->vpt)->type) {
+			switch (tmpl_da(kctx->vpt)->type) {
 			case FR_TYPE_UINT8:
 				start = ((uint32_t) vp->vp_uint8) % g->num_children;
 				break;
@@ -171,7 +181,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 			}
 
 		} else {
-			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
+			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, kctx->vpt, NULL, NULL);
 			if (slen < 0) {
 				REDEBUG("Failed expanding template");
 				goto randomly_choose;

@@ -25,8 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cond.h>
-#include "unlang_priv.h"
+
 #include "group_priv.h"
+#include "switch_priv.h"
+#include "unlang_priv.h"
 
 static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presult)
 {
@@ -34,12 +36,16 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_t		*this, *found, *null_case;
-	unlang_group_t		*g, *h;
+
+	unlang_group_t		*switch_g;
+	unlang_switch_kctx_t	*switch_kctx;
+
 	fr_cond_t		cond;
 	vp_map_t		map;
 	tmpl_t			vpt;
 
-	g = unlang_generic_to_group(instruction);
+	switch_g = unlang_generic_to_group(instruction);
+	switch_kctx = talloc_get_type_abort(switch_g->kctx, unlang_switch_kctx_t);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
@@ -49,9 +55,9 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	cond.data.map = &map;
 
 	map.op = T_OP_CMP_EQ;
-	map.ci = cf_section_to_item(g->cs);
+	map.ci = cf_section_to_item(switch_g->cs);
 
-	fr_assert(g->vpt != NULL);
+	fr_assert(switch_kctx->vpt != NULL);
 
 	null_case = found = NULL;
 
@@ -59,13 +65,17 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	The attribute doesn't exist.  We can skip
 	 *	directly to the default 'case' statement.
 	 */
-	if (tmpl_is_attr(g->vpt) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
+	if (tmpl_is_attr(switch_kctx->vpt) && (tmpl_find_vp(NULL, request, switch_kctx->vpt) < 0)) {
 	find_null_case:
-		for (this = g->children; this; this = this->next) {
+		for (this = switch_g->children; this; this = this->next) {
+			unlang_group_t		*case_g;
+			unlang_case_kctx_t	*case_kctx;
+
 			fr_assert(this->type == UNLANG_TYPE_CASE);
 
-			h = unlang_generic_to_group(this);
-			if (h->vpt) continue;
+			case_g = unlang_generic_to_group(this);
+			case_kctx = talloc_get_type_abort(case_g->kctx, unlang_case_kctx_t);
+			if (case_kctx->vpt) continue;
 
 			found = this;
 			break;
@@ -79,13 +89,13 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	is evaluated once instead of for each 'case'
 	 *	statement.
 	 */
-	if (tmpl_is_xlat(g->vpt) ||
-	    tmpl_is_xlat_unresolved(g->vpt) ||
-	    tmpl_is_exec(g->vpt)) {
+	if (tmpl_is_xlat(switch_kctx->vpt) ||
+	    tmpl_is_xlat_unresolved(switch_kctx->vpt) ||
+	    tmpl_is_exec(switch_kctx->vpt)) {
 		char *p;
 		ssize_t len;
 
-		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
+		len = tmpl_aexpand(request, &p, request, switch_kctx->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
 
 		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
@@ -96,15 +106,19 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	Find either the exact matching name, or the
 	 *	"case {...}" statement.
 	 */
-	for (this = g->children; this; this = this->next) {
+	for (this = switch_g->children; this; this = this->next) {
+		unlang_group_t		*case_g;
+		unlang_case_kctx_t	*case_kctx;
+
 		fr_assert(this->type == UNLANG_TYPE_CASE);
 
-		h = unlang_generic_to_group(this);
+		case_g = unlang_generic_to_group(this);
+		case_kctx = talloc_get_type_abort(case_g->kctx, unlang_case_kctx_t);
 
 		/*
 		 *	Remember the default case
 		 */
-		if (!h->vpt) {
+		if (!case_kctx->vpt) {
 			if (!null_case) null_case = this;
 			continue;
 		}
@@ -115,36 +129,35 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 		 *	the case statement, then cast the data
 		 *	to the type of the attribute.
 		 */
-		if (tmpl_is_attr(g->vpt) &&
-		    !tmpl_is_data(h->vpt)) {
-			map.rhs = g->vpt;
-			map.lhs = h->vpt;
-			cond.cast = tmpl_da(g->vpt);
+		if (tmpl_is_attr(switch_kctx->vpt) && !tmpl_is_data(case_kctx->vpt)) {
+			map.rhs = switch_kctx->vpt;
+			map.lhs = case_kctx->vpt;
+			cond.cast = tmpl_da(switch_kctx->vpt);
 
 			/*
 			 *	Remove unnecessary casting.
 			 */
-			if (tmpl_is_attr(h->vpt) &&
-			    (tmpl_da(g->vpt)->type == tmpl_da(h->vpt)->type)) {
+			if (tmpl_is_attr(case_kctx->vpt) &&
+			    (tmpl_da(switch_kctx->vpt)->type == tmpl_da(case_kctx->vpt)->type)) {
 				cond.cast = NULL;
 			}
 
-			/*
-			 *	Use the pre-expanded string.
-			 */
-		} else if (tmpl_is_xlat(g->vpt) ||
-			   tmpl_is_xlat_unresolved(g->vpt) ||
-			   tmpl_is_exec(g->vpt)) {
-			map.rhs = h->vpt;
+		/*
+		 *	Use the pre-expanded string.
+		 */
+		} else if (tmpl_is_xlat(switch_kctx->vpt) ||
+			   tmpl_is_xlat_unresolved(switch_kctx->vpt) ||
+			   tmpl_is_exec(switch_kctx->vpt)) {
+			map.rhs = case_kctx->vpt;
 			map.lhs = &vpt;
 			cond.cast = NULL;
 
-			/*
-			 *	Else evaluate the 'switch' statement.
-			 */
+		/*
+		 *	Else evaluate the 'switch' statement.
+		 */
 		} else {
-			map.rhs = h->vpt;
-			map.lhs = g->vpt;
+			map.rhs = case_kctx->vpt;
+			map.lhs = switch_kctx->vpt;
 			cond.cast = NULL;
 		}
 
