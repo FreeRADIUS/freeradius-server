@@ -963,6 +963,15 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_printf("VALUEs cannot be defined for structural data types");
+		return -1;
+
+	default:
+		break;
+	}
+
 	dict = dict_by_da(da);
 
 	enumv = talloc_zero(dict->pool, fr_dict_enum_t);
@@ -2164,10 +2173,13 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 
 	if (!da) return NULL;
 
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_printf("VALUEs cannot be defined for structural data types");
 		return NULL;
+
+	default:
+		break;
 	}
 
 	/*
@@ -2175,6 +2187,12 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 *	we want to avoid the lookup gracefully...
 	 */
 	if (value->type != da->type) return NULL;
+
+	dict = dict_by_da(da);
+	if (!dict) {
+		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
+		return NULL;
+	}
 
 	/*
 	 *	First, look up names.
@@ -2210,6 +2228,14 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 
 	if (!da) return NULL;
 
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		return NULL;
+
+	default:
+		break;
+	}
+
 	dict = dict_by_da(da);
 	if (!dict) {
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
@@ -2235,6 +2261,14 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name,
 	fr_dict_t	*dict;
 
 	if (!name) return NULL;
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		return NULL;
+
+	default:
+		break;
+	}
 
 	dict = dict_by_da(da);
 	if (!dict) {
