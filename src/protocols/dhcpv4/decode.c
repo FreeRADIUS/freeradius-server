@@ -105,8 +105,17 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	 *	be multiple attributes, so its safe to
 	 *	steal the unknown attribute into the context
 	 *	of the pair.
+	 *
+	 *	Note that we *cannot* do talloc_steal here, because
+	 *	this function is called in a loop from decode_value().
+	 *	And we cannot steal the same da into multiple parent
+	 *	VPs.  As a result, we have to copy it, and rely in the
+	 *	caller to clean up the unknown da.
 	 */
-	if (da->flags.is_unknown) talloc_steal(vp, da);
+	if (da->flags.is_unknown) {
+		vp->da = fr_dict_unknown_acopy(vp, da);
+		da = vp->da;
+	}
 
 	if (vp->da->type == FR_TYPE_STRING) {
 		uint8_t const *q, *end;
@@ -193,23 +202,25 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			  uint8_t const *data, size_t data_len)
 {
 	ssize_t slen;
-	fr_dict_attr_t *child;
+	fr_dict_attr_t *tmp;
+	fr_dict_attr_t const *child;
 
 	/*
 	 *	Build an unknown attr.  Note that we can't call
 	 *	fr_dict_unknown_acopy(), as it leaves the "child" da
 	 *	as FR_TYPE_TLV, when we want FR_TYPE_OCTETS.
 	 */
-	if (fr_dict_unknown_attr_afrom_num(ctx, &child, da->parent, da->attr) < 0) {
+	if (fr_dict_unknown_attr_afrom_num(ctx, &tmp, da->parent, da->attr) < 0) {
 		return -1;
 	}
+	child = tmp;		/* const issues */
 
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
 		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name,
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
 	slen = decode_value(ctx, cursor, child, data, data_len);
-	if (slen <= 0) talloc_free(child);
+	if (slen <= 0) fr_dict_unknown_free(&child);
 
 	return slen;
 }
