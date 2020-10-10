@@ -113,14 +113,14 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
  */
 struct dict_attr_s {
 	unsigned int		attr;				//!< Attribute number.
+	unsigned int		depth;				//!< Depth of nesting for this attribute.
+
 	fr_type_t		type;				//!< Value type.
 	char const		*name;				//!< Attribute name.
 
 	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
-
-	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
@@ -348,7 +348,7 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
  */
 ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags);
 
-void			fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth);
+void			fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
@@ -525,6 +525,10 @@ ssize_t			fr_dict_valid_oid_str(char const *name, ssize_t len);
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev);
+
+typedef int		(*fr_dict_walk_t)(void *ctx, fr_dict_attr_t const *da, int depth);
+
+int			fr_dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback);
 
 /** @} */
 

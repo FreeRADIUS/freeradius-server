@@ -157,14 +157,17 @@ size_t fr_dict_print_attr_oid(size_t *need, char *out, size_t outlen,
 }
 
 
-
-void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
-{
+typedef struct {
+	fr_dict_t const *dict;
 	char buff[256];
-	unsigned int i;
-	char const *name;
+} fr_dict_print_t;
 
-	fr_dict_snprint_flags(buff, sizeof(buff), dict, da->type, &da->flags);
+static int dict_print(void *ctx_in, fr_dict_attr_t const *da, int depth)
+{
+	char const *name;
+	fr_dict_print_t *ctx = (fr_dict_print_t *) ctx_in;
+
+	fr_dict_snprint_flags(ctx->buff, sizeof(ctx->buff), ctx->dict, da->type, &da->flags);
 
 	switch (da->type) {
 	case FR_TYPE_VSA:
@@ -188,6 +191,11 @@ void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 		break;
 
 	default:
+		if (da->parent && da->parent->type == FR_TYPE_STRUCT) {
+			name = "MEMBER";
+			break;
+		}
+
 		name = "ATTRIBUTE";
 		break;
 	}
@@ -195,15 +203,17 @@ void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
-	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), buff);
+	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), ctx->buff);
 
-	if (!dict_attr_can_have_children(da)) return;
+	return 0;
+}
 
-	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
-		if (da->children[i]) {
-			fr_dict_attr_t const *bin;
 
-			for (bin = da->children[i]; bin; bin = bin->next) fr_dict_print(dict, bin, depth + 1);
-		}
-	}
+void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da)
+{
+	fr_dict_print_t ctx;
+
+	ctx.dict = dict;
+
+	(void) fr_dict_walk(da, &ctx, dict_print);
 }

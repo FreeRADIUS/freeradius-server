@@ -2662,11 +2662,9 @@ int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED voi
 	return 0;
 }
 
-static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsigned int lvl)
+static int dict_dump(void *ctx, fr_dict_attr_t const *da, int lvl)
 {
-	unsigned int		i;
-	size_t			len;
-	fr_dict_attr_t const	*p;
+	fr_dict_t const		*dict = (fr_dict_t const *) ctx;
 	char			flags[256];
 
 	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
@@ -2674,22 +2672,18 @@ static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsig
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
 
-	if (!dict_attr_can_have_children(da)) return;
-
-	len = talloc_array_length(da->children);
-	for (i = 0; i < len; i++) {
-		for (p = da->children[i]; p; p = p->next) {
-			_fr_dict_dump(dict, p, lvl + 1);
-		}
-	}
+	return 0;
 }
 
 void fr_dict_dump(fr_dict_t const *dict)
 {
 	fr_hash_iter_t		iter;
 	fr_dict_enum_t const	*enumv;
+	void *ctx;
 
-	_fr_dict_dump(dict, dict->root, 0);
+	memcpy(&ctx, &dict, sizeof(ctx)); /* const issues */
+
+	(void) fr_dict_walk(dict->root, ctx, dict_dump);
 
 	printf("Enumeration name -> value:\n");
 
@@ -3092,4 +3086,32 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	}
 
 	return NULL;
+}
+
+static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback, int depth)
+{
+	size_t i;
+
+	if (!dict_attr_can_have_children(da) || !da->children) {
+		return callback(ctx, da, depth);
+	}
+
+	for (i = 0; i < talloc_array_length(da->children); i++) {
+		int rcode;
+		fr_dict_attr_t const *bin;
+
+		if (!da->children[i]) continue;
+
+		for (bin = da->children[i]; bin; bin = bin->next) {
+			rcode = dict_walk(bin, ctx, callback, depth);
+			if (rcode < 0) return rcode;
+		}
+	}
+
+	return 0;
+}
+
+int fr_dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback)
+{
+	return dict_walk(da, ctx, callback, 0);
 }
