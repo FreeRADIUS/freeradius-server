@@ -605,6 +605,49 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	return 0;
 }
 
+/** See if a #fr_dict_attr_t can have children
+ *
+ *  The check for children is complicated by the need for "int" types
+ *  to have children, when they are `key` fields in a `struct`.  This
+ *  situation occurs when a struct has multiple sub-structures, which
+ *  are selected based on a `key` field.
+ *
+ *  There is no other place for the sub-structures to go.  In the
+ *  future, we may extend the functionality of the `key` field, by
+ *  allowing non-integer data types.  That would require storing keys
+ *  as #fr_dict_enum_t, and then placing the child (i.e. sub)
+ *  structures there.  But that would involve adding children to
+ *  enums, which is currently not supported.
+ *
+ * @param da the dictionary attribute to check.
+ */
+bool dict_attr_can_have_children(fr_dict_attr_t const *da)
+{
+	switch (da->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
+	case FR_TYPE_STRUCT:
+		return true;
+
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+		/*
+		 *	Children are allowed here, but ONLY if this
+		 *	attribute is a key field.
+		 */
+		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && da_is_key_field(da)) return true;
+		break;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+
 /** Add a child to a parent.
  *
  * @param[in] parent	we're adding a child to.
@@ -625,24 +668,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 
 	DA_VERIFY(child);
 
-	switch (parent->type) {
-	case FR_TYPE_TLV:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_VSA:
-	case FR_TYPE_STRUCT:
-		break;
-
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-		/*
-		 *	Children are allowed here, but ONLY if this
-		 *	attribute is a key field.
-		 */
-		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && da_is_key_field(parent)) break;
-		FALL_THROUGH;
-
-	default:
+	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
 				   parent->name, fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return false;
@@ -2021,7 +2047,8 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 	 */
 	DA_VERIFY(parent);
 #endif
-	if (!parent->children) return NULL;
+
+	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
 
 	/*
 	 *	Only some types can have children
@@ -2065,7 +2092,7 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 	 */
 	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
 
-	if (!parent->children) return NULL;
+	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
@@ -2117,11 +2144,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	/*
 	 *	Check the parent can is a grouping attribute
 	 */
-	switch (parent->type) {
-	case FR_TYPE_STRUCTURAL:
-		break;
-
-	default:
+	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
 				   parent->name,
 				   fr_table_str_by_value(fr_value_box_type_table,
@@ -2651,6 +2674,8 @@ static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsig
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
 
+	if (!dict_attr_can_have_children(da)) return;
+
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {
 		for (p = da->children[i]; p; p = p->next) {
@@ -3030,7 +3055,7 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	fr_dict_attr_t const * const *bin;
 	int i, start;
 
-	if (!parent || !parent->children || !prev) return NULL;
+	if (!parent || !dict_attr_can_have_children(parent) || !parent->children || !prev) return NULL;
 
 	if (!*prev) {
 		start = 0;

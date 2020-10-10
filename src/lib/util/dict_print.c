@@ -197,6 +197,8 @@ void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
 	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), buff);
 
+	if (!dict_attr_can_have_children(da)) return;
+
 	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
 		if (da->children[i]) {
 			fr_dict_attr_t const *bin;

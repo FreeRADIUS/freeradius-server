@@ -209,6 +209,8 @@ fr_dict_t		*dict_by_da(fr_dict_attr_t const *da);
 
 fr_dict_t		*dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
+bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
+
 #ifdef __cplusplus
 }
 #endif
