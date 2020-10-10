@@ -123,16 +123,27 @@ void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx)
  */
 void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const	*da_p, **da_o;
-
 	if (!da) return;
 
-	da_p = da;
-	da_o = stack->da + (da->depth - 1);
+	if (!da->flags.is_unknown) {
+		/*
+		 *	da->da_stack[0] is dict->root
+		 */
+		memcpy(&stack->da[0], &da->da_stack[1], sizeof(stack->da[0]) * da->depth);
 
-	while (da_o >= stack->da) {
-		*da_o-- = da_p;
-		da_p = da_p->parent;
+	} else {
+		fr_dict_attr_t const	*da_p, **da_o;
+
+		/*
+		 *	Unknown attributes don't have a da->da_stack.
+		 */
+		da_p = da;
+		da_o = stack->da + (da->depth - 1);
+
+		while (da_o >= stack->da) {
+			*da_o-- = da_p;
+			da_p = da_p->parent;
+		}
 	}
 
 	stack->depth = da->depth;
