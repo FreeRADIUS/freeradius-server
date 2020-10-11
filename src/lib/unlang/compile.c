@@ -2835,7 +2835,7 @@ get_packet_type:
 		src = cf_section_argv(cs, 0);
 		if (src) {
 			slen = tmpl_afrom_substr(parent, &src_vpt,
-						 &FR_SBUFF_IN(src, talloc_array_length(dst) - 1),
+						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (slen <= 0) {
 				cf_log_perr(cs, "Invalid argument 'subrequest', failed parsing source");
