@@ -1210,6 +1210,7 @@ static int compile_map_name(unlang_group_t *g)
 		}
 
 		fr_assert(kctx->vpt != NULL);
+		fr_assert(kctx->vpt->name != NULL);
 		quoted_len = fr_snprint_len(kctx->vpt->name, kctx->vpt->len, quote);
 		quoted_str = talloc_array(g, char, quoted_len);
 		fr_snprint(quoted_str, quoted_len, kctx->vpt->name, kctx->vpt->len, quote);
