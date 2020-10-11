@@ -224,6 +224,12 @@ dhcp DHCP-Discover {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
 
+	#  As an alternative or complement to configuration files based lookup
+	#  for options data you can instead use an SQL database. Example
+	#  configuration is found in dhcp_policy_sql in policy.d/dhcp which
+	#  will need to be adapted to your requirements.
+	#dhcp_policy_sql
+
 	#  Set the type of packet to send in reply.
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
@@ -329,6 +335,12 @@ dhcp DHCP-Request {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
 
+	#  As an alternative or complement to configuration files based lookup
+	#  for options data you can instead use an SQL database. Example
+	#  configuration is found in dhcp_policy_sql in policy.d/dhcp which
+	#  will need to be adapted to your requirements.
+	#dhcp_policy_sql
+
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Ack
 	#  packet.
@@ -361,6 +373,9 @@ dhcp DHCP-Decline {
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
+
+	#  Use a policy that set options from data stored in an SQL database
+	#dhcp_policy_sql
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
@@ -414,6 +429,9 @@ dhcp DHCP-Inform {
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
+
+	#  Use a policy that set options from data stored in an SQL database
+	#dhcp_policy_sql
 
 	ok
 }
