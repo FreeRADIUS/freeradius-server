@@ -463,7 +463,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			 *	"key1,key2" to allow for multiple
 			 *	flags.
 			 */
-			if (flags->subtype) {
+			if (flags->extra || flags->subtype) {
 				fr_strerror_printf("Cannot add flag '%s' - another flag is already set",
 						   key);
 				return -1;
