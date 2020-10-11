@@ -1,0 +1,92 @@
+# -*- text -*-
+##
+## mods-available/sql -- SQL modules
+##
+##	$Id$
+
+######################################################################
+#
+#  Configuration for the DHCP-specific instance of the SQL module
+#
+#  The database schemas and queries are located in subdirectories:
+#
+#	sql/dhcp/<DB>/schema.sql	Schema
+#	sql/dhcp/<DB>/queries.conf	Reply options lookup queries
+#
+#  Where "DB" is mysql, mssql, oracle, or postgresql.
+#
+
+#
+#  See raddb/mods-available/sql for a description of the configuration items
+#  for the sql module.
+#
+sql dhcp_sql {
+	dialect = "sqlite"
+	driver = "rlm_sql_null"
+#	driver = "rlm_sql_${dialect}"
+
+	sqlite {
+		filename = "/tmp/freeradius.db"
+		busy_timeout = 200
+		bootstrap = "${modconfdir}/${..:name}/dhcp/sqlite/schema.sql"
+	}
+
+	mysql {
+		tls {
+			ca_file = "/etc/ssl/certs/my_ca.crt"
+			ca_path = "/etc/ssl/certs/"
+			certificate_file = "/etc/ssl/certs/private/client.crt"
+			private_key_file = "/etc/ssl/certs/private/client.key"
+			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
+
+			tls_required = yes
+			tls_check_cert = no
+			tls_check_cert_cn = no
+		}
+		warnings = auto
+	}
+
+	postgresql {
+		send_application_name = yes
+	}
+
+	mongo {
+		appname = "freeradius"
+		tls {
+			certificate_file = /path/to/file
+			certificate_password = "password"
+			ca_file = /path/to/file
+			ca_dir = /path/to/directory
+			crl_file = /path/to/file
+			weak_cert_validation = false
+			allow_invalid_hostname = false
+		}
+	}
+
+#       server = "localhost"
+#       port = 3306
+#       login = "radius"
+#       password = "radpass"
+
+	radius_db = "radius"
+
+	dhcpreply_table = "dhcpreply"
+	groupreply_table = "dhcpgroupreply"
+	dhcpgroup_table = "dhcpgroup"
+	read_groups = no
+
+	pool {
+		start = ${thread[pool].start_servers}
+		min = ${thread[pool].min_spare_servers}
+		max = ${thread[pool].max_servers}
+		spare = ${thread[pool].max_spare_servers}
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+	}
+
+	group_attribute = "${.:instance}-SQL-Group"
+
+	$INCLUDE ${modconfdir}/${.:name}/dhcp/${dialect}/queries.conf
+}
