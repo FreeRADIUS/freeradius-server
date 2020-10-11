@@ -906,7 +906,7 @@ recv Access-Request {
 	#  Enforce daily limits on time spent logged in. This module
 	#  is a variant of the `counter` module.
 	#
-#	daily
+#	dailycounter
 
 	#
 	#  See if the account has expired: check the time in the
