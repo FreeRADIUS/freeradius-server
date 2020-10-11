@@ -627,7 +627,7 @@ instantiate {
 	#  the check_name attribute before any module which sets
 	#  it.
 	#
-#	daily
+#	dailycounter
 
 	#
 	#  subsections here can be thought of as `virtual` modules.
