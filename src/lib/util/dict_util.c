@@ -2090,9 +2090,12 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 	 *	We return the child of the referenced attribute, and
 	 *	not of the "group" attribute.
 	 */
-	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
+	if (parent->type == FR_TYPE_GROUP) {
+		parent = parent->ref;
 
-	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
+	} else if (!dict_attr_can_have_children(parent) || !parent->children) {
+		return NULL;
+	}
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
@@ -2142,30 +2145,26 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	DA_VERIFY(parent);
 
 	/*
-	 *	Check the parent can is a grouping attribute
+	 *	Check the parent is a grouping attribute
 	 */
-	if (!dict_attr_can_have_children(parent)) {
+	if (parent->type == FR_TYPE_GROUP) {
+		parent = parent->ref;
+
+	} else if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
 				   parent->name,
 				   fr_table_str_by_value(fr_value_box_type_table,
 				   			 parent->type, "?Unknown?"));
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		return 0;
-	}
 
-	/*
-	 *	We return the child of the referenced attribute, and
-	 *	not of the "group" attribute.
-	 */
-	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
-
-	if (!parent->children) {
+	} else if (!parent->children) {
 		fr_strerror_printf("Parent (%s) has no children", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		return 0;
 	}
 
-	slen = fr_dict_attr_by_name_substr(err, out, fr_dict_by_da(parent), name);
+	slen = fr_dict_attr_by_name_substr(err, out, dict_by_da(parent), name);
 	if (slen <= 0) return slen;
 
 	if (is_direct_decendent) {
