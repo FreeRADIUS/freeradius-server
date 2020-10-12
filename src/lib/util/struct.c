@@ -293,6 +293,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 */
 	if (key_vp) {
 		ssize_t slen;
+		fr_dict_enum_t const *enumv;
+		child = NULL;
 
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - substruct");
 
@@ -301,39 +303,21 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		if (p >= end) goto done;
 
-		switch (key_vp->da->type) {
-		default:
-			goto done;
+		enumv = fr_dict_enum_by_value(key_vp->da, &key_vp->data);
+		if (enumv) child = enumv->child_struct[0];
 
-		case FR_TYPE_UINT8:
-			child_num = key_vp->vp_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			child_num = key_vp->vp_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			child_num = key_vp->vp_uint32;
-			break;
-		}
-
-		child = fr_dict_attr_child_by_num(key_vp->da, child_num);
 		if (!child) {
-			child = fr_dict_unknown_afrom_fields(ctx, key_vp->da,
-							     fr_dict_vendor_num_by_da(key_vp->da), child_num);
-			if (!child) goto unknown;
-			goto unknown_child; /* we know it's not a struct */
-		}
-
-		if (child->type == FR_TYPE_STRUCT) {
-			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
-				decode_value, decoder_ctx);
-			if (slen <= 0) goto unknown_child;
-			p += slen;
-
-		} else {
 		unknown_child:
+			/*
+			 *	Encode the unknown child as attribute
+			 *	number 0.  This choice means we don't
+			 *	have to look up, or keep track of, the
+			 *	number of children of the key field.
+			 */
+			child = fr_dict_unknown_afrom_fields(ctx, key_vp->da,
+							     fr_dict_vendor_num_by_da(key_vp->da), 0);
+			if (!child) goto unknown;
+
 			vp = fr_unknown_from_network(ctx, child, p, end - p);
 			if (!vp) {
 				fr_dict_unknown_free(&child);
@@ -342,6 +326,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 			fr_cursor_append(&child_cursor, vp);
 			p = end;
+		} else {
+			fr_assert(child->type == FR_TYPE_STRUCT);
+
+			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
+						      decode_value, decoder_ctx);
+			if (slen <= 0) goto unknown_child;
+			p += slen;
 		}
 
 		fr_dict_unknown_free(&child);
