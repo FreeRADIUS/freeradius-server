@@ -1098,12 +1098,13 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const   		*da;
-	fr_dict_attr_t const		*parent;
+	fr_dict_attr_t			*parent;
 	fr_value_box_t			value;
 	fr_type_t			type;
 	unsigned int			attr;
 	fr_dict_attr_flags_t		flags;
 	char				*key_attr = argv[1];
+	char			        *name = argv[0];
 
 	if (argc != 3) {
 		fr_strerror_printf("Invalid STRUCT syntax");
@@ -1157,38 +1158,21 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	/*
 	 *	Allow naked "STRUCT parent name value" definitions, so
-	 *	long as the parent attribute exits.
-	 */
-	if (ctx->stack[ctx->stack_depth].da->flags.is_root) goto get_value;
-
-	/*
+	 *	long as the parent attribute exists.
+	 *
 	 *	The attribute in the current stack frame MUST be the
 	 *	enclosing "struct".
 	 */
-	if (ctx->stack[ctx->stack_depth].da != parent->parent) {
+	if (!ctx->stack[ctx->stack_depth].da->flags.is_root &&
+	    (ctx->stack[ctx->stack_depth].da != parent->parent)) {
 		fr_strerror_printf("Attribute '%s' is not a MEMBER of the current 'struct'", key_attr);
 		return -1;
 	}
 
-get_value:
-	/*
-	 *	A STRUCT also defines a VALUE
-	 *
-	 *	Note that VALUEs are define in the *opposite* order of
-	 *	STRUCT:
-	 *
-	 *	VALUE attr name value
-	 *
-	 *	So to keep the "process value" function happy, we swap
-	 *	the order of the arguments.
-	 */
-	argv[1] = argv[0];
-	argv[0] = key_attr;
-
-	if (dict_read_process_value(ctx, argv, argc) < 0) return -1;
+	memset(&flags, 0, sizeof(flags));
 
 	/*
-	 *	Re-parse the value, because it's simpler than doing a lookup.
+	 *	Parse the value.
 	 */
 	type = parent->type;	/* because of combo-IP nonsense */
 	if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0', false) < 0) {
@@ -1196,6 +1180,9 @@ get_value:
 		return -1;
 	}
 
+	/*
+	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
+	 */
 	switch (type) {
 	case FR_TYPE_UINT8:
 		attr = value.vb_uint8;
@@ -1211,19 +1198,15 @@ get_value:
 
 	default:
 		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
-		fr_value_box_clear(&value);
 		return -1;
 	}
-	fr_value_box_clear(&value);
-
-	memset(&flags, 0, sizeof(flags));
 
 	/*
 	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
 	 */
-	if (fr_dict_attr_add(ctx->dict, parent, argv[1], attr, FR_TYPE_STRUCT, &flags) < 0) return -1;
+	if (fr_dict_attr_add(ctx->dict, parent, name, attr, FR_TYPE_STRUCT, &flags) < 0) return -1;
 
-	da = dict_attr_by_name(ctx->dict, argv[1]);
+	da = dict_attr_by_name(ctx->dict, name);
 	if (!da) return -1;
 
 	/*
@@ -1231,6 +1214,16 @@ get_value:
 	 */
 	ctx->relative_attr = NULL;
 	if (dict_gctx_push(ctx, da) < 0) return -1;
+
+	/*
+	 *	Add the VALUE to the parent attribute, and ensure that
+	 *	the VALUE also contains a pointer to the child struct.
+	 */
+	if (dict_enum_add_name(parent, name, &value, false, true, da) < 0) {
+		fr_value_box_clear(&value);
+		return -1;
+	}
+	fr_value_box_clear(&value);
 
 	return 0;
 }

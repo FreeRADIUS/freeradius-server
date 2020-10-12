@@ -947,32 +947,10 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	return 0;
 }
 
-/** Add a value name
- *
- * Aliases are textual (string) names for a given value.
- *
- * Value names are not limited to integers, and may be added for any non-structural
- * attribute type.
- *
- * @param[in] da		to add enumeration value to.
- * @param[in] name		Name of value name.
- * @param[in] value		to associate with name.
- * @param[in] coerce		if the type of the value does not match the
- *				type of the da, attempt to cast it to match
- *				the type of the da.  If this is false and there's
- *				a type mismatch, we fail.
- *				We also fail if the value cannot be coerced to
- *				the attribute type.
- * @param[in] takes_precedence	This name should take precedence over previous
- *				names for the same value, when resolving value
- *				to name.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
-			  fr_value_box_t const *value,
-			  bool coerce, bool takes_precedence)
+int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
+		       fr_value_box_t const *value,
+		       bool coerce, bool takes_precedence,
+		       fr_dict_attr_t const *child_struct)
 {
 	size_t			len;
 	fr_dict_t		*dict;
@@ -1006,14 +984,16 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 
 	dict = dict_by_da(da);
 
-	enumv = talloc_zero(dict->pool, fr_dict_enum_t);
+	enumv = talloc_zero_size(dict->pool, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * (child_struct != NULL));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(enumv, fr_dict_enum_t);
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = strlen(name);
+	if (child_struct) enumv->child_struct[0] = child_struct;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 	if (!enum_value) goto oom;
 
@@ -1100,6 +1080,36 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 
 	return 0;
+}
+
+/** Add a value name
+ *
+ * Aliases are textual (string) names for a given value.
+ *
+ * Value names are not limited to integers, and may be added for any non-structural
+ * attribute type.
+ *
+ * @param[in] da		to add enumeration value to.
+ * @param[in] name		Name of value name.
+ * @param[in] value		to associate with name.
+ * @param[in] coerce		if the type of the value does not match the
+ *				type of the da, attempt to cast it to match
+ *				the type of the da.  If this is false and there's
+ *				a type mismatch, we fail.
+ *				We also fail if the value cannot be coerced to
+ *				the attribute type.
+ * @param[in] takes_precedence	This name should take precedence over previous
+ *				names for the same value, when resolving value
+ *				to name.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
+			  fr_value_box_t const *value,
+			  bool coerce, bool takes_precedence)
+{
+	return dict_enum_add_name(da, name, value, coerce, takes_precedence, NULL);
 }
 
 /** Add an name to an integer attribute hashing the name for the integer value

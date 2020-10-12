@@ -160,6 +160,8 @@ typedef struct {
 	size_t			name_len;			//!< Allows for efficient name lookups when operating
 								///< on partial buffers.
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
+
+	fr_dict_attr_t const	*child_struct[0];		//!< for key fields
 } fr_dict_enum_t;
 
 /** Private enterprise
