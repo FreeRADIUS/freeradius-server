@@ -446,12 +446,19 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			}
 
 		} else if (strcmp(key, "ref") == 0) {
-			if (!ref || (type != FR_TYPE_GROUP)) {
+			if (!value) {
+				fr_strerror_printf("Missing attribute name for 'ref=...'");
+				return -1;
+			}
+
+			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV)) {
 				fr_strerror_printf("The 'ref' flag can only be used for attributes of type 'group'");
 				return -1;
 			}
 
 			*ref = talloc_strdup(ctx->dict->pool, value);
+			flags->extra = true;
+			flags->subtype = FLAG_HAS_REF;
 
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
@@ -692,6 +699,14 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	}
 
 	/*
+	 *	TLVs can only refer to attributes in the same dictionary.
+	 */
+	if (ref && (type == FR_TYPE_TLV) && !dict_attr_by_name(ctx->dict, ref)) {
+		fr_strerror_printf("Attributes of type 'tlv' MUST refer to a pre-existing ATTRIBUTE in the same protocol");
+		return -1;
+	}
+
+	/*
 	 *	Add in an attribute
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
@@ -711,9 +726,9 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (set_relative_attr) ctx->relative_attr = da;
 
 	/*
-	 *	Hack up groups according to "ref"
+	 *	Update 'ref'
 	 */
-	if (type == FR_TYPE_GROUP) {
+	if (da_has_ref(da)) {
 		fr_dict_attr_t		*self;
 		fr_dict_t		*dict;
 		char *p;
@@ -724,6 +739,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	No qualifiers, just point it to the root of the current dictionary.
 		 */
 		if (!ref) {
+			fr_assert(type == FR_TYPE_GROUP);
 			dict = ctx->dict;
 			da = ctx->dict->root;
 			goto check;
@@ -800,6 +816,12 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		check:
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("References MUST be to attributes of type 'tlv'");
+				talloc_free(ref);
+				return -1;
+			}
+
+			if (da_has_ref(da)) {
+				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
 				talloc_free(ref);
 				return -1;
 			}
@@ -1626,6 +1648,12 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		check:
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
+					this->filename, this->line);
+				goto group_error;
+			}
+
+			if (da_has_ref(da)) {
+				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
 					this->filename, this->line);
 				goto group_error;
 			}

@@ -668,6 +668,12 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 
 	DA_VERIFY(child);
 
+	if (da_has_ref(parent)) {
+		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
+				   parent->name, parent->ref->name);
+		return false;
+	}
+
 	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
 				   parent->name, fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
@@ -2048,6 +2054,8 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 	DA_VERIFY(parent);
 #endif
 
+	if (da_has_ref(parent)) parent = parent->ref;
+
 	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
 
 	/*
@@ -2087,13 +2095,11 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 	DA_VERIFY(parent);
 
 	/*
-	 *	We return the child of the referenced attribute, and
-	 *	not of the "group" attribute.
+	 *	Do any necessary dereferencing
 	 */
-	if (parent->type == FR_TYPE_GROUP) {
-		parent = parent->ref;
+	if (da_has_ref(parent)) parent = parent->ref;
 
-	} else if (!dict_attr_can_have_children(parent) || !parent->children) {
+	if (!dict_attr_can_have_children(parent) || !parent->children) {
 		return NULL;
 	}
 
@@ -2145,12 +2151,11 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	DA_VERIFY(parent);
 
 	/*
-	 *	Check the parent is a grouping attribute
+	 *	Do any necessary dereferencing
 	 */
-	if (parent->type == FR_TYPE_GROUP) {
-		parent = parent->ref;
+	if (da_has_ref(parent)) parent = parent->ref;
 
-	} else if (!dict_attr_can_have_children(parent)) {
+	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
 				   parent->name,
 				   fr_table_str_by_value(fr_value_box_type_table,
@@ -3048,7 +3053,7 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	fr_dict_attr_t const * const *bin;
 	int i, start;
 
-	if (!parent || !dict_attr_can_have_children(parent) || !parent->children || !prev) return NULL;
+	if (!parent || da_has_ref(parent) || !dict_attr_can_have_children(parent) || !parent->children || !prev) return NULL;
 
 	if (!*prev) {
 		start = 0;
@@ -3091,7 +3096,7 @@ static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callbac
 {
 	size_t i;
 
-	if (!dict_attr_can_have_children(da) || !da->children) {
+	if (da_has_ref(da) || !dict_attr_can_have_children(da) || !da->children) {
 		return callback(ctx, da, depth);
 	}
 

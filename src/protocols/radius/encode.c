@@ -1414,11 +1414,26 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 	}
 
 	/*
-	 *	We allow zero-length strings in "unlang", but skip
-	 *	them (except for CUI, thanks WiMAX!) on all other
-	 *	attributes.
+	 *	Check for zero-length attributes.
 	 */
-	if (fr_radius_attr_len(vp) == 0) {
+	switch (vp->da->type) {
+	default:
+		break;
+
+		/*
+		 *	Only variable length data types can be
+		 *	variable sized.  All others have fixed size.
+		 */
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		if (fr_radius_attr_len(vp) != 0) break;
+
+		/*
+		 *	Zero-length strings are allowed for CUI
+		 *	(thanks WiMAX!), and for
+		 *	Message-Authenticator, because we will
+		 *	automagically generate that one ourselves.
+		 */
 		if (!fr_dict_attr_is_top_level(vp->da) ||
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
@@ -1426,6 +1441,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 			fr_strerror_printf("Zero length string attributes not allowed");
 			return PAIR_ENCODE_SKIPPED;
 		}
+		break;
 	}
 
 	/*

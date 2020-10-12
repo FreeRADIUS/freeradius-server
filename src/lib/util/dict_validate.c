@@ -166,7 +166,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags->extra) {
 		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16) &&
-		    (flags->subtype != FLAG_BIT_FIELD)) {
+		    (flags->subtype != FLAG_BIT_FIELD) && (flags->subtype != FLAG_HAS_REF)) {
 			fr_strerror_printf("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
@@ -209,6 +209,17 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		case FR_TYPE_STRUCT:
 			if (flags->subtype != FLAG_LENGTH_UINT16) {
+				fr_strerror_printf("Invalid type for extra flag.");
+				return false;
+			}
+
+			ALLOW_FLAG(extra);
+			/* @todo - allow arrays of struct? */
+			ALLOW_FLAG(subtype);
+			break;
+
+		case FR_TYPE_TLV:
+			if (flags->subtype != FLAG_HAS_REF) {
 				fr_strerror_printf("Invalid type for extra flag.");
 				return false;
 			}
