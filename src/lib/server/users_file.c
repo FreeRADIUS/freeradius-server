@@ -44,17 +44,18 @@ RCSID("$Id$")
 static void debug_pair_list(PAIR_LIST *pl)
 {
 	VALUE_PAIR *vp;
+	fr_cursor_t cursor;
 
 	while(pl) {
 		printf("Pair list: %s\n", pl->name);
 		printf("** Check:\n");
-		for(vp = pl->check; vp; vp = vp->next) {
+		for(vp = fr_cursor_init(&cursor, &pl->check); vp; vp = fr_cursor_next(&cursor)) {
 			printf("    ");
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 			printf("\n");
 		}
 		printf("** Reply:\n");
-		for(vp = pl->reply; vp; vp = vp->next) {
+		for(vp = fr_cursor_init(&cursor, &pl->reply); vp; vp = fr_cursor_next(&cursor)) {
 			printf("    ");
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
 			printf("\n");
