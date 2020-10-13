@@ -1186,7 +1186,7 @@ static int compile_map_name(unlang_group_t *g)
 	 *	name1 and name2, they form input
 	 *	arguments into the map.
 	 */
-	if (cf_section_argv(g->cs, 0)) {
+	if (kctx->vpt) {
 		char	quote;
 		size_t	quoted_len;
 		char	*quoted_str;
@@ -1209,8 +1209,6 @@ static int compile_map_name(unlang_group_t *g)
 			break;
 		}
 
-		fr_assert(kctx->vpt != NULL);
-		fr_assert(kctx->vpt->name != NULL);
 		quoted_len = fr_snprint_len(kctx->vpt->name, kctx->vpt->len, quote);
 		quoted_str = talloc_array(g, char, quoted_len);
 		fr_snprint(quoted_str, quoted_len, kctx->vpt->name, kctx->vpt->len, quote);
