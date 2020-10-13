@@ -20,3 +20,25 @@ data 52 0d 01 03 ab cd ef 02 06 01 02 03 04 05 06
 
 decode-dhcp -
 data DHCP-Relay-Circuit-Id = 0xabcdef, DHCP-Relay-Remote-Id = 0x010203040506
+
+# 35 01 01
+# 3d 06 00 a0 bd 11 22 33
+# 37 05 2b 29 01 03 06
+# 3c 09 76 69 61 73 61 74 31 2e 30
+# 52 31
+# 	06 1f 30 30 41 30 42 44 31 31 32 32 33 33 40 73 62 32 2e 72 65 73 2e 76 69 61 73 61 74 2e 63 6f 6d
+#	02 06 00 a0 bc 6c 7d 3a
+#	01 06 00 a0 bc 33 22 11
+# 39 02 05 dc
+# 7d 1e
+#	00 00 0d e9  19
+#	01 06 30 30 30 31 39 46
+#	02 0a 52 4e 56 35 30 34 35 39 34 34
+#	03 03 41 54 41
+# ff 00
+
+decode-dhcp 7d 1e 00 00 0d e9 19 01 06 30 30 30 31 39 46 02 0a 52 4e 56 35 30 34 35 39 34 34 03 03 41 54 41
+data ADSL-Forum-Device-Manufacturer-OUI = 0x303030313946, ADSL-Forum-Device-Serial-Number = "RNV5045944", ADSL-Forum-Device-Product-Class = "ATA"
+
+encode-dhcp -
+data 7d 1e 00 00 0d e9 19 01 06 30 30 30 31 39 46 02 0a 52 4e 56 35 30 34 35 39 34 34 03 03 41 54 41

@@ -1452,7 +1452,7 @@ static ssize_t fr_dhcp_encode_adsl(uint8_t *out, size_t outlen, vp_cursor_t *cur
 	 */
 	if (out[1] == 5) return 0;
 
-	return out[1];
+	return out[1] + 2;
 }
 
 /** Encode a DHCP option and any sub-options.
