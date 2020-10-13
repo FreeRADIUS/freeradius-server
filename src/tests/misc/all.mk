@@ -16,6 +16,9 @@ $(OUTPUT)/cursor.log: $(BUILD_DIR)/bin/test_cursor | $(OUTPUT)
 	@echo "MISC-TEST cursor"
 	${Q}if ! $^ > $@ ; then \
 		echo FAILED "$^ > $@"; \
+		cat "$@"; \
+		rm -f $(BUILD_DIR)/tests/test.misc; \
+		exit 1; \
 	fi
 
 $(TEST): $(OUTPUT)/cursor.log
