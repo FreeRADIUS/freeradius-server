@@ -74,6 +74,7 @@ typedef struct {
 	fr_dict_attr_t const	*da;			//!< the da we care about
 	fr_type_t		nest;			//!< for manual vs automatic begin / end things
 	int			member_num;		//!< structure member numbers
+	ssize_t			struct_size;		//!< size of the struct.
 } dict_tokenize_frame_t;
 
 typedef struct {
@@ -238,6 +239,9 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 		 */
 		if (strcmp(name, "octets") == 0) {
 			type = FR_TYPE_OCTETS;
+
+		} else if (strcmp(name, "struct") == 0) {
+			type = FR_TYPE_STRUCT;
 
 		} else if (strcmp(name, "bit") == 0) {
 			if (ctx->stack[ctx->stack_depth].da->type != FR_TYPE_STRUCT) {
@@ -930,6 +934,18 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	}
 
 	/*
+	 *	Check if the parent 'struct' is fixed size.  And if
+	 *	so, complain if we're adding a variable sized member.
+	 */
+	if (ctx->stack[ctx->stack_depth].da->flags.length &&
+	    ((type == FR_TYPE_STRING) || (type == FR_TYPE_TLV) ||
+	     ((type == FR_TYPE_OCTETS) && !flags.length))) {
+		fr_strerror_printf("'struct' %s has fixed size %u, we cannot add a variable-sized member.",
+				   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length);
+		return -1;
+	}
+
+	/*
 	 *	Add the MEMBER to the parent.
 	 */
 	if (fr_dict_attr_add(ctx->dict,
@@ -952,20 +968,21 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		if (dict_gctx_push(ctx, ctx->relative_attr) < 0) return -1;
 
 	} else {
-		fr_dict_attr_t *mutable;
 
 		/*
 		 *	Add the size of this member to the parent struct.
-		 *
-		 *	Note that we top out at 256.  This value is
-		 *	informative, so we don't really care to know the exact
-		 *	size.  Plus, most of the time it's less than 256.
 		 */
-		memcpy(&mutable, &ctx->stack[ctx->stack_depth].da, sizeof(mutable));
-		if ( ((int) mutable->flags.length + flags.length) >= 256) {
-			mutable->flags.length = 255;
-		} else {
-			mutable->flags.length += flags.length;
+		ctx->stack[ctx->stack_depth].struct_size += flags.length;
+
+		/*
+		 *	Check for overflow.
+		 */
+		if (ctx->stack[ctx->stack_depth].da->flags.length &&
+		    (ctx->stack[ctx->stack_depth].struct_size > ctx->stack[ctx->stack_depth].da->flags.length)) {
+			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
+					   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
+					   argv[0]);
+			return -1;
 		}
 	}
 
@@ -1708,6 +1725,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	char			buf[256];
 	char			*p;
 	int			line = 0;
+	bool			was_member = false;
 
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
@@ -1845,6 +1863,72 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		}
 
 		/*
+		 *	Process VALUE lines.
+		 */
+		if (strcasecmp(argv[0], "VALUE") == 0) {
+			if (dict_read_process_value(ctx, argv + 1, argc - 1) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Perhaps this is a MEMBER of a struct
+		 *
+		 *	@todo - create child ctx, so that we can have
+		 *	nested structs.
+		 */
+		if (strcasecmp(argv[0], "MEMBER") == 0) {
+			if (dict_read_process_member(ctx,
+						     argv + 1, argc - 1,
+						     &base_flags) == -1) goto error;
+			was_member = true;
+			continue;
+		}
+
+		/*
+		 *	Finalize a STRUCT.
+		 */
+		if (was_member) {
+			da = ctx->stack[ctx->stack_depth].da;
+
+			if (da->type == FR_TYPE_STRUCT) {
+
+				/*
+				 *	The structure was fixed-size,
+				 *	but the fields don't fill it.
+				 *	That's an error.
+				 *
+				 *	Since process_member() checks
+				 *	for overflow, the check here
+				 *	is really only for underflow.
+				 */
+				if (da->flags.length &&
+				    (ctx->stack[ctx->stack_depth].struct_size != da->flags.length)) {
+					fr_strerror_printf("MEMBERs of 'struct' %s do not exactly fill the fixed-size structure",
+							   da->name);
+					goto error;
+				}
+
+				/*
+				 *	If the structure is fixed
+				 *	size, AND small enough to fit
+				 *	into an 8-bit length field,
+				 *	then update the length field
+				 *	with the structure size/
+				 */
+				if (ctx->stack[ctx->stack_depth].struct_size <= 255) {
+					fr_dict_attr_t *mutable;
+
+					memcpy(&mutable, &da, sizeof(mutable));
+					mutable->flags.length = ctx->stack[ctx->stack_depth].struct_size;
+				} /* else length 0 means "unknown / variable size / too large */
+			} else {
+				fr_assert(da->type == FR_TYPE_TLV);
+			}
+
+			was_member = false;
+		}
+
+		/*
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ALIAS") == 0) {
@@ -1864,31 +1948,10 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		}
 
 		/*
-		 *	Process VALUE lines.
-		 */
-		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (dict_read_process_value(ctx, argv + 1, argc - 1) == -1) goto error;
-			continue;
-		}
-
-		/*
 		 *	Process FLAGS lines.
 		 */
 		if (strcasecmp(argv[0], "FLAGS") == 0) {
 			if (dict_read_process_flags(ctx->dict, argv + 1, argc - 1, &base_flags) == -1) goto error;
-			continue;
-		}
-
-		/*
-		 *	Perhaps this is a MEMBER of a struct
-		 *
-		 *	@todo - create child ctx, so that we can have
-		 *	nested structs.
-		 */
-		if (strcasecmp(argv[0], "MEMBER") == 0) {
-			if (dict_read_process_member(ctx,
-						     argv + 1, argc - 1,
-						     &base_flags) == -1) goto error;
 			continue;
 		}
 
