@@ -111,26 +111,85 @@ enum {
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
+/** Extension identifier
+ *
+ */
+typedef enum {
+	FR_DICT_ATTR_EXT_CHILDREN = 0,				//!< Attribute has children.
+	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
+								///< attribute and/or dictionary
+	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
+	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
+	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,			//!< Protocol specific extensions
+	FR_DICT_ATTR_EXT_MAX
+} fr_dict_attr_ext_t;
+
+/** The alignment of object extension structures
+ *
+ */
+#define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uintptr_t)
+
+/** Attribute extension - Holds children for an attribute
+ *
+ * Children are possible for:
+ *
+ * #FR_TYPE_TLV, #FR_TYPE_VENDOR, #FR_TYPE_VSA, #FR_TYPE_STRUCT
+ *
+ * *or* where the parent->parent->type is
+ * #FR_TYPE_STRUCT, and "parent" is a "key"
+ * field.  Note that these attributes therefore
+ * cannot have VALUEs, as the child defines their
+ * VALUE.  See dict_attr_can_have_children() for details.
+ */
+typedef struct {
+	fr_dict_attr_t const	**children;			//!< Children of this attribute.
+} fr_dict_attr_ext_children_t;
+
+/** Attribute extension - Holds a reference to an attribute in another dictionary
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const	*ref;				//!< reference, only for #FR_TYPE_GROUP
+} fr_dict_attr_ext_ref_t;
+
+/** Attribute extension - Cached vendor pointer
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const	*vendor;			//!< ancestor which has type #FR_TYPE_VENDOR
+} fr_dict_attr_ext_vendor_t;
+
+/** Attribute extension - Stack of dictionary attributes that describe the path back to the root of the dictionary
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const	*da_stack[0];			//!< Stack of dictionary attributes
+} fr_dict_attr_ext_da_stack_t;
+
+/** Attribute extension - Protocol-specific
+ *
+ */
+typedef struct {
+	void			*uctx;				//!< Protocol specific extensions
+} fr_dict_attr_ext_protocol_specific_t;
+
 /** Dictionary attribute
  */
 struct dict_attr_s {
+	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
+
+	char const		*name;				//!< Attribute name.
+
 	unsigned int		attr;				//!< Attribute number.
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
 	fr_type_t		type;				//!< Value type.
-	char const		*name;				//!< Attribute name.
 
-	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
-	/*
-	 *	The remaining fields vary depending on the attribute
-	 *	properties.
-	 */
-	fr_dict_attr_t const	*vendor;			//!< ancestor which has type #FR_TYPE_VENDOR
 	union {
 		/*
 		 *	Children are possible for:
@@ -146,9 +205,9 @@ struct dict_attr_s {
 		fr_dict_attr_t const	**children;		//!< Children of this attribute.
 		fr_dict_attr_t const	*ref;			//!< reference, only for #FR_TYPE_GROUP
 	};
+	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
-	fr_dict_attr_t const	*da_stack[0];			//!< load-time TLV stacks
-};
+} CC_HINT(aligned(FR_DICT_ATTR_EXT_ALIGNMENT));
 
 /** Value of an enumerated attribute
  *
@@ -248,6 +307,10 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 #define FR_DICT_TLV_NEST_MAX		(24)
 
+/** Maximum level of da stack caching
+ */
+#define FR_DICT_DA_STACK_CACHE_MAX	(5)
+
 /** Maximum TLV stack size
  *
  * The additional attributes are to account for
@@ -269,6 +332,82 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
 extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
+
+/** @name Add extension structures to attributes
+ *
+ * @{
+ */
+
+/** Return a pointer to the specified extension structure
+ */
+#define DICT_EXT_OFFSET(_ptr, _ext) ((void *)(((_ptr)->ext[_ext] * FR_DICT_ATTR_EXT_ALIGNMENT) + ((uintptr_t)(_ptr))))
+
+/** Minimum extension lengths
+ */
+extern size_t const fr_dict_ext_length_min[];
+
+/* Retrieve an extension structure for a dictionary attribute
+ *
+ * @param[in] da	to retrieve structure from.
+ * @param[in] ext	to retrieve.
+ * @return
+ *	- NULL if the extension wasn't found.
+ *	- A pointer to the start of the extension.
+ */
+static inline void *fr_dict_attr_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
+{
+	if (!da->ext[ext]) return NULL;
+
+	return DICT_EXT_OFFSET(da, ext);
+}
+
+/** Return whether a da has a given extension or not
+ *
+ * @param[in] da	to check for extensions.
+ * @param[in] ext	to check.
+ * @return
+ *      - true if the da has the specified extension.
+ *	- false if the da does not have the specified extension
+ */
+static inline bool fr_dict_attr_has_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
+{
+	return (da->ext[ext] > 0);
+}
+
+/** Return the cached da stack (if any) associated with an attribute
+ *
+ * @param[in] da	to return cached da stack for.
+ * @return
+ *	- NULL if no da stack available.
+ *	- The cached da stack on success.
+ */
+static inline fr_dict_attr_t const **fr_dict_attr_da_stack(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_da_stack_t *ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK);
+	if (!ext) return NULL;
+
+	return ext->da_stack;
+}
+
+/** Return the reference associated with a group type attribute
+ *
+ * @param[in] da	to return the reference for.
+ * @return
+ *	- NULL if no reference available.
+ *	- A pointer to the attribute being referenced.
+ */
+static inline fr_dict_attr_t const *fr_dict_attr_ref(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_ref_t *ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (!ext) return NULL;
+
+	return ext->ref;
+}
+/** @} */
 
 /** @name Programatically create dictionary attributes and values
  *
@@ -407,11 +546,34 @@ static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
  */
 static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 {
+	fr_dict_attr_ext_vendor_t *ext;
+
 	if (da->type == FR_TYPE_VENDOR) return da->attr;
 
-	if (!da->vendor) return 0;
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_VENDOR);
+	if (!ext) return 0;
 
-	return da->vendor->attr;
+	return ext->vendor->attr;
+}
+
+/** Return the vendor da for an attribute
+ *
+ * @param[in] da		The dictionary attribute to find the
+ *				vendor for.
+ * @return
+ *	- 0 this isn't a vendor specific attribute.
+ *	- The vendor PEN.
+ */
+static inline fr_dict_attr_t const *fr_dict_vendor_da_by_da(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_vendor_t *ext;
+
+	if (da->type == FR_TYPE_VENDOR) return da;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_VENDOR);
+	if (!ext) return NULL;
+
+	return ext->vendor;
 }
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
@@ -420,9 +582,7 @@ fr_dict_vendor_t const	*fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen);
 
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
-
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
+fr_dict_attr_t const	*fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, fr_sbuff_t *name) CC_HINT(nonnull(2,4));

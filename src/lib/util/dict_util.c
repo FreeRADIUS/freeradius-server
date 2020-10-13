@@ -359,55 +359,238 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 	return fr_value_box_cmp(a->value, b->value);
 }
 
-/** Allocate a dictionary attribute and assign a name
+/** Set a dictionary attribute's name
  *
- * @param[in] ctx		to allocate attribute in.
- * @param[in] parent		of this da
- * @param[in] name		to set.
- * @return
- *	- 0 on success.
- *	- -1 on failure (memory allocation error).
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da	to set name for.
+ * @param[in] name	to set.  If NULL a name will be automatically generated.
  */
-fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name)
+static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t *da, char const *name)
 {
-	int		depth = 0;
-	fr_dict_attr_t	*da;
-
-	if (!name) {
-		fr_strerror_printf("No attribute name provided");
-		return NULL;
-	}
-
-	if (parent) depth = parent->depth + 1;
-
-	da = talloc_zero_size(ctx, sizeof(fr_dict_attr_t) + sizeof(da->da_stack[0]) * (depth + 1));
-	if (!da) return NULL;
-
-	talloc_set_type(da, fr_dict_attr_t);
-
-	da->name = talloc_typed_strdup(da, name);
-	if (!da->name) {
-		talloc_free(da);
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
+	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	size_t		name_len;
 
 	/*
-	 *	Set up parent / child relationship, and copy the
-	 *	da_stack from the parent.
+	 *	Generate a name if non is specified
 	 */
-	if (parent) {
-		da->parent = parent;
-		da->depth = depth;
+	if (!name) {
+		fr_sbuff_t	unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
-		memcpy(&da->da_stack[0], &parent->da_stack[0],
-		       sizeof(da->da_stack[0]) * depth);
+		fr_sbuff_in_strcpy_literal(&unknown_name, "Attr-");
+		if (da->parent) {
+			if (fr_dict_print_attr_oid(&unknown_name, NULL, da->parent) > 0) {
+				fr_sbuff_in_char(&unknown_name, '.');
+			}
+		}
+		fr_sbuff_in_sprintf(&unknown_name, "%u", da->attr);
+
+		name = buffer;
+		name_len = fr_sbuff_used(&unknown_name);
+	} else {
+		name_len = strlen(name);
 	}
+
+	da->name = talloc_bstrndup(da, name, name_len);
+	if (unlikely(!da->name)) {
+		fr_strerror_printf("Failed allocating space for attribute name");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Initialise an attribute's da stack from its parent
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to populate the da_stack for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_da_stack_set(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_da_stack_t	*ext, *p_ext;
+	fr_dict_attr_t			*da = *da_p;
+	fr_dict_attr_t const		*parent = da->parent;
+
+	if (!parent) return 1;
+	if (da->depth > FR_DICT_DA_STACK_CACHE_MAX) return 1;
+	if (fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK)) return 1;
+
+	p_ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_DA_STACK);
+	if (!p_ext) return 1;
+
+	ext = dict_attr_ext_alloc_size(ctx, da_p, FR_DICT_ATTR_EXT_DA_STACK, sizeof(ext->da_stack[0]) * (da->depth + 1));
+	if (unlikely(!ext)) return -1;
+
+	memcpy(ext->da_stack, p_ext->da_stack, sizeof(ext->da_stack[0]) * parent->depth);
 
 	/*
 	 *	Always set the last stack entry to ourselves.
 	 */
-	da->da_stack[depth] = da;
+	ext->da_stack[da->depth] = da;
+
+	return 0;
+}
+
+/** Cache the vendor pointer for an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ * @param[in] vendor		to set.
+ */
+static inline CC_HINT(always_inline) int dict_attr_vendor_set(TALLOC_CTX *ctx,
+							      fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
+{
+	fr_dict_attr_ext_vendor_t	*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_VENDOR);
+	if (unlikely(!ext)) return -1;
+
+	ext->vendor = vendor;
+
+	return 0;
+}
+
+/** Set a reference for a grouping attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_ref_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_ref_t		*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) return -1;
+	memset(ext, 0, sizeof(*ext));
+
+	return 0;
+}
+
+/** Add a child/nesting extension to an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_children_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_ref_t		*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_CHILDREN);
+	if (unlikely(!ext)) return -1;
+	memset(ext, 0, sizeof(*ext));
+
+	return 0;
+}
+
+/** Initialise fields in a dictionary attribute structure
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		To use if we need to re-alloc the da
+ * @param[in] da_p		to initialise.
+ * @param[in] parent		of the attribute, if none, should be
+ *				the dictionary root.
+ * @param[in] name		of attribute.  Pass NULL for auto-generated name.
+ * @param[in] attr		number.
+ * @param[in] type		of the attribute.
+ * @param[in] flags		to assign.
+ */
+int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+		   fr_dict_attr_t const *parent,
+		   char const *name, int attr,
+		   fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	fr_dict_attr_t	*da = *da_p;
+
+	*da = (fr_dict_attr_t) {
+		.attr = attr,
+		.type = type,
+		.flags = *flags,
+		.parent = parent,
+	};
+	*da_p = da;
+
+	/*
+	 *	Record the parent
+	 */
+	if (parent) {
+		da->dict = parent->dict;
+		da->depth = parent->depth + 1;
+
+		/*
+		 *	Point to the vendor definition.  Since ~90% of
+		 *	attributes are VSAs, caching this pointer will help.
+		 */
+		if (parent->type == FR_TYPE_VENDOR) {
+			if (dict_attr_vendor_set(ctx, da_p, parent) < 0) return -1;
+		} else {
+			dict_attr_ext_copy(ctx, da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
+		}
+	} else {
+		da->depth = 0;
+	}
+
+	/*
+	 *	Cache the da_stack so we don't need
+	 *	to generate it at runtime.
+	 */
+	dict_attr_da_stack_set(ctx, da_p);
+
+	/*
+	 *	Structural types can have children
+	 *	so add the extension for them.
+	 */
+	switch (type) {
+	case FR_TYPE_STRUCTURAL:
+		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
+		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_GROUP)) {
+			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
+		}
+		break;
+
+	default:
+		break;
+	}
+	da = *da_p;
+
+	/*
+	 *	Name is a separate talloc chunk, so allocate it last
+	 *	so re-allocing for the extensions doesn't eat up
+	 *	pool space.
+	 */
+	if (dict_attr_name_set(da, name) < 0) return -1;
+	DA_VERIFY(*da_p);
+
+	return 0;
+}
+
+/** Allocate a partially completed attribute
+ *
+ * This is useful in some instances where we need to pre-allocate the attribute
+ * for talloc hierarchy reasons, but want to finish initialising it
+ * with #fr_dict_init later.
+ *
+ * @param[in] ctx		to allocate attribute in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (memory allocation error).
+ */
+fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
+{
+	fr_dict_attr_t *da;
+
+	da = talloc(ctx, fr_dict_attr_t);
+	if (unlikely(!da)) return NULL;
+
+	talloc_set_type(da, fr_dict_attr_t);
 
 	return da;
 }
@@ -433,30 +616,10 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 {
 	fr_dict_attr_t	*n;
 
-	if (!fr_cond_assert(parent) || !fr_cond_assert(parent->dict)) return NULL;
+	n = dict_attr_alloc_null(ctx);
+	if (unlikely(!n)) return NULL;
 
-	/*
-	 *	Allocate a new attribute
-	 */
-	if (!name) {
-		char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		fr_sbuff_t	unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
-
-		fr_sbuff_in_strcpy_literal(&unknown_name, "Attr-");
-		if (parent) {
-			if (fr_dict_print_attr_oid(&unknown_name, NULL, parent) > 0) {
-				fr_sbuff_in_char(&unknown_name, '.');
-			}
-		}
-		fr_sbuff_in_sprintf(&unknown_name, "%u", attr);
-
-		n = dict_attr_alloc_name(ctx, parent, buffer);
-	} else {
-		n = dict_attr_alloc_name(ctx, parent, name);
-	}
-
-	dict_attr_init(n, parent, attr, type, flags);
-	DA_VERIFY(n);
+	dict_attr_init(ctx, &n, parent, name, attr, type, flags);
 
 	return n;
 }
@@ -471,12 +634,16 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  */
 static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
 {
-	fr_dict_attr_t *n;
+	fr_dict_attr_t	*n;
+	uint8_t		i;
 
-	n = dict_attr_alloc_name(ctx, in->parent, in->name);
-	if (!n) return NULL;
-
-	dict_attr_init(n, in->parent, in->attr, in->type, &in->flags);
+	n = dict_attr_alloc(ctx, in->parent, in->name, in->attr, in->type, &in->flags);
+	for (i = 0; i < NUM_ELEMENTS(in->ext); i++) if (in->ext[i]) {
+		if (unlikely(!dict_attr_ext_copy(ctx, &n, in, i))) {
+			talloc_free(n);
+			return NULL;
+		}
+	}
 	DA_VERIFY(n);
 
 	return n;
@@ -551,11 +718,16 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	}
 
 	vendor = talloc_zero(dict, fr_dict_vendor_t);
+	if (!vendor) {
+	oom:
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
 	vendor->name = talloc_typed_strdup(vendor, name);
 	if (!vendor->name) {
 		talloc_free(vendor);
-		fr_strerror_printf("Out of memory");
-		return -1;
+		goto oom;
 	}
 	vendor->pen = num;
 	vendor->type = vendor->length = 1; /* defaults */
@@ -663,7 +835,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 
 	if (da_has_ref(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
-				   parent->name, parent->ref->name);
+				   parent->name, fr_dict_attr_ref(parent)->name);
 		return false;
 	}
 
@@ -1705,26 +1877,6 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 	return fr_hash_table_finddata(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
 
-/** Return the vendor that parents this attribute
- *
- * @note Uses the dictionary hierachy to determine the parent
- *
- * @param[in] da		The dictionary attribute to find parent for.
- * @return
- *	- NULL if the attribute has no vendor.
- *	- A fr_dict_attr_t representing this attribute's associated vendor.
- */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
-{
-	DA_VERIFY(da);
-
-	if (da->type == FR_TYPE_VENDOR) return da;
-
-	if (!da->vendor) return NULL;
-
-	return da->vendor;
-}
-
 /** Return vendor attribute for the specified dictionary and pen
  *
  * @param[in] vendor_root	of the vendor root attribute.  Could be 26 (for example) in RADIUS.
@@ -1733,7 +1885,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
  *	- NULL if vendor does not exist.
  *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
  */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen)
+fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen)
 {
 	fr_dict_attr_t const *vendor;
 
@@ -2057,7 +2209,7 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 	DA_VERIFY(parent);
 #endif
 
-	if (da_has_ref(parent)) parent = parent->ref;
+	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
 	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
 
@@ -2100,7 +2252,7 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 	/*
 	 *	Do any necessary dereferencing
 	 */
-	if (da_has_ref(parent)) parent = parent->ref;
+	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
 	if (!dict_attr_can_have_children(parent) || !parent->children) {
 		return NULL;
@@ -2156,7 +2308,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	/*
 	 *	Do any necessary dereferencing
 	 */
-	if (da_has_ref(parent)) parent = parent->ref;
+	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
 	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",

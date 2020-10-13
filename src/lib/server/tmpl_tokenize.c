@@ -1570,7 +1570,7 @@ do_suffix:
 		 *	group ref.
 		 */
 		case FR_TYPE_GROUP:
-			parent = da->ref;
+			parent = fr_dict_attr_ref(da);
 			break;
 
 		case FR_TYPE_STRUCT:

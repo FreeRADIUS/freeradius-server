@@ -123,13 +123,19 @@ void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx)
  */
 void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
 {
+	fr_dict_attr_t const **cached;
+
 	if (!da) return;
 
-	if (!da->flags.is_unknown) {
+	/*
+	 *	See if we have a cached da stack available
+	 */
+	cached = fr_dict_attr_da_stack(da);
+	if (cached) {
 		/*
 		 *	da->da_stack[0] is dict->root
 		 */
-		memcpy(&stack->da[0], &da->da_stack[1], sizeof(stack->da[0]) * da->depth);
+		memcpy(&stack->da[0], &cached[1], sizeof(stack->da[0]) * da->depth);
 
 	} else {
 		fr_dict_attr_t const	*da_p, **da_o;

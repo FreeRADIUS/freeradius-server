@@ -126,57 +126,81 @@ struct fr_dict_gctx_s {
 
 extern fr_dict_gctx_t *dict_gctx;
 
-extern fr_table_num_ordered_t const date_precision_table[];
-extern size_t date_precision_table_len;
+extern fr_table_num_ordered_t const	date_precision_table[];
+extern size_t				date_precision_table_len;
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 
 int			dict_dlopen(fr_dict_t *dict, char const *name);
 
-/** Initialise fields in a dictionary attribute structure
- *
- * @param[in] da		to initialise.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
- * @param[in] attr		number.
- * @param[in] type		of the attribute.
- * @param[in] flags		to assign.
- */
-static inline void dict_attr_init(fr_dict_attr_t *da,
-				  fr_dict_attr_t const *parent, int attr,
-				  fr_type_t type, fr_dict_attr_flags_t const *flags)
-{
-	da->attr = attr;
-	da->type = type;
-	da->flags = *flags;
-	da->parent = parent;
+fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx);
 
-	if (parent) {
-		da->dict = parent->dict;
-		da->depth = parent->depth + 1;
-	} else {
-		da->depth = 0;
-	}
-
-	/*
-	 *	Point to the vendor definition.  Since ~90% of
-	 *	attributes are VSAs, caching this pointer will help.
-	 */
-	if (parent) {
-		if (parent->type == FR_TYPE_VENDOR) {
-			da->vendor = parent;
-		} else if (parent->vendor) {
-			da->vendor = parent->vendor;
-		}
-	}
-}
-
-fr_dict_attr_t 		*dict_attr_alloc_name(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name);
+int			dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+				       fr_dict_attr_t const *parent,
+				       char const *name, int attr,
+				       fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_dict_attr_t const *parent,
 					 char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags);
+
+/** @name Add extension structures to attributes
+ *
+ * @{
+ */
+void 			*dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+						  fr_dict_attr_ext_t ext, size_t ext_len);
+
+void			*dict_attr_ext_alloc(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext);
+
+size_t			dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext);
+
+void			*dict_attr_ext_copy(TALLOC_CTX *ctx,
+					    fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in,
+					    fr_dict_attr_ext_t ext);
+
+static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_ext_ref_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) {
+		fr_strerror_printf("%s contains no ref extension", da->name);
+		return -1;
+	}
+	ext->ref = ref;
+
+	return 0;
+}
+
+
+static inline int dict_attr_children_set(fr_dict_attr_t const *da, fr_dict_attr_t const	**children)
+{
+	fr_dict_attr_ext_children_t *ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
+	if (unlikely(!ext)) {
+		fr_strerror_printf("%s contains no children extension", da->name);
+		return -1;
+	}
+	ext->children = children;
+
+	return 0;
+}
+
+static inline fr_dict_attr_t const **dict_attr_children(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_children_t *ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
+	if (unlikely(!ext)) {
+		fr_strerror_printf("%s contains no children extension", da->name);
+		return NULL;
+	}
+	return ext->children;
+}
+/** @} */
 
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 

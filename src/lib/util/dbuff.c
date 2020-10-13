@@ -23,7 +23,7 @@
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
-RCSID("$Id:")
+RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
 

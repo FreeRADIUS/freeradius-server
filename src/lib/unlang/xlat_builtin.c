@@ -260,6 +260,11 @@ static void _xlat_func_tree_free(void *xlat)
 
 /** Register an old style xlat function
  *
+ * @note No new legacy xlat functions should be added to the server.
+ *       Each one added creates additional work later for a member
+ *	 of the development team to fix the function to conform to
+ *	 the new API.
+ *
  * @param[in] mod_inst		Instance of module that's registering the xlat function.
  * @param[in] name		xlat name.
  * @param[in] func		xlat function to be called.

@@ -165,7 +165,7 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		 *	is a TLV attribute parented by a vendor, that's
 		 *	also fine...
 		 */
-		vendor = fr_dict_vendor_attr_by_da(parent);
+		vendor = fr_dict_vendor_da_by_da(parent);
 		if (vendor) vendor_id = vendor->attr;
 
 		da = fr_dict_unknown_afrom_fields(ctx, parent,

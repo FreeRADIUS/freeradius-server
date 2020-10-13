@@ -180,6 +180,8 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
  */
 static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number)
 {
+	fr_dict_attr_t *da;
+
 	fr_dict_attr_flags_t flags = {
 		.is_root = 1,
 		.type_size = 1,
@@ -191,10 +193,10 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	dict->root = dict_attr_alloc_name(dict, NULL, name);
-	if (!dict->root) return -1;
+	da = dict_attr_alloc(dict, NULL, name, proto_number, FR_TYPE_TLV, &flags);
+	if (unlikely(!da)) return -1;
 
-	dict_attr_init(dict->root, NULL, proto_number, FR_TYPE_TLV, &flags);
+	dict->root = da;
 	dict->root->dict = dict;
 	DA_VERIFY(dict->root);
 
@@ -535,6 +537,7 @@ static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const *da;
+	fr_dict_attr_t *new;
 
 	if (argc != 2) {
 		fr_strerror_printf("Invalid ALIAS syntax");
@@ -571,10 +574,10 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	second one is prioritized for printing.  For ALIASes,
 	 *	we want the first one to be prioritized.
 	 */
-	da = dict_attr_alloc(ctx->dict->pool, da->parent, argv[0], da->attr, da->type, &da->flags);
-	if (!da) return -1;
+	new = dict_attr_alloc(ctx->dict->pool, da->parent, argv[0], da->attr, da->type, &da->flags);
+	if (unlikely(!new)) return -1;
 
-	if (!fr_hash_table_insert(ctx->dict->attributes_by_name, da)) {
+	if (!fr_hash_table_insert(ctx->dict->attributes_by_name, new)) {
 		fr_strerror_printf("Internal error storing attribute");
 		talloc_const_free(da);
 		return -1;
@@ -836,7 +839,8 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 			talloc_free(ref);
 			self->dict = dict;
-			self->ref = da;
+
+			dict_attr_ref_set(self, da);
 		}
 	}
 
@@ -1677,7 +1681,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			}
 
 			talloc_free(this->ref);
-			this->da->ref = da;
+			dict_attr_ref_set(this->da, da);
 
 			next = this->next;
 		}
@@ -2337,9 +2341,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 					}
 				}
 
+				new = dict_attr_alloc(ctx->dict->pool,
+						      vsa_da, argv[1], vendor->pen, FR_TYPE_VENDOR, &flags);
+				if (unlikely(!new)) goto error;
+
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = dict_attr_alloc(mutable, vsa_da, argv[1],
-						      vendor->pen, FR_TYPE_VENDOR, &flags);
 				if (dict_attr_child_add(mutable, new) < 0) {
 					talloc_free(new);
 					goto error;

@@ -46,7 +46,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Allocate an attribute.
 	 */
-	n = dict_attr_alloc_name(ctx, da->parent, da->name);
+	n = dict_attr_alloc_null(ctx);
 	if (!n) return NULL;
 
 	/*
@@ -85,7 +85,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(n, parent, da->attr, type, &flags);
+	dict_attr_init(ctx, &n, parent, da->name, da->attr, type, &flags);
 
 	DA_VERIFY(n);
 
@@ -148,6 +148,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		if (dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
 		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
+		if (unlikely(!n)) return NULL;
 
 		/*
 		 *	Setup parenting for the attribute
@@ -342,7 +343,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	/*
 	 *	The config files may reference the unknown by name.
 	 *	If so, use the pre-defined name instead of an unknown
-	 *	one.!
+	 *	one!
 	 */
 	da = fr_dict_attr_by_name(dict_by_da(parent), n->name);
 	if (da) {
@@ -464,10 +465,10 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	 *	or more of the leading components may, in fact, be
 	 *	known.
 	 */
-	n = dict_attr_alloc_name(ctx, parent, oid_str);
+	n = dict_attr_alloc_null(ctx);
 
 	/*
-	 *	While the name of this attribu
+	 *	Parse the name of this attribute
 	 */
 	do {
 		unsigned int		num;
@@ -530,7 +531,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		 *	Leaf attribute
 		 */
 		case '\0':
-			dict_attr_init(n, our_parent, num, FR_TYPE_OCTETS, &flags);
+			dict_attr_init(ctx, &n, our_parent, oid_str, num, FR_TYPE_OCTETS, &flags);
 			break;
 		}
 		p++;

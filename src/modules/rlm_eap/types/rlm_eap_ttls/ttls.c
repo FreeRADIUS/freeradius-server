@@ -201,7 +201,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
-			our_parent = fr_dict_vendor_attr_by_num(attr_vendor_specific, vendor);
+			our_parent = fr_dict_vendor_da_by_num(attr_vendor_specific, vendor);
 			if (!our_parent) {
 				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
