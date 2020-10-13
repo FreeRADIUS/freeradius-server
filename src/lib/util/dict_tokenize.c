@@ -672,7 +672,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &flags, &ref) < 0)) return -1;
+	if (argc >= 4) {
+		if (dict_process_flag_field(ctx, argv[3], type, &flags, &ref) < 0) return -1;
+	} else {
+		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[3], NULL, type, &flags)) return -1;
+	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -878,7 +882,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, &flags, NULL) < 0)) return -1;
+	if (argc >= 3) {
+		if (dict_process_flag_field(ctx, argv[2], type, &flags, NULL) < 0) return -1;
+	} else {
+		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[2], NULL, type, &flags)) return -1;
+	}
 
 #ifdef __clang_analyzer__
 	if (!ctx->dict) return -1;
