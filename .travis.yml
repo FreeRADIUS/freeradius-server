@@ -136,6 +136,8 @@ before_install:
 - gem install asciidoctor
 # Needed by scripts/tacacs/tacacs_client
 - pip3 install tacacs_plus
+# Needed by scripts/tftp/tftpy_client
+- pip3 install tftpy
 - wget -q -O /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-1-amd64.deb && sudo dpkg -i /tmp/pandoc.deb
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 9999 && sudo update-alternatives --config gcc; fi
 - if [ "${CC}" == 'clang' ]; then sudo rm -rf /usr/local/clang-*; fi
