@@ -675,7 +675,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (argc >= 4) {
 		if (dict_process_flag_field(ctx, argv[3], type, &flags, &ref) < 0) return -1;
 	} else {
-		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[3], NULL, type, &flags)) return -1;
+		if (!dict_attr_flags_valid(ctx->dict, parent, argv[3], NULL, type, &flags)) return -1;
 	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
