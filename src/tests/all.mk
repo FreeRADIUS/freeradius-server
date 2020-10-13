@@ -62,6 +62,7 @@ test: \
 		test.eap	\
 		test.tacacs	\
 		test.vmps	\
+		test.tftp	\
 		| build.raddb
 
 clean: clean.test
