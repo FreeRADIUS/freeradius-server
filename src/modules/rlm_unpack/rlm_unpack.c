@@ -351,7 +351,7 @@ static ssize_t substring_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (start > slen) {
-		*out = '\0';
+		*out[0] = '\0';
 		talloc_free(buffer);
 		WARN("Start position %li is after end of string length of %li", start, slen);
 		return 0;
