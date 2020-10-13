@@ -88,12 +88,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (flags->is_unknown) {
 		fr_strerror_printf("The 'unknown' flag cannot be set for attributes in the dictionary.");
-		return -1;
+		return false;
 	}
 
 	if (flags->is_raw) {
 		fr_strerror_printf("The 'raw' flag cannot be set for attributes in the dictionary.");
-		return -1;
+		return false;
 	}
 
 	/*
@@ -172,9 +172,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		switch (type) {
+		case FR_TYPE_BOOL:
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
 			if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD)) {
 				fr_strerror_printf("Invalid type for extra flag.");
 				return false;
@@ -230,14 +232,15 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		default:
-			return -1;
+			fr_strerror_printf("WTF?");
+			return false;
 		}
 
 		if ((flags->subtype == FLAG_LENGTH_UINT16) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
 					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-			return -1;
+			return false;
 		}
 
 		FORBID_OTHER_FLAGS(extra);
@@ -412,7 +415,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 			if (flags->length > 253) {
 				fr_strerror_printf("Invalid length %d", flags->length);
-				return NULL;
+				return false;
 			}
 		}
 		break;
