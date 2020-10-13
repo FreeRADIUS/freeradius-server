@@ -3060,14 +3060,12 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	switch (ref->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
-		char		buffer[256] = "raw.";
-		char		*p = buffer + strlen(buffer);
-		char		*end = buffer + sizeof(buffer);
-		size_t		len;
+		char		buffer[256];
 		fr_dict_attr_t	*da;
+		fr_sbuff_t	name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
-		len = fr_dict_print_attr_oid(NULL, p, end - p, NULL, ref->da);
-		p += len;
+		fr_sbuff_in_strcpy_literal(&name, "raw.");
+		fr_dict_print_attr_oid(&name, NULL, ref->da);
 
 		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
@@ -3075,7 +3073,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		ref->ar_unknown->flags.is_unknown = 1;
 
 		talloc_const_free(da->name);
-		MEM(da->name = talloc_bstrndup(da, buffer, p - buffer));
+		MEM(da->name = talloc_bstrndup(da, fr_sbuff_start(&name), fr_sbuff_used(&name)));
 
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}

@@ -1103,6 +1103,7 @@ size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, si
 #define	FR_SBUFF_IN_CHAR_RETURN(_sbuff, ...) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, _sbuff, ((char []){ __VA_ARGS__ }), sizeof((char []){ __VA_ARGS__ }))
 
 ssize_t	fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
+#define fr_sbuff_in_strcpy_literal(_sbuff, _str) fr_sbuff_in_bstrncpy(_sbuff, _str, sizeof(_str) - 1)
 #define	FR_SBUFF_IN_STRCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_strcpy, ##__VA_ARGS__)
 
 ssize_t	fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len);
@@ -1123,6 +1124,8 @@ ssize_t	fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 
 ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
+
+size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c);
 
 /** Lookup a string in a table using an integer value, and copy it to the sbuff
  *

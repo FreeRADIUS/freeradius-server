@@ -350,15 +350,16 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
  *
  * @{
  */
-ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags);
-
 void			fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
 int			fr_dict_oid_component(unsigned int *out, char const **oid);
 
-size_t			fr_dict_print_attr_oid(size_t *need, char *buffer, size_t outlen,
+ssize_t			fr_dict_snprint_flags(fr_sbuff_t *out, fr_dict_t const *dict,
+					      fr_type_t type, fr_dict_attr_flags_t const *flags);
+
+ssize_t			fr_dict_print_attr_oid(fr_sbuff_t *out,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent,

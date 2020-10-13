@@ -1491,6 +1491,25 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
 }
 
+/** Trim trailing characters from a string we're composing
+ *
+ * @param[in] sbuff		to trim trailing characters from.
+ * @param[in] c			to trim.
+ * @return how many chars we removed.
+ */
+size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c)
+{
+	char	*p = sbuff->p - 1;
+	ssize_t	slen;
+
+	while ((p > sbuff->start) && (*p == c)) p--;
+
+	slen = fr_sbuff_set(sbuff, p + 1);
+	if (sbuff != 0) fr_sbuff_terminate(sbuff);
+
+	return slen;
+}
+
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
  * @param[in] sbuff		to search in.

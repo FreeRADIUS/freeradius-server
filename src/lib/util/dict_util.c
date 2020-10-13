@@ -440,22 +440,15 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 	 */
 	if (!name) {
 		char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		char		*p = buffer;
-		size_t		len;
-		size_t		need;
-		fr_dict_attr_t	tmp;
+		fr_sbuff_t	unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
-		memset(&tmp, 0, sizeof(tmp));
-		dict_attr_init(&tmp, parent, attr, type, flags);
-
-		len = snprintf(p, sizeof(buffer), "Attr-");
-		p += len;
-
-		fr_dict_print_attr_oid(&need, p, sizeof(buffer) - (p - buffer), NULL, &tmp);
-		if (need > 0) {
-			fr_strerror_printf("OID string too long for unknown attribute");
-			return NULL;
+		fr_sbuff_in_strcpy_literal(&unknown_name, "Attr-");
+		if (parent) {
+			if (fr_dict_print_attr_oid(&unknown_name, NULL, parent) > 0) {
+				fr_sbuff_in_char(&unknown_name, '.');
+			}
 		}
+		fr_sbuff_in_sprintf(&unknown_name, "%u", attr);
 
 		n = dict_attr_alloc_name(ctx, parent, buffer);
 	} else {
@@ -2681,7 +2674,7 @@ static int dict_dump(void *ctx, fr_dict_attr_t const *da, int lvl)
 	fr_dict_t const		*dict = (fr_dict_t const *) ctx;
 	char			flags[256];
 
-	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
+	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);

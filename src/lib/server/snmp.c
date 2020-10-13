@@ -1027,15 +1027,16 @@ int fr_snmp_process(REQUEST *request)
 				   &request_cursor,
 				   snmp_iso, NULL, op->vp_uint32);
 		if (ret < 0) {
+			fr_sbuff_t	oid_str_sbuff = FR_SBUFF_OUT(oid_str, sizeof(oid_str));
 			fr_pair_list_free(&head);
 
-			oid_str[0] = '.';
+			fr_sbuff_in_char(&oid_str_sbuff, '.');
 
 			/* Get the length of the matching part */
-			oid_len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack.da[-(ret)]);
+			oid_len = fr_dict_print_attr_oid(&oid_str_sbuff, attr_snmp_root, da_stack.da[-(ret)]);
 
 			/* Get the last frame in the current stack */
-			len = fr_dict_print_attr_oid(NULL, oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, da_stack.da[da_stack.depth - 1]);
+			len = fr_dict_print_attr_oid(&oid_str_sbuff, attr_snmp_root, da_stack.da[da_stack.depth - 1]);
 
 			/* Use the difference in OID string length to place the marker */
 			REMARKER(oid_str, oid_len - (len - oid_len), "%s", fr_strerror());
