@@ -232,7 +232,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		default:
-			fr_strerror_printf("WTF?");
+			fr_strerror_printf("Type %s cannot hold extra flags",
+					   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 			return false;
 		}
 
