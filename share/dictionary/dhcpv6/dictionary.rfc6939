@@ -16,8 +16,8 @@ MEMBER		Client-Link-Layer-Type			uint16 key
 STRUCT	Client-Link-Layer-Ethernet		Client-Link-Layer-Type 1
 MEMBER		Client-Link-Layer-Ethernet-Address	ether
 
-STRUCT	Client-Link-Layer-Experiemental-Ethernet		Client-Link-Layer-Type 2
-MEMBER		Client-Link-Layer-Experiemental-Ethernet-Address octets
+STRUCT	Client-Link-Layer-Experimental-Ethernet		Client-Link-Layer-Type 2
+MEMBER		Client-Link-Layer-Experimental-Ethernet-Address octets
 
 STRUCT	Client-Link-Layer-AX_25	Client-Link-Layer-Type	3
 MEMBER		Client-Link-Layer-AX_25-Address	octets
