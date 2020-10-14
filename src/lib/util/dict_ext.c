@@ -28,11 +28,12 @@ RCSID("$Id$")
 /** Holds the minimum lengths of the extension structures
  *
  */
-size_t const fr_dict_ext_length_min[FR_DICT_ATTR_EXT_MAX] = {
+size_t const fr_dict_ext_length_min[] = {
 	[FR_DICT_ATTR_EXT_CHILDREN]	= sizeof(fr_dict_attr_ext_children_t),
 	[FR_DICT_ATTR_EXT_REF]		= sizeof(fr_dict_attr_ext_ref_t),
 	[FR_DICT_ATTR_EXT_VENDOR]	= sizeof(fr_dict_attr_ext_vendor_t),
 	[FR_DICT_ATTR_EXT_DA_STACK]	= sizeof(fr_dict_attr_ext_da_stack_t),
+	[FR_DICT_ATTR_EXT_MAX]		= 0
 };
 
 /** Add a variable length extension to a dictionary attribute

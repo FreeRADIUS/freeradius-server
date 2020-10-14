@@ -113,6 +113,7 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
 /** Extension identifier
  *
+ * @note New extension structures should also be added to the #fr_dict_ext_length_min table in dict_ext.c
  */
 typedef enum {
 	FR_DICT_ATTR_EXT_CHILDREN = 0,				//!< Attribute has children.
@@ -191,7 +192,6 @@ struct dict_attr_s {
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
-
 } CC_HINT(aligned(FR_DICT_ATTR_EXT_ALIGNMENT));
 
 /** Value of an enumerated attribute
