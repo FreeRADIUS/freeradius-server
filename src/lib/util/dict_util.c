@@ -548,10 +548,17 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
 	case FR_TYPE_UINT16:	/* Same here */
-		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
-		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_GROUP)) {
+		if (type == FR_TYPE_GROUP) {
+			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
+			break;
+		}
+
+		if (type == FR_TYPE_TLV) {
 			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
 		}
+
+		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
+
 		break;
 
 	default:
