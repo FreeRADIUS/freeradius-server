@@ -190,21 +190,6 @@ struct dict_attr_s {
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
-	union {
-		/*
-		 *	Children are possible for:
-		 *
-		 *	#FR_TYPE_TLV, #FR_TYPE_VENDOR, #FR_TYPE_VSA, #FR_TYPE_STRUCT
-		 *
-		 *	*or* where the parent->parent->type is
-		 *	#FR_TYPE_STRUCT, and "parent" is a "key"
-		 *	field.  Note that these attributes therefore
-		 *	cannot have VALUEs, as the child defines their
-		 *	VALUE.  See dict_attr_can_have_children() for details.
-		 */
-		fr_dict_attr_t const	**children;		//!< Children of this attribute.
-		fr_dict_attr_t const	*ref;			//!< reference, only for #FR_TYPE_GROUP
-	};
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
 } CC_HINT(aligned(FR_DICT_ATTR_EXT_ALIGNMENT));

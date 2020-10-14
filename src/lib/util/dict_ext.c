@@ -84,8 +84,8 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 	if (!n_da) return NULL;
 	talloc_set_type(n_da, fr_dict_attr_t);
 
+	n_da->ext[ext] = (uint8_t)offset;
 	*da_p = n_da;
-	da->ext[ext] = (uint8_t)offset;
 
 	return (void *)(((uintptr_t)n_da) + len);
 }
@@ -158,7 +158,7 @@ size_t dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
  *	- A pointer to the start of the extension in da_out.
  */
 void *dict_attr_ext_copy(TALLOC_CTX *ctx,
-			    fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in, fr_dict_attr_ext_t ext)
+			 fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in, fr_dict_attr_ext_t ext)
 {
 	uint8_t start;
 	size_t	ext_len;

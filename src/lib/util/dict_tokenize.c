@@ -193,7 +193,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	da = dict_attr_alloc(dict, NULL, name, proto_number, FR_TYPE_TLV, &flags);
+	da = dict_attr_alloc(dict->pool, NULL, name, proto_number, FR_TYPE_TLV, &flags);
 	if (unlikely(!da)) return -1;
 
 	dict->root = da;

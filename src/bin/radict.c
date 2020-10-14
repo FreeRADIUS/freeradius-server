@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/autoconf.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -152,6 +153,7 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	size_t			len;
 	fr_dict_attr_t const	*p;
 	char			flags[256];
+	fr_dict_attr_t const	**children;
 
 	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
@@ -172,9 +174,13 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 
 	if (count) (*count)++;
 
-	len = talloc_array_length(da->children);
+	/*
+	 *	Todo - Should be fixed to use attribute walking API
+	 */
+	children = dict_attr_children(da);
+	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
-		for (p = da->children[i]; p; p = p->next) {
+		for (p = children[i]; p; p = p->next) {
 			_fr_dict_export(dict, count, low, high, p, lvl + 1);
 		}
 	}

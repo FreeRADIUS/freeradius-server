@@ -508,22 +508,18 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 		   char const *name, int attr,
 		   fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t	*da = *da_p;
-
-	*da = (fr_dict_attr_t) {
+	**da_p = (fr_dict_attr_t) {
 		.attr = attr,
 		.type = type,
 		.flags = *flags,
 		.parent = parent,
 	};
-	*da_p = da;
-
 	/*
 	 *	Record the parent
 	 */
 	if (parent) {
-		da->dict = parent->dict;
-		da->depth = parent->depth + 1;
+		(*da_p)->dict = parent->dict;
+		(*da_p)->depth = parent->depth + 1;
 
 		/*
 		 *	Point to the vendor definition.  Since ~90% of
@@ -535,7 +531,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 			dict_attr_ext_copy(ctx, da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
 		}
 	} else {
-		da->depth = 0;
+		(*da_p)->depth = 0;
 	}
 
 	/*
@@ -550,6 +546,8 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 */
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
+	case FR_TYPE_UINT16:	/* Same here */
 		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
 		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_GROUP)) {
 			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
@@ -559,14 +557,14 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	default:
 		break;
 	}
-	da = *da_p;
 
 	/*
 	 *	Name is a separate talloc chunk, so allocate it last
 	 *	so re-allocing for the extensions doesn't eat up
 	 *	pool space.
 	 */
-	if (dict_attr_name_set(da, name) < 0) return -1;
+	if (dict_attr_name_set(*da_p, name) < 0) return -1;
+
 	DA_VERIFY(*da_p);
 
 	return 0;
@@ -812,7 +810,6 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 	return false;
 }
 
-
 /** Add a child to a parent.
  *
  * @param[in] parent	we're adding a child to.
@@ -825,6 +822,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 {
 	fr_dict_attr_t const * const *bin;
 	fr_dict_attr_t **this;
+	fr_dict_attr_t const **children;
 
 	/*
 	 *	Setup fields in the child
@@ -848,11 +846,16 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
 	 */
-	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
-	if (!parent->children) {
-		fr_strerror_printf("Out of memory");
-		return -1;
+	children = dict_attr_children(parent);
+	if (!children) {
+		children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
+		if (!children) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
+		if (dict_attr_children_set(parent, children) < 0) return -1;
 	}
+
 	/*
 	 *	Treat the array as a hash of 255 bins, with attributes
 	 *	sorted into bins using num % 255.
@@ -869,7 +872,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	 *	Attributes are inserted into the bin in order of their attribute
 	 *	numbers to allow slightly more efficient lookups.
 	 */
-	bin = &parent->children[child->attr & 0xff];
+	bin = &children[child->attr & 0xff];
 	for (;;) {
 		bool child_is_struct = false;
 		bool bin_is_struct = false;
@@ -2199,6 +2202,7 @@ fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t t
 fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
 {
 	fr_dict_attr_t const *bin;
+	fr_dict_attr_t const **children;
 
 #ifndef NDEBUG
 	/*
@@ -2211,26 +2215,16 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 
 	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
-	if (!dict_attr_can_have_children(parent) || !parent->children) return NULL;
-
-	/*
-	 *	Only some types can have children
-	 */
-	switch (parent->type) {
-	default:
-		return NULL;
-
-	case FR_TYPE_STRUCTURAL:
-		break;
-	}
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
-	if ((child->attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+	if ((child->attr & 0xff) > talloc_array_length(children)) return NULL;
 
-	bin = parent->children[child->attr & 0xff];
+	bin = children[child->attr & 0xff];
 	for (;;) {
 		if (!bin) return NULL;
 		if (bin == child) return bin;
@@ -2246,6 +2240,7 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
+	fr_dict_attr_t const **children;
 
 	DA_VERIFY(parent);
 
@@ -2254,17 +2249,16 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 	 */
 	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
-	if (!dict_attr_can_have_children(parent) || !parent->children) {
-		return NULL;
-	}
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
-	if ((attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+	if ((attr & 0xff) > talloc_array_length(children)) return NULL;
 
-	bin = parent->children[attr & 0xff];
+	bin = children[attr & 0xff];
 	for (;;) {
 		if (!bin) return NULL;
 		if (bin->attr == attr) {
@@ -2310,7 +2304,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 	 */
 	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
 
-	if (!dict_attr_can_have_children(parent)) {
+	if (!fr_dict_attr_has_ext(parent, FR_DICT_ATTR_EXT_CHILDREN)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
 				   parent->name,
 				   fr_table_str_by_value(fr_value_box_type_table,
@@ -2318,7 +2312,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		return 0;
 
-	} else if (!parent->children) {
+	} else if (!dict_attr_children(parent)) {
 		fr_strerror_printf("Parent (%s) has no children", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		return 0;
@@ -3193,6 +3187,19 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
 				     file, line);
 	}
+
+	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing vendor extension", file, line);
+	}
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_assert(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN));
+		break;
+
+	default:
+		break;
+	}
 }
 
 /** Iterate over children of a DA.
@@ -3206,9 +3213,13 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev)
 {
 	fr_dict_attr_t const * const *bin;
-	int i, start;
+	fr_dict_attr_t const **children;
+	size_t len, i, start;
 
-	if (!parent || da_has_ref(parent) || !dict_attr_can_have_children(parent) || !parent->children || !prev) return NULL;
+	if (!parent || da_has_ref(parent) || !prev) return NULL;
+
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	if (!*prev) {
 		start = 0;
@@ -3238,8 +3249,9 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	 *	Look for a non-empty bin, and return the first child
 	 *	from there.
 	 */
-	for (i = start; i < 256; i++) {
-		bin = &parent->children[i & 0xff];
+	len = talloc_array_length(children);
+	for (i = start; i < len; i++) {
+		bin = &children[i & 0xff];
 
 		if (*bin) return *bin;
 	}
@@ -3249,19 +3261,21 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 
 static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback, int depth)
 {
-	size_t i;
+	size_t i, len;
+	fr_dict_attr_t const **children;
 
-	if (da_has_ref(da) || !dict_attr_can_have_children(da) || !da->children) {
-		return callback(ctx, da, depth);
-	}
+	children = dict_attr_children(da);
 
-	for (i = 0; i < talloc_array_length(da->children); i++) {
+	if (da_has_ref(da) || !children) return callback(ctx, da, depth);
+
+	len = talloc_array_length(children);
+	for (i = 0; i < len; i++) {
 		int rcode;
 		fr_dict_attr_t const *bin;
 
-		if (!da->children[i]) continue;
+		if (!children[i]) continue;
 
-		for (bin = da->children[i]; bin; bin = bin->next) {
+		for (bin = children[i]; bin; bin = bin->next) {
 			rcode = dict_walk(bin, ctx, callback, depth);
 			if (rcode < 0) return rcode;
 		}
