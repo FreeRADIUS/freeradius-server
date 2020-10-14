@@ -3196,12 +3196,15 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	}
 
 	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing vendor extension", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
 	}
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
-		fr_assert(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN));
+		if (da->type != FR_TYPE_GROUP) {
+			fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
+				      "CONSISTENCY CHECK FAILED %s[%u]: Missing 'children' extension", file, line);
+		}
 		break;
 
 	default:
