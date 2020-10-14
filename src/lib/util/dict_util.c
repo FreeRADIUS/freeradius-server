@@ -3203,7 +3203,9 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	case FR_TYPE_STRUCTURAL:
 		if (da->type != FR_TYPE_GROUP) {
 			fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
-				      "CONSISTENCY CHECK FAILED %s[%u]: Missing 'children' extension", file, line);
+				      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
+				      file, line,
+				      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		}
 		break;
 
