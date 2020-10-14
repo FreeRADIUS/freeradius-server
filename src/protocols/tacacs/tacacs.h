@@ -289,7 +289,7 @@ typedef struct {
 ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *original, char const *const secret, size_t secret_len, VALUE_PAIR *vps);
 
 /* decode.c */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, VALUE_PAIR **vps);
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_cursor_t *cursor);
 
 /* base.c */
 ssize_t		fr_tacacs_length(uint8_t const *buffer, size_t buffer_len);

@@ -55,16 +55,16 @@
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto fail; \
 	vp->vp_uint8 = _field; \
-	fr_cursor_append(&cursor, vp); \
+	fr_cursor_append(cursor, vp); \
 } while (0)
 
 #define DECODE_FIELD_STRING8(_da, _field) do { \
-	if (tacacs_decode_field(ctx, &cursor, _da, &p, \
+	if (tacacs_decode_field(ctx, cursor, _da, &p, \
 	    _field, end) < 0) goto fail; \
 } while (0)
 
 #define DECODE_FIELD_STRING16(_da, _field) do { \
-	if (tacacs_decode_field(ctx, &cursor, _da, &p, \
+	if (tacacs_decode_field(ctx, cursor, _da, &p, \
 	    ntohs(_field), end) < 0) goto fail; \
 } while (0)
 
@@ -155,14 +155,13 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 /**
  *	Decode a TACACS+ packet
  */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, VALUE_PAIR **vps)
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_cursor_t *cursor)
 {
 	fr_dict_attr_t const	*tlv;
 	fr_tacacs_packet_t const *pkt;
 	VALUE_PAIR		*vp;
 	uint8_t const  		*p, *end;
 	uint8_t			*decrypted = NULL;
-	fr_cursor_t		cursor;
 
 	/*
 	 * 3.4. The TACACS+ Packet Header
@@ -230,12 +229,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		return -1;
 	}
 
-	fr_cursor_init(&cursor, vps);
-
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, &cursor, attr_tacacs_packet, buffer, buffer_len, &tlv, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, cursor, attr_tacacs_packet, buffer, buffer_len, &tlv, NULL, NULL) < 0) {
 		fr_strerror_printf("Problems to decode %s using fr_struct_from_network()", attr_tacacs_packet->name);
 		return -1;
 	}
@@ -504,7 +501,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
 					       pkt->author.req.arg_cnt, pkt->author.req.body, &p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
@@ -555,7 +552,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
 					pkt->author.res.arg_cnt, pkt->author.res.body, &p, end) < 0) goto fail;
 
 		} else {
@@ -618,7 +615,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, &cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
 					pkt->acct.req.arg_cnt, pkt->acct.req.body, &p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
@@ -671,8 +668,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
+	fr_cursor_t cursor;
 
-	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), vps);
+	*vps = NULL;
+	fr_cursor_init(&cursor, vps);
+
+	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), &cursor);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)

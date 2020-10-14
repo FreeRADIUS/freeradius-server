@@ -226,6 +226,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
+	fr_cursor_t		cursor;
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
 
@@ -277,9 +278,10 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to ???
 	 */
+	fr_cursor_init(&cursor, &request->request_pairs);
 	if (fr_tacacs_decode(request->packet, request->packet->data, request->packet->data_len,
 			     NULL, client->secret, talloc_array_length(client->secret) - 1,
-			     &request->request_pairs) < 0) {
+			     &cursor) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -302,7 +304,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	values.
 	 */
 	if (!client->active) {
-		fr_cursor_t cursor;
 		VALUE_PAIR *vp;
 
 		fr_assert(client->dynamic);
