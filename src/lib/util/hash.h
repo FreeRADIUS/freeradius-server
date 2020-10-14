@@ -74,13 +74,15 @@ void		*fr_hash_table_yank(fr_hash_table_t *ht, void const *data);
 
 int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data);
 
-void		*fr_hash_table_finddata(fr_hash_table_t *ht, void const *data);
+void		*fr_hash_table_find_by_data(fr_hash_table_t *ht, void const *data);
+
+void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data);
 
 int		fr_hash_table_num_elements(fr_hash_table_t *ht);
 
 int		fr_hash_table_walk(fr_hash_table_t *ht,
-				     fr_hash_table_walk_t callback,
-				     void *ctx);
+				   fr_hash_table_walk_t callback,
+				   void *ctx);
 
 void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
 

@@ -308,10 +308,6 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 #define FR_DICT_MAX_TLV_STACK		(FR_DICT_TLV_NEST_MAX + 5)
 
-/** Maximum dictionary attribute size
- */
-#define FR_DICT_ATTR_SIZE		(sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN)
-
 /** Characters that are allowed in dictionary attribute names
  *
  */

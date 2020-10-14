@@ -664,7 +664,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	if (!fr_hash_table_insert(dict_gctx->protocol_by_name, dict)) {
 		fr_dict_t *old_proto;
 
-		old_proto = fr_hash_table_finddata(dict_gctx->protocol_by_name, dict);
+		old_proto = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, dict);
 		if (!old_proto) {
 			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
 			return -1;
@@ -733,7 +733,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
 		fr_dict_vendor_t const *old_vendor;
 
-		old_vendor = fr_hash_table_finddata(dict->vendors_by_name, vendor);
+		old_vendor = fr_hash_table_find_by_data(dict->vendors_by_name, vendor);
 		if (!old_vendor) {
 			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
@@ -937,7 +937,7 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		 *	but the parent, or number, or type are
 		 *	different, that's an error.
 		 */
-		a = fr_hash_table_finddata(dict->attributes_by_name, da);
+		a = fr_hash_table_find_by_data(dict->attributes_by_name, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
@@ -1600,7 +1600,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	}
 
 	root.name = buffer;
-	dict = fr_hash_table_finddata(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
+	dict = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
 
 	if (!dict) {
 		fr_strerror_printf("Unknown protocol '%s'", root.name);
@@ -1645,7 +1645,7 @@ fr_dict_t *dict_by_protocol_name(char const *name)
 {
 	if (!dict_gctx || !name) return NULL;
 
-	return fr_hash_table_finddata(dict_gctx->protocol_by_name,
+	return fr_hash_table_find_by_data(dict_gctx->protocol_by_name,
 				      &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
@@ -1659,7 +1659,7 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
 {
 	if (!dict_gctx) return NULL;
 
-	return fr_hash_table_finddata(dict_gctx->protocol_by_num,
+	return fr_hash_table_find_by_data(dict_gctx->protocol_by_num,
 				      &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
@@ -1727,7 +1727,7 @@ static int _dict_attr_find_in_dicts(void *ctx, void *data)
 
 	dict = talloc_get_type_abort(data, fr_dict_t);
 
-	search->found_da = fr_hash_table_finddata(dict->attributes_by_name, search->find);
+	search->found_da = fr_hash_table_find_by_data(dict->attributes_by_name, search->find);
 	if (!search->found_da) return 0;
 
 	search->found_dict = data;
@@ -1838,7 +1838,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 
 	dict = dict_by_da(da);
 
-	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+	return fr_hash_table_find_by_data(dict->vendors_by_num, &dv);
 }
 
 /** Look up a vendor by its name
@@ -1858,7 +1858,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 	if (!name) return 0;
 
-	found = fr_hash_table_finddata(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
+	found = fr_hash_table_find_by_data(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return 0;
 
 	return found;
@@ -1877,7 +1877,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 {
 	INTERNAL_IF_NULL(dict, NULL);
 
-	return fr_hash_table_finddata(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
+	return fr_hash_table_find_by_data(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
 
 /** Return vendor attribute for the specified dictionary and pen
@@ -1969,7 +1969,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	da = fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
+	da = fr_hash_table_find_by_data(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in the %s dictionary", buffer, fr_dict_root(dict)->name);
@@ -1991,7 +1991,7 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_t const *dict, char const *name)
 
 	if (!name) return NULL;
 
-	return fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
+	return fr_hash_table_find_by_data(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
 }
 
 
@@ -2183,7 +2183,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
  */
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
-	return fr_hash_table_finddata(dict_by_da(da)->attributes_combo,
+	return fr_hash_table_find_by_data(dict_by_da(da)->attributes_combo,
 				      &(fr_dict_attr_t){
 				      		.parent = da->parent,
 				      		.attr = da->attr,
@@ -2381,12 +2381,12 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 *	Look up the attribute name target, and use
 	 *	the correct attribute number if found.
 	 */
-	dv = fr_hash_table_finddata(dict->values_by_name, &enumv);
+	dv = fr_hash_table_find_by_data(dict->values_by_name, &enumv);
 	if (dv) enumv.da = dv->da;
 
 	enumv.value = value;
 
-	return fr_hash_table_finddata(dict->values_by_da, &enumv);
+	return fr_hash_table_find_by_data(dict->values_by_da, &enumv);
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -2459,10 +2459,10 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name,
 	 *	Look up the attribute name target, and use
 	 *	the correct attribute number if found.
 	 */
-	found = fr_hash_table_finddata(dict->values_by_name, &find);
+	found = fr_hash_table_find_by_data(dict->values_by_name, &find);
 	if (found) find.da = found->da;
 
-	return fr_hash_table_finddata(dict->values_by_name, &find);
+	return fr_hash_table_find_by_data(dict->values_by_name, &find);
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)

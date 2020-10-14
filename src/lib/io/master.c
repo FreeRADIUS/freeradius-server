@@ -1666,7 +1666,7 @@ have_client:
 		my_connection.address = &address;
 
 		pthread_mutex_lock(&client->mutex);
-		connection = fr_hash_table_finddata(client->ht, &my_connection);
+		connection = fr_hash_table_find_by_data(client->ht, &my_connection);
 		if (connection) nak = (connection->client->state == PR_CLIENT_NAK);
 		pthread_mutex_unlock(&client->mutex);
 

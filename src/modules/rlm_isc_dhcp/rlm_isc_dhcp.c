@@ -1418,7 +1418,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	We can't have duplicate ethernet addresses for hosts.
 	 */
-	old_ether = fr_hash_table_finddata(state->inst->hosts_by_ether, my_ether);
+	old_ether = fr_hash_table_find_by_data(state->inst->hosts_by_ether, my_ether);
 	if (old_ether) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
 				   info->argv[0]->vb_strvalue, old_ether->host->argv[0]->vb_strvalue);
@@ -1435,7 +1435,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		my_uid->client = &vp->data;
 		my_uid->host = info;
 
-		old_uid = fr_hash_table_finddata(state->inst->hosts_by_uid, my_uid);
+		old_uid = fr_hash_table_find_by_data(state->inst->hosts_by_uid, my_uid);
 		if (old_uid) {
 			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
 					   info->argv[0]->vb_strvalue, old_uid->host->argv[0]->vb_strvalue);
@@ -1626,7 +1626,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 
 		my_client.client = &(vp->data);
 
-		client = fr_hash_table_finddata(hosts_by_uid, &my_client);
+		client = fr_hash_table_find_by_data(hosts_by_uid, &my_client);
 		if (client) {
 			host = client->host;
 			goto done;
@@ -1639,7 +1639,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
 
-	ether = fr_hash_table_finddata(hosts_by_ether, &my_ether);
+	ether = fr_hash_table_find_by_data(hosts_by_ether, &my_ether);
 	if (!ether) return NULL;
 
 	host = ether->host;

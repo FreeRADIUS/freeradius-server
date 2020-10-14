@@ -154,8 +154,8 @@ static uint32_t reverse(uint32_t key)
 	 *	Cast to uint32_t is required because the
 	 *	default type of of the expression is an
 	 *	int and ubsan correctly complains that
-	 *	the result of 0xff << 24 won't fit in an
-	 *	unsigned 32bit integer.
+	 *	the result of 0xff << 24 won't fit in a
+	 *	signed 32bit integer.
 	 */
 	return (((uint32_t)reversed_byte[key & 0xff] << 24) |
 		((uint32_t)reversed_byte[(key >> 8) & 0xff] << 16) |
@@ -182,9 +182,7 @@ static uint32_t parent_of(uint32_t key)
 
 
 static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
-				    fr_hash_entry_t *head,
-				    uint32_t reversed,
-				    void const *data)
+				  fr_hash_entry_t *head, uint32_t reversed, void const *data)
 {
 	fr_hash_entry_t *cur;
 
@@ -284,22 +282,22 @@ static int _fr_hash_table_free(fr_hash_table_t *ht)
  *	Memory usage in bytes is (20/3) * number of entries.
  */
 fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
-				      fr_hash_table_hash_t hashNode,
-				      fr_hash_table_cmp_t cmpNode,
-				      fr_hash_table_free_t freeNode)
+				      fr_hash_table_hash_t hash_func,
+				      fr_hash_table_cmp_t cmp_func,
+				      fr_hash_table_free_t free_func)
 {
 	fr_hash_table_t *ht;
 
-	if (!hashNode) return NULL;
+	if (!hash_func) return NULL;
 
 	ht = talloc_zero(NULL, fr_hash_table_t);
 	if (!ht) return NULL;
 	talloc_set_destructor(ht, _fr_hash_table_free);
 	talloc_link_ctx(ctx, ht);
 
-	ht->free = freeNode;
-	ht->hash = hashNode;
-	ht->cmp = cmpNode;
+	ht->free = free_func;
+	ht->hash = hash_func;
+	ht->cmp = cmp_func;
 	ht->num_buckets = FR_HASH_NUM_BUCKETS;
 	ht->mask = ht->num_buckets - 1;
 
@@ -456,15 +454,14 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 /*
  *	Internal find a node routine.
  */
-static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
+static inline CC_HINT(always_inline) fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht,
+									 uint32_t key, void const *data)
 {
-	uint32_t key;
 	uint32_t entry;
 	uint32_t reversed;
 
 	if (!ht) return NULL;
 
-	key = ht->hash(data);
 	entry = key & ht->mask;
 	reversed = reverse(key);
 
@@ -483,7 +480,7 @@ int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 
 	if (!ht || !data) return 0;
 
-	node = fr_hash_table_find(ht, data);
+	node = fr_hash_table_find(ht, ht->hash(data), data);
 	if (!node) return fr_hash_table_insert(ht, data);
 
 	if (ht->free) ht->free(node->data);
@@ -494,15 +491,15 @@ int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 }
 
 
-/*
- *	Find data from a template
+/** Find data from a template
+ *
  */
-void *fr_hash_table_finddata(fr_hash_table_t *ht, void const *data)
+void *fr_hash_table_find_by_data(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
 	void *out;
 
-	node = fr_hash_table_find(ht, data);
+	node = fr_hash_table_find(ht, ht->hash(data), data);
 	if (!node) return NULL;
 
 	memcpy(&out, &node->data, sizeof(out));
@@ -510,7 +507,21 @@ void *fr_hash_table_finddata(fr_hash_table_t *ht, void const *data)
 	return out;
 }
 
+/** Hash table lookup with pre-computed key
+ *
+ */
+void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data)
+{
+	fr_hash_entry_t *node;
+	void *out;
 
+	node = fr_hash_table_find(ht, key, data);
+	if (!node) return NULL;
+
+	memcpy(&out, &node->data, sizeof(out));
+
+	return out;
+}
 
 /*
  *	Yank an entry from the hash table, without freeing the data.
@@ -915,7 +926,7 @@ int main(int argc, char **argv)
 			fr_exit(1);
 		}
 #ifdef TEST_INSERT
-		q = fr_hash_table_finddata(ht, p);
+		q = fr_hash_table_find_by_data(ht, p);
 		if (q != p) {
 			fprintf(stderr, "Bad data %d\n", i);
 			fr_exit(1);
@@ -931,7 +942,7 @@ int main(int argc, char **argv)
 	 */
 	if (1) {
 		for (i = 0; i < MAX ; i++) {
-			q = fr_hash_table_finddata(ht, &i);
+			q = fr_hash_table_find_by_data(ht, &i);
 			if (!q || *q != i) {
 				fprintf(stderr, "Failed finding %d\n", i);
 				fr_exit(1);
@@ -942,7 +953,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Failed deleting %d\n", i);
 				fr_exit(1);
 			}
-			q = fr_hash_table_finddata(ht, &i);
+			q = fr_hash_table_find_by_data(ht, &i);
 			if (q) {
 				fprintf(stderr, "Failed to delete %08x\n", i);
 				fr_exit(1);
