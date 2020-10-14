@@ -66,6 +66,8 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 
 	fr_dict_attr_t	*n_da, *da = *da_p;
 
+	(void)talloc_get_type_abort(*da_p, fr_dict_attr_t);
+
 	if (unlikely(da->dict && da->dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(da->dict)->name);
 		return NULL;
