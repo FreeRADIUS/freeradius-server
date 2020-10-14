@@ -533,6 +533,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 		.flags = *flags,
 		.parent = parent,
 	};
+
 	/*
 	 *	Record the parent
 	 */
@@ -565,8 +566,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 */
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
-	case FR_TYPE_UINT16:	/* Same here */
+	structural:
 		if (type == FR_TYPE_GROUP) {
 			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
 			break;
@@ -577,10 +577,21 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 		}
 
 		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
-
 		break;
 
+	/*
+	 *	Keying types *sigh*
+	 */
+	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
+	case FR_TYPE_UINT16:	/* Same here */
+		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
+		goto structural;
+
+	/*
+	 *	Leaf types
+	 */
 	default:
+		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
 		break;
 	}
 
