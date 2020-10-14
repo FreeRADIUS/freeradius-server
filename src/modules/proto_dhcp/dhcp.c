@@ -1228,6 +1228,12 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	VERIFY_VP(my_b);
 
 	/*
+	 *	ADSL Forum vendor-specific options after others to remain grouped
+	 */
+	if ((my_a->da->vendor == VENDORPEC_ADSL) && (my_b->da->vendor != VENDORPEC_ADSL)) return +1;
+	if ((my_a->da->vendor != VENDORPEC_ADSL) && (my_b->da->vendor == VENDORPEC_ADSL)) return -1;
+
+	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
 	if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
