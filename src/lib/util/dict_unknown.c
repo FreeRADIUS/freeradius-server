@@ -24,11 +24,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
 
-/** Copy a known or unknown attribute to produce an unknown attribute
+/** Copy a known or unknown attribute to produce an unknown attribute with the specified name
  *
  * Will copy the complete hierarchy down to the first known attribute.
  */
-fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+fr_dict_attr_t *fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *name)
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*parent;
@@ -85,7 +85,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(ctx, &n, parent, da->name, da->attr, type, &flags);
+	dict_attr_init(ctx, &n, parent, name, da->attr, type, &flags);
 
 	DA_VERIFY(n);
 

@@ -363,16 +363,19 @@ static int dict_enum_value_cmp(void const *one, void const *two)
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] da	to set name for.
+ * @param[in] ctx	to realloc attribute in.
+ * @param[in] da_p	to set name for.
  * @param[in] name	to set.  If NULL a name will be automatically generated.
  */
-static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t *da, char const *name)
+static inline CC_HINT(always_inline) int dict_attr_name_set(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, char const *name)
 {
 	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 	size_t		name_len;
+	char		*name_start, *name_end;
+	fr_dict_attr_t	*da = *da_p;
 
 	/*
-	 *	Generate a name if non is specified
+	 *	Generate a name if none is specified
 	 */
 	if (!name) {
 		fr_sbuff_t	unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
@@ -391,11 +394,27 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t *da, 
 		name_len = strlen(name);
 	}
 
-	da->name = talloc_bstrndup(da, name, name_len);
-	if (unlikely(!da->name)) {
-		fr_strerror_printf("Failed allocating space for attribute name");
-		return -1;
-	}
+	/*
+	 *	Grow the structure to hold the name
+	 *
+	 *	We add the name as an extension because it makes
+	 *	the code less complex, and means the name value
+	 *	is copied automatically when if the fr_dict_attr_t
+	 *	is copied.
+	 *
+	 *	We do still need to fixup the da->name pointer
+	 *	though.
+	 */
+	name_start = dict_attr_ext_alloc_size(ctx, da_p, FR_DICT_ATTR_EXT_NAME, name_len + 1);
+	if (!name_start) return -1;
+
+	name_end = name_start + name_len;
+
+	memcpy(name_start, name, name_len);
+	*name_end = '\0';
+
+	(*da_p)->name = name_start;
+	(*da_p)->name_len = name_len;
 
 	return 0;
 }
@@ -570,7 +589,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 *	so re-allocing for the extensions doesn't eat up
 	 *	pool space.
 	 */
-	if (dict_attr_name_set(*da_p, name) < 0) return -1;
+	if (dict_attr_name_set(ctx, da_p, name) < 0) return -1;
 
 	DA_VERIFY(*da_p);
 
@@ -639,11 +658,12 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  */
 static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
 {
-	fr_dict_attr_t	*n;
-	uint8_t		i;
+	fr_dict_attr_t		*n;
+	fr_dict_attr_ext_t	i;
 
 	n = dict_attr_alloc(ctx, in->parent, in->name, in->attr, in->type, &in->flags);
 	for (i = 0; i < NUM_ELEMENTS(in->ext); i++) if (in->ext[i]) {
+		if (i == FR_DICT_ATTR_EXT_NAME) continue;
 		if (unlikely(!dict_attr_ext_copy(ctx, &n, in, i))) {
 			talloc_free(n);
 			return NULL;

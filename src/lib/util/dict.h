@@ -116,7 +116,8 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
  * @note New extension structures should also be added to the #fr_dict_ext_length_min table in dict_ext.c
  */
 typedef enum {
-	FR_DICT_ATTR_EXT_CHILDREN = 0,				//!< Attribute has children.
+	FR_DICT_ATTR_EXT_NAME = 0,				//!< Name of the attribute.
+	FR_DICT_ATTR_EXT_CHILDREN,				//!< Attribute has children.
 	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
 								///< attribute and/or dictionary
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
@@ -180,6 +181,7 @@ struct dict_attr_s {
 	fr_dict_t _CONST* _CONST dict;				//!< Dict attribute belongs to.
 
 	char const		*name;				//!< Attribute name.
+	size_t			name_len;			//!< Length of the name.
 
 	unsigned int		attr;				//!< Attribute number.
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
@@ -409,7 +411,9 @@ int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
  *
  * @{
  */
-fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+fr_dict_attr_t		*fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *name);
+
+#define fr_dict_unknown_acopy(_ctx, _da) fr_dict_unknown_acopy_name(_ctx, _da, (_da)->name)
 
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 

@@ -3067,14 +3067,10 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		fr_sbuff_in_strcpy_literal(&name, "raw.");
 		fr_dict_print_attr_oid(&name, NULL, ref->da);
 
-		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy(vpt, ref->da);
+		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy_name(vpt, ref->da, fr_sbuff_start(&name));
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->ar_unknown->flags.is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
-
-		talloc_const_free(da->name);
-		MEM(da->name = talloc_bstrndup(da, fr_sbuff_start(&name), fr_sbuff_used(&name)));
-
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}
 		break;
@@ -3388,7 +3384,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 		 */
 		case TMPL_ATTR_TYPE_NORMAL:
 			if (ar->ar_da->flags.is_raw) goto do_raw;
-			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(&our_out, ar->ar_da->name);
+			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, ar->ar_da->name, ar->ar_da->name_len);
 			break;
 
 		/*
@@ -3402,7 +3398,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			 */
 			if ((fr_dlist_head(&vpt->data.attribute.ar) == ar) &&
 			    ar->da->parent && !ar->da->parent->flags.is_root) {
-				FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(&our_out, ar->da->parent->name);
+				FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, ar->da->parent->name, ar->da->parent->name_len);
 				FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 			}
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", ar->ar_da->attr);
