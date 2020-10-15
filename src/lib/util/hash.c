@@ -690,26 +690,12 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 	return NULL;
 }
 
-/** Ensure all buckets are filled
- *
- * This must be called if the table will be read by multiple threads without
- * synchronisation.  Synchronisation is still required for updates.
- *
- * @param[in] ht	to fill.
- */
-void fr_hash_table_fill(fr_hash_table_t *ht)
-{
-	int i;
-
-	for (i = ht->num_buckets - 1; i >= 0; i--) if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
-}
-
 /** Initialise an iterator
  *
  * @note If the hash table is modified the iterator should be considered invalidated.
  *
  * @param[in] ht	to iterate over.
- * @param[in] iter	to initialise.
+ * @param[out] iter	to initialise.
  * @return
  *	- The first entry in the hash table.
  *	- NULL if the hash table is empty.
@@ -722,6 +708,20 @@ void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 	iter->node = &ht->null;
 
 	return fr_hash_table_iter_next(ht, iter);
+}
+
+/** Ensure all buckets are filled
+ *
+ * This must be called if the table will be read by multiple threads without
+ * synchronisation.  Synchronisation is still required for updates.
+ *
+ * @param[in] ht	to fill.
+ */
+void fr_hash_table_fill(fr_hash_table_t *ht)
+{
+	int i;
+
+	for (i = ht->num_buckets - 1; i >= 0; i--) if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
 }
 
 #ifdef TESTING
