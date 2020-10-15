@@ -1,0 +1,43 @@
+update request {
+	&SMTP-Mail-Body += "sent from the smtp test module\r\n"
+	&SMTP-Mail-Body += "\r\n"
+	&SMTP-Mail-Body += "Some Body\r\n"
+	&SMTP-Mail-Body += ".\r\n"
+	&SMTP-Mail-Body += "More Body\r\n"
+	&SMTP-Mail-Body += "."
+	&SMTP-Mail-Body += "Most Body\r\n"
+
+	&SMTP-Recipients += "crln_test_receiver@localhost"
+	&SMTP-Sender-Address += "smtp_sender@localhost"
+}
+smtp.authorize
+
+#
+# Wait up to a tenth second for exim to deliver the email
+# Then confirm it was delivered
+#
+if (`/bin/sh -c "for i in 1 2 3 4 5 ; \
+do if [ -e build/ci/exim4/mail/crln_test_receiver ] ;\
+then break; \
+fi; sleep .02;\
+done ; \
+test -f build/ci/exim4/mail/crln_test_receiver ;\
+echo $?"` == "1") {
+	reject
+}
+
+if (`/bin/sh -c "cat build/ci/exim4/mail/crln_test_receiver | \
+grep -E 'Most Body'"`) {
+	update control {
+		&Auth-Type := Accept
+	}
+}
+else {
+	reject
+}
+
+if (&request:TLS-Cert-Issuer =~ /@example\.org/) {
+        test_pass
+} else {
+	test_fail
+}
