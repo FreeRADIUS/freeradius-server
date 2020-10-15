@@ -2206,6 +2206,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
 	info->last = &(info->child);
 
+	inst->hosts_by_ether = fr_hash_table_create(inst, host_ether_hash, host_ether_cmp, NULL);
+	if (!inst->hosts_by_ether) return -1;
+
+	inst->hosts_by_uid = fr_hash_table_create(inst, host_uid_hash, host_uid_cmp, NULL);
+	if (!inst->hosts_by_uid) return -1;
+
 	rcode = read_file(inst, info, inst->filename);
 	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
@@ -2216,13 +2222,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		cf_log_warn(conf, "No configuration read from %s", inst->filename);
 		return 0;
 	}
-
-	inst->hosts_by_ether = fr_hash_table_create(inst, host_ether_hash, host_ether_cmp, NULL);
-	if (!inst->hosts_by_ether) return -1;
-
-	inst->hosts_by_uid = fr_hash_table_create(inst, host_uid_hash, host_uid_cmp, NULL);
-	if (!inst->hosts_by_uid) return -1;
-
 
 	return 0;
 }
