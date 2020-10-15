@@ -652,7 +652,10 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 	n = dict_attr_alloc_null(ctx);
 	if (unlikely(!n)) return NULL;
 
-	dict_attr_init(ctx, &n, parent, name, attr, type, flags);
+	if (dict_attr_init(ctx, &n, parent, name, attr, type, flags) < 0) {
+		talloc_free(n);
+		return NULL;
+	}
 
 	return n;
 }

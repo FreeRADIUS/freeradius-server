@@ -84,7 +84,10 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 	}
 
 	n_da = talloc_realloc_size(ctx, da, len + aligned);
-	if (!n_da) return NULL;
+	if (!n_da) {
+		fr_strerror_printf("Failed in realloc for dictionary extensions");
+		return NULL;
+	}
 	talloc_set_type(n_da, fr_dict_attr_t);
 
 	n_da->ext[ext] = (uint8_t)offset;
