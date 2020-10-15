@@ -2461,6 +2461,7 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
+	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
