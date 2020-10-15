@@ -1295,9 +1295,11 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	if (RDEBUG_ENABLED)
 #endif
 	{
-		for (vp = fr_pair_cursor_init(&src_list, &head);
+		fr_cursor_t cursor;
+
+		for (vp = fr_cursor_init(&cursor, &head);
 		     vp;
-		     vp = fr_pair_cursor_next(&src_list)) {
+		     vp = fr_cursor_next(&cursor)) {
 			VP_VERIFY(vp);
 
 			if (RDEBUG_ENABLED) map_debug_log(request, map, vp);
