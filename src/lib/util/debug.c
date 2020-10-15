@@ -1306,6 +1306,25 @@ void fr_fault_log(char const *msg, ...)
 	va_end(ap);
 }
 
+/** Print data as a hex block
+ *
+ */
+void fr_fault_log_hex(uint8_t const *data, size_t data_len)
+{
+	size_t		i, j, len;
+	char		*p;
+	char		buffer[(0x10 * 3) + 1];
+
+	for (i = 0; i < data_len; i += 0x10) {
+		len = 0x10;
+		if ((i + len) > data_len) len = data_len - i;
+
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+
+		dprintf(fr_fault_log_fd, "%04x: %s\n", (int)i, buffer);
+	}
+}
+
 /** Set a file descriptor to log memory reports to.
  *
  * @param fd to write output to.

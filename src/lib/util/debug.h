@@ -45,8 +45,8 @@ typedef enum {
 
 extern fr_debug_state_t fr_debug_state;
 
-#define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
-typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+#define FR_FAULT_LOG(_fmt, ...)			fr_fault_log(_fmt "\n", ## __VA_ARGS__)
+#define FR_FAULT_LOG_HEX(_data, _data_len)	fr_fault_log_hex(_data, _data_len)
 
 /** Optional callback passed to fr_fault_setup
  *
@@ -101,6 +101,8 @@ void			fr_fault_set_cb(fr_fault_cb_t func);
 void			fr_fault_set_log_fd(int fd);
 
 void			fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+
+void			fr_fault_log_hex(uint8_t const *data, size_t data_len);
 
 /** @name Assertion support functions
  * @{

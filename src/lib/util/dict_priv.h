@@ -165,6 +165,8 @@ void			*dict_attr_ext_copy(TALLOC_CTX *ctx,
 int			dict_attr_ext_copy_all(TALLOC_CTX *ctx,
 					       fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in);
 
+void			dict_attr_ext_debug(fr_dict_attr_t const *da);
+
 static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
 {
 	fr_dict_attr_ext_ref_t	*ext;

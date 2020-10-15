@@ -24,6 +24,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
 /** Copy function for fixing up extensions after they're copy
@@ -44,6 +46,16 @@ typedef struct {
 
 static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 					 fr_dict_attr_ext_t ext, void *ext_ptr, size_t ext_len);
+
+static fr_table_num_ordered_t const dict_attr_ext_table[] = {
+	{ L("name"),		FR_DICT_ATTR_EXT_NAME		},
+	{ L("children"),	FR_DICT_ATTR_EXT_CHILDREN	},
+	{ L("vendor"),		FR_DICT_ATTR_EXT_REF		},
+	{ L("enumv"),		FR_DICT_ATTR_EXT_VENDOR		},
+	{ L("da_stack"),	FR_DICT_ATTR_EXT_ENUMV		},
+	{ L("name"),		FR_DICT_ATTR_EXT_DA_STACK	}
+};
+static size_t dict_attr_ext_table_len = NUM_ELEMENTS(dict_attr_ext_table);
 
 /** Holds additional information about extension structures
  *
@@ -184,17 +196,16 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 		return NULL;
 	}
 
-	n_da = talloc_realloc_size(ctx, da, da_len + aligned_len);
+	n_da = talloc_realloc_size(ctx, da, da_len + hdr_len + aligned_len);
 	if (!n_da) {
 		fr_strerror_printf("Failed in realloc for dictionary extensions. "
 				   "Tried to realloc %zu bytes -> %zu bytes", da_len, da_len + aligned_len);
 		return NULL;
 	}
 	talloc_set_type(n_da, fr_dict_attr_t);
-
-	n_da->ext[ext] = (uint8_t)offset;
 	*da_p = n_da;
 
+	n_da->ext[ext] = (uint8_t)offset;
 	ext_ptr = ((uint8_t *)n_da) + da_len;
 
 	if (info->has_hdr) {
@@ -324,4 +335,31 @@ int dict_attr_ext_copy_all(TALLOC_CTX *ctx,
 	}
 
 	return 0;
+}
+
+void dict_attr_ext_debug(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_t i;
+
+	FR_FAULT_LOG("ext: %s - total len = %zu, ext len = %zu",
+		     da->name, talloc_length(da), talloc_length(da) - sizeof(fr_dict_attr_t));
+
+	for (i = 0; i < NUM_ELEMENTS(da->ext); i++) {
+		if (fr_dict_attr_has_ext(da, i)) {
+			void	*ext = fr_dict_attr_ext(da, i);
+			size_t	ext_len = dict_attr_ext_len(da, i);
+
+			if (ext_len > 1024) {
+				FR_FAULT_LOG("ext: %s - bad length %zu - limiting to 1024",
+					     fr_table_str_by_value(dict_attr_ext_table, i, "<INVALID>"),
+					     ext_len);
+				ext_len = 1024;
+			}
+
+			FR_FAULT_LOG("ext: %s - start=%p end=%p len=%zu",
+				     fr_table_str_by_value(dict_attr_ext_table, i, "<INVALID>"),
+				     ext, ((uint8_t *)ext) + ext_len, ext_len);
+			FR_FAULT_LOG_HEX(ext, ext_len);
+		}
+	}
 }
