@@ -92,6 +92,8 @@ typedef struct {
 
 	dict_enum_fixup_t	*enum_fixup;
 	dict_group_fixup_t	*group_fixup;
+
+	fr_dict_attr_t		*ext_fixup;		//!< Head of a list of attributes to apply fixups to.
 } dict_tokenize_ctx_t;
 
 /*
@@ -164,6 +166,17 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 
 	*pvalue = rcode;
 	return 1;
+}
+
+/** Link a da into the fixup list
+ *
+ */
+static inline CC_HINT(always_inline) void dict_attr_fixup_mark(dict_tokenize_ctx_t *ctx, fr_dict_attr_t *da)
+{
+	if (da->fixup) return;
+
+	da->fixup = ctx->ext_fixup;
+	ctx->ext_fixup = da;
 }
 
 /** Set a new root dictionary attribute
@@ -1081,10 +1094,11 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		}
 	}
 
-	if (fr_dict_enum_add_name(da, argv[1], &value, false, true) < 0) {
+	if (fr_dict_attr_enum_add_name(da, argv[1], &value, false, true) < 0) {
 		fr_value_box_clear(&value);
 		return -1;
 	}
+	dict_attr_fixup_mark(ctx, da);
 	fr_value_box_clear(&value);
 
 	return 0;
@@ -1248,10 +1262,11 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Add the VALUE to the parent attribute, and ensure that
 	 *	the VALUE also contains a pointer to the child struct.
 	 */
-	if (dict_enum_add_name(parent, name, &value, false, true, da) < 0) {
+	if (dict_attr_enum_add_name(parent, name, &value, false, true, da) < 0) {
 		fr_value_box_clear(&value);
 		return -1;
 	}
+	dict_attr_fixup_mark(ctx, fr_dict_attr_unconst(da));
 	fr_value_box_clear(&value);
 
 	return 0;
@@ -1543,10 +1558,12 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 				return -1;
 			}
 
-			ret = fr_dict_enum_add_name(da, this->name, &value, false, false);
+			ret = fr_dict_attr_enum_add_name(da, this->name, &value, false, false);
 			fr_value_box_clear(&value);
 
 			if (ret < 0) return -1;
+
+			dict_attr_fixup_mark(ctx, da);
 
 			/*
 			 *	Just so we don't lose track of things.
@@ -1687,6 +1704,23 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		}
 	}
 
+	if (ctx->ext_fixup) {
+		fr_dict_attr_t *this;
+
+		for (this = ctx->ext_fixup; this; this = this->fixup) {
+			fr_dict_attr_ext_enumv_t *ext;
+
+			ext = fr_dict_attr_ext(this, FR_DICT_ATTR_EXT_ENUMV);
+			if (!ext) continue;
+
+			fr_hash_table_fill(ext->value_by_name);
+			fr_hash_table_fill(ext->name_by_value);
+
+			ctx->ext_fixup = this->fixup;
+			this->fixup = NULL;
+		}
+	}
+
 	TALLOC_FREE(ctx->fixup_pool);
 
 	/*
@@ -1697,8 +1731,6 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 	 */
 	fr_hash_table_fill(ctx->dict->vendors_by_name);
 	fr_hash_table_fill(ctx->dict->vendors_by_num);
-	fr_hash_table_fill(ctx->dict->values_by_da);
-	fr_hash_table_fill(ctx->dict->values_by_name);
 
 	ctx->value_attr = NULL;
 	ctx->relative_attr = NULL;
@@ -1889,7 +1921,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		}
 
 		/*
-		 *	Finalize a STRUCT.
+		 *	Finalise a STRUCT.
 		 */
 		if (was_member) {
 			da = ctx->stack[ctx->stack_depth].da;

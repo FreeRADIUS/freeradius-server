@@ -359,7 +359,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	this code, so it doesn't matter.  The only
 		 *	requirement is that it's unique.
 		 */
-		if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(da), name2) < 0) {
+		if (fr_dict_attr_enum_add_name_next(fr_dict_attr_unconst(da), name2) < 0) {
 			PERROR("Failed adding section value");
 			return -1;
 		}

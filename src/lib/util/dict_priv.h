@@ -78,9 +78,6 @@ struct fr_dict {
 
 	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
 
-	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by its value.
-	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by its name.
-
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
@@ -95,10 +92,13 @@ struct fr_dict {
 	int			default_type_size;	//!< for TLVs and VSAs
 	int			default_type_length;	//!< for TLVs and VSAs
 
-	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
-
 	dl_t			*dl;			//!< for validation
+
 	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
+
+	fr_dict_attr_valid_func_t attr_valid;		//!< validation function for new attributes
+
+	fr_dict_attr_t		**fixups;		//!< Attributes that need fixing up.
 };
 
 struct fr_dict_gctx_s {
@@ -145,6 +145,8 @@ fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
+fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
+
 /** @name Add extension structures to attributes
  *
  * @{
@@ -160,13 +162,16 @@ void			*dict_attr_ext_copy(TALLOC_CTX *ctx,
 					    fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in,
 					    fr_dict_attr_ext_t ext);
 
+int			dict_attr_ext_copy_all(TALLOC_CTX *ctx,
+					       fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in);
+
 static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
 {
 	fr_dict_attr_ext_ref_t	*ext;
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no ref extension", da->name,
+		fr_strerror_printf("%s (%s) contains no 'ref' extension", da->name,
 	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
 		return -1;
 	}
@@ -175,14 +180,13 @@ static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t con
 	return 0;
 }
 
-
 static inline int dict_attr_children_set(fr_dict_attr_t const *da, fr_dict_attr_t const	**children)
 {
 	fr_dict_attr_ext_children_t *ext;
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no children extension", da->name,
+		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
 	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
 		return -1;
 	}
@@ -197,7 +201,7 @@ static inline fr_dict_attr_t const **dict_attr_children(fr_dict_attr_t const *da
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no children extension", da->name,
+		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
 	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
 		return NULL;
 	}
@@ -238,7 +242,7 @@ fr_dict_t		*dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
 bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
 
-int			dict_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
+int			dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
 					   bool coerce, bool replace, fr_dict_attr_t const *child_struct);
 
 #ifdef __cplusplus

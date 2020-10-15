@@ -28,7 +28,7 @@ RCSID("$Id$")
  *
  * Will copy the complete hierarchy down to the first known attribute.
  */
-fr_dict_attr_t *fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *name)
+fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *new_name)
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*parent;
@@ -56,7 +56,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const
 	 *	the parent from the 'da'.
 	 */
 	if (da->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_acopy(n, da->parent);
+		parent = fr_dict_unknown_acopy(n, da->parent, NULL);
 		if (!parent) {
 			talloc_free(n);
 			return NULL;
@@ -85,8 +85,8 @@ fr_dict_attr_t *fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(ctx, &n, parent, name, da->attr, type, &flags);
-
+	dict_attr_init(ctx, &n, parent, new_name ? new_name : da->name, da->attr, type, &flags);
+	dict_attr_ext_copy_all(ctx, &n, da);
 	DA_VERIFY(n);
 
 	return n;
@@ -191,6 +191,8 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 	/*
 	 *	Add the attribute by both name and number.
+	 *
+	 *	Fixme - Copy extensions?
 	 */
 	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, &flags) < 0) return NULL;
 
@@ -333,7 +335,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	 *	attributes.
 	 */
 	} else if (parent->flags.is_unknown) {
-		new_parent = fr_dict_unknown_acopy(ctx, parent);
+		new_parent = fr_dict_unknown_acopy(ctx, parent, NULL);
 		parent = new_parent;
 	}
 

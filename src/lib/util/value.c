@@ -5017,7 +5017,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char
 /** Hash the contents of a value box
  *
  */
-uint32_t fr_value_box_hash(fr_value_box_t const *vb, uint32_t hash)
+uint32_t fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash)
 {
 	switch (vb->type) {
 	case FR_TYPE_FIXED_SIZE:

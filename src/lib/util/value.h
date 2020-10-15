@@ -757,7 +757,7 @@ SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
  *
  * @{
  */
-uint32_t	fr_value_box_hash(fr_value_box_t const *vb, uint32_t hash);
+uint32_t	fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash);
 /** @} */
 
 #undef _CONST

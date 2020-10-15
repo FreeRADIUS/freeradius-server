@@ -63,6 +63,10 @@ talloc_foreach(vpt_m, vpt) {
 	     (_p < _end) && (_iter = *((void **)(_p))); \
 	     _p = (__typeof__(_p))((__typeof__(_array))_p) + 1)
 
+/** Get the number of bytes in a given talloc chunk
+ *
+ */
+#define talloc_length(_ptr) talloc_array_length((uint8_t const *)(_ptr))
 
 typedef int(* fr_talloc_free_func_t)(void *fire_ctx, void *uctx);
 

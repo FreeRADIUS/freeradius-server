@@ -119,7 +119,7 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_acopy(vp, da);
+		unknown = fr_dict_unknown_acopy(vp, da, NULL);
 		da = unknown;
 	}
 
@@ -207,7 +207,7 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 *	Copy the unknown attribute hierarchy
 	 */
 	if (n->da->flags.is_unknown) {
-		n->da = fr_dict_unknown_acopy(n, n->da);
+		n->da = fr_dict_unknown_acopy(n, n->da, NULL);
 		if (!n->da) {
 			talloc_free(n);
 			return NULL;
@@ -264,7 +264,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	if (vp->da->flags.is_unknown) {
 		fr_dict_attr_t *da;
 
-		da = fr_dict_unknown_acopy(vp, vp->da);
+		da = fr_dict_unknown_acopy(vp, vp->da, NULL);
 
 		fr_dict_unknown_free(&vp->da);
 

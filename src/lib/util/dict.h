@@ -37,6 +37,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <talloc.h>
+#include <limits.h>
 
 /*
  *	Avoid circular type references.
@@ -122,6 +123,7 @@ typedef enum {
 								///< attribute and/or dictionary
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
 	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
+	FR_DICT_ATTR_EXT_ENUMV,					//!< Enumeration values.
 	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,			//!< Protocol specific extensions
 	FR_DICT_ATTR_EXT_MAX
 } fr_dict_attr_ext_t;
@@ -129,7 +131,15 @@ typedef enum {
 /** The alignment of object extension structures
  *
  */
-#define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uintptr_t)
+#ifdef __WORD_SIZE
+#  if __WORD_SIZE < 4
+#    define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uint32_t)
+#  else
+#    define FR_DICT_ATTR_EXT_ALIGNMENT	__WORD_SIZE		/* From limits.h */
+#  endif
+#else
+#  define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uint64_t)
+#endif
 
 /** Attribute extension - Holds children for an attribute
  *
@@ -144,6 +154,7 @@ typedef enum {
  * VALUE.  See dict_attr_can_have_children() for details.
  */
 typedef struct {
+	fr_hash_table_t		*child_by_name;			//!< Namespace at this level in the hierarchy.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
 } fr_dict_attr_ext_children_t;
 
@@ -168,6 +179,14 @@ typedef struct {
 	fr_dict_attr_t const	*da_stack[0];			//!< Stack of dictionary attributes
 } fr_dict_attr_ext_da_stack_t;
 
+/** Attribute extension - Holds enumeration values
+ *
+ */
+typedef struct {
+	fr_hash_table_t		*value_by_name;			//!< Lookup an enumeration value by name
+	fr_hash_table_t		*name_by_value;			//!< Lookup a name by value
+} fr_dict_attr_ext_enumv_t;
+
 /** Attribute extension - Protocol-specific
  *
  */
@@ -190,6 +209,7 @@ struct dict_attr_s {
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
+	fr_dict_attr_t		*fixup;				//!< Attribute has been marked up for fixups.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
@@ -201,7 +221,6 @@ struct dict_attr_s {
  * Maps one of more string values to integers and vice versa.
  */
 typedef struct {
-	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
 	char const		*name;				//!< Enum name.
 	size_t			name_len;			//!< Allows for efficient name lookups when operating
 								///< on partial buffers.
@@ -325,10 +344,6 @@ extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
  */
 #define DICT_EXT_OFFSET(_ptr, _ext) ((void *)(((_ptr)->ext[_ext] * FR_DICT_ATTR_EXT_ALIGNMENT) + ((uintptr_t)(_ptr))))
 
-/** Minimum extension lengths
- */
-extern size_t const fr_dict_ext_length_min[];
-
 /* Retrieve an extension structure for a dictionary attribute
  *
  * @param[in] da	to retrieve structure from.
@@ -399,21 +414,18 @@ static inline fr_dict_attr_t const *fr_dict_attr_ref(fr_dict_attr_t const *da)
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
-int			fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
-					      fr_value_box_t const *value, bool coerce, bool replace);
+int			fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+						   fr_value_box_t const *value, bool coerce, bool replace);
 
-int			fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(nonnull);
+int			fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(nonnull);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */
-
 /** @name Unknown ephemeral attributes
  *
  * @{
  */
-fr_dict_attr_t		*fr_dict_unknown_acopy_name(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *name);
-
-#define fr_dict_unknown_acopy(_ctx, _da) fr_dict_unknown_acopy_name(_ctx, _da, (_da)->name)
+fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da, char const *name);
 
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
@@ -536,7 +548,7 @@ static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 	if (da->type == FR_TYPE_VENDOR) return da->attr;
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_VENDOR);
-	if (!ext) return 0;
+	if (!ext || !ext->vendor) return 0;
 
 	return ext->vendor->attr;
 }

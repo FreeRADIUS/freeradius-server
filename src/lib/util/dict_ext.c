@@ -24,17 +24,106 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/talloc.h>
 
-/** Holds the minimum lengths of the extension structures
+/** Copy function for fixing up extensions after they're copy
  *
  */
-size_t const fr_dict_ext_length_min[] = {
-	[FR_DICT_ATTR_EXT_CHILDREN]	= sizeof(fr_dict_attr_ext_children_t),
-	[FR_DICT_ATTR_EXT_REF]		= sizeof(fr_dict_attr_ext_ref_t),
-	[FR_DICT_ATTR_EXT_VENDOR]	= sizeof(fr_dict_attr_ext_vendor_t),
-	[FR_DICT_ATTR_EXT_DA_STACK]	= sizeof(fr_dict_attr_ext_da_stack_t),
-	[FR_DICT_ATTR_EXT_MAX]		= 0
+typedef void *(* fr_dict_attr_ext_copy_t)(TALLOC_CTX *ctx, fr_dict_attr_t **da_out_p,
+					  fr_dict_attr_ext_t ext, void *ext_ptr, size_t ext_len);
+
+/** Additional information for a given extension
+ */
+typedef struct {
+	size_t				min;		//!< Minimum size of extension.
+	bool				has_hdr;	//!< Has additional metadata allocated before
+							///< the extension data.
+	bool				can_copy;	//!< Copying this extension between attributes is allowed.
+	fr_dict_attr_ext_copy_t		copy;		//!< Override the normal copy operation with a callback.
+} fr_dict_attr_ext_info_t;
+
+static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+					 fr_dict_attr_ext_t ext, void *ext_ptr, size_t ext_len);
+
+/** Holds additional information about extension structures
+ *
+ */
+static fr_dict_attr_ext_info_t const fr_dict_ext_info[] = {
+	[FR_DICT_ATTR_EXT_NAME]		= {
+						.min = sizeof(char),
+						.has_hdr = true,
+						.can_copy = false,	/* Name may change, and we can only set it once */
+					},
+	[FR_DICT_ATTR_EXT_CHILDREN]	= {
+						.min = sizeof(fr_dict_attr_ext_children_t),
+						.can_copy = false,	/* Limitation in hashing scheme we use */
+					},
+	[FR_DICT_ATTR_EXT_REF]		= {
+						.min = sizeof(fr_dict_attr_ext_ref_t),
+						.can_copy = true,
+					},
+	[FR_DICT_ATTR_EXT_VENDOR]	= {
+						.min = sizeof(fr_dict_attr_ext_vendor_t),
+						.can_copy = true,
+					},
+	[FR_DICT_ATTR_EXT_ENUMV]	= {
+						.min = sizeof(fr_dict_attr_ext_enumv_t),
+						.can_copy = true,
+						.copy = fr_dict_attr_ext_enumv_copy
+					},
+	[FR_DICT_ATTR_EXT_DA_STACK]	= {
+						.min = sizeof(fr_dict_attr_ext_da_stack_t),
+						.has_hdr = true,
+						.can_copy = false	/* Reinitialised for each new attribute */
+					},
+	[FR_DICT_ATTR_EXT_MAX]		= {}
 };
+
+/** Optional extension header struct
+ *
+ */
+typedef struct {
+	size_t			len;		//!< Length of extension data.
+	uint8_t			data[];		//!< Extension data
+} CC_HINT(aligned(FR_DICT_ATTR_EXT_ALIGNMENT)) dict_attr_ext_hdr_t;
+
+/** Copy all enumeration values from one attribute to another
+ *
+ */
+static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+					 fr_dict_attr_ext_t ext, void *ext_ptr, UNUSED size_t ext_len)
+{
+	fr_dict_attr_ext_enumv_t	*new_ext, *old_ext;
+	fr_hash_iter_t			iter;
+	fr_dict_enum_t			*enumv;
+
+	new_ext = dict_attr_ext_alloc(ctx, da_p, ext);
+	if (!new_ext) return NULL;
+
+	old_ext = ext_ptr;
+
+	if (!old_ext->value_by_name && !old_ext->name_by_value) {
+		memset(new_ext, 0, sizeof(*new_ext));
+		return new_ext;
+	}
+
+	/*
+	 *	Add all the enumeration values from
+	 *      the old attribute to the new attribute.
+	 */
+	for (enumv = fr_hash_table_iter_init(old_ext->value_by_name, &iter);
+	     enumv;
+	     enumv = fr_hash_table_iter_next(old_ext->value_by_name, &iter)) {
+	     	/*
+	     	 *	Fixme - Child struct copying is probably wrong
+	     	 */
+		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, enumv->child_struct[0]) < 0) {
+			return NULL;
+		}
+	}
+
+	return new_ext;
+}
 
 /** Add a variable length extension to a dictionary attribute
  *
@@ -60,32 +149,45 @@ size_t const fr_dict_ext_length_min[] = {
  */
 void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext, size_t ext_len)
 {
-	size_t		len;
-	size_t		aligned = ROUND_UP(ext_len, FR_DICT_ATTR_EXT_ALIGNMENT);
-	size_t		offset;
+	size_t			aligned_len = ROUND_UP_POW2(ext_len, FR_DICT_ATTR_EXT_ALIGNMENT);
+	size_t			da_len;
+	size_t			hdr_len = 0;
 
-	fr_dict_attr_t	*n_da, *da = *da_p;
+	size_t			offset;
 
-	(void)talloc_get_type_abort(*da_p, fr_dict_attr_t);
+	fr_dict_attr_ext_info_t const *info;
+	fr_dict_attr_t		*n_da, *da = *da_p;
+	uint8_t			*ext_ptr;
+
+	(void)talloc_get_type_abort(da, fr_dict_attr_t);
+
+	if (da->ext[ext]) return fr_dict_attr_ext(da, ext);
 
 	if (unlikely(da->dict && da->dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(da->dict)->name);
 		return NULL;
 	}
 
-	if (da->ext[ext]) return fr_dict_attr_ext(da, ext);
+ 	info = &fr_dict_ext_info[ext];
+	if (info->has_hdr) hdr_len = sizeof(dict_attr_ext_hdr_t);	/* Add space for a length prefix */
 
-	len = talloc_array_length((uint8_t *)da);
-
-	offset = len / FR_DICT_ATTR_EXT_ALIGNMENT;
-	if (offset > UINT8_MAX) {
+	/*
+	 *	Packing the offsets into a uint8_t means
+	 *      the offset address of the final extension
+	 *	must be less than or equal to
+	 *	UINT8_MAX * FR_DICT_ATTR_EXT_ALIGNMENT
+	 */
+	da_len = talloc_length(da);
+	offset = (da_len + hdr_len) / FR_DICT_ATTR_EXT_ALIGNMENT;
+	if (unlikely(offset > UINT8_MAX)) {
 		fr_strerror_printf("Insufficient space remaining for extensions");
 		return NULL;
 	}
 
 	n_da = talloc_realloc_size(ctx, da, len + aligned);
 	if (!n_da) {
-		fr_strerror_printf("Failed in realloc for dictionary extensions");
+		fr_strerror_printf("Failed in realloc for dictionary extensions. "
+				   "Tried to realloc %zu bytes -> %zu bytes", len, len + aligned);
 		return NULL;
 	}
 	talloc_set_type(n_da, fr_dict_attr_t);
@@ -93,7 +195,16 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 	n_da->ext[ext] = (uint8_t)offset;
 	*da_p = n_da;
 
-	return (void *)(((uintptr_t)n_da) + len);
+	ext_ptr = ((uint8_t *)n_da) + da_len;
+
+	if (info->has_hdr) {
+		dict_attr_ext_hdr_t *ext_hdr = (dict_attr_ext_hdr_t *)ext_ptr;
+
+		ext_hdr->len = ext_len;		/* Record the real size */
+		return &ext_hdr->data;		/* Pointer to the data portion */
+	}
+
+	return ext_ptr;
 }
 
 /** Add a fixed length extension to a dictionary attribute
@@ -122,7 +233,7 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
  */
 void *dict_attr_ext_alloc(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext)
 {
-	return dict_attr_ext_alloc_size(ctx, da_p, ext, fr_dict_ext_length_min[ext]);
+	return dict_attr_ext_alloc_size(ctx, da_p, ext, fr_dict_ext_info[ext].min);
 }
 
 /** Return the length of an extension
@@ -135,23 +246,18 @@ void *dict_attr_ext_alloc(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_attr_e
  */
 size_t dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
 {
-	uint8_t	end = 0, start, i;
-	size_t	len;
+	uint8_t				offset;
+	fr_dict_attr_ext_info_t	const	*info;
+	dict_attr_ext_hdr_t		*ext_hdr;
 
-	start = da->ext[ext];
-	if (!start) return 0;
+	offset = da->ext[ext];
+	if (!offset) return 0;
 
-	len = talloc_array_length((uint8_t const *)da);
-	end = len / FR_DICT_ATTR_EXT_ALIGNMENT;
+	info = &fr_dict_ext_info[ext];
+	if (!info->has_hdr) return info->min;	/* Fixed size */
 
-	/*
-	 *	Figure out where the extension ends
-	 */
-	for (i = 0; i < NUM_ELEMENTS(da->ext); i++) {
-		if ((da->ext[i] > start) && (da->ext[i] < end)) end = da->ext[i];
-	}
-
-	return (end - start) * FR_DICT_ATTR_EXT_ALIGNMENT;
+	ext_hdr = (dict_attr_ext_hdr_t *)((uintptr_t)da) + ((offset * FR_DICT_ATTR_EXT_ALIGNMENT) - sizeof(dict_attr_ext_hdr_t));
+	return ext_hdr->len;
 }
 
 /** Copy extension data from one attribute to another
@@ -161,31 +267,60 @@ size_t dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
  * @param[in] ext	to copy.
  * @return
  *	- NULL if we failed to allocate an extension structure.
- *	- A pointer to the start of the extension in da_out.
+ *	- A pointer to the offset of the extension in da_out.
  */
 void *dict_attr_ext_copy(TALLOC_CTX *ctx,
 			 fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in, fr_dict_attr_ext_t ext)
 {
-	uint8_t start;
+	void	*ext_ptr, *new_ext_ptr;
 	size_t	ext_len;
-	void	*ptr;
+
+	fr_dict_attr_ext_info_t const *info;
 
 	if (unlikely((*da_out_p)->dict && (*da_out_p)->dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root((*da_out_p)->dict)->name);
 		return NULL;
 	}
 
-	start = da_in->ext[ext];
-	if (!start) return NULL;
+	info = &fr_dict_ext_info[ext];
+	if (!info->can_copy) {
+		fr_strerror_printf("Extension cannot be copied");
+		return NULL;
+	}
 
 	ext_len = dict_attr_ext_len(da_in, ext);
-	ptr = dict_attr_ext_alloc_size(ctx, da_out_p, ext, ext_len);
-	if (!ptr) return NULL;
+	ext_ptr = fr_dict_attr_ext(da_in, ext);
 
 	/*
-	 *	Copy extension data over
+	 *	Use the special copy function.
+	 *	Its responsible for allocating the extension in the
+	 *      destination attribute.
 	 */
-	memcpy(ptr, (void *)((uintptr_t)(da_in) + (start * FR_DICT_ATTR_EXT_ALIGNMENT)), ext_len);
+	if (info->copy) return info->copy(ctx, da_out_p, ext, ext_ptr, ext_len);
 
-	return ptr;
+	/*
+	 *	If there's no special function
+	 *	just memcpy the data over.
+	 */
+	new_ext_ptr = dict_attr_ext_alloc_size(ctx, da_out_p, ext, ext_len);
+	if (!new_ext_ptr) return NULL;
+	memcpy(new_ext_ptr, ext_ptr, ext_len);
+
+	return new_ext_ptr;
+}
+
+/** Copy all the extensions from one attribute to another
+ *
+ */
+int dict_attr_ext_copy_all(TALLOC_CTX *ctx,
+			   fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in)
+{
+	fr_dict_attr_ext_t i;
+
+	for (i = 0; i < NUM_ELEMENTS(da_in->ext); i++) {
+		if (!da_in->ext[i] || !fr_dict_ext_info[i].can_copy) continue;
+		if (!dict_attr_ext_copy(ctx, da_out_p, da_in, i)) return -1;
+	}
+
+	return 0;
 }

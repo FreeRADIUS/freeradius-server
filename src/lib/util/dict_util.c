@@ -304,17 +304,14 @@ static int dict_vendor_pen_cmp(void const *one, void const *two)
 	return a->pen - b->pen;
 }
 
-/** Hash a dictionary name
+/** Hash a enumeration name
  *
  */
 static uint32_t dict_enum_name_hash(void const *data)
 {
-	uint32_t hash;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = dict_hash_name((void const *)enumv->name, enumv->name_len);
-
-	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
+	return dict_hash_name((void const *)enumv->name, enumv->name_len);
 }
 
 /** Compare two dictionary attribute enum values
@@ -322,12 +319,8 @@ static uint32_t dict_enum_name_hash(void const *data)
  */
 static int dict_enum_name_cmp(void const *one, void const *two)
 {
-	int rcode;
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
-
-	rcode = a->da - b->da;
-	if (rcode != 0) return rcode;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -337,11 +330,9 @@ static int dict_enum_name_cmp(void const *one, void const *two)
  */
 static uint32_t dict_enum_value_hash(void const *data)
 {
-	uint32_t hash = 0;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = fr_hash_update((void const *)&enumv->da, sizeof(void *), hash);	/* Cast to quiet static analysis */
-	return fr_value_box_hash(enumv->value, hash);
+	return fr_value_box_hash_update(enumv->value, 0);
 }
 
 /** Compare two dictionary enum values
@@ -351,10 +342,6 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
-	int8_t ret;
-
-	ret = (a->da > b->da) - (a->da < b->da);
-	if (ret != 0) return ret;
 
 	return fr_value_box_cmp(a->value, b->value);
 }
@@ -419,6 +406,63 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(TALLOC_CTX *ctx, fr_
 	return 0;
 }
 
+/** Add a child/nesting extension to an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_children_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_children_t	*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_CHILDREN);
+	if (unlikely(!ext)) return -1;
+	memset(ext, 0, sizeof(*ext));
+
+	return 0;
+}
+
+/** Set a reference for a grouping attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_ref_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_ref_t		*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) return -1;
+	memset(ext, 0, sizeof(*ext));
+
+	return 0;
+}
+
+/** Cache the vendor pointer for an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] ctx		to realloc attribute in.
+ * @param[in] da_p		to set a group reference for.
+ * @param[in] vendor		to set.
+ */
+static inline CC_HINT(always_inline) int dict_attr_vendor_set(TALLOC_CTX *ctx,
+							      fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
+{
+	fr_dict_attr_ext_vendor_t	*ext;
+
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_VENDOR);
+	if (unlikely(!ext)) return -1;
+
+	ext->vendor = vendor;
+
+	return 0;
+}
+
 /** Initialise an attribute's da stack from its parent
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
@@ -458,51 +502,12 @@ static inline CC_HINT(always_inline) int dict_attr_da_stack_set(TALLOC_CTX *ctx,
  *
  * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to set a group reference for.
- * @param[in] vendor		to set.
  */
-static inline CC_HINT(always_inline) int dict_attr_vendor_set(TALLOC_CTX *ctx,
-							      fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
+static inline CC_HINT(always_inline) int dict_attr_enumv_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
 {
-	fr_dict_attr_ext_vendor_t	*ext;
+	fr_dict_attr_ext_enumv_t	*ext;
 
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_VENDOR);
-	if (unlikely(!ext)) return -1;
-
-	ext->vendor = vendor;
-
-	return 0;
-}
-
-/** Set a reference for a grouping attribute
- *
- * @note This function can only be used _before_ the attribute is inserted into the dictionary.
- *
- * @param[in] ctx		to realloc attribute in.
- * @param[in] da_p		to set a group reference for.
- */
-static inline CC_HINT(always_inline) int dict_attr_ref_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
-{
-	fr_dict_attr_ext_ref_t		*ext;
-
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_REF);
-	if (unlikely(!ext)) return -1;
-	memset(ext, 0, sizeof(*ext));
-
-	return 0;
-}
-
-/** Add a child/nesting extension to an attribute
- *
- * @note This function can only be used _before_ the attribute is inserted into the dictionary.
- *
- * @param[in] ctx		to realloc attribute in.
- * @param[in] da_p		to set a group reference for.
- */
-static inline CC_HINT(always_inline) int dict_attr_children_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
-{
-	fr_dict_attr_ext_ref_t		*ext;
-
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_CHILDREN);
+	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_ENUMV);
 	if (unlikely(!ext)) return -1;
 	memset(ext, 0, sizeof(*ext));
 
@@ -584,12 +589,14 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 */
 	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
 	case FR_TYPE_UINT16:	/* Same here */
+		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
 		goto structural;
 
 	/*
 	 *	Leaf types
 	 */
 	default:
+		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
 		break;
 	}
 
@@ -664,22 +671,22 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  *
  * @param[in] ctx		to allocate new attribute in.
  * @param[in] in		attribute to copy.
+ * @param[in] new_name		to assign to the attribute.
+ *				If NULL the existing name will be used.
  * @return
  *	- A copy of the input fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name)
 {
 	fr_dict_attr_t		*n;
-	fr_dict_attr_ext_t	i;
 
-	n = dict_attr_alloc(ctx, in->parent, in->name, in->attr, in->type, &in->flags);
-	for (i = 0; i < NUM_ELEMENTS(in->ext); i++) if (in->ext[i]) {
-		if (i == FR_DICT_ATTR_EXT_NAME) continue;
-		if (unlikely(!dict_attr_ext_copy(ctx, &n, in, i))) {
-			talloc_free(n);
-			return NULL;
-		}
+	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name, in->attr, in->type, &in->flags);
+	if (unlikely(!n)) return NULL;
+
+	if (dict_attr_ext_copy_all(ctx, &n, in) < 0) {
+		talloc_free(n);
+		return NULL;
 	}
 	DA_VERIFY(n);
 
@@ -1012,11 +1019,11 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	{
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = dict_attr_acopy(dict->pool, da);
+		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_ADDR;
 
-		v6 = dict_attr_acopy(dict->pool, da);
+		v6 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v6) goto error;
 		v6->type = FR_TYPE_IPV6_ADDR;
 
@@ -1036,11 +1043,11 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	{
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = dict_attr_acopy(dict->pool, da);
+		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_PREFIX;
 
-		v6 = dict_attr_acopy(dict->pool, da);
+		v6 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v6) goto error;
 		v6->type = FR_TYPE_IPV6_PREFIX;
 
@@ -1154,15 +1161,16 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	return 0;
 }
 
-int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
-		       fr_value_box_t const *value,
-		       bool coerce, bool takes_precedence,
-		       fr_dict_attr_t const *child_struct)
+int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+			    fr_value_box_t const *value,
+			    bool coerce, bool takes_precedence,
+			    fr_dict_attr_t const *child_struct)
 {
-	size_t			len;
-	fr_dict_t		*dict;
-	fr_dict_enum_t		*enumv = NULL;
-	fr_value_box_t		*enum_value = NULL;
+	size_t				len;
+	fr_dict_t			*dict;
+	fr_dict_enum_t			*enumv = NULL;
+	fr_value_box_t			*enum_value = NULL;
+	fr_dict_attr_ext_enumv_t	*ext;
 
 	if (!da) {
 		fr_strerror_printf("%s: Dictionary attribute not specified", __FUNCTION__);
@@ -1180,17 +1188,36 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf("VALUEs cannot be defined for structural data types");
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return -1;
+	}
 
-	default:
-		break;
+	/*
+	 *	Initialise enumv hash tables
+	 */
+	if (!ext->value_by_name || !ext->name_by_value) {
+		ext->value_by_name = fr_hash_table_create(da, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
+		if (!ext->value_by_name) {
+			fr_strerror_printf("Failed allocating \"value_by_name\" table");
+			return -1;
+		}
+
+		ext->name_by_value = fr_hash_table_create(da, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
+		if (!ext->name_by_value) {
+			fr_strerror_printf("Failed allocating \"name_by_value\" table");
+			return -1;
+		}
 	}
 
 	dict = dict_by_da(da);
 
+	/*
+	 *	Allocate a structure to map between
+	 *	the name and value.
+	 */
 	enumv = talloc_zero_size(dict->pool, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * (child_struct != NULL));
 	if (!enumv) {
 	oom:
@@ -1198,8 +1225,10 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 	talloc_set_type(enumv, fr_dict_enum_t);
+
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = strlen(name);
+
 	if (child_struct) enumv->child_struct[0] = child_struct;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 	if (!enum_value) goto oom;
@@ -1229,7 +1258,6 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 
 	enumv->value = enum_value;
-	enumv->da = da;
 
 	/*
 	 *	Add the value into the dictionary.
@@ -1238,7 +1266,7 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		fr_dict_attr_t *tmp;
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
-		if (!fr_hash_table_insert(dict->values_by_name, tmp)) {
+		if (!fr_hash_table_insert(ext->value_by_name, tmp)) {
 			fr_dict_enum_t *old;
 
 			/*
@@ -1267,12 +1295,12 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	take care of that here.
 	 */
 	if (takes_precedence) {
-		if (!fr_hash_table_replace(dict->values_by_da, enumv)) {
+		if (!fr_hash_table_replace(ext->name_by_value, enumv)) {
 			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, name);
 			return -1;
 		}
 	} else {
-		(void) fr_hash_table_insert(dict->values_by_da, enumv);
+		(void) fr_hash_table_insert(ext->name_by_value, enumv);
 	}
 
 	/*
@@ -1312,17 +1340,17 @@ int dict_enum_add_name(fr_dict_attr_t *da, char const *name,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
-			  fr_value_box_t const *value,
-			  bool coerce, bool takes_precedence)
+int fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+			       fr_value_box_t const *value,
+			       bool coerce, bool takes_precedence)
 {
-	return dict_enum_add_name(da, name, value, coerce, takes_precedence, NULL);
+	return dict_attr_enum_add_name(da, name, value, coerce, takes_precedence, NULL);
 }
 
 /** Add an name to an integer attribute hashing the name for the integer value
  *
  */
-int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
+int fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 {
 	fr_value_box_t	v = {
 				.type = da->type
@@ -1381,7 +1409,7 @@ int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 	 */
 	if (!fr_dict_enum_by_value(da, &v)) {
 	add:
-		return fr_dict_enum_add_name(da, name, &v, false, false);
+		return fr_dict_attr_enum_add_name(da, name, &v, false, false);
 	}
 
 	for (;;) {
@@ -2383,19 +2411,19 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
  */
 fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
-	fr_dict_t	*dict;
-	fr_dict_enum_t	enumv, *dv;
+	fr_dict_attr_ext_enumv_t	*ext;
 
-	if (!da) return NULL;
-
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf("VALUEs cannot be defined for structural data types");
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return NULL;
-
-	default:
-		break;
 	}
+
+	/*
+	 *	No values associated with this attribute
+	 */
+	if (!ext->name_by_value) return NULL;
 
 	/*
 	 *	Could be NULL or an unknown attribute, in which case
@@ -2403,29 +2431,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 */
 	if (value->type != da->type) return NULL;
 
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
-		return NULL;
-	}
-
-	/*
-	 *	First, look up names.
-	 */
-	enumv.da = da;
-	enumv.name = "";
-	enumv.name_len = 0;
-
-	/*
-	 *	Look up the attribute name target, and use
-	 *	the correct attribute number if found.
-	 */
-	dv = fr_hash_table_find_by_data(dict->values_by_name, &enumv);
-	if (dv) enumv.da = dv->da;
-
-	enumv.value = value;
-
-	return fr_hash_table_find_by_data(dict->values_by_da, &enumv);
+	return fr_hash_table_find_by_data(ext->name_by_value, &(fr_dict_enum_t){ .value = value });
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -2439,23 +2445,6 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_enum_t	*dv;
-	fr_dict_t	*dict;
-
-	if (!da) return NULL;
-
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		return NULL;
-
-	default:
-		break;
-	}
-
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
-		return NULL;
-	}
 
 	dv = fr_dict_enum_by_value(da, value);
 	if (!dv) return NULL;
@@ -2468,40 +2457,25 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
  */
 fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
-	fr_dict_enum_t	*found;
-	fr_dict_enum_t	find = {
-				.da = da,
-				.name = name
-			};
-	fr_dict_t	*dict;
+	fr_dict_attr_ext_enumv_t	*ext;
 
 	if (!name) return NULL;
 
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		return NULL;
-
-	default:
-		break;
-	}
-
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return NULL;
 	}
-
-	if (len < 0) len = strlen(name);
-	find.name_len = (size_t)len;
 
 	/*
-	 *	Look up the attribute name target, and use
-	 *	the correct attribute number if found.
+	 *	No values associated with this attribute
 	 */
-	found = fr_hash_table_find_by_data(dict->values_by_name, &find);
-	if (found) find.da = found->da;
+	if (!ext->value_by_name) return NULL;
 
-	return fr_hash_table_find_by_data(dict->values_by_name, &find);
+	if (len < 0) len = strlen(name);
+
+	return fr_hash_table_find_by_data(ext->value_by_name, &(fr_dict_enum_t){ .name = name, .name_len = len});
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
@@ -2653,18 +2627,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
 	if (!dict->attributes_combo) {
 		fr_strerror_printf("Failed allocating \"attributes_combo\" table");
-		goto error;
-	}
-
-	dict->values_by_name = fr_hash_table_create(dict, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
-	if (!dict->values_by_name) {
-		fr_strerror_printf("Failed allocating \"values_by_name\" table");
-		goto error;
-	}
-
-	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
-	if (!dict->values_by_da) {
-		fr_strerror_printf("Failed allocating \"values_by_da\" table");
 		goto error;
 	}
 
@@ -2856,34 +2818,24 @@ int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED voi
 
 static int dict_dump(void *ctx, fr_dict_attr_t const *da, int lvl)
 {
-	fr_dict_t const		*dict = (fr_dict_t const *) ctx;
-	char			flags[256];
+	fr_dict_t const			*dict = (fr_dict_t const *) ctx;
+	char				flags[256];
+	fr_hash_iter_t			iter;
+	fr_dict_enum_t const		*enumv;
+	fr_dict_attr_ext_enumv_t 	*ext;
 
 	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
 
-	return 0;
-}
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext || !ext->name_by_value) return 0;
 
-void fr_dict_dump(fr_dict_t const *dict)
-{
-	fr_hash_iter_t		iter;
-	fr_dict_enum_t const	*enumv;
-	void *ctx;
-
-	memcpy(&ctx, &dict, sizeof(ctx)); /* const issues */
-
-	(void) fr_dict_walk(dict->root, ctx, dict_dump);
-
-	printf("Enumeration name -> value:\n");
-
-	for (enumv = fr_hash_table_iter_init(dict->values_by_da, &iter);
+	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
 	     enumv;
-	     enumv = fr_hash_table_iter_next(dict->values_by_da, &iter)) {
-	     	char			*enumv_str;
-	     	fr_dict_attr_t const	*da = enumv->da;
+	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
+		char			*enumv_str;
 
 		enumv_str = fr_asprintf(NULL, "0x%016" PRIxPTR " %s(%u) %s: %s -> %pV",
 					(unsigned long)da, da->name, da->attr,
@@ -2892,6 +2844,17 @@ void fr_dict_dump(fr_dict_t const *dict)
 		printf("%s\n", enumv_str);
 		talloc_free(enumv_str);
 	}
+
+	return 0;
+}
+
+void fr_dict_dump(fr_dict_t const *dict)
+{
+	void *ctx;
+
+	memcpy(&ctx, &dict, sizeof(ctx)); /* const issues */
+
+	(void) fr_dict_walk(dict->root, ctx, dict_dump);
 }
 
 /** Callback to automatically load validation routines for dictionaries.

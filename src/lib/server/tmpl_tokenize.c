@@ -731,7 +731,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_acopy(dst_ar, src_ar->ar_unknown);
+	 		dst_ar->ar_unknown = fr_dict_unknown_acopy(dst_ar, src_ar->ar_unknown, NULL);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -784,7 +784,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da, NULL);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -835,7 +835,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
-		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da, NULL);
 	} else {
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
@@ -3067,7 +3067,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		fr_sbuff_in_strcpy_literal(&name, "raw.");
 		fr_dict_print_attr_oid(&name, NULL, ref->da);
 
-		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy_name(vpt, ref->da, fr_sbuff_start(&name));
+		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->ar_unknown->flags.is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
