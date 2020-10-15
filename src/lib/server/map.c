@@ -1174,6 +1174,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	fr_assert(map->rhs != NULL);
 
 	tmp_ctx = talloc_new(request);
+	fr_pair_cursor_init(&src_list, &head);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
