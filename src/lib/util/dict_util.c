@@ -601,9 +601,8 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	}
 
 	/*
-	 *	Name is a separate talloc chunk, so allocate it last
-	 *	so re-allocing for the extensions doesn't eat up
-	 *	pool space.
+	 *	Name is a separate talloc chunk.  We allocate
+	 *	it last because we cache the pointer value.
 	 */
 	if (dict_attr_name_set(ctx, da_p, name) < 0) return -1;
 

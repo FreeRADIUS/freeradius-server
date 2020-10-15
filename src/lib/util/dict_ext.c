@@ -198,8 +198,10 @@ void *dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_a
 
 	n_da = talloc_realloc_size(ctx, da, da_len + hdr_len + aligned_len);
 	if (!n_da) {
-		fr_strerror_printf("Failed in realloc for dictionary extensions. "
-				   "Tried to realloc %zu bytes -> %zu bytes", da_len, da_len + aligned_len);
+		fr_strerror_printf("Failed in realloc for dictionary extension '%s'. "
+				   "Tried to realloc %zu bytes -> %zu bytes",
+				   fr_table_str_by_value(dict_attr_ext_table, ext, "<INVALID>"),
+				   da_len, da_len + aligned_len);
 		return NULL;
 	}
 	talloc_set_type(n_da, fr_dict_attr_t);
