@@ -113,7 +113,7 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_row_t row)
+int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor, rlm_sql_row_t row)
 {
 	VALUE_PAIR *vp;
 	char const *ptr, *value;
@@ -221,7 +221,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Add the pair into the packet
 	 */
-	fr_pair_add(head, vp);
+	fr_cursor_append(cursor, vp);
 	return 0;
 }
 
@@ -501,7 +501,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
  *
  *************************************************************************/
 int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-		  VALUE_PAIR **pair, char const *query)
+		  fr_cursor_t *cursor, char const *query)
 {
 	rlm_sql_row_t	row;
 	int		rows = 0;
@@ -513,7 +513,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
+		if (sql_fr_pair_list_afrom_str(ctx, request, cursor, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);
