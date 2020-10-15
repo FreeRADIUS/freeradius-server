@@ -1184,6 +1184,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 	decode_fail_t		reason;
 	uint8_t			code;
 	uint8_t			original[RADIUS_HEADER_LENGTH];
+	fr_cursor_t		cursor;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
@@ -1238,8 +1239,9 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
+	fr_cursor_init(&cursor, reply);
 	if (fr_radius_decode(ctx, data, packet_len, original,
-			     inst->secret, talloc_array_length(inst->secret) - 1, reply) < 0) {
+			     inst->secret, talloc_array_length(inst->secret) - 1, &cursor) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(reply);
 		return DECODE_FAIL_UNKNOWN;

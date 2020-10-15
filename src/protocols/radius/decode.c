@@ -1763,7 +1763,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 	vp = fr_cursor_tail(&cursor);
 
 	return fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
-				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &vp->next);
+				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &cursor);
 }
 
 /*
