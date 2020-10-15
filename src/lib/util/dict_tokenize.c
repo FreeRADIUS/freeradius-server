@@ -1272,7 +1272,6 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	return 0;
 }
 
-
 static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 				  bool *pcontinuation)
 {
