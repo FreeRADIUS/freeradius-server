@@ -1080,18 +1080,15 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
  *
  */
 ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
+			 char const *secret, UNUSED size_t secret_len, fr_cursor_t *cursor)
 {
 	ssize_t			slen;
-	fr_cursor_t		cursor;
 	uint8_t const		*attr, *end;
 	fr_radius_ctx_t		packet_ctx;
 
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 	packet_ctx.secret = secret;
 	packet_ctx.vector = original ? original + 4 : packet + 4;
-
-	fr_cursor_init(&cursor, vps);
 
 	attr = packet + 20;
 	end = packet + packet_len;
@@ -1101,7 +1098,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
-		slen = fr_radius_decode_pair(ctx, &cursor, dict_radius, attr, (end - attr), &packet_ctx);
+		slen = fr_radius_decode_pair(ctx, cursor, dict_radius, attr, (end - attr), &packet_ctx);
 		if (slen < 0) {
 			talloc_free(packet_ctx.tmp_ctx);
 			return slen;
