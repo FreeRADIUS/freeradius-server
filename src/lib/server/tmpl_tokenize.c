@@ -3061,13 +3061,12 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
 		char		buffer[256];
-		fr_dict_attr_t	*da;
 		fr_sbuff_t	name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 		fr_sbuff_in_strcpy_literal(&name, "raw.");
 		fr_dict_print_attr_oid(&name, NULL, ref->da);
 
-		ref->da = ref->ar_unknown = da = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
+		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->ar_unknown->flags.is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
