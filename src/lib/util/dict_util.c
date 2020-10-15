@@ -2829,21 +2829,24 @@ static int dict_dump(void *ctx, fr_dict_attr_t const *da, int lvl)
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
 
+	dict_attr_ext_debug(da);
+
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext || !ext->name_by_value) return 0;
 
+	lvl++;
 	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
 		char			*enumv_str;
 
-		enumv_str = fr_asprintf(NULL, "0x%016" PRIxPTR " %s(%u) %s: %s -> %pV",
-					(unsigned long)da, da->name, da->attr,
-					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
+		enumv_str = fr_asprintf(NULL, "[%02i] 0x%016" PRIxPTR "%*s%s -> %pV",
+					lvl, (unsigned long)da, lvl * 2, " ",
 					enumv->name, enumv->value);
 		printf("%s\n", enumv_str);
 		talloc_free(enumv_str);
 	}
+	lvl--;
 
 	return 0;
 }
