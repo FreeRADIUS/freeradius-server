@@ -290,6 +290,7 @@ void *dict_attr_ext_copy(TALLOC_CTX *ctx,
 
 	ext_len = dict_attr_ext_len(da_in, ext);
 	ext_ptr = fr_dict_attr_ext(da_in, ext);
+	if (!ext_ptr) return NULL;
 
 	/*
 	 *	Use the special copy function.
