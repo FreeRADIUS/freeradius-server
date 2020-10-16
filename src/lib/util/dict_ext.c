@@ -47,6 +47,10 @@ typedef struct {
 static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 					 fr_dict_attr_ext_t ext, void *ext_ptr, size_t ext_len);
 
+
+static void *fr_dict_attr_ext_vendor_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+					  fr_dict_attr_ext_t ext, void *ext_ptr, UNUSED size_t ext_len);
+
 static fr_table_num_ordered_t const dict_attr_ext_table[] = {
 	{ L("name"),		FR_DICT_ATTR_EXT_NAME		},
 	{ L("children"),	FR_DICT_ATTR_EXT_CHILDREN	},
@@ -77,6 +81,7 @@ static fr_dict_attr_ext_info_t const fr_dict_ext_info[] = {
 	[FR_DICT_ATTR_EXT_VENDOR]	= {
 						.min = sizeof(fr_dict_attr_ext_vendor_t),
 						.can_copy = true,
+						.copy = fr_dict_attr_ext_vendor_copy
 					},
 	[FR_DICT_ATTR_EXT_ENUMV]	= {
 						.min = sizeof(fr_dict_attr_ext_enumv_t),
@@ -135,6 +140,54 @@ static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	}
 
 	return new_ext;
+}
+
+/** Rediscover the parent of this attribute, and cache it
+ *
+ */
+static void *fr_dict_attr_ext_vendor_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+					  fr_dict_attr_ext_t ext, void *ext_ptr, UNUSED size_t ext_len)
+{
+	fr_dict_attr_ext_vendor_t	*new_ext, *old_ext = ext_ptr;
+	fr_dict_attr_t const		**da_stack;
+	fr_dict_attr_t const		*old_vendor = old_ext->vendor;
+	fr_dict_attr_t const		*new_vendor, *da;
+
+	/*
+	 *	If we have a da stack, see if we can
+	 *	find a vendor at the same depth as
+	 *	the old depth.
+	 */
+	da_stack = fr_dict_attr_da_stack(*da_p);
+	if (da_stack) {
+		new_vendor = da_stack[old_vendor->depth];
+		if ((new_vendor->type == old_vendor->type) && (new_vendor->attr == old_vendor->attr)) {
+			new_ext = dict_attr_ext_alloc(ctx, da_p, ext);
+			if (!new_ext) return NULL;
+
+			new_ext->vendor = new_vendor;
+			return new_ext;
+		}
+	}
+
+	/*
+	 *	Otherwise traverse the parent list
+	 *	looking for the vendor.
+	 *
+	 *	Theoretically the attribute could
+	 *	have been moved to a different depth.
+	 */
+	for (da = (*da_p)->parent; da; da = da->parent) {
+		if ((da->type == old_vendor->type) && (da->attr == old_vendor->attr)) {
+			new_ext = dict_attr_ext_alloc(ctx, da_p, ext);
+			if (!new_ext) return NULL;
+
+			new_ext->vendor = da;
+			return new_ext;
+		}
+	}
+
+	return NULL;
 }
 
 /** Add a variable length extension to a dictionary attribute
