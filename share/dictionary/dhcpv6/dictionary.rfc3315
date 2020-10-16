@@ -85,18 +85,18 @@ ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	group
 ATTRIBUTE	Auth					11	struct
-MEMBER		Auth-Protocol				uint8 key
+MEMBER		Auth-Protocol				uint8
 MEMBER		Auth-Algorithm				uint8
 MEMBER		Auth-Replay-Detection-Method		uint8
 MEMBER		Auth-Replay-Detection			uint64
 MEMBER		Auth-Information			octets
 
-STRUCT	Auth-RKAP			Auth-Protocol		3 # really P=3,A=1,RDM=0
-MEMBER		Auth-RKAP-Type				uint8
-MEMBER		Auth-RKAP-Value				octets[16]
+#STRUCT	Auth-RKAP			Auth-Protocol		3 # really P=3,A=1,RDM=0
+#MEMBER		Auth-RKAP-Type				uint8
+#MEMBER		Auth-RKAP-Value				octets[16]
 
-VALUE	Auth-RKAP-Type			Reconfigure-Key		1
-VALUE	Auth-RKAP-Type			HMAC-MD5		2
+#VALUE	Auth-RKAP-Type			Reconfigure-Key		1
+#VALUE	Auth-RKAP-Type			HMAC-MD5		2
 
 VALUE	Auth-Protocol			Configuration-Token	0
 VALUE	Auth-Protocol			Delayed-Authentication	1

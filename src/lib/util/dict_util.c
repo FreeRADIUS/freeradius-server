@@ -1187,6 +1187,19 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
+	/*
+	 *	Key fields CANNOT define VALUEs, and MUST define a child struct.
+	 */
+	if (da_is_key_field(da)) {
+		if (!child_struct) {
+			fr_strerror_printf("VALUEs cannot be defined for MEMBER attributes which are a 'key' field.");
+			return -1;
+		}
+	} else if (child_struct) {
+		fr_strerror_printf("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+		return -1;
+	}
+
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
 		fr_strerror_printf("VALUE cannot be defined for %s attributes",
