@@ -865,7 +865,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request, inst, request, handle, &check_tmp, expanded);
+			fr_cursor_init(&cursor, &check_tmp);
+			rows = sql_getvpdata(request, inst, request, handle, &cursor, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -907,6 +908,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		}
 
 		if (inst->config->authorize_group_reply_query) {
+			fr_cursor_t	cursor;
+
 			/*
 			 *	Now get the reply pairs since the paircmp matched
 			 */
@@ -917,7 +920,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request->reply, inst, request, handle, &reply_tmp, expanded);
+			fr_cursor_init(&cursor, &reply_tmp);
+			rows = sql_getvpdata(request->reply, inst, request, handle, &cursor, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -1244,7 +1248,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 			return rcode;
 		}
 
-		rows = sql_getvpdata(request, inst, request, &handle, &check_tmp, expanded);
+		fr_cursor_init(&cursor, &check_tmp);
+		rows = sql_getvpdata(request, inst, request, &handle, &cursor, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1281,6 +1286,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	}
 
 	if (inst->config->authorize_reply_query) {
+		fr_cursor_t	cursor;
+
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
@@ -1291,7 +1298,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 			goto error;
 		}
 
-		rows = sql_getvpdata(request->reply, inst, request, &handle, &reply_tmp, expanded);
+		fr_cursor_init(&cursor, &reply_tmp);
+		rows = sql_getvpdata(request->reply, inst, request, &handle, &cursor, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
