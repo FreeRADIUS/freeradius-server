@@ -99,6 +99,11 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
+	if (data_len == 0) {
+		fr_assert((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING));
+		goto finish;
+	}
+
 	/*
 	 *	Unknown attributes always get converted to
 	 *	octet types, so there's no way there could
@@ -220,7 +225,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
 	slen = decode_value(ctx, cursor, child, data, data_len);
-	if (slen <= 0) fr_dict_unknown_free(&child);
+	if (slen < 0) fr_dict_unknown_free(&child);
 
 	return slen;
 }
@@ -300,7 +305,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			 */
 		raw:
 			tlv_len = decode_raw(ctx, cursor, parent, p, end - p);
-			if (tlv_len <= 0) return tlv_len;
+			if (tlv_len < 0) return tlv_len;
 
 			return data_len;
 		}
@@ -414,7 +419,7 @@ next:
 	if (((end - data) < 4 + 1 + 2) ||
 	    (data[4] == 0) || ((data + 5 + data[4]) > end)) {
 		len = decode_raw(ctx, cursor, parent, data, end - data);
-		if (len <= 0) return len;
+		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
 	}
@@ -565,7 +570,9 @@ static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 
 	*vps = NULL;
 
-	return fr_dhcpv4_decode(ctx, data, data_len, vps, &code);
+	if (fr_dhcpv4_decode(ctx, data, data_len, vps, &code) < 0) return -1;
+
+	return data_len;
 }
 
 /*
