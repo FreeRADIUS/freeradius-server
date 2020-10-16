@@ -113,6 +113,7 @@ static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	fr_dict_attr_ext_enumv_t	*new_ext, *old_ext;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_t			*enumv;
+	bool				has_child = da_is_key_field(*da_p);
 
 	new_ext = dict_attr_ext_alloc(ctx, da_p, ext);
 	if (!new_ext) return NULL;
@@ -131,10 +132,18 @@ static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	for (enumv = fr_hash_table_iter_init(old_ext->value_by_name, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(old_ext->value_by_name, &iter)) {
+		fr_dict_attr_t const *child_struct;
+
+		if (!has_child) {
+			child_struct = NULL;
+		} else {
+			child_struct = enumv->child_struct[0];
+		}
+
 	     	/*
 	     	 *	Fixme - Child struct copying is probably wrong
 	     	 */
-		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, NULL) < 0) {
+		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, child_struct) < 0) {
 			return NULL;
 		}
 	}
