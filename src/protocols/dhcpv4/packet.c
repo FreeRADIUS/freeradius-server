@@ -103,17 +103,14 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	return NULL;
 }
 
-int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
+int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cursor_t *cursor, unsigned int *code)
 {
 	size_t		i;
 	uint8_t const  	*p = data;
 	uint32_t	giaddr;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*head = NULL, *vp;
+	VALUE_PAIR	*head, *vp;
 	VALUE_PAIR	*maxms, *mtu, *netaddr;
 	fr_value_box_t	box;
-
-	fr_cursor_init(&cursor, &head);
 
 	if (data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
@@ -130,7 +127,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 			fr_strerror_printf_push("Cannot decode packet due to internal error");
 		error:
 			talloc_free(vp);
-			fr_pair_list_free(&head);
+			fr_cursor_head(cursor);
+			fr_cursor_free_list(cursor);
 			return -1;
 		}
 
@@ -188,12 +186,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 
 		if (!vp) continue;
 
-		fr_cursor_append(&cursor, vp);
+		fr_cursor_append(cursor, vp);
 	}
 
 	/*
 	 *	Loop over the options.
 	 */
+
+	head = fr_cursor_head(cursor);
 
 	/*
 	 * 	Nothing uses tail after this call, if it does in the future
@@ -210,9 +210,10 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4, p, (end - p), NULL);
+			len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
-				fr_pair_list_free(&head);
+				fr_cursor_head(cursor);
+				fr_cursor_free_list(cursor);
 				return len;
 			}
 			p += len;
@@ -239,10 +240,11 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 				p = data + 44;
 				end = p + 64;
 				while (p < end) {
-					len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_pair_list_free(&head);
+						fr_cursor_head(cursor);
+						fr_cursor_free_list(cursor);
 						return len;
 					}
 					p += len;
@@ -256,10 +258,11 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 				p = data + 108;
 				end = p + 128;
 				while (p < end) {
-					len = fr_dhcpv4_decode_option(ctx, &cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_pair_list_free(&head);
+						fr_cursor_head(cursor);
+						fr_cursor_free_list(cursor);
 						return len;
 					}
 					p += len;
@@ -346,7 +349,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 	}
 
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	/*
 	 *	Client can request a LARGER size, but not a smaller
@@ -375,7 +378,6 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALU
 	 *	FIXME: Nuke attributes that aren't used in the normal
 	 *	header for discover/requests.
 	 */
-	*vps = head;
 
 	return 0;
 }
