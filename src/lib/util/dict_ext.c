@@ -129,7 +129,7 @@ static void *fr_dict_attr_ext_enumv_copy(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	     	/*
 	     	 *	Fixme - Child struct copying is probably wrong
 	     	 */
-		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, enumv->child_struct[0]) < 0) {
+		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, NULL) < 0) {
 			return NULL;
 		}
 	}
