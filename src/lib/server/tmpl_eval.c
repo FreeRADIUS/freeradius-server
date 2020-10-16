@@ -1276,7 +1276,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
  */
 void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 {
-	if (!fr_dlist_num_elements(&cc->nested)) return;			/* Help simplify dealing with unused cursor ctxs */
+	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
 
 	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
 	fr_dlist_talloc_free(&cc->nested);
