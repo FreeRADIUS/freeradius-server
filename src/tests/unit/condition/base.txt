@@ -617,5 +617,11 @@ match &reply
 condition ("$ENV{SOMETHING_OR_OTHER}" == '')
 match true
 
+#
+#  Attributes with a protocol namespace
+#
+condition &radius.User-Name == 'bob'
+match &User-Name == 'bob'
+
 count
-match 306
+match 308
