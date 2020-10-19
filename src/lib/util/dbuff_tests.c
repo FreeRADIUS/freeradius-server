@@ -278,13 +278,13 @@ static void test_dbuff_talloc_extend(void)
 	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 4);
 	fr_dbuff_marker(&marker, &dbuff);
 	TEST_CASE("Extension");
-	TEST_CHECK(fr_dbuff_in(&dbuff, 0x123456789abcdef0) == sizeof(uint64_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff, (uint64_t) 0x123456789abcdef0) == sizeof(uint64_t));
 	TEST_CASE("Markers track extended buffer");
 	TEST_CHECK(marker.p == dbuff.start);
 	TEST_CASE("Already-written content stays with the buffer");
 	TEST_CHECK(memcmp(fr_dbuff_marker_current(&marker), value, sizeof(value)) == 0);
 	TEST_CASE("Refuse to extend past specified maximum");
-	TEST_CHECK(fr_dbuff_in(&dbuff, 0x123456789abcdef0) == -2);
+	TEST_CHECK(fr_dbuff_in(&dbuff, (uint64_t) 0x123456789abcdef0) == -2);
 }
 
 static void test_dbuff_talloc_extend_multi_level(void)
@@ -310,7 +310,7 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	TEST_CHECK(dbuff2.uctx == NULL);
 	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff2) == 0);
-	TEST_CHECK(fr_dbuff_in(&dbuff2, 0x123456789abcdef0) == -8);
+	TEST_CHECK(fr_dbuff_in(&dbuff2, (uint64_t) 0x123456789abcdef0) == -8);
 }
 
 
