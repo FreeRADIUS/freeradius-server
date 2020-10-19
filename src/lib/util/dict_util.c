@@ -350,11 +350,10 @@ static int dict_enum_value_cmp(void const *one, void const *two)
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx	to realloc attribute in.
  * @param[in] da_p	to set name for.
  * @param[in] name	to set.  If NULL a name will be automatically generated.
  */
-static inline CC_HINT(always_inline) int dict_attr_name_set(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, char const *name)
+static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t **da_p, char const *name)
 {
 	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 	size_t		name_len;
@@ -392,7 +391,7 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(TALLOC_CTX *ctx, fr_
 	 *	We do still need to fixup the da->name pointer
 	 *	though.
 	 */
-	name_start = dict_attr_ext_alloc_size(ctx, da_p, FR_DICT_ATTR_EXT_NAME, name_len + 1);
+	name_start = dict_attr_ext_alloc_size(da_p, FR_DICT_ATTR_EXT_NAME, name_len + 1);
 	if (!name_start) return -1;
 
 	name_end = name_start + name_len;
@@ -410,14 +409,13 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(TALLOC_CTX *ctx, fr_
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to set a group reference for.
  */
-static inline CC_HINT(always_inline) int dict_attr_children_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t **da_p)
 {
 	fr_dict_attr_ext_children_t	*ext;
 
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_CHILDREN);
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) return -1;
 	memset(ext, 0, sizeof(*ext));
 
@@ -428,14 +426,13 @@ static inline CC_HINT(always_inline) int dict_attr_children_init(TALLOC_CTX *ctx
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to set a group reference for.
  */
-static inline CC_HINT(always_inline) int dict_attr_ref_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_p)
 {
 	fr_dict_attr_ext_ref_t		*ext;
 
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_REF);
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
 	if (unlikely(!ext)) return -1;
 	memset(ext, 0, sizeof(*ext));
 
@@ -446,16 +443,14 @@ static inline CC_HINT(always_inline) int dict_attr_ref_init(TALLOC_CTX *ctx, fr_
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to set a group reference for.
  * @param[in] vendor		to set.
  */
-static inline CC_HINT(always_inline) int dict_attr_vendor_set(TALLOC_CTX *ctx,
-							      fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
+static inline CC_HINT(always_inline) int dict_attr_vendor_set(fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
 {
 	fr_dict_attr_ext_vendor_t	*ext;
 
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_VENDOR);
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_VENDOR);
 	if (unlikely(!ext)) return -1;
 
 	ext->vendor = vendor;
@@ -467,10 +462,9 @@ static inline CC_HINT(always_inline) int dict_attr_vendor_set(TALLOC_CTX *ctx,
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to populate the da_stack for.
  */
-static inline CC_HINT(always_inline) int dict_attr_da_stack_set(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+static inline CC_HINT(always_inline) int dict_attr_da_stack_set(fr_dict_attr_t **da_p)
 {
 	fr_dict_attr_ext_da_stack_t	*ext, *p_ext;
 	fr_dict_attr_t			*da = *da_p;
@@ -483,7 +477,7 @@ static inline CC_HINT(always_inline) int dict_attr_da_stack_set(TALLOC_CTX *ctx,
 	p_ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_DA_STACK);
 	if (!p_ext) return 1;
 
-	ext = dict_attr_ext_alloc_size(ctx, da_p, FR_DICT_ATTR_EXT_DA_STACK, sizeof(ext->da_stack[0]) * (da->depth + 1));
+	ext = dict_attr_ext_alloc_size(da_p, FR_DICT_ATTR_EXT_DA_STACK, sizeof(ext->da_stack[0]) * (da->depth + 1));
 	if (unlikely(!ext)) return -1;
 
 	memcpy(ext->da_stack, p_ext->da_stack, sizeof(ext->da_stack[0]) * parent->depth);
@@ -500,14 +494,13 @@ static inline CC_HINT(always_inline) int dict_attr_da_stack_set(TALLOC_CTX *ctx,
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		to realloc attribute in.
  * @param[in] da_p		to set a group reference for.
  */
-static inline CC_HINT(always_inline) int dict_attr_enumv_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p)
+static inline CC_HINT(always_inline) int dict_attr_enumv_init(fr_dict_attr_t **da_p)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
-	ext = dict_attr_ext_alloc(ctx, da_p, FR_DICT_ATTR_EXT_ENUMV);
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_ENUMV);
 	if (unlikely(!ext)) return -1;
 	memset(ext, 0, sizeof(*ext));
 
@@ -518,7 +511,6 @@ static inline CC_HINT(always_inline) int dict_attr_enumv_init(TALLOC_CTX *ctx, f
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] ctx		To use if we need to re-alloc the da
  * @param[in] da_p		to initialise.
  * @param[in] parent		of the attribute, if none, should be
  *				the dictionary root.
@@ -527,7 +519,7 @@ static inline CC_HINT(always_inline) int dict_attr_enumv_init(TALLOC_CTX *ctx, f
  * @param[in] type		of the attribute.
  * @param[in] flags		to assign.
  */
-int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+int dict_attr_init(fr_dict_attr_t **da_p,
 		   fr_dict_attr_t const *parent,
 		   char const *name, int attr,
 		   fr_type_t type, fr_dict_attr_flags_t const *flags)
@@ -551,9 +543,9 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 		 *	attributes are VSAs, caching this pointer will help.
 		 */
 		if (parent->type == FR_TYPE_VENDOR) {
-			if (dict_attr_vendor_set(ctx, da_p, parent) < 0) return -1;
+			if (dict_attr_vendor_set(da_p, parent) < 0) return -1;
 		} else {
-			dict_attr_ext_copy(ctx, da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
+			dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
 		}
 	} else {
 		(*da_p)->depth = 0;
@@ -563,7 +555,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 *	Cache the da_stack so we don't need
 	 *	to generate it at runtime.
 	 */
-	dict_attr_da_stack_set(ctx, da_p);
+	dict_attr_da_stack_set(da_p);
 
 	/*
 	 *	Structural types can have children
@@ -573,15 +565,15 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	case FR_TYPE_STRUCTURAL:
 	structural:
 		if (type == FR_TYPE_GROUP) {
-			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
+			if (dict_attr_ref_init(da_p) < 0) return -1;
 			break;
 		}
 
 		if (type == FR_TYPE_TLV) {
-			if (dict_attr_ref_init(ctx, da_p) < 0) return -1;
+			if (dict_attr_ref_init(da_p) < 0) return -1;
 		}
 
-		if (dict_attr_children_init(ctx, da_p) < 0) return -1;
+		if (dict_attr_children_init(da_p) < 0) return -1;
 		break;
 
 	/*
@@ -589,14 +581,14 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 */
 	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
 	case FR_TYPE_UINT16:	/* Same here */
-		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
+		if (dict_attr_enumv_init(da_p) < 0) return -1;
 		goto structural;
 
 	/*
 	 *	Leaf types
 	 */
 	default:
-		if (dict_attr_enumv_init(ctx, da_p) < 0) return -1;
+		if (dict_attr_enumv_init(da_p) < 0) return -1;
 		break;
 	}
 
@@ -604,7 +596,7 @@ int dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
 	 *	Name is a separate talloc chunk.  We allocate
 	 *	it last because we cache the pointer value.
 	 */
-	if (dict_attr_name_set(ctx, da_p, name) < 0) return -1;
+	if (dict_attr_name_set(da_p, name) < 0) return -1;
 
 	DA_VERIFY(*da_p);
 
@@ -658,7 +650,7 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 	n = dict_attr_alloc_null(ctx);
 	if (unlikely(!n)) return NULL;
 
-	if (dict_attr_init(ctx, &n, parent, name, attr, type, flags) < 0) {
+	if (dict_attr_init(&n, parent, name, attr, type, flags) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -683,7 +675,7 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name, in->attr, in->type, &in->flags);
 	if (unlikely(!n)) return NULL;
 
-	if (dict_attr_ext_copy_all(ctx, &n, in) < 0) {
+	if (dict_attr_ext_copy_all(&n, in) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -1635,6 +1627,11 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 	}
 
 	return dict->root;
+}
+
+bool fr_dict_is_read_only(fr_dict_t const *dict)
+{
+	return dict->read_only;
 }
 
 ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,

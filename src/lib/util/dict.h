@@ -21,6 +21,7 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+RCSIDH(dict_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/ext.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
@@ -37,7 +39,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <talloc.h>
-#include <limits.h>
 
 /*
  *	Avoid circular type references.
@@ -114,7 +115,7 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
 /** Extension identifier
  *
- * @note New extension structures should also be added to the #fr_dict_ext_length_min table in dict_ext.c
+ * @note New extension structures should also be added to the #fr_dict_attr_ext_info table in dict_ext.c
  */
 typedef enum {
 	FR_DICT_ATTR_EXT_NAME = 0,				//!< Name of the attribute.
@@ -127,72 +128,6 @@ typedef enum {
 	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,			//!< Protocol specific extensions
 	FR_DICT_ATTR_EXT_MAX
 } fr_dict_attr_ext_t;
-
-/** The alignment of object extension structures
- *
- */
-#ifdef __WORD_SIZE
-#  if __WORD_SIZE < 4
-#    define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uint32_t)
-#  else
-#    define FR_DICT_ATTR_EXT_ALIGNMENT	__WORD_SIZE		/* From limits.h */
-#  endif
-#else
-#  define FR_DICT_ATTR_EXT_ALIGNMENT	sizeof(uint64_t)
-#endif
-
-/** Attribute extension - Holds children for an attribute
- *
- * Children are possible for:
- *
- * #FR_TYPE_TLV, #FR_TYPE_VENDOR, #FR_TYPE_VSA, #FR_TYPE_STRUCT
- *
- * *or* where the parent->parent->type is
- * #FR_TYPE_STRUCT, and "parent" is a "key"
- * field.  Note that these attributes therefore
- * cannot have VALUEs, as the child defines their
- * VALUE.  See dict_attr_can_have_children() for details.
- */
-typedef struct {
-	fr_hash_table_t		*child_by_name;			//!< Namespace at this level in the hierarchy.
-	fr_dict_attr_t const	**children;			//!< Children of this attribute.
-} fr_dict_attr_ext_children_t;
-
-/** Attribute extension - Holds a reference to an attribute in another dictionary
- *
- */
-typedef struct {
-	fr_dict_attr_t const	*ref;				//!< reference, only for #FR_TYPE_GROUP
-} fr_dict_attr_ext_ref_t;
-
-/** Attribute extension - Cached vendor pointer
- *
- */
-typedef struct {
-	fr_dict_attr_t const	*vendor;			//!< ancestor which has type #FR_TYPE_VENDOR
-} fr_dict_attr_ext_vendor_t;
-
-/** Attribute extension - Stack of dictionary attributes that describe the path back to the root of the dictionary
- *
- */
-typedef struct {
-	fr_dict_attr_t const	*da_stack[0];			//!< Stack of dictionary attributes
-} fr_dict_attr_ext_da_stack_t;
-
-/** Attribute extension - Holds enumeration values
- *
- */
-typedef struct {
-	fr_hash_table_t		*value_by_name;			//!< Lookup an enumeration value by name
-	fr_hash_table_t		*name_by_value;			//!< Lookup a name by value
-} fr_dict_attr_ext_enumv_t;
-
-/** Attribute extension - Protocol-specific
- *
- */
-typedef struct {
-	void			*uctx;				//!< Protocol specific extensions
-} fr_dict_attr_ext_protocol_specific_t;
 
 /** Dictionary attribute
  */
@@ -214,7 +149,16 @@ struct dict_attr_s {
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
-} CC_HINT(aligned(FR_DICT_ATTR_EXT_ALIGNMENT));
+} CC_HINT(aligned(FR_EXT_ALIGNMENT));
+
+/** Extension identifier
+ *
+ * @note New extension structures should also be added to the #fr_dict_ext_length_min table in dict_ext.c
+ */
+typedef enum {
+	FR_DICT_ENUM_EXT_UNION_REF = 0,				//!< Reference to a union/subs-struct.
+	FR_DICT_ENUM_EXT_MAX
+} fr_dict_enum_ext_t;
 
 /** Value of an enumerated attribute
  *
@@ -226,8 +170,10 @@ typedef struct {
 								///< on partial buffers.
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
 
+	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
+
 	fr_dict_attr_t const	*child_struct[0];		//!< for key fields
-} fr_dict_enum_t;
+} fr_dict_enum_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise
  *
@@ -335,76 +281,11 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
 extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 
-/** @name Add extension structures to attributes
+/** @name Dictionary structure extensions
  *
  * @{
  */
-
-/** Return a pointer to the specified extension structure
- */
-#define DICT_EXT_OFFSET(_ptr, _ext) ((void *)(((_ptr)->ext[_ext] * FR_DICT_ATTR_EXT_ALIGNMENT) + ((uintptr_t)(_ptr))))
-
-/* Retrieve an extension structure for a dictionary attribute
- *
- * @param[in] da	to retrieve structure from.
- * @param[in] ext	to retrieve.
- * @return
- *	- NULL if the extension wasn't found.
- *	- A pointer to the start of the extension.
- */
-static inline void *fr_dict_attr_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
-{
-	if (!da->ext[ext]) return NULL;
-
-	return DICT_EXT_OFFSET(da, ext);
-}
-
-/** Return whether a da has a given extension or not
- *
- * @param[in] da	to check for extensions.
- * @param[in] ext	to check.
- * @return
- *      - true if the da has the specified extension.
- *	- false if the da does not have the specified extension
- */
-static inline bool fr_dict_attr_has_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
-{
-	return (da->ext[ext] > 0);
-}
-
-/** Return the cached da stack (if any) associated with an attribute
- *
- * @param[in] da	to return cached da stack for.
- * @return
- *	- NULL if no da stack available.
- *	- The cached da stack on success.
- */
-static inline fr_dict_attr_t const **fr_dict_attr_da_stack(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_da_stack_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK);
-	if (!ext) return NULL;
-
-	return ext->da_stack;
-}
-
-/** Return the reference associated with a group type attribute
- *
- * @param[in] da	to return the reference for.
- * @return
- *	- NULL if no reference available.
- *	- A pointer to the attribute being referenced.
- */
-static inline fr_dict_attr_t const *fr_dict_attr_ref(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_ref_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
-	if (!ext) return NULL;
-
-	return ext->ref;
-}
+#include <freeradius-devel/util/dict_ext.h>
 /** @} */
 
 /** @name Programatically create dictionary attributes and values
@@ -421,6 +302,7 @@ int			fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_H
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */
+
 /** @name Unknown ephemeral attributes
  *
  * @{
@@ -508,6 +390,8 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **pare
  */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
+bool			fr_dict_is_read_only(fr_dict_t const *dict);
+
 ssize_t			fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
 						   fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 
@@ -531,46 +415,6 @@ static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
 	if (unlikely(!da) || unlikely(!da->parent)) return false;
 	if (!da->parent->flags.is_root) return false;
 	return true;
-}
-
-/** Return the vendor number for an attribute
- *
- * @param[in] da		The dictionary attribute to find the
- *				vendor for.
- * @return
- *	- 0 this isn't a vendor specific attribute.
- *	- The vendor PEN.
- */
-static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_vendor_t *ext;
-
-	if (da->type == FR_TYPE_VENDOR) return da->attr;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_VENDOR);
-	if (!ext || !ext->vendor) return 0;
-
-	return ext->vendor->attr;
-}
-
-/** Return the vendor da for an attribute
- *
- * @param[in] da		The dictionary attribute to find the
- *				vendor for.
- * @return
- *	- 0 this isn't a vendor specific attribute.
- *	- The vendor PEN.
- */
-static inline fr_dict_attr_t const *fr_dict_vendor_da_by_da(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_vendor_t *ext;
-
-	if (da->type == FR_TYPE_VENDOR) return da;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_VENDOR);
-	if (!ext) return NULL;
-
-	return ext->vendor;
 }
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);

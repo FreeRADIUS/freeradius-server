@@ -21,6 +21,7 @@ SOURCES		:= \
 		   dl.c \
 		   dns.c \
 		   event.c \
+		   ext.c \
 		   fifo.c \
 		   file.c \
 		   fopencookie.c \

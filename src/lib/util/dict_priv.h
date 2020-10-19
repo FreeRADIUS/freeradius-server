@@ -27,10 +27,11 @@ extern "C" {
 
 #define _DICT_PRIVATE 1
 
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/protocol/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict_ext_priv.h>
+#include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/hash.h>
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
 #define DICT_FIXUP_POOL_SIZE	(1024)
@@ -135,7 +136,7 @@ int			dict_dlopen(fr_dict_t *dict, char const *name);
 
 fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx);
 
-int			dict_attr_init(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
+int			dict_attr_init(fr_dict_attr_t **da_p,
 				       fr_dict_attr_t const *parent,
 				       char const *name, int attr,
 				       fr_type_t type, fr_dict_attr_flags_t const *flags);
@@ -146,70 +147,6 @@ fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
-
-/** @name Add extension structures to attributes
- *
- * @{
- */
-void 			*dict_attr_ext_alloc_size(TALLOC_CTX *ctx, fr_dict_attr_t **da_p,
-						  fr_dict_attr_ext_t ext, size_t ext_len);
-
-void			*dict_attr_ext_alloc(TALLOC_CTX *ctx, fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext);
-
-size_t			dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext);
-
-void			*dict_attr_ext_copy(TALLOC_CTX *ctx,
-					    fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in,
-					    fr_dict_attr_ext_t ext);
-
-int			dict_attr_ext_copy_all(TALLOC_CTX *ctx,
-					       fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in);
-
-void			dict_attr_ext_debug(fr_dict_attr_t const *da);
-
-static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
-{
-	fr_dict_attr_ext_ref_t	*ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
-	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'ref' extension", da->name,
-	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
-		return -1;
-	}
-	ext->ref = ref;
-
-	return 0;
-}
-
-static inline int dict_attr_children_set(fr_dict_attr_t const *da, fr_dict_attr_t const	**children)
-{
-	fr_dict_attr_ext_children_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
-	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
-	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
-		return -1;
-	}
-	ext->children = children;
-
-	return 0;
-}
-
-static inline fr_dict_attr_t const **dict_attr_children(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_children_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
-	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
-	   			   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
-		return NULL;
-	}
-	return ext->children;
-}
-/** @} */
 
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 

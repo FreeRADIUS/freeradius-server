@@ -85,8 +85,8 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(ctx, &n, parent, new_name ? new_name : da->name, da->attr, type, &flags);
-	dict_attr_ext_copy_all(ctx, &n, da);
+	dict_attr_init(&n, parent, new_name ? new_name : da->name, da->attr, type, &flags);
+	dict_attr_ext_copy_all(&n, da);
 	DA_VERIFY(n);
 
 	return n;
@@ -533,7 +533,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		 *	Leaf attribute
 		 */
 		case '\0':
-			dict_attr_init(ctx, &n, our_parent, oid_str, num, FR_TYPE_OCTETS, &flags);
+			dict_attr_init(&n, our_parent, oid_str, num, FR_TYPE_OCTETS, &flags);
 			break;
 		}
 		p++;
