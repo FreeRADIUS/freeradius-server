@@ -775,7 +775,7 @@ do { \
 
 static inline ssize_t _fr_dbuff_memcpy_in(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen)
 {
-	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) == 0) return -(inlen - fr_dbuff_remaining(dbuff));
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, inlen);
 
 	memcpy(dbuff->p, in, inlen);
 
@@ -793,7 +793,7 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(fr_dbuff_t *dbuff, fr_dbuff_t co
 	 *	return how many additional bytes
 	 *	we would have needed.
 	 */
-	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) == 0) return -(inlen - fr_dbuff_remaining(dbuff));
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, inlen);
 
 	(void)_fr_dbuff_memcpy_in(dbuff, in->p, inlen);
 
@@ -936,7 +936,7 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 {
 	fr_assert(!dbuff->is_const);
 
-	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) == 0) return -(inlen - fr_dbuff_remaining(dbuff));
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, inlen);
 
 	memset(dbuff->p, c, inlen);
 
@@ -948,7 +948,7 @@ static inline ssize_t fr_dbuff_memset(fr_dbuff_t *dbuff, uint8_t c, size_t inlen
 static inline ssize_t fr_dbuff_##_type##_in(fr_dbuff_t *dbuff, _type##_t num) \
 { \
 	fr_assert(!dbuff->is_const); \
-	if (fr_dbuff_extend_lowat(NULL, dbuff, sizeof(_type##_t)) == 0) return -(sizeof(_type##_t) - fr_dbuff_remaining(dbuff)); \
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, sizeof(_type##_t)); \
 	fr_net_from_##_type(dbuff->p, num); \
 	return _fr_dbuff_set(dbuff, dbuff->p + sizeof(_type##_t)); \
 }
