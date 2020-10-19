@@ -847,7 +847,7 @@ static inline size_t _fr_dbuff_memcpy_in_partial(fr_dbuff_t *dbuff, uint8_t cons
 {
 	fr_assert(!dbuff->is_const);
 
-	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) == 0) inlen = fr_dbuff_remaining(dbuff);
+	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) < inlen) inlen = fr_dbuff_remaining(dbuff);
 
 	memcpy(dbuff->p, in, inlen);
 
@@ -860,7 +860,7 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(fr_dbuff_t *dbuff, fr_dbu
 
 	if (inlen > fr_dbuff_remaining(in)) inlen = fr_dbuff_remaining(in);
 
-	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) == 0) inlen = fr_dbuff_remaining(dbuff);
+	if (fr_dbuff_extend_lowat(NULL, dbuff, inlen) < inlen) inlen = fr_dbuff_remaining(dbuff);
 
 	(void)_fr_dbuff_memcpy_in(dbuff, in->p, inlen);
 
