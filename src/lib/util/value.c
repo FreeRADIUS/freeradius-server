@@ -4547,8 +4547,10 @@ finish:
 
 /** Print one boxed value to a string
  *
- * This function should primarily when the #fr_value_box_t being serialized
- * in some non-standard way, i.e. as a value for a field in a database.
+ * This function should primarily be used when a #fr_value_box_t is being
+ * serialized in some non-standard way, i.e. as a value for a field
+ * in a database, in all other instances it's better to use
+ * #fr_value_box_print_quoted.
  *
  * @param[in] out	Where to write the printed string.
  * @param[in] data	Value box to print.
