@@ -594,15 +594,12 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 /** Decode a DHCPv6 packet
  *
  */
-ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps)
+ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_cursor_t *cursor)
 {
 	ssize_t			slen;
-	fr_cursor_t		cursor;
 	uint8_t const		*p, *end;
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 	VALUE_PAIR		*vp;
-
-	fr_cursor_init(&cursor, vps);
 
 	/*
 	 *	Get the packet type.
@@ -612,7 +609,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	vp->vp_uint32 = packet[0];
 	vp->type = VT_DATA;
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
 	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
@@ -631,14 +628,14 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 1, 1, true) < 0) {
 			goto fail;
 		}
-		fr_cursor_append(&cursor, vp);
+		fr_cursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_link_address);
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2, 16, true) < 0) {
 			goto fail;
 		}
-		fr_cursor_append(&cursor, vp);
+		fr_cursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_peer_address);
 		if (!vp) goto fail;
@@ -646,7 +643,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 			goto fail;
 		}
 
-		fr_cursor_append(&cursor, vp);
+		fr_cursor_append(cursor, vp);
 
 		p = packet + 2 + 32;
 		goto decode_options;
@@ -658,7 +655,8 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	vp = fr_pair_afrom_da(ctx, attr_transaction_id);
 	if (!vp) {
 	fail:
-		fr_pair_list_free(vps);
+		fr_cursor_head(cursor);
+		fr_cursor_free_list(cursor);
 		return -1;
 	}
 
@@ -668,7 +666,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	(void) fr_pair_value_memdup(vp, packet + 1, 3, false);
 
 	vp->type = VT_DATA;
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 
 	p = packet + 4;
@@ -682,9 +680,10 @@ decode_options:
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (p < end) {
-		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, p, (end - p), &packet_ctx);
+		slen = fr_dhcpv6_decode_option(ctx, cursor, dict_dhcpv6, p, (end - p), &packet_ctx);
 		if (slen < 0) {
-			fr_pair_list_free(vps);
+			fr_cursor_head(cursor);
+			fr_cursor_free_list(cursor);
 			talloc_free(packet_ctx.tmp_ctx);
 			return slen;
 		}
@@ -694,7 +693,8 @@ decode_options:
 		 *	all kinds of bad things happen.
 		 */
 		 if (!fr_cond_assert(slen <= (end - p))) {
-			 fr_pair_list_free(vps);
+			 fr_cursor_head(cursor);
+			 fr_cursor_free_list(cursor);
 			 talloc_free(packet_ctx.tmp_ctx);
 			 return -1;
 		 }

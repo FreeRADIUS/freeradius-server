@@ -140,7 +140,7 @@ ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *ori
 				 int msg_type, VALUE_PAIR *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
-				 VALUE_PAIR **vps);
+				 fr_cursor_t *cursor);
 
 int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t const *packet, size_t packet_len);
 
