@@ -539,11 +539,13 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	 */
 	if (da == attr_relay_message) {
 		VALUE_PAIR *vp;
+		fr_cursor_t cursor_group;
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_message);
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 
-		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &vp->vp_group);
+		fr_cursor_init(&cursor_group, &vp->vp_group);
+		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &cursor_group);
 		if (rcode < 0) {
 			talloc_free(vp);
 			return rcode;
@@ -625,13 +627,15 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	size_t packet_len = data_len;
+	fr_cursor_t cursor;
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 
 	if (!fr_dhcpv6_ok(data, packet_len, 200)) return -1;
 
 	*vps = NULL;
+	fr_cursor_init(&cursor, vps);
 
-	return fr_dhcpv6_decode(ctx, data, packet_len, vps);
+	return fr_dhcpv6_decode(ctx, data, packet_len, &cursor);
 }
 
 
