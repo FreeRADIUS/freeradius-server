@@ -738,14 +738,16 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
 			 int msg_type, fr_pair_t *vps)
 {
+	return fr_dhcpv6_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, length, msg_type, vps);
+}
+
+ssize_t	fr_dhcpv6_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original, size_t length, int msg_type, fr_pair_t *vps)
+{
 	fr_pair_t *vp;
 	fr_dict_attr_t const *root;
-	uint8_t *p, *end;
 	ssize_t slen;
 	fr_cursor_t cursor;
 	fr_dhcpv6_encode_ctx_t packet_ctx;
-
-	if (packet_len < 4) return -1;
 
 	root = fr_dict_root(dict_dhcpv6);
 
@@ -759,67 +761,62 @@ ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		return -1;
 	}
 
-	packet[0] = msg_type;
+	FR_DBUFF_BYTES_IN_RETURN(dbuff, (uint8_t) msg_type);
 
-	if (msg_type == FR_DHCPV6_RELAY_REPLY) {
-		if (packet_len < 2 + 32) return -1;
+	switch (msg_type) {
+	case FR_DHCPV6_RELAY_REPLY:
 		if (!original) return -1;
 
-		memcpy(packet + 1, original + 1, 1 + 32);
+		FR_DBUFF_MEMCPY_IN_RETURN(dbuff, original + 1, 1 + 32);
+		break;
 
-		p = packet + 2 + 32;
-		goto encode_options;
-	}
-
-	if (msg_type == FR_DHCPV6_RELAY_FORWARD) {
-		if (packet_len < 2 + 32) return -1;
+	case FR_DHCPV6_RELAY_FORWARD:
+		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, 1 + 32);
 
 		vp = fr_pair_find_by_da(vps, attr_hop_count);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 1, packet_len - 1, &vp->data);
+		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
 		vp = fr_pair_find_by_da(vps, attr_relay_link_address);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 2, packet_len - 2, &vp->data);
+		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
 		vp = fr_pair_find_by_da(vps, attr_relay_peer_address);
-		if (vp) (void) fr_value_box_to_network(NULL, packet + 2 + 16, packet_len - 2 - 16, &vp->data);
+		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
-		p = packet + 2 + 32;
-		goto encode_options;
+		break;
+
+	default:
+		/*
+		 *	Copy over original transaction ID if we have it.
+		 */
+		if (original) {
+			FR_DBUFF_MEMCPY_IN_RETURN(dbuff, original + 1, 3);
+		} else {
+			/*
+			 *	We can set an XID, or we can pick a random one.
+			 */
+			vp = fr_pair_find_by_da(vps, attr_transaction_id);
+			if (vp && (vp->vp_length >= 3)) {
+				FR_DBUFF_MEMCPY_IN_RETURN(dbuff, vp->vp_octets, 3);
+			} else {
+				uint8_t id[sizeof(uint32_t)];
+
+				fr_net_from_uint32(id, fr_rand());
+				FR_DBUFF_MEMCPY_IN_RETURN(dbuff, &id[1], 3);
+			}
+		}
+		break;
 	}
 
 	/*
-	 *	Copy over original transaction ID if we have it.
+	 * Encode options.
 	 */
-	if (original) {
-		memcpy(packet + 1, original + 1, 3);
-	} else {
-		/*
-		 *	We can set an XID, or we can pick a random one.
-		 */
-		vp = fr_pair_find_by_da(vps, attr_transaction_id);
-		if (vp && (vp->vp_length >= 3)) {
-			memcpy(packet + 1, vp->vp_octets, 3);
-		} else {
-			uint32_t id = fr_rand();
-
-			packet[1] = (id >> 16) & 0xff;
-			packet[2] = (id >> 8) & 0xff;
-			packet[3] = id & 0xff;
-		}
-	}
-
-	p = packet + 4;
-
-encode_options:
 	packet_ctx.root = root;
 	packet_ctx.original = original;
 	packet_ctx.original_length = length;
 
-	end = packet + packet_len;
-
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
-	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
-		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
+	while ((fr_dbuff_extend(dbuff) > 0) && (fr_cursor_current(&cursor) != NULL)) {
+		slen = fr_dhcpv6_encode_option_dbuff(dbuff, &cursor, &packet_ctx);
 		switch (slen) {
 		case PAIR_ENCODE_SKIPPED:
 			continue;
@@ -832,12 +829,10 @@ encode_options:
 
 		}
 
-		if (slen < 0) return slen - (p - packet);
-
-		p += slen;
+		if (slen < 0) return slen - fr_dbuff_used(dbuff);
 	}
 
-	return p - packet;
+	return fr_dbuff_used(dbuff);
 }
 
 /**  Bootstrap a reply from the request
