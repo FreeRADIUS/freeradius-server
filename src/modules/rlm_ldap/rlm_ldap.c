@@ -591,7 +591,7 @@ free_urldesc:
  *	- 0 on success.
  */
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
-			     UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
+			     UNUSED VALUE_PAIR *check_list)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
