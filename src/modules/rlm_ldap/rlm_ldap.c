@@ -585,7 +585,6 @@ free_urldesc:
  * @param thing Unknown.
  * @param check Which group to check for user membership.
  * @param check_list Unknown.
- * @param reply_list Unknown.
  * @return
  *	- 1 on failure (or if the user is not a member).
  *	- 0 on success.

@@ -79,7 +79,6 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  * @param req		The request list
  * @param check		Value pair containing group to be searched
  * @param check_list	Unknown
- * @param reply_list	Unknown
  *
  * @return
  *	- 0 user is in group
