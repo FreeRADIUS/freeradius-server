@@ -503,7 +503,6 @@ finish:
  * @param[in] request_list	list pairs.
  * @param[in] check		item to compare.
  * @param[in] check_list	list.
- * @param[in] reply_list	list.
  * @return
  *	- 0 if check and vp are equal.
  *	- -1 if vp value is less than check value.
@@ -548,7 +547,6 @@ static int paircmp_func(REQUEST *request,
  * @param[in] request		Current request.
  * @param[in] request_list	request valuepairs.
  * @param[in] check		Check/control valuepairs.
- * @param[in,out] reply_list	Reply value pairs.
  * @return 0 on match.
  */
 int paircmp(REQUEST *request,
