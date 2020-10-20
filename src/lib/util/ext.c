@@ -76,7 +76,7 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 
 	/*
 	 *	Packing the offsets into a uint8_t means
-	 *      the offset address of the final extension
+	 *	the offset address of the final extension
 	 *	must be less than or equal to
 	 *	UINT8_MAX * FR_EXT_ALIGNMENT
 	 */

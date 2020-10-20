@@ -138,7 +138,7 @@ static void *fr_dict_attr_ext_vendor_copy(void **chunk_p, int ext, void *ext_ptr
  *
  */
 fr_ext_t const fr_dict_attr_ext_def = {
-	.offset_of_exts = __offsetof(fr_dict_attr_t, ext),
+	.offset_of_exts = offsetof(fr_dict_attr_t, ext),
 	.name_table	= dict_attr_ext_table,
 	.name_table_len	= &dict_attr_ext_table_len,
 	.max		= FR_DICT_ATTR_EXT_MAX,
@@ -188,7 +188,7 @@ static size_t dict_enum_ext_table_len = NUM_ELEMENTS(dict_enum_ext_table);
  *
  */
 fr_ext_t const fr_dict_enum_ext_def = {
-	.offset_of_exts = __offsetof(fr_dict_enum_t, ext),
+	.offset_of_exts = offsetof(fr_dict_enum_t, ext),
 	.name_table	= dict_enum_ext_table,
 	.name_table_len	= &dict_enum_ext_table_len,
 	.max		= FR_DICT_ENUM_EXT_MAX,
