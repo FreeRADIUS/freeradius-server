@@ -111,7 +111,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
  *      Compare the expiration date.
  */
 static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		     UNUSED VALUE_PAIR *check_list, UNUSED VALUE_PAIR **reply_list)
+		     UNUSED VALUE_PAIR *check_list)
 {
 	time_t now = 0;
 

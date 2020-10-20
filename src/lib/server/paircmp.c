@@ -117,8 +117,7 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 			     REQUEST *request,
 			     VALUE_PAIR *req,
 			     VALUE_PAIR *check,
-			     VALUE_PAIR *check_list,
-			     UNUSED VALUE_PAIR **reply_list)
+			     VALUE_PAIR *check_list)
 {
 	VALUE_PAIR	*vp;
 	char const	*name;
@@ -186,8 +185,7 @@ static int packet_cmp(UNUSED void *instance,
 		      REQUEST *request,
 		      UNUSED VALUE_PAIR *req,
 		      VALUE_PAIR *check,
-		      UNUSED VALUE_PAIR *check_list,
-		      UNUSED VALUE_PAIR **reply_list)
+		      UNUSED VALUE_PAIR *check_list)
 {
 	VP_VERIFY(check);
 
@@ -203,8 +201,7 @@ static int generic_cmp(UNUSED void *instance,
 		       REQUEST *request,
 		       VALUE_PAIR *req,
 		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_list,
-		       UNUSED VALUE_PAIR **reply_list)
+		       UNUSED VALUE_PAIR *check_list)
 {
 	VP_VERIFY(check);
 
@@ -515,8 +512,7 @@ finish:
 static int paircmp_func(REQUEST *request,
 			VALUE_PAIR *request_list,
 			VALUE_PAIR *check,
-			VALUE_PAIR *check_list,
-			VALUE_PAIR **reply_list)
+			VALUE_PAIR *check_list)
 {
 	paircmp_t *c;
 
@@ -535,7 +531,7 @@ static int paircmp_func(REQUEST *request,
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check->da) {
-			return (c->compare)(c->instance, request, request_list, check, check_list, reply_list);
+			return (c->compare)(c->instance, request, request_list, check, check_list);
 		}
 	}
 
@@ -557,8 +553,7 @@ static int paircmp_func(REQUEST *request,
  */
 int paircmp(REQUEST *request,
 	    VALUE_PAIR *request_list,
-	    VALUE_PAIR *check,
-	    VALUE_PAIR **reply_list)
+	    VALUE_PAIR *check)
 {
 	fr_cursor_t		cursor;
 	VALUE_PAIR		*check_item;
@@ -656,7 +651,7 @@ int paircmp(REQUEST *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, auth_item, check_item, check, reply_list);
+		compare = paircmp_func(request, auth_item, check_item, check);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
