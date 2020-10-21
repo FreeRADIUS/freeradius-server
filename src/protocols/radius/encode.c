@@ -567,12 +567,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_INVALID:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_TLV:
-	case FR_TYPE_STRUCT:
+	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Unsupported attribute type %d", da->type);
