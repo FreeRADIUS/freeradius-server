@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Extensions to talloced structures
+/** 'compositing' using talloced structures
  *
  * @file src/lib/util/ext.c
  *
@@ -32,22 +32,24 @@ RCSID("$Id$")
 #define CHUNK_EXT_PTR(_chunk, _chunk_ext, _ext) ((void *)((chunk_ext[_ext] * FR_EXT_ALIGNMENT) + ((uintptr_t)(_chunk))))
 #define CHUNK_EXT(_chunk, _offset) ((uint8_t *)(((uintptr_t)_chunk) + (_offset)))
 
-/** Add a variable length extension to a dictionary attribute
+/** Add a variable length extension to a talloc chunk
  *
- * Extensions are appended to the existing #fr_dict_attr_t memory chunk
- * using realloc.
+ * This is used to build a structure from a primary struct type and one or more
+ * extension structures.  The memory for the composed structure is contiguous which
+ * has performance benefits, and means we don't have the overhead of talloc headers
+ * for each of the extensions.
  *
- * When a new extension is allocated it will not be initialised.
+ * @note When a new extension is allocated its memory will not be initialised.
+ *
+ * @note It is highly recommended to allocate composed structures within a talloc_pool
+ * to avoid the overhead of malloc+memcpy.
  *
  * @param[in] def		Extension definitions.
  * @param[in,out] chunk_p	The chunk to add an extension for.
  *				Under certain circumstances the value of *chunk_p will
  *				be changed to point to a new memory block.
- *				All cached copied of the previous pointer should be
- *				updated.  This means that attributes that have
- *				already been added to a dictionary should not have
- *				extensions allocated unless care is taken to update
- *				all references.
+ *				All cached copies of the previous pointer should be
+ *				updated.
  * @param[in] ext		to alloc.
  * @param[in] ext_len		The length of the extension.
  * @return
@@ -75,10 +77,10 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	if (info->has_hdr) hdr_len = sizeof(dict_ext_hdr_t);	/* Add space for a length prefix */
 
 	/*
-	 *	Packing the offsets into a uint8_t means
-	 *	the offset address of the final extension
-	 *	must be less than or equal to
-	 *	UINT8_MAX * FR_EXT_ALIGNMENT
+	 *	Packing the offsets into a uint8_t array
+	 *	means the offset address of the final
+	 *	extension must be less than or equal to
+	 *	UINT8_MAX * FR_EXT_ALIGNMENT.
 	 */
 	chunk_len = talloc_get_size(chunk);
 	offset = (chunk_len + hdr_len) / FR_EXT_ALIGNMENT;
@@ -87,11 +89,16 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 		return NULL;
 	}
 
+	/*
+	 *	talloc_realloc_size unhelpfully forgets
+	 *	the name of the chunk, so we need to
+	 *	record it and set it back again.
+	 */
 	type = talloc_get_name(chunk);
 	n_chunk = talloc_realloc_size(NULL, chunk, chunk_len + hdr_len + aligned_len);
 	if (!n_chunk) {
-		fr_strerror_printf("Failed reallocing %s.  Tried to realloc %zu bytes -> %zu bytes",
-				   type, chunk_len, chunk_len + aligned_len);
+		fr_strerror_printf("Failed reallocing %s (%s).  Tried to realloc %zu bytes -> %zu bytes",
+				   type, fr_syserror(errno), chunk_len, chunk_len + aligned_len);
 		return NULL;
 	}
 	talloc_set_name_const(n_chunk, type);
@@ -118,7 +125,7 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
  * @param[in] chunk		to return extension length for.
  * @param[in] ext		to return length for.
  * @return
- *	- 0 if no extension exists.
+ *	- 0 if no extension exists or is of zero length.
  *	- >0 the length of the extension.
  */
 size_t fr_ext_len(fr_ext_t const *def, void const *chunk, int ext)
@@ -143,6 +150,10 @@ size_t fr_ext_len(fr_ext_t const *def, void const *chunk, int ext)
  *
  * @param[in] def		Extension definitions.
  * @param[in,out] chunk_out	to copy extension to.
+ *				Under certain circumstances the value of *chunk_out will
+ *				be changed to point to a new memory block.
+ *				All cached copies of the previous pointer should be
+ *				updated.
  * @param[in] chunk_in		to copy extension from.
  * @param[in] ext		to copy.
  * @return
@@ -189,6 +200,16 @@ void *fr_ext_copy(fr_ext_t const *def, void **chunk_out, void const *chunk_in, i
 
 /** Copy all the extensions from one attribute to another
  *
+ * @param[in] def		Extension definitions.
+ * @param[in,out] chunk_out	to copy extensions to.
+ *				Under certain circumstances the value of *chunk_out will
+ *				be changed to point to a new memory block.
+ *				All cached copies of the previous pointer should be
+ *				updated.
+ * @param[in] chunk_in		to copy extensions from.
+ * @return
+ *	- 0 on success.
+ *	- -1 if a copy operation failed.
  */
 int fr_ext_copy_all(fr_ext_t const *def, void **chunk_out, void const *chunk_in)
 {
@@ -203,6 +224,16 @@ int fr_ext_copy_all(fr_ext_t const *def, void **chunk_out, void const *chunk_in)
 	return 0;
 }
 
+/** Print out all extensions and hexdump their contents
+ *
+ * This function is intended to be called from interactive debugging
+ * sessions only.  It does not use the normal logging infrastructure.
+ *
+ * @param[in] def		Extension definitions.
+ * @param[in] name		the identifier of the structure
+ *				being debugged i.e da->name.
+ * @param[in] chunk		to debug.
+ */
 void fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk)
 {
 	int i;

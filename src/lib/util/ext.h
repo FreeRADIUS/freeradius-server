@@ -15,13 +15,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Extensions to talloced structures
+/** 'compositing' using talloc structures
  *
- * These allow multiple variable length chunks to be appended to talloced
- * structures.  Extensions can either contain a header in which case the
- * exact length is recorded, or they can be of a fixed size.
+ * These allow multiple variable length memory areas to be appended to
+ * talloced structures.  Extensions can either contain a header in which
+ * case the exact length is recorded, or they can be of a fixed size.
  *
  * The structure being extended must be padded to a multiple of FR_EXT_ALIGNMENT.
+ * i.e. CC_HINT(aligned(FR_EXT_ALIGNMENT)).
  *
  * It is strongly recommended that extended structures are allocated in a
  * talloc_pool() to avoid the overhead of multiple reallocs.
@@ -62,9 +63,10 @@ typedef void *(* fr_ext_copy_t)(void **chunk_p, int ext, void *ext_ptr, size_t e
  */
 typedef struct {
 	size_t			min;			//!< Minimum size of extension.
-	bool			has_hdr;		//!< Has additional metadata allocated before
-							///< the extension data.
-	bool			can_copy;		//!< Copying this extension between attributes is allowed.
+	bool			has_hdr;		//!< Additional metadata should be allocated before
+							///< the extension data to record the exact length
+							///< of the extension.
+	bool			can_copy;		//!< Copying this extension between structs is allowed.
 	fr_ext_copy_t		copy;			//!< Override the normal copy operation with a callback.
 } fr_ext_info_t;
 
@@ -87,11 +89,6 @@ typedef struct {
 	uint8_t			data[];			//!< Extension data
 } CC_HINT(aligned(FR_EXT_ALIGNMENT)) dict_ext_hdr_t;
 
-/** @name Generic extension manipulation functions that can be used with any talloced chunk
- *
- * @{
- */
-
 /** Return a pointer to the specified extension structure
  *
  * @param[in] _ptr	to fetch extension for.
@@ -109,7 +106,6 @@ void	*fr_ext_copy(fr_ext_t const *def, void **chunk_out, void const *chunk_in, i
 int	fr_ext_copy_all(fr_ext_t const *def, void **chunk_out, void const *chunk_in);
 
 void	fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk);
-/** @} */
 
 #ifdef __cplusplus
 }
