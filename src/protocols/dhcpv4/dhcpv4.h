@@ -148,6 +148,7 @@ bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type,
 RADIUS_PACKET	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 bool 		fr_dhcpv4_is_encodable(void *item, UNUSED void *uctx);
 ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_t *vps);
+ssize_t		fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_t *vps);
 int		fr_dhcpv4_global_init(void);
 void		fr_dhcpv4_global_free(void);
 void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
