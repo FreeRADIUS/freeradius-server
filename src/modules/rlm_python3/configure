@@ -3174,6 +3174,7 @@ $as_echo "$as_me: ${PYTHON3_CONFIG_BIN}'s cflags were \"${python3_cflags}\"" >&6
 			s/-g[^ ]*//g;\
 			s/-W[^ ]*//g;\
 			s/-DNDEBUG[[:blank:]]*//g;\
+			s/-frecord-gcc-switches//g;
 			s/-specs=[^ ]*//g
 			'`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5

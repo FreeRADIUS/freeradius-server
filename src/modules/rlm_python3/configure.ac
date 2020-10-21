@@ -48,6 +48,7 @@ if test x$with_[]modname != xno; then
 		dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 		dnl # Strip -W*, we decide what warnings are important
 		dnl # Strip -DNDEBUG
+		dnl # Strip -frecord-gcc-switches, We decide if we need that. not python.
 		dnl # Strip -specs=/path/whatever.specs, We don't need the compiler .specs that comes from Python
 		mod_cflags=`echo $python3_cflags | sed -e '\
 			s/-I/-isystem/g;\
@@ -57,6 +58,7 @@ if test x$with_[]modname != xno; then
 			s/-g[[^ ]]*//g;\
 			s/-W[[^ ]]*//g;\
 			s/-DNDEBUG[[[:blank:]]]*//g;\
+			s/-frecord-gcc-switches//g;\
 			s/-specs=[^ ]*//g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
