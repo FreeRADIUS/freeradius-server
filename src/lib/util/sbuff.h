@@ -1446,7 +1446,7 @@ static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
 static inline bool fr_sbuff_is_hex(fr_sbuff_t *sbuff)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return (isdigit(*sbuff->p) || ((tolower(*sbuff->p) >= 'a') && (tolower(*sbuff->p) <= 'f')));
+	return isxdigit(*sbuff->p);
 }
 /** @} */
 
