@@ -47,6 +47,7 @@ if test x$with_[]modname != xno; then
 		dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 		dnl # Strip -W*, we decide what warnings are important
 		dnl # Strip -DNDEBUG
+		dnl # Strip -frecord-gcc-switches, We decide if we need that. not python.
 		dnl # Strip -stack-clash-protection.  We don't need it for our module and it's not
 		dnl # supported by clang < 11.
 		mod_cflags=`echo " $python_cflags" | sed -e '\
