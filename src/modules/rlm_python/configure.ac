@@ -49,6 +49,7 @@ if test x$with_[]modname != xno; then
 		dnl # Strip -DNDEBUG
 		dnl # Strip -stack-clash-protection.  We don't need it for our module and it's not
 		dnl # supported by clang < 11.
+		dnl # Strip -frecord-gcc-switches. We decide if this needs recording, not python.
 		mod_cflags=`echo " $python_cflags" | sed -e '\
 			s/ -I/ -isystem/g;\
 			s/ -isysroot[[ =]]\{0,1\}[[^-]]*//g;\
