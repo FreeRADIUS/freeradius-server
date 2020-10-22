@@ -1240,7 +1240,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *respon
 	 *	or if we run out of memory.
 	 */
 	fr_cursor_init(&cursor, reply);
-	if (fr_radius_decode(ctx, data, packet_len, original,
+	if (fr_radius_decode(ctx, data, packet_len, &original[4],
 			     inst->secret, talloc_array_length(inst->secret) - 1, &cursor) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(reply);

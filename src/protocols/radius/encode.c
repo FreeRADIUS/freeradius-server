@@ -1488,7 +1488,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (!test_ctx) return -1;
 
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	test_ctx->vector = vector;
+	memcpy(test_ctx->vector, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	test_ctx->rand_ctx.a = 6809;
 	test_ctx->rand_ctx.b = 2112;
 	talloc_set_destructor(test_ctx, _test_ctx_free);

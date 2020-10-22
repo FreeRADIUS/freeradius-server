@@ -1718,7 +1718,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	test_ctx->vector = vector;
+	memcpy(test_ctx->vector, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	test_ctx->tmp_ctx = talloc_zero(ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
@@ -1762,7 +1762,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 	fr_cursor_append(&cursor, vp);
 	(void) fr_cursor_tail(&cursor);
 
-	return fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
+	return fr_radius_decode(ctx, data, packet_len, test_ctx->vector,
 				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &cursor);
 }
 

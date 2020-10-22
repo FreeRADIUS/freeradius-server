@@ -930,7 +930,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	uint8_t			*out_p, *out_end;
 
 	packet_ctx.secret = secret;
-	packet_ctx.vector = packet + 4;
+	memcpy(packet_ctx.vector, packet + 4, RADIUS_AUTH_VECTOR_LENGTH);
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
 
@@ -960,18 +960,18 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			fr_strerror_printf("Cannot encode response without request");
 			return -1;
 		}
-		packet_ctx.vector = original + 4;
+		memcpy(packet_ctx.vector, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
 		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
-		packet_ctx.vector = nullvector;
+		memcpy(packet_ctx.vector, nullvector, RADIUS_AUTH_VECTOR_LENGTH);
 		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
-		packet_ctx.vector = nullvector;
+		memcpy(packet_ctx.vector, nullvector, RADIUS_AUTH_VECTOR_LENGTH);
 		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
@@ -1079,7 +1079,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 /** Decode a raw RADIUS packet into VPs.
  *
  */
-ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
+ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original_auth_vector,
 			 char const *secret, UNUSED size_t secret_len, fr_cursor_t *cursor)
 {
 	ssize_t			slen;
@@ -1088,7 +1088,8 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 	packet_ctx.secret = secret;
-	packet_ctx.vector = original ? original + 4 : packet + 4;
+	memcpy(packet_ctx.vector,
+	       (original_auth_vector ? original_auth_vector : (packet + 4)), RADIUS_AUTH_VECTOR_LENGTH);
 
 	attr = packet + 20;
 	end = packet + packet_len;
