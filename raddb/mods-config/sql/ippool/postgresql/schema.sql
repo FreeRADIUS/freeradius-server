@@ -7,11 +7,11 @@
 
 CREATE TABLE radippool (
 	id			BIGSERIAL PRIMARY KEY,
-	pool_name		varchar(64) NOT NULL,
+	pool_name		text NOT NULL,
 	FramedIPAddress		INET NOT NULL,
-	NASIPAddress		VARCHAR(16) NOT NULL default '',
-	pool_key		VARCHAR(64) NOT NULL default '',
-	CalledStationId		VARCHAR(64) NOT NULL default '',
+	NASIPAddress		text NOT NULL default '',
+	pool_key		text NOT NULL default '',
+	CalledStationId		text NOT NULL default '',
 	CallingStationId	text NOT NULL default ''::text,
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default NOW(),
 	username		text DEFAULT ''::text
