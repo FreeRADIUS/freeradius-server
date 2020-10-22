@@ -1,0 +1,25 @@
+update request {
+	&SMTP-Mail-Header += "Subject: smtp test"
+	&SMTP-Mail-Header += "FROM: smtp_sender@gmail.com"
+	&SMTP-Mail-Header += "TO: smtp_receiver@localhost"
+	&SMTP-Mail-Body += "sent from the smtp test module\r\n"
+	&SMTP-Sender-Address += "smtp_sender@localhost"
+	&SMTP-Recipients += "smtp_receiver@localhost"
+	&SMTP-Attachments += "testfile"
+}
+smtp.authenticate
+
+if(ok) {
+	update control {
+		&Auth-Type := Accept
+	}
+}
+else {
+	reject
+}
+
+if (&request:TLS-Cert-Issuer =~ /@example\.org/) {
+        test_pass
+} else {
+	test_fail
+}

@@ -62,6 +62,7 @@ addons:
     - dovecot-dev
     - dovecot-imapd
     - doxygen
+    - exim4
     - fakeroot
     - firebird-dev
     - freetds-dev
@@ -102,6 +103,7 @@ addons:
     - libykclient-dev
     - libyubikey-dev
     - lintian
+    - openssl
     # Needed for llvm-symbolizer
     - llvm-10
     - luajit

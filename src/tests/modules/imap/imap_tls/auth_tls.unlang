@@ -1,13 +1,5 @@
 imap_tls.authenticate
 
-# if (&request.cert-attrs.Issuer) {
-#        test_fail
-#}
-# else {
-#        test_pass
-#}
-
-
 if (ok) {
     update control {
         &Auth-Type := Accept
