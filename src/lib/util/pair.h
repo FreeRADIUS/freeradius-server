@@ -302,8 +302,8 @@ void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp);
 
 /* Filtering */
 void		fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
-bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
-bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
+bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list);
+bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list);
 
 /* Lists */
 int		fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);

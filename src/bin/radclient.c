@@ -1076,7 +1076,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		VALUE_PAIR const *failed[2];
 
 		fr_pair_list_sort(&request->reply_pairs, fr_pair_cmp_by_da);
-		if (fr_pair_validate(failed, request->filter, request->reply_pairs)) {
+		if (fr_pair_validate(failed, &request->filter, &request->reply_pairs)) {
 			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;
 		} else {

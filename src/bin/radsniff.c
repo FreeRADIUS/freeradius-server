@@ -1426,7 +1426,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			if (conf->filter_response_vps) {
 				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da);
-				if (!fr_pair_validate_relaxed(NULL, conf->filter_response_vps, packet->vps)) {
+				if (!fr_pair_validate_relaxed(NULL, &conf->filter_response_vps, &packet->vps)) {
 					goto drop_response;
 				}
 			}
@@ -1622,7 +1622,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Now verify the packet passes the attribute filter
 		 */
 		if (conf->filter_request_vps) {
-			if (!fr_pair_validate_relaxed(NULL, conf->filter_request_vps, packet->vps)) {
+			if (!fr_pair_validate_relaxed(NULL, &conf->filter_request_vps, &packet->vps)) {
 				goto drop_request;
 			}
 		}

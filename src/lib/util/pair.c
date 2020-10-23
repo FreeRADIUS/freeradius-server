@@ -1137,7 +1137,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
+bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list)
 {
 	fr_cursor_t filter_cursor;
 	fr_cursor_t list_cursor;
@@ -1154,11 +1154,11 @@ bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAI
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	fr_pair_list_sort(&filter, fr_pair_cmp_by_da);
-	fr_pair_list_sort(&list, fr_pair_cmp_by_da);
+	fr_pair_list_sort(filter, fr_pair_cmp_by_da);
+	fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-	check = fr_cursor_init(&filter_cursor, &filter);
-	match = fr_cursor_init(&list_cursor, &list);
+	check = fr_cursor_init(&filter_cursor, filter);
+	match = fr_cursor_init(&list_cursor, list);
 	while (match || check) {
 		/*
 		 *	Lists are of different lengths
@@ -1179,7 +1179,18 @@ bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAI
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (fr_pair_cmp(check, match) != 1) goto mismatch;
+		switch (check->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			if (!fr_pair_validate(failed, &check->vp_group, &match->vp_group)) goto mismatch;
+			break;
+
+		default:
+			/*
+			 *	This attribute passed the filter
+			 */
+			if (!fr_pair_cmp(check, match)) goto mismatch;
+			break;
+		}
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
@@ -1204,7 +1215,7 @@ mismatch:
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
+bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list)
 {
 	vp_cursor_t	filter_cursor;
 	vp_cursor_t	list_cursor;
@@ -1221,11 +1232,11 @@ bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, V
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	fr_pair_list_sort(&filter, fr_pair_cmp_by_da);
-	fr_pair_list_sort(&list, fr_pair_cmp_by_da);
+	fr_pair_list_sort(filter, fr_pair_cmp_by_da);
+	fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-	fr_pair_cursor_init(&list_cursor, &list);
-	for (check = fr_pair_cursor_init(&filter_cursor, &filter);
+	fr_pair_cursor_init(&list_cursor, list);
+	for (check = fr_pair_cursor_init(&filter_cursor, filter);
 	     check;
 	     check = fr_pair_cursor_next(&filter_cursor)) {
 		/*
@@ -1252,10 +1263,18 @@ bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, V
 		for (match = fr_pair_cursor_head(&list_cursor);
 		     ATTRIBUTE_EQ(match, check);
 		     match = fr_pair_cursor_next(&list_cursor)) {
-			/*
-			 *	This attribute passed the filter
-			 */
-			if (!fr_pair_cmp(check, match)) goto mismatch;
+			switch (check->da->type) {
+			case FR_TYPE_STRUCTURAL:
+				if (!fr_pair_validate_relaxed(failed, &check->vp_group, &match->vp_group)) goto mismatch;
+				break;
+
+			default:
+				/*
+				 *	This attribute passed the filter
+				 */
+				if (!fr_pair_cmp(check, match)) goto mismatch;
+				break;
+			}
 		}
 	}
 
