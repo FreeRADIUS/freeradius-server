@@ -584,19 +584,6 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 		 fr_sbuff_marker_t *		: ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
 	)
 
-/** Return a const pointer to the sbuff
- *
- * @param[in] _sbuff_or_marker	to return a pointer to.
- * @return A pointer to the sbuff.
- */
-#define fr_sbuff_ptr_const(_sbuff_or_marker) \
-	_Generic((_sbuff_or_marker), \
-		 fr_sbuff_t *			: ((fr_sbuff_t const *)(_sbuff_or_marker)), \
-		 fr_sbuff_t const *		: ((fr_sbuff_t const *)(_sbuff_or_marker)), \
-		 fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent, \
-		 fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent \
-	)
-
 /** Return a pointer to the start of the underlying buffer in an sbuff or one of its markers
  *
  * @param[in] _sbuff_or_marker	to return the buffer for.
