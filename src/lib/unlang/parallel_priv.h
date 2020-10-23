@@ -65,7 +65,6 @@ typedef struct {
 } unlang_parallel_state_t;
 
 typedef struct {
-
 	bool			detach;			//!< are we creating the child detached
 	bool			clone;
 } unlang_parallel_kctx_t;
