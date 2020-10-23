@@ -287,7 +287,7 @@ char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
+size_t fr_json_from_pair(char *out, size_t outlen, fr_pair_t const *vp)
 {
 	ssize_t slen;
 	size_t freespace = outlen;
@@ -362,7 +362,7 @@ void fr_json_version_print(void)
 }
 
 
-/** Convert VALUE_PAIR into a JSON object
+/** Convert fr_pair_t into a JSON object
  *
  * If format.value.enum_as_int is set, and the given VP is an enum
  * value, the integer value is returned as a json_object rather
@@ -380,7 +380,7 @@ void fr_json_version_print(void)
  *	- -1 on error.
  */
 static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
-				VALUE_PAIR *vp, fr_json_format_t const *format)
+				fr_pair_t *vp, fr_json_format_t const *format)
 {
 	struct json_object	*obj;
 	fr_value_box_t const	*vb;
@@ -511,11 +511,11 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 						fr_json_format_t const *format)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
@@ -630,11 +630,11 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 						 fr_json_format_t const *format)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 	json_type		type;
@@ -734,11 +734,11 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vp
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 						      fr_json_format_t const *format)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	struct json_object	*obj;
 	struct json_object	*seen_attributes = NULL;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
@@ -865,11 +865,11 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAI
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 							    fr_json_format_t const *format)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	struct json_object	*obj;
 
 	/* Check format and type */
@@ -915,11 +915,11 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, VAL
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps,
+static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps,
 							   fr_json_format_t const *format)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
@@ -980,7 +980,7 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
  * @param[in] format	Formatting control, can be NULL to use default format.
  * @return JSON string representation of the value pairs
  */
-char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 			      fr_json_format_t const *format)
 {
 	struct json_object	*obj = NULL;

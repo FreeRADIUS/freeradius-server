@@ -39,12 +39,12 @@
 /**
  *	Encode a TACACS+ 'arg_N' fields.
  */
-static uint8_t tacacs_encode_body_arg_n_len(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
+static uint8_t tacacs_encode_body_arg_n_len(fr_pair_t *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
 {
 	uint8_t *p = *body;
 	uint8_t arg_cnt = 0;
 	size_t total = 0;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 
 	fr_assert(body != NULL);
@@ -71,11 +71,11 @@ static uint8_t tacacs_encode_body_arg_n_len(VALUE_PAIR *vps, fr_dict_attr_t cons
 	return arg_cnt;
 }
 
-static void tacacs_encode_body_arg_n(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
+static void tacacs_encode_body_arg_n(fr_pair_t *vps, fr_dict_attr_t const *da, uint8_t **body, uint8_t const *end)
 {
 	uint8_t *p = *body;
 	uint8_t arg_cnt = 0;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 
 	fr_assert(body != NULL);
@@ -102,9 +102,9 @@ static void tacacs_encode_body_arg_n(VALUE_PAIR *vps, fr_dict_attr_t const *da, 
 /*
  *	Encode a TACACS+ field.
  */
-static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, uint8_t **data, uint8_t const *end, size_t max_len)
+static ssize_t tacacs_encode_field(fr_pair_t *vps, fr_dict_attr_t const *da, uint8_t **data, uint8_t const *end, size_t max_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t *p = *data;
 
 	vp = fr_pair_find_by_da(vps, da);
@@ -138,9 +138,9 @@ static ssize_t tacacs_encode_field(VALUE_PAIR *vps, fr_dict_attr_t const *da, ui
  *	Encode VPS into a raw TACACS packet.
  */
 ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *original_packet,
-			 char const *secret, size_t secret_len, VALUE_PAIR *vps)
+			 char const *secret, size_t secret_len, fr_pair_t *vps)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
 	fr_cursor_t		cursor;
 	fr_da_stack_t 		da_stack;
@@ -634,7 +634,7 @@ ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *orig
 /*
  *	Test points for protocol encode
  */
-static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 

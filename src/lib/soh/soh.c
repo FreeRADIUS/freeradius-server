@@ -184,7 +184,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
  */
 static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t c;
 	int t;
 
@@ -423,7 +423,7 @@ static char const *healthclass2str(uint8_t hc) {
  */
 int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_soh			hdr;
 	soh_response		resp;
 	soh_mode_subheader	mode;

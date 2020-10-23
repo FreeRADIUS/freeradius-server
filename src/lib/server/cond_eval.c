@@ -332,7 +332,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 	 *	Virtual attribute comparison.
 	 */
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
 		fr_assert(tmpl_is_attr(map->lhs));
@@ -517,7 +517,7 @@ do {\
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		fr_cursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
 
@@ -647,7 +647,7 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		fr_cursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
 		/*

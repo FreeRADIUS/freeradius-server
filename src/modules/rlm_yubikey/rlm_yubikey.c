@@ -249,7 +249,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	char const		*passcode;
 	size_t			len;
-	VALUE_PAIR		*vp, *password;
+	fr_pair_t		*vp, *password;
 	char const		*otp;
 	size_t			password_len;
 	int			ret;
@@ -360,7 +360,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	char const		*passcode = NULL;
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 	size_t			len;
 	int			ret;
 

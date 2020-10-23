@@ -123,9 +123,9 @@ typedef struct {
 
 	TALLOC_CTX		*msg_pool;		//!< A 1k talloc pool to hold the log message whilst
 							//!< it's being expanded.
-	VALUE_PAIR		*msg;			//!< Temporary value pair holding the message value.
-	VALUE_PAIR		*type;			//!< Temporary value pair holding the message type.
-	VALUE_PAIR		*lvl;			//!< Temporary value pair holding the log lvl.
+	fr_pair_t		*msg;			//!< Temporary value pair holding the message value.
+	fr_pair_t		*type;			//!< Temporary value pair holding the message type.
+	fr_pair_t		*lvl;			//!< Temporary value pair holding the log lvl.
 } rlm_logtee_thread_t;
 
 
@@ -459,7 +459,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	rlm_logtee_t const	*inst = t->inst;
 	char			*msg, *exp;
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	log_dst_t		*dst;
 
 	fr_assert(t->msg->vp_length == 0);	/* Should have been cleared before returning */
@@ -500,7 +500,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 
 finish:
 	/*
-	 *	Don't free, we re-use the VALUE_PAIRs for the next message
+	 *	Don't free, we re-use the fr_pair_ts for the next message
 	 */
 	vp = fr_cursor_remove(&cursor);
 	if (!fr_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);

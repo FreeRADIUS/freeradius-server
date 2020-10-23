@@ -166,7 +166,7 @@ fr_dict_attr_t const *dhcp_option_82;
 
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
-	VALUE_PAIR const *my_a = a, *my_b = b;
+	fr_pair_t const *my_a = a, *my_b = b;
 	fr_dict_attr_t const *a_82, *b_82;
 
 	VP_VERIFY(my_a);
@@ -276,24 +276,24 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 
 /** Evaluation function for DCHPV4-encodability
  *
- * @param item	pointer to a VALUE_PAIR
+ * @param item	pointer to a fr_pair_t
  * @param uctx	context
  *
- * @return true if the underlying VALUE_PAIR is DHCPv4 encodable, false otherwise
+ * @return true if the underlying fr_pair_t is DHCPv4 encodable, false otherwise
  */
 bool fr_dhcpv4_is_encodable(void *item, UNUSED void * uctx)
 {
-	VALUE_PAIR *vp = item;
+	fr_pair_t *vp = item;
 
 	VP_VERIFY(vp);
 	return (vp->da->dict == dict_dhcpv4) && (!vp->da->flags.internal);
 }
 
-ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, VALUE_PAIR *vps)
+ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_t *vps)
 {
 	uint8_t		*p;
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	uint32_t	lvalue;
 	uint16_t	svalue;
 	size_t		dhcp_size;
@@ -491,7 +491,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
 	fr_pair_list_sort(&vps, fr_dhcpv4_attr_cmp);
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_dhcpv4, VALUE_PAIR);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_dhcpv4, fr_pair_t);
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,

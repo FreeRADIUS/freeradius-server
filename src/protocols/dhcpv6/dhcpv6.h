@@ -128,7 +128,7 @@ typedef struct {
 /*
  *	base.c
  */
-size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
+size_t		fr_dhcpv6_option_len(fr_pair_t const *vp);
 
 uint8_t const	*fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, unsigned int option);
 
@@ -139,12 +139,12 @@ bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decod
 				 bool from_server);
 
 ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
-				 int msg_type, VALUE_PAIR *vps);
+				 int msg_type, fr_pair_t *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 fr_cursor_t *cursor);
 
-int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t const *packet, size_t packet_len);
+int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const *packet, size_t packet_len);
 
 int		fr_dhcpv6_global_init(void);
 

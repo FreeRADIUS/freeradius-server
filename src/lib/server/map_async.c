@@ -196,10 +196,10 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
  *	- true if destination list is OK.
  *	- false if destination list is invalid.
  */
-static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, tmpl_t const *src_dst)
+static inline fr_pair_t **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, tmpl_t const *src_dst)
 {
 	REQUEST		*context = request;
-	VALUE_PAIR	**list;
+	fr_pair_t	**list;
 	request_ref_t	request_ref;
 	pair_list_t	list_ref;
 
@@ -228,7 +228,7 @@ static inline VALUE_PAIR **map_check_src_or_dst(REQUEST *request, vp_map_t const
  * This function creates maps for consumption by map_to_request.
  *
  * @param[in,out] ctx		to allocate modification maps in.
- * @param[out] out		Where to write the #VALUE_PAIR (s), which may be NULL if not found
+ * @param[out] out		Where to write the #fr_pair_t (s), which may be NULL if not found
  * @param[in] request		The current request.
  * @param[in] original		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  * @param[in] lhs_result	of previous stack based rhs evaluation.
@@ -353,8 +353,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
 		fr_cursor_t	to;
 		fr_cursor_t	from;
-		VALUE_PAIR	**list = NULL;
-		VALUE_PAIR	*vp = NULL;
+		fr_pair_t	**list = NULL;
+		fr_pair_t	*vp = NULL;
 
 		/*
 		 *	Check source list
@@ -523,7 +523,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	{
 		fr_cursor_t		from;
 		tmpl_cursor_ctx_t	cc_attr;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		fr_value_box_t		*n_vb;
 		int			err;
 
@@ -660,8 +660,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_EXEC:
 	{
 		fr_cursor_t	to, from;
-		VALUE_PAIR	*vp_head = NULL;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp_head = NULL;
+		fr_pair_t	*vp;
 
 		/*
 		 *	If the LHS is an attribute, we just do the
@@ -785,9 +785,9 @@ error:
 	return -1;
 }
 
-static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr, fr_value_box_t const *value)
+static inline fr_pair_t *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr, fr_value_box_t const *value)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(attr)));
 	if (fr_value_box_copy(vp, &vp->data, value) < 0) {
@@ -799,13 +799,13 @@ static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr
 	return vp;
 }
 
-/** Allocate one or more VALUE_PAIRs from a #vp_list_mod_t
+/** Allocate one or more fr_pair_ts from a #vp_list_mod_t
  *
  */
-static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
+static fr_pair_t *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
 {
 	vp_map_t	*mod;
-	VALUE_PAIR	*head = NULL;
+	fr_pair_t	*head = NULL;
 	fr_cursor_t	cursor;
 
 	fr_assert(vlm->mod);
@@ -825,7 +825,7 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 	     mod;
 	     mod = mod->next) {
 		fr_value_box_t	*vb;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		for (vb = tmpl_value(mod->rhs);
 	     	     vb;
@@ -932,7 +932,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	int			rcode = 0;
 
 	vp_map_t const		*map = vlm->map, *mod;
-	VALUE_PAIR		**vp_list, *found;
+	fr_pair_t		**vp_list, *found;
 	REQUEST			*context;
 	TALLOC_CTX		*parent;
 
@@ -1008,7 +1008,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		{
 			bool		exists = false;
 			fr_cursor_t	from, to, to_insert;
-			VALUE_PAIR	*vp_from, *vp, *vp_to = NULL, *vp_to_insert = NULL;
+			fr_pair_t	*vp_from, *vp, *vp_to = NULL, *vp_to_insert = NULL;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (!vp_from) goto finish;
@@ -1039,7 +1039,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		case T_OP_ADD:
 		{
 			fr_cursor_t	to, from;
-			VALUE_PAIR	*vp_from;
+			fr_pair_t	*vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			fr_assert(vp_from);
@@ -1155,7 +1155,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	do_add:
 	{
 		fr_cursor_t	to, from;
-		VALUE_PAIR	*vp_from;
+		fr_pair_t	*vp_from;
 
 		vp_from = map_list_mod_to_vps(parent, vlm);
 		if (!vp_from) goto finish;
@@ -1189,7 +1189,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_cursor_t	from;
-			VALUE_PAIR	*vp_from;
+			fr_pair_t	*vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (!vp_from) goto finish;

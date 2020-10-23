@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief #VALUE_PAIR template functions
+ * @brief #fr_pair_t template functions
  * @file src/lib/server/tmpl_eval.c
  *
  * @ingroup AVP
@@ -35,17 +35,17 @@ RCSID("$Id$")
 
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
- * The value returned is a pointer to the pointer of the HEAD of a #VALUE_PAIR list in the
+ * The value returned is a pointer to the pointer of the HEAD of a #fr_pair_t list in the
  * #REQUEST. If the head of the list changes, the pointer will still be valid.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_list_t value to resolve to #VALUE_PAIR list. Will be NULL if list
+ * @param[in] list #pair_list_t value to resolve to #fr_pair_t list. Will be NULL if list
  *	name couldn't be resolved.
  * @return a pointer to the HEAD of a list in the #REQUEST.
  *
  * @see tmpl_cursor_init
  */
-VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
+fr_pair_t **radius_list(REQUEST *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -75,7 +75,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a list to the #RADIUS_PACKET holding the HEAD pointer for a #VALUE_PAIR list
+/** Resolve a list to the #RADIUS_PACKET holding the HEAD pointer for a #fr_pair_t list
  *
  * Returns a pointer to the #RADIUS_PACKET that holds the HEAD pointer of a given list,
  * for the current #REQUEST.
@@ -107,11 +107,11 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
 	return NULL;
 }
 
-/** Return the correct TALLOC_CTX to alloc #VALUE_PAIR in, for a list
+/** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
- * Allocating new #VALUE_PAIR in the context of a #REQUEST is usually wrong.
- * #VALUE_PAIR should be allocated in the context of a #RADIUS_PACKET, so that if the
- * #RADIUS_PACKET is freed before the #REQUEST, the associated #VALUE_PAIR lists are
+ * Allocating new #fr_pair_t in the context of a #REQUEST is usually wrong.
+ * #fr_pair_t should be allocated in the context of a #RADIUS_PACKET, so that if the
+ * #RADIUS_PACKET is freed before the #REQUEST, the associated #fr_pair_t lists are
  * freed too.
  *
  * @param[in] request containing the target lists.
@@ -289,7 +289,7 @@ ssize_t _tmpl_to_type(void *out,
 	fr_value_box_t const	*to_cast = &value_to_cast;
 	fr_value_box_t const	*from_cast = &value_from_cast;
 
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 
 	fr_type_t		src_type = FR_TYPE_INVALID;
 
@@ -565,7 +565,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	fr_value_box_t const	*to_cast = NULL;
 	fr_value_box_t		from_cast;
 
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	fr_value_box_t		value;
 	bool			needs_dup = false;
 
@@ -785,11 +785,11 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
  * @param[in] ns	Tracks tree position between cursor calls.
  * @return the number of attributes matching ar.
  */
-static VALUE_PAIR *_tmpl_cursor_tlv_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR *current, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_tlv_eval(fr_pair_t **prev, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
 {
 	fr_cursor_stack_t	*cs;
 	fr_cursor_t		*cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	cs = ns->tlv.cursor_stack;
 	cursor = &cs->cursor[cs->depth - 1];
@@ -839,7 +839,7 @@ static VALUE_PAIR *_tmpl_cursor_tlv_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR *c
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_attr_t		*prev = fr_dlist_prev(&cc->vpt->data.attribute.ar, ar);
 
@@ -905,9 +905,9 @@ void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t 
  * Here we just look for a particular group attribute in the context of its parent
  *
  */
-static VALUE_PAIR *_tmpl_cursor_group_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR *current, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_group_eval(fr_pair_t **prev, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	for (vp = fr_cursor_current(&ns->group.cursor);
 	     vp;
@@ -927,7 +927,7 @@ static VALUE_PAIR *_tmpl_cursor_group_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR 
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -944,9 +944,9 @@ void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_
 /** Find a leaf attribute
  *
  */
-static VALUE_PAIR *_tmpl_cursor_leaf_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_leaf_eval(fr_pair_t **prev, fr_pair_t *curr, tmpl_cursor_nested_t *ns)
 {
-	VALUE_PAIR *vp = curr;
+	fr_pair_t *vp = curr;
 
 	while (vp) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) return vp;
@@ -962,7 +962,7 @@ static VALUE_PAIR *_tmpl_cursor_leaf_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, t
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t	*ns = &cc->leaf;
 
@@ -978,13 +978,13 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t
 /** Stub list eval function until we can remove lists
  *
  */
-static VALUE_PAIR *_tmpl_cursor_list_eval(UNUSED VALUE_PAIR **prev, VALUE_PAIR *curr, UNUSED tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_pair_t **prev, fr_pair_t *curr, UNUSED tmpl_cursor_nested_t *ns)
 {
 	return curr;
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -1008,14 +1008,14 @@ static inline CC_HINT(always_inline) void _tmpl_cursor_eval_pop(tmpl_cursor_ctx_
 /** Evaluates, then, sometimes, pops evaluation contexts from the tmpl stack
  *
  * To pop or not to pop is determined by whether evaluating the context again
- * would/should/could produce another VALUE_PAIR.
+ * would/should/could produce another fr_pair_t.
  */
 static inline CC_HINT(always_inline)
-VALUE_PAIR *_tmpl_cursor_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, tmpl_cursor_ctx_t *cc)
+fr_pair_t *_tmpl_cursor_eval(fr_pair_t **prev, fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_attr_t const	*ar;
 	tmpl_cursor_nested_t	*ns;
-	VALUE_PAIR		*iter = curr, *vp;
+	fr_pair_t		*iter = curr, *vp;
 
 	ns = fr_dlist_tail(&cc->nested);
 	ar = ns->ar;
@@ -1080,7 +1080,7 @@ VALUE_PAIR *_tmpl_cursor_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, tmpl_cursor_c
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
@@ -1105,8 +1105,8 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 	tmpl_cursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
 
-	VALUE_PAIR		*vp;
-	VALUE_PAIR		**list_head;
+	fr_pair_t		*vp;
+	fr_pair_t		**list_head;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
@@ -1125,7 +1125,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 		 */
 		while ((ns = fr_dlist_tail(&cc->nested))) {
 			ar = ns->ar;
-			vp = _tmpl_cursor_eval((VALUE_PAIR **)prev, curr, cc);
+			vp = _tmpl_cursor_eval((fr_pair_t **)prev, curr, cc);
 			if (!vp) continue;
 
 			ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
@@ -1152,7 +1152,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 	case TMPL_TYPE_LIST:
 		if (!fr_dlist_tail(&cc->nested)) goto null_result;	/* end of list */
 
-		vp = _tmpl_cursor_eval((VALUE_PAIR **)prev, curr, cc);
+		vp = _tmpl_cursor_eval((fr_pair_t **)prev, curr, cc);
 		if (!vp) goto null_result;
 
 		return vp;
@@ -1164,15 +1164,15 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 	return NULL;
 }
 
-/** Initialise a #fr_cursor_t to the #VALUE_PAIR specified by a #tmpl_t
+/** Initialise a #fr_cursor_t to the #fr_pair_t specified by a #tmpl_t
  *
- * This makes iterating over the one or more #VALUE_PAIR specified by a #tmpl_t
+ * This makes iterating over the one or more #fr_pair_t specified by a #tmpl_t
  * significantly easier.
  *
  * @param[out] err		May be NULL if no error code is required.
  *				Will be set to:
  *				- 0 on success.
- *				- -1 if no matching #VALUE_PAIR could be found.
+ *				- -1 if no matching #fr_pair_t could be found.
  *				- -2 if list could not be found (doesn't exist in current #REQUEST).
  *				- -3 if context could not be found (no parent #REQUEST available).
  * @param[in] ctx		to make temporary allocations under.
@@ -1181,17 +1181,17 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
  *				otherwise we will leak memory.
  * @param[in] cursor		to store iterator position.
  * @param[in] request		The current #REQUEST.
- * @param[in] vpt		specifying the #VALUE_PAIR type or list to iterate over.
+ * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
  * @return
- *	- First #VALUE_PAIR specified by the #tmpl_t.
- *	- NULL if no matching #VALUE_PAIR found, and NULL on error.
+ *	- First #fr_pair_t specified by the #tmpl_t.
+ *	- NULL if no matching #fr_pair_t found, and NULL on error.
  *
  * @see tmpl_cursor_next
  */
-VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 			     fr_cursor_t *cursor, REQUEST *request, tmpl_t const *vpt)
 {
-	VALUE_PAIR		*vp = NULL, **list_head;
+	fr_pair_t		*vp = NULL, **list_head;
 	tmpl_request_t		*rr = NULL;
 	TALLOC_CTX		*list_ctx;
 
@@ -1262,7 +1262,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	/*
 	 *	Get the first entry from the tmpl
 	 */
-	vp = fr_cursor_talloc_iter_init(cursor, list_head, _tmpl_cursor_next, cc, VALUE_PAIR);
+	vp = fr_cursor_talloc_iter_init(cursor, list_head, _tmpl_cursor_next, cc, fr_pair_t);
 	if (!vp) {
 		if (err) {
 			*err = -1;
@@ -1291,22 +1291,22 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 
 /** Copy pairs matching a #tmpl_t in the current #REQUEST
  *
- * @param ctx to allocate new #VALUE_PAIR in.
- * @param out Where to write the copied #VALUE_PAIR (s).
+ * @param ctx to allocate new #fr_pair_t in.
+ * @param out Where to write the copied #fr_pair_t (s).
  * @param request The current #REQUEST.
- * @param vpt specifying the #VALUE_PAIR type or list to copy.
+ * @param vpt specifying the #fr_pair_t type or list to copy.
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
- *	- -1 if no matching #VALUE_PAIR could be found.
+ *	- -1 if no matching #fr_pair_t could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		from, to;
 	tmpl_cursor_ctx_t	cc;
 
@@ -1341,21 +1341,21 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, tmpl_t co
  *
  * @param[out] out where to write the retrieved vp.
  * @param[in] request The current #REQUEST.
- * @param[in] vpt specifying the #VALUE_PAIR type to find.
+ * @param[in] vpt specifying the #fr_pair_t type to find.
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
- *	- 0 on success (found matching #VALUE_PAIR).
- *	- -1 if no matching #VALUE_PAIR could be found.
+ *	- 0 on success (found matching #fr_pair_t).
+ *	- -1 if no matching #fr_pair_t could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  */
-int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_find_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
 {
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			err;
 
 	TMPL_VERIFY(vpt);
@@ -1372,19 +1372,19 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
  *
  * @param[out] out where to write the retrieved or created vp.
  * @param[in] request The current #REQUEST.
- * @param[in] vpt specifying the #VALUE_PAIR type to retrieve or create.  Must be #TMPL_TYPE_ATTR.
+ * @param[in] vpt specifying the #fr_pair_t type to retrieve or create.  Must be #TMPL_TYPE_ATTR.
  * @return
  *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
- *	- -1 if a new #VALUE_PAIR couldn't be found or created.
+ *	- -1 if a new #fr_pair_t couldn't be found or created.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  */
-int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_find_or_add_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
 {
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			err;
 
 	TMPL_VERIFY(vpt);
@@ -1403,7 +1403,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
 	case -1:
 	{
 		TALLOC_CTX	*ctx;
-		VALUE_PAIR	**head;
+		fr_pair_t	**head;
 
 		RADIUS_LIST_AND_CTX(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
 
@@ -1436,12 +1436,12 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
  * @param[out] interior 	List of extents that need building out, i.e. references
  *				extend beyond pairs.
  * @param[in] request		The current #REQUEST.
- * @param[in] vpt		specifying the #VALUE_PAIR type to retrieve or create.
+ * @param[in] vpt		specifying the #fr_pair_t type to retrieve or create.
  *				Must be #TMPL_TYPE_ATTR.
  * @return
  *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
- *	- -1 if a new #VALUE_PAIR couldn't be found or created.
+ *	- -1 if a new #fr_pair_t couldn't be found or created.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  */
@@ -1449,8 +1449,8 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 		      REQUEST *request, tmpl_t const *vpt)
 {
-	VALUE_PAIR		*curr = NULL, **list_head;
-	VALUE_PAIR		*prev = NULL;	/* not used */
+	fr_pair_t		*curr = NULL, **list_head;
+	fr_pair_t		*prev = NULL;	/* not used */
 
 	TALLOC_CTX		*list_ctx = NULL;
 
@@ -1594,8 +1594,8 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 	tmpl_attr_extent_t	*extent = NULL;
 
 	while ((extent = fr_dlist_head(interior))) {
-		VALUE_PAIR		*vp;
-		VALUE_PAIR		**list;
+		fr_pair_t		*vp;
+		fr_pair_t		**list;
 		tmpl_attr_t const	*ar;
 		TALLOC_CTX		*list_ctx = extent->list_ctx;
 

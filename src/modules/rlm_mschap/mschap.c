@@ -162,7 +162,7 @@ void mschap_auth_response(char const *username, size_t username_len,
 void mschap_add_reply(REQUEST *request, uint8_t ident,
 		      fr_dict_attr_t const *da, char const *value, size_t len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
 	if (vp->vp_type == FR_TYPE_STRING) {

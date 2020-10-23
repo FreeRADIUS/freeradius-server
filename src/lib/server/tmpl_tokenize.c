@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief #VALUE_PAIR template functions
+ * @brief #fr_pair_t template functions
  * @file src/lib/server/tmpl_tokenize.c
  *
  * @ingroup AVP
@@ -276,9 +276,9 @@ void tmpl_debug(tmpl_t const *vpt)
 /** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
  *
  * These functions also resolve #pair_list_t and #request_ref_t values to #REQUEST
- * structs and the head of #VALUE_PAIR lists in those structs.
+ * structs and the head of #fr_pair_t lists in those structs.
  *
- * For adding new #VALUE_PAIR to the lists, the #radius_list_ctx function can be used
+ * For adding new #fr_pair_t to the lists, the #radius_list_ctx function can be used
  * to obtain the appropriate TALLOC_CTX pointer.
  *
  * @note These don't really have much to do with #tmpl_t. They're in the same
@@ -1776,7 +1776,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
  *							add the unknown attribute to the main dictionary.
  *							If the unknown attribute is not added to
  *							the main dictionary the #tmpl_t cannot be used
- *							to search for a #VALUE_PAIR in a #REQUEST.
+ *							to search for a #fr_pair_t in a #REQUEST.
  *				- allow_unresolved	If true, we don't generate a parse error on
  *							unknown attributes. If an unknown attribute is
  *							found a #TMPL_TYPE_ATTR_UNRESOLVED
@@ -2738,7 +2738,7 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNRESOLVED to a #TMPL_TYPE_DATA of a
  * specified #fr_type_t.
  *
- * #tmpl_cast_from_substr_to_vp does the same as #tmpl_cast_in_place, but outputs a #VALUE_PAIR.
+ * #tmpl_cast_from_substr_to_vp does the same as #tmpl_cast_in_place, but outputs a #fr_pair_t.
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
  * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main
@@ -3963,7 +3963,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     "%i (outside the range of fr_type_ts)", file, line, tmpl_value_type(vpt));
 		}
 		/*
-		 *	Unlike VALUE_PAIRs we can't guarantee that VALUE_PAIR_TMPL buffers will
+		 *	Unlike fr_pair_ts we can't guarantee that fr_pair_t_TMPL buffers will
 		 *	be talloced. They may be allocated on the stack or in global variables.
 		 */
 		switch (tmpl_value_type(vpt)) {

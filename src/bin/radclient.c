@@ -190,12 +190,12 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
+static int mschapv1_encode(RADIUS_PACKET *packet, fr_pair_t **request,
 			   char const *password)
 {
 	unsigned int		i;
 	uint8_t			*p;
-	VALUE_PAIR		*challenge, *reply;
+	fr_pair_t		*challenge, *reply;
 	uint8_t			nthash[16];
 
 	fr_pair_delete_by_da(&packet->vps, attr_ms_chap_challenge);
@@ -292,7 +292,7 @@ static FR_CODE radclient_get_code(uint16_t port)
 }
 
 
-static bool already_hex(VALUE_PAIR *vp)
+static bool already_hex(fr_pair_t *vp)
 {
 	size_t i;
 
@@ -323,7 +323,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	FILE		*packets, *filters = NULL;
 
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	rc_request_t	*request;
 	bool		packets_done = false;
 	uint64_t	num = 0;
@@ -832,7 +832,7 @@ static int send_one_packet(rc_request_t *request)
 		 *	new authentication vector.
 		 */
 		if (request->password) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
 			if ((vp = fr_pair_find_by_da(request->request_pairs, attr_user_password)) != NULL) {
 				fr_pair_value_strdup(vp, request->password->vp_strvalue);
@@ -1073,7 +1073,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	} else if (!request->filter) {
 		stats.passed++;
 	} else {
-		VALUE_PAIR const *failed[2];
+		fr_pair_t const *failed[2];
 
 		fr_pair_list_sort(&request->reply_pairs, fr_pair_cmp_by_da);
 		if (fr_pair_validate(failed, &request->filter, &request->reply_pairs)) {

@@ -36,10 +36,10 @@ USES_APPLE_DEPRECATED_API
  *
  * @see map_to_vp
  */
-int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
+int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
 	fr_ldap_result_t	*self = uctx;
-	VALUE_PAIR		*head = NULL, *vp;
+	fr_pair_t		*head = NULL, *vp;
 	fr_cursor_t		cursor, to_append;
 	int			i;
 
@@ -183,7 +183,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 {
 	/*
-	 *	Destinations where we can put the VALUE_PAIRs we
+	 *	Destinations where we can put the fr_pair_ts we
 	 *	create using LDAP values.
 	 */
 	switch (map->lhs->type) {

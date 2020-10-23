@@ -62,9 +62,9 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 		     REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR		*head;
+	fr_pair_t		*head;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
@@ -187,7 +187,7 @@ bool trigger_enabled(void)
 typedef struct {
 	char		*name;
 	xlat_exp_t	*xlat;
-	VALUE_PAIR	*vps;
+	fr_pair_t	*vps;
 	fr_value_box_t	*box;
 	bool		expanded;
 } fr_trigger_t;
@@ -257,7 +257,7 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, REQUEST *request)
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
+int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_t *args)
 {
 	CONF_SECTION const	*subcs;
 
@@ -442,18 +442,18 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
  * @note #trigger_exec_init must be called before calling this function,
  *	 else it will return NULL.
  *
- * @param[in] ctx	to allocate VALUE_PAIR s in.
+ * @param[in] ctx	to allocate fr_pair_t s in.
  * @param[in] server	we're connecting to.
  * @param[in] port	on that server.
  * @return
  *	- NULL on failure, or if triggers are not enabled.
  *	- list containing Pool-Server and Pool-Port
  */
-VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
+fr_pair_t *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	VALUE_PAIR		*out = NULL, *vp;
+	fr_pair_t		*out = NULL, *vp;
 	fr_cursor_t		cursor;
 
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);

@@ -282,7 +282,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	char *name;
 
-	VALUE_PAIR *vp, **list, *groups = NULL;
+	fr_pair_t *vp, **list, *groups = NULL;
 	TALLOC_CTX *list_ctx, *value_ctx;
 	fr_cursor_t list_cursor, groups_cursor;
 
@@ -438,7 +438,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 
 	char const *attrs[] = { inst->groupobj_name_attr, NULL };
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	char *dn;
 
 	fr_assert(inst->groupobj_base_dn);
@@ -538,7 +538,7 @@ finish:
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					    VALUE_PAIR *check)
+					    fr_pair_t *check)
 
 {
 	fr_ldap_rcode_t	status;
@@ -640,7 +640,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					   char const *dn, VALUE_PAIR *check)
+					   char const *dn, fr_pair_t *check)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
 	fr_ldap_rcode_t	status;
@@ -826,9 +826,9 @@ finish:
  *
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check)
+rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, fr_pair_t *check)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	int		ret;
 	fr_cursor_t	cursor;
 

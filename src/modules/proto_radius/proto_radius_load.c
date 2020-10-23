@@ -372,7 +372,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	RADCLIENT		*client;
 
 	bool			done;
-	VALUE_PAIR		*vp, *vps = NULL;
+	fr_pair_t		*vp, *vps = NULL;
 	ssize_t			packet_len;
 	int			code = FR_CODE_ACCESS_REQUEST;
 

@@ -52,7 +52,7 @@ typedef enum {
  * @param[in] ctx	to allocate returned value in.
  * @
  */
-typedef VALUE_PAIR *(*password_preprocess_t)(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *in);
+typedef fr_pair_t *(*password_preprocess_t)(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *in);
 
 /** Password information
  *
@@ -232,12 +232,12 @@ static fr_table_num_sorted_t const password_header_table[] = {
 static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
 
 #ifdef HAVE_OPENSSL_EVP_H
-static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
 #  endif
 #endif
-static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good);
+static fr_pair_t *password_process_header(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
 
 /** Metdata for various password attributes
  *
@@ -464,11 +464,11 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
  *	- NULL if known_good was already normalised, or couldn't be normalised.
  *	- A new normalised password pair.
  */
-static VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR const *known_good)
+static fr_pair_t *password_normify(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t const *known_good)
 {
 	uint8_t			buffer[256];
 	ssize_t			decoded;
-	VALUE_PAIR		*out;
+	fr_pair_t		*out;
 	normalise_t		normalised;
 	password_info_t		*info;
 	size_t			min_len;
@@ -519,9 +519,9 @@ static VALUE_PAIR *password_normify(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
  *	- A SHA2 length specific attribute.
  *	- NULL on error.
  */
-static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
+static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
 {
-	VALUE_PAIR	*out, *normalised;
+	fr_pair_t	*out, *normalised;
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
@@ -565,9 +565,9 @@ static VALUE_PAIR *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, VALU
  *	- A SHA3 length specific attribute.
  *	- NULL on error.
  */
-static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
+static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
 {
-	VALUE_PAIR	*out, *normalised;
+	fr_pair_t	*out, *normalised;
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
@@ -618,7 +618,7 @@ static VALUE_PAIR *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, VALU
  *	- Buffer containing normified value on success.
  *	- NULL on error.
  */
-static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good)
+static fr_pair_t *password_process_header(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
 {
 	char const			*p, *q, *end;
 
@@ -628,7 +628,7 @@ static VALUE_PAIR *password_process_header(TALLOC_CTX *ctx, REQUEST *request, VA
 	char				header[128];
 	normalise_t			normalised;
 
-	VALUE_PAIR			*new;
+	fr_pair_t			*new;
 	fr_dict_attr_t const		*def = attr_cleartext_password;
 
 	VP_VERIFY(known_good);
@@ -751,14 +751,14 @@ bad_header:
 /** Apply any processing and normification
  *
  */
-static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *known_good, bool normify)
+static fr_pair_t *password_process(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good, bool normify)
 {
 	password_info_t		*info;
-	VALUE_PAIR		*out;
+	fr_pair_t		*out;
 
 	info = &password_info[known_good->da->attr];
 	if (info->func) {
-		VALUE_PAIR	*from_func, *from_recurse;
+		fr_pair_t	*from_func, *from_recurse;
 
 		/*
 		 *	Pass our input attribute to a custom preprocessing
@@ -792,7 +792,7 @@ static VALUE_PAIR *password_process(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAI
 	 *	than the minimum length.
 	 */
 	if (normify && !info->no_normify && (known_good->vp_length > info->min_hash_len)) {
-		VALUE_PAIR *from_normify;
+		fr_pair_t *from_normify;
 
 		from_normify = password_normify(ctx, request, known_good);
 		out = from_normify ? from_normify : known_good;
@@ -858,7 +858,7 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 {
 	fr_cursor_t	cursor;
 	int		replaced = 0;
-	VALUE_PAIR	*known_good, *new;
+	fr_pair_t	*known_good, *new;
 
 	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
 	     known_good;
@@ -887,11 +887,11 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 	return replaced;
 }
 
-static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *request,
+static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *request,
 						  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len,
-						  bool normify, VALUE_PAIR *const known_good)
+						  bool normify, fr_pair_t *const known_good)
 {
-	VALUE_PAIR	*new;
+	fr_pair_t	*new;
 	size_t		j;
 
 	if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
@@ -926,10 +926,10 @@ static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *requ
 /** Find a "known good" password in the control list of a request
  *
  * Searches for a "known good" password attribute, and applies any processing
- * and normification operations to it, returning a new mormalised VALUE_PAIR.
+ * and normification operations to it, returning a new mormalised fr_pair_t.
  *
  * The ctx passed in should be freed when the caller is done with the returned
- * VALUE_PAIR, or alternatively, a persistent ctx may be used and the value
+ * fr_pair_t, or alternatively, a persistent ctx may be used and the value
  * of ephemeral checked.
  * If ephemeral is false the returned pair *MUST NOT BE FREED*, it may be an
  * attribute in the request->control_pairs list.  If ephemeral is true, the returned
@@ -947,20 +947,20 @@ static VALUE_PAIR *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *requ
  * @param[in] allowed_attrs_len	Length of allowed attributes list.
  * @param[in] normify		Apply hex/base64 normalisation to attributes.
  * @return
- *	- A VALUE_PAIR containing a "known good" password.
+ *	- A fr_pair_t containing a "known good" password.
  *	- NULL on error, or if no usable password attributes were found.
  */
-VALUE_PAIR *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
+fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
 			  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
 {
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*known_good;
+	fr_pair_t	*known_good;
 
 	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
 		password_info_t		*info;
-		VALUE_PAIR		*out;
+		fr_pair_t		*out;
 		size_t			i;
 
 		if (known_good->da == attr_user_password) {

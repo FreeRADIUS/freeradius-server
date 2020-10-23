@@ -28,7 +28,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
 
-	VALUE_PAIR *key, *vp;
+	fr_pair_t *key, *vp;
 
 	key = fr_pair_find_by_da(request->control_pairs, attr_yubikey_key);
 	if (!key) {

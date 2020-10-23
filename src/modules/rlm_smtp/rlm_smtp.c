@@ -197,7 +197,7 @@ static const CONF_PARSER module_config[] = {
 static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict_attr_t *dict_attr)
 {
 	REQUEST 			*request = ((fr_mail_ctx *)uctx)->request;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	int 				elems_added = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
@@ -220,7 +220,7 @@ static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict
 static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t * const tmpl)
 {
 	REQUEST 			*request = ((fr_mail_ctx *)uctx)->request;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	tmpl_cursor_ctx_t       	cc;
 	int 				count = 0;
 
@@ -268,7 +268,7 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct cu
  */
 static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	tmpl_cursor_ctx_t       cc;
 
 	ssize_t			copied = 0;
@@ -377,7 +377,7 @@ static int str_to_attachments (fr_mail_ctx *uctx, curl_mime *mime, char const * 
 static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tmpl_t * tmpl,
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
-	VALUE_PAIR 		*vp;
+	fr_pair_t 		*vp;
 	REQUEST			*request = uctx->request;
 	tmpl_cursor_ctx_t       cc;
 	int 			attachments_set = 0;
@@ -573,7 +573,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 	fr_mail_ctx 		*uctx = mail_ctx;
 	fr_dbuff_t		out;
 	REQUEST			*request = uctx->request;
-	VALUE_PAIR 		*vp;
+	fr_pair_t 		*vp;
 
 	fr_dbuff_init(&out, (uint8_t *)ptr, (size * nmemb));  /* Wrap the output buffer so we can track our position easily */
 
@@ -602,7 +602,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
  */
 static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 {
-	VALUE_PAIR 	*vp;
+	fr_pair_t 	*vp;
 	REQUEST		*request = uctx->request;
 
 	curl_mimepart	*part;
@@ -740,7 +740,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	fr_mail_ctx			*mail_ctx;
 	const char 			*envelope_address;
 
-	VALUE_PAIR const 		*smtp_body, *username, *password;
+	fr_pair_t const 		*smtp_body, *username, *password;
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
@@ -898,7 +898,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 {
 	rlm_smtp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
-	VALUE_PAIR const 	*username, *password;
+	fr_pair_t const 	*username, *password;
 	fr_curl_io_request_t    *randle;
 
 	randle = fr_curl_io_request_alloc(request);

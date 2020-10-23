@@ -34,19 +34,19 @@ RCSIDH(pair_legacy_h, "$Id$")
 extern "C" {
 #endif
 
-VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
+fr_pair_t	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
 
-VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
-			      VALUE_PAIR **vps, char const *attribute, char const *value, fr_token_t op);
+fr_pair_t	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
+			      fr_pair_t **vps, char const *attribute, char const *value, fr_token_t op);
 
-int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
+int 		fr_pair_mark_xlat(fr_pair_t *vp, char const *value);
 
 fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict,
-				       char const *buffer, VALUE_PAIR **head);
+				       char const *buffer, fr_pair_t **head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
-					VALUE_PAIR **out, FILE *fp, bool *pfiledone);
+					fr_pair_t **out, FILE *fp, bool *pfiledone);
 
-void		fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from);
+void		fr_pair_list_move(fr_pair_t **to, fr_pair_t **from);
 
 #ifdef __cplusplus
 }

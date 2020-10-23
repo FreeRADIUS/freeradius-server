@@ -145,7 +145,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 {
 	FILE *fp;
 	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	bool filedone = false;
 	RADIUS_PACKET *packet;
 
@@ -364,9 +364,9 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			if (!found) found = reply;
 
 			if (reply->code == FR_DHCP_OFFER) {
-				VALUE_PAIR *vp1 = fr_pair_find_by_da(reply->vps,
+				fr_pair_t *vp1 = fr_pair_find_by_da(reply->vps,
 								     attr_dhcp_dhcp_server_identifier);
-				VALUE_PAIR *vp2 = fr_pair_find_by_da(reply->vps,
+				fr_pair_t *vp2 = fr_pair_find_by_da(reply->vps,
 								     attr_dhcp_your_ip_address);
 
 				if (vp1 && vp2) {
@@ -547,7 +547,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char		if_name[IFNAMSIZ];
 #endif
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (!packet) return;
 
@@ -782,7 +782,7 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Decode to produce VALUE_PAIRs from the default field
+	 *	Decode to produce fr_pair_ts from the default field
 	 */
 	if (fr_debug_lvl) {
 		fr_cursor_t cursor;

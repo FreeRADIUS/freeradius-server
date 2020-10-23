@@ -84,8 +84,8 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req, VALUE_PAIR *check,
-			     UNUSED VALUE_PAIR *check_list)
+static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED fr_pair_t *req, fr_pair_t *check,
+			     UNUSED fr_pair_t *check_list)
 {
 	rlm_winbind_t		*inst = instance;
 	rlm_rcode_t		rcode = 1;
@@ -100,7 +100,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	char			*user_buff = NULL;
 	char const		*username;
 	char			*username_buff = NULL;
-	VALUE_PAIR		*vp_username;
+	fr_pair_t		*vp_username;
 
 	ssize_t			slen;
 	size_t			backslash = 0;
@@ -467,7 +467,7 @@ static int mod_detach(void *instance)
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	vp = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 	if (!vp) {
@@ -497,7 +497,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
-	VALUE_PAIR		*username, *password;
+	fr_pair_t		*username, *password;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);

@@ -152,7 +152,7 @@ static int eap_wireformat(eap_packet_t *reply)
  */
 rlm_rcode_t eap_compose(eap_session_t *eap_session)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	eap_packet_raw_t *eap_packet;
 	REQUEST *request;
 	eap_round_t *eap_round;
@@ -299,8 +299,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
  */
 int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
 {
-	VALUE_PAIR *vp;
-	VALUE_PAIR *eap_msg;
+	fr_pair_t *vp;
+	fr_pair_t *eap_msg;
 
 	eap_msg = fr_pair_find_by_da(request->request_pairs, attr_eap_message);
 	if (!eap_msg) {

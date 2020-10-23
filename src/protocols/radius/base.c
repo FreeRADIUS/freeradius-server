@@ -208,7 +208,7 @@ bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1] = {
  * @param[in] vp to return the length of.
  * @return the length of the attribute.
  */
-size_t fr_radius_attr_len(VALUE_PAIR const *vp)
+size_t fr_radius_attr_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
@@ -890,7 +890,7 @@ void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx);
 
 void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
 {
-	VALUE_PAIR	*c, *p;
+	fr_pair_t	*c, *p;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
 	if (!to_eval) return NULL;
@@ -913,10 +913,10 @@ void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
  *
  */
 ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, int code, int id, VALUE_PAIR *vps)
+			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_t *vps)
 {
 	ssize_t			slen;
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 	fr_cursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
 	uint8_t			*out_p, *out_end;
@@ -1000,7 +1000,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_radius_next_encodable, dict_radius, VALUE_PAIR);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 

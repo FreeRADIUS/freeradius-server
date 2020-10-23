@@ -119,7 +119,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	request->config = main_config;
 	request->client = inst->client;

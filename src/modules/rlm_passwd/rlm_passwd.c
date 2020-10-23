@@ -512,10 +512,10 @@ static int mod_detach (void *instance) {
 }
 
 static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *request,
-		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
+		       fr_pair_t **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	for (i = 0; i < inst->num_fields; i++) {
 		if (inst->pwd_fmt->field[i] && *inst->pwd_fmt->field[i] && pw->field[i] &&
@@ -537,7 +537,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQ
 	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_passwd_t);
 
 	char			buffer[1024];
-	VALUE_PAIR		*key, *i;
+	fr_pair_t		*key, *i;
 	struct mypasswd		*pw, *last_found;
 	fr_cursor_t		cursor;
 	int			found = 0;

@@ -79,7 +79,7 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR* vp[6];
+	fr_pair_t* vp[6];
 	char const *osname;
 
 	/*
@@ -145,7 +145,7 @@ static const CONF_PARSER module_config[] = {
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
 	int			rcode;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_soh_t);
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
@@ -207,7 +207,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	int rv;
 
 	/* try to find the MS-SoH payload */

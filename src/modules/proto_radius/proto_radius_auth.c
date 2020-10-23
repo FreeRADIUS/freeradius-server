@@ -156,8 +156,8 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
  */
 static char *auth_name(char *buf, size_t buflen, REQUEST *request)
 {
-	VALUE_PAIR	*cli;
-	VALUE_PAIR	*pair;
+	fr_pair_t	*cli;
+	fr_pair_t	*pair;
 	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
 	char const	*tls = "";
 
@@ -195,8 +195,8 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	char		extra[1024];
 	char		*p;
 	char		*msg;
-	VALUE_PAIR	*username = NULL;
-	VALUE_PAIR	*password = NULL;
+	fr_pair_t	*username = NULL;
+	fr_pair_t	*password = NULL;
 
 	/*
 	 *	No logs?  Then no logs.
@@ -219,7 +219,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
 		password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 		if (!password) {
-			VALUE_PAIR *auth_type;
+			fr_pair_t *auth_type;
 
 			auth_type = fr_pair_find_by_da(request->control_pairs, attr_auth_type);
 			if (auth_type) {
@@ -271,7 +271,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 {
 	proto_radius_auth_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_radius_auth_t);
-	VALUE_PAIR			*vp, *auth_type;
+	fr_pair_t			*vp, *auth_type;
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv = NULL;

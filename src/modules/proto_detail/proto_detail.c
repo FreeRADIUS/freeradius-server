@@ -240,7 +240,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	proto_detail_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	int			num, lineno;
 	uint8_t const		*p, *end;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	time_t			timestamp = 0;
 

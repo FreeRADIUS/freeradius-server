@@ -158,7 +158,7 @@ fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 static int rlm_rest_status_update(REQUEST *request, void *handle)
 {
 	int		code;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	RDEBUG2("Updating result attribute(s)");
 
@@ -633,8 +633,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 
 	int				ret;
 
-	VALUE_PAIR const		*username;
-	VALUE_PAIR const		*password;
+	fr_pair_t const		*username;
+	fr_pair_t const		*password;
 
 	if (!section->name) return RLM_MODULE_NOOP;
 

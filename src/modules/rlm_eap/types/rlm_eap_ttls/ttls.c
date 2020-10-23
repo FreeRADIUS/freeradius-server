@@ -137,7 +137,7 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 
 
 /*
- *	Convert diameter attributes to our VALUE_PAIR's
+ *	Convert diameter attributes to our fr_pair_t's
  */
 static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
@@ -145,7 +145,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 {
 	uint8_t const		*p = data, *end = p + data_len;
 
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	SSL			*ssl = decoder_ctx;
 	fr_dict_t const		*dict_radius;
 	fr_dict_attr_t const   	*attr_radius;
@@ -305,14 +305,14 @@ do_value:
 }
 
 /*
- *	Convert VALUE_PAIR's to diameter attributes, and write them
+ *	Convert fr_pair_t's to diameter attributes, and write them
  *	to an SSL session.
  *
- *	The ONLY VALUE_PAIR's which may be passed to this function
+ *	The ONLY fr_pair_t's which may be passed to this function
  *	are ones which can go inside of a RADIUS (i.e. diameter)
  *	packet.  So no server-configuration attributes, or the like.
  */
-static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PAIR *first)
+static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, fr_pair_t *first)
 {
 	/*
 	 *	RADIUS packets are no more than 4k in size, so if
@@ -326,7 +326,7 @@ static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PA
 	uint32_t	vendor;
 	size_t		total;
 	uint64_t	attr64;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	fr_cursor_t	cursor;
 
 	p = buffer;
@@ -467,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR	*vp, *tunnel_vps = NULL;
+	fr_pair_t	*vp, *tunnel_vps = NULL;
 	fr_cursor_t	cursor;
 	fr_cursor_t	to_tunnel;
 
@@ -588,13 +588,13 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	fr_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
 	chbind_packet_t		*chbind;
-	VALUE_PAIR		*username;
+	fr_pair_t		*username;
 
 	/*
 	 *	Just look at the buffer directly, without doing

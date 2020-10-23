@@ -87,14 +87,14 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
 
 /** @} */
 
-/** Generic interface for encoding one or more VALUE_PAIRs
+/** Generic interface for encoding one or more fr_pair_ts
  *
- * An encoding function should consume at most, one top level VALUE_PAIR and encode
+ * An encoding function should consume at most, one top level fr_pair_t and encode
  * it in the appropriate wire format for the protocol, writing the encoded data to
  * out, and returning the encoded length.
  *
- * The exception to processing one VALUE_PAIR is if multiple VALUE_PAIRs can be aggregated
- * into a single TLV, in which case the encoder may consume as many VALUE_PAIRs as will
+ * The exception to processing one fr_pair_t is if multiple fr_pair_ts can be aggregated
+ * into a single TLV, in which case the encoder may consume as many fr_pair_ts as will
  * fit into that TLV.
  *
  * Outlen provides the length of the buffer to write the encoded data to.  The return
@@ -118,10 +118,10 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  */
 typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
-/** A generic interface for decoding VALUE_PAIRs
+/** A generic interface for decoding fr_pair_ts
  *
- * A decoding function should decode a single top level VALUE_PAIR from wire format.
- * If this top level VALUE_PAIR is a TLV, multiple child attributes may also be decoded.
+ * A decoding function should decode a single top level fr_pair_t from wire format.
+ * If this top level fr_pair_t is a TLV, multiple child attributes may also be decoded.
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] cursor		to insert new pairs into.

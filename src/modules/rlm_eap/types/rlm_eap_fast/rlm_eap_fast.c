@@ -318,7 +318,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
 	REQUEST			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 	eap_fast_tunnel_t	*t;
-	VALUE_PAIR		*fast_vps = NULL, *vp;
+	fr_pair_t		*fast_vps = NULL, *vp;
 	fr_cursor_t		cursor;
 	char const		*errmsg;
 	int			dlen, plen;
@@ -566,7 +566,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	eap_tls_session_t 	*eap_tls_session;
 	fr_tls_session_t	*tls_session;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			client_cert;
 
 	eap_session->tls = true;

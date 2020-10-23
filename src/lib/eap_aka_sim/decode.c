@@ -376,7 +376,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	uint8_t			*decr = NULL;
 	ssize_t			decr_len;
 	fr_dict_attr_t const	*child;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	fr_cursor_t		tlv_cursor;
 	ssize_t			rcode;
 
@@ -529,7 +529,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 				     uint8_t const *data, size_t const attr_len, size_t const data_len,
 				     void *decoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	uint8_t const		*p = data;
 	size_t			prefix = 0;
 
@@ -1012,7 +1012,7 @@ int fr_aka_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *d
 	 *	of the data is OK!
 	 */
 	{
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		vp = fr_pair_afrom_child_num(request->packet, fr_dict_root(dict), FR_SUBTYPE);
 		if (!vp) {

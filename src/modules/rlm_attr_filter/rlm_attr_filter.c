@@ -81,7 +81,7 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ NULL }
 };
 
-static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
+static void check_pair(REQUEST *request, fr_pair_t *check_item, fr_pair_t *reply_item, int *pass, int *fail)
 {
 	int compare;
 
@@ -107,7 +107,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
 	if (rcode < 0) {
@@ -172,9 +172,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 							    RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	fr_cursor_t	input, check, out;
-	VALUE_PAIR	*input_item, *check_item, *output;
+	fr_pair_t	*input_item, *check_item, *output;
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;

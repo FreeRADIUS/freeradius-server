@@ -83,7 +83,7 @@ void securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request)
 int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSION *session)
 {
 	int		status = 0;
-	VALUE_PAIR	*state;
+	fr_pair_t	*state;
 
 	/*
 	 *	The time at which this request was made was the time
@@ -171,7 +171,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
  */
 SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 {
-	VALUE_PAIR	*state;
+	fr_pair_t	*state;
 	SECURID_SESSION* session;
 	SECURID_SESSION mySession;
 

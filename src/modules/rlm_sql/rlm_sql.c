@@ -145,9 +145,9 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static sql_fall_through_t fall_through(VALUE_PAIR *vp)
+static sql_fall_through_t fall_through(fr_pair_t *vp)
 {
-	VALUE_PAIR *tmp;
+	fr_pair_t *tmp;
 	tmp = fr_pair_find_by_da(vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
@@ -264,10 +264,10 @@ finish:
 	return ret;
 }
 
-/** Converts a string value into a #VALUE_PAIR
+/** Converts a string value into a #fr_pair_t
  *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s).
- * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in,out] ctx to allocate #fr_pair_t (s).
+ * @param[out] out where to write the resulting #fr_pair_t.
  * @param[in] request The current request.
  * @param[in] map to process.
  * @param[in] uctx The value to parse.
@@ -275,10 +275,10 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
 				   REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	char const	*value = uctx;
 
 	vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs));
@@ -326,7 +326,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  * @param maps Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
@@ -464,7 +464,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	/*
 	 *	We've resolved all the maps to result indexes, now convert
-	 *	the values at those indexes into VALUE_PAIRs.
+	 *	the values at those indexes into fr_pair_ts.
 	 *
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
@@ -638,7 +638,7 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
 int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 {
 	char *expanded = NULL;
-	VALUE_PAIR *vp = NULL;
+	fr_pair_t *vp = NULL;
 	char const *sqluser;
 	ssize_t len;
 
@@ -728,11 +728,11 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_list) CC_HINT(nonnull (1, 2, 4));
+static int sql_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *request_vp,
+			fr_pair_t *check, UNUSED fr_pair_t *check_list) CC_HINT(nonnull (1, 2, 4));
 
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_list)
+static int sql_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *request_vp,
+			fr_pair_t *check, UNUSED fr_pair_t *check_list)
 {
 	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
@@ -799,7 +799,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 					  sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
+	fr_pair_t		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
 
 	char			*expanded = NULL;
@@ -851,7 +851,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 		if (inst->config->authorize_group_check_query) {
 			fr_cursor_t	cursor;
-			VALUE_PAIR	*vp;
+			fr_pair_t	*vp;
 
 			/*
 			 *	Expand the group query
@@ -1185,9 +1185,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
-	VALUE_PAIR		*check_tmp = NULL;
-	VALUE_PAIR		*reply_tmp = NULL;
-	VALUE_PAIR 		*user_profile = NULL;
+	fr_pair_t		*check_tmp = NULL;
+	fr_pair_t		*reply_tmp = NULL;
+	fr_pair_t 		*user_profile = NULL;
 
 	bool			user_found = false;
 
@@ -1229,7 +1229,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 */
 	if (inst->config->authorize_check_query) {
 		fr_cursor_t	cursor;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {

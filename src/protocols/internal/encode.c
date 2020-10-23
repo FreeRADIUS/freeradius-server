@@ -59,7 +59,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 {
 	uint8_t				*enc_field, *len_field, *value_field, *value_end;
 	fr_dict_attr_t const		*da = da_stack->da[depth];
-	VALUE_PAIR			*vp = fr_cursor_current(cursor);
+	fr_pair_t			*vp = fr_cursor_current(cursor);
 
 	uint8_t				flen;
 	ssize_t				slen = 0;
@@ -182,9 +182,9 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		 */
 		if (da == vp->da) {
 			fr_cursor_t	children;
-			VALUE_PAIR	*child;
+			fr_pair_t	*child;
 
-			for (child = fr_cursor_talloc_init(&children, &vp->children.slist, VALUE_PAIR);
+			for (child = fr_cursor_talloc_init(&children, &vp->children.slist, fr_pair_t);
 			     child;
 			     child = fr_cursor_current(&children)) {
 
@@ -221,7 +221,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	{
 		fr_cursor_t children;
 
-		for (vp = fr_cursor_talloc_init(&children, &vp->children.slist, VALUE_PAIR);
+		for (vp = fr_cursor_talloc_init(&children, &vp->children.slist, fr_pair_t);
 		     vp;
 		     vp = fr_cursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
@@ -285,7 +285,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
  */
 static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_da_stack_t		da_stack;
 
 	vp = fr_cursor_current(cursor);

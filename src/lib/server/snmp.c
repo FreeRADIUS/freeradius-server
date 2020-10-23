@@ -68,7 +68,7 @@ typedef int (*fr_snmp_set_func_t)(fr_snmp_map_t const *map, void *snmp_ctx, fr_v
 typedef int (*fr_snmp_index_func_t)(TALLOC_CTX *ctx, void **snmp_ctx_out,
 				    fr_snmp_map_t const *map, void const *snmp_ctx_in, uint32_t index);
 
-/** Maps a VALUE_PAIR to the source of a value
+/** Maps a fr_pair_t to the source of a value
  *
  * @note Arrays of maps must be in ascending attribute order.
  *	This is because the lookup is performed using a binary
@@ -535,7 +535,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
 
 	for (i = index_num; i < UINT32_MAX; i++) {
 		fr_dict_attr_t const	*da;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 
 		tmp_ctx = talloc_new(request);
 		if (!tmp_ctx) {
@@ -613,9 +613,9 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 				       fr_cursor_t *cursor,
 				       fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
-	VALUE_PAIR	*next;
+	fr_pair_t	*next;
 	uint32_t	index_num;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -734,7 +734,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 				 fr_cursor_t *cursor,
 				 fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_snmp_map_t const	*map_p;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -799,7 +799,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		 *	Get functions can only return a single
 		 *	attribute.  To reduce boilerplate code
 		 *	in callbacks, we handled allocating and
-		 *	inserting VALUE_PAIRs, and pass in a
+		 *	inserting fr_pair_ts, and pass in a
 		 *	fr_value_box_t struct for the callback
 		 *	to complete.
 		 */
@@ -921,7 +921,7 @@ static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 int fr_snmp_process(REQUEST *request)
 {
 	fr_cursor_t		request_cursor, op_cursor, out_cursor, reply_cursor;
-	VALUE_PAIR		*head = NULL, *vp;
+	fr_pair_t		*head = NULL, *vp;
 
 	char			oid_str[FR_DICT_MAX_TLV_STACK * 4];	/* .<num>{1,3} */
 	size_t			oid_len, len;
@@ -930,7 +930,7 @@ int fr_snmp_process(REQUEST *request)
 	unsigned int		depth;
 	ssize_t			ret;
 
-	VALUE_PAIR		*op;
+	fr_pair_t		*op;
 
 	fr_cursor_init(&request_cursor, &request->request_pairs);
 	fr_cursor_iter_by_da_init(&op_cursor, &request->request_pairs, attr_snmp_operation);

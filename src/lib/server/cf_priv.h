@@ -59,7 +59,7 @@ struct cf_item {
 	char const		*filename;	//!< The file the config item was parsed from.
 };
 
-/** Configuration AVP similar to a VALUE_PAIR
+/** Configuration AVP similar to a fr_pair_t
  *
  */
 struct cf_pair {

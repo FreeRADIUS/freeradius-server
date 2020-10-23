@@ -141,10 +141,10 @@ int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
 /** Encode VPS into a raw ARP packet.
  *
  */
-ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request, VALUE_PAIR *vps)
+ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request, fr_pair_t *vps)
 {
 	ssize_t			slen;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_arp_packet_t		*arp;
 	fr_cursor_t		cursor;
 	fr_da_stack_t		da_stack;
@@ -218,7 +218,7 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 /** Decode a raw ARP packet into VPs
  *
  */
-ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, VALUE_PAIR **vps)
+ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_t **vps)
 {
 	fr_arp_packet_t const *arp;
 	fr_cursor_t cursor;
@@ -327,7 +327,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
  *	Because ARP has no TLVs, we don't have test points for pair
  *	encode / decode.
  */
-static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	return fr_arp_encode(data, data_len, NULL, vps);
 }
@@ -338,7 +338,7 @@ fr_test_point_proto_encode_t arp_tp_encode_proto = {
 	.func		= fr_arp_encode_proto
 };
 
-static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	return fr_arp_decode(ctx, data, data_len, vps);
 }

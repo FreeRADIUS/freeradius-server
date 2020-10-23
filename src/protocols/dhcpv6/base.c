@@ -143,7 +143,7 @@ char const *fr_dhcpv6_packet_types[FR_DHCPV6_MAX_CODE] = {
  * @param[in] vp to return the length of.
  * @return the length of the attribute.
  */
-size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
+size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
@@ -596,7 +596,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	ssize_t			slen;
 	uint8_t const		*p, *end;
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/*
 	 *	Get the packet type.
@@ -712,7 +712,7 @@ decode_options:
  */
 void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 {
-	VALUE_PAIR	*c, *p;
+	fr_pair_t	*c, *p;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
 	if (!to_eval) return NULL;
@@ -736,9 +736,9 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
  *
  */
 ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
-			 int msg_type, VALUE_PAIR *vps)
+			 int msg_type, fr_pair_t *vps)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_dict_attr_t const *root;
 	uint8_t *p, *end;
 	ssize_t slen;
@@ -817,7 +817,7 @@ encode_options:
 
 	end = packet + packet_len;
 
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, VALUE_PAIR);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
 	while ((p < end) && (fr_cursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(p, end - p, &cursor, &packet_ctx);
 		switch (slen) {
@@ -850,12 +850,12 @@ encode_options:
  * @param[in] packet	the input packet to check
  * @param[in] packet_len the length of the input packet.
  */
-int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t const *packet, size_t packet_len)
+int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const *packet, size_t packet_len)
 {
 	uint8_t const		*option, *options, *end;
 	ssize_t			slen;
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 
 	end = packet + packet_len;

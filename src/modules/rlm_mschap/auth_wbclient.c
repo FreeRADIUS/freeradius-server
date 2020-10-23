@@ -155,9 +155,9 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 
 	err = wbcCtxAuthenticateUserEx(wb_ctx, authparams, &info, &error);
 	if (err == WBC_ERR_AUTH_ERROR && inst->wb_retry_with_normalised_username) {
-		VALUE_PAIR 	*vp_response;
-		VALUE_PAIR	*vp_challenge;
-		VALUE_PAIR	*vp_chap_user_name;
+		fr_pair_t 	*vp_response;
+		fr_pair_t	*vp_challenge;
+		fr_pair_t	*vp_chap_user_name;
 		char		*normalised_username = NULL;
 
 		normalised_username = wbclient_normalise_username(authparams, wb_ctx, authparams->domain_name,

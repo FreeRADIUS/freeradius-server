@@ -47,7 +47,7 @@ RCSID("$Id$")
  */
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
-	VALUE_PAIR *vp, *username, *parent_username = NULL;
+	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));

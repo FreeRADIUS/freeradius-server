@@ -510,7 +510,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
  * @param  vp      The value pair to convert.
  * @return A JSON object.
  */
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
+json_object *mod_value_pair_to_json_object(REQUEST *request, fr_pair_t *vp)
 {
 	char value[255];    /* radius attribute value */
 
@@ -604,12 +604,12 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
+int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
 {
 	json_object *j_value;      /* json object value */
 	struct tm tm;           /* struct to hold event time */
 	time_t ts = 0;          /* values to hold time in seconds */
-	VALUE_PAIR *vp;         /* values to hold value pairs */
+	fr_pair_t *vp;         /* values to hold value pairs */
 	char value[255];        /* store radius attribute values and our timestamp */
 
 	/* get our current start timestamp from our json body */

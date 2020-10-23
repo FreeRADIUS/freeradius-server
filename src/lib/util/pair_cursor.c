@@ -13,9 +13,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Functions to iterate over collections of VALUE_PAIRs
+/** Functions to iterate over collections of fr_pair_ts
  *
- * @note Do not modify collections of VALUE_PAIRs pointed to by a cursor
+ * @note Do not modify collections of fr_pair_ts pointed to by a cursor
  *	 with none fr_pair_cursor_* functions, during the lifetime of that cursor.
  *
  * @file src/lib/util/pair_cursor.c
@@ -31,9 +31,9 @@
  *
  * @param cursor to operate on.
  * @param vp to set current and found positions to.
- * @return value passed in as #VALUE_PAIR.
+ * @return value passed in as #fr_pair_t.
  */
-inline static VALUE_PAIR *fr_pair_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
+inline static fr_pair_t *fr_pair_cursor_update(vp_cursor_t *cursor, fr_pair_t *vp)
 {
 	if (!vp) {
 		cursor->next = NULL;
@@ -55,9 +55,9 @@ inline static VALUE_PAIR *fr_pair_cursor_update(vp_cursor_t *cursor, VALUE_PAIR 
  * @param const_vp to start from.
  * @return the attribute pointed to by vp.
  */
-VALUE_PAIR *fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *const_vp)
+fr_pair_t *fr_pair_cursor_init(vp_cursor_t *cursor, fr_pair_t * const *const_vp)
 {
-	VALUE_PAIR **vp;
+	fr_pair_t **vp;
 
 	if (!const_vp || !cursor) {
 		return NULL;
@@ -98,9 +98,9 @@ void fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
 /** Rewind cursor to the start of the list
  *
  * @param cursor to operate on.
- * @return #VALUE_PAIR at the start of the list.
+ * @return #fr_pair_t at the start of the list.
  */
-VALUE_PAIR *fr_pair_cursor_head(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_head(vp_cursor_t *cursor)
 {
 	if (!cursor->first) return NULL;
 
@@ -119,9 +119,9 @@ VALUE_PAIR *fr_pair_cursor_head(vp_cursor_t *cursor)
 /** Wind cursor to the last pair in the list
  *
  * @param cursor to operate on.
- * @return #VALUE_PAIR at the end of the list.
+ * @return #fr_pair_t at the end of the list.
  */
-VALUE_PAIR *fr_pair_cursor_tail(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_tail(vp_cursor_t *cursor)
 {
 	if (!cursor->first || !*cursor->first) return NULL;
 
@@ -178,7 +178,7 @@ void fr_pair_cursor_end(vp_cursor_t *cursor)
 	return;
 }
 
-/** Iterate over a collection of VALUE_PAIRs of a given type in the pairlist
+/** Iterate over a collection of fr_pair_ts of a given type in the pairlist
  *
  * Find the next attribute of a given type. If no fr_pair_cursor_next_by_* function
  * has been called on a cursor before, or the previous call returned
@@ -190,12 +190,12 @@ void fr_pair_cursor_end(vp_cursor_t *cursor)
  * @param attr number to match.
  * @param vendor number to match (0 for none vendor attribute).
  * @return
- *	- The next matching #VALUE_PAIR.
- *	- NULL if no #VALUE_PAIR (s) match.
+ *	- The next matching #fr_pair_t.
+ *	- NULL if no #fr_pair_t (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr)
+fr_pair_t *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr)
 {
-	VALUE_PAIR *i;
+	fr_pair_t *i;
 
 	if (!cursor->first) return NULL;
 
@@ -222,7 +222,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 	return fr_pair_cursor_update(cursor, i);
 }
 
-/** Iterate over a collection of VALUE_PAIRs of a given type in the pairlist
+/** Iterate over a collection of fr_pair_ts of a given type in the pairlist
  *
  * Find the next attribute of a given type. If no fr_pair_cursor_next_by_* function
  * has been called on a cursor before, or the previous call returned
@@ -236,14 +236,14 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
  * @param parent	to search for attr in.
  * @param attr		number to match.
  * @return
- *	- The next matching #VALUE_PAIR.
-	- NULL if no #VALUE_PAIR (s) match (or attr doesn't exist).
+ *	- The next matching #fr_pair_t.
+	- NULL if no #fr_pair_t (s) match (or attr doesn't exist).
  */
-VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
+fr_pair_t *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
 					fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
-	VALUE_PAIR *i;
+	fr_pair_t *i;
 
 	if (!cursor->first) return NULL;
 
@@ -273,12 +273,12 @@ VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
  * @param cursor to operate on.
  * @param da to match.
  * @return
- *	- Next matching #VALUE_PAIR.
- *	- NULL if no #VALUE_PAIR (s) match.
+ *	- Next matching #fr_pair_t.
+ *	- NULL if no #fr_pair_t (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da)
 {
-	VALUE_PAIR *i;
+	fr_pair_t *i;
 
 	if (!cursor->first) return NULL;
 
@@ -303,12 +303,12 @@ VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const 
  * @param cursor to operate on.
  * @param ancestor attribute to match on.
  * @return
- *	- Next matching #VALUE_PAIR.
- *	- NULL if no #VALUE_PAIR (s) match.
+ *	- Next matching #fr_pair_t.
+ *	- NULL if no #fr_pair_t (s) match.
  */
-VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor)
+fr_pair_t *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor)
 {
-	VALUE_PAIR *i;
+	fr_pair_t *i;
 
 	if (!cursor->first) return NULL;
 
@@ -322,14 +322,14 @@ VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t 
 	return fr_pair_cursor_update(cursor, i);
 }
 
-/** Advanced the cursor to the next VALUE_PAIR
+/** Advanced the cursor to the next fr_pair_t
  *
  * @param cursor to operate on.
  * @return
- *	- Next #VALUE_PAIR.
- *	- NULL if no more #VALUE_PAIR in the collection.
+ *	- Next #fr_pair_t.
+ *	- NULL if no more #fr_pair_t in the collection.
  */
-VALUE_PAIR *fr_pair_cursor_next(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_next(vp_cursor_t *cursor)
 {
 	if (!cursor->first) return NULL;
 
@@ -353,41 +353,41 @@ VALUE_PAIR *fr_pair_cursor_next(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
-/** Return the next VALUE_PAIR without advancing the cursor
+/** Return the next fr_pair_t without advancing the cursor
  *
  * @param cursor to operate on.
  * @return
- *	- Next #VALUE_PAIR.
- *	- NULL if no more #VALUE_PAIR are in the collection.
+ *	- Next #fr_pair_t.
+ *	- NULL if no more #fr_pair_t are in the collection.
  */
-VALUE_PAIR *fr_pair_cursor_next_peek(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_next_peek(vp_cursor_t *cursor)
 {
 	return cursor->next;
 }
 
-/** Return the VALUE_PAIR the cursor current points to
+/** Return the fr_pair_t the cursor current points to
  *
  * @param cursor to operate on.
- * @return the #VALUE_PAIR the cursor currently points to.
+ * @return the #fr_pair_t the cursor currently points to.
  */
-VALUE_PAIR *fr_pair_cursor_current(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_current(vp_cursor_t *cursor)
 {
 	if (cursor->current) VP_VERIFY(cursor->current);
 
 	return cursor->current;
 }
 
-/** Insert a single VALUE_PAIR at the start of the list
+/** Insert a single fr_pair_t at the start of the list
  *
  * @note Will not advance cursor position to new attribute, but will set cursor
  *	 to this attribute, if it's the first one in the list.
  *
- * Insert a VALUE_PAIR at the start of the list.
+ * Insert a fr_pair_t at the start of the list.
  *
  * @param cursor to operate on.
  * @param vp to insert.
  */
-void fr_pair_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
+void fr_pair_cursor_prepend(vp_cursor_t *cursor, fr_pair_t *vp)
 {
 	if (!fr_cond_assert(cursor->first)) return;	/* cursor must have been initialised */
 
@@ -420,33 +420,33 @@ void fr_pair_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	Either current was never set, or something iterated to the
 	 *	end of the attribute list. In both cases the newly inserted
-	 *	VALUE_PAIR should be set as the current VALUE_PAIR.
+	 *	fr_pair_t should be set as the current fr_pair_t.
 	 */
 	if (!cursor->current) cursor->current = vp;
 
 	/*
-	 *	If the next pointer was NULL, and the VALUE_PAIR
+	 *	If the next pointer was NULL, and the fr_pair_t
 	 *	just added has a next pointer value, set the cursor's next
-	 *	pointer to the VALUE_PAIR's next pointer.
+	 *	pointer to the fr_pair_t's next pointer.
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
 
 	LIST_VERIFY(*(cursor->first));
 }
 
-/** Insert a single VALUE_PAIR at the end of the list
+/** Insert a single fr_pair_t at the end of the list
  *
  * @note Will not advance cursor position to new attribute, but will set cursor
  *	 to this attribute, if it's the first one in the list.
  *
- * Insert a VALUE_PAIR at the end of the list.
+ * Insert a fr_pair_t at the end of the list.
  *
  * @param cursor to operate on.
  * @param vp to insert.
  */
-void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
+void fr_pair_cursor_append(vp_cursor_t *cursor, fr_pair_t *vp)
 {
-	VALUE_PAIR *i;
+	fr_pair_t *i;
 
 	if (!fr_cond_assert(cursor->first)) return;	/* cursor must have been initialised */
 
@@ -471,7 +471,7 @@ void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	}
 
 	/*
-	 *	We don't yet know where the last VALUE_PAIR is
+	 *	We don't yet know where the last fr_pair_t is
 	 *
 	 *	Assume current is closer to the end of the list and
 	 *	use that if available.
@@ -493,37 +493,37 @@ void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	Either current was never set, or something iterated to the
 	 *	end of the attribute list. In both cases the newly inserted
-	 *	VALUE_PAIR should be set as the current VALUE_PAIR.
+	 *	fr_pair_t should be set as the current fr_pair_t.
 	 */
 	if (!cursor->current) cursor->current = vp;
 
 	/*
-	 *	Add the VALUE_PAIR to the end of the list
+	 *	Add the fr_pair_t to the end of the list
 	 */
 	cursor->last->next = vp;
 	cursor->last = vp;	/* Wind it forward a little more */
 
 	/*
-	 *	If the next pointer was NULL, and the VALUE_PAIR
+	 *	If the next pointer was NULL, and the fr_pair_t
 	 *	just added has a next pointer value, set the cursor's next
-	 *	pointer to the VALUE_PAIR's next pointer.
+	 *	pointer to the fr_pair_t's next pointer.
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
 
 	LIST_VERIFY(*(cursor->first));
 }
 
-/** Merges multiple VALUE_PAIR into the cursor
+/** Merges multiple fr_pair_t into the cursor
  *
- * Add multiple VALUE_PAIR from add to cursor.
+ * Add multiple fr_pair_t from add to cursor.
  *
- * @param cursor to insert VALUE_PAIRs with
- * @param add one or more VALUE_PAIRs (may be NULL, which results in noop).
+ * @param cursor to insert fr_pair_ts with
+ * @param add one or more fr_pair_ts (may be NULL, which results in noop).
  */
-void fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
+void fr_pair_cursor_merge(vp_cursor_t *cursor, fr_pair_t *add)
 {
 	vp_cursor_t from;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	if (!add) return;
 
@@ -556,12 +556,12 @@ void fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
  *
  * @param cursor to remove the current pair from.
  * @return
- *	- #VALUE_PAIR we just replaced.
+ *	- #fr_pair_t we just replaced.
  *	- NULL on error.
  */
-VALUE_PAIR *fr_pair_cursor_remove(vp_cursor_t *cursor)
+fr_pair_t *fr_pair_cursor_remove(vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp, *before;
+	fr_pair_t *vp, *before;
 
 	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
@@ -614,14 +614,14 @@ fixup:
  * @todo this is really inefficient and should be fixed...
  *
  * @param cursor to replace the current pair in.
- * @param new #VALUE_PAIR to insert.
+ * @param new #fr_pair_t to insert.
  * @return
- *	- #VALUE_PAIR we just replaced.
+ *	- #fr_pair_t we just replaced.
  *	- NULL on error.
  */
-VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
+fr_pair_t *fr_pair_cursor_replace(vp_cursor_t *cursor, fr_pair_t *new)
 {
-	VALUE_PAIR *vp, **last;
+	fr_pair_t *vp, **last;
 
 	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
@@ -654,7 +654,7 @@ VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
  * @note Use fr_pair_cursor_remove and talloc_free to free single pairs.
  *
  * Will move the cursor back one, then free the current pair and all
- * VALUE_PAIRs after it.
+ * fr_pair_ts after it.
  *
  * Usually used in conjunction with #fr_pair_cursor_end and #fr_pair_cursor_append.
  *
@@ -662,7 +662,7 @@ VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
  */
 void fr_pair_cursor_free(vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp, *before;
+	fr_pair_t *vp, *before;
 	bool found = false, last = false;
 
 	if (!*(cursor->first)) return;	/* noop */
@@ -724,7 +724,7 @@ vp_cursor_t *fr_pair_cursor_recurse_child(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 	child = talloc_zero(ctx, vp_cursor_t);
 	if (!child) return NULL;
 
-	(void) fr_pair_cursor_init(child, (VALUE_PAIR * const *) &cursor->current->vp_group);
+	(void) fr_pair_cursor_init(child, (fr_pair_t * const *) &cursor->current->vp_group);
 
 	return child;
 }

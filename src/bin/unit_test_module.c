@@ -141,7 +141,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 
 static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	REQUEST		*request;
 	fr_cursor_t	cursor;
 
@@ -255,10 +255,10 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			/*
-			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+			 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 			 */
-			if (!talloc_get_type(vp, VALUE_PAIR)) {
-				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			if (!talloc_get_type(vp, fr_pair_t)) {
+				ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
 
 				fr_log_talloc_report(vp);
 				fr_assert(0);
@@ -296,7 +296,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 	fr_dict_enum_t *dv;
 
@@ -312,10 +312,10 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
-		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+		 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 		 */
-		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+		if (!talloc_get_type(vp, fr_pair_t)) {
+			ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
 
 			fr_log_talloc_report(vp);
 			fr_assert(0);
@@ -565,8 +565,8 @@ int main(int argc, char *argv[])
 	const char		*filter_file = NULL;
 	FILE			*fp;
 	REQUEST			*request = NULL;
-	VALUE_PAIR		*vp;
-	VALUE_PAIR		*filter_vps = NULL;
+	fr_pair_t		*vp;
+	fr_pair_t		*filter_vps = NULL;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
@@ -983,7 +983,7 @@ int main(int argc, char *argv[])
 	 *	be matched in filters.
 	 */
 	if (filter_vps) {
-		VALUE_PAIR const *failed[2];
+		fr_pair_t const *failed[2];
 
 		MEM(pair_add_reply(&vp, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;

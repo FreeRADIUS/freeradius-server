@@ -311,7 +311,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 			     uint32_t max_idle,
 			     bool locking,
 			     char const *trigger_prefix,
-			     VALUE_PAIR *trigger_args)
+			     fr_pair_t *trigger_args)
 {
 	char		trigger_prefix_buff[128];
 	exfile_t	*handle;
@@ -467,7 +467,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 				       fr_pool_connection_alive_t a,
 				       char const *log_prefix,
 				       char const *trigger_prefix,
-				       VALUE_PAIR *trigger_args)
+				       fr_pair_t *trigger_args)
 {
 	CONF_SECTION *cs, *mycs;
 	char log_prefix_buff[128];
@@ -613,7 +613,7 @@ char const *module_state_method_to_str(module_state_func_table_t const *table,
  */
 bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	switch (pair_update_control(&vp, type_da)) {
 	case 0:

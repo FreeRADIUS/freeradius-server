@@ -113,7 +113,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	dhcp_packet_t		*dhcp = (dhcp_packet_t *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
 	uint16_t		l4_len = (UDP_HDR_SIZE + packet->data_len);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
@@ -173,7 +173,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
  */
 RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *request)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	RADIUS_PACKET		*packet;
 	uint8_t const		*code;
 	uint32_t		magic, xid;

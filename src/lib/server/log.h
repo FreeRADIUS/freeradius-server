@@ -103,9 +103,9 @@ void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			   char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3));
 
-void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix);
 
-void	log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void	log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix);
 
 void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			   char const *file, int line,

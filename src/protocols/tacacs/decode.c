@@ -77,7 +77,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 {
 	uint8_t i;
 	uint8_t const *p = *data;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	No one? Just get out!
@@ -121,7 +121,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 				uint8_t const **field_data, uint16_t field_len, uint8_t const *end)
 {
 	uint8_t const *p = *field_data;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	if ((p + field_len) > end) {
 		fr_strerror_printf("'%s' length %u overflows the remaining data in the packet",
@@ -159,7 +159,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 {
 	fr_dict_attr_t const	*tlv;
 	fr_tacacs_packet_t const *pkt;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	uint8_t const  		*p, *end;
 	uint8_t			*decrypted = NULL;
 
@@ -665,7 +665,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 	fr_cursor_t cursor;

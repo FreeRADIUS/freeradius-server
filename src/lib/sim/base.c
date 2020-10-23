@@ -162,7 +162,7 @@ size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
  * @param[in] vp to return the length of.
  * @return the length of the attribute.
  */
-size_t fr_sim_attr_len(VALUE_PAIR const *vp)
+size_t fr_sim_attr_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:

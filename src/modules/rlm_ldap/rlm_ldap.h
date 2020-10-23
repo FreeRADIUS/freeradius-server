@@ -180,12 +180,12 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn);
 
 rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					    VALUE_PAIR *check);
+					    fr_pair_t *check);
 
 rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					   char const *dn, VALUE_PAIR *check);
+					   char const *dn, fr_pair_t *check);
 
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check);
+rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, fr_pair_t *check);
 
 /*
  *	conn.c - Connection wrappers.

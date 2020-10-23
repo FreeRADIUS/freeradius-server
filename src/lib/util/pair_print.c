@@ -35,10 +35,10 @@
  *	- <0 the number of bytes we would have needed to write
  *	  the complete string to out.
  */
-ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, VALUE_PAIR const *vp, fr_token_t quote)
+ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote)
 {
 	fr_sbuff_t	our_out;
-	VALUE_PAIR	*child, *head;
+	fr_pair_t	*child, *head;
 	fr_cursor_t	cursor;
 
 	VP_VERIFY(vp);
@@ -90,7 +90,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, VALUE_PAIR const *vp, fr_tok
 
 /** Print one attribute and value to a string
  *
- * Print a VALUE_PAIR in the format:
+ * Print a fr_pair_t in the format:
 @verbatim
 	<attribute_name>[:tag] <op> [q]<value>[q]
 @endverbatim
@@ -102,7 +102,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, VALUE_PAIR const *vp, fr_tok
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-ssize_t fr_pair_print(fr_sbuff_t *out, VALUE_PAIR const *vp)
+ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *vp)
 {
 	char const	*token = NULL;
 	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
@@ -133,7 +133,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, VALUE_PAIR const *vp)
  * @param fp to output to.
  * @param vp to print.
  */
-void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
+void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 {
 	char		buff[1024];
 	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
@@ -156,9 +156,9 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
  * @param[in] file where the message originated
  * @param[in] line where the message originated
  */
-void _fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *file, int line)
+void _fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *file, int line)
 {
-	VALUE_PAIR *our_vp;
+	fr_pair_t *our_vp;
 	fr_cursor_t cursor;
 
 	memcpy(&our_vp, &vp, sizeof(vp)); /* const work-arounds */

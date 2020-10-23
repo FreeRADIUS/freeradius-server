@@ -475,7 +475,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 		value->datum.int32 = packet->code;
 
 	/*
-	 *	Virtual attributes which require a temporary VALUE_PAIR
+	 *	Virtual attributes which require a temporary fr_pair_t
 	 *	to be allocated. We can't use stack allocated memory
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
@@ -558,7 +558,7 @@ done:
  */
 static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
 {
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	fr_value_box_t		*value;
 
 	fr_cursor_t		cursor;
@@ -1763,7 +1763,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
  *	- -1 On xlat failure.
  *	- -2 On parse failure.
  */
-int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
+int xlat_eval_pair(REQUEST *request, fr_pair_t *vp)
 {
 	ssize_t slen;
 
@@ -1782,7 +1782,7 @@ int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
 	/*
 	 *	Parse the string into a new value.
 	 *
-	 *	If the VALUE_PAIR is being used in a regular expression
+	 *	If the fr_pair_t is being used in a regular expression
 	 *	then we just want to copy the new value in unmolested.
 	 */
 	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {

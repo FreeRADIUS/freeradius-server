@@ -223,11 +223,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Wrapper for VPs allocated on the stack.
  */
-static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
+static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *stacked)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
-	vp = talloc(ctx, VALUE_PAIR);
+	vp = talloc(ctx, fr_pair_t);
 	if (!vp) return;
 
 	memcpy(vp, stacked, sizeof(*vp));
@@ -247,7 +247,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	char timestamp[256];
 
 	if (xlat_eval(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
@@ -285,7 +285,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	}
 
 	if (inst->log_srcdst) {
-		VALUE_PAIR src_vp, dst_vp;
+		fr_pair_t src_vp, dst_vp;
 
 		memset(&src_vp, 0, sizeof(src_vp));
 		memset(&dst_vp, 0, sizeof(dst_vp));

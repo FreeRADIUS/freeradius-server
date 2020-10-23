@@ -334,7 +334,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	values.
 	 */
 	if (!client->active) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		fr_assert(client->dynamic);
 

@@ -238,7 +238,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
 {
 	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	unsigned int i;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
 
 	/*
@@ -497,7 +497,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 	rlm_eap_method_t const		*method;
 
 	eap_type_t			next = inst->default_method;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 
 	/*
 	 *	Session must have been thawed...
@@ -634,7 +634,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 			   eap_session->subrequest, method->submodule_inst, eap_session->process, true);
 
 	if (eap_session->identity) {
-		VALUE_PAIR	*identity;
+		fr_pair_t	*identity;
 
 		request = eap_session->subrequest;	/* Set request for pair_add_request macro */
 
@@ -648,7 +648,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 	 *      virtual server sections for multiple EAP types.
 	 */
 	{
-		VALUE_PAIR	*type_vp;
+		fr_pair_t	*type_vp;
 
 		MEM(pair_add_request(&type_vp, attr_eap_type) >= 0);
 		type_vp->vp_uint32 = eap_session->type;
@@ -795,7 +795,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 	size_t			len;
 	ssize_t			ret;
 	char			*p;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_session_t		*eap_session;
 	fr_cursor_t		cursor;
 
@@ -806,7 +806,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 	if (request_data_get(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED)) {
 		rlm_rcode_t		rcode;
 		eap_tunnel_data_t	*data;
-		VALUE_PAIR		*username;
+		fr_pair_t		*username;
 
 		eap_session = eap_session_thaw(request);
 		fr_assert(eap_session);
@@ -892,9 +892,9 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_session_t		*eap_session;
-	VALUE_PAIR		*username;
+	fr_pair_t		*username;
 
 	/*
 	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1

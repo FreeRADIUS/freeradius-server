@@ -70,7 +70,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	int offset;
 	fr_type_t type;
 	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp, *cast;
+	fr_pair_t *vp, *cast;
 	uint8_t const *input;
 	char buffer[256];
 	uint8_t blob[256];

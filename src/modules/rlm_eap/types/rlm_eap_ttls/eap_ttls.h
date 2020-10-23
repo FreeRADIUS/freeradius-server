@@ -41,7 +41,7 @@ extern fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_t const *attr_vendor_specific;
 
 typedef struct {
-	VALUE_PAIR	*username;
+	fr_pair_t	*username;
 	bool		authenticated;
 	char const	*virtual_server;
 } ttls_tunnel_t;

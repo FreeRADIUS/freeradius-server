@@ -118,7 +118,7 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
@@ -164,8 +164,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUES
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_wimax_t);
-	VALUE_PAIR		*msk, *emsk, *vp;
-	VALUE_PAIR		*mn_nai, *ip, *fa_rk;
+	fr_pair_t		*msk, *emsk, *vp;
+	fr_pair_t		*mn_nai, *ip, *fa_rk;
 	HMAC_CTX		*hmac;
 	unsigned int		rk1_len, rk2_len, rk_len;
 	uint32_t		mip_spi;

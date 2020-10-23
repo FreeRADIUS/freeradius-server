@@ -195,8 +195,8 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 	tmpl_t			*vpt = NULL;
 	fr_cursor_t		cursor;
 	fr_cursor_t		filter;
-	VALUE_PAIR		*json_vps = NULL;
-	VALUE_PAIR		*vps = NULL;
+	fr_pair_t		*json_vps = NULL;
+	fr_pair_t		*vps = NULL;
 	bool			negate;
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
@@ -251,11 +251,11 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST
 
 		if (negate) {
 			/* Remove all template attributes from JSON list */
-			for (VALUE_PAIR *vp = fr_cursor_init(&filter, &vps);
+			for (fr_pair_t *vp = fr_cursor_init(&filter, &vps);
 			     vp;
 			     vp = fr_cursor_next(&filter)) {
 
-				VALUE_PAIR *vpm = fr_cursor_init(&cursor, &json_vps);
+				fr_pair_t *vpm = fr_cursor_init(&cursor, &json_vps);
 				while (vpm) {
 					if (vp->da == vpm->da) {
 						talloc_free(fr_cursor_remove(&cursor));
@@ -384,10 +384,10 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 	return 0;
 }
 
-/** Converts a string value into a #VALUE_PAIR
+/** Converts a string value into a #fr_pair_t
  *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s).
- * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in,out] ctx to allocate #fr_pair_t (s).
+ * @param[out] out where to write the resulting #fr_pair_t.
  * @param[in] request The current request.
  * @param[in] map to process.
  * @param[in] uctx The json tree/jpath expression to evaluate.
@@ -395,10 +395,10 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
 				    vp_map_t const *map, void *uctx)
 {
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	fr_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*head, *value;
@@ -440,7 +440,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
  * @param maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST *request,

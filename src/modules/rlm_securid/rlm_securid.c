@@ -470,8 +470,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	int			rcode;
 	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_securid_t);
 	char		 	buffer[FR_MAX_STRING_LEN]="";
-	VALUE_PAIR		*username, *password;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*username, *password;
+	fr_pair_t		*vp;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);

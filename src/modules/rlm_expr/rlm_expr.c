@@ -217,7 +217,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	if (*p == '&') {
 		int			i, max, err;
 		ssize_t			slen;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		fr_cursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
 

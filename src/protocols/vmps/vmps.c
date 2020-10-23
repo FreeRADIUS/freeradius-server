@@ -145,13 +145,13 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 }
 
 
-int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code)
+int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pair_t **vps, unsigned int *code)
 {
 	uint8_t const  	*ptr, *end;
 	int		attr;
 	size_t		attr_len;
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (data_len < FR_VQP_HDR_LEN) return -1;
 
@@ -269,10 +269,10 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 #endif
 
 ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
-		       int code, uint32_t seq_no, VALUE_PAIR *vps)
+		       int code, uint32_t seq_no, fr_pair_t *vps)
 {
 	uint8_t *attr;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 	int our_code = code;
 
@@ -560,7 +560,7 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	return fr_vmps_decode(ctx, data, data_len, vps, NULL);
 }
@@ -598,7 +598,7 @@ fr_test_point_proto_decode_t vmps_tp_decode_proto = {
 /*
  *	Test points for protocol encode
  */
-static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	return fr_vmps_encode(data, data_len, NULL, -1, -1, vps);
 }

@@ -1249,7 +1249,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 
 	/*
 	 *	Pool-Action override
@@ -1286,7 +1286,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 
 	/*
 	 *	Unless it's overridden the default action is to allocate
@@ -1299,7 +1299,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	ippool_action_t			action = POOL_ACTION_ALLOCATE;
 
 	/*
@@ -1330,7 +1330,7 @@ run:
 static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 
 	/*
 	 *	Unless it's overridden the default action is to update

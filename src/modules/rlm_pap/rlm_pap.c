@@ -59,7 +59,7 @@ typedef struct {
 	bool			normify;
 } rlm_pap_t;
 
-typedef rlm_rcode_t (*pap_auth_func_t)(rlm_pap_t const *, REQUEST *, VALUE_PAIR const *, VALUE_PAIR const *);
+typedef rlm_rcode_t (*pap_auth_func_t)(rlm_pap_t const *, REQUEST *, fr_pair_t const *, fr_pair_t const *);
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_pap_t, normify), .dflt = "yes" },
@@ -124,7 +124,7 @@ static fr_dict_attr_t const **pap_allowed_passwords;
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
-	VALUE_PAIR		*password;
+	fr_pair_t		*password;
 
 	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
@@ -153,7 +153,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
  */
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						   VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						   fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	if ((known_good->vp_length != password->vp_length) ||
 	    (fr_digest_cmp(known_good->vp_octets, password->vp_octets, known_good->vp_length) != 0)) {
@@ -167,7 +167,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst,
 
 #ifdef HAVE_CRYPT
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						   VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						   fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	if (fr_crypt_check(password->vp_strvalue, known_good->vp_strvalue) != 0) {
 		REDEBUG("Crypt digest does not match \"known good\" digest");
@@ -178,7 +178,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst,
 #endif
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						 VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						 fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	uint8_t digest[MD5_DIGEST_LENGTH];
 
@@ -202,7 +202,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(UNUSED rlm_pap_t const *inst, R
 
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						  VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						  fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	fr_md5_ctx_t	*md5_ctx;
 	uint8_t		digest[MD5_DIGEST_LENGTH];
@@ -233,7 +233,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(UNUSED rlm_pap_t const *inst, 
 }
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha1(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						  VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						  fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	fr_sha1_ctx	sha1_context;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
@@ -259,7 +259,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha1(UNUSED rlm_pap_t const *inst, 
 }
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha1(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						   VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						   fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	fr_sha1_ctx	sha1_context;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
@@ -290,7 +290,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha1(UNUSED rlm_pap_t const *inst,
 
 #ifdef HAVE_OPENSSL_EVP_H
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						    VALUE_PAIR const *known_good, VALUE_PAIR const *password,
+						    fr_pair_t const *known_good, fr_pair_t const *password,
 						    char const *name, EVP_MD const *md)
 {
 	EVP_MD_CTX	*ctx;
@@ -317,7 +317,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md(UNUSED rlm_pap_t const *inst
 }
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md_salted(UNUSED rlm_pap_t const *inst, REQUEST *request,
-							   VALUE_PAIR const *known_good, VALUE_PAIR const *password,
+							   fr_pair_t const *known_good, fr_pair_t const *password,
 							   char const *name, EVP_MD const *md)
 {
 	EVP_MD_CTX	*ctx;
@@ -355,7 +355,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_evp_md_salted(UNUSED rlm_pap_t cons
  */
 #define PAP_AUTH_EVP_MD(_func, _new_func, _name, _md) \
 static rlm_rcode_t CC_HINT(nonnull) _new_func(rlm_pap_t const *inst, REQUEST *request,			\
-					      VALUE_PAIR const *known_good, VALUE_PAIR const *password)	\
+					      fr_pair_t const *known_good, fr_pair_t const *password)	\
 {													\
 	return _func(inst, request, known_good, password, _name, _md);					\
 }
@@ -392,7 +392,7 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
 								 fr_table_num_sorted_t const hash_names[], size_t hash_names_len,
 								 char scheme_sep, char iter_sep, char salt_sep,
-								 bool iter_is_base64, VALUE_PAIR const *password)
+								 bool iter_is_base64, fr_pair_t const *password)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 
@@ -605,7 +605,7 @@ finish:
 
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t const *inst,
 							   REQUEST *request,
-							   VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+							   fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	uint8_t const *p = known_good->vp_octets, *q, *end = p + known_good->vp_length;
 
@@ -666,7 +666,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t cons
 #endif
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+						fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	ssize_t len;
 	uint8_t digest[MD4_DIGEST_LENGTH];
@@ -701,7 +701,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(UNUSED rlm_pap_t const *inst, RE
 }
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(UNUSED rlm_pap_t const *inst, REQUEST *request,
-						VALUE_PAIR const *known_good, UNUSED VALUE_PAIR const *password)
+						fr_pair_t const *known_good, UNUSED fr_pair_t const *password)
 {
 	uint8_t	digest[MD4_DIGEST_LENGTH];
 	char	charbuf[32 + 1];
@@ -730,7 +730,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(UNUSED rlm_pap_t const *inst, RE
 }
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *inst, REQUEST *request,
-							VALUE_PAIR const *known_good, VALUE_PAIR const *password)
+							fr_pair_t const *known_good, fr_pair_t const *password)
 {
 	uint8_t digest[128];
 	uint8_t buff[FR_MAX_STRING_LEN];
@@ -793,7 +793,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
  *
  */
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_dummy(UNUSED rlm_pap_t const *inst, UNUSED REQUEST *request,
-						   UNUSED VALUE_PAIR const *known_good, UNUSED VALUE_PAIR const *password)
+						   UNUSED fr_pair_t const *known_good, UNUSED fr_pair_t const *password)
 {
 	return RLM_MODULE_FAIL;
 }
@@ -848,8 +848,8 @@ static const pap_auth_func_t auth_func_table[] = {
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
-	VALUE_PAIR		*known_good;
-	VALUE_PAIR		*password;
+	fr_pair_t		*known_good;
+	fr_pair_t		*password;
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;

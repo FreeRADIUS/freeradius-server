@@ -464,7 +464,7 @@ DIAG_OFF(format-nonliteral)
  * - %pV prints a value box as a string.
  * - %pM prints a list of value boxes, concatenating them.
  * - %pH prints a value box as a hex string.
- * - %pP prints a VALUE_PAIR.
+ * - %pP prints a fr_pair_t.
  *
  * This breaks strict compatibility with printf but allows us to continue using
  * the static format string and argument type validation.
@@ -790,7 +790,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 			case 'P':
 			{
-				VALUE_PAIR const *in = va_arg(ap_q, VALUE_PAIR const *);
+				fr_pair_t const *in = va_arg(ap_q, fr_pair_t const *);
 
 				if (!in) {
 					subst = talloc_strdup(NULL, "(null)");

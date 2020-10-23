@@ -47,7 +47,7 @@ RCSID("$Id$")
  *	- -648	Password expired
  *
  */
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR *password)
+int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, fr_pair_t *password)
 {
 	int rcode = -1;
 	struct wbcContext *wb_ctx;

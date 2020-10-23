@@ -51,7 +51,7 @@ struct exfile_s {
 	bool			locking;
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
-	VALUE_PAIR		*trigger_args;		//!< Arguments to pass to trigger.
+	fr_pair_t		*trigger_args;		//!< Arguments to pass to trigger.
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -67,7 +67,7 @@ struct exfile_s {
 static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
-	VALUE_PAIR		*vp, *args;
+	fr_pair_t		*vp, *args;
 	fr_dict_attr_t const	*da;
 	fr_cursor_t		cursor;
 
@@ -191,7 +191,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  * @param[in] trigger_args to make available in any triggers executed by the exfile api.
  *	Exfile-File is automatically added to this list.
  */
-void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");

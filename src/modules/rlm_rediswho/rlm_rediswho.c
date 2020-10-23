@@ -200,7 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 {
 	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_rediswho_t);
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dict_enum_t		*dv;
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;

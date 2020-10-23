@@ -212,7 +212,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	unsigned int		attr;
 	fr_dict_attr_t const	*index_attr, *da;
 	fr_dict_attr_t const	*parent = conf->snmp_root;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			ret;
 
 	if (!oid) return 0;
@@ -309,7 +309,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 
 	/*
-	 *	VALUE_PAIRs with no value need a 1 byte value buffer.
+	 *	fr_pair_ts with no value need a 1 byte value buffer.
 	 */
 	if (!value) {
 		switch (da->type) {
@@ -384,10 +384,10 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
  */
 static int radsnmp_get_response(int fd,
 				fr_dict_attr_t const *root, fr_dict_attr_t const *type,
-				VALUE_PAIR *head)
+				fr_pair_t *head)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp, *type_vp;
+	fr_pair_t		*vp, *type_vp;
 	fr_dict_attr_t const	*parent = root;
 	unsigned int		written = 0;
 
@@ -580,9 +580,9 @@ static int radsnmp_get_response(int fd,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR *head)
+static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_t *head)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	char		buffer[64];
 	ssize_t		slen;
 	struct iovec	io_vector[2];
@@ -645,7 +645,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		ssize_t			slen;
 
 		fr_cursor_t		cursor;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		RADIUS_PACKET		*packet;
 
 		/*

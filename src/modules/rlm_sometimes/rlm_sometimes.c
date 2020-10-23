@@ -73,7 +73,7 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 {
 	uint32_t		hash;
 	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	float			value;
 
 	/*

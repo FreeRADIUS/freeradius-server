@@ -950,7 +950,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	CONF_SECTION	*cs;
 	char		src_buf[128], buffer[256];
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	RADCLIENT	*c;
 
 	if (!request) return NULL;

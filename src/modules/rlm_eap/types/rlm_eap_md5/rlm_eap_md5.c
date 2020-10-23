@@ -52,7 +52,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	MD5_PACKET		*packet;
 	MD5_PACKET		*reply;
-	VALUE_PAIR		*known_good;
+	fr_pair_t		*known_good;
 	fr_dict_attr_t	const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 

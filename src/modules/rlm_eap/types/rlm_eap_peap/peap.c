@@ -156,7 +156,7 @@ static int eap_peap_soh(REQUEST *request,fr_tls_session_t *tls_session)
 static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 			  	uint8_t const *data, unsigned int data_len) {
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t eap_method_base;
 	uint32_t eap_vendor;
 	uint32_t eap_method;
@@ -258,15 +258,15 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 }
 
 /*
- *	Convert a pseudo-EAP packet to a list of VALUE_PAIR's.
+ *	Convert a pseudo-EAP packet to a list of fr_pair_t's.
  */
-static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKET *packet,
+static fr_pair_t *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 			  		   eap_round_t *eap_round,
 			  		   uint8_t const *data, size_t data_len)
 {
 	size_t 		total;
 	uint8_t		*p;
-	VALUE_PAIR	*vp = NULL, *head = NULL;
+	fr_pair_t	*vp = NULL, *head = NULL;
 	fr_cursor_t	cursor;
 
 	if (data_len > 65535) return NULL; /* paranoia */
@@ -301,13 +301,13 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 
 /*
- *	Convert a list of VALUE_PAIR's to an EAP packet, through the
+ *	Convert a list of fr_pair_t's to an EAP packet, through the
  *	simple expedient of dumping the EAP message
  */
-static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_session, VALUE_PAIR *vp)
+static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_session, fr_pair_t *vp)
 {
 	fr_assert(vp != NULL);
-	VALUE_PAIR *this;
+	fr_pair_t *this;
 	fr_cursor_t cursor;
 
 	/*
@@ -370,7 +370,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	peap_tunnel_t *t = tls_session->opaque;
 
 	if (RDEBUG_ENABLED2) {
@@ -472,7 +472,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake = NULL;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
 	size_t		data_len;
@@ -749,7 +749,7 @@ finish:
 
 static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	Tell the request that it's a fake one.

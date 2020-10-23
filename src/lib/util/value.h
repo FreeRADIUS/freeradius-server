@@ -102,7 +102,7 @@ typedef struct {
 
 /** Union containing all data types supported by the server
  *
- * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
+ * This union contains all data types that can be represented by fr_pair_ts. It may also be used in other parts
  * of the server where values of different types need to be stored.
  *
  * fr_type_t should be an enumeration of the values in this union.

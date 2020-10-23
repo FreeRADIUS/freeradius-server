@@ -289,7 +289,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 {
 	eap_session_t		*eap_session = NULL;
 	eap_packet_raw_t	*eap_packet;
-	VALUE_PAIR		*user;
+	fr_pair_t		*user;
 
 	eap_packet = *eap_packet_p;
 

@@ -186,7 +186,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 	struct berval		tracking_id;
 
 	fr_cursor_t		cursor;
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 
 	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
 

@@ -99,14 +99,14 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 /*
  *	The Unix-Group = handler.
  */
-static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *req_vp,
-		    VALUE_PAIR *check, UNUSED VALUE_PAIR *check_list)
+static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED fr_pair_t *req_vp,
+		    fr_pair_t *check, UNUSED fr_pair_t *check_list)
 {
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
 	int		retval = -1;
-	VALUE_PAIR	*username;
+	fr_pair_t	*username;
 
 	/*
 	 *	No user name, can't compare.
@@ -194,8 +194,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
-	VALUE_PAIR	*vp;
-	VALUE_PAIR	*username;
+	fr_pair_t	*vp;
+	fr_pair_t	*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -338,7 +338,7 @@ static char *uue(void *in)
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	FILE			*fp;
 	struct utmp		ut;

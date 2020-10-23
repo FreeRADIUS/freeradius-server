@@ -99,7 +99,7 @@ static int ocsp_cert_url_parse(X509 *cert, char **host_out, char **port_out, cha
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
+static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, fr_pair_t *vp)
 {
 	uint8_t *p;
 
@@ -133,9 +133,9 @@ static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE *resp)
+static int ocsp_staple_to_pair(fr_pair_t **out, REQUEST *request, OCSP_RESPONSE *resp)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	size_t		len;
 	uint8_t		*p;
 
@@ -352,7 +352,7 @@ int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
 	int		rc;
 
 	fr_time_t	start;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (conf->cache_server) switch (fr_tls_cache_process(request, conf->cache.load)) {
 	case RLM_MODULE_REJECT:
@@ -668,7 +668,7 @@ finish:
 
 		if (staple_response) {
 			/*
-			 *	Convert the OCSP response to a VALUE_PAIR
+			 *	Convert the OCSP response to a fr_pair_t
 			 *	and add it to the current request.
 			 */
 			if (ocsp_staple_to_pair(&vp, request, resp) < 0) goto skipped;

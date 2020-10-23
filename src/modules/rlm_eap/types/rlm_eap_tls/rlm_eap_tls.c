@@ -144,7 +144,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request,
 {
 	CONF_SECTION	*server_cs;
 	CONF_SECTION	*section;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	/* set the virtual server to use */
 	vp = fr_pair_find_by_da(request->control_pairs, attr_virtual_server);
@@ -258,7 +258,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			client_cert;
 
 	eap_session->tls = true;

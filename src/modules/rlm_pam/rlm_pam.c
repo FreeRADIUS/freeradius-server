@@ -215,10 +215,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 {
 	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->instance, rlm_pam_t);
 	int			ret;
-	VALUE_PAIR		*pair;
+	fr_pair_t		*pair;
 
 	char const		*pam_auth_string = data->pam_auth_name;
-	VALUE_PAIR		*username, *password;
+	fr_pair_t		*username, *password;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);

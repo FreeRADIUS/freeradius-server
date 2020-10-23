@@ -304,7 +304,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	values.
 	 */
 	if (!client->active) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		fr_assert(client->dynamic);
 
@@ -337,7 +337,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	if (RDEBUG_ENABLED) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_tacacs_packet_codes[request->packet->code],

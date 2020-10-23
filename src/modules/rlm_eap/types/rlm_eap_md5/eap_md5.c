@@ -128,7 +128,7 @@ MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 /*
  * verify = MD5(id+password+challenge_sent)
  */
-int eap_md5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
+int eap_md5_verify(MD5_PACKET *packet, fr_pair_t* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;

@@ -29,7 +29,7 @@
  * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
  *
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
- * where values or #VALUE_PAIR should be copied to.
+ * where values or #fr_pair_t should be copied to.
  *
  * To create new #tmpl_t use one of the tmpl_*from_* functions.  These parse
  * strings into VPTs. The main parsing function is #tmpl_afrom_substr, which can produce
@@ -42,14 +42,14 @@
  * @see tmpl_afrom_attr_str
  *
  * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
- * functions which can be used to iterate over only the #VALUE_PAIR that match a
+ * functions which can be used to iterate over only the #fr_pair_t that match a
  * tmpl_t in a given list.
  *
  * @see tmpl_cursor_init
  * @see tmpl_cursor_next
  *
  * Or for simplicity, there are functions which wrap the cursor functions, to copy or
- * return the #VALUE_PAIR that match the VPT.
+ * return the #fr_pair_t that match the VPT.
  *
  * @see tmpl_copy_vps
  * @see tmpl_find_vp
@@ -57,7 +57,7 @@
  * If you just need the string value of whatever the VPT refers to, the tmpl_*expand
  * functions may be used. These functions evaluate the VPT, execing, and xlat expanding
  * as necessary. In the case of #TMPL_TYPE_ATTR, and #FR_TYPE_STRING or #FR_TYPE_OCTETS
- * #tmpl_expand will return a pointer to the raw #VALUE_PAIR buffer. This can be very
+ * #tmpl_expand will return a pointer to the raw #fr_pair_t buffer. This can be very
  * useful when using the #FR_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
  * format specific #xlat_escape_legacy_t function, or to operate on the raw value.
@@ -466,7 +466,7 @@ struct tmpl_s {
 typedef struct tmpl_cursor_ctx_s tmpl_cursor_ctx_t;
 typedef struct tmpl_cursor_nested_s tmpl_cursor_nested_t;
 
-typedef VALUE_PAIR *(*tmpl_cursor_eval_t)(VALUE_PAIR **prev, VALUE_PAIR *current, tmpl_cursor_nested_t *ns);
+typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_pair_t **prev, fr_pair_t *current, tmpl_cursor_nested_t *ns);
 
 /** State for traversing an attribute reference
  *
@@ -493,7 +493,7 @@ struct tmpl_cursor_nested_s {
 		} group;
 
 		struct {
-			VALUE_PAIR		**list_head;		//!< Head of the list we're currently
+			fr_pair_t		**list_head;		//!< Head of the list we're currently
 									///< iterating over.
 		} leaf;
 	};
@@ -508,7 +508,7 @@ struct tmpl_cursor_ctx_s {
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
 	REQUEST			*request;	//!< Result of following the request references.
-	VALUE_PAIR		**list;		//!< List within the request.
+	fr_pair_t		**list;		//!< List within the request.
 
 	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
 						///< one of these so it doesn't make sense to
@@ -534,7 +534,7 @@ typedef struct {
 
 	TALLOC_CTX		*list_ctx;	//!< Where to allocate new attributes if building
 						///< out from the current extents of the tree.X
-	VALUE_PAIR		**list;		//!< List that we tried to evaluate ar in and failed.
+	fr_pair_t		**list;		//!< List that we tried to evaluate ar in and failed.
 						///< Or if ar is NULL, the list that represents the
 						///< deepest grouping or TLV attribute the chain of
 						///< ars referenced.
@@ -689,7 +689,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
    fr_cursor_t       cursor;
    tmpl_cursor_ctx_t cc,
-   VALUE_PAIR        *vp;
+   fr_pair_t        *vp;
 
    // Iterate over all pairs in the request list
    for (vp = tmpl_cursor_init(NULL, &cursor, request, &list);
@@ -722,12 +722,12 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 /** Determine the correct context and list head
  *
  * Used in conjunction with the fr_cursor functions to determine the correct list
- * and TALLOC_CTX for inserting VALUE_PAIRs.
+ * and TALLOC_CTX for inserting fr_pair_ts.
  *
  * Example:
  @code{.c}
    TALLOC_CTX *ctx;
-   VALUE_PAIR **head;
+   fr_pair_t **head;
    fr_value_box_t value;
 
    RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
@@ -737,8 +737,8 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    value.length = talloc_array_length(value.strvalue) - 1;
  @endcode
  *
- * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.
- * @param _head of the #VALUE_PAIR list.
+ * @param _ctx new #fr_pair_t s should be allocated in for the specified list.
+ * @param _head of the #fr_pair_t list.
  * @param _request The current request.
  * @param _ref to resolve.
  * @param _list to resolve.
@@ -823,7 +823,7 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt);
 
-VALUE_PAIR		**radius_list(REQUEST *request, pair_list_t list);
+fr_pair_t		**radius_list(REQUEST *request, pair_list_t list);
 
 RADIUS_PACKET		*radius_packet(REQUEST *request, pair_list_t list_name);
 
@@ -958,18 +958,18 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
-VALUE_PAIR		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 					  fr_cursor_t *cursor, REQUEST *request,
 					  tmpl_t const *vpt);
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
-int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+int			tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
 				      tmpl_t const *vpt);
 
-int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
+int			tmpl_find_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
+int			tmpl_find_or_add_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,

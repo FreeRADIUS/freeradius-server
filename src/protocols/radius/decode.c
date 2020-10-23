@@ -354,7 +354,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	uint8_t const	*ptr = data;
 	uint8_t const	*end = data + packet_len;
 	uint8_t		*p;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	total = 0;
 	attr = ptr[0];
@@ -417,7 +417,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 {
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	fr_cursor_t		tlv_cursor;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
@@ -845,7 +845,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	ssize_t			rcode;
 	uint32_t		vendor;
 	fr_dict_vendor_t const	*dv;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
 	fr_cursor_t		tlv_cursor;
@@ -1010,7 +1010,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	ssize_t			rcode;
 	uint32_t		vendor;
 	fr_dict_attr_t const	*child;
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
@@ -1091,7 +1091,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		fr_assert(tag < 0x20);
 
 		if (!packet_ctx->tags[tag]) {
-			VALUE_PAIR *group;
+			fr_pair_t *group;
 			fr_dict_attr_t const *group_da;
 
 			packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
@@ -1610,7 +1610,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 }
 
 
-/** Create a "normal" VALUE_PAIR from the given data
+/** Create a "normal" fr_pair_t from the given data
  *
  */
 ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
@@ -1637,7 +1637,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	 *	Empty attributes are silently ignored, except for CUI.
 	 */
 	if (data_len == 2) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		if (!fr_dict_root(dict)->flags.is_root) {
 			return 2;
@@ -1715,13 +1715,13 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	size_t packet_len = data_len;
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 	decode_fail_t reason;
 	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t original[20];
 
 	if (!fr_radius_ok(data, &packet_len, 200, false, &reason)) {

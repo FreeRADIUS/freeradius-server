@@ -35,7 +35,7 @@ struct request_data_s {
 
 	void const	*unique_ptr;		//!< Key to lookup request data.
 	int		unique_int;		//!< Alternative key to lookup request data.
-	char const	*type;			//!< Opaque type e.g. VALUE_PAIR, fr_dict_attr_t etc...
+	char const	*type;			//!< Opaque type e.g. fr_pair_t, fr_dict_attr_t etc...
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
 	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed

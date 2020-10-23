@@ -42,7 +42,7 @@ typedef struct {
 
 /* Structure to hold channel bindings req/resp information */
 typedef struct {
-	VALUE_PAIR	*username;		/* the username */
+	fr_pair_t	*username;		/* the username */
 	chbind_packet_t *request;		/* channel binding request buffer */
 	chbind_packet_t *response;		/* channel binding response buffer */
 } CHBIND_REQ;
@@ -57,5 +57,5 @@ typedef struct {
 /* Channel binding function prototypes */
 FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
 
-VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind);
-chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
+fr_pair_t *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind);
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps);

@@ -37,14 +37,14 @@ extern "C" {
 
 bool			fr_vmps_ok(uint8_t const *packet, size_t *packet_len);
 
-int			fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps, unsigned int *code);
+int			fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pair_t **vps, unsigned int *code);
 
 ssize_t			fr_vmps_packet_size(uint8_t const *data, size_t data_len);
 
 void			fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
 ssize_t			fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
-				       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
+				       int code, uint32_t id, fr_pair_t *vps) CC_HINT(nonnull(1));
 
 extern char const	*fr_vmps_codes[FR_VQP_MAX_CODE];
 

@@ -155,7 +155,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 		}
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
 			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_address);
 			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_address);

@@ -63,7 +63,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 static int fr_tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size_t key_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
 	fr_pair_value_memdup(vp, key, key_len, false);
@@ -264,7 +264,7 @@ int fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_conf_t	*conf;
 	int		ret = 0;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	conf = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
 
@@ -335,7 +335,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 	REQUEST			*request;
 	unsigned char const	**p;
 	uint8_t const		*q;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	SSL_SESSION		*sess;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
@@ -503,7 +503,7 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 	REQUEST			*request;
 
 	fr_tls_session_t		*session;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);

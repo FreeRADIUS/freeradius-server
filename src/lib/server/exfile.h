@@ -38,7 +38,7 @@ typedef struct exfile_s exfile_t;
 exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
 
 void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
-				       VALUE_PAIR *trigger_args);
+				       fr_pair_t *trigger_args);
 
 int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
 			    mode_t permissions);

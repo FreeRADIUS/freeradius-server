@@ -1031,7 +1031,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 static size_t command_normalise_attribute(command_result_t *result, command_file_ctx_t *cc,
 					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	VALUE_PAIR 	*head = NULL;
+	fr_pair_t 	*head = NULL;
 	ssize_t		slen;
 
 	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, &head) != T_EOL) {
@@ -1255,7 +1255,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	char		*p, *end;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	VALUE_PAIR	*head = NULL, *vp;
+	fr_pair_t	*head = NULL, *vp;
 	ssize_t		slen;
 
 	p = in;
@@ -1299,7 +1299,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 
 	/*
 	 *	Run the input data through the test
-	 *	point to produce VALUE_PAIRs.
+	 *	point to produce fr_pair_ts.
 	 */
 	fr_cursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
@@ -1375,7 +1375,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	char		*p, *end;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	VALUE_PAIR	*head = NULL, *vp;
+	fr_pair_t	*head = NULL, *vp;
 	ssize_t		slen;
 
 	p = in;
@@ -1599,7 +1599,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	char		*p = in;
 
 	uint8_t		*enc_p, *enc_end;
-	VALUE_PAIR	*head = NULL, *vp;
+	fr_pair_t	*head = NULL, *vp;
 	bool		truncate = false;
 
 	size_t		iterations = 0;
@@ -1672,7 +1672,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 		for (vp = fr_cursor_talloc_iter_init(&cursor, &head,
 						     tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, VALUE_PAIR);
+						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
 		     vp;
 		     vp = fr_cursor_current(&cursor)) {
 			slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
@@ -1773,7 +1773,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	ssize_t		slen;
 	char		*p = in;
 
-	VALUE_PAIR	*head = NULL;
+	fr_pair_t	*head = NULL;
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
 	if (!tp) {
@@ -1976,7 +1976,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 {
 	ssize_t slen;
 	fr_pair_ctx_t ctx;
-	VALUE_PAIR *vp, *head = NULL;
+	fr_pair_t *vp, *head = NULL;
 	char *p, *end;
 	fr_cursor_t cursor;
 

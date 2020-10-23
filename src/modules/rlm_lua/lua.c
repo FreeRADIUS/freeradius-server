@@ -42,7 +42,7 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _fr_lua_stack_state)
 
 DIAG_OFF(type-limits)
-/** Convert VALUE_PAIRs to Lua values
+/** Convert fr_pair_ts to Lua values
  *
  * Pushes a Lua representation of an attribute value onto the stack.
  *
@@ -53,7 +53,7 @@ DIAG_OFF(type-limits)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
+static int fr_lua_marshall(REQUEST *request, lua_State *L, fr_pair_t const *vp)
 {
 	if (!vp) return -1;
 
@@ -181,12 +181,12 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 }
 DIAG_ON(type-limits)
 
-/** Convert Lua values to VALUE_PAIRs
+/** Convert Lua values to fr_pair_ts
  *
- * Convert Lua values back to VALUE_PAIRs. How the Lua value is converted is dependent
+ * Convert Lua values back to fr_pair_ts. How the Lua value is converted is dependent
  * on the type of the DA.
  *
- * @param[out] out	Where to write a pointer to the new VALUE_PAIR.
+ * @param[out] out	Where to write a pointer to the new fr_pair_t.
  * @param[in] inst	the current instance.
  * @param[in] request	the current request.
  * @param[in] L		Lua interpreter.
@@ -195,10 +195,10 @@ DIAG_ON(type-limits)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_lua_unmarshall(VALUE_PAIR **out,
+static int fr_lua_unmarshall(fr_pair_t **out,
 			     UNUSED rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(vp = fr_pair_afrom_da(request, da));
 	switch (lua_type(L, -1)) {
@@ -307,7 +307,7 @@ static int fr_lua_unmarshall(VALUE_PAIR **out,
  * @param[in] L Lua interpreter.
  * @return
  *	- 0 (no results) on success.
- *	- 1 on success with the VALUE_PAIR value on the stack.
+ *	- 1 on success with the fr_pair_t value on the stack.
  */
 static int _lua_pair_get(lua_State *L)
 {
@@ -315,7 +315,7 @@ static int _lua_pair_get(lua_State *L)
 
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	int			index;
 
 	fr_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
@@ -356,7 +356,7 @@ static int _lua_pair_set(lua_State *L)
 	REQUEST			*request = fr_lua_util_get_request();
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp = NULL, *new;
+	fr_pair_t		*vp = NULL, *new;
 	lua_Integer		index;
 	bool			delete = false;
 
@@ -411,7 +411,7 @@ static int _lua_pair_iterator(lua_State *L)
 	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/*
 	 *	This function should only be called as a closure.
@@ -469,7 +469,7 @@ static int _lua_list_iterator(lua_State *L)
 	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 

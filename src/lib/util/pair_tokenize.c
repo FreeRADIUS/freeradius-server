@@ -131,7 +131,7 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 	return p - op;
 }
 
-/** Allocate a VALUE_PAIR based on pre-parsed fields.
+/** Allocate a fr_pair_t based on pre-parsed fields.
  *
  * @param ctx	the talloc ctx
  * @param da	the da for the vp
@@ -140,19 +140,19 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
  * @param value_len length of the value string
  * @param quote	the quotation character for the value string.
  * @return
- *	- VALUE_PAIR* on success
+ *	- fr_pair_t* on success
  *	- NULL on error
  *
  *  It's just better for this function to take the broken-out /
  *  pre-parsed fields.  That way the caller can do any necessary
  *  parsing.
  */
-static VALUE_PAIR *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
+static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 					fr_token_t op,
 					char const *value, size_t value_len,
 					char quote)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	if (!da || !value || (value_len == 0)) return NULL;
 
@@ -170,7 +170,7 @@ static VALUE_PAIR *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *d
 }
 
 
-/** Allocate one VALUE_PAIR from a string, and add it to the pair_ctx cursor.
+/** Allocate one fr_pair_t from a string, and add it to the pair_ctx cursor.
  *
  * @param[in,out] pair_ctx	the parsing context
  * @param in	String to parse
@@ -188,7 +188,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	char quote;
 	char const *value;
 	size_t value_len;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_token_t op;
 
 	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent->dict, &FR_SBUFF_IN(p, end));
@@ -353,7 +353,7 @@ static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t i
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  *
- *  This function will parse VALUE_PAIRs, or context changes, up to
+ *  This function will parse fr_pair_ts, or context changes, up to
  *  end of string, or a trailing ','.  The caller is responsible for
  *  parsing the comma.
  *

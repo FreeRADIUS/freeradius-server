@@ -297,7 +297,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] p		The string you want to duplicate.
@@ -320,7 +320,7 @@ char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] fmt	The format string.
@@ -346,7 +346,7 @@ char *talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] fmt	The format string.

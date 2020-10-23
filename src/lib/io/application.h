@@ -115,12 +115,12 @@ typedef struct {
 							///< and register it with the scheduler so we can receive
 							///< data.
 
-	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
+	fr_io_decode_t			decode;		//!< Translate raw bytes into fr_pair_ts and metadata.
 							///< May be NULL.
 							///< Here for convenience, so that decode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
 
-	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
+	fr_io_encode_t			encode;		//!< Pack fr_pair_ts back into a byte array.
 							///< May be NULL.
 							///< Here for convenience, so that encode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.

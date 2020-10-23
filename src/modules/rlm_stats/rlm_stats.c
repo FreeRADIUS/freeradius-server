@@ -152,7 +152,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST 
 	uint32_t		stats_type;
 
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	rlm_stats_data_t mydata, *stats;
 	fr_cursor_t cursor;
 	char buffer[64];

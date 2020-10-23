@@ -32,7 +32,7 @@ RCSID("$Id$")
 static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
 	size_t		i, len;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	fr_cursor_t	cursor;
 
 	for (vp = fr_cursor_init(&cursor, &request->request_pairs);

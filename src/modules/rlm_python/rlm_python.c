@@ -269,12 +269,12 @@ failed:
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request,
-			VALUE_PAIR **vps, PyObject *p_value, char const *funcname, char const *list_name)
+			fr_pair_t **vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
 	int		i;
 	Py_ssize_t	tuple_len;
 	tmpl_t	*dst;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	REQUEST		*current = request;
 
 	/*
@@ -385,7 +385,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
  */
-static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, VALUE_PAIR *vp)
+static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, fr_pair_t *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
@@ -492,7 +492,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *p_func, char const *funcname)
 {
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	PyObject	*p_ret = NULL;
 	PyObject	*p_arg = NULL;
 	int		tuple_len;

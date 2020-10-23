@@ -162,7 +162,7 @@ int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
 	fr_cursor_t		cursor, list;
-	VALUE_PAIR		*cert_vps = NULL;
+	fr_pair_t		*cert_vps = NULL;
 	/*
 	 *	Examples and documentation show cert_info being
 	 *	a struct curl_certinfo *, but CPP checks require
@@ -197,7 +197,7 @@ int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
 		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
 		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR		*vp;
+		     	fr_pair_t		*vp;
 		     	fr_dict_attr_t const	*da;
 
 		     	q = strchr(cert_attrs->data, ':');

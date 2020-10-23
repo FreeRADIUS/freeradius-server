@@ -564,7 +564,7 @@ build_vector:
 		#define VECTOR_INCREMENT 20
 		fr_cursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		int			alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));

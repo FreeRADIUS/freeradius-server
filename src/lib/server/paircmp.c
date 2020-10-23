@@ -115,16 +115,16 @@ static paircmp_t *cmp;
  */
 static int prefix_suffix_cmp(UNUSED void *instance,
 			     REQUEST *request,
-			     VALUE_PAIR *req,
-			     VALUE_PAIR *check,
-			     VALUE_PAIR *check_list)
+			     fr_pair_t *req,
+			     fr_pair_t *check,
+			     fr_pair_t *check_list)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	char const	*name;
 	char		rest[FR_MAX_STRING_LEN];
 	int		len, namelen;
 	int		ret = -1;
-	VALUE_PAIR	*username;
+	fr_pair_t	*username;
 
 	if (!request) return -1;
 
@@ -183,9 +183,9 @@ static int prefix_suffix_cmp(UNUSED void *instance,
  */
 static int packet_cmp(UNUSED void *instance,
 		      REQUEST *request,
-		      UNUSED VALUE_PAIR *req,
-		      VALUE_PAIR *check,
-		      UNUSED VALUE_PAIR *check_list)
+		      UNUSED fr_pair_t *req,
+		      fr_pair_t *check,
+		      UNUSED fr_pair_t *check_list)
 {
 	VP_VERIFY(check);
 
@@ -199,9 +199,9 @@ static int packet_cmp(UNUSED void *instance,
  */
 static int generic_cmp(UNUSED void *instance,
 		       REQUEST *request,
-		       VALUE_PAIR *req,
-		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_list)
+		       fr_pair_t *req,
+		       fr_pair_t *check,
+		       UNUSED fr_pair_t *check_list)
 {
 	VP_VERIFY(check);
 
@@ -209,7 +209,7 @@ static int generic_cmp(UNUSED void *instance,
 		int rcode;
 		char name[1024];
 		char value[1024];
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
 
@@ -293,9 +293,9 @@ static bool other_attr(fr_dict_attr_t const *da, fr_dict_attr_t const **from)
  *	- -2 on error.
  */
 #ifdef HAVE_REGEX
-int paircmp_pairs(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+int paircmp_pairs(REQUEST *request, fr_pair_t *check, fr_pair_t *vp)
 #else
-int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+int paircmp_pairs(UNUSED REQUEST *request, fr_pair_t *check, fr_pair_t *vp)
 #endif
 {
 	int ret = 0;
@@ -509,9 +509,9 @@ finish:
  *	- 1 is vp value is more than check value.
  */
 static int paircmp_func(REQUEST *request,
-			VALUE_PAIR *request_list,
-			VALUE_PAIR *check,
-			VALUE_PAIR *check_list)
+			fr_pair_t *request_list,
+			fr_pair_t *check,
+			fr_pair_t *check_list)
 {
 	paircmp_t *c;
 
@@ -550,12 +550,12 @@ static int paircmp_func(REQUEST *request,
  * @return 0 on match.
  */
 int paircmp(REQUEST *request,
-	    VALUE_PAIR *request_list,
-	    VALUE_PAIR *check)
+	    fr_pair_t *request_list,
+	    fr_pair_t *check)
 {
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*check_item;
-	VALUE_PAIR		*auth_item;
+	fr_pair_t		*check_item;
+	fr_pair_t		*auth_item;
 	fr_dict_attr_t const	*from;
 
 	int			result = 0;

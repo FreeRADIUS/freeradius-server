@@ -194,7 +194,7 @@ struct rlm_isc_dhcp_info_s {
 	 */
 	fr_hash_table_t		*hosts_by_ether;  //!< by MAC address
 	fr_hash_table_t		*hosts_by_uid;	//!< by client identifier
-	VALUE_PAIR		*options;	//!< DHCP options
+	fr_pair_t		*options;	//!< DHCP options
 	fr_trie_t		*subnets;
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
@@ -997,7 +997,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 			fr_dict_attr_t const *da, char *value)
 {
 	int rcode;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 
 	/*
@@ -1382,7 +1382,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	isc_host_ether_t *my_ether, *old_ether;
 	isc_host_uid_t *my_uid, *old_uid;
 	rlm_isc_dhcp_info_t *ether, *child, *parent;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	ether = NULL;
 	my_uid = NULL;
@@ -1611,7 +1611,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 
 static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by_ether, fr_hash_table_t *hosts_by_uid)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	isc_host_ether_t *ether, my_ether;
 	rlm_isc_dhcp_info_t *host = NULL;
 
@@ -1660,7 +1660,7 @@ done:
 static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
 	int rcode;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 
 	if (!info->parent) return -1; /* internal error */
@@ -1752,8 +1752,8 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, REQUEST *request)
 {
 	int rcode;
 	rlm_isc_dhcp_info_t *host, *info;
-	VALUE_PAIR *vp;
-	VALUE_PAIR *yiaddr;
+	fr_pair_t *vp;
+	fr_pair_t *yiaddr;
 
 	/*
 	 *	If there's already a fixed IP, don't do anything
@@ -1809,7 +1809,7 @@ static int apply(rlm_isc_dhcp_t const *inst, REQUEST *request, rlm_isc_dhcp_info
 {
 	int rcode, child_rcode;
 	rlm_isc_dhcp_info_t *info;
-	VALUE_PAIR *yiaddr;
+	fr_pair_t *yiaddr;
 
 	rcode = 0;
 	yiaddr = fr_pair_find_by_da(request->reply_pairs, attr_your_ip_address);
@@ -1863,7 +1863,7 @@ recurse:
 	 *	can add some, too.
 	 */
 	if (head->options) {
-		VALUE_PAIR *vp = NULL;
+		fr_pair_t *vp = NULL;
 		fr_cursor_t option_cursor;
 		fr_cursor_t reply_cursor;
 
@@ -1892,7 +1892,7 @@ recurse:
 		for (vp = fr_cursor_init(&option_cursor, &head->options);
 		     vp != NULL;
 		     vp = fr_cursor_next(&option_cursor)) {
-			VALUE_PAIR *reply;
+			fr_pair_t *reply;
 
 			reply = fr_pair_find_by_da(request->reply_pairs, vp->da);
 			if (reply) continue;
@@ -1902,7 +1902,7 @@ recurse:
 			 *	reply.
 			 */
 			while (vp) {
-				VALUE_PAIR *next, *copy;
+				fr_pair_t *next, *copy;
 
 				copy = fr_pair_copy(request->reply, vp);
 				if (!copy) return -1;

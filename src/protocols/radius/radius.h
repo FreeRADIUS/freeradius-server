@@ -107,7 +107,7 @@ enum {
 /*
  *	protocols/radius/base.c
  */
-size_t		fr_radius_attr_len(VALUE_PAIR const *vp);
+size_t		fr_radius_attr_len(fr_pair_t const *vp);
 
 int		fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
@@ -125,7 +125,7 @@ ssize_t		fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, siz
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
 ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-				 char const *secret, UNUSED size_t secret_len, int code, int id, VALUE_PAIR *vps);
+				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_t *vps);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, fr_cursor_t *cursor) CC_HINT(nonnull(1,2,5,7));
@@ -159,7 +159,7 @@ int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 void		_fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {
-	VALUE_PAIR	*parent;
+	fr_pair_t	*parent;
 	fr_cursor_t	cursor;
 } fr_radius_tag_ctx_t;
 

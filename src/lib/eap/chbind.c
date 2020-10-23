@@ -34,7 +34,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ssize_t			slen;
 	size_t			total;
 	uint8_t			*ptr, *end;
-	VALUE_PAIR		const *vp;
+	fr_pair_t		const *vp;
 	fr_cursor_t		cursor;
 
 	total = 0;
@@ -172,7 +172,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	REQUEST		*fake = NULL;
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	/* check input parameters */
 	fr_assert((request != NULL) &&
@@ -256,11 +256,11 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
  *	Handles multiple EAP-channel-binding Message attrs
  *	ie concatenates all to get the complete EAP-channel-binding packet.
  */
-chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps)
 {
 	size_t			length;
 	uint8_t 		*ptr;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	chbind_packet_t		*packet;
 	fr_cursor_t		cursor;
 
@@ -301,9 +301,9 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	return packet;
 }
 
-VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
+fr_pair_t *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (!chbind) return NULL; /* don't produce garbage */
 

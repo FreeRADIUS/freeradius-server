@@ -43,7 +43,7 @@ RCSID("$Id$")
 #if 0
 static void debug_pair_list(PAIR_LIST *pl)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 
 	while(pl) {
@@ -89,8 +89,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	char entry[256];
 	char buffer[8192];
 	char const *ptr;
-	VALUE_PAIR *check_tmp = NULL;
-	VALUE_PAIR *reply_tmp = NULL;
+	fr_pair_t *check_tmp = NULL;
+	fr_pair_t *reply_tmp = NULL;
 	PAIR_LIST *pl = NULL, *t;
 	PAIR_LIST **last = &pl;
 	int order = 0;
@@ -98,7 +98,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	int entry_lineno = 0;
 	fr_token_t parsecode;
 #ifdef HAVE_REGEX_H
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_cursor_t cursor;
 #endif
 	char newfile[8192];

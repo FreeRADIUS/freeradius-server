@@ -208,7 +208,7 @@ typedef struct {
 	bool			silent_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
 
-	VALUE_PAIR		*link_vps;		//!< VALUE_PAIRs used to link retransmissions.
+	fr_pair_t		*link_vps;		//!< fr_pair_ts used to link retransmissions.
 
 	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
 	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
@@ -287,8 +287,8 @@ struct rs {
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.
 
-	VALUE_PAIR 		*filter_request_vps;	//!< Sorted filter vps.
-	VALUE_PAIR 		*filter_response_vps;	//!< Sorted filter vps.
+	fr_pair_t 		*filter_request_vps;	//!< Sorted filter vps.
+	fr_pair_t 		*filter_response_vps;	//!< Sorted filter vps.
 	FR_CODE			filter_request_code;	//!< Filter request packets by code.
 	FR_CODE			filter_response_code;	//!< Filter response packets by code.
 

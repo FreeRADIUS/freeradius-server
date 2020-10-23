@@ -61,7 +61,7 @@
  *	certificate chain.
  *
  * @note As a byproduct of validation, various OIDs will be extracted from the
- *	certificates, and inserted into the session-state: list as VALUE_PAIR.
+ *	certificates, and inserted into the session-state: list as fr_pair_t.
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.
@@ -78,7 +78,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	fr_tls_conf_t	*conf;
 	int		my_ok = ok;
 
-	VALUE_PAIR	*cert_vps = NULL;
+	fr_pair_t	*cert_vps = NULL;
 	fr_cursor_t	cursor;
 
 	char const	**identity_p;
@@ -269,7 +269,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		char		filename[256];
 		int		fd;
 		FILE		*fp;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		snprintf(filename, sizeof(filename), "%s/client.XXXXXXXX", conf->verify_tmp_dir);
 

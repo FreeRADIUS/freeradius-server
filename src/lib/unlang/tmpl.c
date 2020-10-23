@@ -108,7 +108,7 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  * @param[out] status		where the status of exited programs will be stored.
  */
-void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, tmpl_t const *tmpl, VALUE_PAIR *vps, int *status)
+void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;

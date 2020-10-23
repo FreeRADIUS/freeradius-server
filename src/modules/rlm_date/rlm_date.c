@@ -114,7 +114,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 {
 	rlm_date_t const *inst = mod_inst;
 	struct tm tminfo;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	memset(&tminfo, 0, sizeof(tminfo));
 

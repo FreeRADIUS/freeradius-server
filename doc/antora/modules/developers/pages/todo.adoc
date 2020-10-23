@@ -68,7 +68,7 @@ The good news is that 99% of the existing code doesn’t use groups, so we
 can add a new API without changing any existing code.
 
 We MAY want the `vp->vp_group` field be a structure which includes a
-`fr_dict_t*` root dictionary, a `VALUE_PAIR*` attribute, and perhaps
+`fr_dict_t*` root dictionary, a `fr_pair_t*` attribute, and perhaps
 another pointer describing what’s allowed here.
 
 Though to be honest, the ``allowed'' field is likely not necessary. This

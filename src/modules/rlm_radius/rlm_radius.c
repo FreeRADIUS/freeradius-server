@@ -397,7 +397,7 @@ static rlm_rcode_t mod_radius_resume(module_ctx_t const *mctx, REQUEST *request,
  */
 static void radius_fixups(rlm_radius_t const *inst, REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	Check for proxy loops.

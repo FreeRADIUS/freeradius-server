@@ -28,14 +28,14 @@
  * of the authentication attempt.
  *
  * When a request is complete, #fr_request_to_state is called to transfer
- * ownership of the state VALUE_PAIRs and state_ctx (which the VALUE_PAIRs
+ * ownership of the state fr_pair_ts and state_ctx (which the fr_pair_ts
  * are allocated in) to a #fr_state_entry_t.  This #fr_state_entry_t holds the
  * value of the State attribute, that will be send out in the response.
  *
  * When the next request is received, #fr_state_to_request is called to transfer
- * the VALUE_PAIRs and state ctx to the new request.
+ * the fr_pair_ts and state ctx to the new request.
  *
- * The ownership of the state_ctx and state VALUE_PAIRs is transferred as below:
+ * The ownership of the state_ctx and state fr_pair_ts is transferred as below:
  *
  * @verbatim
    request -> state_entry -> request -> state_entry -> request -> free()
@@ -55,7 +55,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
-/** Holds a state value, and associated VALUE_PAIRs and data
+/** Holds a state value, and associated fr_pair_ts and data
  *
  */
 typedef struct {
@@ -105,7 +105,7 @@ typedef struct {
 
 	TALLOC_CTX		*ctx;				//!< ctx to parent any data that needs to be
 								//!< tied to the lifetime of the request progression.
-	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
+	fr_pair_t		*vps;				//!< session-state fr_pair_ts, parented by ctx.
 
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
@@ -253,7 +253,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
 {
 #ifdef WITH_VERIFY_PTR
 	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	Verify all state attributes are parented
@@ -294,7 +294,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	size_t			i;
 	uint32_t		x;
 	time_t			now = time(NULL);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_state_entry_t	*entry, *next;
 
 	uint8_t			old_state[sizeof(old->state)];
@@ -556,7 +556,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t	*entry;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	vp = fr_pair_find_by_da(request->request_pairs, state->da);
 	if (!vp) return;
@@ -596,9 +596,9 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	return;
 }
 
-/** Copy a pointer to the head of the list of state VALUE_PAIRs (and their ctx) into the request
+/** Copy a pointer to the head of the list of state fr_pair_ts (and their ctx) into the request
  *
- * @note Does not copy the actual VALUE_PAIRs.  The VALUE_PAIRs and their context
+ * @note Does not copy the actual fr_pair_ts.  The fr_pair_ts and their context
  *	are transferred between state entries as the conversation progresses.
  *
  * @note Called with the mutex free.
@@ -607,7 +607,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t	*entry;
 	TALLOC_CTX		*old_ctx = NULL;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	fr_assert(request->state_pairs == NULL);
 
@@ -662,7 +662,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 }
 
 
-/** Transfer ownership of the state VALUE_PAIRs and ctx, back to a state entry
+/** Transfer ownership of the state fr_pair_ts and ctx, back to a state entry
  *
  * Put request->state_pairs into the State attribute.  Put the State attribute
  * into the vps list.  Delete the original entry, if it exists
@@ -673,7 +673,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t	*entry, *old = NULL;
 	fr_dlist_head_t		data;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
@@ -744,7 +744,7 @@ void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int uniq
 		 *	add the state list into request_data_t
 		 *	and don't bother copying.
 		 */
-		request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, VALUE_PAIR,
+		request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, fr_pair_t,
 					request->state, true, false, true);
 		request->state_pairs = NULL;
 	}
@@ -803,7 +803,7 @@ void fr_state_restore_to_child(REQUEST *request, void const *unique_ptr, int uni
  */
 void fr_state_detach(REQUEST *request, bool will_free)
 {
-	VALUE_PAIR	*vps = NULL;
+	fr_pair_t	*vps = NULL;
 	TALLOC_CTX	*new_state_ctx;
 
 	if (unlikely(request->parent == NULL)) return;

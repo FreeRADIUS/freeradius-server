@@ -326,7 +326,7 @@ static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, boo
  * Unlike normal protocol requests which may have multiple distinct states,
  * we really only have REQUEST_INIT and REQUEST_RECV phases.
  *
- * Conversion of LDAPMessage to VALUE_PAIR structs is done in the listener
+ * Conversion of LDAPMessage to fr_pair_t structs is done in the listener
  * because we cannot easily duplicate the LDAPMessage to send it across to
  * the worker for parsing.
  *
@@ -530,7 +530,7 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
  */
 static int proto_ldap_attributes_add(REQUEST *request, sync_config_t const *config)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_add_request(&vp, attr_ldap_sync_dn) == 0);
 	fr_pair_value_strdup(vp, config->base_dn);
@@ -678,7 +678,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
 	REQUEST			*request;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	request = proto_ldap_request_setup(listen, inst, sync_id);
 	if (!request) return -1;
@@ -733,7 +733,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 	 */
 	if (msg) {
 		char *entry_dn;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		entry_dn = ldap_get_dn(conn->handle, msg);
 
@@ -838,7 +838,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	{
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		vp = fr_pair_find_by_da(request->reply_pairs, attr_ldap_sync_cookie);
 		if (!vp) {

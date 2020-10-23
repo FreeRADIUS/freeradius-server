@@ -88,7 +88,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 {
 	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_digest_t);
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/*
 	 *	Find the first attribute which is parented by Digest-Attributes.
@@ -128,8 +128,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	uint8_t a2[(FR_MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(FR_MAX_STRING_LEN + 1) * 5];
 	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp, *passwd, *algo;
-	VALUE_PAIR *qop, *nonce;
+	fr_pair_t *vp, *passwd, *algo;
+	fr_pair_t *qop, *nonce;
 
 	/*
 	 *	We require access to the plain-text password, or to the
@@ -296,7 +296,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	qop = fr_pair_find_by_da(request->request_pairs, attr_digest_qop);
 	if (qop) {
 		if (strcasecmp(qop->vp_strvalue, "auth-int") == 0) {
-			VALUE_PAIR *body;
+			fr_pair_t *body;
 
 			/*
 			 *	Add in Digest-Body-Digest

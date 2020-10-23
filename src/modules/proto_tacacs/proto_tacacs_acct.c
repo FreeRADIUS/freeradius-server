@@ -94,7 +94,7 @@ fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
 
 static void accounting_failed(REQUEST *request, char const *msg)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	RPEDEBUG("%s", msg);
 
@@ -119,7 +119,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 	REQUEST_VERIFY(request);

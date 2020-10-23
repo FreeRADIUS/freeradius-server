@@ -60,7 +60,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	static char const *tmp_attrs[] = { NULL };
 
 	fr_ldap_rcode_t	status;
-	VALUE_PAIR	*vp = NULL;
+	fr_pair_t	*vp = NULL;
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
 	int		cnt;

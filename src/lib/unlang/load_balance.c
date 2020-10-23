@@ -151,7 +151,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT16) ||
 		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT32) ||
 		     (tmpl_da(kctx->vpt)->type == FR_TYPE_UINT64))) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
 			slen = tmpl_find_vp(&vp, request, kctx->vpt);
 			if (slen < 0) {

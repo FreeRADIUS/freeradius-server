@@ -400,7 +400,7 @@ static int csv_map_verify(vp_map_t *map, void *instance)
 	fr_type_t type = FR_TYPE_INVALID;
 
 	/*
-	 *	Destinations where we can put the VALUE_PAIRs we
+	 *	Destinations where we can put the fr_pair_ts we
 	 *	create using CSV values.
 	 */
 	switch (map->lhs->type) {
@@ -839,10 +839,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Convert field X to a VP.
  */
-static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
+static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
 	char const		*str = uctx;
-	VALUE_PAIR		*head = NULL, *vp;
+	fr_pair_t		*head = NULL, *vp;
 	fr_cursor_t		cursor;
 	fr_dict_attr_t		const *da;
 
@@ -897,7 +897,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
  * @param[in] maps	Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
@@ -978,7 +978,7 @@ finish:
  * @param[in] maps	Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,

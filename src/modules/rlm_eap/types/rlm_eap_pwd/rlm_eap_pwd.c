@@ -277,7 +277,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	switch (session->state) {
 	case PWD_STATE_ID_REQ:
 	{
-		VALUE_PAIR		*known_good;
+		fr_pair_t		*known_good;
 		fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 		int			ret;
 		bool			ephemeral;
@@ -491,7 +491,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	rlm_eap_pwd_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_pwd_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	pwd_session_t		*session;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	pwd_id_packet_t		*packet;
 
 	MEM(session = talloc_zero(eap_session, pwd_session_t));

@@ -437,7 +437,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
 		ssize_t		ret;
 		uint16_t	attr;
 		uint16_t	len;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		attr = fr_net_to_uint16(p) & EAP_FAST_TLV_TYPE;
 		p += 2;
@@ -477,7 +477,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	fr_cursor_t			cursor;
 
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -566,11 +566,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 }
 
 static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session,
-				    fr_tls_session_t *tls_session, VALUE_PAIR *tlv_eap_payload)
+				    fr_tls_session_t *tls_session, fr_pair_t *tlv_eap_payload)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_fast_tunnel_t	*t;
 	REQUEST			*fake;
 
@@ -635,7 +635,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	}
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
-		VALUE_PAIR *tvp;
+		fr_pair_t *tvp;
 
 		MEM(tvp = fr_pair_afrom_da(fake, attr_eap_type));
 		tvp->vp_uint32 = t->default_provisioning_method;
@@ -794,10 +794,10 @@ static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 }
 
 static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
-				     fr_tls_session_t *tls_session, VALUE_PAIR *fast_vps)
+				     fr_tls_session_t *tls_session, fr_pair_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	fr_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
@@ -895,7 +895,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code;
-	VALUE_PAIR		*fast_vps = NULL;
+	fr_pair_t		*fast_vps = NULL;
 	fr_cursor_t		cursor;
 	uint8_t const		*data;
 	size_t			data_len;

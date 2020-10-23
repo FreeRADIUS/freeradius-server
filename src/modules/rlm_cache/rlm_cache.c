@@ -155,7 +155,7 @@ static void cache_free(rlm_cache_t const *inst, rlm_cache_entry_t **c)
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	vp_map_t	*map;
 	int		merged = 0;
 
@@ -296,7 +296,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	vp_map_t		const *map;
 	vp_map_t		**last, *c_map;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			merge = false;
 	rlm_cache_entry_t	*c;
 
@@ -326,11 +326,11 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 
 	/*
 	 *	Alloc a pool so we don't have excessive allocs when
-	 *	gathering VALUE_PAIRs to cache.
+	 *	gathering fr_pair_ts to cache.
 	 */
 	pool = talloc_pool(NULL, 2048);
 	for (map = inst->maps; map != NULL; map = map->next) {
-		VALUE_PAIR	*to_cache = NULL;
+		fr_pair_t	*to_cache = NULL;
 		fr_cursor_t	cursor;
 
 		fr_assert(map->lhs && map->rhs);
@@ -371,12 +371,12 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			c_map->op = map->op;
 
 			/*
-			 *	Now we turn the VALUE_PAIRs into maps.
+			 *	Now we turn the fr_pair_ts into maps.
 			 */
 			switch (map->lhs->type) {
 			/*
 			 *	Attributes are easy, reuse the LHS, and create a new
-			 *	RHS with the fr_value_box_t from the VALUE_PAIR.
+			 *	RHS with the fr_value_box_t from the fr_pair_t.
 			 */
 			case TMPL_TYPE_ATTR:
 			{
@@ -539,7 +539,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(module_ctx_t const *mctx, REQUE
 	rlm_cache_handle_t	*handle;
 
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	bool			merge = true, insert = true, expire = false, set_ttl = false;
 	int			exists = -1;

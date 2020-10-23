@@ -39,11 +39,11 @@ typedef struct {
 	char const	*field;		//!< Field name.
 } client_get_vp_ctx_t;
 
-static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
 				   vp_map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
-	VALUE_PAIR		*head = NULL, *vp;
+	fr_pair_t		*head = NULL, *vp;
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
@@ -111,7 +111,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
  * @param[in] maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, REQUEST *request,

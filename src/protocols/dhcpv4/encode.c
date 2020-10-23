@@ -52,7 +52,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encoder_ctx)
 {
-	VALUE_PAIR	*vp = fr_cursor_current(cursor);
+	fr_pair_t	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	size_t		need = 0;
 
@@ -181,7 +181,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	uint8_t			*hdr;
 	size_t			deduct = 0;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	VALUE_PAIR		*vp = fr_cursor_current(cursor);
+	fr_pair_t		*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	if (fr_dbuff_remaining(&work_dbuff) < 3) return 0;	/* No space */
@@ -203,7 +203,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	because there's no separate length fields.
 	 */
 	do {
-		VALUE_PAIR *next;
+		fr_pair_t *next;
 
 		/*
 		 *	As a quick hack, check if there's enough room
@@ -272,7 +272,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	uint8_t			*hdr, *next_hdr, *start;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	if (fr_dbuff_remaining(&work_dbuff) < 5) return 0;	/* No space */
@@ -382,7 +382,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
 	ssize_t			len;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -496,7 +496,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 
 ssize_t fr_dhcpv4_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
 	ssize_t			len;

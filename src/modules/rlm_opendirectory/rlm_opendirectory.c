@@ -310,7 +310,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
-	VALUE_PAIR *username, *password;
+	fr_pair_t *username, *password;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
@@ -394,7 +394,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	int				err;
 	char				host_ipaddr[128] = {0};
 	gid_t				gid;
-	VALUE_PAIR			*username;
+	fr_pair_t			*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE

@@ -417,7 +417,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  * @param[in] maps Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
@@ -589,8 +589,8 @@ free_urldesc:
  *	- 1 on failure (or if the user is not a member).
  *	- 0 on success.
  */
-static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
-			     UNUSED VALUE_PAIR *check_list)
+static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
+			     UNUSED fr_pair_t *check_list)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
@@ -726,7 +726,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
 	fr_ldap_sasl_t		sasl;
-	VALUE_PAIR *username, *password;
+	fr_pair_t *username, *password;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
@@ -1026,7 +1026,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *      Retrieve Universal Password if we use eDirectory
 	 */
 	if (inst->edir) {
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 		int		res = 0;
 		char		password[256];
 		size_t		pass_size = sizeof(password);

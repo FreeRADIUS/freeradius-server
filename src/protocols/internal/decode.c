@@ -47,7 +47,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 					  uint8_t const *start, uint8_t const *end,
 					  bool tainted, UNUSED void *decoder_ctx)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	ssize_t		slen;
 
 	vp = fr_pair_afrom_da(ctx, parent_da);
@@ -100,14 +100,14 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	VP to retain the nesting structure.
 	 */
 	if (fr_cursor_init(&cursor, &children.slist) && fr_cursor_next(&cursor)) {
-		VALUE_PAIR	*tlv;
+		fr_pair_t	*tlv;
 
 		tlv = fr_pair_afrom_da(ctx, parent_da);
 		if (!tlv) return PAIR_DECODE_OOM;
 
 		while (fr_cursor_head(&cursor)) {
 		     	FR_PROTO_TRACE("Moving %s into %s",
-		     		       ((VALUE_PAIR *)fr_cursor_head(&cursor))->da->name, tlv->da->name);
+		     		       ((fr_pair_t *)fr_cursor_head(&cursor))->da->name, tlv->da->name);
 			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_cursor_remove(&cursor)));
 		}
 
@@ -125,7 +125,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				     uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	ssize_t		slen;
 	uint8_t	const	*p = start;
 
@@ -324,7 +324,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	return (p - start) + slen;
 }
 
-/** Create a single VALUE_PAIR and all its nesting
+/** Create a single fr_pair_t and all its nesting
  *
  */
 ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,

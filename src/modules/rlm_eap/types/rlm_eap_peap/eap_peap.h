@@ -44,7 +44,7 @@ typedef enum {
 } peap_resumption;
 
 typedef struct {
-	VALUE_PAIR	*username;
+	fr_pair_t	*username;
 	peap_status	status;
 	bool		home_access_accept;
 	int		default_method;
@@ -52,7 +52,7 @@ typedef struct {
 	char const	*virtual_server;
 	bool		soh;
 	char const	*soh_virtual_server;
-	VALUE_PAIR	*soh_reply_vps;
+	fr_pair_t	*soh_reply_vps;
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 

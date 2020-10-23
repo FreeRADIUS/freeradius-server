@@ -148,9 +148,9 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  *	Compose the response.
  */
 static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
-			       VALUE_PAIR *reply) CC_HINT(nonnull);
+			       fr_pair_t *reply) CC_HINT(nonnull);
 static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
-			       VALUE_PAIR *reply)
+			       fr_pair_t *reply)
 {
 	uint8_t			*ptr;
 	int16_t			length;
@@ -272,7 +272,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
  */
 static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED void *tunnel_data)
 {
-	VALUE_PAIR		*response = NULL;
+	fr_pair_t		*response = NULL;
 	mschapv2_opaque_t	*data;
 	REQUEST			*request = eap_session->request;
 
@@ -348,7 +348,7 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *i
 {
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*response = NULL;
+	fr_pair_t		*response = NULL;
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -449,7 +449,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 	eap_session_t			*eap_session = eap_session_get(parent);
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
-	VALUE_PAIR			*auth_challenge, *response, *name;
+	fr_pair_t			*auth_challenge, *response, *name;
 
 	CONF_SECTION			*unlang;
 	rlm_rcode_t			rcode;
@@ -484,7 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 		 * (or proxy it, I guess)
 		 */
 		if (ccode == FR_EAP_MSCHAPV2_CHGPASSWD) {
-			VALUE_PAIR	*cpw;
+			fr_pair_t	*cpw;
 			int		mschap_id = eap_round->response->type.data[1];
 			int		copied = 0;
 			int		seq = 1;
@@ -504,7 +504,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUES
 			 * break the encoded password into VPs (3 of them)
 			 */
 			while (copied < 516) {
-				VALUE_PAIR *nt_enc;
+				fr_pair_t *nt_enc;
 
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
@@ -641,7 +641,7 @@ failure:
 	 *	to the challenge.  Let's try to authenticate it.
 	 *
 	 *	We do this by taking the challenge from 'data',
-	 *	the response from the EAP packet, and creating VALUE_PAIR's
+	 *	the response from the EAP packet, and creating fr_pair_t's
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
@@ -770,8 +770,8 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 {
 	REQUEST			*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
-	VALUE_PAIR		*auth_challenge;
-	VALUE_PAIR		*peer_challenge;
+	fr_pair_t		*auth_challenge;
+	fr_pair_t		*peer_challenge;
 	mschapv2_opaque_t	*data;
 
 	uint8_t 		*p;

@@ -89,19 +89,19 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
 
 /** Implements the default iterator to encode pairs belonging to a specific dictionary that are not internal
  *
- * @param[in,out] prev	The VALUE_PAIR before curr. Will be updated to point to the
+ * @param[in,out] prev	The fr_pair_t before curr. Will be updated to point to the
  *			pair before the one returned, or the last pair in the list
  *			if no matching pairs found.
- * @param[in] to_eval	The VALUE_PAIR after cursor->current.  Will be checked to
+ * @param[in] to_eval	The fr_pair_t after cursor->current.  Will be checked to
  *			see if it matches the specified fr_dict_t.
  * @param[in] uctx	The fr_dict_t to search for.
  * @return
- *	- Next matching VALUE_PAIR.
- *	- NULL if not more matching VALUE_PAIRs could be found.
+ *	- Next matching fr_pair_t.
+ *	- NULL if not more matching fr_pair_ts could be found.
  */
 void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx)
 {
-	VALUE_PAIR	*c, *p;
+	fr_pair_t	*c, *p;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
 	if (!to_eval) return NULL;

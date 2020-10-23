@@ -59,7 +59,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
 				    RADIUS_PACKET *packet, uint8_t id, char const *password, size_t password_len)
 {
-	VALUE_PAIR	*challenge;
+	fr_pair_t	*challenge;
 	fr_md5_ctx_t	*md5_ctx;
 
 	md5_ctx = fr_md5_ctx_alloc(true);
@@ -252,7 +252,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t		slen;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 253);
 
@@ -329,16 +329,16 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tags(fr_dbuff_t *dbuff, VALUE_PAIR *vps, void *encoder_ctx)
+static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
 {
 	ssize_t			slen;
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 	fr_cursor_t		cursor;
 
 	/*
 	 *	Note that we skip tags inside of tags!
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, VALUE_PAIR);
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 
@@ -372,7 +372,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	size_t			len;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -768,7 +768,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 #endif
 	int			extra;
 	fr_dbuff_marker_t	hdr;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		*attr_dbuff;
 
@@ -874,7 +874,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	uint8_t const		*p;
 	size_t			left;
 	ssize_t			slen;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -1061,7 +1061,7 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -1189,7 +1189,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	start;
 
@@ -1278,7 +1278,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 
 ssize_t fr_radius_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
@@ -1474,11 +1474,11 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 	int packet_type = FR_CODE_ACCESS_REQUEST;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	ssize_t slen;
 
 	vp = fr_pair_find_by_da(vps, attr_packet_type);

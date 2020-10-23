@@ -117,7 +117,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	fr_cursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx = {
 					.secret = secret,

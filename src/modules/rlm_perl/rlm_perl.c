@@ -625,7 +625,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const *vp,
+static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, fr_pair_t const *vp,
 				     int *i, const char *hash_name, const char *list_name)
 {
 
@@ -671,10 +671,10 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, HV *rad_hv,
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	hv_undef(rad_hv);
 
@@ -685,7 +685,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		VALUE_PAIR *next;
+		fr_pair_t *next;
 		char const *name;
 		name = vp->da->name;
 
@@ -748,11 +748,11 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, fr_token_t op,
+static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, char *key, SV *sv, fr_token_t op,
 		      const char *hash_name, const char *list_name)
 {
 	char		*val;
-	VALUE_PAIR      *vp;
+	fr_pair_t      *vp;
 	STRLEN		len;
 
 	if (!SvOK(sv)) return -1;
@@ -789,7 +789,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 /*
  *     Gets the content from hashes
  */
-static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PAIR **vps,
+static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, fr_pair_t **vps,
 			  const char *hash_name, const char *list_name)
 {
 	SV		*res_sv, **av_sv;
@@ -825,7 +825,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 {
 
 	rlm_perl_t		*inst = instance;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			exitstatus=0, count;
 	STRLEN			n_a;
 
@@ -955,7 +955,7 @@ RLM_PERL_FUNC(preacct)
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
-	VALUE_PAIR		*pair;
+	fr_pair_t		*pair;
 	int 			acct_status_type = 0;
 
 	pair = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);

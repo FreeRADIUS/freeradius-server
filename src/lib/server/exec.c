@@ -54,13 +54,13 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-static void fr_exec_pair_to_env(REQUEST *request, VALUE_PAIR *input_pairs, char **envp, size_t envlen, bool shell_escape)
+static void fr_exec_pair_to_env(REQUEST *request, fr_pair_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
 {
 	char			*p;
 	size_t			i;
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	char			buffer[1024];
 
 	/*
@@ -225,7 +225,7 @@ static NEVER_RETURNS void fr_exec_child(REQUEST *request, char **argv, char **en
  */
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
-			   VALUE_PAIR *input_pairs, bool shell_escape)
+			   fr_pair_t *input_pairs, bool shell_escape)
 {
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
@@ -445,7 +445,7 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 
 /** Execute a program.
  *
- * @param[in,out] ctx to allocate new VALUE_PAIR (s) in.
+ * @param[in,out] ctx to allocate new fr_pair_t (s) in.
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
  * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
@@ -463,8 +463,8 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
  *	- exit code if exec_wait!=0.
  *	- -1 on failure.
  */
-int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
-			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_t **output_pairs,
+			REQUEST *request, char const *cmd, fr_pair_t *input_pairs,
 			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 
 {
@@ -516,7 +516,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 	 *	Parse the output, if any.
 	 */
 	if (output_pairs) {
-		VALUE_PAIR *vps = NULL;
+		fr_pair_t *vps = NULL;
 
 		/*
 		 *	HACK: Replace '\n' with ',' so that
@@ -606,7 +606,7 @@ wait:
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
+int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, fr_pair_t *env_pairs)
 {
 	int		argc;
 	char		**envp;
@@ -699,7 +699,7 @@ int fr_exec_nowait(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs)
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, VALUE_PAIR *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
+int fr_exec_wait_start(REQUEST *request, fr_value_box_t *vb, fr_pair_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
 {
 	int		argc;
 	char		**envp;

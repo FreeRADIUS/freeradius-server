@@ -60,14 +60,14 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 /** Evaluation function for EAP-AKA-encodability
  *
- * @param item	pointer to a VALUE_PAIR
+ * @param item	pointer to a fr_pair_t
  * @param uctx	context
  *
- * @return true if the underlying VALUE_PAIR is EAP_AKA encodable, false otherwise
+ * @return true if the underlying fr_pair_t is EAP_AKA encodable, false otherwise
  */
 static bool is_eap_aka_encodable(void *item, void *uctx)
 {
-	VALUE_PAIR		*vp = item;
+	fr_pair_t		*vp = item;
 	fr_aka_sim_encode_ctx_t	*packet_ctx = uctx;
 
 	if (!vp) return false;
@@ -277,7 +277,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
@@ -615,7 +615,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	 *	encode things.
 	 */
 	while (element_len <= ((size_t)(end - p))) {
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 		ssize_t		slen;
 
 		slen = encode_value(p, end - p, da_stack, depth, cursor, encoder_ctx);
@@ -735,7 +735,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen, *value;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	CHECK_FREESPACE(outlen, 2);
@@ -856,7 +856,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 	ssize_t			slen;
 	size_t			attr_len;
 
@@ -935,9 +935,9 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	return slen;
 }
 
-ssize_t fr_aka_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
+ssize_t fr_aka_sim_encode(REQUEST *request, fr_pair_t *to_encode, void *encode_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	uint8_t			*buff, *p, *end, *hmac = NULL;
 	size_t			len = 0;

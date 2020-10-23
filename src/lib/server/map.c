@@ -76,7 +76,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_quote, char const *rhs)
 	pair_list_t		list;
 
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp = NULL;
+	fr_pair_t		*vp = NULL;
 	tmpl_t			*vpt;
 	fr_value_box_t		cast;
 
@@ -629,7 +629,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	char const *p = vp_str;
 	fr_token_t quote;
 
-	VALUE_PAIR_RAW raw;
+	fr_pair_t_RAW raw;
 	vp_map_t *map = NULL;
 
 	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
@@ -670,7 +670,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	return 0;
 }
 
-/** Convert a VALUE_PAIR into a map
+/** Convert a fr_pair_t into a map
  *
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map (must be freed with talloc_free()).
@@ -680,7 +680,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, tmpl_rules_t const *rules)
+int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
 {
 	char buffer[256];
 
@@ -820,8 +820,8 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
  *
- * @param[in,out] ctx to allocate new #VALUE_PAIR (s) in.
- * @param[out] out Where to write the #VALUE_PAIR (s).
+ * @param[in,out] ctx to allocate new #fr_pair_t (s) in.
+ * @param[out] out Where to write the #fr_pair_t (s).
  * @param[in] request structure (used only for talloc).
  * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  *	The RHS (src) must be #TMPL_TYPE_EXEC.
@@ -829,13 +829,13 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
 	char answer[1024];
-	VALUE_PAIR **input_pairs = NULL;
-	VALUE_PAIR *output_pairs = NULL;
+	fr_pair_t **input_pairs = NULL;
+	fr_pair_t *output_pairs = NULL;
 
 	*out = NULL;
 
@@ -878,7 +878,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
@@ -898,10 +898,10 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	}
 }
 
-/** Convert a map to a #VALUE_PAIR
+/** Convert a map to a #fr_pair_t
  *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s) in.
- * @param[out] out Where to write the #VALUE_PAIR (s), which may be NULL if not found
+ * @param[in,out] ctx to allocate #fr_pair_t (s) in.
+ * @param[out] out Where to write the #fr_pair_t (s), which may be NULL if not found
  * @param[in] request The current request.
  * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  * @param[in] uctx unused.
@@ -909,10 +909,10 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
+int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
-	VALUE_PAIR	*vp = NULL, *found = NULL, *n;
+	fr_pair_t	*vp = NULL, *found = NULL, *n;
 	REQUEST		*context = request;
 	fr_cursor_t	cursor;
 	ssize_t		slen;
@@ -937,7 +937,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	 *	the op.
 	 */
 	if (tmpl_is_list(map->lhs) && tmpl_is_list(map->rhs)) {
-		VALUE_PAIR **from = NULL;
+		fr_pair_t **from = NULL;
 
 		if (radius_request(&context, tmpl_request(map->rhs)) == 0) {
 			from = radius_list(context, tmpl_list(map->rhs));
@@ -1136,7 +1136,7 @@ do {\
 	} \
 } while (0)
 
-/** Convert #vp_map_t to #VALUE_PAIR (s) and add them to a #REQUEST.
+/** Convert #vp_map_t to #fr_pair_t (s) and add them to a #REQUEST.
  *
  * Takes a single #vp_map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
@@ -1146,7 +1146,7 @@ do {\
  * @param request The current request.
  * @param map specifying destination attribute and location and src identifier.
  * @param func to retrieve module specific values and convert them to
- *	#VALUE_PAIR.
+ *	#fr_pair_t.
  * @param ctx to be passed to func.
  * @return
  *	- -1 if the operation failed.
@@ -1157,7 +1157,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 {
 	int			rcode = 0;
 	int			num;
-	VALUE_PAIR		**list, *vp, *dst, *head = NULL;
+	fr_pair_t		**list, *vp, *dst, *head = NULL;
 	REQUEST			*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	vp_cursor_t		dst_list, src_list;
@@ -1511,7 +1511,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	case T_OP_LE:
 	case T_OP_LT:
 	{
-		VALUE_PAIR *a, *b;
+		fr_pair_t *a, *b;
 
 		fr_pair_list_sort(&head, fr_pair_cmp_by_da);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da);
@@ -1610,7 +1610,7 @@ ssize_t map_print(fr_sbuff_t *out, vp_map_t const *map)
 /*
  *	Debug print a map / VP
  */
-void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
+void map_debug_log(REQUEST *request, vp_map_t const *map, fr_pair_t const *vp)
 {
 	char *rhs = NULL, *value = NULL;
 	char buffer[256];
@@ -1662,7 +1662,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
 		 *	this is a combination of the original list tmpl, and values from
-		 *	the VALUE_PAIR.
+		 *	the fr_pair_t.
 		 */
 		tmpl_attr_copy(vpt, map->rhs);
 		tmpl_attr_set_leaf_da(vpt, vp->da);

@@ -298,7 +298,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED module_ctx_t const *mctx, RE
 	{
 		unsigned int		i = 0;
 		fr_cursor_t		cursor;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		sigtran_vector_t	*vec;
 		sigtran_map_send_auth_info_res_t *res = talloc_get_type_abort(txn->response.data,
 									      sigtran_map_send_auth_info_res_t);

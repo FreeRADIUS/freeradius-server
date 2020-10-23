@@ -66,7 +66,7 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-/** Apply a list of modifications on one or more VALUE_PAIR lists.
+/** Apply a list of modifications on one or more fr_pair_t lists.
  *
  * @param[in] request	The current request.
  * @param[out] presult	The rcode indicating what the result
@@ -113,7 +113,7 @@ done:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Create a list of modifications to apply to one or more VALUE_PAIR lists
+/** Create a list of modifications to apply to one or more fr_pair_t lists
  *
  * @param[in] request	The current request.
  * @param[out] presult	The rcode indicating what the result

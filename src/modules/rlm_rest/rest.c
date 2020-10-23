@@ -212,11 +212,11 @@ typedef struct {
 } rest_custom_data_t;
 
 #ifdef HAVE_JSON
-/** Flags to control the conversion of JSON values to VALUE_PAIRs.
+/** Flags to control the conversion of JSON values to fr_pair_ts.
  *
  * These fields are set when parsing the expanded format for value pairs in
  * JSON, and control how json_pair_alloc_leaf and json_pair_alloc convert the JSON
- * value, and move the new VALUE_PAIR into an attribute list.
+ * value, and move the new fr_pair_t into an attribute list.
  *
  * @see json_pair_alloc
  * @see json_pair_alloc_leaf
@@ -326,10 +326,10 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 	return len;
 }
 
-/** Encodes VALUE_PAIR linked list in POST format
+/** Encodes fr_pair_t linked list in POST format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
- * successive calls will return additional encoded VALUE_PAIRs.
+ * successive calls will return additional encoded fr_pair_ts.
  * Only complete attribute headers @verbatim '<name>=' @endverbatim and values
  * will be written to the ptr buffer.
  *
@@ -359,7 +359,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	char			*p = out;	/* Position in buffer */
 	char			*encoded = p;	/* Position in buffer of last fully encoded attribute or value */
@@ -494,10 +494,10 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 }
 
 #ifdef HAVE_JSON
-/** Encodes VALUE_PAIR linked list in JSON format
+/** Encodes fr_pair_t linked list in JSON format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
- * successive calls will return additional encoded VALUE_PAIRs.
+ * successive calls will return additional encoded fr_pair_ts.
  *
  * Only complete attribute headers
  * @verbatim "<name>":{"type":"<type>","value":[' @endverbatim
@@ -642,7 +642,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
 	ctx->state = READ_STATE_INIT;
 }
 
-/** Converts plain response into a single VALUE_PAIR
+/** Converts plain response into a single fr_pair_t
  *
  * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
@@ -651,13 +651,13 @@ static void rest_request_init(rlm_rest_section_t const *section,
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- Number of VALUE_PAIR processed.
+ *	- Number of fr_pair_t processed.
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/*
 	 *  Empty response?
@@ -675,9 +675,9 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
 	return 1;
 }
 
-/** Converts POST response into VALUE_PAIRs and adds them to the request
+/** Converts POST response into fr_pair_ts and adds them to the request
  *
- * Accepts VALUE_PAIRS in the same format as rest_encode_post, but with the
+ * Accepts fr_pair_tS in the same format as rest_encode_post, but with the
  * addition of optional attribute list qualifiers as part of the attribute name
  * string.
  *
@@ -695,7 +695,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- Number of VALUE_PAIRs processed.
+ *	- Number of fr_pair_ts processed.
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
@@ -717,10 +717,10 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
 		tmpl_t		*dst;
 		REQUEST			*current;
-		VALUE_PAIR		**vps;
+		fr_pair_t		**vps;
 		TALLOC_CTX		*ctx;
 		fr_dict_attr_t const	*da;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 
 		char			*name  = NULL;
 		char			*value = NULL;
@@ -832,24 +832,24 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 }
 
 #ifdef HAVE_JSON
-/** Converts JSON "value" key into VALUE_PAIR.
+/** Converts JSON "value" key into fr_pair_t.
  *
  * If leaf is not in fact a leaf node, but contains JSON data, the data will
  * written to the attribute in JSON string format.
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
- * @param[in] ctx	to allocate new VALUE_PAIRs in.
+ * @param[in] ctx	to allocate new fr_pair_ts in.
  * @param[in] request	Current request.
  * @param[in] da	Attribute to create.
  * @param[in] flags	containing the operator other flags controlling value
  *			expansion.
- * @param[in] leaf	object containing the VALUE_PAIR value.
+ * @param[in] leaf	object containing the fr_pair_t value.
  * @return
- *	- #VALUE_PAIR just created.
+ *	- #fr_pair_t just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 				        TALLOC_CTX *ctx, REQUEST *request,
 				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
@@ -857,7 +857,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
 	char			*expanded = NULL;
 	int 			ret;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	fr_value_box_t		src;
 
@@ -933,7 +933,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
 	return vp;
 }
 
-/** Processes JSON response and converts it into multiple VALUE_PAIRs
+/** Processes JSON response and converts it into multiple fr_pair_ts
  *
  * Processes JSON attribute declarations in the format below. Will recurse when
  * processing nested attributes. When processing nested attributes flags and
@@ -964,7 +964,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
  * JSON valuepair flags:
  *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
- *			   VALUE_PAIR in string form. Defaults to true.
+ *			   fr_pair_t in string form. Defaults to true.
  *  - op	(optional) Controls how the attribute is inserted into
  *			   the target list. Defaults to ':=' (T_OP_SET).
  *
@@ -979,7 +979,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
  * @param[in] request	Current request.
  * @param[in] object	containing root node, or parent node.
  * @param[in] level	Current nesting level.
- * @param[in] max	counter, decremented after each VALUE_PAIR is created,
+ * @param[in] max	counter, decremented after each fr_pair_t is created,
  *			when 0 no more attributes will be processed.
  * @return
  *	- Number of attributes created.
@@ -1018,7 +1018,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		};
 
 		REQUEST		*current = request;
-		VALUE_PAIR	**vps, *vp = NULL;
+		fr_pair_t	**vps, *vp = NULL;
 
 		TALLOC_FREE(dst);
 
@@ -1123,7 +1123,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 		/*
 		 *  A JSON 'value' key, may have multiple elements, iterate
-		 *  over each of them, creating a new VALUE_PAIR.
+		 *  over each of them, creating a new fr_pair_t.
 		 */
 		do {
 			if (max_attrs-- <= 0) {
@@ -1170,7 +1170,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	return max - max_attrs;
 }
 
-/** Converts JSON response into VALUE_PAIRs and adds them to the request.
+/** Converts JSON response into fr_pair_ts and adds them to the request.
  *
  * Converts the raw JSON string into a json-c object tree and passes it to
  * json_pair_alloc. After the tree has been parsed json_object_put is called
@@ -1187,7 +1187,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  * @param[in] raw	buffer containing JSON data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- The number of #VALUE_PAIR processed.
+ *	- The number of #fr_pair_t processed.
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const *section,
@@ -1727,7 +1727,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	char const		*option = "unknown";
 	char const		*content_type;
 
-	VALUE_PAIR 		*header;
+	fr_pair_t 		*header;
 	fr_cursor_t		headers;
 
 	char			buffer[512];
@@ -2044,7 +2044,7 @@ error:
  *
  * Uses the Content-Type information written in rest_response_header to
  * determine the correct decode function to use. The decode function will
- * then convert the raw received data into VALUE_PAIRs.
+ * then convert the raw received data into fr_pair_ts.
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.

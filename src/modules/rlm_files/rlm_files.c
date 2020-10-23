@@ -76,11 +76,11 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 };
 
 /*
- *     See if a VALUE_PAIR list contains Fall-Through = Yes
+ *     See if a fr_pair_t list contains Fall-Through = Yes
  */
-static int fall_through(VALUE_PAIR *vp)
+static int fall_through(fr_pair_t *vp)
 {
-	VALUE_PAIR *tmp;
+	fr_pair_t *tmp;
 	tmp = fr_pair_find_by_da(vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : 0;
@@ -105,7 +105,7 @@ static int pairlist_cmp(void const *a, void const *b)
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
 	int rcode;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
 	PAIR_LIST *user_list, *default_list, **default_tail;
@@ -295,8 +295,8 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			       RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	char const	*name;
-	VALUE_PAIR	*check_tmp = NULL;
-	VALUE_PAIR	*reply_tmp = NULL;
+	fr_pair_t	*check_tmp = NULL;
+	fr_pair_t	*reply_tmp = NULL;
 	PAIR_LIST const *user_pl, *default_pl;
 	bool		found = false;
 	PAIR_LIST	my_pl;
@@ -319,7 +319,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	 */
 	while (user_pl || default_pl) {
 		fr_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 		PAIR_LIST const *pl;
 
 		/*

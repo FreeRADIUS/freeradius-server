@@ -44,17 +44,17 @@ RCSID("$Id$")
  * If attr or vendor are uknown will call dict_attruknown to create a dynamic
  * #fr_dict_attr_t of #FR_TYPE_OCTETS.
  *
- * Which type of #fr_dict_attr_t the #VALUE_PAIR was created with can be determined by
+ * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
  * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return
- *	- A new #VALUE_PAIR.
+ *	- A new #fr_pair_t.
  *	- NULL on error.
  */
-VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
+fr_pair_t *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent;
@@ -74,7 +74,7 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 
 alloc:
 	if (!da) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		vp = fr_pair_alloc(ctx);
 		if (!vp) return NULL;
@@ -105,9 +105,9 @@ alloc:
  * @param value to expand.
  * @return
  *	- 0 if marking succeeded.
- *	- -1 if #VALUE_PAIR already had a value, or OOM.
+ *	- -1 if #fr_pair_t already had a value, or OOM.
  */
-int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
+int fr_pair_mark_xlat(fr_pair_t *vp, char const *value)
 {
 	char *raw;
 
@@ -143,13 +143,13 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
  * @param attribute name to parse.
  * @param value to parse (must be a hex string).
  * @param op to assign to new valuepair.
- * @return new #VALUE_PAIR or NULL on error.
+ * @return new #fr_pair_t or NULL on error.
  */
-static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
+static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					char const *attribute, char const *value,
 					fr_token_t op)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dict_attr_t		*n;
 
 	vp = fr_pair_alloc(ctx);
@@ -186,26 +186,26 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	return vp;
 }
 
-/** Create a #VALUE_PAIR from ASCII strings
+/** Create a #fr_pair_t from ASCII strings
  *
  * Converts an attribute string identifier (with an optional tag qualifier)
- * and value string into a #VALUE_PAIR.
+ * and value string into a #fr_pair_t.
  *
- * The string value is parsed according to the type of #VALUE_PAIR being created.
+ * The string value is parsed according to the type of #fr_pair_t being created.
  *
  * @param[in] ctx	for talloc.
  * @param[in] dict	to look attributes up in.
  * @param[in] vps	list where the attribute will be added (optional)
  * @param[in] attribute	name.
  * @param[in] value	attribute value (may be NULL if value will be set later).
- * @param[in] op	to assign to new #VALUE_PAIR.
- * @return a new #VALUE_PAIR.
+ * @param[in] op	to assign to new #fr_pair_t.
+ * @return a new #fr_pair_t.
  */
-VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vps,
+fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **vps,
 			 char const *attribute, char const *value, fr_token_t op)
 {
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	char const		*attrname = attribute;
 
 	/*
@@ -308,19 +308,19 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
  * @param[in] ctx	for talloc
  * @param[in] dict	to resolve attributes in.
  * @param[in] buffer	to read valuepairs from.
- * @param[in] list	where the parsed VALUE_PAIRs will be appended.
+ * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list, fr_token_t *token, int depth)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list, fr_token_t *token, int depth)
 {
-	VALUE_PAIR	*vp, *head, **tail;
+	fr_pair_t	*vp, *head, **tail;
 	char const	*p, *next;
 	fr_token_t	last_token = T_INVALID;
-	VALUE_PAIR_RAW	raw;
+	fr_pair_t_RAW	raw;
 	fr_dict_attr_t const *root = fr_dict_root(dict);
 
 	/*
@@ -404,7 +404,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 *	Allow grouping attributes.
 		 */
 		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV)) {
-			VALUE_PAIR *child = NULL;
+			fr_pair_t *child = NULL;
 
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
@@ -586,10 +586,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] ctx	for talloc
  * @param[in] dict	to resolve attributes in.
  * @param[in] buffer	to read valuepairs from.
- * @param[in] list	where the parsed VALUE_PAIRs will be appended.
+ * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list)
 {
 	fr_token_t token;
 
@@ -600,18 +600,18 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **out, FILE *fp, bool *pfiledone)
 {
 	char buf[8192];
 	fr_token_t last_token = T_EOL;
 
 	fr_cursor_t cursor;
 
-	VALUE_PAIR *vp = NULL;
+	fr_pair_t *vp = NULL;
 	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		VALUE_PAIR *next;
+		fr_pair_t *next;
 
 		/*
 		 *      If we get a '\n' by itself, we assume that's
@@ -674,11 +674,11 @@ error:
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
+void fr_pair_list_move(fr_pair_t **to, fr_pair_t **from)
 {
-	VALUE_PAIR *i, *found;
-	VALUE_PAIR *head_new, **tail_new;
-	VALUE_PAIR **tail_from;
+	fr_pair_t *i, *found;
+	fr_pair_t *head_new, **tail_new;
+	fr_pair_t **tail_from;
 
 	if (!to || !from || !*from) return;
 
@@ -697,7 +697,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tail_from = from;
 	while ((i = *tail_from) != NULL) {
-		VALUE_PAIR *j;
+		fr_pair_t *j;
 
 		VP_VERIFY(i);
 

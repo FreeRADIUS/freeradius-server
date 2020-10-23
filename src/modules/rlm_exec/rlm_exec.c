@@ -104,7 +104,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 {
 	int			result;
 	rlm_exec_t const	*inst = mod_inst;
-	VALUE_PAIR		**input_pairs = NULL;
+	fr_pair_t		**input_pairs = NULL;
 	char *p;
 
 	if (!inst->wait) {
@@ -259,13 +259,13 @@ static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, REQUEST *req
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
-	VALUE_PAIR		*env_pairs = NULL;
+	fr_pair_t		*env_pairs = NULL;
 
 	/*
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		VALUE_PAIR **input_pairs;
+		fr_pair_t **input_pairs;
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
@@ -356,7 +356,7 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 
 	if (inst->output && m->box) {
 		TALLOC_CTX *ctx;
-		VALUE_PAIR *vps, **output_pairs;
+		fr_pair_t *vps, **output_pairs;
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
@@ -392,7 +392,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, 
 {
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	rlm_exec_ctx_t		*m;
-	VALUE_PAIR		*env_pairs = NULL;
+	fr_pair_t		*env_pairs = NULL;
 	TALLOC_CTX		*ctx;
 
 	if (!inst->tmpl) {
@@ -420,7 +420,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, 
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		VALUE_PAIR **input_pairs;
+		fr_pair_t **input_pairs;
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) return RLM_MODULE_INVALID;

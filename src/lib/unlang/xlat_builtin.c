@@ -75,7 +75,7 @@ static fr_sbuff_parse_rules_t const xlat_arg_parse_rules = {
  *	- -4 if either the attribute or qualifier were invalid.
  *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
-int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
+int xlat_fmt_get_vp(fr_pair_t **out, REQUEST *request, char const *name)
 {
 	int rcode;
 	tmpl_t *vpt;
@@ -99,7 +99,7 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  *
  * @note DEPRECATED, TO NOT USE.  @see xlat_fmt_to_cursor instead.
  *
- * @param ctx to alloc new VALUE_PAIRs in.
+ * @param ctx to alloc new fr_pair_ts in.
  * @param out where to write the pointer to the copied VP. Will be NULL if the attribute couldn't be
  *	resolved.
  * @param request current request.
@@ -108,7 +108,7 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  *	- -4 if either the attribute or qualifier were invalid.
  *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
-int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
+int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, char const *name)
 {
 	int rcode;
 	tmpl_t *vpt;
@@ -132,7 +132,7 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char c
  *
  * We can't add attribute reference support to the xlat parser
  * as the inputs and outputs of xlat functions are all boxed values and
- * couldn't represent a VALUE_PAIR.
+ * couldn't represent a fr_pair_t.
  *
  * @param[in] ctx	To allocate new cursor in.
  * @param[out] out	Where to write heap allocated cursor.  Must be freed
@@ -152,7 +152,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 		       bool *tainted, REQUEST *request, char const *fmt)
 {
 	tmpl_t			*vpt;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		*cursor;
 	tmpl_cursor_ctx_t	cc;
 
@@ -847,7 +847,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 				    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				    REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 	tmpl_t			*vpt;
@@ -981,10 +981,10 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				 REQUEST *request, char const *fmt)
 {
 	tmpl_t			*vpt = NULL;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor, to_merge;
 	tmpl_cursor_ctx_t	cc;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	ssize_t			slen;
 	int			count = 0;
 	char const		*p = fmt;
@@ -1021,7 +1021,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	while (vp) {
-		VALUE_PAIR *nvp;
+		fr_pair_t *nvp;
 		char const *end;
 		char const *q;
 
@@ -1115,7 +1115,7 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	uint64_t	int64 = 0;	/* Needs to be initialised to zero */
 	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
@@ -1564,7 +1564,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			      REQUEST *request, char const *fmt)
 {
 	ssize_t		slen;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	fr_skip_whitespace(fmt);
 
@@ -2195,7 +2195,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, (*in)->vb_strvalue,
 				&(tmpl_rules_t){

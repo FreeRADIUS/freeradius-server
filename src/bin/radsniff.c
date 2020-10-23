@@ -343,7 +343,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 
 	if (body) {
 		int i;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
 			vp = fr_pair_find_by_da(packet->vps, conf->list_da[i]);
@@ -936,10 +936,10 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_dict_attr_t const *da[], int num)
+static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
 {
 	vp_cursor_t list_cursor, out_cursor;
-	VALUE_PAIR *match, *last_match, *copy;
+	fr_pair_t *match, *last_match, *copy;
 	uint64_t count = 0;
 	int i;
 
@@ -1671,7 +1671,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			if (search.link_vps) {
 				bool ret;
 				fr_cursor_t cursor;
-				VALUE_PAIR *vp;
+				fr_pair_t *vp;
 
 				for (vp = fr_cursor_init(&cursor, &search.link_vps);
 				     vp;
@@ -1976,10 +1976,10 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 	return i;
 }
 
-static int rs_build_filter(VALUE_PAIR **out, char const *filter)
+static int rs_build_filter(fr_pair_t **out, char const *filter)
 {
 	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_token_t code;
 
 	code = fr_pair_list_afrom_str(conf, dict_radius, filter, out);
@@ -2621,7 +2621,7 @@ int main(int argc, char *argv[])
 
 	if (conf->filter_request) {
 		fr_cursor_t cursor;
-		VALUE_PAIR *type;
+		fr_pair_t *type;
 
 		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) usage(64);
 
@@ -2635,7 +2635,7 @@ int main(int argc, char *argv[])
 
 	if (conf->filter_response) {
 		fr_cursor_t cursor;
-		VALUE_PAIR *type;
+		fr_pair_t *type;
 
 		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) usage(64);
 

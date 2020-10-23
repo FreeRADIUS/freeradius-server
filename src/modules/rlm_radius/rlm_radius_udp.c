@@ -150,7 +150,7 @@ struct udp_request_s {
 	bool			can_retransmit;		//!< can we retransmit this packet?
 	bool			status_check;		//!< is this packet a status check?
 
-	VALUE_PAIR		*extra;			//!< VPs for debugging, like Proxy-State.
+	fr_pair_t		*extra;			//!< VPs for debugging, like Proxy-State.
 
 	uint8_t			code;			//!< Packet code.
 	uint8_t			id;			//!< Last ID assigned to this packet.
@@ -265,7 +265,7 @@ static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int f
 
 static int 		encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id);
 
-static decode_fail_t	decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *response_code,
+static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
 			       udp_handle_t *h, REQUEST *request, udp_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
@@ -402,7 +402,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	already added.
 	 */
 	if (!fr_pair_find_by_da(request->request_pairs, attr_nas_identifier)) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
 		fr_pair_value_strdup(vp, "status check - are you alive?");
@@ -532,7 +532,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	rlm_radius_t const 	*inst = h->inst->parent;
 	udp_request_t		*u = h->status_u;
 	ssize_t			slen;
-	VALUE_PAIR		*reply = NULL;
+	fr_pair_t		*reply = NULL;
 	uint8_t			code = 0;
 
 	slen = read(h->fd, h->buffer, h->buflen);
@@ -1174,7 +1174,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_NONE on success.
  *	- DECODE_FAIL_* on failure.
  */
-static decode_fail_t decode(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t *response_code,
+static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
 			    udp_handle_t *h, REQUEST *request, udp_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
@@ -1325,7 +1325,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 *	we're originating the packet.
 	 */
 	if (u->status_check) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		proxy_state = 0;
 		vp = fr_pair_find_by_da(request->request_pairs, attr_event_timestamp);
@@ -1393,7 +1393,7 @@ static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t 
 	 */
 	if (proxy_state) {
 		uint8_t		*attr = u->packet + packet_len;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 		fr_cursor_t	cursor;
 		int		count = 0;
 
@@ -2325,7 +2325,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		radius_track_entry_t	*rr;
 		decode_fail_t		reason;
 		uint8_t			code = 0;
-		VALUE_PAIR		*reply = NULL;
+		fr_pair_t		*reply = NULL;
 
 		fr_time_t		now;
 
@@ -2427,7 +2427,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	returning an ok/fail packet code.
 		 */
 		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
-			VALUE_PAIR	*vp;
+			fr_pair_t	*vp;
 
 			vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
 			if (!vp) {
@@ -2450,7 +2450,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	it ends up in our reply.
 		 */
 		if (fr_pair_find_by_da(reply, attr_message_authenticator)) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
 			fr_pair_delete_by_da(&reply, attr_message_authenticator);
 
@@ -2760,7 +2760,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	inst->trunk_conf = &inst->parent->trunk_conf;
 
 	inst->trunk_conf->req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
-	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(VALUE_PAIR) + 20;
+	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(fr_pair_t) + 20;
 
 	thread->el = el;
 	thread->inst = inst;

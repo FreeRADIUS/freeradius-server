@@ -251,11 +251,11 @@ json_object	*json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 
 char		*fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes);
 
-size_t    	fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t    	fr_json_from_pair(char *out, size_t outlen, fr_pair_t const *vp);
 
 void		fr_json_version_print(void);
 
-char		*fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+char		*fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_t *vps,
 					 fr_json_format_t const *format);
 
 bool		fr_json_format_verify(fr_json_format_t const *format, bool verbose);

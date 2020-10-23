@@ -210,10 +210,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, VALUE_PAIR **vps)
+static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, fr_pair_t **vps)
 {
 	mrb_value	res;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	fr_cursor_t	cursor;
 
 	res = mrb_ary_new(mrb);
@@ -303,7 +303,7 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 	return 0;
 }
 
-static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mrb_state *mrb, mrb_value value, char const *function_name)
+static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, mrb_state *mrb, mrb_value value, char const *function_name)
 {
 	int i;
 
@@ -311,7 +311,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		mrb_value	tuple = mrb_ary_entry(value, i);
 		mrb_value	key, val;
 		char const	*ckey, *cval;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 		tmpl_t	*dst;
 		fr_token_t	op = T_OP_EQ;
 
@@ -385,7 +385,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 }
 
 static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mruby_request,
-				char const *list_name, VALUE_PAIR **vps)
+				char const *list_name, fr_pair_t **vps)
 {
 	mrb_value res;
 

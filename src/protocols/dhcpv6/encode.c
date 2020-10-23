@@ -127,7 +127,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	VP_VERIFY(vp);
@@ -350,7 +350,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	case FR_TYPE_GROUP:
 	{
-		VALUE_PAIR *child;
+		fr_pair_t *child;
 		fr_cursor_t child_cursor;
 
 		/*
@@ -428,7 +428,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 	ssize_t			slen;
 	size_t			element_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	if (!fr_cond_assert_msg(da->flags.array,
@@ -517,7 +517,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
@@ -760,7 +760,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	ssize_t			len;
 	uint8_t const		*original = NULL;
 	size_t			original_length = 0;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -837,7 +837,7 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 
 ssize_t fr_dhcpv6_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, DHCPV6_OPT_HDR_LEN + UINT16_MAX);
@@ -918,7 +918,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, VALUE_PAIR *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 

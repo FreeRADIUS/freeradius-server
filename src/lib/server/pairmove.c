@@ -42,14 +42,14 @@ RCSID("$Id$")
  *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
+void radius_pairmove(REQUEST *request, fr_pair_t **to, fr_pair_t *from, bool do_xlat)
 {
 	int		i, j, count, from_count, to_count, tailto;
 	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp, *next, **last;
-	VALUE_PAIR	**from_list, **to_list;
-	VALUE_PAIR	*append, **append_tail;
-	VALUE_PAIR 	*to_copy = NULL;
+	fr_pair_t	*vp, *next, **last;
+	fr_pair_t	**from_list, **to_list;
+	fr_pair_t	*append, **append_tail;
+	fr_pair_t 	*to_copy = NULL;
 	bool		*edited = NULL;
 	TALLOC_CTX	*ctx;
 
@@ -76,10 +76,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 */
 	count = 0;
 	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
-	from_list = talloc_array(request, VALUE_PAIR *, count);
+	from_list = talloc_array(request, fr_pair_t *, count);
 
 	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
-	to_list = talloc_array(request, VALUE_PAIR *, count);
+	to_list = talloc_array(request, fr_pair_t *, count);
 
 	append = NULL;
 	append_tail = &append;

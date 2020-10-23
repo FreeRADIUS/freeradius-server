@@ -524,7 +524,7 @@ finish:
 	talloc_free_children(pool);
 }
 
-/** Add a module failure message VALUE_PAIR to the request
+/** Add a module failure message fr_pair_t to the request
  *
  * @param[in] request	The current request.
  * @param[in] fmt	with printf style substitution tokens.
@@ -533,7 +533,7 @@ finish:
 void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 {
 	char		*p;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	va_list		aq;
 
 	if (!fmt || !request || !request->packet) return;
@@ -563,7 +563,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	talloc_free(p);
 }
 
-/** Add a module failure message VALUE_PAIRE to the request
+/** Add a module failure message fr_pair_tE to the request
  *
  * @param[in] request	The current request.
  * @param[in] fmt	with printf style substitution tokens.
@@ -708,14 +708,14 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	}
 }
 
-/** Print a list of VALUE_PAIRs.
+/** Print a list of fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
 
@@ -734,7 +734,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, c
 		 */
 		if (vp->da->type == FR_TYPE_GROUP) {
 			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
+			log_request_pair_list(lvl, request, (fr_pair_t *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
 			continue;
 		}
@@ -744,14 +744,14 @@ void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, c
 	REXDENT();
 }
 
-/** Print a list of protocol VALUE_PAIRs.
+/** Print a list of protocol fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
 
@@ -771,7 +771,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR 
 		 */
 		if (vp->da->type == FR_TYPE_GROUP) {
 			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_proto_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
+			log_request_proto_pair_list(lvl, request, (fr_pair_t *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
 			continue;
 		}

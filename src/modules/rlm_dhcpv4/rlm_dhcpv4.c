@@ -67,7 +67,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	fr_cursor_t	in_cursor, cursor;
 	fr_value_box_t	*vb, *vb_decoded;
-	VALUE_PAIR	*vp, *head = NULL;
+	fr_pair_t	*vp, *head = NULL;
 	int		decoded = 0;
 
 	fr_cursor_init(&cursor, &head);
@@ -77,7 +77,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	     vb = fr_cursor_next(&in_cursor)) {
 		uint8_t const	*p, *end;
 		ssize_t		len;
-		VALUE_PAIR	*vps = NULL;
+		fr_pair_t	*vps = NULL;
 		fr_cursor_t	options_cursor;
 
 		if (vb->type != FR_TYPE_OCTETS) {

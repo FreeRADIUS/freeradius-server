@@ -116,8 +116,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
 	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
-	VALUE_PAIR const 	*username;
-	VALUE_PAIR const 	*password;
+	fr_pair_t const 	*username;
+	fr_pair_t const 	*password;
 	fr_curl_io_request_t    *randle;
 
 	randle = fr_curl_io_request_alloc(request);

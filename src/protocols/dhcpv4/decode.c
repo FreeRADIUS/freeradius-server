@@ -90,7 +90,7 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
 				     uint8_t const *data, size_t data_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t const *p = data;
 
 	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
@@ -562,7 +562,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 }
 
 
-static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	unsigned int	code;
 	fr_cursor_t	cursor;

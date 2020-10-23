@@ -27,7 +27,7 @@
  */
 typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx);
 
-/** A generic interface for decoding packets to VALUE_PAIRs
+/** A generic interface for decoding packets to fr_pair_ts
  *
  * A decoding function should decode a single top level packet from wire format.
  *
@@ -40,10 +40,10 @@ typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx);
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, fr_pair_t **vps,
 					uint8_t const *data, size_t data_len, void *decoder_ctx);
 
-/** A generic interface for encoding VALUE_PAIRs to packets
+/** A generic interface for encoding fr_pair_ts to packets
  *
  * An encoding function should encode multiple VPs to a wire format packet
  *
@@ -56,7 +56,7 @@ typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, VALUE_PAIR **vps,
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were encoded
  */
-typedef ssize_t (*fr_tp_proto_encode_t)(TALLOC_CTX *ctx, VALUE_PAIR *vps,
+typedef ssize_t (*fr_tp_proto_encode_t)(TALLOC_CTX *ctx, fr_pair_t *vps,
 					uint8_t *data, size_t data_len, void *encoder_ctx);
 
 /** Entry point for protocol decoders

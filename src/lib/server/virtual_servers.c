@@ -1100,7 +1100,7 @@ rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	CONF_SECTION	*auth_cs = NULL;
 	char const	*auth_name;
 

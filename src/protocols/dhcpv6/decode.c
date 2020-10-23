@@ -49,7 +49,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 	ssize_t			slen;
@@ -123,7 +123,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			    uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
 	ssize_t			rcode;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*tlv;
 	uint8_t			prefix_len;
 
@@ -219,7 +219,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	case FR_TYPE_GROUP:
 	{
 		fr_cursor_t child_cursor;
-		VALUE_PAIR *head = NULL;
+		fr_pair_t *head = NULL;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
@@ -340,7 +340,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 {
 	ssize_t rcode;
 	size_t total;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t const *next = data;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_dns_labels");
@@ -523,7 +523,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 	 *	packets, copied verbatim from the DHCPv6 client.
 	 */
 	if (da == attr_relay_message) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 		fr_cursor_t cursor_group;
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_message);
@@ -559,7 +559,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 }
 
 
-/** Create a "normal" VALUE_PAIR from the given data
+/** Create a "normal" fr_pair_t from the given data
  *
  *    0                   1                   2                   3
  *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -609,7 +609,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	size_t packet_len = data_len;
 	fr_cursor_t cursor;

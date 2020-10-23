@@ -54,8 +54,8 @@ typedef struct {
 
 	fr_io_data_vnode_t		vnode;		//!< Handle notifications that the VNODE has changed
 
-	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
-	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
+	fr_io_decode_t			decode;		//!< Translate raw bytes into fr_pair_ts and metadata.
+	fr_io_encode_t			encode;		//!< Pack fr_pair_ts back into a byte array.
 
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
 

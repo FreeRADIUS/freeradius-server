@@ -181,7 +181,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	struct radutmp		ut, u;
 	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			status = -1;
 	int			protocol = -1;
 	time_t			t;

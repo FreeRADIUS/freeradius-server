@@ -238,7 +238,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
-	VALUE_PAIR *vp;                         /* radius value pair linked list */
+	fr_pair_t *vp;                         /* radius value pair linked list */
 	char buffer[MAX_KEY_SIZE];
 	char const *dockey;			/* our document key */
 	char document[MAX_VALUE_SIZE];          /* our document body */

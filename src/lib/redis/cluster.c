@@ -238,7 +238,7 @@ struct fr_redis_cluster_key_slot_s {
 struct fr_redis_cluster {
 	char const		*log_prefix;		//!< What to prepend to log messages.
 	char const		*trigger_prefix;	//!< Trigger path.
-	VALUE_PAIR		*trigger_args;		//!< Arguments to pass to triggers.
+	fr_pair_t		*trigger_args;		//!< Arguments to pass to triggers.
 	bool			triggers_enabled;	//!< Whether triggers are enabled.
 
 	bool			remapping;		//!< True when cluster is being remapped.
@@ -325,7 +325,7 @@ static int _cluster_node_cmp(void const *a, void const *b)
  */
 static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 {
-	VALUE_PAIR	*args;
+	fr_pair_t	*args;
 	fr_redis_cluster_node_t	*node = opaque;
 
 	node->addr = node->pending_addr;
@@ -372,7 +372,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 	 */
 	if (!node->pool) {
 		char		buffer[256];
-		VALUE_PAIR	*args;
+		fr_pair_t	*args;
 		CONF_SECTION	*pool;
 
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
@@ -2252,7 +2252,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   bool triggers_enabled,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
-					   VALUE_PAIR *trigger_args)
+					   fr_pair_t *trigger_args)
 {
 	uint8_t			i;
 	uint16_t		s;

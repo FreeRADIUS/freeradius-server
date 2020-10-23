@@ -108,8 +108,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	size_t		i;
 	uint8_t const  	*p = data;
 	uint32_t	giaddr;
-	VALUE_PAIR	*head, *vp;
-	VALUE_PAIR	*maxms, *mtu, *netaddr;
+	fr_pair_t	*head, *vp;
+	fr_pair_t	*maxms, *mtu, *netaddr;
 	fr_value_box_t	box;
 
 	if (data[1] > 1) {
@@ -385,7 +385,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 {
 	ssize_t		len;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (packet->data) return 0;
 

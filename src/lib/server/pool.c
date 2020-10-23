@@ -133,7 +133,7 @@ struct fr_pool_s {
 
 	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
 						//!< fired by the connection pool code.
-	VALUE_PAIR	*trigger_args;		//!< Arguments to make available in connection pool triggers.
+	fr_pair_t	*trigger_args;		//!< Arguments to make available in connection pool triggers.
 
 	fr_time_delta_t	held_trigger_min;	//!< If a connection is held for less than the specified
 						//!< period, fire a trigger.
@@ -894,12 +894,12 @@ do_return:
  *				@verbatim <trigger name> @endverbatim is appended to form
  *				the complete path.
  * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
- *				These will usually be VALUE_PAIR (s) describing the host
+ *				These will usually be fr_pair_t (s) describing the host
  *				associated with the pool.
  *				Trigger args will be copied, input trigger_args should be freed
  *				if necessary.
  */
-void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, fr_pair_t *trigger_args)
 {
 	pool->triggers_enabled = true;
 

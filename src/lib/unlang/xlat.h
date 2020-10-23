@@ -261,8 +261,8 @@ typedef size_t (*xlat_escape_legacy_t)(REQUEST *request, char *out, size_t outle
 
 
 
-int		xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
-int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);
+int		xlat_fmt_get_vp(fr_pair_t **out, REQUEST *request, char const *name);
+int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, char const *name);
 
 int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 				   bool *tainted, REQUEST *requst, char const *fmt);
@@ -288,7 +288,7 @@ int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
 
 int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat);
 
-int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
+int		xlat_eval_pair(REQUEST *request, fr_pair_t *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 

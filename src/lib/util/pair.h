@@ -55,22 +55,22 @@ extern "C" {
 #define control_pairs	control
 #define state_pairs	state
 
-/** The type of value a VALUE_PAIR contains
+/** The type of value a fr_pair_t contains
  *
- * This is used to add structure to nested VALUE_PAIRs and specifies what type of node it is (set, list, data).
+ * This is used to add structure to nested fr_pair_ts and specifies what type of node it is (set, list, data).
  *
  * xlat is another type of data node which must first be expanded before use.
  */
 typedef enum value_type {
-	VT_NONE = 0,						//!< VALUE_PAIR has no value.
-	VT_SET,							//!< VALUE_PAIR has children.
-	VT_LIST,						//!< VALUE_PAIR has multiple values.
-	VT_DATA,						//!< VALUE_PAIR has a single value.
+	VT_NONE = 0,						//!< fr_pair_t has no value.
+	VT_SET,							//!< fr_pair_t has children.
+	VT_LIST,						//!< fr_pair_t has multiple values.
+	VT_DATA,						//!< fr_pair_t has a single value.
 	VT_XLAT							//!< valuepair value must be xlat expanded when it's
-								//!< added to VALUE_PAIR tree.
+								//!< added to fr_pair_t tree.
 } value_type_t;
 
-typedef struct value_pair_s VALUE_PAIR;
+typedef struct value_pair_s fr_pair_t;
 
 typedef enum {
 	FR_PAIR_LIST_SINGLE = 0,				//!< Singly linked list.
@@ -83,7 +83,7 @@ typedef enum {
  */
 typedef struct {
 	union {
-		VALUE_PAIR	        *slist;			//!< The head of the list.
+		fr_pair_t	        *slist;			//!< The head of the list.
 		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
 	};
 	fr_pair_list_type_t type;				//!< What type of list this is.
@@ -91,7 +91,7 @@ typedef struct {
 
 /** Stores an attribute, a value and various bits of other data
  *
- * VALUE_PAIRs are the main data structure used in the server
+ * fr_pair_ts are the main data structure used in the server
  *
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
@@ -99,7 +99,7 @@ struct value_pair_s {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the attribute.
 
-	VALUE_PAIR		*next;
+	fr_pair_t		*next;
 
 	/*
 	 *	Legacy stuff that needs to die.
@@ -121,23 +121,23 @@ struct value_pair_s {
 	};
 };
 
-/** Abstraction to allow iterating over different configurations of VALUE_PAIRs
+/** Abstraction to allow iterating over different configurations of fr_pair_ts
  *
- * This allows functions which do not care about the structure of collections of VALUE_PAIRs
+ * This allows functions which do not care about the structure of collections of fr_pair_ts
  * to iterate over all members in a collection.
  *
  * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
  * manipulated with the pair* functions.
  */
 typedef struct {
-	VALUE_PAIR	**first;
-	VALUE_PAIR	*found;					//!< pairfind marker.
-	VALUE_PAIR	*last;					//!< Temporary only used for fr_pair_cursor_append
-	VALUE_PAIR	*current;				//!< The current attribute.
-	VALUE_PAIR	*next;					//!< Next attribute to process.
+	fr_pair_t	**first;
+	fr_pair_t	*found;					//!< pairfind marker.
+	fr_pair_t	*last;					//!< Temporary only used for fr_pair_cursor_append
+	fr_pair_t	*current;				//!< The current attribute.
+	fr_pair_t	*next;					//!< Next attribute to process.
 } vp_cursor_t;
 
-/** A VALUE_PAIR in string format.
+/** A fr_pair_t in string format.
  *
  * Used to represent pairs in the legacy 'users' file format.
  */
@@ -148,7 +148,7 @@ typedef struct {
 	fr_token_t quote;						//!< Type of quoting around the r_opand.
 
 	fr_token_t op;						//!< Operator.
-} VALUE_PAIR_RAW;
+} fr_pair_t_RAW;
 
 #define vp_strvalue		data.vb_strvalue
 #define vp_octets		data.vb_octets
@@ -188,25 +188,25 @@ typedef struct {
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da))
 
 #  ifdef WITH_VERIFY_PTR
-void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
-void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, VALUE_PAIR *vps);
+void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_t *vps);
 #  endif
 
 /* Allocation and management */
-VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
+fr_pair_t	*fr_pair_alloc(TALLOC_CTX *ctx);
 
-VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
-VALUE_PAIR	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
+fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
 
-VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
+fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
 
-void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
+void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
-void		fr_pair_list_free(VALUE_PAIR **);
+void		fr_pair_list_free(fr_pair_t **);
 
 /* Searching and list modification */
-int		fr_pair_to_unknown(VALUE_PAIR *vp);
+int		fr_pair_to_unknown(fr_pair_t *vp);
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
@@ -220,10 +220,10 @@ void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
  *	- The first matching pair.
  *	- NULL if no pairs match.
  */
-static inline VALUE_PAIR *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
-						    VALUE_PAIR **list, fr_dict_attr_t const *da)
+static inline fr_pair_t *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
+						    fr_pair_t **list, fr_dict_attr_t const *da)
 {
-	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_da, da, fr_pair_t);
 }
 
 /** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
@@ -235,44 +235,44 @@ static inline VALUE_PAIR *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
  *	- The first matching pair.
  *	- NULL if no pairs match.
  */
-static inline VALUE_PAIR *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
-							  VALUE_PAIR **list, fr_dict_attr_t const *da)
+static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
+							  fr_pair_t **list, fr_dict_attr_t const *da)
 {
-	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, VALUE_PAIR);
+	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
 
-VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da);
 
-VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr);
+fr_pair_t	*fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned int attr);
 
-VALUE_PAIR	*fr_pair_find_by_child_num(VALUE_PAIR *head, fr_dict_attr_t const *parent, unsigned int attr);
+fr_pair_t	*fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
-void		fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *vp);
+void		fr_pair_add(fr_pair_t **head, fr_pair_t *vp);
 
-void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
+void		fr_pair_replace(fr_pair_t **head, fr_pair_t *add);
 
-void		fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent, unsigned int attr);
+void		fr_pair_delete_by_child_num(fr_pair_t **head, fr_dict_attr_t const *parent, unsigned int attr);
 
-int		fr_pair_add_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, fr_dict_attr_t const *da);
+int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
 
-int		fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, fr_dict_attr_t const *da);
+int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
 
-int		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da);
+int		fr_pair_delete_by_da(fr_pair_t **head, fr_dict_attr_t const *da);
 
-void		fr_pair_delete(VALUE_PAIR **list, VALUE_PAIR const *vp);
+void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
 
 /* functions for FR_TYPE_GROUP */
-fr_pair_list_t	*fr_pair_group_get_sublist(VALUE_PAIR *head);
+fr_pair_list_t	*fr_pair_group_get_sublist(fr_pair_t *head);
 
-VALUE_PAIR	*fr_pair_group_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_group_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-VALUE_PAIR	*fr_pair_group_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
+fr_pair_t	*fr_pair_group_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
 
-void		fr_pair_group_add(fr_pair_list_t *head, VALUE_PAIR *vp);
+void		fr_pair_group_add(fr_pair_list_t *head, fr_pair_t *vp);
 
-int		fr_pair_group_add_by_da(VALUE_PAIR **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
+int		fr_pair_group_add_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-int		fr_pair_group_update_by_da(VALUE_PAIR **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
+int		fr_pair_group_update_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
 
 int		fr_pair_group_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
@@ -296,117 +296,117 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 #define		fr_pair_cmp_op(_op, _a, _b)	fr_value_box_cmp_op(_op, &_a->data, &_b->data)
 int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
-int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
-int		fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
-void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp) CC_HINT(nonnull);
+int		fr_pair_cmp(fr_pair_t *a, fr_pair_t *b);
+int		fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b);
+void		fr_pair_list_sort(fr_pair_t **vps, fr_cmp_t cmp) CC_HINT(nonnull);
 
 /* Filtering */
-void		fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
-bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list) CC_HINT(nonnull(2,3));
-bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list) CC_HINT(nonnull(2,3));
+void		fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2]);
+bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
+bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
 
 /* Lists */
-int		fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);
-int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
-					VALUE_PAIR *from, fr_dict_attr_t const *da);
-int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
-					      VALUE_PAIR *from, fr_dict_attr_t const *parent_da);
+int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from);
+int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
+					fr_pair_t *from, fr_dict_attr_t const *da);
+int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
+					      fr_pair_t *from, fr_dict_attr_t const *parent_da);
 
 /** @name Pair to pair copying
  *
  * @{
  */
-void		fr_pair_value_clear(VALUE_PAIR *vp);
+void		fr_pair_value_clear(fr_pair_t *vp);
 
-int		fr_pair_value_copy(VALUE_PAIR *dst, VALUE_PAIR *src);
+int		fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src);
 /** @} */
 
 /** @name Assign and manipulate binary-unsafe C strings
  *
  * @{
  */
-int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
+int		fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t len, char quote, bool tainted);
 
-int		fr_pair_value_strdup(VALUE_PAIR *vp, char const *src);
+int		fr_pair_value_strdup(fr_pair_t *vp, char const *src);
 
-int		fr_pair_value_strdup_shallow(VALUE_PAIR *vp, char const *src, bool tainted);
+int		fr_pair_value_strdup_shallow(fr_pair_t *vp, char const *src, bool tainted);
 
-int		fr_pair_value_strtrim(VALUE_PAIR *vp);
+int		fr_pair_value_strtrim(fr_pair_t *vp);
 
-int		fr_pair_value_aprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+int		fr_pair_value_aprintf(fr_pair_t *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 /** @} */
 
 /** @name Assign and manipulate binary-safe strings
  *
  * @{
  */
-int		fr_pair_value_bstr_alloc(VALUE_PAIR *vp, char **out, size_t size, bool tainted);
+int		fr_pair_value_bstr_alloc(fr_pair_t *vp, char **out, size_t size, bool tainted);
 
-int		fr_pair_value_bstr_realloc(VALUE_PAIR *vp, char **out, size_t size);
+int		fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size);
 
-int		fr_pair_value_bstrndup(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+int		fr_pair_value_bstrndup(fr_pair_t *vp, char const *src, size_t len, bool tainted);
 
-int		fr_pair_value_bstrdup_buffer(VALUE_PAIR *vp, char const *src, bool tainted);
+int		fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted);
 
-int		fr_pair_value_bstrndup_shallow(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+int		fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, bool tainted);
 
-int		fr_pair_value_bstrdup_buffer_shallow(VALUE_PAIR *vp, char const *src, bool tainted);
+int		fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool tainted);
 
-int		fr_pair_value_bstrn_append(VALUE_PAIR *vp, char const *src, size_t len, bool tainted);
+int		fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool tainted);
 
-int		fr_pair_value_bstr_append_buffer(VALUE_PAIR *vp, char const *src, bool tainted);
+int		fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainted);
  /** @} */
 
 /** @name Assign and manipulate octets strings
  *
  * @{
  */
-int		fr_pair_value_mem_alloc(VALUE_PAIR *vp, uint8_t **out, size_t size, bool tainted);
+int		fr_pair_value_mem_alloc(fr_pair_t *vp, uint8_t **out, size_t size, bool tainted);
 
-int		fr_pair_value_mem_realloc(VALUE_PAIR *vp, uint8_t **out, size_t size);
+int		fr_pair_value_mem_realloc(fr_pair_t *vp, uint8_t **out, size_t size);
 
-int		fr_pair_value_memdup(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
+int		fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tainted);
 
-int		fr_pair_value_memdup_buffer(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
+int		fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted);
 
-int		fr_pair_value_memdup_shallow(VALUE_PAIR *vp, uint8_t const *src, size_t len, bool tainted);
+int		fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, bool tainted);
 
-int		fr_pair_value_memdup_buffer_shallow(VALUE_PAIR *vp, uint8_t const *src, bool tainted);
+int		fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool tainted);
 
-int		fr_pair_value_mem_append(VALUE_PAIR *vp, uint8_t *src, size_t len, bool tainted);
+int		fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool tainted);
 
-int		fr_pair_value_mem_append_buffer(VALUE_PAIR *vp, uint8_t *src, bool tainted);
+int		fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted);
  /** @} */
 
 /** @name Enum functions
  *
  * @{
  */
-char const		*fr_pair_value_enum(VALUE_PAIR const *vp, char buff[static 20]);
+char const		*fr_pair_value_enum(fr_pair_t const *vp, char buff[static 20]);
 
-int			fr_pair_value_enum_box(fr_value_box_t const **out, VALUE_PAIR *vp);
+int			fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp);
 /** @} */
 
 /** @name Printing functions
  *
  * @{
  */
-ssize_t   		fr_pair_print_value_quoted(fr_sbuff_t *out, VALUE_PAIR const *vp, fr_token_t quote);
+ssize_t   		fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote);
 
-static inline size_t	fr_pair_aprint_value_quoted(TALLOC_CTX *ctx, char **out, VALUE_PAIR const *vp, fr_token_t quote) SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
+static inline size_t	fr_pair_aprint_value_quoted(TALLOC_CTX *ctx, char **out, fr_pair_t const *vp, fr_token_t quote) SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
 
-ssize_t			fr_pair_print(fr_sbuff_t *out, VALUE_PAIR const *vp);
+ssize_t			fr_pair_print(fr_sbuff_t *out, fr_pair_t const *vp);
 
-static inline size_t	fr_pair_aprint(TALLOC_CTX *ctx, char **out, VALUE_PAIR const *vp) SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, vp)
+static inline size_t	fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const *vp) SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, vp)
 
-void			fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
+void			fr_pair_fprint(FILE *, fr_pair_t const *vp);
 
 #define			fr_pair_list_log(_log, _vp) _fr_pair_list_log(_log, _vp, __FILE__, __LINE__);
-void			_fr_pair_list_log(fr_log_t const *log, VALUE_PAIR const *vp, char const *file, int line);
+void			_fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *file, int line);
 /** @} */
 
-void			fr_pair_list_tainted(VALUE_PAIR *vp);
-VALUE_PAIR		*fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box);
+void			fr_pair_list_tainted(fr_pair_t *vp);
+fr_pair_t		*fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box);
 
 /* Tokenization */
 typedef struct {

@@ -131,7 +131,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_round_t		*eap_round = eap_session->this_round;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	CONF_SECTION		*unlang;
 
 	/*

@@ -43,14 +43,14 @@ ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 int		trigger_exec_init(CONF_SECTION const *cs);
 
 int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,
-			     char const *name, bool quench, VALUE_PAIR *args)
+			     char const *name, bool quench, fr_pair_t *args)
 			     CC_HINT(nonnull (3));
 
 void		trigger_exec_free(void);
 
 bool		trigger_enabled(void);
 
-VALUE_PAIR	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
+fr_pair_t	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
 typedef int (*fr_trigger_worker_t)(REQUEST *request, module_method_t process, void *ctx);
 extern fr_trigger_worker_t trigger_worker_request_add;

@@ -50,9 +50,9 @@ typedef struct {
 	REQUEST			*request;			//!< The current request.
 	fr_cursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
-	VALUE_PAIR 		*vps;				//!< List containing the attribute(s) we're
+	fr_pair_t 		*vps;				//!< List containing the attribute(s) we're
 								///< iterating over.
-	VALUE_PAIR		*variable;			//!< Attribute we update the value of.
+	fr_pair_t		*variable;			//!< Attribute we update the value of.
 	int			depth;				//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
 	int			indent;				//!< for catching indentation issues
@@ -77,7 +77,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 
 static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presult)
 {
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
@@ -133,7 +133,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	unlang_foreach_kctx_t		*kctx;
 
 	int				i, foreach_depth = 0;
-	VALUE_PAIR			*vps;
+	fr_pair_t			*vps;
 
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
@@ -178,7 +178,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	foreach->request = request;
 	foreach->depth = foreach_depth;
 	foreach->vps = vps;
-	fr_cursor_talloc_init(&foreach->cursor, &foreach->vps, VALUE_PAIR);
+	fr_cursor_talloc_init(&foreach->cursor, &foreach->vps, fr_pair_t);
 #ifndef NDEBUG
 	foreach->indent = request->log.unlang_indent;
 #endif
@@ -213,9 +213,9 @@ static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t ou
 				   void const *mod_inst, UNUSED void const *xlat_inst,
 				   REQUEST *request, UNUSED char const *fmt)
 {
-	VALUE_PAIR	**pvp;
+	fr_pair_t	**pvp;
 
-	pvp = (VALUE_PAIR **) request_data_reference(request, FOREACH_REQUEST_DATA, *(int const *) mod_inst);
+	pvp = (fr_pair_t **) request_data_reference(request, FOREACH_REQUEST_DATA, *(int const *) mod_inst);
 	if (!pvp || !*pvp) return 0;
 
 	return fr_value_box_aprint(ctx, out, &(*pvp)->data, NULL);

@@ -110,12 +110,12 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
  *
  *	Function: sql_fr_pair_list_afrom_str
  *
- *	Purpose: Read entries from the database and fill VALUE_PAIR structures
+ *	Purpose: Read entries from the database and fill fr_pair_t structures
  *
  *************************************************************************/
 int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor, rlm_sql_row_t row)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	char const *ptr, *value;
 	char buf[FR_MAX_STRING_LEN];
 	char do_xlat = 0;

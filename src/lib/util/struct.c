@@ -36,9 +36,9 @@ typedef struct {
      fr_encode_value_t	encoder;
 } encode_ctx_wrapper;
 
-VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+fr_pair_t *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_dict_attr_t const *child;
 
 #if defined(__clang_analyzer__) || !defined(NDEBUG)
@@ -78,9 +78,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
-	VALUE_PAIR		*head = NULL;
+	fr_pair_t		*head = NULL;
 	fr_cursor_t		child_cursor;
-	VALUE_PAIR		*vp, *key_vp;
+	fr_pair_t		*vp, *key_vp;
 	unsigned int		offset = 0;
 
 	if (data_len < 1) return -1; /* at least one byte of data */
@@ -429,7 +429,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 	unsigned int		child_num = 1;
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da, *parent;
 
 	if (!vp) {

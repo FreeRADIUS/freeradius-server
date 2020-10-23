@@ -247,7 +247,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
 {
 	krb5_error_code ret;
 	char *princ_name;
-	VALUE_PAIR *username;
+	fr_pair_t *username;
 
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 
@@ -326,7 +326,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	krb5_error_code		ret;
 	rlm_krb5_handle_t	*conn;
 	krb5_principal		client = NULL;
-	VALUE_PAIR		*password;
+	fr_pair_t		*password;
 
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 
@@ -421,7 +421,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	krb5_principal		client = NULL;	/* actually a pointer value */
 	krb5_creds		init_creds;
 	char			*nonconst_password;		/* compiler warnings */
-	VALUE_PAIR		*password;
+	fr_pair_t		*password;
 
 	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
 

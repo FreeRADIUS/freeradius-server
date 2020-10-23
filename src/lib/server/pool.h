@@ -143,7 +143,7 @@ fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
  *	Pool get/set
  */
 void	fr_pool_enable_triggers(fr_pool_t *pool,
-					   char const *trigger_prefix, VALUE_PAIR *vp);
+					   char const *trigger_prefix, fr_pair_t *vp);
 
 fr_time_delta_t fr_pool_timeout(fr_pool_t *pool);
 

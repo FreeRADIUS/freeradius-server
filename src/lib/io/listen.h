@@ -18,7 +18,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/time_tracking.h>
 
-/** Describes a path data takes to/from the wire to/from VALUE_PAIRs
+/** Describes a path data takes to/from the wire to/from fr_pair_ts
  *
  */
 typedef struct fr_listen fr_listen_t;

@@ -340,8 +340,8 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_list)
+static int counter_cmp(void *instance, REQUEST *request, UNUSED fr_pair_t *req , fr_pair_t *check,
+		       UNUSED fr_pair_t *check_list)
 {
 	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
 	uint64_t counter;
@@ -390,8 +390,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;
-	VALUE_PAIR		*limit;
-	VALUE_PAIR		*reply_item;
+	fr_pair_t		*limit;
+	fr_pair_t		*reply_item;
 	char			msg[128];
 	int			ret;
 
@@ -448,7 +448,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	 *	Check if check item > counter
 	 */
 	if (limit->vp_uint64 <= counter) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		/* User is denied access, send back a reply message */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);

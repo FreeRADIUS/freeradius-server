@@ -420,7 +420,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (request && conf->psk_query) {
 		size_t hex_len;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 		char buffer[2 * PSK_MAX_PSK_LEN + 4]; /* allow for too-long keys */
 
 		/*
@@ -559,7 +559,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
 		if (where & SSL_CB_READ) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
 			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
 			        SSL_alert_desc_string_long(ret));
@@ -838,10 +838,10 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
-static inline VALUE_PAIR *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
+static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
 					    	    int attr, int attr_index, char const *value)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_dict_attr_t const *da = *(cert_attr_names[attr][attr_index]);
 
 	MEM(vp = fr_pair_afrom_da(ctx, da));
@@ -888,7 +888,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
 
-	VALUE_PAIR	*vp = NULL;
+	fr_pair_t	*vp = NULL;
 
 	REQUEST		*request;
 
@@ -1411,7 +1411,7 @@ int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
 	 */
 	if (SSL_is_init_finished(session->ssl)) {
 		SSL_CIPHER const *cipher;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 		char const *version;
 
 		char cipher_desc[256], cipher_desc_clean[256];
@@ -1664,7 +1664,7 @@ fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	fr_tls_session_t	*session = NULL;
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	SSL_CTX		*ssl_ctx;
 
 	fr_assert(request != NULL);

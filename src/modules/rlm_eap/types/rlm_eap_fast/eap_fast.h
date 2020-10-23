@@ -162,7 +162,7 @@ typedef struct {
 } CC_HINT(__packed__) eap_fast_keyblock_t;
 
 typedef struct {
-	VALUE_PAIR		*username;
+	fr_pair_t		*username;
 
 	bool			authenticated;
 

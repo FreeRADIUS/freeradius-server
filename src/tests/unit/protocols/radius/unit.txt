@@ -34,7 +34,7 @@ match Unit-EVS-Integer = 6809
 
 #
 #  This is ambiguous, so we do something.  Anything...
-#  When we have nested VALUE_PAIRs, we can just follow
+#  When we have nested fr_pair_ts, we can just follow
 #  that format instead of guessing.
 #
 encode-pair Unit-TLV-Integer = 1, Unit-TLV-Integer = 2

@@ -77,7 +77,7 @@ fr_dict_attr_autoload_t proto_tacacs_autz_dict_attr[] = {
 
 static void authorization_failed(REQUEST *request, char const *msg)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	RPEDEBUG("%s", msg);
 

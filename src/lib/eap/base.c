@@ -115,12 +115,12 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ NULL }
 };
 
-VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
+fr_pair_t *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	uint8_t const *ptr;
-	VALUE_PAIR	*head = NULL;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*head = NULL;
+	fr_pair_t	*vp;
 	fr_cursor_t	out;
 
 	total = eap->length[0] * 256 + eap->length[1];
@@ -278,9 +278,9 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
+eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_t *vps)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_packet_raw_t	*eap_packet;
 	unsigned char		*ptr;
 	uint16_t		len;
@@ -376,7 +376,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
  */
 void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
 	fr_pair_value_memdup(vp, value, len, false);
@@ -404,7 +404,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, cha
 {
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	vp = fr_pair_find_by_da(request->control_pairs, attr_virtual_server);
 	request->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);

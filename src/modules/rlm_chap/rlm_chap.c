@@ -102,7 +102,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
 
 	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
@@ -150,8 +150,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR		*known_good;
-	VALUE_PAIR		*chap, *username;
+	fr_pair_t		*known_good;
+	fr_pair_t		*chap, *username;
 	uint8_t			pass_str[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 
 	int			ret;
@@ -210,7 +210,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
 		size_t		length;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		vp = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
 		if (vp) {

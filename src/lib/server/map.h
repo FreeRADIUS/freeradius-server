@@ -102,7 +102,7 @@ struct vp_list_mod_s {
 #endif
 
 typedef int (*map_validate_t)(vp_map_t *map, void *ctx);
-typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
 				     vp_map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
@@ -125,12 +125,12 @@ int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp,
+int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, fr_pair_t *vp,
 			     tmpl_rules_t const *rules);
 
 void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
 
-int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+int		map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
 			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
 int		map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm);
@@ -145,7 +145,7 @@ int		map_to_request(REQUEST *request, vp_map_t const *map,
 ssize_t		map_print(fr_sbuff_t *out, vp_map_t const *map);
 
 void		map_debug_log(REQUEST *request, vp_map_t const *map,
-			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
+			      fr_pair_t const *vp) CC_HINT(nonnull(1, 2));
 
 bool		map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs);
 #ifdef __cplusplus

@@ -485,7 +485,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char const *str, int rcode)
 {
 	char		*expanded = NULL;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (!str || !*str) return rcode;
 
@@ -508,7 +508,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
 	int			allocation_len;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	rlm_sql_handle_t	*handle;
 
 	/*
@@ -813,7 +813,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
 {
 	int			rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	int			acct_status_type;
 

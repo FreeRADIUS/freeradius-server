@@ -924,7 +924,7 @@ int main_config_init(main_config_t *config)
 	INFO("Starting - reading configuration files ...");
 
 	/*
-	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
+	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(fr_pair_t) * 400
 	 *
 	 *	Which should be enough for many configurations.
 	 */

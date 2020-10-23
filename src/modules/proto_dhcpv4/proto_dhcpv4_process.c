@@ -119,7 +119,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	 */
 	RINDENT();
 	for (i = 0; dhcp_header_attrs[i] != NULL; i++) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		if (!*dhcp_header_attrs[i]) continue;
 
@@ -141,7 +141,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);

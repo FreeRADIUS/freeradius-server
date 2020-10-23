@@ -51,7 +51,7 @@ fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 
 static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
 {
-	VALUE_PAIR 	*vp;
+	fr_pair_t 	*vp;
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*unlang;
 	fr_dict_enum_t	const *dv;

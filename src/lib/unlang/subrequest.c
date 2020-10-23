@@ -225,7 +225,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 	REQUEST				*child;
 
 	rlm_rcode_t			rcode;
-	VALUE_PAIR			*vp;
+	fr_pair_t			*vp;
 
 	unlang_group_t			*g;
 	unlang_subrequest_kctx_t	*kctx;
@@ -265,7 +265,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 		child->packet->code = vp->vp_uint32 = kctx->type_enum->value->vb_uint32;
 	} else {
 		fr_dict_enum_t const	*type_enum;
-		VALUE_PAIR		*attr;
+		fr_pair_t		*attr;
 
 		if (tmpl_find_vp(&attr, request, kctx->vpt) < 0) {
 			RDEBUG("Failed finding attribute %s", kctx->vpt->name);
@@ -356,7 +356,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
  */
 int unlang_detached_child_init(REQUEST *request)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	if (request_detach(request, false) < 0) {
 		ERROR("Failed detaching child");

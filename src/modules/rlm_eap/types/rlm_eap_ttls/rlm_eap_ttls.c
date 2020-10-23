@@ -268,7 +268,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 
 	eap_tls_session_t	*eap_tls_session;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			client_cert;
 
 	eap_session->tls = true;

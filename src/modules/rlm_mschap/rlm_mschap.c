@@ -56,7 +56,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
+int od_mschap_auth(REQUEST *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
 #endif
 
 /* Allowable account control bits */
@@ -192,9 +192,9 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ NULL }
 };
 
-static VALUE_PAIR *mschap_identity_find(REQUEST *request)
+static fr_pair_t *mschap_identity_find(REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	vp = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (vp) return vp;
@@ -300,8 +300,8 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	size_t			i, data_len;
 	uint8_t const  		*data = NULL;
 	uint8_t			buffer[32];
-	VALUE_PAIR		*user_name;
-	VALUE_PAIR		*chap_challenge, *response;
+	fr_pair_t		*user_name;
+	fr_pair_t		*chap_challenge, *response;
 	rlm_mschap_t const	*inst = mod_inst;
 
 	response = NULL;
@@ -331,8 +331,8 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 *	for MS-CHAPv2.
 			 */
 		} else if (chap_challenge->vp_length == 16) {
-			VALUE_PAIR	*name_vp;
-			VALUE_PAIR	*response_name;
+			fr_pair_t	*name_vp;
+			fr_pair_t	*response_name;
 			char const	*username_str;
 			size_t		username_len;
 
@@ -678,7 +678,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_del
 static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 			   REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, size_t len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
 	fr_pair_value_memdup(vp, value, len, false);
@@ -706,9 +706,9 @@ static int write_all(int fd, char const *buf, int len) {
 static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 						       REQUEST *request,
 #ifdef HAVE_OPENSSL_CRYPTO_H
-						       VALUE_PAIR *nt_password,
+						       fr_pair_t *nt_password,
 #else
-						       UNUSED VALUE_PAIR *nt_password,
+						       UNUSED fr_pair_t *nt_password,
 #endif
 						       uint8_t *new_nt_password,
 						       uint8_t *old_nt_hash,
@@ -898,7 +898,7 @@ ntlm_auth_err:
 		 *  %{exec:/path/to %{mschap:User-Name} %{MS-CHAP-New-Password}}"
 		 *
 		 */
-		VALUE_PAIR *new_pass, *new_hash;
+		fr_pair_t *new_pass, *new_hash;
 		uint8_t *p, *q;
 		char *x;
 		size_t i;
@@ -1068,7 +1068,7 @@ ntlm_auth_err:
  *	it with code to call winbindd, or something similar.
  */
 static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst, REQUEST *request,
-						      VALUE_PAIR *password,
+						      fr_pair_t *password,
 						      uint8_t const *challenge, uint8_t const *response,
 						      uint8_t nthashhash[static NT_DIGEST_LENGTH],
 						      MSCHAP_AUTH_METHOD method)
@@ -1373,7 +1373,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
-	VALUE_PAIR		*challenge = NULL;
+	fr_pair_t		*challenge = NULL;
 
 	challenge = fr_pair_find_by_da(request->request_pairs, attr_ms_chap_challenge);
 	if (!challenge) return RLM_MODULE_NOOP;
@@ -1397,7 +1397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 }
 
 static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsigned char ident,
-				int mschap_result, int mschap_version, VALUE_PAIR *smb_ctrl)
+				int mschap_result, int mschap_version, fr_pair_t *smb_ctrl)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	int		error = 0;
@@ -1495,10 +1495,10 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, VALUE_PAIR **out,
+static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, fr_pair_t **out,
 						      rlm_mschap_t const *inst, REQUEST *request)
 {
-	VALUE_PAIR		*password;
+	fr_pair_t		*password;
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password, attr_nt_password };
 
 	*out = NULL;		/* Init output pointer */
@@ -1538,7 +1538,7 @@ found_password:
 	if (password->da == attr_cleartext_password) {
 		uint8_t		*p;
 		int		ret;
-		VALUE_PAIR	*nt_password;
+		fr_pair_t	*nt_password;
 
 		MEM(nt_password = fr_pair_afrom_da(request, attr_nt_password));
 		MEM(fr_pair_value_mem_alloc(nt_password, &p, NT_DIGEST_LENGTH, false) == 0);
@@ -1584,11 +1584,11 @@ found_password:
  */
 static rlm_rcode_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_mschap_t const *inst,
 							       REQUEST *request,
-							       VALUE_PAIR *cpw,
-							       VALUE_PAIR *nt_password)
+							       fr_pair_t *cpw,
+							       fr_pair_t *nt_password)
 {
 	uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
-	VALUE_PAIR	*nt_enc=NULL;
+	fr_pair_t	*nt_enc=NULL;
 	int		seq, new_nt_enc_len;
 
 	/*
@@ -1708,10 +1708,10 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_response(int *ms
 									   uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									   rlm_mschap_t const *inst,
 									   REQUEST *request,
-									   VALUE_PAIR *smb_ctrl,
-									   VALUE_PAIR *nt_password,
-									   VALUE_PAIR *challenge,
-									   VALUE_PAIR *response,
+									   fr_pair_t *smb_ctrl,
+									   fr_pair_t *nt_password,
+									   fr_pair_t *challenge,
+									   fr_pair_t *response,
 									   MSCHAP_AUTH_METHOD method)
 {
 	int			offset;
@@ -1763,14 +1763,14 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 									    uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									    rlm_mschap_t const *inst,
 									    REQUEST *request,
-									    VALUE_PAIR *smb_ctrl,
-									    VALUE_PAIR *nt_password,
-									    VALUE_PAIR *challenge,
-									    VALUE_PAIR *response,
+									    fr_pair_t *smb_ctrl,
+									    fr_pair_t *nt_password,
+									    fr_pair_t *challenge,
+									    fr_pair_t *response,
 									    MSCHAP_AUTH_METHOD method)
 {
 		uint8_t		mschap_challenge[16];
-		VALUE_PAIR	*user_name, *name_vp, *response_name, *peer_challenge_attr;
+		fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
 		uint8_t const	*peer_challenge;
 		char const	*username_str;
 		size_t		username_len;
@@ -1928,10 +1928,10 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
 {
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
-	VALUE_PAIR		*challenge = NULL;
-	VALUE_PAIR		*response = NULL;
-	VALUE_PAIR		*cpw = NULL;
-	VALUE_PAIR		*nt_password = NULL, *smb_ctrl;
+	fr_pair_t		*challenge = NULL;
+	fr_pair_t		*response = NULL;
+	fr_pair_t		*cpw = NULL;
+	fr_pair_t		*nt_password = NULL, *smb_ctrl;
 	uint8_t			nthashhash[NT_DIGEST_LENGTH];
 	int			mschap_version = 0;
 
@@ -1950,7 +1950,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 *	want to suppress it.
 	 */
 	if (method != AUTH_INTERNAL) {
-		VALUE_PAIR *vp = fr_pair_find_by_da(request->control_pairs, attr_ms_chap_use_ntlm_auth);
+		fr_pair_t *vp = fr_pair_find_by_da(request->control_pairs, attr_ms_chap_use_ntlm_auth);
 		if (vp && vp->vp_bool == false) method = AUTH_INTERNAL;
 	}
 
@@ -1960,7 +1960,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	 */
 	smb_ctrl = fr_pair_find_by_da(request->control_pairs, attr_smb_account_ctrl);
 	if (!smb_ctrl) {
-		VALUE_PAIR *smb_account_ctrl_text;
+		fr_pair_t *smb_account_ctrl_text;
 
 		smb_account_ctrl_text = fr_pair_find_by_da(request->control_pairs, attr_smb_account_ctrl_text);
 		if (smb_account_ctrl_text) {
@@ -2062,7 +2062,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 
 	/* now create MPPE attributes */
 	if (inst->use_mppe) {
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 		uint8_t		mppe_sendkey[34];
 		uint8_t		mppe_recvkey[34];
 
