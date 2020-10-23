@@ -1078,6 +1078,48 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		}
 	}
 
+	if (tag) {
+		if (!packet_ctx->tags) {
+			packet_ctx->tags = talloc_zero_array(packet_ctx->tmp_ctx, fr_radius_tag_ctx_t *, 32);
+			if (!packet_ctx->tags) {
+				fr_pair_list_free(&vp);
+				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+				return -1;
+			}
+		}
+
+		fr_assert(tag < 0x20);
+
+		if (!packet_ctx->tags[tag]) {
+			VALUE_PAIR *group;
+			fr_dict_attr_t const *group_da;
+
+			packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
+			if (!packet_ctx->tags[tag]) {
+				fr_pair_list_free(&vp);
+				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+				return -1;
+			}
+
+			group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
+			if (!group_da) {
+				fr_pair_list_free(&vp);
+				fr_strerror_printf("Failed finding attribute 'Tag-%u'", tag);
+				return -1;
+			}
+
+			group = fr_pair_afrom_da(ctx, group_da);
+			if (!group) {
+				fr_pair_list_free(&vp);
+				return -1;
+			}
+
+			fr_cursor_append(cursor, group);
+			packet_ctx->tags[tag]->parent = group;
+			fr_cursor_init(&packet_ctx->tags[tag]->cursor, &group->vp_group);
+		}
+	}
+
 	/*
 	 *	Decrypt the attribute.
 	 */
@@ -1445,7 +1487,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual p.
 	 */
-	vp = fr_pair_afrom_da(ctx, parent);
+	if (!tag) {
+		vp = fr_pair_afrom_da(ctx, parent);
+	} else {
+		fr_assert(packet_ctx->tags != NULL);
+		fr_assert(packet_ctx->tags[tag] != NULL);
+		vp = fr_pair_afrom_da(packet_ctx->tags[tag]->parent, parent);
+	}
 	if (!vp) return -1;
 
 	switch (parent->type) {
@@ -1577,47 +1625,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		return attr_len;
 	}
 
-	if (!packet_ctx->tags) {
-		packet_ctx->tags = talloc_zero_array(packet_ctx->tmp_ctx, fr_radius_tag_ctx_t *, 32);
-		if (!packet_ctx->tags) {
-			fr_pair_list_free(&vp);
-			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-			return -1;
-		}
-	}
-
-	fr_assert(tag < 0x20);
-
-	if (!packet_ctx->tags[tag]) {
-		VALUE_PAIR *group;
-		fr_dict_attr_t const *group_da;
-
-		packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
-		if (!packet_ctx->tags[tag]) {
-			fr_pair_list_free(&vp);
-			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-			return -1;
-		}
-
-		group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
-		if (!group_da) {
-			fr_pair_list_free(&vp);
-			fr_strerror_printf("Failed finding attribute 'Tag-%u'", tag);
-			return -1;
-		}
-
-		group = fr_pair_afrom_da(ctx, group_da);
-		if (!group) {
-			fr_pair_list_free(&vp);
-			return -1;
-		}
-
-		fr_cursor_append(cursor, group);
-		packet_ctx->tags[tag]->parent = group;
-		fr_cursor_init(&packet_ctx->tags[tag]->cursor, &group->vp_group);
-	}
-
-	talloc_steal(packet_ctx->tags[tag]->parent, vp);
+	fr_assert(packet_ctx->tags != NULL);
+	fr_assert(packet_ctx->tags[tag] != NULL);
 	fr_cursor_append(&packet_ctx->tags[tag]->cursor, vp);
 	return attr_len;
 }
