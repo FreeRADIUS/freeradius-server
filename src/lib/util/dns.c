@@ -960,7 +960,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	slen = fr_dns_label_uncompressed_length(src, len, &after);
 	if (slen <= 0) return slen;
 
-	fr_value_box_init(dst, FR_TYPE_STRING, NULL, tainted);
+	fr_value_box_init_null(dst);
 
 	/*
 	 *	An empty label is a 0x00 byte.  Just create an empty
