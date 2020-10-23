@@ -2849,13 +2849,17 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 	 *	dictionary.
 	 */
 	ar = fr_dlist_head(&vpt->data.attribute.ar);
-	if (fr_dict_attr_by_qualified_name(&da, vpt->rules.dict_def,
-					   ar->ar_unresolved, true) != FR_DICT_ATTR_OK) {
-		parent = fr_dict_root(vpt->rules.dict_def);
-		goto unknown;
-	} else {
+	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
+		if (fr_dict_attr_by_qualified_name(&da, vpt->rules.dict_def,
+						   ar->ar_unresolved, true) != FR_DICT_ATTR_OK) {
+			parent = fr_dict_root(vpt->rules.dict_def);
+			goto unknown;
+		}
+
 		ar->da = da;
 		ar->type = TMPL_ATTR_TYPE_NORMAL;
+		parent = ar->da;
+	} else {
 		parent = ar->da;
 	}
 
