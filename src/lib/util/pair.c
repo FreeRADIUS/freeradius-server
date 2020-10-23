@@ -45,8 +45,9 @@ RCSID("$Id$")
  * @param vp to free.
  * @return 0
  */
-static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
+static int _fr_pair_free(VALUE_PAIR *vp)
 {
+
 #ifndef NDEBUG
 	vp->vp_uint32 = FREE_MAGIC;
 #endif
@@ -54,6 +55,24 @@ static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
 #ifdef TALLOC_DEBUG
 	talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL);
 #endif
+
+	/*
+	 *	Pairs with children have the children
+	 *	freed explicitly.
+	 */
+	switch (vp->da->type) {
+	case FR_TYPE_STRUCTURAL:
+	{
+		fr_cursor_t cursor;
+		fr_cursor_init(&cursor, &vp->vp_group);
+		fr_cursor_free_list(&cursor);
+	}
+		break;
+
+	default:
+		break;
+	}
+
 	return 0;
 }
 
