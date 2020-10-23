@@ -640,9 +640,10 @@ static tmpl_request_t *tmpl_req_ref_add(tmpl_t *vpt, request_ref_t request)
 		ctx = fr_dlist_tail(&vpt->data.attribute.rr);
 	}
 
-	MEM(rr = talloc_zero(ctx, tmpl_request_t));
-	rr->request = request;
-
+	MEM(rr = talloc(ctx, tmpl_request_t));
+	*rr = (tmpl_request_t){
+		.request = request
+	};
 	fr_dlist_insert_tail(&vpt->data.attribute.rr, rr);
 
 	return rr;
@@ -662,10 +663,11 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 		ctx = fr_dlist_tail(&vpt->data.attribute.ar);
 	}
 
-	MEM(ar = talloc_zero(ctx, tmpl_attr_t));
-	ar->type = type;
-	ar->num = NUM_ANY;
-
+	MEM(ar = talloc(ctx, tmpl_attr_t));
+	*ar = (tmpl_attr_t){
+		.type = type,
+		.num = NUM_ANY
+	};
 	fr_dlist_insert_tail(&vpt->data.attribute.ar, ar);
 
 	return ar;
@@ -1108,6 +1110,38 @@ typedef enum {
 	TMPL_ATTR_REF_BAD_FILTER = -1
 } tmpl_attr_filter_t;
 
+/** Insert an attribute reference into a tmpl
+ *
+ * Not all attribute references can be used to create new attributes,
+ * for example those accessing instance > 0 or those that resolve
+ * to special indexes.
+ *
+ * We mark up these references and their parents as resolve only
+ * meaning that if any code needs to use a reference chain to build
+ * out a pair tree, it bails out early.
+ *
+ * @param[in] vpt	containing the reference list.
+ * @param[in] ar	to insert and check.
+ */
+static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_attr_t *ar)
+{
+	/*
+	 *	Insert the reference into the list.
+	 */
+	fr_dlist_insert_tail(&vpt->data.attribute.ar, ar);
+
+	switch (ar->num) {
+	case 0:
+	case NUM_ANY:
+		break;
+
+	default:
+		ar->resolve_only = true;
+		while ((ar = fr_dlist_prev(&vpt->data.attribute.ar, ar))) ar->resolve_only = true;
+		break;
+	}
+}
+
 /** Parse array subscript and in future other filters
  *
  * @param[out] err	Parse error code.
@@ -1206,7 +1240,6 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 							 unsigned int depth)
 {
 	tmpl_attr_t		*ar = NULL;
-	fr_dlist_head_t		*list = &vpt->data.attribute.ar;
 	int			ret;
 	char			*unresolved;
 	size_t			len;
@@ -1263,7 +1296,10 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 
 	if (tmpl_attr_parse_filter(err, ar, name) < 0) goto error;
 
-	fr_dlist_insert_tail(list, ar);
+	/*
+	 *	Insert the ar into the list of attribute references
+	 */
+	tmpl_attr_insert(vpt, ar);
 
 	/*
 	 *	Once one OID component is created as unresolved all
@@ -1272,7 +1308,7 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 	if (fr_sbuff_next_if_char(name, '.')) {
 		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth + 1);
 		if (ret < 0) {
-			fr_dlist_talloc_free_tail(list); /* Remove and free ar */
+			fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			return -1;
 		}
 	}
@@ -1314,7 +1350,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 {
 	uint32_t		oid = 0;
 	ssize_t			slen;
-	fr_dlist_head_t		*list = &vpt->data.attribute.ar;
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
@@ -1604,9 +1639,9 @@ do_suffix:
 			goto error;
 		}
 
-		if (ar) fr_dlist_insert_tail(list, ar);
+		if (ar) tmpl_attr_insert(vpt, ar);
 		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, name, rules, depth + 1) < 0) {
-			if (ar) fr_dlist_talloc_free_tail(list); /* Remove and free ar */
+			if (ar) fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
 		}
 	/*
@@ -1619,7 +1654,7 @@ do_suffix:
 	 *	subsection.
 	 */
 	} else {
-		fr_dlist_insert_tail(list, ar);
+		tmpl_attr_insert(vpt, ar);
 	}
 
 	fr_sbuff_marker_release(&m_s);

@@ -358,6 +358,9 @@ typedef struct {
 		} unresolved;
 	};
 
+	bool			_CONST resolve_only;	//!< This reference and those before it
+							///< in the list can only be used for
+							///< resolution, not building out trees.
 	int16_t			_CONST num;		//!< For array references.
 	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
 } tmpl_attr_t;
@@ -377,6 +380,7 @@ typedef struct {
  * @{
  */
 #define ar_type				type
+#define ar_depth			depth
 #define ar_da				da
 #define ar_unknown			unknown.da
 #define ar_unresolved			unresolved.name
@@ -514,6 +518,24 @@ struct tmpl_cursor_ctx_s {
 						///< cursor calls for a particular attribute
 						///< reference.
 };
+
+/** Describes the current extents of a pair tree in relation to the tree described by a tmpl_t
+ *
+ */
+typedef struct {
+	fr_dlist_t		entry;		//!< Entry in the dlist of extents
+
+	tmpl_attr_t const	*ar;		//!< Attribute representing the ar
+						///< after the deepest node that was found
+						///< in the existing pair tree when evaluating
+						///< this path. If this is NULL, then all ars
+						///< were evaluated.
+
+	VALUE_PAIR		**list;		//!< List that we tried to evaluate ar in and failed.
+						///< Or if ar is NULL, the list that represents the
+						///< deepest grouping or TLV attribute the chain of
+						///< ars referenced.
+} tmpl_attr_extent_t;
 
 extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_unquoted;
 extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_unquoted;
@@ -945,6 +967,14 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
+
+int			tmpl_find_extents(TALLOC_CTX *ctx,
+		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
+					  REQUEST *request, tmpl_t const *vpt);
+
+int			tmpl_build_to_extents(TALLOC_CTX *ctx,
+					      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
+					      tmpl_t const *vpt);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
