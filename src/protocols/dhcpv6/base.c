@@ -624,24 +624,25 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		 *	Decode the header fields.
 		 */
 		vp = fr_pair_afrom_da(ctx, attr_hop_count);
-		if (!vp) return -1;
+		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 1, 1, true) < 0) {
-			return -1;
+			goto fail;
 		}
 		fr_cursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_link_address);
-		if (!vp) return -1;
+		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2, 16, true) < 0) {
-			return -1;
+			goto fail;
 		}
 		fr_cursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_peer_address);
-		if (!vp) return -1;
+		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2 + 16, 16, true) < 0) {
-			return -1;
+			goto fail;
 		}
+
 		fr_cursor_append(cursor, vp);
 
 		p = packet + 2 + 32;
@@ -652,7 +653,12 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 *	And the transaction ID.
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_transaction_id);
-	if (!vp) return -1;
+	if (!vp) {
+	fail:
+		fr_cursor_head(cursor);
+		fr_cursor_free_list(cursor);
+		return -1;
+	}
 
 	/*
 	 *	Copy 3 octets over.
@@ -676,6 +682,8 @@ decode_options:
 	while (p < end) {
 		slen = fr_dhcpv6_decode_option(ctx, cursor, dict_dhcpv6, p, (end - p), &packet_ctx);
 		if (slen < 0) {
+			fr_cursor_head(cursor);
+			fr_cursor_free_list(cursor);
 			talloc_free(packet_ctx.tmp_ctx);
 			return slen;
 		}
@@ -685,6 +693,8 @@ decode_options:
 		 *	all kinds of bad things happen.
 		 */
 		 if (!fr_cond_assert(slen <= (end - p))) {
+			 fr_cursor_head(cursor);
+			 fr_cursor_free_list(cursor);
 			 talloc_free(packet_ctx.tmp_ctx);
 			 return -1;
 		 }
