@@ -30,14 +30,17 @@ extern "C" {
 #include <freeradius-devel/util/dict.h>
 
 typedef struct {
-	tmpl_t			*vpt;
+	tmpl_t			*vpt;			//!< Value to expand to find the value to place
+							///< into the packet-type attribute.
 
-	tmpl_t			*src;
-	tmpl_t			*dst;
+	tmpl_t			*src;			//!< Pairs to copy into the subrequest request list.
+	tmpl_t			*dst;			//!< Where to copy pairs from the reply list in the
+							///< subrequest to.
 
-	fr_dict_t const		*dict;
-	fr_dict_attr_t const	*attr_packet_type;
-	fr_dict_enum_t const	*type_enum;
+	fr_dict_t const		*dict;			//!< Dictionary of the subrequest protocol.
+	fr_dict_attr_t const	*attr_packet_type;	//!< Packet-type attribute in the subrequest protocol.
+	fr_dict_enum_t const	*type_enum;		//!< Static enumeration value for attr_packet_type
+							///< if the packet-type is static.
 } unlang_subrequest_kctx_t;
 
 void	unlang_subrequest_free(REQUEST **child);

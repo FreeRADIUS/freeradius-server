@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/dlist.h>
 
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
@@ -838,7 +839,7 @@ static VALUE_PAIR *_tmpl_cursor_tlv_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR *c
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_tlv_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_attr_t		*prev = fr_dlist_prev(&cc->vpt->data.attribute.ar, ar);
 
@@ -871,6 +872,7 @@ void _tmpl_cursor_tlv_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cu
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
 		.func = _tmpl_cursor_tlv_eval,
+		.list_ctx = list_ctx,
 		.tlv = {
 			.cursor_stack = fr_cursor_stack_alloc(ns, span)
 		}
@@ -881,7 +883,7 @@ void _tmpl_cursor_tlv_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cu
 	 *	to point to the list or children of
 	 *	a tlv or group.
 	 */
-	fr_cursor_init(&ns->tlv.cursor_stack->cursor[0], children);
+	fr_cursor_init(&ns->tlv.cursor_stack->cursor[0], list);
 	ns->tlv.cursor_stack->depth = 1;
 
 	/*
@@ -925,7 +927,7 @@ static VALUE_PAIR *_tmpl_cursor_group_eval(VALUE_PAIR **prev, UNUSED VALUE_PAIR 
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_group_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -933,8 +935,9 @@ void _tmpl_cursor_group_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
 		.func = _tmpl_cursor_group_eval,
+		.list_ctx = list_ctx
 	};
-	fr_cursor_init(&ns->group.cursor, children);
+	fr_cursor_init(&ns->group.cursor, list);
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
@@ -959,15 +962,16 @@ static VALUE_PAIR *_tmpl_cursor_leaf_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, t
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_leaf_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t	*ns = &cc->leaf;
 
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
-		.func = _tmpl_cursor_leaf_eval
+		.func = _tmpl_cursor_leaf_eval,
+		.list_ctx = list_ctx
 	};
-	ns->leaf.list_head = children;
+	ns->leaf.list_head = list;
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
@@ -980,16 +984,17 @@ static VALUE_PAIR *_tmpl_cursor_list_eval(UNUSED VALUE_PAIR **prev, VALUE_PAIR *
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_list_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
 	ns = &cc->leaf;
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
-		.func = _tmpl_cursor_list_eval
+		.func = _tmpl_cursor_list_eval,
+		.list_ctx = list_ctx
 	};
-	ns->leaf.list_head = children;
+	ns->leaf.list_head = list;
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
@@ -1075,22 +1080,22 @@ VALUE_PAIR *_tmpl_cursor_eval(VALUE_PAIR **prev, VALUE_PAIR *curr, tmpl_cursor_c
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_init(VALUE_PAIR **children, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_init(TALLOC_CTX *list_ctx, VALUE_PAIR **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		_tmpl_cursor_tlv_init(children, ar, cc);
+		_tmpl_cursor_tlv_init(list_ctx, list, ar, cc);
 		break;
 
 	case FR_TYPE_GROUP:
-		_tmpl_cursor_group_init(children, ar, cc);
+		_tmpl_cursor_group_init(list_ctx, list, ar, cc);
 		break;
 
 	default:
 	leaf:
-		_tmpl_cursor_leaf_init(children, ar, cc);
+		_tmpl_cursor_leaf_init(list_ctx, list, ar, cc);
 		break;
 	} else goto leaf;
 }
@@ -1126,8 +1131,8 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 			ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
 			if (ar) {
 				list_head = &vp->vp_group;
-				_tmpl_cursor_init(list_head, ar, cc);
-				curr = NULL;
+				_tmpl_cursor_init(vp, list_head, ar, cc);
+				curr = *list_head;
 				*prev = NULL;
 				continue;
 			}
@@ -1188,6 +1193,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 {
 	VALUE_PAIR		*vp = NULL, **list_head;
 	tmpl_request_t		*rr = NULL;
+	TALLOC_CTX		*list_ctx;
 
 	TMPL_VERIFY(vpt);
 
@@ -1223,6 +1229,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 		}
 		goto error;
 	}
+	list_ctx = radius_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	Initialise the temporary cursor context
@@ -1240,11 +1247,11 @@ VALUE_PAIR *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_init(cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	case TMPL_TYPE_LIST:
-		_tmpl_cursor_list_init(cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_list_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
@@ -1409,4 +1416,220 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt)
 		return err;
 	}
 }
-/** @} */
+
+/** Determines points where the reference list extends beyond the current pair tree
+ *
+ * If a particular branch in the VP hierarchy is incomplete, i.e. the chain of attribute
+ * refers to nodes deeper than the nodes currently in the tree, then we return the
+ * deepest point node in the tree which matched, and the ar that we failed to evaluate.
+ *
+ * If the reference list resolves to one or more structural pairs, return those as well.
+ *
+ * This function can be used for a number of different operations, but it's most useful
+ * for determining insertion points for new attributes, or determining which attributes
+ * need to be updated.
+ *
+ * @param[in] ctx		to allocate.  It's recommended to pass a pool with space
+ *				for at least five extent structures.
+ * @param[out] leaf		List of extents we discovered by evaluating all
+ *				attribute references.
+ * @param[out] interior 	List of extents that need building out, i.e. references
+ *				extend beyond pairs.
+ * @param[in] request		The current #REQUEST.
+ * @param[in] vpt		specifying the #VALUE_PAIR type to retrieve or create.
+ *				Must be #TMPL_TYPE_ATTR.
+ * @return
+ *	- 1 on success a pair was created.
+ *	- 0 on success a pair was found.
+ *	- -1 if a new #VALUE_PAIR couldn't be found or created.
+ *	- -2 if list could not be found (doesn't exist in current #REQUEST).
+ *	- -3 if context could not be found (no parent #REQUEST available).
+ */
+int tmpl_extents_find(TALLOC_CTX *ctx,
+		      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
+		      REQUEST *request, tmpl_t const *vpt)
+{
+	VALUE_PAIR		*curr = NULL, **list_head;
+	VALUE_PAIR		*prev = NULL;	/* not used */
+
+	TALLOC_CTX		*list_ctx = NULL;
+
+	tmpl_cursor_ctx_t	cc;
+	tmpl_cursor_nested_t	*ns = NULL;
+
+	tmpl_request_t		*rr = NULL;
+	tmpl_attr_t const	*ar = NULL;
+
+	TMPL_VERIFY(vpt);
+
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+#define EXTENT_ADD(_out, _ar, _list_ctx, _list) \
+	do { \
+		tmpl_attr_extent_t	*_extent; \
+		MEM(_extent = talloc(ctx, tmpl_attr_extent_t)); \
+		*_extent = (tmpl_attr_extent_t){ \
+			.ar = _ar,	\
+			.list_ctx = _list_ctx, \
+			.list = _list	\
+		}; \
+		fr_dlist_insert_tail(_out, _extent); \
+	} while (0)
+
+	/*
+	 *	Navigate to the correct request context
+	 */
+	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
+		if (radius_request(&request, rr->request) < 0) {
+			fr_strerror_printf("Request context \"%s\" not available",
+					   fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
+			return -3;
+		}
+	}
+
+	/*
+	 *	Get the right list in the specified context
+	 */
+	list_head = radius_list(request, tmpl_list(vpt));
+	if (!list_head) {
+		fr_strerror_printf("List \"%s\" not available in this context",
+				   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+		return -2;
+	}
+	list_ctx = radius_list_ctx(request, tmpl_list(vpt));
+
+	/*
+	 *	If it's a list, just return the list head
+	 */
+	if (vpt->type == TMPL_TYPE_LIST) {
+		EXTENT_ADD(leaf, NULL, list_ctx, list_head);
+		return 0;
+	}
+
+	/*
+	 *	Initialise the temporary cursor context
+	 */
+	cc = (tmpl_cursor_ctx_t){
+		.vpt = vpt,
+		.ctx = ctx,
+		.request = request,
+		.list = list_head
+	};
+	fr_dlist_init(&cc.nested, tmpl_cursor_nested_t, entry);
+
+	/*
+	 *	Prime the stack!
+	 */
+	_tmpl_cursor_init(list_ctx, cc.list, fr_dlist_head(&vpt->data.attribute.ar), &cc);
+
+	/*
+	 *	- Continue until there are no evaluation contexts
+	 *	- Push a evaluation context if evaluating the head of the
+	 *	  stack yields a VP and we're not at the deepest attribute
+	 *	  reference.
+	 *	- Return if we have a VP and there are no more attribute
+	 *	  references to push, i.e. we're at the deepest attribute
+	 *	  reference.
+	 */
+	curr = *list_head;
+	while ((ns = fr_dlist_tail(&cc.nested))) {
+		tmpl_attr_t const *n_ar;
+
+		list_ctx = ns->list_ctx;
+		ar = ns->ar;
+		curr = _tmpl_cursor_eval(&prev, curr, &cc);
+		if (!curr) {
+			/*
+			 *	References extend beyond current
+			 *	pair tree.
+			 */
+			if (!ar->resolve_only) EXTENT_ADD(interior, ar, list_ctx, list_head);
+			continue;	/* Rely on _tmpl_cursor_eval popping the stack */
+		}
+
+		/*
+		 *	Evaluate the next reference
+		 */
+		n_ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		if (n_ar) {
+			ar = n_ar;
+			list_head = &curr->vp_group;
+			_tmpl_cursor_init(list_ctx, list_head, ar, &cc);
+			curr = *list_head;
+			prev = NULL;
+			continue;
+		}
+
+		/*
+		 *	VP tree may extend beyond
+		 *      the reference. If the reference
+		 *	was structural, record this as
+		 *	an extent.
+		 */
+		switch (ar->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			EXTENT_ADD(leaf, NULL, curr, list_head);
+			continue;
+
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+/** Allocate interior pairs
+ *
+ * Builds out the pair tree to the point where leaf attributes can be added
+ *
+ * @param[out] leaf	List to add built out attributes to.
+ * @param[in] interior	List to remove attributes from.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior, tmpl_t const *vpt)
+{
+	tmpl_attr_extent_t	*extent = NULL;
+
+	while ((extent = fr_dlist_head(interior))) {
+		VALUE_PAIR		*vp;
+		VALUE_PAIR		**list;
+		tmpl_attr_t const	*ar;
+		TALLOC_CTX		*list_ctx = extent->list_ctx;
+
+		fr_assert(extent->ar);	/* Interior extents MUST contain an ar */
+
+		/*
+		 *	Try and allocate VPs for the
+		 *	rest of the attribute references.
+		 */
+		for (ar = extent->ar, list = extent->list;
+		     ar;
+		     ar = fr_dlist_next(&vpt->data.attribute.ar, ar)) {
+			switch (ar->type) {
+			case TMPL_ATTR_TYPE_NORMAL:
+			case TMPL_ATTR_TYPE_UNKNOWN:
+				MEM(vp = fr_pair_afrom_da(list_ctx, ar->ar_da));	/* Copies unknowns */
+				fr_pair_add(list, vp);
+				list = &vp->vp_group;
+				list_ctx = vp;		/* New allocations occur under the VP */
+				break;
+
+			default:
+				fr_assert_fail("references of this type should have been resolved");
+				return -1;
+			}
+		}
+
+		fr_dlist_remove(interior, extent);	/* Do this *before* zeroing the dlist headers */
+		*extent = (tmpl_attr_extent_t){
+			.list = list,
+			.list_ctx = list_ctx
+		};
+		fr_dlist_insert_tail(leaf, extent);	/* move between in and out */
+	}
+
+	return 0;
+}

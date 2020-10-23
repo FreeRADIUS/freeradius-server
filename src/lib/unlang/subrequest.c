@@ -38,7 +38,7 @@ typedef struct {
 	bool				free_child;			//!< Whether we should free the child after
 									///< it completes.
 	bool				detachable;			//!< Whether the request can be detached.
-	unlang_subrequest_session_t		session;			//!< Session configuration.
+	unlang_subrequest_session_t	session;			//!< Session configuration.
 } unlang_frame_state_subrequest_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -114,13 +114,53 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 								    state->session.unique_ptr,
 								    state->session.unique_int);
 
+		/*
+		 *	Copy the subrequest's reply list into
+		 *	the parent, creating any n
+		 */
+
+	calculate_result:
+		if (child->reply) {
+			unlang_subrequest_kctx_t	*kctx;
+
+			/*
+			 *	Copy reply attributes into the specified
+			 *      destination.
+			 */
+			kctx = talloc_get_type_abort(unlang_generic_to_group(frame->instruction)->kctx,
+						     unlang_subrequest_kctx_t);
+			if (kctx->dst) {
+				tmpl_attr_extent_t 	*extent = NULL;
+				fr_dlist_head_t		leaf;
+				fr_dlist_head_t		interior;
+
+ 				fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
+				fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
+
+				/*
+				 *	Find out what we need to build and build it
+				 */
+				if ((tmpl_extents_find(kctx, &leaf, &interior, request, kctx->dst) < 0) ||
+				    (tmpl_extents_build_to_leaf(&leaf, &interior, kctx->dst) < 0)) {
+					RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
+					fr_dlist_talloc_free(&leaf);
+					fr_dlist_talloc_free(&interior);
+					goto done;
+				}
+				while ((extent = fr_dlist_head(&leaf))) {
+					fr_pair_list_copy(extent->list_ctx, extent->list, child->reply->vps);
+					fr_dlist_talloc_free_head(&leaf);
+				}
+			}
+		}
+
+	done:
 		if (state->free_child) {
 			unlang_subrequest_free(&child);
 			state->child = NULL;
 			frame->signal = NULL;
 		}
 
-	calculate_result:
 		/*
 		 *	Pass the result back to the module
 		 *	that created the subrequest, or
@@ -216,7 +256,6 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 		*presult = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-
 	/*
 	 *	Set the packet type.
 	 */
@@ -268,6 +307,13 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
 
 	}
 	fr_pair_add(&child->packet->vps, vp);
+
+	if (kctx->src) {
+		if (tmpl_copy_vps(child->packet, &child->packet->vps, request, kctx->src) < -1) {
+			RPEDEBUG("Failed copying source attributes into subrequest");
+			goto fail;
+		}
+	}
 
 	/*
 	 *	Push the first instruction the child's

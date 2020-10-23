@@ -2837,14 +2837,14 @@ get_packet_type:
 						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (slen <= 0) {
-				cf_log_perr(cs, "Invalid argument 'subrequest', failed parsing source");
+				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
 			error:
 				talloc_free(vpt);
 				return NULL;
 			}
 
 			if (!tmpl_contains_attr(src_vpt)) {
-				cf_log_err(cs, "Invalid argument 'subrequest' source must be an attr or list, got %s",
+				cf_log_err(cs, "Invalid argument to 'subrequest' src must be an attr or list, got %s",
 					   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
 				talloc_free(src_vpt);
 				goto error;
@@ -2853,15 +2853,15 @@ get_packet_type:
 			dst = cf_section_argv(cs, 1);
 			if (dst) {
 				slen = tmpl_afrom_substr(parent, &dst_vpt,
-							 &FR_SBUFF_IN(dst, talloc_array_length(src) - 1),
+							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
 				if (slen <= 0) {
-					cf_log_perr(cs, "Invalid argument 'subrequest', failed parsing destination");
+					cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing dst");
 					goto error;
 				}
 
 				if (!tmpl_contains_attr(dst_vpt)) {
-					cf_log_err(cs, "Invalid argument 'subrequest' destination must be an "
+					cf_log_err(cs, "Invalid argument to 'subrequest' dst must be an "
 						   "attr or list, got %s",
 						   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
 					talloc_free(src_vpt);

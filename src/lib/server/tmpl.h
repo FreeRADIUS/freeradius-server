@@ -476,6 +476,7 @@ struct tmpl_cursor_nested_s {
 	tmpl_attr_t const	*ar;		//!< Attribute reference this state
 						///< entry is associated with.  Mainly for debugging.
 	tmpl_cursor_eval_t	func;		//!< Function used to evaluate this attribute reference.
+	TALLOC_CTX		*list_ctx;	//!< Track where we should be allocating attributes.
 
 	union {
 		struct {
@@ -531,6 +532,8 @@ typedef struct {
 						///< this path. If this is NULL, then all ars
 						///< were evaluated.
 
+	TALLOC_CTX		*list_ctx;	//!< Where to allocate new attributes if building
+						///< out from the current extents of the tree.X
 	VALUE_PAIR		**list;		//!< List that we tried to evaluate ar in and failed.
 						///< Or if ar is NULL, the list that represents the
 						///< deepest grouping or TLV attribute the chain of
@@ -968,12 +971,11 @@ int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
 int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_find_extents(TALLOC_CTX *ctx,
+int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 					  REQUEST *request, tmpl_t const *vpt);
 
-int			tmpl_build_to_extents(TALLOC_CTX *ctx,
-					      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
+int			tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 					      tmpl_t const *vpt);
 /** @} */
 
