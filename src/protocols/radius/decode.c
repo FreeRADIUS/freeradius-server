@@ -1722,6 +1722,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 	decode_fail_t reason;
 	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
+	uint8_t original[20];
 
 	if (!fr_radius_ok(data, &packet_len, 200, false, &reason)) {
 		return -1;
@@ -1750,7 +1751,9 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, VALUE_PAIR **vps, uint8_t
 	fr_cursor_append(&cursor, vp);
 	(void) fr_cursor_tail(&cursor);
 
-	return fr_radius_decode(ctx, data, packet_len, test_ctx->vector - 4, /* decode adds 4 to this */
+	memset(original, 0, 4);
+	memcpy(original + 4, test_ctx->vector, sizeof(test_ctx->vector));
+	return fr_radius_decode(ctx, data, packet_len, original,
 				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, &cursor);
 }
 
