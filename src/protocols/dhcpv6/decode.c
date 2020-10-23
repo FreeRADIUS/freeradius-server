@@ -335,7 +335,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			break;
 		}
 
-		element_len = (p[0] << 8) | p[1];
+		element_len = fr_net_to_uint16(p);
 		if ((p + 2 + element_len) > end) {
 			goto raw;
 		}
@@ -517,8 +517,8 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 		return -(data_len);
 	}
 
-	option = (data[0] << 8) | data[1];
-	len = (data[2] << 8) | data[3];
+	option = DHCPV6_GET_OPTION_NUM(data);
+	len = DHCPV6_GET_OPTION_LEN(data);
 	if (len > (data_len - 4)) {
 		fr_strerror_printf("%s: Option overflows input.  "
 				   "Optional length must be less than %zu bytes, got %zu bytes",

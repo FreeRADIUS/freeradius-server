@@ -384,7 +384,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-#define OPT_HDR_LEN (2)
+#define DHCPV6_OPT_HDR_LEN (2)
 
 static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
@@ -413,7 +413,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	enterprise-number, plus the data length, plus at least
 	 *	one option header.
 	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN + sizeof(uint32_t) + 3);
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN + sizeof(uint32_t) + 3);
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -480,8 +480,8 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 		if (vp->da->parent != da->parent) break;
 	}
 
-	hdr_dbuff.p[1] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN;
-	hdr_dbuff.p[6] = fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN - 4 - 1;
+	hdr_dbuff.p[1] = fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN;
+	hdr_dbuff.p[6] = fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN - 4 - 1;
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");

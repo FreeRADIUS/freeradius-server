@@ -34,7 +34,9 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 
-#define OPT_HDR_LEN	(sizeof(uint16_t) * 2)
+#define DHCPV6_OPT_HDR_LEN		(sizeof(uint16_t) * 2)
+#define DHCPV6_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
+#define DHCPV6_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
 
 /*
  *	Defined addresses from RFC 8415 Section 7.1

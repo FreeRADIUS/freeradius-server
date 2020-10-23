@@ -74,7 +74,7 @@ static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size
 {
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN);
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
 	fr_dbuff_in(&work_dbuff, option);
 	fr_dbuff_in(&work_dbuff, (uint16_t) data_len);
@@ -547,9 +547,9 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN);
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
-	while (fr_dbuff_remaining(&work_dbuff) > OPT_HDR_LEN) {
+	while (fr_dbuff_remaining(&work_dbuff) > DHCPV6_OPT_HDR_LEN) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
 		/*
@@ -603,7 +603,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Make space for the header...
 	 */
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, OPT_HDR_LEN);
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
 	/*
 	 *	Write out the option's value
@@ -618,7 +618,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
 	 */
-	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
+	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done RFC header");
@@ -650,7 +650,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, OPT_HDR_LEN);	/* Make room for option header */
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
 	len = encode_tlv(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;
@@ -662,7 +662,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *   |          option-code          |           option-len          |
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
+	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done TLV header");
@@ -710,7 +710,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	Check if we have enough for an option header plus the
 	 *	enterprise-number.
 	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, OPT_HDR_LEN + sizeof(uint32_t));
+	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN + sizeof(uint32_t));
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -727,7 +727,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	/*
 (&work_dbuff, &da_stack, depth, cursor, encoder_ctx);	 *	Copy in the 32bit PEN (Private Enterprise Number)
 	 */
-	fr_dbuff_advance(&work_dbuff, OPT_HDR_LEN);
+	fr_dbuff_advance(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 	fr_dbuff_in(&work_dbuff, dv->attr);
 
 	/*
@@ -763,7 +763,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	}
 	if (len < 0) return len;
 
-	encode_option_hdr(&hdr_dbuff, da->attr, fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN);
+	encode_option_hdr(&hdr_dbuff, da->attr, fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN);
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
@@ -801,7 +801,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	/*
 	 *	Make space for the header...
 	 */
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, OPT_HDR_LEN);
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
 	/*
 	 *	Pass the original packet to the packet encode routine.
@@ -833,7 +833,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
 	 */
-	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - OPT_HDR_LEN));
+	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done Relay-Message header");
@@ -866,7 +866,7 @@ ssize_t fr_dhcpv6_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, vo
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, OPT_HDR_LEN + UINT16_MAX);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, DHCPV6_OPT_HDR_LEN + UINT16_MAX);
 	ssize_t			len;
 #ifndef NDEBUG
 	uint8_t			*start = dbuff->p;

@@ -164,9 +164,6 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 	}
 }
 
-#define get_option_num(_x) (((_x)[0] << 8) | (_x)[1])
-#define get_option_len(_x) (((_x)[2] << 8) | (_x)[3])
-
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
 				     char const **error);
 
@@ -187,7 +184,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 			return -(p - packet);
 		}
 
-		len = get_option_len(p);
+		len = DHCPV6_GET_OPTION_LEN(p);
 		if ((end - p) < (4 + len)) {
 			*error = "Option length overflows the packet";
 			return -(p - packet);
@@ -303,8 +300,8 @@ uint8_t const *fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, u
 
 		if ((end - p) < 4) return NULL;
 
-		found = get_option_num(p);
-		len = get_option_len(p);
+		found = DHCPV6_GET_OPTION_NUM(p);
+		len = DHCPV6_GET_OPTION_LEN(p);
 
 		if ((p + 4 + len) > end) return NULL;
 
@@ -320,7 +317,7 @@ static bool duid_match(uint8_t const *option, fr_dhcpv6_decode_ctx_t const *pack
 {
 	uint16_t len;
 
-	len = get_option_len(option);
+	len = DHCPV6_GET_OPTION_LEN(option);
 	if (len != packet_ctx->duid_len) return false;
 	if (memcmp(option + 4, packet_ctx->duid, packet_ctx->duid_len) != 0) return false;
 
@@ -433,7 +430,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 			fr_strerror_printf("Packet does not contain a Relay-Message option");
 			return false;
 		}
-		return verify_to_client(option + 4, get_option_len(option), packet_ctx);
+		return verify_to_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_SOLICIT:
 	case FR_PACKET_TYPE_VALUE_REQUEST:
@@ -538,7 +535,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 			return false;
 		}
 
-		return verify_from_client(option + 4, get_option_len(option), packet_ctx);
+		return verify_from_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
 
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 	case FR_PACKET_TYPE_VALUE_REPLY:
@@ -906,23 +903,23 @@ int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, VALUE_PAIR **reply, uint8_t cons
 	if (!vp) goto fail;
 
 	vp->vp_uint32 = FR_DHCPV6_RELAY_REPLY;
-	fr_cursor_append(&cursor, vp);	
+	fr_cursor_append(&cursor, vp);
 
 	/*
 	 *	A Relay-Forward message MUST contain a Relay-Message
 	 */
 	option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
 	if (!option) goto fail;
-	
+
 	vp = fr_pair_afrom_da(ctx, attr_relay_message);
 	if (!vp) goto fail;
 
-	fr_cursor_append(&cursor, vp);	
+	fr_cursor_append(&cursor, vp);
 
 	/*
 	 *	Recurse to create the appropriate nested VPs.
 	 */
-	if (fr_dhcpv6_reply_initialize(vp, &vp->vp_group, option + 4, get_option_len(option)) < 0) {
+	if (fr_dhcpv6_reply_initialize(vp, &vp->vp_group, option + 4, DHCPV6_GET_OPTION_LEN(option)) < 0) {
 	fail:
 		talloc_free(packet_ctx.tmp_ctx);
 		return -1;
