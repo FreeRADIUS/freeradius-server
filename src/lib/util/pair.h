@@ -197,22 +197,15 @@ VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
 
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
-
 VALUE_PAIR	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
 
 VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 
 void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 
-
 void		fr_pair_list_free(VALUE_PAIR **);
 
-
-
-
-
 /* Searching and list modification */
-
 int		fr_pair_to_unknown(VALUE_PAIR *vp);
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
