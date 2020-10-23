@@ -130,15 +130,15 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
 	switch (parent->type) {
-	default:
-	raw:
-		return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
-
-		/*
-		 *	Address MAY be shorter than 16 bytes.
-		 */
+	/*
+	 *	Address MAY be shorter than 16 bytes.
+	 */
 	case FR_TYPE_IPV6_PREFIX:
-		if ((data_len == 0) || (data_len > 17)) goto raw;
+		if ((data_len == 0) || (data_len > 17)) {
+		raw:
+			return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+
+		};
 
 		/*
 		 *	No address, the prefix length MUST be zero.
@@ -174,41 +174,16 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
 		break;
 
-		/*
-		 *	A bool is encoded as an empty option if it's
-		 *	true.  A bool is omitted entirely if it's
-		 *	false.
-		 */
+	/*
+	 *	A bool is encoded as an empty option if it's
+	 *	true.  A bool is omitted entirely if it's
+	 *	false.
+	 */
 	case FR_TYPE_BOOL:
 		if (data_len != 0) goto raw;
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 		vp->vp_bool = true;
-		break;
-
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_INT32:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return PAIR_DECODE_OOM;
-
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-			talloc_free(vp);
-			goto raw;
-		}
 		break;
 
 	/*
@@ -266,6 +241,16 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		vp->vp_group = head;
 		break;
 	}
+
+	default:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+			talloc_free(vp);
+			goto raw;
+		}
+		break;
 	}
 
 	vp->type = VT_DATA;
@@ -276,8 +261,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 
 
 static ssize_t decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
-				 fr_dict_attr_t const *parent,
-				 uint8_t const *data, size_t const data_len, void *decoder_ctx)
+			    fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
