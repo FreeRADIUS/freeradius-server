@@ -1407,7 +1407,7 @@ static CONF_ITEM *process_subrequest(cf_stack_t *stack)
 	 */
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-	buff[3] = stack->buff[2];
+	buff[3] = stack->buff[3];
 
 	/*
 	 *	subrequest { ... } is allowed.
