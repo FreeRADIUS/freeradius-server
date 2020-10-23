@@ -1393,32 +1393,68 @@ alloc_section:
 
 static CONF_ITEM *process_subrequest(cf_stack_t *stack)
 {
-	char const	*mod;
-	char const	*value = NULL;
-	CONF_SECTION 	*css;
-	fr_token_t 	token;
+	char const *mod = NULL;
+	CONF_SECTION *css;
+	fr_token_t token;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
+	int		values = 0;
 
 	/*
 	 *	Short names are nicer.
 	 */
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[2];
 
+	/*
+	 *	subrequest { ... } is allowed.
+	 */
+	fr_skip_whitespace(ptr);
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	Get the name of the Packet-Type.
+	 */
+	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: The first argument to 'subrequest' must be a name or an attribute reference",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	mod = buff[1];
+
+        /*
+	 *	subrequest Access-Request { ... } is allowed.
+	 */
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	subrequest Access-Request &foo { ... }
+	 */
 	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
 
 	if (token != T_BARE_WORD) {
-		ERROR("%s[%d]: Invalid syntax for 'subrequest' - module name must not be a quoted string",
+		ERROR("%s[%d]: The second argument to 'subrequest' must be an attribute reference",
 		      frame->filename, frame->lineno);
 		return NULL;
 	}
-	mod = buff[1];
+	values++;
 
 	if (*ptr == '{') {
 		ptr++;
@@ -1426,25 +1462,26 @@ static CONF_ITEM *process_subrequest(cf_stack_t *stack)
 	}
 
 	/*
-	 *	Now get the expansion string.
+	 *	subrequest Access-Request &foo &bar { ... }
 	 */
-	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
+	if (cf_get_token(parent, &ptr, &token, buff[3], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
 		return NULL;
 	}
-	if (!fr_str_tok[token]) {
-		ERROR("%s[%d]: Expecting string expansions in 'subrequest' definition",
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: The third argument to 'subrequest' must be an attribute reference",
 		      frame->filename, frame->lineno);
 		return NULL;
 	}
+	values++;
 
 	if (*ptr != '{') {
-		ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
+		ERROR("%s[%d]: Expecting section start brace '{' in 'subrequest' definition",
 		      frame->filename, frame->lineno);
 		return NULL;
 	}
 	ptr++;
-	value = buff[2];
 
 	/*
 	 *	Allocate the section
@@ -1458,16 +1495,22 @@ alloc_section:
 	}
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
-	css->name2_quote = T_BARE_WORD;
+	if (mod) css->name2_quote = T_BARE_WORD;
 
 	css->argc = 0;
-	if (value) {
-		css->argv = talloc_array(css, char const *, 1);
-		css->argv[0] = talloc_typed_strdup(css->argv, value);
-		css->argv_quote = talloc_array(css, fr_token_t, 1);
-		css->argv_quote[0] = token;
-		css->argc++;
+	if (values) {
+		int i;
+
+		css->argv = talloc_array(css, char const *, values);
+
+		for (i = 0; i < values; i++) {
+			css->argv[i] = talloc_typed_strdup(css->argv, buff[2 + i]);
+			css->argv_quote = talloc_array(css, fr_token_t, 1);
+			css->argv_quote[0] = T_BARE_WORD;
+		}
+		css->argc += values;
 	}
+
 	stack->ptr = ptr;
 	frame->special = css;
 
