@@ -59,6 +59,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		if (proto) proto++;
 	}
 
+	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
+
 	/*
 	 *	Look for -D dir
 	 *
