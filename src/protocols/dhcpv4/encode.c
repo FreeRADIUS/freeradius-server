@@ -60,19 +60,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	FR_PROTO_TRACE("%zu byte(s) available for value", fr_dbuff_remaining(dbuff));
 
 	switch (da_stack->da[depth]->type) {
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_to_network_dbuff(&need, &work_dbuff, &vp->data) < 0) return -2;
-		if (need > 0) return -((ssize_t) need);
-		break;
-
 	case FR_TYPE_IPV6_PREFIX:
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
@@ -83,9 +70,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	default:
-		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
-		(void)fr_cursor_next(cursor);
-		return -2;
+		if (fr_value_box_to_network_dbuff(&need, &work_dbuff, &vp->data) < 0) return -2;
+		if (need > 0) return -((ssize_t) need);
+		break;
 	}
 	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
