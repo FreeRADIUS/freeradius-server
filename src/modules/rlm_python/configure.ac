@@ -52,14 +52,14 @@ if test x$with_[]modname != xno; then
 		dnl # Strip -frecord-gcc-switches. We decide if this needs recording, not python.
 		mod_cflags=`echo " $python_cflags" | sed -e '\
 			s/ -I/ -isystem/g;\
-			s/ -isysroot[[ =]]\{0,1\}[[^-]]*//g;\
-			s/ -O[[^[[:blank:]]]]*//g;\
-			s/ -Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
-			s/ -g[[^ ]]*//g;\
-			s/ -W[[^ ]]*//g;\
-			s/ -DNDEBUG[[[:blank:]]]*//g;\
-			s/ -frecord-gcc-switches//g;\
-			s/ -fstack-clash-protection[[[:blank:]]]*//g;
+			s/ -isysroot[[ =]]\{0,1\}[[^-]]*/ /g;\
+			s/ -O[[^[[:blank:]]]]*/ /g;\
+			s/ -Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]/ /g;\
+			s/ -g[[^ ]]*/ /g;\
+			s/ -W[[^ ]]*/ /g;\
+			s/ -DNDEBUG[[[:blank:]]]*/ /g;\
+			s/ -frecord-gcc-switches/ /g;\
+			s/ -fstack-clash-protection[[[:blank:]]]*/ /g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
