@@ -541,7 +541,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Now look for EOL, hash, etc.
 		 */
-		if (!*p || (*p == '#')) {
+		if (!*p || (*p == '#') || (*p == '\n')) {
 			last_token = T_EOL;
 			break;
 		}
