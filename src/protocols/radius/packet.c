@@ -121,7 +121,6 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	fr_cursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx = {
 					.secret = secret,
-					.vector = packet->vector,
 					.tunnel_password_zeros = tunnel_password_zeros
 				};
 
@@ -132,6 +131,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
+		memcpy(packet_ctx.vector, packet->vector, sizeof(packet_ctx.vector));
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
@@ -146,19 +146,18 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	radsniff doesn't always have a response
 		 */
 		if (original) {
- 			packet_ctx.vector = original->vector;
+			memcpy(packet_ctx.vector, original->vector, sizeof(packet_ctx.vector));
 		} else {
 			memset(packet->vector, 0, sizeof(packet->vector));
+			memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
 		}
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
-		memset(packet->vector, 0, sizeof(packet->vector));
-		break;
-
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
+		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
 		break;
 
 	default:

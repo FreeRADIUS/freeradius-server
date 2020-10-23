@@ -1709,8 +1709,9 @@ static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
 
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
-	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-				    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+	static uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH] = {
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 	fr_radius_ctx_t	*test_ctx;
 
@@ -1718,7 +1719,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	test_ctx->vector = vector;
+	memcpy(test_ctx->vector, vector, sizeof(test_ctx->vector));
 	test_ctx->tmp_ctx = talloc_zero(ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 

@@ -202,14 +202,6 @@ bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1] = {
 	[FR_CODE_DISCONNECT_REQUEST] = true,
 };
 
-/*
- *	For request packets which have the Request Authenticator being
- *	all zeros.  We need to decode attributes using a Request
- *	Authenticator of all zeroes, but the actual Request
- *	Authenticator contains the signature of the packet, so we
- *	can't use that.
- */
-static uint8_t nullvector[RADIUS_AUTH_VECTOR_LENGTH] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 /** Return the on-the-wire length of an attribute value
  *
@@ -930,7 +922,6 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	uint8_t			*out_p, *out_end;
 
 	packet_ctx.secret = secret;
-	packet_ctx.vector = packet + 4;
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
 
@@ -945,6 +936,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	switch (code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
+		memcpy(packet_ctx.vector, packet + 4, sizeof(packet_ctx.vector));
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
@@ -960,19 +952,15 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			fr_strerror_printf("Cannot encode response without request");
 			return -1;
 		}
-		packet_ctx.vector = original + 4;
+		memcpy(packet_ctx.vector, original + 4, sizeof(packet_ctx.vector));
 		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
-		packet_ctx.vector = nullvector;
-		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
-		break;
-
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
-		packet_ctx.vector = nullvector;
-		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
+		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
+		memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	default:
@@ -1088,7 +1076,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 	packet_ctx.secret = secret;
-	packet_ctx.vector = original ? original + 4 : packet + 4;
+	memcpy(packet_ctx.vector, original ? original + 4 : packet + 4, sizeof(packet_ctx.vector));
 
 	attr = packet + 20;
 	end = packet + packet_len;
