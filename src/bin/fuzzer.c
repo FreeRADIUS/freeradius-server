@@ -51,6 +51,9 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
 	char buffer[1024];
 
+	/*	Shutup clang */
+	if (!argc || !*argv) return -1;
+
 	/*
 	 *	Get the name from the binary name of fuzzer_foo
 	 */
