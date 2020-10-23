@@ -2215,7 +2215,7 @@ void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 		break;
 
-       case FR_TYPE_GROUP:
+       case FR_TYPE_STRUCTURAL:
 	       if (!vp->vp_group) break;
 
 	       {
