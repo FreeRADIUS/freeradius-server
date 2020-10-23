@@ -1144,7 +1144,7 @@ bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PA
 
 	VALUE_PAIR *check, *match;
 
-	if (!filter && !list) {
+	if (!*filter && !*list) {
 		return true;
 	}
 
@@ -1222,7 +1222,7 @@ bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, 
 
 	VALUE_PAIR *check, *last_check = NULL, *match = NULL;
 
-	if (!filter && !list) {
+	if (!*filter && !*list) {
 		return true;
 	}
 

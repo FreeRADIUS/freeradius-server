@@ -298,12 +298,12 @@ int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
 int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int		fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
-void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp);
+void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp) CC_HINT(nonnull);
 
 /* Filtering */
 void		fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
-bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list);
-bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list);
+bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list) CC_HINT(nonnull(2,3));
+bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR **filter, VALUE_PAIR **list) CC_HINT(nonnull(2,3));
 
 /* Lists */
 int		fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);
