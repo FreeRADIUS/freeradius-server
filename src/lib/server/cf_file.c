@@ -1497,18 +1497,17 @@ alloc_section:
 	cf_lineno_set(css, frame->lineno);
 	if (mod) css->name2_quote = T_BARE_WORD;
 
-	css->argc = 0;
+	css->argc = values;
 	if (values) {
 		int i;
 
 		css->argv = talloc_array(css, char const *, values);
+		css->argv_quote = talloc_array(css, fr_token_t, values);
 
 		for (i = 0; i < values; i++) {
 			css->argv[i] = talloc_typed_strdup(css->argv, buff[2 + i]);
-			css->argv_quote = talloc_array(css, fr_token_t, 1);
-			css->argv_quote[0] = T_BARE_WORD;
+			css->argv_quote[i] = T_BARE_WORD;
 		}
-		css->argc += values;
 	}
 
 	stack->ptr = ptr;
