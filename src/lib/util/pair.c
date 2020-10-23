@@ -47,11 +47,6 @@ RCSID("$Id$")
  */
 static int _fr_pair_free(VALUE_PAIR *vp)
 {
-
-#ifndef NDEBUG
-	vp->vp_uint32 = FREE_MAGIC;
-#endif
-
 #ifdef TALLOC_DEBUG
 	talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL);
 #endif
@@ -68,6 +63,10 @@ static int _fr_pair_free(VALUE_PAIR *vp)
 	default:
 		break;
 	}
+
+#ifndef NDEBUG
+	memset(vp, 0, sizeof(*vp));
+#endif
 
 	return 0;
 }
