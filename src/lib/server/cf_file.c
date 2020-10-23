@@ -1513,6 +1513,7 @@ alloc_section:
 	stack->ptr = ptr;
 	frame->special = css;
 
+	css->allow_unlang = true;
 	return cf_section_to_item(css);
 }
 
