@@ -62,11 +62,7 @@ static int _fr_pair_free(VALUE_PAIR *vp)
 	 */
 	switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
-	{
-		fr_cursor_t cursor;
-		fr_cursor_init(&cursor, &vp->vp_group);
-		fr_cursor_free_list(&cursor);
-	}
+		fr_pair_list_free(&vp->vp_group);
 		break;
 
 	default:
