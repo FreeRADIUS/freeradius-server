@@ -322,52 +322,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	/*
-	 *    0                   1                   2                   3
-	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *   |          option-code          |          option-len           |
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *   | 8-bit-integer |
-	 *   +-+-+-+-+-+-+-+-+
-	 */
-	case FR_TYPE_UINT8:
-
-	/*
-	 *    0                   1                   2                   3
-	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *   |          option-code          |           option-len          |
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *   |         16-bit-integer        |
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 */
-	case FR_TYPE_UINT16:
-	/*
-	 *    0                   1                   2                   3
-	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *    |          option-code          |           option-len          |
-	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *    |                         32-bit-integer                        |
-	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 */
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_TIME_DELTA:
-		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
-		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
-		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
-		p += slen;
-		break;
-
-	/*
 	 *	A standard 32bit integer, but unlike normal UNIX timestamps
 	 *	starts from the 1st of January 2000.
 	 *
@@ -420,22 +374,42 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 		break;
 
-	case FR_TYPE_INVALID:
-	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_TLV:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_MAX:
-		fr_strerror_printf("Unsupported attribute type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
+	/*
+	 *    0                   1                   2                   3
+	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *   |          option-code          |          option-len           |
+	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *   | 8-bit-integer |
+	 *   +-+-+-+-+-+-+-+-+
+	 */
+	case FR_TYPE_UINT8:
+
+	/*
+	 *    0                   1                   2                   3
+	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *   |          option-code          |           option-len          |
+	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *   |         16-bit-integer        |
+	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_TYPE_UINT16:
+	/*
+	 *    0                   1                   2                   3
+	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *    |          option-code          |           option-len          |
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *    |                         32-bit-integer                        |
+	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_TYPE_UINT32:
+	default:
+		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
+		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
+		p += slen;
+		break;
 	}
 
 	/*
