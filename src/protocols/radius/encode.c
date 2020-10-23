@@ -542,35 +542,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Simple data types use the common encoder.
 	 */
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:	/* just in case */
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_FLOAT32:		/* Not officially defined in a RADIUS RFC */
-	case FR_TYPE_FLOAT64:		/* Not officially defined in a RADIUS RFC */
-	case FR_TYPE_DATE:
-	case FR_TYPE_TIME_DELTA:
+	default:
 		slen = fr_value_box_to_network_dbuff(NULL, &value_dbuff, &vp->data);
-		if (slen < 0) return slen;
+		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		break;
-
-	case FR_TYPE_INVALID:
-	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_MAX:
-		fr_strerror_printf("Unsupported attribute type %d", da->type);
-		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*

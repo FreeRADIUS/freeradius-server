@@ -1497,44 +1497,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	if (!vp) return -1;
 
 	switch (parent->type) {
-	case FR_TYPE_OCTETS:
-		/*
-		 *	This attribute SHOULD have fixed size, but it
-		 *	doesn't.  Therefor it's malformed.
-		 */
-		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
-		FALL_THROUGH;
-
-	case FR_TYPE_STRING:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_IFID:
-	case FR_TYPE_SIZE:
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
-			/*
-			 *	Paranoid loop prevention
-			 */
-			if (vp->da->flags.is_unknown) {
-				fr_pair_list_free(&vp);
-				return -1;
-			}
-			goto raw;
-		}
-		break;
 	/*
 	 *  Magic RADIUS format IPv4 prefix
 	 *
@@ -1611,10 +1573,26 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		vp->vp_length = data_len;
 		break;
 
-	case FR_TYPE_NON_VALUES:
-		fr_pair_list_free(&vp);
-		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-		return -1;
+	case FR_TYPE_OCTETS:
+		/*
+		 *	This attribute SHOULD have fixed size, but it
+		 *	doesn't.  Therefor it's malformed.
+		 */
+		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
+		FALL_THROUGH;
+
+	default:
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
+			/*
+			 *	Paranoid loop prevention
+			 */
+			if (vp->da->flags.is_unknown) {
+				fr_pair_list_free(&vp);
+				return -1;
+			}
+			goto raw;
+		}
+		break;
 	}
 
 	vp->type = VT_DATA;
