@@ -51,6 +51,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
 	char buffer[1024];
 
+	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
+
 	/*
 	 *	Get the name from the binary name of fuzzer_foo
 	 */
@@ -58,8 +60,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		proto = strrchr((*argv)[0], '_');
 		if (proto) proto++;
 	}
-
-	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
 	/*
 	 *	Look for -D dir
