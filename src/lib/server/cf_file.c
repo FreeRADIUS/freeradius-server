@@ -1391,6 +1391,89 @@ alloc_section:
 }
 
 
+static CONF_ITEM *process_subrequest(cf_stack_t *stack)
+{
+	char const	*mod;
+	char const	*value = NULL;
+	CONF_SECTION 	*css;
+	fr_token_t 	token;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*buff[4];
+
+	/*
+	 *	Short names are nicer.
+	 */
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+
+	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: Invalid syntax for 'subrequest' - module name must not be a quoted string",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	mod = buff[1];
+
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	Now get the expansion string.
+	 */
+	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+	if (!fr_str_tok[token]) {
+		ERROR("%s[%d]: Expecting string expansions in 'subrequest' definition",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+
+	if (*ptr != '{') {
+		ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	ptr++;
+	value = buff[2];
+
+	/*
+	 *	Allocate the section
+	 */
+alloc_section:
+	css = cf_section_alloc(parent, parent, "subrequest", mod);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = T_BARE_WORD;
+
+	css->argc = 0;
+	if (value) {
+		css->argv = talloc_array(css, char const *, 1);
+		css->argv[0] = talloc_typed_strdup(css->argv, value);
+		css->argv_quote = talloc_array(css, fr_token_t, 1);
+		css->argv_quote[0] = token;
+		css->argc++;
+	}
+	stack->ptr = ptr;
+	frame->special = css;
+
+	return cf_section_to_item(css);
+}
+
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
 		    char *buff, char const *filename, int lineno)
@@ -1447,9 +1530,10 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {
-	{ L("elsif"),	(void *) process_if },
+	{ L("elsif"),		(void *) process_if },
 	{ L("if"),		(void *) process_if },
-	{ L("map"),	(void *) process_map },
+	{ L("map"),		(void *) process_map },
+	{ L("subrequest"),	(void *) process_subrequest }
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
