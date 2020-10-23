@@ -716,7 +716,7 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 #define fr_sbuff_len(_sbuff_or_marker) \
 	((size_t)(fr_sbuff_end(_sbuff_or_marker) - fr_sbuff_buff(_sbuff_or_marker)))
 
-/** How many the sbuff or marker is behind its parent
+/** How many bytes the sbuff or marker is behind its parent
  *
  * @param[in] _sbuff_or_marker
  * @return
@@ -727,7 +727,7 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 	(fr_sbuff_current(_sbuff_or_marker) > fr_sbuff_current((_sbuff_or_marker)->parent) ? \
 		0 : fr_sbuff_current((_sbuff_or_marker)->parent) - fr_sbuff_current(_sbuff_or_marker))
 
-/** How many the sbuff or marker is ahead of its parent
+/** How many bytes the sbuff or marker is ahead of its parent
  *
  * @return
  *	- 0 the sbuff or marker is behind its parent.
