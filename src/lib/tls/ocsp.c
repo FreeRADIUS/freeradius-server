@@ -99,7 +99,7 @@ static int ocsp_cert_url_parse(X509 *cert, char **host_out, char **port_out, cha
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, fr_pair_t *vp)
+static int ocsp_staple_from_pair(request_t *request, SSL *ssl, fr_pair_t *vp)
 {
 	uint8_t *p;
 
@@ -133,7 +133,7 @@ static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, fr_pair_t *vp)
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_to_pair(fr_pair_t **out, REQUEST *request, OCSP_RESPONSE *resp)
+static int ocsp_staple_to_pair(fr_pair_t **out, request_t *request, OCSP_RESPONSE *resp)
 {
 	fr_pair_t	*vp;
 	size_t		len;
@@ -177,7 +177,7 @@ static int ocsp_staple_to_pair(fr_pair_t **out, REQUEST *request, OCSP_RESPONSE 
 int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 {
 	fr_tls_ocsp_conf_t	*conf = data;	/* Alloced as part of fr_tls_conf_t (not talloced) */
-	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	X509			*cert;
 	X509			*issuer_cert;
@@ -329,7 +329,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 /** Sends a OCSP request to a defined OCSP responder
  *
  */
-int fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
+int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 		   X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		   fr_tls_ocsp_conf_t *conf, bool staple_response)
 {

@@ -61,7 +61,7 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
  */
 static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	char *data_name, *data_size, *data_type;
 	char *p;

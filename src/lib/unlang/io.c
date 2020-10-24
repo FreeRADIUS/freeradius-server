@@ -33,7 +33,7 @@ RCSID("$Id$")
  *
  * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
  */
-rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, REQUEST *request)
+rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 
@@ -72,9 +72,9 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, REQUEST
  *      - The new child request.
  *	- NULL on error.
  */
-REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable)
+request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
-	REQUEST			*child;
+	request_t			*child;
 
 	if (!detachable) {
 		child = request_alloc_fake(parent, namespace);

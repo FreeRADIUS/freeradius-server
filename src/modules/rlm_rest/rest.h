@@ -215,7 +215,7 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	REQUEST			*request;	//!< Current request.
+	request_t			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
 	fr_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
@@ -233,7 +233,7 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	REQUEST			*request;	//!< Current request.
+	request_t			*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
 
 	char 			*buffer;	//!< Raw incoming HTTP data.
@@ -289,17 +289,17 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t time
  *	Request processing API
  */
 int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
-			rlm_rest_section_t const *section, REQUEST *request,
+			rlm_rest_section_t const *section, request_t *request,
 			fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type, char const *uri,
 			char const *username, char const *password) CC_HINT(nonnull (1,2,3,5,8));
 
 int rest_response_decode(rlm_rest_t const *instance,
-			UNUSED rlm_rest_section_t const *section, REQUEST *request,
+			UNUSED rlm_rest_section_t const *section, request_t *request,
 			fr_curl_io_request_t *randle);
 
-void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle);
-void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle);
+void rest_response_error(request_t *request, fr_curl_io_request_t *handle);
+void rest_response_debug(request_t *request, fr_curl_io_request_t *handle);
 
 void rest_request_cleanup(rlm_rest_t const *instance, fr_curl_io_request_t *randle);
 
@@ -312,13 +312,13 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
 /*
  *	Helper functions
  */
-size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
-ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, REQUEST *request, char const *uri);
-ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
+size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
+ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, request_t *request, char const *uri);
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, request_t *request,
 			       fr_curl_io_request_t *randle, char const *uri);
 
 /*
  *	Async IO helpers
  */
-void rest_io_module_action(module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_state_signal_t action);
-void rest_io_xlat_signal(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);
+void rest_io_module_action(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action);
+void rest_io_xlat_signal(request_t *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);

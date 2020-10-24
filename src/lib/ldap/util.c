@@ -55,7 +55,7 @@ static const char hextab[] = "0123456789abcdef";
  * @param in Raw unescaped string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 
 	size_t left = outlen;
@@ -111,7 +111,7 @@ size_t fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, ch
  * @param in Escaped string string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p;
 	char *c1, *c2, c3;
@@ -270,7 +270,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_connection_t *conn, char **extensions)
+int fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request, fr_ldap_connection_t *conn, char **extensions)
 {
 	int i;
 
@@ -485,7 +485,7 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
  * @param sublen Number of potential subfilters in array.
  * @return length of expanded data.
  */
-ssize_t fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen)
+ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen)
 {
 	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
 	char const *in = NULL;

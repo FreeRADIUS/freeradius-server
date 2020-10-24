@@ -114,7 +114,7 @@ fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
 /*
  *	All of the decoding is done by proto_detail.c
  */
-static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);

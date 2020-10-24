@@ -92,7 +92,7 @@ static int securid_session_cmp(void const *a, void const *b)
 }
 
 
-static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
+static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 				   char const *username,
 				   char const *passcode,
 				   char *replyMsgBuffer, size_t replyMsgBufferSize)
@@ -465,7 +465,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
 	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_securid_t);

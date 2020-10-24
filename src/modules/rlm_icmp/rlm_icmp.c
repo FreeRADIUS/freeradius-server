@@ -65,7 +65,7 @@ typedef struct {
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
 	uint32_t	counter;	       	//!< for pinging the same IP multiple times
-	REQUEST		*request;		//!< so it can be resumed when we get the echo reply
+	request_t		*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
 
 /** Wrapper around the module thread stuct for individual xlats
@@ -123,7 +123,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      UNUSED REQUEST *request,
+				      UNUSED request_t *request,
 				      UNUSED void const *xlat_inst, void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in, void *rctx)
 {
@@ -142,7 +142,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_icmp_cancel(REQUEST *request, UNUSED void *xlat_inst, void *xlat_thread_inst,
+static void xlat_icmp_cancel(request_t *request, UNUSED void *xlat_inst, void *xlat_thread_inst,
 			     void *rctx, fr_state_signal_t action)
 {
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
@@ -157,7 +157,7 @@ static void xlat_icmp_cancel(REQUEST *request, UNUSED void *xlat_inst, void *xla
 }
 
 
-static void _xlat_icmp_timeout(REQUEST *request,
+static void _xlat_icmp_timeout(request_t *request,
 			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, UNUSED fr_time_t fired)
 {
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
@@ -179,7 +179,7 @@ static void _xlat_icmp_timeout(REQUEST *request,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-			       REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+			       request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {
 	void			*instance;

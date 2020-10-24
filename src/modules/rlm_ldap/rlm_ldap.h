@@ -163,35 +163,35 @@ extern fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
 				  fr_ldap_connection_t const *conn, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t const *conn);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn);
 
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 				       LDAPMessage *entry, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn);
+rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 					    fr_pair_t *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 					   char const *dn, fr_pair_t *check);
 
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, fr_pair_t *check);
+rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, request_t *request, fr_pair_t *check);
 
 /*
  *	conn.c - Connection wrappers.
  */
-fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
+fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, request_t *request);
 
-void		ldap_mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn);
+void		ldap_mod_conn_release(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t *conn);
 
 void		*ldap_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

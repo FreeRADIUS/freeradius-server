@@ -140,7 +140,7 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ NULL }
 };
 
-static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 /*
  *	Fall-Through checking function from rlm_files.c
@@ -156,7 +156,7 @@ static sql_fall_through_t fall_through(fr_pair_t *vp)
 /*
  *	Yucky prototype.
  */
-static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
+static size_t sql_escape_func(request_t *, char *out, size_t outlen, char const *in, void *arg);
 
 /** Execute an arbitrary SQL query
  *
@@ -172,7 +172,7 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  */
 static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+			request_t *request, char const *fmt)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
@@ -276,7 +276,7 @@ finish:
  *	- -1 on failure.
  */
 static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
-				   REQUEST *request, vp_map_t const *map, void *uctx)
+				   request_t *request, vp_map_t const *map, void *uctx)
 {
 	fr_pair_t	*vp;
 	char const	*value = uctx;
@@ -326,10 +326,10 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  * @param maps Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				fr_value_box_t **query, vp_map_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
@@ -499,7 +499,7 @@ finish:
 /** xlat escape function for drivers which do not provide their own
  *
  */
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	rlm_sql_handle_t	*handle = arg;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(handle->inst, rlm_sql_t);
@@ -610,7 +610,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  * The variant reserves a connection for the escape functions to use, and releases it after
  * escaping is complete.
  */
-static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			ret;
 	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
@@ -635,7 +635,7 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
+int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username)
 {
 	char *expanded = NULL;
 	fr_pair_t *vp = NULL;
@@ -674,7 +674,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
  */
 #define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->packet->vps, _i->sql_user)
 
-static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, REQUEST *request,
+static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, request_t *request,
 			     rlm_sql_grouplist_t **phead)
 {
 	char			*expanded = NULL;
@@ -728,10 +728,10 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *request_vp,
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *request_vp,
 			fr_pair_t *check, UNUSED fr_pair_t *check_list) CC_HINT(nonnull (1, 2, 4));
 
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *request_vp,
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *request_vp,
 			fr_pair_t *check, UNUSED fr_pair_t *check_list)
 {
 	rlm_sql_handle_t	*handle;
@@ -795,7 +795,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *requ
 	return 1;
 }
 
-static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
+static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
 					  sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
@@ -1178,7 +1178,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
@@ -1436,7 +1436,7 @@ release:
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section)
+static int acct_redundant(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -1597,7 +1597,7 @@ finish:
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
@@ -1611,7 +1611,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 

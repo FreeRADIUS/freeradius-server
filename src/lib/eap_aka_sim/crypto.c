@@ -1137,7 +1137,7 @@ int fr_aka_sim_crypto_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys)
  * @param[in] request	The current request.
  * @param[in] keys	SIM keys associated with the session.
  */
-void fr_aka_sim_crypto_keys_log(REQUEST *request, fr_aka_sim_keys_t *keys)
+void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 {
 	RDEBUG3("KDF inputs");
 

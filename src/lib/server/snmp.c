@@ -453,7 +453,7 @@ static fr_snmp_map_t snmp_iso[] = {
 	SNMP_MAP_TERMINATOR
 };
 
-static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process(fr_cursor_t *out, request_t *request,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op);
@@ -517,7 +517,7 @@ static void snmp_next_leaf(fr_da_stack_t *da_stack, unsigned int depth, fr_snmp_
 	da_stack->depth = i;
 }
 
-static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_index(fr_cursor_t *out, request_t *request,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_cursor_t cursor,
 				  fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op,
@@ -608,7 +608,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
 	return -(depth);
 }
 
-static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_index_attr(fr_cursor_t *out, request_t *request,
 				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_cursor_t *cursor,
 				       fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
@@ -667,7 +667,7 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 				  index_num);
 }
 
-static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_tlv(fr_cursor_t *out, request_t *request,
 				fr_da_stack_t *da_stack, unsigned int depth,
 				fr_cursor_t *cursor,
 				fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
@@ -729,7 +729,7 @@ static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
 	}
 }
 
-static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_leaf(fr_cursor_t *out, request_t *request,
 				 fr_da_stack_t *da_stack, unsigned int depth,
 				 fr_cursor_t *cursor,
 				 fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
@@ -867,7 +867,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
  *	and recurse again.
  *	- <0 the depth at which an error occurred, as a negative integer.
  */
-static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process(fr_cursor_t *out, request_t *request,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
@@ -918,7 +918,7 @@ static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 				 map, snmp_ctx, snmp_op);
 }
 
-int fr_snmp_process(REQUEST *request)
+int fr_snmp_process(request_t *request)
 {
 	fr_cursor_t		request_cursor, op_cursor, out_cursor, reply_cursor;
 	fr_pair_t		*head = NULL, *vp;

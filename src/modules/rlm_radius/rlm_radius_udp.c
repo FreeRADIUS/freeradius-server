@@ -132,11 +132,11 @@ typedef struct {
 	bool			status_checking;       	//!< whether we're doing status checks
 	udp_request_t		*status_u;		//!< for sending status check packets
 	udp_result_t		*status_r;		//!< for faking out status checks as real packets
-	REQUEST			*status_request;
+	request_t			*status_request;
 } udp_handle_t;
 
 
-/** Connect REQUEST to local tracking structure
+/** Connect request_t to local tracking structure
  *
  */
 struct udp_request_s {
@@ -263,10 +263,10 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd,
 						   UNUSED int flags, void *uctx);
 
-static int 		encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id);
+static int 		encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id);
 
 static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
-			       udp_handle_t *h, REQUEST *request, udp_request_t *u,
+			       udp_handle_t *h, request_t *request, udp_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
 
@@ -284,11 +284,11 @@ static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_
 static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
 				   radius_track_entry_t *te)
 {
-	REQUEST			*request;
+	request_t			*request;
 
 	if (!te->request) return;	/* Free entry */
 
-	request = talloc_get_type_abort(te->request, REQUEST);
+	request = talloc_get_type_abort(te->request, request_t);
 
 	fr_log(log, log_type, file, line, "request %s, allocated %s:%u", request->name,
 	       request->alloc_file, request->alloc_line);
@@ -336,7 +336,7 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 {
 	udp_request_t		*u;
-	REQUEST			*request;
+	request_t			*request;
 	rlm_radius_udp_t const	*inst = h->inst;
 	vp_map_t		*map;
 
@@ -1175,7 +1175,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_* on failure.
  */
 static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
-			    udp_handle_t *h, REQUEST *request, udp_request_t *u,
+			    udp_handle_t *h, request_t *request, udp_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
 {
@@ -1266,7 +1266,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *respons
 	return DECODE_FAIL_NONE;
 }
 
-static int encode(rlm_radius_udp_t const *inst, REQUEST *request, udp_request_t *u, uint8_t id)
+static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
@@ -1669,7 +1669,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	return true;
 }
 
-/** Handle retries for a REQUEST
+/** Handle retries for a request_t
  *
  */
 static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
@@ -1678,7 +1678,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_handle_t		*h;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-	REQUEST			*request = treq->request;
+	request_t			*request = treq->request;
 	fr_trunk_connection_t	*tconn = treq->tconn;
 
 	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
@@ -1765,7 +1765,7 @@ static void request_mux(fr_event_list_t *el,
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
-		REQUEST			*request;
+		request_t			*request;
 
  		if (unlikely(fr_trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -1934,7 +1934,7 @@ static void request_mux(fr_event_list_t *el,
 	for (i = 0; i < sent; i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i].treq;
 		udp_request_t		*u;
-		REQUEST			*request;
+		request_t			*request;
 		char const		*action;
 
 		/*
@@ -2005,7 +2005,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
-		REQUEST			*request;
+		request_t			*request;
 
  		if (unlikely(fr_trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -2319,7 +2319,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		ssize_t			slen;
 
 		fr_trunk_request_t	*treq;
-		REQUEST			*request;
+		request_t			*request;
 		udp_request_t		*u;
 		udp_result_t		*r;
 		radius_track_entry_t	*rr;
@@ -2535,7 +2535,7 @@ static void request_conn_release_replicate(UNUSED fr_connection_t *conn, void *p
 /** Write out a canned failure
  *
  */
-static void request_fail(REQUEST *request, void *preq, void *rctx,
+static void request_fail(request_t *request, void *preq, void *rctx,
 			 NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
@@ -2556,7 +2556,7 @@ static void request_fail(REQUEST *request, void *preq, void *rctx,
 /** Response has already been written to the rctx at this point
  *
  */
-static void request_complete(REQUEST *request, void *preq, void *rctx, UNUSED void *uctx)
+static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
@@ -2573,7 +2573,7 @@ static void request_complete(REQUEST *request, void *preq, void *rctx, UNUSED vo
 /** Explicitly free resources associated with the protocol request
  *
  */
-static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED void *uctx)
+static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
@@ -2590,7 +2590,7 @@ static void request_free(UNUSED REQUEST *request, void *preq_to_free, UNUSED voi
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static rlm_rcode_t mod_resume(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request, void *rctx)
+static rlm_rcode_t mod_resume(UNUSED module_ctx_t const *mctx, UNUSED request_t *request, void *rctx)
 {
 	udp_result_t	*r = talloc_get_type_abort(rctx, udp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
@@ -2600,7 +2600,7 @@ static rlm_rcode_t mod_resume(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *r
 	return rcode;
 }
 
-static void mod_signal(module_ctx_t const *mctx, UNUSED REQUEST *request,
+static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
 		       void *rctx, fr_state_signal_t action)
 {
 	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
@@ -2664,7 +2664,7 @@ static int _udp_request_free(udp_request_t *u)
 	return 0;
 }
 
-static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, request_t *request)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);

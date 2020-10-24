@@ -79,10 +79,10 @@ struct rlm_radius_s {
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
 
-/** Enqueue a REQUEST to an IO submodule
+/** Enqueue a request_t to an IO submodule
  *
  */
-typedef rlm_rcode_t (*rlm_radius_io_enqueue_t)(void **rctx, void *instance, void *thread, REQUEST *request);
+typedef rlm_rcode_t (*rlm_radius_io_enqueue_t)(void **rctx, void *instance, void *thread, request_t *request);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
@@ -93,7 +93,7 @@ struct rlm_radius_io_s {
 	FR_MODULE_COMMON;
 	FR_MODULE_THREADED_COMMON;
 
-	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a REQUEST with an IO submodule.
+	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a request_t with an IO submodule.
 	fr_unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
 	fr_unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
 };

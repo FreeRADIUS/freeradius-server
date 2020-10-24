@@ -77,7 +77,7 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
  */
 static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+			request_t *request, char const *fmt)
 {
 	fr_pair_t* vp[6];
 	char const *osname;
@@ -142,7 +142,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
 	fr_pair_t		*vp;
@@ -205,7 +205,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQU
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 	int rv;

@@ -363,7 +363,7 @@ static void worker_max_request_timer(fr_worker_t *worker);
  * @param[in] size		The maximum size of the reply data
  * @param[in] now		The current time
  */
-static void worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size, fr_time_t now)
+static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t size, fr_time_t now)
 {
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
@@ -518,7 +518,7 @@ finished:
  * @param[in] request	to cancel.
  * @param[in] now	The current time.
  */
-static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+static void worker_stop_request(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
 		fr_time_tracking_resume(&request->async->tracking, now);
@@ -559,7 +559,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t	now = fr_time();
-	REQUEST		*request;
+	request_t		*request;
 	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
 
 	/*
@@ -603,7 +603,7 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 static void worker_max_request_timer(fr_worker_t *worker)
 {
 	fr_time_t	cleanup;
-	REQUEST		*request;
+	request_t		*request;
 
 	/*
 	 *	No more requests, delete the timer.
@@ -647,7 +647,7 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
 /** Initialize various request fields needed by the worker.
  *
  */
-static void worker_request_init(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	request->el = worker->el;
 	request->backlog = worker->runnable;
@@ -668,7 +668,7 @@ static void worker_request_init(fr_worker_t *worker, REQUEST *request, fr_time_t
 /** Start time tracking for a request, and mark it as runnable.
  *
  */
-static void worker_request_time_tracking_start(fr_worker_t *worker, REQUEST *request, fr_time_t now)
+static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	/*
 	 *	New requests are inserted into the time order heap in
@@ -696,7 +696,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 {
 	bool			is_dup;
 	int			ret = -1;
-	REQUEST			*request;
+	request_t			*request;
 	TALLOC_CTX		*ctx;
 	fr_listen_t const	*listen;
 
@@ -769,7 +769,7 @@ nak:
 	 *	requested to do so.
 	 */
 	if (request->async->listen->track_duplicates) {
-		REQUEST *old;
+		request_t *old;
 
 		old = rbtree_finddata(worker->dedup, request);
 		if (!old) {
@@ -862,7 +862,7 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
 	ssize_t size = 0;
 	rlm_rcode_t final;
-	REQUEST *request;
+	request_t *request;
 	fr_time_t now;
 
 	WORKER_VERIFY;
@@ -962,11 +962,11 @@ keep_going:
 
 
 /**
- *  Track a REQUEST in the "runnable" heap.
+ *  Track a request_t in the "runnable" heap.
  */
 static int8_t worker_runnable_cmp(void const *one, void const *two)
 {
-	REQUEST const *a = one, *b = two;
+	request_t const *a = one, *b = two;
 	int ret;
 
 	ret = (a->async->priority > b->async->priority) - (a->async->priority < b->async->priority);
@@ -976,22 +976,22 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 }
 
 /**
- *  Track a REQUEST in the "time_order" heap.
+ *  Track a request_t in the "time_order" heap.
  */
 static int8_t worker_time_order_cmp(void const *one, void const *two)
 {
-	REQUEST const *a = one, *b = two;
+	request_t const *a = one, *b = two;
 
 	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
 }
 
 /**
- *  Track a REQUEST in the "dedup" tree
+ *  Track a request_t in the "dedup" tree
  */
 static int worker_dedup_cmp(void const *one, void const *two)
 {
 	int ret;
-	REQUEST const *a = one, *b = two;
+	request_t const *a = one, *b = two;
 
 	ret = (a->async->listen > b->async->listen) - (a->async->listen < b->async->listen);
 	if (ret) return ret;
@@ -1014,7 +1014,7 @@ static int worker_dedup_cmp(void const *one, void const *two)
 void fr_worker_destroy(fr_worker_t *worker)
 {
 	int i, count;
-	REQUEST *request;
+	request_t *request;
 	fr_time_t now = fr_time();
 
 //	WORKER_VERIFY;
@@ -1133,19 +1133,19 @@ nomem:
 		goto fail;
 	}
 
-	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, REQUEST, runnable_id);
+	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable_id);
 	if (!worker->runnable) {
 		fr_strerror_printf("Failed creating runnable heap");
 		goto fail;
 	}
 
-	worker->time_order = fr_heap_talloc_alloc(worker, worker_time_order_cmp, REQUEST, time_order_id);
+	worker->time_order = fr_heap_talloc_alloc(worker, worker_time_order_cmp, request_t, time_order_id);
 	if (!worker->time_order) {
 		fr_strerror_printf("Failed creating time_order heap");
 		goto fail;
 	}
 
-	worker->dedup = rbtree_talloc_alloc(worker, worker_dedup_cmp, REQUEST, NULL, RBTREE_FLAG_NONE);
+	worker->dedup = rbtree_talloc_alloc(worker, worker_dedup_cmp, request_t, NULL, RBTREE_FLAG_NONE);
 	if (!worker->dedup) {
 		fr_strerror_printf("Failed creating de_dup tree");
 		goto fail;
@@ -1216,7 +1216,7 @@ void fr_worker(fr_worker_t *worker)
 int fr_worker_pre_event(void *uctx, UNUSED fr_time_t wake)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
-	REQUEST *request;
+	request_t *request;
 
 	request = fr_heap_peek(worker->runnable);
 	if (!request) return 0;
@@ -1241,11 +1241,11 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 	worker_run_request(worker, fr_time());	/* Event loop time can be too old, and trigger asserts */
 }
 
-/** Asynchronously add a REQUEST to a worker thread
+/** Asynchronously add a request_t to a worker thread
  *
  *  When we don't know what the worker is...
  */
-int fr_worker_request_add(REQUEST *request, module_method_t process, void *ctx)
+int fr_worker_request_add(request_t *request, module_method_t process, void *ctx)
 {
 	fr_worker_t *worker;
 	fr_time_t now;

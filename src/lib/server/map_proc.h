@@ -58,7 +58,7 @@ extern "C" {
  *	- #RLM_MODULE_UPDATED - If new pairs were added to the request.
  *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
  */
-typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, REQUEST *request,
+typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, request_t *request,
 				       fr_value_box_t **result, vp_map_t const *maps);
 
 /** Allocate new instance data for a map processor
@@ -85,7 +85,7 @@ int		map_proc_register(void *mod_inst, char const *name,
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      CONF_SECTION *cs, tmpl_t const *src, vp_map_t const *maps);
 
-rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst, fr_value_box_t **src);
+rlm_rcode_t	map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_t **src);
 
 #ifdef __cplusplus
 }

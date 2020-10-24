@@ -242,7 +242,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  * @param[in] request Current request.
  * @param[in] context Kerberos context.
  */
-static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_t const *inst, REQUEST *request,
+static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_t const *inst, request_t *request,
 				   krb5_context context)
 {
 	krb5_error_code ret;
@@ -285,7 +285,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
  * @param ret code from kerberos.
  * @param conn used in the last operation.
  */
-static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, rlm_krb5_handle_t *conn, int ret)
+static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request, rlm_krb5_handle_t *conn, int ret)
 {
 	fr_assert(ret != 0);
 
@@ -319,7 +319,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, 
 /*
  *	Validate user/pass (Heimdal)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
 	rlm_rcode_t		rcode;
@@ -410,7 +410,7 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
 	rlm_rcode_t		rcode;

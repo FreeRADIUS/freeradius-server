@@ -47,7 +47,7 @@ static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 f
  *
  */
 typedef struct {
-	REQUEST			*request;			//!< The current request.
+	request_t			*request;			//!< The current request.
 	fr_cursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
 	fr_pair_t 		*vps;				//!< List containing the attribute(s) we're
@@ -61,7 +61,7 @@ typedef struct {
 
 static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				   void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, UNUSED char const *fmt);
+				   request_t *request, UNUSED char const *fmt);
 
 #define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
 
@@ -75,7 +75,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 	return 0;
 }
 
-static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_foreach_next(request_t *request, rlm_rcode_t *presult)
 {
 	fr_pair_t			*vp;
 	unlang_stack_t			*stack = request->stack;
@@ -122,7 +122,7 @@ static unlang_action_t unlang_foreach_next(REQUEST *request, rlm_rcode_t *presul
 }
 
 
-static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -188,7 +188,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, rlm_rcode_t *presult)
 	return unlang_foreach_next(request, presult);
 }
 
-static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_break(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -211,7 +211,7 @@ static unlang_action_t unlang_break(REQUEST *request, rlm_rcode_t *presult)
  */
 static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				   void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, UNUSED char const *fmt)
+				   request_t *request, UNUSED char const *fmt)
 {
 	fr_pair_t	**pvp;
 

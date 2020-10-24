@@ -1126,8 +1126,8 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 
 	/*
 	 *	Our treq is no longer bound to an actual
-	 *      REQUEST *, as we can't guarantee the
-	 *	lifetime of the original REQUEST *.
+	 *      request_t *, as we can't guarantee the
+	 *	lifetime of the original request_t *.
 	 */
 	if (treq->cancel_reason == FR_TRUNK_CANCEL_REASON_SIGNAL) treq->pub.request = NULL;
 
@@ -1215,7 +1215,7 @@ static void trunk_request_enter_cancel_sent(fr_trunk_request_t *treq)
 
 /** Cancellation was acked, the request is complete, free it
  *
- * The API client will not be informed, as the original REQUEST *
+ * The API client will not be informed, as the original request_t *
  * will likely have been freed by this point.
  *
  * @note treq will be inviable after a call to this function.
@@ -1231,7 +1231,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
-	if (!fr_cond_assert(!treq->pub.request)) return;	/* Only a valid state for REQUEST * which have been cancelled */
+	if (!fr_cond_assert(!treq->pub.request)) return;	/* Only a valid state for request_t * which have been cancelled */
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
@@ -1323,7 +1323,7 @@ static void trunk_request_enter_failed(fr_trunk_request_t *treq)
  *						unreachable.
  */
 static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tconn_out, fr_trunk_t *trunk,
-						      REQUEST *request)
+						      request_t *request)
 {
 	fr_trunk_connection_t	*tconn;
 	/*
@@ -1835,7 +1835,7 @@ void fr_trunk_request_signal_fail(fr_trunk_request_t *treq)
  * treq can be in any state, but requests to cancel if the treq is not in
  * the FR_TRUNK_REQUEST_STATE_PARTIAL or FR_TRUNK_REQUEST_STATE_SENT state will be ignored.
  *
- * The complete or failed callbacks will not be called here, as it's assumed the REQUEST *
+ * The complete or failed callbacks will not be called here, as it's assumed the request_t *
  * is now inviable as it's being cancelled.
  *
  * The free function however, is called, and that should be used to perform necessary
@@ -2152,7 +2152,7 @@ static int _trunk_request_free(fr_trunk_request_t *treq)
  *	- A newly allocated request.
  *	- NULL if too many requests are allocated.
  */
-fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, request_t *request)
 {
 	fr_trunk_request_t *treq;
 
@@ -2217,7 +2217,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
 
 /** Enqueue a request that needs data written to the trunk
  *
- * When a REQUEST * needs to make an asynchronous request to an external datastore
+ * When a request_t * needs to make an asynchronous request to an external datastore
  * it should call this function, specifying a preq (protocol request) containing
  * the data necessary to request information from the external datastore, and an
  * rctx (resume ctx) used to hold the decoded response and/or any error codes.
@@ -2265,7 +2265,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request)
  *	- FR_TRUNK_ENQUEUE_FAIL
  */
 fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_trunk_t *trunk,
-					    REQUEST *request, void *preq, void *rctx)
+					    request_t *request, void *preq, void *rctx)
 {
 	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_request_t	*treq;
@@ -2413,7 +2413,7 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
  *	- FR_TRUNK_ENQUEUE_DST_UNAVAILABLE - Connection cannot service requests.
  */
 fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
-						    REQUEST *request, void *preq, void *rctx,
+						    request_t *request, void *preq, void *rctx,
 						    bool ignore_limits)
 {
 	fr_trunk_request_t	*treq;

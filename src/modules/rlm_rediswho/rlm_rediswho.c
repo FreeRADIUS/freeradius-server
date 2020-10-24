@@ -98,7 +98,7 @@ fr_dict_attr_autoload_t rlm_rediswho_dict_attr[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char const *fmt)
+static int rediswho_command(rlm_rediswho_t const *inst, request_t *request, char const *fmt)
 {
 	fr_redis_conn_t		*conn;
 
@@ -177,7 +177,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	return ret;
 }
 
-static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, REQUEST *request,
+static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, request_t *request,
 				      char const *insert,
 				      char const *trim,
 				      char const *expire)
@@ -196,7 +196,7 @@ static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_rediswho_t);
 	rlm_rcode_t		rcode;

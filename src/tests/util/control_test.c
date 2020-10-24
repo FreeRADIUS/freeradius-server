@@ -50,17 +50,17 @@ static fr_control_t	*control = NULL;
 static fr_ring_buffer_t *rb = NULL;
 
 /**********************************************************************/
-typedef struct fr_request_s REQUEST;
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+typedef struct request_s request_t;
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx);
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
 int talloc_const_free(void const *ptr);
 
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx)
 {
 	return NULL;
 }
 
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request)
 {
 }
 

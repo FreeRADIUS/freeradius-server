@@ -90,7 +90,7 @@ typedef struct {
 typedef struct {
 	CURL			*candle;		//!< Request specific handle.
 	CURLcode		result;			//!< Result of executing the request.
-	REQUEST		        *request;		//!< Current request.
+	request_t		        *request;		//!< Current request.
 	void			*uctx;			//!< Private data for the module using the API.
 } fr_curl_io_request_t;
 
@@ -111,7 +111,7 @@ typedef struct {
 extern CONF_PARSER	 fr_curl_tls_config[];
 
 int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
-						   REQUEST *request, fr_curl_io_request_t *creq);
+						   request_t *request, fr_curl_io_request_t *creq);
 
 fr_curl_io_request_t	*fr_curl_io_request_alloc(TALLOC_CTX *ctx);
 
@@ -121,7 +121,7 @@ int			fr_curl_init(void);
 
 void			fr_curl_free(void);
 
-int			fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle);
+int			fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle);
 
 int			fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t const *conf);
 

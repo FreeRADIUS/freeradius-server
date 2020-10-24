@@ -27,14 +27,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/unlang/base.h>
 #include "eap_peap.h"
 
-static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t);
+static int setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t);
 
 /*
  *	Send protected EAP-Failure
  *
  *       Result-TLV = Failure
  */
-static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+static int eap_peap_failure(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 
@@ -68,7 +68,7 @@ static int eap_peap_failure(REQUEST *request, eap_session_t *eap_session, fr_tls
  *
  *       Result-TLV = Success
  */
-static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+static int eap_peap_success(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 
@@ -97,7 +97,7 @@ static int eap_peap_success(REQUEST *request, eap_session_t *eap_session, fr_tls
 }
 
 
-static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+static int eap_peap_identity(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -117,7 +117,7 @@ static int eap_peap_identity(REQUEST *request, eap_session_t *eap_session, fr_tl
 /*
  * Send an MS SoH request
  */
-static int eap_peap_soh(REQUEST *request,fr_tls_session_t *tls_session)
+static int eap_peap_soh(request_t *request,fr_tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[20];
 
@@ -153,7 +153,7 @@ static int eap_peap_soh(REQUEST *request,fr_tls_session_t *tls_session)
 	return 1;
 }
 
-static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
+static void eap_peap_soh_verify(request_t *request, RADIUS_PACKET *packet,
 			  	uint8_t const *data, unsigned int data_len) {
 
 	fr_pair_t *vp;
@@ -206,7 +206,7 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 /*
  *	Verify the tunneled EAP message.
  */
-static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
+static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 			   uint8_t const *data, size_t data_len)
 {
 	eap_packet_raw_t const	*eap_packet = (eap_packet_raw_t const *) data;
@@ -260,7 +260,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 /*
  *	Convert a pseudo-EAP packet to a list of fr_pair_t's.
  */
-static fr_pair_t *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKET *packet,
+static fr_pair_t *eap_peap_inner_to_pairs(UNUSED request_t *request, RADIUS_PACKET *packet,
 			  		   eap_round_t *eap_round,
 			  		   uint8_t const *data, size_t data_len)
 {
@@ -304,7 +304,7 @@ static fr_pair_t *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKET
  *	Convert a list of fr_pair_t's to an EAP packet, through the
  *	simple expedient of dumping the EAP message
  */
-static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_session, fr_pair_t *vp)
+static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_session, fr_pair_t *vp)
 {
 	fr_assert(vp != NULL);
 	fr_pair_t *this;
@@ -336,7 +336,7 @@ static int eap_peap_inner_from_pairs(REQUEST *request, fr_tls_session_t *tls_ses
 /*
  *	See if there's a TLV in the response.
  */
-static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data_len)
+static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t data_len)
 {
 	eap_packet_raw_t const *eap_packet = (eap_packet_raw_t const *) data;
 
@@ -367,7 +367,7 @@ static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  REQUEST *request, RADIUS_PACKET *reply)
+						  request_t *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	fr_pair_t *vp;
@@ -468,10 +468,10 @@ static char const *peap_state(peap_tunnel_t *t)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
-	REQUEST		*fake = NULL;
+	request_t		*fake = NULL;
 	fr_pair_t	*vp;
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
@@ -704,7 +704,7 @@ rlm_rcode_t eap_peap_process(REQUEST *request, eap_session_t *eap_session, fr_tl
 	log_request_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
 
 	/*
-	 *	Update other items in the REQUEST data structure.
+	 *	Update other items in the request_t data structure.
 	 */
 	if (!t->username) {
 		/*
@@ -747,7 +747,7 @@ finish:
 	return rcode;
 }
 
-static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
+static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t) {
 
 	fr_pair_t *vp;
 

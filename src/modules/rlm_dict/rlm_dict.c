@@ -33,7 +33,7 @@ RCSID("$Id$")
  */
 static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     REQUEST *request, char const *fmt)
+				     request_t *request, char const *fmt)
 {
 	char			*q;
 	unsigned int		number;
@@ -64,7 +64,7 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
  */
 static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     REQUEST *request, char const *fmt)
+				     request_t *request, char const *fmt)
 {
 	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
@@ -90,7 +90,7 @@ static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t 
  */
 static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	fr_pair_t *vp;
 	fr_dict_vendor_t const *vendor;
@@ -112,7 +112,7 @@ static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
+			       request_t *request, char const *fmt)
 {
 	fr_pair_t *vp;
 
@@ -130,7 +130,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
  */
 static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	fr_pair_t *vp;
 
@@ -149,7 +149,7 @@ static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
+			     request_t *request, char const *fmt)
 {
 	fr_pair_t *vp;
 

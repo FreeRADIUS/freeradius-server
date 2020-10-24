@@ -66,7 +66,7 @@ typedef struct {
 
 /* lua.c */
 int		fr_lua_init(lua_State **out, rlm_lua_t const *instance);
-int		fr_lua_run(module_ctx_t const *mctx, REQUEST *request, char const *funcname);
+int		fr_lua_run(module_ctx_t const *mctx, request_t *request, char const *funcname);
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
 
@@ -80,6 +80,6 @@ int		fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L);
 int		fr_lua_util_log_register(rlm_lua_t const *inst, lua_State *L);
 void		fr_lua_util_set_inst(rlm_lua_t const *inst);
 rlm_lua_t const	*fr_lua_util_get_inst(void);
-void		fr_lua_util_set_request(REQUEST *request);
-REQUEST		*fr_lua_util_get_request(void);
+void		fr_lua_util_set_request(request_t *request);
+request_t		*fr_lua_util_get_request(void);
 void		fr_lua_util_fr_register(lua_State *L);

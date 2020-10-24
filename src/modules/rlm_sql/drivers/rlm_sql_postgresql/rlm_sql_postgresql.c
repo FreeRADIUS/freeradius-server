@@ -510,7 +510,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen, ret;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);

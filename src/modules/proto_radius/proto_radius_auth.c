@@ -154,7 +154,7 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-static char *auth_name(char *buf, size_t buflen, REQUEST *request)
+static char *auth_name(char *buf, size_t buflen, request_t *request)
 {
 	fr_pair_t	*cli;
 	fr_pair_t	*pair;
@@ -181,7 +181,7 @@ static char *auth_name(char *buf, size_t buflen, REQUEST *request)
  *	which contains the log message.
  */
 static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t const *inst,
-							REQUEST *request, bool goodpass, char const *fmt, ...)
+							request_t *request, bool goodpass, char const *fmt, ...)
 {
 	va_list		 ap;
 
@@ -268,7 +268,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	talloc_free(msg);
 }
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	proto_radius_auth_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_radius_auth_t);
 	fr_pair_t			*vp, *auth_type;

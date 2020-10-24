@@ -49,7 +49,7 @@ static int _state_ctx_free(TALLOC_CTX *state)
  * @param[in] line		the request was allocated on.
  * @param[in] request		to (re)-initialise.
  */
-static void request_init(char const *file, int line, REQUEST *request)
+static void request_init(char const *file, int line, request_t *request)
 {
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
@@ -113,7 +113,7 @@ static void request_init(char const *file, int line, REQUEST *request)
  *	- 0 in the request was freed.
  *	- -1 if the request was inserted into the free list.
  */
-static int _request_free(REQUEST *request)
+static int _request_free(request_t *request)
 {
 	fr_assert(!request->ev);
 
@@ -213,7 +213,7 @@ really_free:
 static void _request_free_list_free_on_exit(void *arg)
 {
 	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
-	REQUEST		*request;
+	request_t		*request;
 
 	/*
 	 *	See the destructor for why this works
@@ -222,12 +222,12 @@ static void _request_free_list_free_on_exit(void *arg)
 	talloc_free(list);
 }
 
-/** Create a new REQUEST data structure
+/** Create a new request_t data structure
  *
  */
-REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
+request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 {
-	REQUEST			*request;
+	request_t			*request;
 	fr_dlist_head_t		*free_list;
 
 	/*
@@ -236,7 +236,7 @@ REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 	 */
 	if (unlikely(!request_free_list)) {
 		MEM(free_list = talloc(NULL, fr_dlist_head_t));
-		fr_dlist_init(free_list, REQUEST, free_entry);
+		fr_dlist_init(free_list, request_t, free_entry);
 		fr_thread_local_set_destructor(request_free_list, _request_free_list_free_on_exit, free_list);
 	} else {
 		free_list = request_free_list;
@@ -253,7 +253,7 @@ REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 		 *	cannot be returned to a free list
 		 *	and would have to be freed.
 		 */
-		MEM(request = talloc_zero_pooled_object(NULL, REQUEST,
+		MEM(request = talloc_zero_pooled_object(NULL, request_t,
 							1 + 				/* Stack pool */
 							UNLANG_STACK_MAX + 		/* Stack Frames */
 							2 + 				/* packets */
@@ -291,11 +291,11 @@ REQUEST *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
  * which needs to be outside of the normal free list, so that it can be freed
  * when the module requires, not when the thread destructor runs.
  */
-REQUEST *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
+request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
 {
-	REQUEST *request;
+	request_t *request;
 
-	MEM(request = talloc_zero(ctx, REQUEST));
+	MEM(request = talloc_zero(ctx, request_t));
 
 	request_init(file, line, request);
 
@@ -313,7 +313,7 @@ REQUEST *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx)
 	return request;
 }
 
-static REQUEST *request_init_fake(char const *file, int line, REQUEST *request, REQUEST *fake)
+static request_t *request_init_fake(char const *file, int line, request_t *request, request_t *fake)
 {
 	fake->number = request->child_number++;
 	fake->name = talloc_typed_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
@@ -393,14 +393,14 @@ static REQUEST *request_init_fake(char const *file, int line, REQUEST *request, 
 }
 
 /*
- *	Create a new REQUEST, based on an old one.
+ *	Create a new request_t, based on an old one.
  *
  *	This function allows modules to inject fake requests
  *	into the server, for tunneled protocols like TTLS & PEAP.
  */
-REQUEST *_request_alloc_fake(char const *file, int line, REQUEST *request, fr_dict_t const *namespace)
+request_t *_request_alloc_fake(char const *file, int line, request_t *request, fr_dict_t const *namespace)
 {
-	REQUEST *fake;
+	request_t *fake;
 
 	fake = request_alloc(request);
 	if (!fake) return NULL;
@@ -418,9 +418,9 @@ REQUEST *_request_alloc_fake(char const *file, int line, REQUEST *request, fr_di
  * run.
  *
  */
-REQUEST *_request_alloc_detachable(char const *file, int line, REQUEST *request, fr_dict_t const *namespace)
+request_t *_request_alloc_detachable(char const *file, int line, request_t *request, fr_dict_t const *namespace)
 {
-	REQUEST *fake;
+	request_t *fake;
 
 	fake = _request_alloc(file, line, NULL);
 	if (!fake) return NULL;
@@ -442,7 +442,7 @@ REQUEST *_request_alloc_detachable(char const *file, int line, REQUEST *request,
 	 *	goes away, but don't persist it across
 	 *	challenge-response boundaries.
 	 */
-	if (request_data_talloc_add(request, fake, 0, REQUEST, fake, true, true, false) < 0) {
+	if (request_data_talloc_add(request, fake, 0, request_t, fake, true, true, false) < 0) {
 		talloc_free(fake);
 		return NULL;
 	}
@@ -463,9 +463,9 @@ REQUEST *_request_alloc_detachable(char const *file, int line, REQUEST *request,
  *	 - 0 on success.
  *	 - -1 on failure.
  */
-int request_detach(REQUEST *fake, bool will_free)
+int request_detach(request_t *fake, bool will_free)
 {
-	REQUEST		*request = fake->parent;
+	request_t		*request = fake->parent;
 
 	fr_assert(request != NULL);
 
@@ -496,7 +496,7 @@ int request_detach(REQUEST *fake, bool will_free)
 /*
  *	Verify a packet.
  */
-static void packet_verify(char const *file, int line, REQUEST const *request, RADIUS_PACKET const *packet, char const *type)
+static void packet_verify(char const *file, int line, request_t const *request, RADIUS_PACKET const *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
@@ -525,19 +525,19 @@ static void packet_verify(char const *file, int line, REQUEST const *request, RA
 /*
  *	Catch horrible talloc errors.
  */
-void request_verify(char const *file, int line, REQUEST const *request)
+void request_verify(char const *file, int line, request_t const *request)
 {
 	request_data_t *rd = NULL;
 
-	fr_fatal_assert_msg(request, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
+	fr_fatal_assert_msg(request, "CONSISTENCY CHECK FAILED %s[%i]: request_t pointer was NULL", file, line);
 
-	(void) talloc_get_type_abort_const(request, REQUEST);
+	(void) talloc_get_type_abort_const(request, request_t);
 
 	fr_assert(request->magic == REQUEST_MAGIC);
 
-	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(REQUEST),
-			    "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
-			    file, line, sizeof(REQUEST), talloc_get_size(request));
+	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(request_t),
+			    "CONSISTENCY CHECK FAILED %s[%i]: expected request_t size of %zu bytes, got %zu bytes",
+			    file, line, sizeof(request_t), talloc_get_size(request));
 
 	fr_pair_list_verify(file, line, request, request->control_pairs);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);

@@ -127,7 +127,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_redis_t		*driver = instance;
 	size_t				i;
@@ -257,7 +257,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle, const rlm_cache_entry_t *c)
+					 request_t *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
 	rlm_cache_redis_t	*driver = instance;
 	TALLOC_CTX		*pool;
@@ -425,7 +425,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+					 request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;

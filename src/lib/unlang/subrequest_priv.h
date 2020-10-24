@@ -43,12 +43,12 @@ typedef struct {
 							///< if the packet-type is static.
 } unlang_subrequest_kctx_t;
 
-void	unlang_subrequest_free(REQUEST **child);
+void	unlang_subrequest_free(request_t **child);
 
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
+void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 			    unlang_subrequest_session_t const *session, bool top_frame);
 
-int unlang_detached_child_init(REQUEST *request);
+int unlang_detached_child_init(request_t *request);
 
 #ifdef __cplusplus
 }

@@ -75,7 +75,7 @@ typedef struct {
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_apply(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t list_mod_apply(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -122,7 +122,7 @@ done:
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t list_mod_create(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -248,7 +248,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_update_state_init(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -279,7 +279,7 @@ static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *p
 }
 
 
-static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t map_proc_apply(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -307,7 +307,7 @@ static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_map_state_init(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

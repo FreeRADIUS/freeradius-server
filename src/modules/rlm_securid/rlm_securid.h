@@ -83,11 +83,11 @@ extern fr_dict_attr_t const *attr_user_password;
 
 /* Memory Management */
 SECURID_SESSION*     securid_session_alloc(void);
-void		     securid_session_free(rlm_securid_t *inst, REQUEST *request,SECURID_SESSION *session)
+void		     securid_session_free(rlm_securid_t *inst, request_t *request,SECURID_SESSION *session)
 		     CC_HINT(nonnull);
 
-void		     securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request) CC_HINT(nonnull);
+void		     securid_sessionlist_free(rlm_securid_t *inst,request_t *request) CC_HINT(nonnull);
 
-int		     securid_sessionlist_add(rlm_securid_t *inst, REQUEST *request, SECURID_SESSION *session)
+int		     securid_sessionlist_add(rlm_securid_t *inst, request_t *request, SECURID_SESSION *session)
 		     CC_HINT(nonnull);
-SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request) CC_HINT(nonnull);
+SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, request_t *request) CC_HINT(nonnull);

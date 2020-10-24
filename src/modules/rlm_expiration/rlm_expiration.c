@@ -55,7 +55,7 @@ fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp, *check_item = NULL;
 
@@ -110,7 +110,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 /*
  *      Compare the expiration date.
  */
-static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED fr_pair_t *request, fr_pair_t *check,
+static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_t *request, fr_pair_t *check,
 		     UNUSED fr_pair_t *check_list)
 {
 	time_t now = 0;

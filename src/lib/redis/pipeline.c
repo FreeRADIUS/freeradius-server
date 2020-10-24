@@ -106,7 +106,7 @@ struct fr_redis_command_set_s {
 	 * @{
  	 */
 	fr_trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
-	REQUEST				*request;	//!< Request this commands set is associated with (if any).
+	request_t				*request;	//!< Request this commands set is associated with (if any).
 	void				*rctx;		//!< Resume context to write results to.
 	/** @} */
 
@@ -204,7 +204,7 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
  * @return A new or refurbished command set.
  */
 fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
-						   REQUEST *request,
+						   request_t *request,
 						   fr_redis_command_set_complete_t complete,
 						   fr_redis_command_set_fail_t fail,
 						   void *rctx)
@@ -292,7 +292,7 @@ redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
 fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
 							     char const *cmd_str, size_t cmd_len)
 {
-	REQUEST			*request = cmds->request;
+	request_t			*request = cmds->request;
 	fr_redis_command_t	*cmd;
 	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
 
@@ -486,7 +486,7 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
 	fr_redis_command_set_t 	*cmds;
 	fr_redis_command_t	*cmd;
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
-	REQUEST			*request;
+	request_t			*request;
 
 	treq = fr_trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
 	while ((cmd = fr_dlist_head(&cmds->pending))) {
@@ -574,7 +574,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 /** Signal the API client that we got a complete set of responses to a command set
  *
  */
-static void _redis_pipeline_command_set_complete(UNUSED REQUEST *request, void *preq,
+static void _redis_pipeline_command_set_complete(UNUSED request_t *request, void *preq,
 						 UNUSED void *rctx, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
@@ -585,7 +585,7 @@ static void _redis_pipeline_command_set_complete(UNUSED REQUEST *request, void *
 /** Signal the API client that we failed enqueuing the commands
  *
  */
-static void _redis_pipeline_command_set_fail(UNUSED REQUEST *request, void *preq,
+static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *preq,
 					     UNUSED void *rctx, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
@@ -596,7 +596,7 @@ static void _redis_pipeline_command_set_fail(UNUSED REQUEST *request, void *preq
 /** Free the command set
  *
  */
-static void _redis_pipeline_command_set_free(UNUSED REQUEST *request, void *preq,
+static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *preq,
 					     UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);

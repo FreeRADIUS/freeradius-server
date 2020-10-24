@@ -154,13 +154,13 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 {
 	fr_pair_t *vp;
 	eap_packet_raw_t *eap_packet;
-	REQUEST *request;
+	request_t *request;
 	eap_round_t *eap_round;
 	eap_packet_t *reply;
 	int rcode;
 
 	eap_session = talloc_get_type_abort(eap_session, eap_session_t);
-	request = talloc_get_type_abort(eap_session->request, REQUEST);
+	request = talloc_get_type_abort(eap_session->request, request_t);
 	eap_round = talloc_get_type_abort(eap_session->this_round, eap_round_t);
 	reply = talloc_get_type_abort(eap_round->request, eap_packet_t);
 
@@ -297,7 +297,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
-int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
+int eap_start(request_t *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
 {
 	fr_pair_t *vp;
 	fr_pair_t *eap_msg;

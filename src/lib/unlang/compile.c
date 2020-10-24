@@ -465,7 +465,7 @@ static bool pass2_fixup_map(fr_cond_t *c)
 
 	/*
 	 *	Only attributes can have a paircmp registered, and
-	 *	they can only be with the current REQUEST, and only
+	 *	they can only be with the current request_t, and only
 	 *	with the request pairs.
 	 */
 	if (!tmpl_is_attr(map->lhs) ||

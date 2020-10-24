@@ -91,7 +91,7 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *q = in;
 	char *p = out;
@@ -186,7 +186,7 @@ size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t freespace = outlen;
 
@@ -535,7 +535,7 @@ uint32_t rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
  * @return argc or -1 on failure.
  */
 
-int rad_expand_xlat(REQUEST *request, char const *cmd,
+int rad_expand_xlat(request_t *request, char const *cmd,
 		    int max_argc, char const *argv[], bool can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {

@@ -47,7 +47,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /** Generate keys according to RFC 2716 and add to the reply
  *
  */
-int eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
+int eap_crypto_mppe_keys(request_t *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
 {
 	uint8_t		out[4 * EAP_TLS_MPPE_KEY_LEN];
 	uint8_t		*p;
@@ -91,7 +91,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 #if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
-			      REQUEST *request, SSL *ssl,
+			      request_t *request, SSL *ssl,
 			      uint8_t **out, uint8_t eap_type,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 			      UNUSED

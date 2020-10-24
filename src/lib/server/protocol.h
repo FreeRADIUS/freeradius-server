@@ -47,7 +47,7 @@ typedef void (*rad_listen_free_t)(rad_listen_t *);
 int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this);
 int common_socket_open(CONF_SECTION *cs, rad_listen_t *this);
 int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize);
-void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
+void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received);
 
 /** Struct exported by a proto_* module
  *

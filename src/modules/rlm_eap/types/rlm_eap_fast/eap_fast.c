@@ -37,7 +37,7 @@ RCSID("$Id$")
 /**
  * RFC 4851 section 5.1 - EAP-FAST Authentication Phase 1: Key Derivations
  */
-static void eap_fast_init_keys(REQUEST *request, fr_tls_session_t *tls_session)
+static void eap_fast_init_keys(request_t *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t *buf;
@@ -72,7 +72,7 @@ static void eap_fast_init_keys(REQUEST *request, fr_tls_session_t *tls_session)
 /**
  * RFC 4851 section 5.2 - Intermediate Compound Key Derivations
  */
-static void eap_fast_update_icmk(REQUEST *request, fr_tls_session_t *tls_session, uint8_t *msk)
+static void eap_fast_update_icmk(request_t *request, fr_tls_session_t *tls_session, uint8_t *msk)
 {
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t imck[EAP_FAST_SIMCK_LEN + EAP_FAST_CMK_LEN];
@@ -135,7 +135,7 @@ static void eap_fast_append_result(fr_tls_session_t *tls_session, FR_CODE code)
 	eap_fast_tlv_append(tls_session, da, true, sizeof(state), &state);
 }
 
-static void eap_fast_send_identity_request(REQUEST *request, fr_tls_session_t *tls_session, eap_session_t *eap_session)
+static void eap_fast_send_identity_request(request_t *request, fr_tls_session_t *tls_session, eap_session_t *eap_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -150,7 +150,7 @@ static void eap_fast_send_identity_request(REQUEST *request, fr_tls_session_t *t
 	eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, sizeof(eap_packet), &eap_packet);
 }
 
-static void eap_fast_send_pac_tunnel(REQUEST *request, fr_tls_session_t *tls_session)
+static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t			*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_fast_pac_t				pac;
@@ -212,7 +212,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, fr_tls_session_t *tls_ses
 	eap_fast_tlv_append(tls_session, attr_eap_fast_pac_tlv, true, sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
 }
 
-static void eap_fast_append_crypto_binding(REQUEST *request, fr_tls_session_t *tls_session)
+static void eap_fast_append_crypto_binding(request_t *request, fr_tls_session_t *tls_session)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
@@ -241,7 +241,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, fr_tls_session_t *t
 
 #define EAP_FAST_TLV_MAX 11
 
-static int eap_fast_verify(REQUEST *request, fr_tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
+static int eap_fast_verify(request_t *request, fr_tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
 {
 	uint16_t attr;
 	uint16_t length;
@@ -474,7 +474,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
 						  fr_tls_session_t *tls_session,
-						  REQUEST *request, RADIUS_PACKET *reply)
+						  request_t *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	fr_pair_t			*vp;
@@ -565,19 +565,19 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	return rcode;
 }
 
-static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session,
+static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_session,
 				    fr_tls_session_t *tls_session, fr_pair_t *tlv_eap_payload)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp;
 	eap_fast_tunnel_t	*t;
-	REQUEST			*fake;
+	request_t			*fake;
 
 	RDEBUG2("Processing received EAP Payload");
 
 	/*
-	 *	Allocate a fake REQUEST structure.
+	 *	Allocate a fake request_t structure.
 	 */
 	fake = request_alloc_fake(request, NULL);
 	fr_assert(!fake->packet->vps);
@@ -770,7 +770,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	return code;
 }
 
-static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *eap_session,
+static FR_CODE eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
 				       fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
@@ -793,7 +793,7 @@ static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 	return FR_CODE_ACCESS_ACCEPT;
 }
 
-static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
+static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
 				     fr_tls_session_t *tls_session, fr_pair_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -892,7 +892,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 /*
  * Process the inner tunnel data
  */
-FR_CODE eap_fast_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code;
 	fr_pair_t		*fast_vps = NULL;

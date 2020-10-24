@@ -196,9 +196,9 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
  *	- true if destination list is OK.
  *	- false if destination list is invalid.
  */
-static inline fr_pair_t **map_check_src_or_dst(REQUEST *request, vp_map_t const *map, tmpl_t const *src_dst)
+static inline fr_pair_t **map_check_src_or_dst(request_t *request, vp_map_t const *map, tmpl_t const *src_dst)
 {
-	REQUEST		*context = request;
+	request_t		*context = request;
 	fr_pair_t	**list;
 	request_ref_t	request_ref;
 	pair_list_t	list_ref;
@@ -246,7 +246,7 @@ static inline fr_pair_t **map_check_src_or_dst(REQUEST *request, vp_map_t const 
  *	- -1 on failure.
  */
 int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
-		    REQUEST *request, vp_map_t const *original,
+		    request_t *request, vp_map_t const *original,
 		    fr_value_box_t **lhs_result, fr_value_box_t **rhs_result)
 {
 	vp_list_mod_t	*n = NULL;
@@ -850,7 +850,7 @@ static fr_pair_t *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
  * @param[in] mod	The ephemeral map which describes the change.
  * @param[in] vb	The value in the ephemeral map.
  */
-static inline void map_list_mod_debug(REQUEST *request,
+static inline void map_list_mod_debug(request_t *request,
 				      vp_map_t const *map, vp_map_t const *mod, fr_value_box_t const *vb)
 {
 	char *rhs = NULL;
@@ -927,13 +927,13 @@ static inline void map_list_mod_debug(REQUEST *request,
  * @param request	to modify.
  * @param vlm		VP List Modification to apply.
  */
-int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
+int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 {
 	int			rcode = 0;
 
 	vp_map_t const		*map = vlm->map, *mod;
 	fr_pair_t		**vp_list, *found;
-	REQUEST			*context;
+	request_t			*context;
 	TALLOC_CTX		*parent;
 
 	fr_cursor_t		list;

@@ -55,7 +55,7 @@ typedef struct module_ctx_s			module_ctx_t;
  * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*module_method_t)(module_ctx_t const *mctx, REQUEST *request);
+typedef rlm_rcode_t (*module_method_t)(module_ctx_t const *mctx, request_t *request);
 
 /** Module instantiation callback
  *
@@ -273,7 +273,7 @@ module_method_t	module_state_str_to_method(module_state_func_table_t const *tabl
 char const	*module_state_method_to_str(module_state_func_table_t const *table,
 					    module_method_t method, char const *def);
 
-bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
+bool		module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
 
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 

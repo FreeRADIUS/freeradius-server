@@ -30,7 +30,7 @@
 
 static int _eap_session_free(eap_session_t *eap_session)
 {
-	REQUEST *request = eap_session->request;
+	request_t *request = eap_session->request;
 
 	if (eap_session->identity) {
 		talloc_free(eap_session->identity);
@@ -76,7 +76,7 @@ static int _eap_session_free(eap_session_t *eap_session)
  *	- A new #eap_session_t on success.
  *	- NULL on failure.
  */
-static eap_session_t *eap_session_alloc(REQUEST *request)
+static eap_session_t *eap_session_alloc(request_t *request)
 {
 	eap_session_t	*eap_session;
 
@@ -182,7 +182,7 @@ void eap_session_freeze(eap_session_t **eap_session)
  *	  continue when a future request is received.
  *	- NULL if no #eap_session_t associated with this request.
  */
-eap_session_t *eap_session_thaw(REQUEST *request)
+eap_session_t *eap_session_thaw(request_t *request)
 {
 	eap_session_t *eap_session;
 
@@ -207,7 +207,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
  *	- The user's EAP-Identity.
  *	- or NULL on error.
  */
-static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
+static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
 	uint16_t 	len;
 
@@ -285,7 +285,7 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
  *	  continue when a future request is received.
  *	- NULL on error.
  */
-eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap_packet_p, REQUEST *request)
+eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap_packet_p, request_t *request)
 {
 	eap_session_t		*eap_session = NULL;
 	eap_packet_raw_t	*eap_packet;

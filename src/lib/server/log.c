@@ -234,7 +234,7 @@ static int log_always(fr_log_t const *log, fr_log_type_t type,
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
  */
-inline bool log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request)
+inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t *request)
 {
 	if (!request->log.dst) return false;
 
@@ -262,7 +262,7 @@ static void _fr_vlog_request_pool_free(void *arg)
  * @param[in] ap	Substitution arguments.
  * @param[in] uctx	The #fr_log_t specifying the destination for log messages.
  */
-void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		  char const *file, int line,
 		  char const *fmt, va_list ap, void *uctx)
 {
@@ -530,7 +530,7 @@ finish:
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 {
 	char		*p;
 	fr_pair_t	*vp;
@@ -569,7 +569,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_module_failure_msg(REQUEST *request, char const *fmt, ...)
+void log_module_failure_msg(request_t *request, char const *fmt, ...)
 {
 	va_list ap;
 
@@ -590,7 +590,7 @@ void log_module_failure_msg(REQUEST *request, char const *fmt, ...)
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
@@ -623,7 +623,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		       char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
@@ -655,7 +655,7 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line, char const *fmt, ...)
 {
 	char const *strerror;
@@ -715,7 +715,7 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix)
+void log_request_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
 
@@ -751,7 +751,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, ch
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix)
+void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
 
@@ -793,7 +793,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *
  * @param[in] fmt	What the parse error was.
  * @param[in] ...	Arguments for fmt string.
  */
-void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
 			char const *str, size_t idx,
 			char const *fmt, ...)
@@ -832,7 +832,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	request->log.module_indent = module_indent;
 }
 
-void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     char const *file, int line,
 		     uint8_t const *data, size_t data_len)
 {

@@ -51,7 +51,7 @@ static fr_table_num_ordered_t const unlang_frame_action_table[] = {
 static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_table);
 
 #ifndef NDEBUG
-static void instruction_dump(REQUEST *request, unlang_t const *instruction)
+static void instruction_dump(request_t *request, unlang_t const *instruction)
 {
 	RINDENT();
 	if (!instruction) {
@@ -66,7 +66,7 @@ static void instruction_dump(REQUEST *request, unlang_t const *instruction)
 	REXDENT();
 }
 
-static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
+static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 {
 	instruction_dump(request, frame->instruction);
 	unlang_stack_t *stack = request->stack;
@@ -90,7 +90,7 @@ static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 	REXDENT();
 }
 
-static void stack_dump(REQUEST *request)
+static void stack_dump(request_t *request)
 {
 	int i;
 	unlang_stack_t *stack = request->stack;
@@ -164,7 +164,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  *				Hands execution back to whatever called the interpreter.
  */
-void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
+void unlang_interpret_push(request_t *request, unlang_t *instruction,
 			   rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 {
 	unlang_stack_t		*stack = request->stack;
@@ -222,7 +222,7 @@ void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
  *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
-static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_stack_frame_t *frame,
+static inline unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t *frame,
 						     rlm_rcode_t *result, int *priority)
 {
 	unlang_t const	*instruction = frame->instruction;
@@ -415,7 +415,7 @@ static inline void frame_pop(unlang_stack_t *stack)
  *					was called.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
-static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_frame_t *frame,
+static inline unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame,
 					       rlm_rcode_t *result, int *priority)
 {
 	unlang_stack_t	*stack = request->stack;
@@ -613,7 +613,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 /*
  *	Interpret the various types of blocks.
  */
-rlm_rcode_t unlang_interpret(REQUEST *request)
+rlm_rcode_t unlang_interpret(request_t *request)
 {
 	int			priority = -1;
 	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
@@ -799,7 +799,7 @@ static unlang_group_t empty_group = {
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
+void unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
 
@@ -822,7 +822,7 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 /** Push an instruction onto the request stack for later interpretation.
  *
  */
-void unlang_interpret_push_instruction(REQUEST *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
+void unlang_interpret_push_instruction(request_t *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -847,7 +847,7 @@ void unlang_interpret_push_instruction(REQUEST *request, void *instruction, rlm_
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret_section(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t default_rcode)
+rlm_rcode_t unlang_interpret_section(request_t *request, CONF_SECTION *subcs, rlm_rcode_t default_rcode)
 {
 	/*
 	 *	This pushes a new frame onto the stack, which is the
@@ -873,13 +873,13 @@ rlm_rcode_t unlang_interpret_section(REQUEST *request, CONF_SECTION *subcs, rlm_
  * @param[in] child_el	Use a child event list
  * @return One of the RLM_MODULE_* macros.
  */
-rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el)
+rlm_rcode_t unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el)
 {
 	fr_event_list_t *el, *old_el;
 	fr_heap_t	*backlog, *old_backlog;
 	rlm_rcode_t	rcode;
 	char const	*caller;
-	REQUEST		*sub_request = NULL;
+	request_t		*sub_request = NULL;
 	bool		wait_for_event;
 	int		iterations = 0;
 
@@ -898,7 +898,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		}
 	}
 
-	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, REQUEST, runnable_id));
+	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, request_t, runnable_id));
 	old_backlog = request->backlog;
 	caller = request->module;
 
@@ -1046,13 +1046,13 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
  * @param[in] action		to signal.
  * @param[in] limit		the frame at which to stop signaling.
  */
-static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
+static void frame_signal(request_t *request, fr_state_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
 	int			i, depth = stack->depth;
 
-	(void)talloc_get_type_abort(request, REQUEST);	/* Check the request hasn't already been freed */
+	(void)talloc_get_type_abort(request, request_t);	/* Check the request hasn't already been freed */
 
 	fr_assert(stack->depth > 0);
 
@@ -1093,7 +1093,7 @@ static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
+void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t		*stack = request->stack;
 
@@ -1118,7 +1118,7 @@ void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 /** Return the depth of the request's stack
  *
  */
-int unlang_interpret_stack_depth(REQUEST *request)
+int unlang_interpret_stack_depth(request_t *request)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -1133,7 +1133,7 @@ int unlang_interpret_stack_depth(REQUEST *request)
  * @param[in] request	The current request.
  * @return the current rcode for the frame.
  */
-rlm_rcode_t unlang_interpret_stack_result(REQUEST *request)
+rlm_rcode_t unlang_interpret_stack_result(request_t *request)
 {
 
 	unlang_stack_t		*stack = request->stack;
@@ -1151,7 +1151,7 @@ rlm_rcode_t unlang_interpret_stack_result(REQUEST *request)
  *
  * @param[in] request		The current request.
  */
-void unlang_interpret_resumable(REQUEST *request)
+void unlang_interpret_resumable(request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1207,7 +1207,7 @@ void unlang_interpret_resumable(REQUEST *request)
  * @return
  *	- a TALLOC_CTX which is valid only for this stack frame
  */
-TALLOC_CTX *unlang_interpret_frame_talloc_ctx(REQUEST *request)
+TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1234,7 +1234,7 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(REQUEST *request)
  */
 static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     REQUEST *request, char const *fmt)
+				     request_t *request, char const *fmt)
 {
 	unlang_stack_t		*stack = request->stack;
 	int			depth = stack->depth;

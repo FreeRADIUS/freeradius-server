@@ -462,7 +462,7 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 
-static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static size_t config_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
 	static char const disallowed[] = "%{}\\'\"`";
@@ -524,7 +524,7 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
  */
 static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	char const *value;
 	CONF_PAIR *cp;
@@ -924,7 +924,7 @@ int main_config_init(main_config_t *config)
 	INFO("Starting - reading configuration files ...");
 
 	/*
-	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(fr_pair_t) * 400
+	 *	About sizeof(request_t) + sizeof(RADIUS_PACKET) * 2 + sizeof(fr_pair_t) * 400
 	 *
 	 *	Which should be enough for many configurations.
 	 */

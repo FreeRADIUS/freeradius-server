@@ -136,7 +136,7 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  */
 static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  	  REQUEST *request, char const *fmt)
+			  	  request_t *request, char const *fmt)
 {
 	ssize_t len;
 
@@ -244,7 +244,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	char const		*passcode;
@@ -355,7 +355,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;

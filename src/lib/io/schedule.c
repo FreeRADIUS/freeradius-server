@@ -492,7 +492,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		}
 
 		/*
-		 *	Add the event which processes REQUEST packets.
+		 *	Add the event which processes request_t packets.
 		 */
 		if (fr_event_post_insert(el, fr_worker_post_event, sc->single_worker) < 0) {
 			fr_strerror_printf("Failed inserting post-processing event");

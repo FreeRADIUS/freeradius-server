@@ -159,7 +159,7 @@ void mschap_auth_response(char const *username, size_t username_len,
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
-void mschap_add_reply(REQUEST *request, uint8_t ident,
+void mschap_add_reply(request_t *request, uint8_t ident,
 		      fr_dict_attr_t const *da, char const *value, size_t len)
 {
 	fr_pair_t *vp;

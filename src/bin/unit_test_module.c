@@ -139,10 +139,10 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
 	fr_pair_t	*vp;
-	REQUEST		*request;
+	request_t		*request;
 	fr_cursor_t	cursor;
 
 	static int	number = 0;
@@ -337,7 +337,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	char		*p;
 	char		input[8192];
 	char		output[8192];
-	REQUEST		*request;
+	request_t		*request;
 
 	/*
 	 *	Create and initialize the new request.
@@ -449,20 +449,20 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 	return 0;
 }
 
-static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
+static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED request_t *request,
 			      	UNUSED fr_value_box_t **src, UNUSED vp_map_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }
 
-static void request_run(fr_event_list_t *el, REQUEST *request)
+static void request_run(fr_event_list_t *el, request_t *request)
 {
 	rlm_rcode_t rcode;
 	module_method_t process;
 	void *inst;
 	fr_dict_enum_t *dv;
 	fr_heap_t *backlog;
-	REQUEST *child;
+	request_t *child;
 
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
@@ -472,7 +472,7 @@ static void request_run(fr_event_list_t *el, REQUEST *request)
 		return;
 	}
 
-	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, REQUEST, runnable_id));
+	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, request_t, runnable_id));
 	request->backlog = backlog;
 	request->el = el;
 
@@ -534,9 +534,9 @@ done:
 	talloc_free(backlog);
 }
 
-static REQUEST *request_clone(REQUEST *old)
+static request_t *request_clone(request_t *old)
 {
-	REQUEST *request;
+	request_t *request;
 
 	request = request_alloc(NULL);
 	if (!request) return NULL;
@@ -564,7 +564,7 @@ int main(int argc, char *argv[])
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
 	FILE			*fp;
-	REQUEST			*request = NULL;
+	request_t			*request = NULL;
 	fr_pair_t		*vp;
 	fr_pair_t		*filter_vps = NULL;
 	bool			xlat_only = false;
@@ -954,7 +954,7 @@ int main(int argc, char *argv[])
 		request_run(el, request);
 	} else {
 		int i;
-		REQUEST *old = request_clone(request);
+		request_t *old = request_clone(request);
 		talloc_free(request);
 
 		for (i = 0; i < count; i++) {

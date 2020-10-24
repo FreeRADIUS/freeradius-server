@@ -4,4 +4,4 @@
 
 RCSIDH(auth_wbclient_h, "$Id$")
 
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, fr_pair_t *password);
+int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_t *password);

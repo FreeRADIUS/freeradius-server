@@ -57,7 +57,7 @@ static char const hextab[] = "0123456789abcdef";
  */
 static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
+			   UNUSED request_t *request, char const *fmt)
 {
 	rlm_escape_t const	*inst = mod_inst;
 	char const		*p = fmt;
@@ -130,7 +130,7 @@ static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     UNUSED REQUEST *request, char const *fmt)
+			     UNUSED request_t *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;

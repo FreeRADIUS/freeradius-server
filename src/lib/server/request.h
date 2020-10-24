@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 typedef struct fr_async_s fr_async_t;
-typedef struct fr_request_s REQUEST;
+typedef struct request_s request_t;
 
 typedef struct rad_listen rad_listen_t;
 typedef struct rad_client RADCLIENT;
@@ -66,7 +66,7 @@ typedef enum {
 } rad_master_state_t;
 #define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
-typedef enum fr_request_state_t {
+typedef enum request_state_t {
 	REQUEST_INIT = 0,
 	REQUEST_RECV,
 	REQUEST_PROCESS,
@@ -75,12 +75,12 @@ typedef enum fr_request_state_t {
 	REQUEST_OTHER_2,
 	REQUEST_OTHER_3,
 	REQUEST_OTHER_4,
-} fr_request_state_t;
+} request_state_t;
 
-typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);	//!< Function handler for requests.
-typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
+typedef	void (*fr_request_process_t)(request_t *, fr_state_signal_t);	//!< Function handler for requests.
+typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(request_t *);
 
-struct fr_request_s {
+struct request_s {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
@@ -93,7 +93,7 @@ struct fr_request_s {
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
 	fr_heap_t		*backlog;	//!< thread-specific backlog
-	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
+	request_state_t	request_state;	//!< state for the various protocol handlers.
 
 	fr_dlist_head_t		data;		//!< Request metadata.
 
@@ -116,7 +116,7 @@ struct fr_request_s {
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
 
-	REQUEST			*proxy;		//!< proxied packet
+	request_t			*proxy;		//!< proxied packet
 
 	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
@@ -128,7 +128,7 @@ struct fr_request_s {
 
 	void			*stack;		//!< unlang interpreter stack.
 
-	REQUEST			*parent;
+	request_t			*parent;
 
 	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 
@@ -156,7 +156,7 @@ struct fr_request_s {
 	int			alloc_line;	//!< Line the request was allocated on.
 
 	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
-};				/* REQUEST typedef */
+};				/* request_t typedef */
 
 #ifdef WITH_VERIFY_PTR
 #  define REQUEST_VERIFY(_x) request_verify(__FILE__, __LINE__, _x)
@@ -180,21 +180,21 @@ struct fr_request_s {
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
 #define		request_alloc(_ctx) _request_alloc( __FILE__, __LINE__, _ctx)
-REQUEST		*_request_alloc(char const *file, int line, TALLOC_CTX *ctx);
+request_t		*_request_alloc(char const *file, int line, TALLOC_CTX *ctx);
 
 #define		request_local_alloc(_ctx) _request_local_alloc(__FILE__, __LINE__, _ctx)
-REQUEST		*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx);
+request_t		*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx);
 
 #define		request_alloc_fake(_request, _namespace) _request_alloc_fake(__FILE__, __LINE__, _request, _namespace)
-REQUEST		*_request_alloc_fake(char const *file, int line, REQUEST *parent, fr_dict_t const *namespace);
+request_t		*_request_alloc_fake(char const *file, int line, request_t *parent, fr_dict_t const *namespace);
 
 #define		request_alloc_detachable(_request, _namespace) _request_alloc_detachable(__FILE__, __LINE__, _request, _namespace)
-REQUEST		*_request_alloc_detachable(char const *file, int line, REQUEST *request, fr_dict_t const *namespace);
+request_t		*_request_alloc_detachable(char const *file, int line, request_t *request, fr_dict_t const *namespace);
 
-int		request_detach(REQUEST *fake, bool will_free);
+int		request_detach(request_t *fake, bool will_free);
 
 #ifdef WITH_VERIFY_PTR
-void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
+void		request_verify(char const *file, int line, request_t const *request);	/* only for special debug builds */
 #endif
 
 #ifdef __cplusplus

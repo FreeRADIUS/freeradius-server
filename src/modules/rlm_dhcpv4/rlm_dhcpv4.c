@@ -62,7 +62,7 @@ typedef struct {
  * @ingroup xlat_functions
  */
 static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				        REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				        fr_value_box_t **in)
 {
 	fr_cursor_t	in_cursor, cursor;
@@ -142,7 +142,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
 	fr_cursor_t	*cursor;

@@ -266,7 +266,7 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
  */
 static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 	UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 	REQUEST *request, char const *fmt)
+			 	request_t *request, char const *fmt)
 {
 	return fr_ldap_escape_func(request, *out, outlen, fmt, NULL);
 }
@@ -277,7 +277,7 @@ static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
  */
 static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 	  REQUEST *request, char const *fmt)
+			 	  request_t *request, char const *fmt)
 {
 	return fr_ldap_unescape_func(request, *out, outlen, fmt, NULL);
 }
@@ -288,7 +288,7 @@ static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t out
  */
 static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	fr_ldap_rcode_t		status;
 	size_t			len = 0;
@@ -417,10 +417,10 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  * @param[in] maps Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				fr_value_box_t **url, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
@@ -589,7 +589,7 @@ free_urldesc:
  *	- 1 on failure (or if the user is not a member).
  *	- 0 on success.
  */
-static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
+static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
 			     UNUSED fr_pair_t *check_list)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
@@ -714,7 +714,7 @@ finish:
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
@@ -868,7 +868,7 @@ finish:
 information.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 					char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -929,7 +929,7 @@ free_result:
 	return rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -1175,7 +1175,7 @@ finish:
  * @param section that holds the map to process.
  * @return one of the RLM_MODULE_* values.
  */
-static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_acct_section_t *section)
+static rlm_rcode_t user_modify(rlm_ldap_t const *inst, request_t *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
@@ -1396,7 +1396,7 @@ error:
 	return rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 
@@ -1405,7 +1405,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 

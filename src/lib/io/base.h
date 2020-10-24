@@ -101,9 +101,9 @@ typedef int (*fr_io_set_fd_t)(fr_listen_t *li, int fd);
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len);
+typedef int (*fr_io_decode_t)(void const *instance, request_t *request, uint8_t *const data, size_t data_len);
 
-/** Encode data from a REQUEST into a raw packet.
+/** Encode data from a request_t into a raw packet.
  *
  *  This function is the opposite of fr_io_decode_t.
  *
@@ -121,7 +121,7 @@ typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *c
  *	- <0 on error
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_encode_t)(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len);
 
 /** NAK a packet.
  *

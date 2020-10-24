@@ -154,9 +154,9 @@ static expr_map_t map[] =
 	{0,	TOKEN_LAST}
 };
 
-static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev);
+static bool get_expression(request_t *request, char const **string, int64_t *answer, expr_token_t prev);
 
-static bool get_number(REQUEST *request, char const **string, int64_t *answer)
+static bool get_number(request_t *request, char const **string, int64_t *answer)
 {
 	fr_sbuff_term_t const 		bareword_terminals =
 					FR_SBUFF_TERMS(
@@ -344,7 +344,7 @@ done:
 	return true;
 }
 
-static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t rhs, int64_t *answer)
+static bool calc_result(request_t *request, int64_t lhs, expr_token_t op, int64_t rhs, int64_t *answer)
 {
 	switch (op) {
 	default:
@@ -430,7 +430,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 	return true;
 }
 
-static bool get_operator(REQUEST *request, char const **string, expr_token_t *op)
+static bool get_operator(request_t *request, char const **string, expr_token_t *op)
 {
 	int		i;
 	char const	*p = *string;
@@ -464,7 +464,7 @@ static bool get_operator(REQUEST *request, char const **string, expr_token_t *op
 }
 
 
-static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev)
+static bool get_expression(request_t *request, char const **string, int64_t *answer, expr_token_t prev)
 {
 	int64_t		lhs, rhs;
 	char const 	*p, *op_p;
@@ -535,7 +535,7 @@ redo:
  */
 static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	int64_t		result;
 	char const 	*p;

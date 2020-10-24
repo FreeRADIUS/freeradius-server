@@ -282,7 +282,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
  *	- < 0 on error.
  */
 static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t const *data, REQUEST *request,
+			     rlm_sqlippool_t const *data, request_t *request,
 			     char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
@@ -339,7 +339,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  */
 static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *fmt,
 							  rlm_sql_handle_t **handle, rlm_sqlippool_t *data,
-							  REQUEST *request, char *param, int param_len)
+							  request_t *request, char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
@@ -482,7 +482,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char const *str, int rcode)
+static int do_logging(UNUSED rlm_sqlippool_t const *inst, request_t *request, char const *str, int rcode)
 {
 	char		*expanded = NULL;
 	fr_pair_t	*vp;
@@ -503,7 +503,7 @@ static int do_logging(UNUSED rlm_sqlippool_t const *inst, REQUEST *request, char
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
@@ -665,7 +665,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, REQUEST 
 /*
  *	Update a lease.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -718,7 +718,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, REQUEST
 /*
  *	Release a lease.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -748,7 +748,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, REQUES
 /*
  *	Release a collection of leases.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -779,7 +779,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, R
  *	Mark a lease.  Typically for DHCP Decline where IPs need to be marked
  *	as invalid
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -810,7 +810,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, REQUEST *
  *	Check Accounting packets for their accoutning status
  *	Call the relevant module based on the status
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode = RLM_MODULE_NOOP;
 	fr_pair_t		*vp;

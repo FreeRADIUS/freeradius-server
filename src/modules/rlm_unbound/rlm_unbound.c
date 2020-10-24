@@ -146,7 +146,7 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
+static int ub_common_wait(rlm_unbound_t const *inst, request_t *request,
 			  char const *name, struct ub_result **ub, int async_id)
 {
 	useconds_t iv, waited;
@@ -188,7 +188,7 @@ static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
 	return 0;
 }
 
-static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *ub)
+static int ub_common_fail(request_t *request, char const *name, struct ub_result *ub)
 {
 	if (ub->bogus) {
 		RWDEBUG("%s - Bogus DNS response", name);
@@ -214,7 +214,7 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
  */
 static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
-		      REQUEST *request, char const *fmt)
+		      request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
@@ -265,7 +265,7 @@ static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
@@ -314,7 +314,7 @@ typedef struct {
 
 /*
 static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
-			      REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+			      request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 			      fr_value_box_t **in)
 {
 	if (!*in) return XLAT_ACTION_DONE;
@@ -335,7 +335,7 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
  */
 static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+			request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;

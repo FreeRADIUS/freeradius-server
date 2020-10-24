@@ -29,7 +29,7 @@ RCSID("$Id$")
 /*
  *	Reject any non-UTF8 data.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t		i, len;
 	fr_pair_t	*vp;

@@ -319,7 +319,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 
 	fr_ipaddr_t			ipaddr = op->start;
 	fr_redis_rcode_t		s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request;
+	request_t				*request;
 	redisReply			**replies = NULL;
 
 	unsigned int			pipelined = 0;
@@ -725,7 +725,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t			*key_p = key;
-	REQUEST			*request;
+	request_t			*request;
 	uint8_t 		**result;
 
 	request = request_alloc(inst);
@@ -911,7 +911,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	fr_time_t			now;
 
 	int				s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request;
+	request_t				*request;
 	redisReply			**replies = NULL, *reply;
 	unsigned int			pipelined = 0;		/* Update if additional commands added */
 

@@ -160,20 +160,20 @@ void	fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect);
 /*
  *	Pool management
  */
-int	fr_pool_reconnect(fr_pool_t *pool, REQUEST *request);
+int	fr_pool_reconnect(fr_pool_t *pool, request_t *request);
 
 void	fr_pool_free(fr_pool_t *pool);
 
 /*
  *	Connection lifecycle
  */
-void	*fr_pool_connection_get(fr_pool_t *pool, REQUEST *request);
+void	*fr_pool_connection_get(fr_pool_t *pool, request_t *request);
 
-void	fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn);
+void	fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn);
 
-void	*fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn);
+void	*fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *conn);
 
-int	fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn);
+int	fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn);
 
 #ifdef __cplusplus
 }

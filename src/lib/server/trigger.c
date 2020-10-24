@@ -60,7 +60,7 @@ typedef struct {
  */
 ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-		     REQUEST *request, char const *fmt)
+		     request_t *request, char const *fmt)
 {
 	fr_pair_t		*head;
 	fr_dict_attr_t const	*da;
@@ -192,7 +192,7 @@ typedef struct {
 	bool		expanded;
 } fr_trigger_t;
 
-static rlm_rcode_t trigger_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 {
 	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
 	rlm_rcode_t	rcode;
@@ -257,7 +257,7 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, REQUEST *request)
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_t *args)
+int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_t *args)
 {
 	CONF_SECTION const	*subcs;
 
@@ -267,7 +267,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	char const		*attr;
 	char const		*value;
 
-	REQUEST			*fake;
+	request_t			*fake;
 	fr_trigger_t		*ctx;
 	ssize_t			slen;
 

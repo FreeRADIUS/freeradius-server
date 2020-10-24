@@ -45,7 +45,7 @@ extern "C" {
  * @param[in] request		The current request.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_tmpl_signal_t)(REQUEST *request, void *rctx, fr_state_signal_t action);
+typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_state_signal_t action);
 
 /** A callback for when the request is resumed.
  *
@@ -55,9 +55,9 @@ typedef void (*fr_unlang_tmpl_signal_t)(REQUEST *request, void *rctx, fr_state_s
  * @param[in] rctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_tmpl_resume_t)(REQUEST *request, void *rctx);
+typedef rlm_rcode_t (*fr_unlang_tmpl_resume_t)(request_t *request, void *rctx);
 
-void		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status);
+void		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status);
 
 #ifdef __cplusplus
 }

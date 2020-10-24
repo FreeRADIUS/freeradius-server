@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_caller(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_caller(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

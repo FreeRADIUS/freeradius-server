@@ -87,7 +87,7 @@ int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HIN
 
 #include <freeradius-devel/server/module.h>
 
-int		fr_worker_request_add(REQUEST *request, module_method_t process, void *ctx);
+int		fr_worker_request_add(request_t *request, module_method_t process, void *ctx);
 
 #ifdef __cplusplus
 }

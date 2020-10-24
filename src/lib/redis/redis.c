@@ -132,7 +132,7 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
  * @param request The current request.
  * @param idx Response number.
  */
-void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx)
 {
 	size_t i = 0;
 
@@ -262,7 +262,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
+int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, request_t *request,
 			  redisReply *key, redisReply *op, redisReply *value)
 {
 	vp_map_t	*map = NULL;

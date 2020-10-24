@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED fr_pair_t *req, fr_pair_t *check,
+static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req, fr_pair_t *check,
 			     UNUSED fr_pair_t *check_list)
 {
 	rlm_winbind_t		*inst = instance;
@@ -464,7 +464,7 @@ static int mod_detach(void *instance)
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*vp;
@@ -494,7 +494,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
  *
  * @return One of the RLM_MODULE_* values
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*username, *password;

@@ -210,7 +210,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, fr_pair_t **vps)
+static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb, fr_pair_t **vps)
 {
 	mrb_value	res;
 	fr_pair_t	*vp;
@@ -303,7 +303,7 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 	return 0;
 }
 
-static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, mrb_state *mrb, mrb_value value, char const *function_name)
+static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, mrb_state *mrb, mrb_value value, char const *function_name)
 {
 	int i;
 
@@ -384,7 +384,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, mrb
 	}
 }
 
-static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mruby_request,
+static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,
 				char const *list_name, fr_pair_t **vps)
 {
 	mrb_value res;
@@ -398,7 +398,7 @@ static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mrub
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const *inst, char const *function_name)
+static rlm_rcode_t CC_HINT(nonnull) do_mruby(request_t *request, rlm_mruby_t const *inst, char const *function_name)
 {
 	mrb_state *mrb = inst->mrb;
 	mrb_value mruby_request, mruby_result;
@@ -461,7 +461,7 @@ DIAG_ON(class-varargs)
 }
 
 
-#define RLM_MRUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(module_ctx_t const *mctx, REQUEST *request) \
+#define RLM_MRUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(module_ctx_t const *mctx, request_t *request) \
 	{ \
 		return do_mruby(request,	\
 			       (rlm_mruby_t const *)mctx->instance, \

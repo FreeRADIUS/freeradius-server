@@ -86,7 +86,7 @@ typedef struct {
  *	Holds the context for parsing the email elements
  */
 typedef struct {
-	REQUEST			*request;
+	request_t			*request;
 	fr_curl_io_request_t	*randle;
 	fr_cursor_t		cursor;
 	fr_cursor_t		body_cursor;
@@ -196,7 +196,7 @@ static const CONF_PARSER module_config[] = {
  */
 static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict_attr_t *dict_attr)
 {
-	REQUEST 			*request = ((fr_mail_ctx *)uctx)->request;
+	request_t 			*request = ((fr_mail_ctx *)uctx)->request;
 	fr_pair_t			*vp;
 	int 				elems_added = 0;
 
@@ -219,7 +219,7 @@ static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict
  */
 static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t * const tmpl)
 {
-	REQUEST 			*request = ((fr_mail_ctx *)uctx)->request;
+	request_t 			*request = ((fr_mail_ctx *)uctx)->request;
 	fr_pair_t			*vp;
 	tmpl_cursor_ctx_t       	cc;
 	int 				count = 0;
@@ -241,7 +241,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t
  */
 static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
 {
-	REQUEST 	*request = uctx->request;
+	request_t 	*request = uctx->request;
 	int 		count = 0;
 	char 		*expanded_str;
 
@@ -293,7 +293,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t co
 static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
 		const char *preposition)
 {
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	fr_sbuff_t 		sbuff;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	ssize_t 		out_len = 0;
@@ -343,7 +343,7 @@ static int str_to_attachments (fr_mail_ctx *uctx, curl_mime *mime, char const * 
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	int 			attachments_set = 0;
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	curl_mimepart		*part;
 
 	/* Move to the end of the template directory filepath */
@@ -378,7 +378,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	fr_pair_t 		*vp;
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	tmpl_cursor_ctx_t       cc;
 	int 			attachments_set = 0;
 
@@ -402,7 +402,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 static int tmpl_arr_to_attachments (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, curl_mime *mime, tmpl_t ** const tmpl,
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
-	REQUEST		*request = uctx->request;
+	request_t		*request = uctx->request;
 	ssize_t 	count = 0;
 	ssize_t 	expanded_str_len;
 	char 		*expanded_str;
@@ -472,7 +472,7 @@ static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct
  */
 static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t const *inst)
 {
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	int 			recipients_set = 0;
 
 	/* Try to load the recipients into the envelope recipients if they are set */
@@ -506,7 +506,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, UNUSED rlm_smt
 	fr_sbuff_t 			time_out;
 	char const 			*to = "TO: ";
 	char const 			*cc = "CC: ";
-	REQUEST				*request = uctx->request;
+	request_t				*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
 	vp_map_t			*conf_map;
@@ -572,7 +572,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 {
 	fr_mail_ctx 		*uctx = mail_ctx;
 	fr_dbuff_t		out;
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	fr_pair_t 		*vp;
 
 	fr_dbuff_init(&out, (uint8_t *)ptr, (size * nmemb));  /* Wrap the output buffer so we can track our position easily */
@@ -603,7 +603,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 {
 	fr_pair_t 	*vp;
-	REQUEST		*request = uctx->request;
+	request_t		*request = uctx->request;
 
 	curl_mimepart	*part;
 	curl_mime	*mime_body;
@@ -645,7 +645,7 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
  */
 static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, curl_mime *mime, rlm_smtp_t const *inst)
 {
-	REQUEST			*request = uctx->request;
+	request_t			*request = uctx->request;
 	int 			attachments_set = 0;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	fr_sbuff_t 		path_buffer;
@@ -690,7 +690,7 @@ static int _free_mail_ctx(fr_mail_ctx *uctx)
 /*
  * 	Check if the email was successfully sent, and if the certificate information was extracted
  */
-static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	fr_mail_ctx 			*mail_ctx = rctx;
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
@@ -732,7 +732,7 @@ static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, REQUEST *reque
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authorize_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
@@ -855,7 +855,7 @@ error:
  * 	If the response was not OK, we REJECT the request
  * 	This does not confirm an email may be sent, only that the provided login credentials are valid for the server
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	fr_curl_io_request_t     	*randle = rctx;
@@ -894,7 +894,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);

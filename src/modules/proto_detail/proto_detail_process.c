@@ -47,7 +47,7 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	proto_detail_process_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_detail_process_t);
 	fr_pair_t			*vp;

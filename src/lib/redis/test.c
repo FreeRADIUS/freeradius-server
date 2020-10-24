@@ -14,7 +14,7 @@ typedef struct {
 	uint64_t	enqueued;
 } redis_pipeline_stats_t;
 
-static void _command_complete(REQUEST *request, fr_dlist_head_t *completed, void *rctx)
+static void _command_complete(request_t *request, fr_dlist_head_t *completed, void *rctx)
 {
 	fr_time_t		io_stop;
 	fr_time_delta_t		io_time;
@@ -31,7 +31,7 @@ static void _command_complete(REQUEST *request, fr_dlist_head_t *completed, void
 	fr_assert(fr_dlist_num_elements(completed) == stats->enqueued);
 }
 
-static void _command_failed(REQUEST *request, fr_dlist_head_t *completed, void *rctx)
+static void _command_failed(request_t *request, fr_dlist_head_t *completed, void *rctx)
 {
 	TEST_CHECK(0);
 }

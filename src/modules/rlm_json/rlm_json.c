@@ -102,7 +102,7 @@ typedef struct {
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request,
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
 				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -148,7 +148,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST 
  */
 static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			    	   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, char const *fmt)
+				   request_t *request, char const *fmt)
 {
 	fr_jpath_node_t *head;
 	ssize_t slen, ret;
@@ -183,7 +183,7 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request,
+static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
 				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
@@ -395,7 +395,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
+static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
 				    vp_map_t const *map, void *uctx)
 {
 	fr_pair_t			*vp;
@@ -440,10 +440,10 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *r
  * @param maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST *request,
+static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
 			      	fr_value_box_t **json, vp_map_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;

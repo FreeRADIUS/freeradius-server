@@ -32,7 +32,7 @@ RCSID("$Id$")
 /** When the chld is done, tell the parent that we've exited.
  *
  */
-static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
+static unlang_action_t unlang_parallel_child_done(request_t *request, UNUSED rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
 {
 	unlang_parallel_child_t *child = uctx;
 
@@ -65,7 +65,7 @@ static unlang_action_t unlang_parallel_child_done(REQUEST *request, UNUSED rlm_r
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -74,7 +74,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 	int			i, priority;
 	rlm_rcode_t		result;
 	unlang_parallel_child_state_t child_state = CHILD_DONE; /* hope that we're done */
-	REQUEST			*child;
+	request_t			*child;
 
 	/*
 	 *	If the children should be created detached, we return
@@ -354,7 +354,7 @@ static unlang_action_t unlang_parallel_process(REQUEST *request, rlm_rcode_t *pr
 /** Send a signal from parent request to all of it's children
  *
  */
-static void unlang_parallel_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_parallel_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -380,7 +380,7 @@ static void unlang_parallel_signal(REQUEST *request, fr_state_signal_t action)
 	}
 }
 
-static unlang_action_t unlang_parallel(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

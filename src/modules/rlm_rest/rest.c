@@ -358,7 +358,7 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	request_t			*request = ctx->request; /* Used by RDEBUG */
 	fr_pair_t		*vp;
 
 	char			*p = out;	/* Position in buffer */
@@ -535,7 +535,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST			*request = ctx->request;
+	request_t			*request = ctx->request;
 	rest_custom_data_t	*data = ctx->encoder;
 
 	size_t			freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
@@ -632,7 +632,7 @@ static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *
  * @param[in] ctx	to initialise.
  */
 static void rest_request_init(rlm_rest_section_t const *section,
-			      REQUEST *request, rlm_rest_request_t *ctx)
+			      request_t *request, rlm_rest_request_t *ctx)
 {
 	/*
 	 * 	Setup stream read data
@@ -655,7 +655,7 @@ static void rest_request_init(rlm_rest_section_t const *section,
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			     REQUEST *request, UNUSED fr_curl_io_request_t *randle, char *raw, size_t rawlen)
+			     request_t *request, UNUSED fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
 	fr_pair_t		*vp;
 
@@ -699,7 +699,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-			    REQUEST *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
+			    request_t *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
 	CURL			*candle = randle->candle;
 
@@ -716,7 +716,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
 		tmpl_t		*dst;
-		REQUEST			*current;
+		request_t			*current;
 		fr_pair_t		**vps;
 		TALLOC_CTX		*ctx;
 		fr_dict_attr_t const	*da;
@@ -850,7 +850,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- NULL on error.
  */
 static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-				        TALLOC_CTX *ctx, REQUEST *request,
+				        TALLOC_CTX *ctx, request_t *request,
 				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
 	char const		*value;
@@ -986,7 +986,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
  *	- < 0 on error.
  */
 static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			   REQUEST *request, json_object *object, UNUSED int level, int max)
+			   request_t *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
 	tmpl_t *dst = NULL;
@@ -1017,7 +1017,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			.is_json = 0
 		};
 
-		REQUEST		*current = request;
+		request_t		*current = request;
 		fr_pair_t	**vps, *vp = NULL;
 
 		TALLOC_FREE(dst);
@@ -1191,7 +1191,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			    REQUEST *request, UNUSED fr_curl_io_request_t *randle, char *raw, UNUSED size_t rawlen)
+			    request_t *request, UNUSED fr_curl_io_request_t *randle, char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
 
@@ -1241,7 +1241,7 @@ static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const
 static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
 	char			*q;
@@ -1453,7 +1453,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
 	char			*q;
@@ -1530,7 +1530,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
  * @param request	The Current request.
  * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle)
+void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1555,7 +1555,7 @@ void rest_response_error(REQUEST *request, fr_curl_io_request_t *handle)
  * @param request	The Current request.
  * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle)
+void rest_response_debug(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1590,7 +1590,7 @@ void rest_response_debug(REQUEST *request, fr_curl_io_request_t *handle)
  * 			overwritten by rest_response_header.
  */
 static void rest_response_init(rlm_rest_section_t const *section,
-			       REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
+			       request_t *request, rlm_rest_response_t *ctx, http_body_type_t type)
 {
 	ctx->section = section;
 	ctx->request = request;
@@ -1636,7 +1636,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
  *	- -1 on failure.
  */
 static int rest_request_config_body(rlm_rest_t const *inst, rlm_rest_section_t const *section,
-				    REQUEST *request, fr_curl_io_request_t *randle, rest_read_t func)
+				    request_t *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
 	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
@@ -1690,7 +1690,7 @@ error:
  *
  * Current FreeRADIUS custom headers are:
  *  - X-FreeRADIUS-Section	The module section being processed.
- *  - X-FreeRADIUS-Server	The current virtual server the REQUEST is
+ *  - X-FreeRADIUS-Server	The current virtual server the request_t is
  *				passing through.
  *
  * Sets up callbacks for all response processing (buffers and body data).
@@ -1713,7 +1713,7 @@ error:
  *	- -1 on failure.
  */
 int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
-			REQUEST *request, fr_curl_io_request_t *randle, http_method_t method,
+			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
@@ -2055,7 +2055,7 @@ error:
  *	- -1 on failure.
  */
 int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			 REQUEST *request, fr_curl_io_request_t *randle)
+			 request_t *request, fr_curl_io_request_t *randle)
 {
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
@@ -2145,7 +2145,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, fr_curl_io_request_
  * @param[in] arg	pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
-size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
+size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
 {
 	char *escaped;
 
@@ -2170,7 +2170,7 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, request_t *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;
@@ -2242,7 +2242,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, REQUEST *reque
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, request_t *request,
 			       fr_curl_io_request_t *randle, char const *uri)
 {
 	CURL			*candle = randle->candle;

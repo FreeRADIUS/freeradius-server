@@ -104,8 +104,8 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Wrapper around dl_instance which loads submodules based on type = foo pairs
  *
@@ -232,7 +232,7 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 /** Process NAK data from EAP peer
  *
  */
-static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
+static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 				  eap_type_t type,
 				  eap_type_data_t *nak)
 {
@@ -340,7 +340,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, REQUEST *request,
  * @param[in] rctx	the eap_session_t
  * @param[in] action	to perform.
  */
-static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx,
+static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
 				    fr_state_signal_t action)
 {
 	eap_session_t	*eap_session;
@@ -374,7 +374,7 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, REQUEST *re
  *	- RLM_MODULE_HANDLED	if we're done with this round.
  *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED module_ctx_t const *mctx,
+static rlm_rcode_t mod_authenticate_result(request_t *request, UNUSED module_ctx_t const *mctx,
 					   eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_rcode_t	rcode;
@@ -467,7 +467,7 @@ finish:
  * @param[in] rctx	the eap_session_t.
  * @return The result of this round of authentication.
  */
-static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
@@ -492,7 +492,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 {
 	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
-	REQUEST				*request = eap_session->request;
+	request_t				*request = eap_session->request;
 
 	rlm_eap_method_t const		*method;
 
@@ -663,7 +663,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 						 eap_session);
 }
 
-static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_session_t		*eap_session;
@@ -735,7 +735,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initialization.
  */
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	int			status;
@@ -788,7 +788,7 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance->mctx, rlm_eap_t);
 	size_t			i;
@@ -889,7 +889,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	fr_pair_t		*vp;

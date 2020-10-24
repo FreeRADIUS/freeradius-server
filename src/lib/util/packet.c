@@ -32,7 +32,7 @@ RCSID("$Id$")
 /** Allocate a new RADIUS_PACKET
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
+ *	the packet is not associated with a request_t.
  * @param new_vector if true a new request authenticator will be generated.
  * @return
  *	- New RADIUS_PACKET.
@@ -59,7 +59,7 @@ RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 /** Allocate a new RADIUS_PACKET response
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
+ *	the packet is not associated with a request_t.
  * @param packet The request packet.
  * @return
  *	- New RADIUS_PACKET.
@@ -111,7 +111,7 @@ void fr_radius_packet_free(RADIUS_PACKET **packet_p)
 /** Duplicate a RADIUS_PACKET
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
+ *	the packet is not associated with a request_t.
  * @param in The packet to copy
  * @return
  *	- New RADIUS_PACKET.

@@ -47,7 +47,7 @@ RCSID("$Id$")
 /*
  *	Verify that the diameter packet is valid.
  */
-static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int data_len)
+static int diameter_verify(request_t *request, uint8_t const *data, unsigned int data_len)
 {
 	uint32_t attr;
 	uint32_t length;
@@ -312,7 +312,7 @@ do_value:
  *	are ones which can go inside of a RADIUS (i.e. diameter)
  *	packet.  So no server-configuration attributes, or the like.
  */
-static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, fr_pair_t *first)
+static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pair_t *first)
 {
 	/*
 	 *	RADIUS packets are no more than 4k in size, so if
@@ -464,7 +464,7 @@ static int vp2diameter(REQUEST *request, fr_tls_session_t *tls_session, fr_pair_
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  REQUEST *request, RADIUS_PACKET *reply)
+						  request_t *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	fr_pair_t	*vp, *tunnel_vps = NULL;
@@ -584,7 +584,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
@@ -643,7 +643,7 @@ FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, fr_tls_se
 	}
 
 	/*
-	 *	Update other items in the REQUEST data structure.
+	 *	Update other items in the request_t data structure.
 	 */
 
 	/*

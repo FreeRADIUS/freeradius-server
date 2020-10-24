@@ -31,7 +31,7 @@
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -109,7 +109,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

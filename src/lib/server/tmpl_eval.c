@@ -36,16 +36,16 @@ RCSID("$Id$")
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
  * The value returned is a pointer to the pointer of the HEAD of a #fr_pair_t list in the
- * #REQUEST. If the head of the list changes, the pointer will still be valid.
+ * #request_t. If the head of the list changes, the pointer will still be valid.
  *
  * @param[in] request containing the target lists.
  * @param[in] list #pair_list_t value to resolve to #fr_pair_t list. Will be NULL if list
  *	name couldn't be resolved.
- * @return a pointer to the HEAD of a list in the #REQUEST.
+ * @return a pointer to the HEAD of a list in the #request_t.
  *
  * @see tmpl_cursor_init
  */
-fr_pair_t **radius_list(REQUEST *request, pair_list_t list)
+fr_pair_t **radius_list(request_t *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -78,7 +78,7 @@ fr_pair_t **radius_list(REQUEST *request, pair_list_t list)
 /** Resolve a list to the #RADIUS_PACKET holding the HEAD pointer for a #fr_pair_t list
  *
  * Returns a pointer to the #RADIUS_PACKET that holds the HEAD pointer of a given list,
- * for the current #REQUEST.
+ * for the current #request_t.
  *
  * @param[in] request To resolve list in.
  * @param[in] list #pair_list_t value to resolve to #RADIUS_PACKET.
@@ -88,7 +88,7 @@ fr_pair_t **radius_list(REQUEST *request, pair_list_t list)
  *
  * @see radius_list
  */
-RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
+RADIUS_PACKET *radius_packet(request_t *request, pair_list_t list)
 {
 	switch (list) {
 	/* Don't add default */
@@ -109,9 +109,9 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
 
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
- * Allocating new #fr_pair_t in the context of a #REQUEST is usually wrong.
+ * Allocating new #fr_pair_t in the context of a #request_t is usually wrong.
  * #fr_pair_t should be allocated in the context of a #RADIUS_PACKET, so that if the
- * #RADIUS_PACKET is freed before the #REQUEST, the associated #fr_pair_t lists are
+ * #RADIUS_PACKET is freed before the #request_t, the associated #fr_pair_t lists are
  * freed too.
  *
  * @param[in] request containing the target lists.
@@ -122,7 +122,7 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
  *
  * @see radius_list
  */
-TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_list_t list)
+TALLOC_CTX *radius_list_ctx(request_t *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -147,23 +147,23 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a #request_ref_t to a #REQUEST.
+/** Resolve a #request_ref_t to a #request_t.
  *
- * Sometimes #REQUEST structs may be chained to each other, as is the case
+ * Sometimes #request_t structs may be chained to each other, as is the case
  * when internally proxying EAP. This function resolves a #request_ref_t
- * to a #REQUEST higher in the chain than the current #REQUEST.
+ * to a #request_t higher in the chain than the current #request_t.
  *
  * @see radius_list
- * @param[in,out] context #REQUEST to start resolving from, and where to write
- *	a pointer to the resolved #REQUEST back to.
+ * @param[in,out] context #request_t to start resolving from, and where to write
+ *	a pointer to the resolved #request_t back to.
  * @param[in] name (request) to resolve.
  * @return
  *	- 0 if request is valid in this context.
  *	- -1 if request is not valid in this context.
  */
-int radius_request(REQUEST **context, request_ref_t name)
+int radius_request(request_t **context, request_ref_t name)
 {
-	REQUEST *request = *context;
+	request_t *request = *context;
 
 	switch (name) {
 	case REQUEST_CURRENT:
@@ -279,7 +279,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  */
 ssize_t _tmpl_to_type(void *out,
 		      uint8_t *buff, size_t bufflen,
-		      REQUEST *request,
+		      request_t *request,
 		      tmpl_t const *vpt,
 		      xlat_escape_legacy_t escape, void const *escape_ctx,
 		      fr_type_t dst_type)
@@ -557,7 +557,7 @@ ssize_t _tmpl_to_type(void *out,
  *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
-		       REQUEST *request,
+		       request_t *request,
 		       tmpl_t const *vpt,
 		       xlat_escape_legacy_t escape, void const *escape_ctx,
 		       fr_type_t dst_type)
@@ -1173,14 +1173,14 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
  *				Will be set to:
  *				- 0 on success.
  *				- -1 if no matching #fr_pair_t could be found.
- *				- -2 if list could not be found (doesn't exist in current #REQUEST).
- *				- -3 if context could not be found (no parent #REQUEST available).
+ *				- -2 if list could not be found (doesn't exist in current #request_t).
+ *				- -3 if context could not be found (no parent #request_t available).
  * @param[in] ctx		to make temporary allocations under.
  * @param[in] cc		to initialise.  Tracks evaluation state.
  *				Must be explicitly cleared with tmpl_cursor_state_clear
  *				otherwise we will leak memory.
  * @param[in] cursor		to store iterator position.
- * @param[in] request		The current #REQUEST.
+ * @param[in] request		The current #request_t.
  * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
  * @return
  *	- First #fr_pair_t specified by the #tmpl_t.
@@ -1189,7 +1189,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
  * @see tmpl_cursor_next
  */
 fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
-			     fr_cursor_t *cursor, REQUEST *request, tmpl_t const *vpt)
+			     fr_cursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL, **list_head;
 	tmpl_request_t		*rr = NULL;
@@ -1289,22 +1289,22 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 	fr_dlist_talloc_free(&cc->nested);
 }
 
-/** Copy pairs matching a #tmpl_t in the current #REQUEST
+/** Copy pairs matching a #tmpl_t in the current #request_t
  *
  * @param ctx to allocate new #fr_pair_t in.
  * @param out Where to write the copied #fr_pair_t (s).
- * @param request The current #REQUEST.
+ * @param request The current #request_t.
  * @param vpt specifying the #fr_pair_t type or list to copy.
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
  *	- -1 if no matching #fr_pair_t could be found.
- *	- -2 if list could not be found (doesn't exist in current #REQUEST).
- *	- -3 if context could not be found (no parent #REQUEST available).
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		from, to;
@@ -1340,7 +1340,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, tmpl_t con
 /** Returns the first VP matching a #tmpl_t
  *
  * @param[out] out where to write the retrieved vp.
- * @param[in] request The current #REQUEST.
+ * @param[in] request The current #request_t.
  * @param[in] vpt specifying the #fr_pair_t type to find.
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
@@ -1348,10 +1348,10 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, tmpl_t con
  * @return
  *	- 0 on success (found matching #fr_pair_t).
  *	- -1 if no matching #fr_pair_t could be found.
- *	- -2 if list could not be found (doesn't exist in current #REQUEST).
- *	- -3 if context could not be found (no parent #REQUEST available).
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
  */
-int tmpl_find_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
@@ -1371,16 +1371,16 @@ int tmpl_find_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
 /** Returns the first VP matching a #tmpl_t, or if no VPs match, creates a new one.
  *
  * @param[out] out where to write the retrieved or created vp.
- * @param[in] request The current #REQUEST.
+ * @param[in] request The current #request_t.
  * @param[in] vpt specifying the #fr_pair_t type to retrieve or create.  Must be #TMPL_TYPE_ATTR.
  * @return
  *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
  *	- -1 if a new #fr_pair_t couldn't be found or created.
- *	- -2 if list could not be found (doesn't exist in current #REQUEST).
- *	- -3 if context could not be found (no parent #REQUEST available).
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
  */
-int tmpl_find_or_add_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
+int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
@@ -1435,19 +1435,19 @@ int tmpl_find_or_add_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt)
  *				attribute references.
  * @param[out] interior 	List of extents that need building out, i.e. references
  *				extend beyond pairs.
- * @param[in] request		The current #REQUEST.
+ * @param[in] request		The current #request_t.
  * @param[in] vpt		specifying the #fr_pair_t type to retrieve or create.
  *				Must be #TMPL_TYPE_ATTR.
  * @return
  *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
  *	- -1 if a new #fr_pair_t couldn't be found or created.
- *	- -2 if list could not be found (doesn't exist in current #REQUEST).
- *	- -3 if context could not be found (no parent #REQUEST available).
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
  */
 int tmpl_extents_find(TALLOC_CTX *ctx,
 		      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
-		      REQUEST *request, tmpl_t const *vpt)
+		      request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*curr = NULL, **list_head;
 	fr_pair_t		*prev = NULL;	/* not used */

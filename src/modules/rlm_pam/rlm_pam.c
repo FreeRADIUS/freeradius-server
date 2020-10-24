@@ -52,7 +52,7 @@ typedef struct {
 } rlm_pam_t;
 
 typedef struct {
-	REQUEST		*request;	//!< The current request.
+	request_t		*request;	//!< The current request.
 	char const	*username;	//!< Username to provide to PAM when prompted.
 	char const	*password;	//!< Password to provide to PAM when prompted.
 	bool		error;		//!< True if pam_conv failed.
@@ -103,7 +103,7 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
 {
 	int		count;
 	struct		pam_response *reply;
-	REQUEST		*request;
+	request_t		*request;
 	rlm_pam_data_t	*pam_config = (rlm_pam_data_t *) appdata_ptr;
 
 	request = pam_config->request;
@@ -162,7 +162,7 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int do_pam(REQUEST *request, char const *username, char const *passwd, char const *pamauth)
+static int do_pam(request_t *request, char const *username, char const *passwd, char const *pamauth)
 {
 	pam_handle_t *handle = NULL;
 	int ret;
@@ -211,7 +211,7 @@ static int do_pam(REQUEST *request, char const *username, char const *passwd, ch
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->instance, rlm_pam_t);
 	int			ret;

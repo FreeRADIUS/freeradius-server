@@ -109,7 +109,7 @@ typedef struct {
 
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
-	REQUEST			*thawed;			//!< The request that thawed this entry.
+	request_t			*thawed;			//!< The request that thawed this entry.
 } fr_state_entry_t;
 
 struct fr_state_tree_s {
@@ -288,7 +288,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
  *
  * @note Called with the mutex held.
  */
-static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *request,
+static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
 					    RADIUS_PACKET *packet, fr_state_entry_t *old)
 {
 	size_t			i;
@@ -512,7 +512,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 /** Find the entry, based on the State attribute
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *request, fr_value_box_t const *vb)
+static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, request_t *request, fr_value_box_t const *vb)
 {
 	fr_state_entry_t *entry, my_entry;
 
@@ -553,7 +553,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 /** Called when sending an Access-Accept/Access-Reject to discard state information
  *
  */
-void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
+void fr_state_discard(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
 	fr_pair_t		*vp;
@@ -603,7 +603,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
  *
  * @note Called with the mutex free.
  */
-void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
+void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
 	TALLOC_CTX		*old_ctx = NULL;
@@ -669,7 +669,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
  *
  * Also creates a new state entry.
  */
-int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
+int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry, *old = NULL;
 	fr_dlist_head_t		data;
@@ -725,7 +725,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int)
+void fr_state_store_in_parent(request_t *request, void const *unique_ptr, int unique_int)
 {
 	if (!fr_cond_assert_msg(request->parent,
 				"Child request must have request->parent set when storing state")) return;
@@ -768,7 +768,7 @@ void fr_state_store_in_parent(REQUEST *request, void const *unique_ptr, int uniq
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int)
+void fr_state_restore_to_child(request_t *request, void const *unique_ptr, int unique_int)
 {
 	if (!fr_cond_assert_msg(request->parent,
 				"Child request must have request->parent set when restoring state")) return;
@@ -801,7 +801,7 @@ void fr_state_restore_to_child(REQUEST *request, void const *unique_ptr, int uni
  *				touch persistable request data,
  *				request->state_ctx or request->state.
  */
-void fr_state_detach(REQUEST *request, bool will_free)
+void fr_state_detach(request_t *request, bool will_free)
 {
 	fr_pair_t	*vps = NULL;
 	TALLOC_CTX	*new_state_ctx;

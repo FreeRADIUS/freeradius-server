@@ -267,15 +267,15 @@ inline static unsigned int record_to_buff(fr_tls_record_t *record, void *out, un
  * @param[in] request	to bind to the SSL *.
  * @param[in] ssl	session to be bound.
  */
-inline static CC_HINT(nonnull) void fr_tls_session_request_bind(REQUEST *request, SSL *ssl)
+inline static CC_HINT(nonnull) void fr_tls_session_request_bind(request_t *request, SSL *ssl)
 {
 	int ret;
 
 #ifndef NDEBUG
-	REQUEST *old;
+	request_t *old;
 	old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (old) {
-		(void)talloc_get_type_abort(ssl, REQUEST);
+		(void)talloc_get_type_abort(ssl, request_t);
 		fr_assert(0);
 	}
 #endif
@@ -297,7 +297,7 @@ inline static CC_HINT(nonnull) void fr_tls_session_request_unbind(SSL *ssl)
 	int ret;
 
 #ifndef NDEBUG
-	(void)talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	(void)talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 #endif
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
 	if (unlikely(ret == 0)) {
@@ -412,12 +412,12 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 {
 	size_t		psk_len = 0;
 	fr_tls_conf_t	*conf;
-	REQUEST		*request;
+	request_t		*request;
 
 	conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
 
-	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request = (request_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (request && conf->psk_query) {
 		size_t hex_len;
 		fr_pair_t *vp;
@@ -470,7 +470,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	}
 
 	/*
-	 *	No REQUEST, or no dynamic query.  Just look for a
+	 *	No request_t, or no dynamic query.  Just look for a
 	 *	static identity.
 	 */
 	if (strcmp(identity, conf->psk_identity) != 0) {
@@ -501,7 +501,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 {
 	char const	*role, *state;
-	REQUEST		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		role = "Client ";
@@ -604,10 +604,10 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 /** Print a message to the request or global log detailing handshake state
  *
- * @param[in] request	The current #REQUEST.
+ * @param[in] request	The current #request_t.
  * @param[in] tls_session	The current TLS session.
  */
-static void session_msg_log(REQUEST *request, fr_tls_session_t *tls_session, uint8_t const *data, size_t data_len)
+static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, uint8_t const *data, size_t data_len)
 {
 	char const	*version, *content_type;
 	char const	*str_details1 = NULL;
@@ -744,7 +744,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 {
 	uint8_t const	*buf = inbuf;
 	fr_tls_session_t	*session = talloc_get_type_abort(arg, fr_tls_session_t);
-	REQUEST		*request = SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*request = SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	/*
 	 *	Mostly to check for memory corruption...
@@ -838,7 +838,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
-static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
+static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t *request, fr_cursor_t *cursor,
 					    	    int attr, int attr_index, char const *value)
 {
 	fr_pair_t *vp;
@@ -890,7 +890,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	fr_pair_t	*vp = NULL;
 
-	REQUEST		*request;
+	request_t		*request;
 
 #define CERT_ATTR_ADD(_attr, _attr_index, _value) fr_tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
 
@@ -899,7 +899,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	attr_index = depth;
 	if (attr_index > 1) attr_index = 1;
 
-	request = (REQUEST *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
+	request = (request_t *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
 	fr_assert(request != NULL);
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
@@ -1114,14 +1114,14 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
  *
  * Feed data from dirty_in to OpenSSL, and read the clean data into clean_out.
  *
- * @param[in] request	The current #REQUEST.
+ * @param[in] request	The current #request_t.
  * @param[in] session	The current TLS session.
  * @return
  *	- -1 on error.
  *	- 1 if more fragments are required to fully reassemble the record for decryption.
  *	- 0 if we decrypted a complete record.
  */
-int fr_tls_session_recv(REQUEST *request, fr_tls_session_t *session)
+int fr_tls_session_recv(request_t *request, fr_tls_session_t *session)
 {
 	int ret;
 
@@ -1219,7 +1219,7 @@ finish:
  *	- -1 on failure.
  *	- 0 on success.
  */
-int fr_tls_session_send(REQUEST *request, fr_tls_session_t *session)
+int fr_tls_session_send(request_t *request, fr_tls_session_t *session)
 {
 	int ret = 0;
 
@@ -1271,7 +1271,7 @@ finish:
 /** Instruct fr_tls_session_handshake to create a synthesised TLS alert record and send it to the peer
  *
  */
-int fr_tls_session_alert(UNUSED REQUEST *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
+int fr_tls_session_alert(UNUSED request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
 {
 	if (session->alerts_sent > 3) return -1;		/* Some kind of sate machine brokenness */
 
@@ -1287,7 +1287,7 @@ int fr_tls_session_alert(UNUSED REQUEST *request, fr_tls_session_t *session, uin
 	return 0;
 }
 
-static void fr_tls_session_alert_send(REQUEST *request, fr_tls_session_t *session)
+static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *session)
 {
 	/*
 	 *	Update our internal view of the session
@@ -1326,7 +1326,7 @@ static void fr_tls_session_alert_send(REQUEST *request, fr_tls_session_t *sessio
  *	- -1 on error.
  *	- 0 on success.
  */
-int fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *session)
+int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 {
 	int ret;
 
@@ -1591,7 +1591,7 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
 	int		ret;
 	int		verify_mode;
 	fr_tls_session_t	*session = NULL;
-	REQUEST		*request;
+	request_t		*request;
 
 	session = talloc_zero(ctx, fr_tls_session_t);
 	if (!session) return NULL;
@@ -1653,13 +1653,13 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
  * @param ctx		to alloc session data in. Should usually be NULL unless the lifetime of the
  *			session is tied to another talloc'd object.
  * @param conf		values for this TLS session.
- * @param request	The current #REQUEST.
+ * @param request	The current #request_t.
  * @param client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert)
+fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, request_t *request, bool client_cert)
 {
 	fr_tls_session_t	*session = NULL;
 	SSL		*new_tls = NULL;

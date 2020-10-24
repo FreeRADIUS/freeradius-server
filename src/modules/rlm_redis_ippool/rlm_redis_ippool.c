@@ -364,7 +364,7 @@ static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  *	- 0 if enough slaves replicated the data.
  *	- -1 if too few slaves replicated the data, or another error.
  */
-static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisReply *reply)
+static inline int ippool_wait_check(request_t *request, uint32_t wait_num, redisReply *reply)
 {
 	if (!wait_num) return 0;
 
@@ -381,7 +381,7 @@ static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisRe
 	return 0;
 }
 
-static void ippool_action_print(REQUEST *request, ippool_action_t action,
+static void ippool_action_print(request_t *request, ippool_action_t action,
 				fr_log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
 				char const *ip_str,
@@ -457,7 +457,7 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
  * @param[in] ...		Arguments for the eval command.
  * @return status of the command.
  */
-static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
+static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_redis_cluster_t *cluster,
 				      uint8_t const *key, size_t key_len,
 				      uint32_t wait_num, fr_time_delta_t wait_timeout,
 				      char const digest[], char const *script,
@@ -594,7 +594,7 @@ finish:
 /** Allocate a new IP address from a pool
  *
  */
-static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, request_t *request,
 					    uint8_t const *key_prefix, size_t key_prefix_len,
 					    uint8_t const *device_id, size_t device_id_len,
 					    uint8_t const *gateway_id, size_t gateway_id_len,
@@ -785,7 +785,7 @@ finish:
 /** Update an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, request_t *request,
 					  uint8_t const *key_prefix, size_t key_prefix_len,
 					  fr_ipaddr_t *ip,
 					  uint8_t const *device_id, size_t device_id_len,
@@ -927,7 +927,7 @@ finish:
 /** Release an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, request_t *request,
 					   uint8_t const *key_prefix, size_t key_prefix_len,
 					   fr_ipaddr_t *ip,
 					   uint8_t const *device_id, size_t device_id_len)
@@ -1020,7 +1020,7 @@ finish:
  *	- > 0 on success (length of data written to out).
  */
 static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size_t bufflen,
-				       rlm_redis_ippool_t const *inst, REQUEST *request)
+				       rlm_redis_ippool_t const *inst, request_t *request)
 {
 	ssize_t slen;
 
@@ -1046,7 +1046,7 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 	return slen;
 }
 
-static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, ippool_action_t action)
+static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request, ippool_action_t action)
 {
 	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
 	uint8_t const	*key_prefix, *device_id = NULL, *gateway_id = NULL;
@@ -1246,7 +1246,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1283,7 +1283,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1296,7 +1296,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1327,7 +1327,7 @@ run:
 	return mod_action(inst, request, action);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;

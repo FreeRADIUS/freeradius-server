@@ -384,7 +384,7 @@ static const char *bfd_state[] = {
 };
 
 
-static void bfd_request(bfd_state_t *session, REQUEST *request, RADIUS_PACKET *packet)
+static void bfd_request(bfd_state_t *session, request_t *request, RADIUS_PACKET *packet)
 {
 	memset(request, 0, sizeof(*request));
 	memset(packet, 0, sizeof(*packet));
@@ -399,7 +399,7 @@ static void bfd_request(bfd_state_t *session, REQUEST *request, RADIUS_PACKET *p
 static void bfd_trigger(bfd_state_t *session)
 {
 	RADIUS_PACKET packet;
-	REQUEST request;
+	request_t request;
 	char buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
@@ -1325,7 +1325,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	 */
 	if ((session->detect_multi >= 2) && (session->last_recv > session->next_recv)) {
 		RADIUS_PACKET packet;
-		REQUEST request;
+		request_t request;
 
 		bfd_request(session, &request, &packet);
 
@@ -1340,7 +1340,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	}
 
 	if (session->server_cs) {
-		REQUEST *request;
+		request_t *request;
 		RADIUS_PACKET *packet, *reply;
 
 		request = request_alloc(session);
@@ -1601,21 +1601,21 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 /*
  *	None of these functions are used.
  */
-static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
 	fr_assert(0 == 1);
 	return 0;
 }
 
 
-static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
 	fr_assert(0 == 1);
 	return 0;
 }
 
 
-static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
 	fr_assert(0 == 1);
 	return 0;

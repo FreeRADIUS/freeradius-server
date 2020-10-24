@@ -39,10 +39,10 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Only used by rlm_mschap.c
  */
-rlm_rcode_t od_mschap_auth(REQUEST *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
+rlm_rcode_t od_mschap_auth(request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
 
 
-static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
+static rlm_rcode_t getUserNodeRef(request_t *request, char* inUserName, char **outUserName,
 				  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
 	tDataBuffer	     	*tDataBuff	= NULL;
@@ -221,7 +221,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	return  result;
 }
 
-rlm_rcode_t od_mschap_auth(REQUEST *request, fr_pair_t *challenge, fr_pair_t * usernamepair)
+rlm_rcode_t od_mschap_auth(request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair)
 {
 	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
 	tDirStatus		status		 = eDSNoErr;

@@ -39,7 +39,7 @@ static int aka_sim_xlat_refs = 0;
  */
 static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					   REQUEST *request, char const *fmt)
+					   request_t *request, char const *fmt)
 {
 	tmpl_t				*vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
@@ -115,7 +115,7 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
  */
 static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				REQUEST *request, char const *fmt)
+				request_t *request, char const *fmt)
 {
 	tmpl_t			*vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
@@ -191,7 +191,7 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
  */
 static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 						 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-						 REQUEST *request, char const *fmt)
+						 request_t *request, char const *fmt)
 {
 	tmpl_t	*vpt;
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
@@ -244,7 +244,7 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
  */
 static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					       REQUEST *request, char const *fmt)
+					       request_t *request, char const *fmt)
 {
 	tmpl_t	*id_vpt, *key_vpt;
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
@@ -359,7 +359,7 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
  */
 static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					       REQUEST *request, char const *fmt)
+					       request_t *request, char const *fmt)
 {
 	tmpl_t			*id_vpt, *key_vpt;
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");

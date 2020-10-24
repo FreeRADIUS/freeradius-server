@@ -256,7 +256,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *	%S	sqlmod_inst
  *
  */
-static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED REQUEST *request, char const *fmt)
+static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED request_t *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
@@ -340,7 +340,7 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, REQUEST *request, UNUSED fr_pair_t *req , fr_pair_t *check,
+static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req , fr_pair_t *check,
 		       UNUSED fr_pair_t *check_list)
 {
 	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
@@ -386,7 +386,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED fr_pair_t *req ,
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;

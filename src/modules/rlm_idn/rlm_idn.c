@@ -97,7 +97,7 @@ static const CONF_PARSER mod_config[] = {
  */
 static ssize_t xlat_idna(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	rlm_idn_t const *inst = mod_inst;
 	char *idna = NULL;

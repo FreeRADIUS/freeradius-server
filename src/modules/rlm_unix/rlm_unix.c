@@ -99,7 +99,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 /*
  *	The Unix-Group = handler.
  */
-static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED fr_pair_t *req_vp,
+static int groupcmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_t *req_vp,
 		    fr_pair_t *check, UNUSED fr_pair_t *check_list)
 {
 	struct passwd	*pwd;
@@ -183,7 +183,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	char const	*name;
 	char const	*encrypted_pass;
@@ -335,7 +335,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
 	fr_pair_t		*vp;

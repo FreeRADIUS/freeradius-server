@@ -104,7 +104,7 @@ fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t nasaddr, time_t t)
+static rlm_rcode_t radutmp_zap(request_t *request, char const *filename, uint32_t nasaddr, time_t t)
 {
 	struct radutmp	u;
 	int		fd;
@@ -175,7 +175,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->instance, rlm_radutmp_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;

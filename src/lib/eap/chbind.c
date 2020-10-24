@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include "chbind.h"
 #include "attrs.h"
 
-static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
+static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 {
 	ssize_t			slen;
 	size_t			total;
@@ -165,11 +165,11 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 }
 
 
-FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
+FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
 	FR_CODE		code;
 	rlm_rcode_t	rcode;
-	REQUEST		*fake = NULL;
+	request_t		*fake = NULL;
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
 	fr_pair_t	*vp;

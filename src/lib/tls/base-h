@@ -389,13 +389,13 @@ do { \
 /*
  *	tls/cache.c
  */
-int		fr_tls_cache_process(REQUEST *request, CONF_SECTION *action);
+int		fr_tls_cache_process(request_t *request, CONF_SECTION *action);
 
 int		fr_tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
 void		fr_tls_cache_deny(fr_tls_session_t *tls_session);
 
-int		fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session);
+int		fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session);
 
 int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
@@ -432,21 +432,21 @@ int		fr_tls_dict_init(void);
 /*
  *	tls/log.c
  */
-int		fr_tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+int		fr_tls_log_error(request_t *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
 
-int		fr_tls_log_io_error(REQUEST *request, fr_tls_session_t *session, int ret, char const *msg, ...)
+int		fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
 				    CC_HINT(format (printf, 4, 5));
 
 #define		fr_tls_log_certificate_chain(_request, _chain, _cert) \
 		_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
 void		_fr_tls_log_certificate_chain(char const *file, int line,
-					      REQUEST *request, STACK_OF(X509) *chain, X509 *cert);
+					      request_t *request, STACK_OF(X509) *chain, X509 *cert);
 /*
  *	tls/ocsp.c
  */
 int		fr_tls_ocsp_staple_cb(SSL *ssl, void *data);
 
-int		fr_tls_ocsp_check(REQUEST *request, SSL *ssl,
+int		fr_tls_ocsp_check(request_t *request, SSL *ssl,
 			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 			       fr_tls_ocsp_conf_t *conf, bool staple_response);
 
@@ -474,17 +474,17 @@ void 		fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 int		fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 				     		    fr_tls_session_t *session, X509 *cert, int depth);
 
-int		fr_tls_session_recv(REQUEST *request, fr_tls_session_t *tls_session);
+int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 
-int 		fr_tls_session_send(REQUEST *request, fr_tls_session_t *tls_session);
+int 		fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session);
 
-int 		fr_tls_session_handshake(REQUEST *request, fr_tls_session_t *tls_session);
+int 		fr_tls_session_handshake(request_t *request, fr_tls_session_t *tls_session);
 
-int 		fr_tls_session_alert(REQUEST *request, fr_tls_session_t *tls_session, uint8_t level, uint8_t description);
+int 		fr_tls_session_alert(request_t *request, fr_tls_session_t *tls_session, uint8_t level, uint8_t description);
 
 fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 
-fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
+fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, request_t *request, bool client_cert);
 
 /*
  *	tls/validate.c
@@ -498,7 +498,7 @@ int		fr_tls_validate_client_cert_chain(SSL *ssl);
  */
 char const	*fr_tls_utils_x509_pkey_type(X509 *cert);
 
-int		fr_tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl);
+int		fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl);
 
 int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
 #ifdef __cplusplus

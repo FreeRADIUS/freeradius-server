@@ -78,7 +78,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED fr_pair_t *request, fr_pair_t *check,
+static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_t *request, fr_pair_t *check,
 		   UNUSED fr_pair_t *check_list)
 {
 	/*
@@ -93,7 +93,7 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED fr_pair_t *reques
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(UNUSED void *instance, REQUEST *request,
+static int time_of_day(UNUSED void *instance, request_t *request,
 		       UNUSED fr_pair_t *request_list, fr_pair_t *check,
 		       UNUSED fr_pair_t *check_list)
 {
@@ -151,7 +151,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
 	fr_pair_t		*ends, *vp;

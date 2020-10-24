@@ -39,7 +39,7 @@ extern "C" {
  * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_op_interpret_t)(REQUEST *request, rlm_rcode_t *presult);
+typedef unlang_action_t (*unlang_op_interpret_t)(request_t *request, rlm_rcode_t *presult);
 
 /** Function to call if the initial function yielded and the request was signalled
  *
@@ -50,7 +50,7 @@ typedef unlang_action_t (*unlang_op_interpret_t)(REQUEST *request, rlm_rcode_t *
  * @param[in] request		The current request.
  * @param[in] action		We're being signalled with.
  */
-typedef void (*unlang_op_signal_t)(REQUEST *request, fr_state_signal_t action);
+typedef void (*unlang_op_signal_t)(request_t *request, fr_state_signal_t action);
 
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *
@@ -60,7 +60,7 @@ typedef void (*unlang_op_signal_t)(REQUEST *request, fr_state_signal_t action);
  *				All input (args) and output will be done using this structure.
  * @return an #unlang_action_t.
  */
-typedef unlang_action_t (*unlang_function_t)(REQUEST *request, rlm_rcode_t *presult, int *priority, void *uctx);
+typedef unlang_action_t (*unlang_function_t)(request_t *request, rlm_rcode_t *presult, int *priority, void *uctx);
 
 /** An unlang operation
  *
@@ -89,37 +89,37 @@ typedef struct {
 /** Return whether a request is currently scheduled
  *
  */
-static inline bool unlang_request_is_scheduled(REQUEST const *request)
+static inline bool unlang_request_is_scheduled(request_t const *request)
 {
 	return (request->runnable_id >= 0);
 }
 
-void		unlang_interpret_push_function(REQUEST *request,
+void		unlang_interpret_push_function(request_t *request,
 					       unlang_function_t func, unlang_function_t repeat, void *uctx);
 
-void		unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs,
+void		unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
 					      rlm_rcode_t default_action, bool top_frame);
 
-void		unlang_interpret_push_instruction(REQUEST *request, void *instruction,
+void		unlang_interpret_push_instruction(request_t *request, void *instruction,
 						  rlm_rcode_t default_rcode, bool top_frame);
 
-rlm_rcode_t	unlang_interpret(REQUEST *request);
+rlm_rcode_t	unlang_interpret(request_t *request);
 
-rlm_rcode_t	unlang_interpret_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+rlm_rcode_t	unlang_interpret_section(request_t *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 
-rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el);
+rlm_rcode_t	unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el);
 
 void		*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 
-void		unlang_interpret_resumable(REQUEST *request);
+void		unlang_interpret_resumable(request_t *request);
 
-void		unlang_interpret_signal(REQUEST *request, fr_state_signal_t action);
+void		unlang_interpret_signal(request_t *request, fr_state_signal_t action);
 
-int		unlang_interpret_stack_depth(REQUEST *request);
+int		unlang_interpret_stack_depth(request_t *request);
 
-rlm_rcode_t	unlang_interpret_stack_result(REQUEST *request);
+rlm_rcode_t	unlang_interpret_stack_result(request_t *request);
 
-TALLOC_CTX	*unlang_interpret_frame_talloc_ctx(REQUEST *request);
+TALLOC_CTX	*unlang_interpret_frame_talloc_ctx(request_t *request);
 
 void		unlang_interpret_init(void);
 #ifdef __cplusplus

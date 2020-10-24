@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[] = {
 	{ NULL }
 };
 
-static int send_pwd_request(REQUEST *request, pwd_session_t *session, eap_round_t *eap_round)
+static int send_pwd_request(request_t *request, pwd_session_t *session, eap_round_t *eap_round)
 {
 	size_t		len;
 	uint16_t	totlen;
@@ -154,7 +154,7 @@ static int send_pwd_request(REQUEST *request, pwd_session_t *session, eap_round_
 	return 0;
 }
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_pwd_t);
 	eap_session_t	*eap_session = eap_session_get(request->parent);
@@ -486,7 +486,7 @@ static int _free_pwd_session(pwd_session_t *session)
 	return 0;
 }
 
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_pwd_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_pwd_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);

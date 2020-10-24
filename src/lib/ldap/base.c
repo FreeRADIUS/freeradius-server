@@ -99,7 +99,7 @@ size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
  * There are so many different timers in LDAP it's often hard to debug
  * issues with them, hence the need for this function.
  */
-void fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
+void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 			   fr_time_delta_t timeout, char const *prefix)
 {
 	struct timeval 			*net = NULL, *client = NULL;
@@ -464,7 +464,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  *				Only used for SASL binds. May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
+fr_ldap_rcode_t fr_ldap_bind(request_t *request,
 			     fr_ldap_connection_t **pconn,
 			     char const *dn, char const *password,
 #ifdef WITH_SASL
@@ -563,7 +563,7 @@ fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
  * @param[in] clientctrls	Search controls for ldap_search.  May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
+fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, request_t *request,
 			       fr_ldap_connection_t **pconn,
 			       char const *dn, int scope, char const *filter, char const * const *attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -695,7 +695,7 @@ finish:
  * @param[in] clientctrls	Search controls for ldap_search.  May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
+fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 				     fr_ldap_connection_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -779,7 +779,7 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
  * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls)
 {

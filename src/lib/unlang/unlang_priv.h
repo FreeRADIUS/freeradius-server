@@ -295,7 +295,7 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
  *
  * @{
  */
-void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
+void		unlang_interpret_push(request_t *request, unlang_t *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);
 
 int		unlang_op_init(void);
@@ -310,9 +310,9 @@ void		unlang_op_free(void);
  *
  * @{
  */
-rlm_rcode_t	unlang_io_process_interpret(module_ctx_t const *mctx, REQUEST *request);
+rlm_rcode_t	unlang_io_process_interpret(module_ctx_t const *mctx, request_t *request);
 
-REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable);
+request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable);
 
 /** @} */
 

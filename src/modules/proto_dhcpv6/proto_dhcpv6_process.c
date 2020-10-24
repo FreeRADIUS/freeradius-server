@@ -75,7 +75,7 @@ static int reply_fail[] = {
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv6_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+static void dhcpv6_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
 {
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];
@@ -114,7 +114,7 @@ static void dhcpv6_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	}
 }
 
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;

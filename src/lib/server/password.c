@@ -52,7 +52,7 @@ typedef enum {
  * @param[in] ctx	to allocate returned value in.
  * @
  */
-typedef fr_pair_t *(*password_preprocess_t)(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *in);
+typedef fr_pair_t *(*password_preprocess_t)(TALLOC_CTX *ctx, request_t *request, fr_pair_t *in);
 
 /** Password information
  *
@@ -232,12 +232,12 @@ static fr_table_num_sorted_t const password_header_table[] = {
 static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
 
 #ifdef HAVE_OPENSSL_EVP_H
-static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
+static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good);
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
+static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good);
 #  endif
 #endif
-static fr_pair_t *password_process_header(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good);
+static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good);
 
 /** Metdata for various password attributes
  *
@@ -464,7 +464,7 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
  *	- NULL if known_good was already normalised, or couldn't be normalised.
  *	- A new normalised password pair.
  */
-static fr_pair_t *password_normify(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t const *known_good)
+static fr_pair_t *password_normify(TALLOC_CTX *ctx, request_t *request, fr_pair_t const *known_good)
 {
 	uint8_t			buffer[256];
 	ssize_t			decoded;
@@ -519,7 +519,7 @@ static fr_pair_t *password_normify(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t 
  *	- A SHA2 length specific attribute.
  *	- NULL on error.
  */
-static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
+static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good)
 {
 	fr_pair_t	*out, *normalised;
 
@@ -565,7 +565,7 @@ static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, REQUEST *request, fr_pa
  *	- A SHA3 length specific attribute.
  *	- NULL on error.
  */
-static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
+static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good)
 {
 	fr_pair_t	*out, *normalised;
 
@@ -618,7 +618,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, REQUEST *request, fr_pa
  *	- Buffer containing normified value on success.
  *	- NULL on error.
  */
-static fr_pair_t *password_process_header(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good)
+static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good)
 {
 	char const			*p, *q, *end;
 
@@ -751,7 +751,7 @@ bad_header:
 /** Apply any processing and normification
  *
  */
-static fr_pair_t *password_process(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *known_good, bool normify)
+static fr_pair_t *password_process(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good, bool normify)
 {
 	password_info_t		*info;
 	fr_pair_t		*out;
@@ -854,7 +854,7 @@ static fr_pair_t *password_process(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t 
  * @param[in] normify	Apply hex/base64 normalisation to attributes.
  * @return the number of attributes normalised.
  */
-int password_normalise_and_replace(REQUEST *request, bool normify)
+int password_normalise_and_replace(request_t *request, bool normify)
 {
 	fr_cursor_t	cursor;
 	int		replaced = 0;
@@ -887,7 +887,7 @@ int password_normalise_and_replace(REQUEST *request, bool normify)
 	return replaced;
 }
 
-static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *request,
+static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, request_t *request,
 						  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len,
 						  bool normify, fr_pair_t *const known_good)
 {
@@ -950,7 +950,7 @@ static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, REQUEST *reque
  *	- A fr_pair_t containing a "known good" password.
  *	- NULL on error, or if no usable password attributes were found.
  */
-fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
+fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 			  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
 {
 	fr_cursor_t	cursor;

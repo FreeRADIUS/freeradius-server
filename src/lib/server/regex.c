@@ -54,7 +54,7 @@ typedef struct {
  * @param[in,out] regmatch	Pointers into value. May be set to NULL if
  *				reparented to the regcapture struct.
  */
-void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch)
+void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch)
 {
 	fr_regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
 
@@ -115,7 +115,7 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regm
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -176,7 +176,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -237,7 +237,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char const	*p;
@@ -296,7 +296,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
 {
 	fr_regcapture_t	*rc;
 	char const	*p;
@@ -360,7 +360,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char 		*buff;

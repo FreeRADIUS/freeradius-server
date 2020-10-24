@@ -285,7 +285,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 {
 	// FIXME enforce non-anon cipher
 
-	REQUEST		*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*request = (request_t *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	fr_tls_session_t	*tls_session = arg;
 	eap_fast_tunnel_t	*t;
 
@@ -316,7 +316,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 {
 	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
-	REQUEST			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	request_t			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), request_t);
 	eap_fast_tunnel_t	*t;
 	fr_pair_t		*fast_vps = NULL, *vp;
 	fr_cursor_t		cursor;
@@ -447,7 +447,7 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_tls_status_t	status;
@@ -559,7 +559,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);

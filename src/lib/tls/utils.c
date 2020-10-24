@@ -80,7 +80,7 @@ char const *fr_tls_utils_x509_pkey_type(X509 *cert)
  *	- -1 problem with the session.
  *	- >=0 length of the block.
  */
-int fr_tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
+int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;

@@ -75,7 +75,7 @@ static fr_sbuff_parse_rules_t const xlat_arg_parse_rules = {
  *	- -4 if either the attribute or qualifier were invalid.
  *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
-int xlat_fmt_get_vp(fr_pair_t **out, REQUEST *request, char const *name)
+int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 {
 	int rcode;
 	tmpl_t *vpt;
@@ -108,7 +108,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, REQUEST *request, char const *name)
  *	- -4 if either the attribute or qualifier were invalid.
  *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
-int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, char const *name)
+int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char const *name)
 {
 	int rcode;
 	tmpl_t *vpt;
@@ -149,7 +149,7 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, char co
  *	- -1 on failure.
  */
 int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
-		       bool *tainted, REQUEST *request, char const *fmt)
+		       bool *tainted, request_t *request, char const *fmt)
 {
 	tmpl_t			*vpt;
 	fr_pair_t		*vp;
@@ -549,7 +549,7 @@ typedef struct {
  */
 static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 			      void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+			      request_t *request, char const *fmt)
 {
 	xlat_redundant_t const *xr = mod_inst;
 	CONF_ITEM *ci;
@@ -607,7 +607,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
  */
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+				 request_t *request, char const *fmt)
 {
 	uint32_t count = 0;
 	xlat_redundant_t const *xr = mod_inst;
@@ -798,7 +798,7 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
  */
 static ssize_t xlat_func_debug(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
+			       request_t *request, char const *fmt)
 {
 	int level = 0;
 
@@ -845,7 +845,7 @@ done:
  */
 static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 				    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				    REQUEST *request, char const *fmt)
+				    request_t *request, char const *fmt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
@@ -978,7 +978,7 @@ if ("%{explode:&Tmp-String-1 ,}" != 3) {
  */
 static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+				 request_t *request, char const *fmt)
 {
 	tmpl_t			*vpt = NULL;
 	fr_pair_t		*vp;
@@ -1113,7 +1113,7 @@ update request {
  */
 static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+				 request_t *request, char const *fmt)
 {
 	fr_pair_t	*vp;
 
@@ -1220,7 +1220,7 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
  *	- <= 0 the negative offset the parse error ocurred at.
  *	- >0 how many bytes of fmt were parsed.
  */
-static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
+static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, request_t *request, char const *fmt)
 {
 	ssize_t			slen;
 	unsigned long		pad_len;
@@ -1309,7 +1309,7 @@ static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, RE
  */
 static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+			      request_t *request, char const *fmt)
 {
 	char		fill;
 	size_t		pad;
@@ -1368,7 +1368,7 @@ static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
+			     request_t *request, char const *fmt)
 {
 	vp_map_t	*map = NULL;
 	int		ret;
@@ -1434,7 +1434,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, char const *fmt)
+				   request_t *request, char const *fmt)
 {
 	long		num;
 
@@ -1515,7 +1515,7 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  */
 static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+			      request_t *request, char const *fmt)
 {
 	char		fill;
 	size_t		pad;
@@ -1561,7 +1561,7 @@ static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+			      request_t *request, char const *fmt)
 {
 	ssize_t		slen;
 	fr_pair_t	*vp;
@@ -1615,7 +1615,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
-					     REQUEST *request, UNUSED void const *xlat_inst,
+					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
@@ -1666,7 +1666,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
-					     REQUEST *request, UNUSED void const *xlat_inst,
+					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
@@ -1714,7 +1714,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
 	fr_value_box_t		*result;
@@ -1779,7 +1779,7 @@ finish:
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
 	fr_value_box_t	*result;
@@ -1834,7 +1834,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
 	char *p;
@@ -1870,7 +1870,7 @@ typedef enum {
 } hmac_type;
 
 static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
-				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
 {
 	uint8_t const	*data_p, *key_p;
@@ -1921,7 +1921,7 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
-					REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
@@ -1939,7 +1939,7 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
-					 REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					 request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					 fr_value_box_t **in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
@@ -1960,7 +1960,7 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      UNUSED REQUEST *request, UNUSED void const *xlat_inst,
+				      UNUSED request_t *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 
 {
@@ -1991,7 +1991,7 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
@@ -2031,7 +2031,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
@@ -2081,7 +2081,7 @@ exec echo {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in)
 {
 	fr_value_box_t	*vb = NULL;
@@ -2113,7 +2113,7 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
 	fr_value_box_t	*vb, *in_vb;
@@ -2177,7 +2177,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
 	tmpl_t			*vpt = NULL;
@@ -2242,7 +2242,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
-				    REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_t **in)
 {
 	int64_t		result;
@@ -2298,7 +2298,7 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
 	/*
@@ -2489,7 +2489,7 @@ if ("foo" =~ /^(?<name>.*)/) {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
 	/*
@@ -2587,7 +2587,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
-				    REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_t **in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
@@ -2631,7 +2631,7 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
  */
 #ifdef HAVE_OPENSSL_EVP_H
 static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
-			         REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			         request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			         fr_value_box_t **in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
@@ -2667,7 +2667,7 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 #  define EVP_MD_XLAT(_md, _md_func) \
 static xlat_action_t xlat_func_##_md(TALLOC_CTX *ctx, fr_cursor_t *out,\
-				      REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,\
+				      request_t *request, void const *xlat_inst, void *xlat_thread_inst,\
 				      fr_value_box_t **in)\
 {\
 	return xlat_evp_md(ctx, out, request, xlat_inst, xlat_thread_inst, in, EVP_##_md_func());\
@@ -2699,7 +2699,7 @@ EVP_MD_XLAT(sha3_512, sha3_512)
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
 	if (!*in) return XLAT_ACTION_DONE;
@@ -2732,7 +2732,7 @@ static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst,
+				      request_t *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
 	fr_value_box_t	*vb;
@@ -2779,7 +2779,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
-					 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					 fr_value_box_t **in)
 {
 	char const		*p, *q, *end;
@@ -2921,7 +2921,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request,
+				   request_t *request,
 #ifdef HAVE_REGEX_PCRE2
 				   void const *xlat_inst, void *xlat_thread_inst,
 #else
@@ -3030,7 +3030,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
 static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, fr_value_box_t **in, bool upper)
+				       request_t *request, fr_value_box_t **in, bool upper)
 {
 	char		*buff_p;
 	char const	*p, *end;
@@ -3079,7 +3079,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
 	return xlat_change_case(ctx, out, request, in, false);
@@ -3098,7 +3098,7 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
 	return xlat_change_case(ctx, out, request, in, true);
@@ -3115,7 +3115,7 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
-					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
 	char const	*p, *end;
@@ -3203,7 +3203,7 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
-					  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					  request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
 	char const	*p, *end;

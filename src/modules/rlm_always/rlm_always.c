@@ -67,7 +67,7 @@ static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
  * Example: "%{db_status:fail}"
  */
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				 REQUEST *request, void const *xlat_inst,
+				 request_t *request, void const *xlat_inst,
 				 UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
 {
@@ -159,7 +159,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_always_return(module_ctx_t const *mctx, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_always_return(module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_always_t);
 

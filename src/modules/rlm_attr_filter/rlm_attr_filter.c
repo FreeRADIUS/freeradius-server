@@ -81,7 +81,7 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ NULL }
 };
 
-static void check_pair(REQUEST *request, fr_pair_t *check_item, fr_pair_t *reply_item, int *pass, int *fail)
+static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *reply_item, int *pass, int *fail)
 {
 	int compare;
 
@@ -168,7 +168,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, REQUEST *request,
+static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, request_t *request,
 							    RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
@@ -322,7 +322,7 @@ error:
 	return RLM_MODULE_FAIL;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, REQUEST *request) \
+#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, request_t *request) \
 	{ \
 		return attr_filter_common(mctx->instance, request, request->_y); \
 	}

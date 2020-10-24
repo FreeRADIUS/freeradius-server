@@ -156,10 +156,10 @@ static inline request_data_t *request_data_alloc(TALLOC_CTX *ctx)
 	return rd;
 }
 
-/** Add opaque data to a REQUEST
+/** Add opaque data to a request_t
  *
  * The unique ptr is meant to be a module configuration, and the unique
- * integer allows the caller to have multiple opaque data associated with a REQUEST.
+ * integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param[in] request		to associate data with.
  * @param[in] unique_ptr	Identifier for the data.
@@ -180,7 +180,7 @@ static inline request_data_t *request_data_alloc(TALLOC_CTX *ctx)
  *	- -1 on memory allocation error.
  *	- 0 on success.
  */
-int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
+int _request_data_add(request_t *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
 		      bool free_on_replace, bool free_on_parent, bool persist,
 #ifndef NDEBUG
 		      char const *file, int line
@@ -280,7 +280,7 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 /** Get opaque data from a request
  *
  * @note The unique ptr is meant to be a module configuration, and the unique
- *	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ *	integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param[in] request		to retrieve data from.
  * @param[in] unique_ptr	Identifier for the data.
@@ -289,7 +289,7 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
  *	- NULL if no opaque data could be found.
  *	- the opaque data. The entry holding the opaque data is removed from the request.
  */
-void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
+void *request_data_get(request_t *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t	*rd = NULL;
 
@@ -327,7 +327,7 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 /** Get opaque data from a request without removing it
  *
  * @note The unique ptr is meant to be a module configuration, and the unique
- * 	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ * 	integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param request	to retrieve data from.
  * @param unique_ptr	Identifier for the data.
@@ -336,7 +336,7 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
  *	- NULL if no opaque data could be found.
  *	- the opaque data.
  */
-void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
+void *request_data_reference(request_t *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t	*rd = NULL;
 
@@ -369,7 +369,7 @@ void *request_data_reference(REQUEST *request, void const *unique_ptr, int uniqu
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist)
+int request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int		count = 0;
 	request_data_t	*rd = NULL, *prev;
@@ -394,7 +394,7 @@ int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool per
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, REQUEST *request, bool persist)
+int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int			count = 0;
 	request_data_t		*rd = NULL, *new, *prev;
@@ -436,7 +436,7 @@ int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, 
  * @param[in] persist	Whether to count persistable or non-persistable data.
  * @return number of request_data_t that exist in persistable or non-persistable form
  */
-int request_data_by_persistance_count(REQUEST *request, bool persist)
+int request_data_by_persistance_count(request_t *request, bool persist)
 {
 	int 		count = 0;
 	request_data_t	*rd = NULL;
@@ -458,7 +458,7 @@ int request_data_by_persistance_count(REQUEST *request, bool persist)
  * @param request	to add data to.
  * @param in		Data to add.
  */
-void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
+void request_data_restore(request_t *request, fr_dlist_head_t *in)
 {
 	fr_dlist_move(&request->data, in);
 }
@@ -467,7 +467,7 @@ void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
  *
  * @param[in] request	to remove persistable data from.
  */
-void request_data_persistable_free(REQUEST *request)
+void request_data_persistable_free(request_t *request)
 {
 	fr_dlist_head_t	head;
 
@@ -479,7 +479,7 @@ void request_data_persistable_free(REQUEST *request)
 }
 
 
-void request_data_list_dump(REQUEST *request, fr_dlist_head_t *head)
+void request_data_list_dump(request_t *request, fr_dlist_head_t *head)
 {
 	request_data_t	*rd = NULL;
 	int count = 0;
@@ -496,7 +496,7 @@ void request_data_list_dump(REQUEST *request, fr_dlist_head_t *head)
 	}
 }
 
-void request_data_dump(REQUEST *request)
+void request_data_dump(request_t *request)
 {
 	request_data_list_dump(request, &request->data);
 }
@@ -533,7 +533,7 @@ static int _free_child_data(fr_dlist_head_t *head)
  *	- 0 on success.
  *	- <0 on failure.
  */
-int request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int)
+int request_data_store_in_parent(request_t *request, void const *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t	*child_list;
 
@@ -588,7 +588,7 @@ int request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int u
  *	- 0 on success.
  *	- <0 on failure.
  */
-int request_data_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int)
+int request_data_restore_to_child(request_t *request, void const *unique_ptr, int unique_int)
 {
 	fr_dlist_head_t *head;
 

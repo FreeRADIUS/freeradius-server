@@ -61,7 +61,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size_t key_len)
+static int fr_tls_cache_session_id_to_vp(request_t *request, uint8_t const *key, size_t key_len)
 {
 	fr_pair_t *vp;
 
@@ -81,7 +81,7 @@ static int fr_tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, s
  * @param[in] action		to execute.
  * @return the rcode from the virtual server.
  */
-int fr_tls_cache_process(REQUEST *request, CONF_SECTION *action)
+int fr_tls_cache_process(request_t *request, CONF_SECTION *action)
 {
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*server_cs;
@@ -178,7 +178,7 @@ inline static ssize_t fr_tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
  */
 static int fr_tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
 {
-	REQUEST			*request;
+	request_t			*request;
 	fr_tls_session_t		*tls_session;
 	size_t			len, rcode;
 
@@ -260,7 +260,7 @@ static int fr_tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
  *	- 0 success.
  *	- -1 failed writing cached session.
  */
-int fr_tls_cache_write(REQUEST *request, fr_tls_session_t *tls_session)
+int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_conf_t	*conf;
 	int		ret = 0;
@@ -332,7 +332,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 				   int key_len, int *copy)
 {
 	fr_tls_conf_t		*conf;
-	REQUEST			*request;
+	request_t			*request;
 	unsigned char const	**p;
 	uint8_t const		*q;
 	fr_pair_t		*vp;
@@ -421,13 +421,13 @@ static void fr_tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	fr_tls_conf_t		*conf;
 	fr_tls_session_t		*tls_session;
-	REQUEST			*request;
+	request_t			*request;
 	uint8_t	const		*key;
 	ssize_t			key_len;
 
 	conf = talloc_get_type_abort(SSL_CTX_get_app_data(ctx), fr_tls_conf_t);
 	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
-	request = talloc_get_type_abort(SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	request = talloc_get_type_abort(SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 
 	/*
 	 *	Free any previously stored session blobs or data
@@ -500,13 +500,13 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 #endif
 			 int is_forward_secure)
 {
-	REQUEST			*request;
+	request_t			*request;
 
 	fr_tls_session_t		*session;
 	fr_pair_t		*vp;
 
 	session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
-	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{

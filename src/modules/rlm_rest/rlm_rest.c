@@ -155,7 +155,7 @@ fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
  *	- 0 if status was updated successfully.
  *	- -1 if status was not updated successfully.
  */
-static int rlm_rest_status_update(REQUEST *request, void *handle)
+static int rlm_rest_status_update(request_t *request, void *handle)
 {
 	int		code;
 	fr_pair_t	*vp;
@@ -181,7 +181,7 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 
 static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
-			    REQUEST *request, char const *username, char const *password)
+			    request_t *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
 	char		*uri = NULL;
@@ -218,7 +218,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 }
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+				      request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in, void *rctx)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
@@ -300,7 +300,7 @@ finish:
  * @ingroup xlat_functions
  */
 static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
@@ -424,7 +424,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
 }
 
-static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -513,7 +513,7 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -538,7 +538,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_authenticate_result(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -624,7 +624,7 @@ finish:
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -687,7 +687,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_accounting_result(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -741,7 +741,7 @@ finish:
 /*
  *	Send accounting info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -766,7 +766,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_post_auth_result(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_post_auth_result(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -820,7 +820,7 @@ finish:
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);

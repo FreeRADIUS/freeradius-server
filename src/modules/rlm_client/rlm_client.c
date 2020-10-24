@@ -39,7 +39,7 @@ typedef struct {
 	char const	*field;		//!< Field name.
 } client_get_vp_ctx_t;
 
-static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
+static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
 				   vp_map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
@@ -111,10 +111,10 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *re
  * @param[in] maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				   fr_value_box_t **client_override, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -219,7 +219,7 @@ finish:
  */
 static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	char const	*value = NULL;
 	char		buffer[INET6_ADDRSTRLEN], *q;
@@ -271,7 +271,7 @@ static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t length;
 	char const *value;

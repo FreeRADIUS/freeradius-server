@@ -133,7 +133,7 @@ fr_dict_attr_autoload_t rlm_perl_dict_attr[] = {
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
 static int perl_sys_init3_called = 0;
-static _Thread_local REQUEST *rlm_perl_request;
+static _Thread_local request_t *rlm_perl_request;
 
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
@@ -318,7 +318,7 @@ static XS(XS_radiusd_xlat)
 	char *in_str;
 	char *expanded;
 	ssize_t slen;
-	REQUEST *request;
+	request_t *request;
 
 	if (items != 1) croak("Usage: radiusd::xlat(string)");
 
@@ -354,7 +354,7 @@ static void xs_init(pTHX)
  */
 static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 
 	rlm_perl_t	*inst;
@@ -625,7 +625,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, fr_pair_t const *vp,
+static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const *vp,
 				     int *i, const char *hash_name, const char *list_name)
 {
 
@@ -671,7 +671,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, fr_pair_t const *
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, HV *rad_hv,
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)
 {
 	fr_pair_t *vp;
@@ -748,7 +748,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, fr_pair_t *
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, char *key, SV *sv, fr_token_t op,
+static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, char *key, SV *sv, fr_token_t op,
 		      const char *hash_name, const char *list_name)
 {
 	char		*val;
@@ -789,7 +789,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, fr_pair_t **vps, char *
 /*
  *     Gets the content from hashes
  */
-static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, fr_pair_t **vps,
+static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_t **vps,
 			  const char *hash_name, const char *list_name)
 {
 	SV		*res_sv, **av_sv;
@@ -821,7 +821,7 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, fr_pair_
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static int do_perl(void *instance, REQUEST *request, char const *function_name)
+static int do_perl(void *instance, request_t *request, char const *function_name)
 {
 
 	rlm_perl_t		*inst = instance;
@@ -938,7 +938,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 }
 
 #define RLM_PERL_FUNC(_x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, REQUEST *request) \
+static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_perl_t *inst = talloc_get_type_abort(mctx->instance, rlm_perl_t); \
 	return do_perl(inst, request, inst->func_##_x); \
@@ -952,7 +952,7 @@ RLM_PERL_FUNC(preacct)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
 	fr_pair_t		*pair;

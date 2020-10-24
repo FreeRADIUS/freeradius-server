@@ -374,7 +374,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_t *vps)
 /*
  *	Add raw hex data to the reply.
  */
-void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
+void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
 {
 	fr_pair_t *vp;
 
@@ -400,7 +400,7 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
  * @param[in] virtual_server	The default virtual server to send the request to.
  * @return the rcode of the last executed section in the virtual server.
  */
-rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, char const *virtual_server)
+rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, char const *virtual_server)
 {
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;

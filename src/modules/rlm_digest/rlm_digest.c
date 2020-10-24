@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_digest_t);
 	fr_cursor_t		cursor;
@@ -121,7 +121,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 /*
  *	Perform all of the wondrous variants of digest authentication.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t a1_len, a2_len, kd_len;
 	uint8_t a1[(FR_MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */

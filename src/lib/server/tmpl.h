@@ -99,7 +99,7 @@ extern size_t pair_list_table_len;
 
 typedef enum requests_ref_e {
 	REQUEST_CURRENT = 0,		//!< The current request (default).
-	REQUEST_OUTER,			//!< #REQUEST containing the outer layer of the EAP
+	REQUEST_OUTER,			//!< #request_t containing the outer layer of the EAP
 					//!< conversation. Usually the RADIUS request sent
 					//!< by the NAS.
 
@@ -507,7 +507,7 @@ struct tmpl_cursor_ctx_s {
 
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
-	REQUEST			*request;	//!< Result of following the request references.
+	request_t			*request;	//!< Result of following the request references.
 	fr_pair_t		**list;		//!< List within the request.
 
 	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
@@ -745,7 +745,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  */
 #define RADIUS_LIST_AND_CTX(_ctx, _head, _request, _ref, _list) \
 do {\
-	REQUEST *_rctx = _request; \
+	request_t *_rctx = _request; \
 	if ((radius_request(&_rctx, _ref) < 0) || \
 	    !(_head = radius_list(_rctx, _list)) || \
 	    !(_ctx = radius_list_ctx(_rctx, _list))) {\
@@ -823,15 +823,15 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt);
 
-fr_pair_t		**radius_list(REQUEST *request, pair_list_t list);
+fr_pair_t		**radius_list(request_t *request, pair_list_t list);
 
-RADIUS_PACKET		*radius_packet(REQUEST *request, pair_list_t list_name);
+RADIUS_PACKET		*radius_packet(request_t *request, pair_list_t list_name);
 
-TALLOC_CTX		*radius_list_ctx(REQUEST *request, pair_list_t list_name);
+TALLOC_CTX		*radius_list_ctx(request_t *request, pair_list_t list_name);
 
 size_t			radius_list_name(pair_list_t *out, char const *name, pair_list_t default_list);
 
-int			radius_request(REQUEST **request, request_ref_t name);
+int			radius_request(request_t **request, request_ref_t name);
 
 size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
 
@@ -945,35 +945,35 @@ fr_type_t		tmpl_expanded_type(tmpl_t const *vpt);
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
-				      REQUEST *request,
+				      request_t *request,
 				      tmpl_t const *vpt,
 				      xlat_escape_legacy_t escape, void const *escape_ctx,
 				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 
 ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
-		       		       REQUEST *request,
+		       		       request_t *request,
 				       tmpl_t const *vpt,
 				       xlat_escape_legacy_t escape, void const *escape_ctx,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
 fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
-					  fr_cursor_t *cursor, REQUEST *request,
+					  fr_cursor_t *cursor, request_t *request,
 					  tmpl_t const *vpt);
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
-int			tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request,
+int			tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
 				      tmpl_t const *vpt);
 
-int			tmpl_find_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt);
+int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
 
-int			tmpl_find_or_add_vp(fr_pair_t **out, REQUEST *request, tmpl_t const *vpt);
+int			tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
 
 int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
-					  REQUEST *request, tmpl_t const *vpt);
+					  request_t *request, tmpl_t const *vpt);
 
 int			tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 					      tmpl_t const *vpt);

@@ -1019,7 +1019,7 @@ int virtual_servers_free(void)
 
 /**
  */
-rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
+rlm_rcode_t process_authenticate(int auth_type, request_t *request)
 {
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*cs, *server_cs;
@@ -1036,7 +1036,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	 *	Cache the old server_cs in case it was changed.
 	 *
 	 *	FIXME: request->server_cs should NOT be changed.
-	 *	Instead, we should always create a child REQUEST when
+	 *	Instead, we should always create a child request_t when
 	 *	we need to use a different virtual server.
 	 *
 	 *	This is mainly for things like proxying
@@ -1095,7 +1095,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	return rcode;
 }
 
-rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_server,
+rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
 					rlm_rcode_t default_rcode,
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)
@@ -1131,7 +1131,7 @@ rlm_rcode_t virtual_server_process_auth(REQUEST *request, CONF_SECTION *virtual_
 /*
  *	Hack for unit_test_module.c
  */
-void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
+void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
 {
 	size_t listen_cnt;
 	fr_virtual_listen_t	**listener;

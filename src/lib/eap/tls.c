@@ -108,7 +108,7 @@ size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
+int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
 		    fr_tls_record_t *record, size_t record_len, size_t frag_len)
 {
 	eap_round_t		*eap_round = eap_session->this_round;
@@ -233,7 +233,7 @@ int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_start(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
@@ -263,7 +263,7 @@ int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
+int eap_tls_success(request_t *request, eap_session_t *eap_session,
 		    char const *keying_prf_label, size_t keying_prf_label_len,
 		    char const *sessid_prf_label, size_t sessid_prf_label_len)
 {
@@ -347,7 +347,7 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
  *	- 0 on success.
  *	- -1 on failure (to compose a valid packet).
  */
-int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_fail(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
@@ -397,7 +397,7 @@ int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_request(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_request(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
@@ -489,7 +489,7 @@ int eap_tls_request(REQUEST *request, eap_session_t *eap_session)
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	that we're acking the fragment for.
  */
-static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
+static int eap_tls_ack(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
@@ -509,7 +509,7 @@ static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
  *	- EAP_TLS_FAIL - Fatal alert from the client.
  *	- EAP_TLS_RECORD_SEND - Need more data, or previous fragment was acked.
  */
-static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
@@ -580,7 +580,7 @@ static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *
  *	- EAP_TLS_RECORD_SEND send more data to peer.
  *	- EAP_TLS_ESTABLISHED handshake is complete, TLS session has been established.
  */
-static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_session)
 {
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_round_t		*prev_round = eap_session->prev_round;
@@ -828,7 +828,7 @@ ignore_length:
  *	- EAP_TLS_ESTABLISHED if the handshake completed successfully, and there's
  *	  no more data to send.
  */
-static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_handshake(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
@@ -901,7 +901,7 @@ static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_s
  *	- EAP_TLS_ESTABLISHED
  *	- EAP_TLS_HANDLED
  */
-eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
+eap_tls_status_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
@@ -1065,7 +1065,7 @@ eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
  *	- A new eap_tls_session on success.
  *	- NULL on error.
  */
-eap_tls_session_t *eap_tls_session_init(REQUEST *request, eap_session_t *eap_session,
+eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_session,
 					fr_tls_conf_t *tls_conf, bool client_cert)
 {
 	eap_tls_session_t	*eap_tls_session;

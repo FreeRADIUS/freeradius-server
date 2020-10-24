@@ -64,7 +64,7 @@ struct exfile_s {
  * @param[in] entry for the file that the event occurred on.
  * @param[in] name_suffix trigger name suffix.
  */
-static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
 	fr_pair_t		*vp, *args;
@@ -97,7 +97,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 }
 
 
-static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t *entry)
+static void exfile_cleanup_entry(exfile_t *ef, request_t *request, exfile_entry_t *entry)
 {
 	if (entry->fd >= 0) close(entry->fd);
 
@@ -273,7 +273,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions)
+int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t permissions)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -521,7 +521,7 @@ try_lock:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int exfile_close(exfile_t *ef, REQUEST *request, int fd)
+int exfile_close(exfile_t *ef, request_t *request, int fd)
 {
 	uint32_t i;
 

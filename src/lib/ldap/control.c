@@ -162,7 +162,7 @@ void fr_ldap_control_clear(fr_ldap_connection_t *conn)
  * @param conn to add controls to.
  * @param request to draw attributes from.
  */
-int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *request)
+int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *request)
 {
 	/*
 	 *	The OpenLDAP guys didn't declare the formatOID parameter to

@@ -54,7 +54,7 @@ USES_APPLE_DEPRECATED_API
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static char const *tmp_attrs[] = { NULL };
@@ -221,7 +221,7 @@ finish:
  *	- #RLM_MODULE_DISALLOW if the user was denied access.
  *	- #RLM_MODULE_OK otherwise.
  */
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
 				  fr_ldap_connection_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -257,7 +257,7 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
  * @param request Current request.
  * @param conn the connection handle
  */
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t const *conn)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.

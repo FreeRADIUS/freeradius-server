@@ -40,7 +40,7 @@ struct radius_track_entry_s {
 						///< when its parent is freed.  We also zero
 						///< out the tracking entry field in the parent.
 
-	REQUEST		*request;		//!< as always...
+	request_t		*request;		//!< as always...
 
 	void		*uctx;			//!< Result/resumption context.
 
@@ -86,7 +86,7 @@ radius_track_t		*radius_track_alloc(TALLOC_CTX *ctx);
 				_radius_track_entry_reserve( __FILE__, __LINE__, _te_out, _ctx, _tt, _request, _code, _uctx)
 int			_radius_track_entry_reserve(char const *file, int line,
 						    radius_track_entry_t **te_out,
-						    TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
+						    TALLOC_CTX *ctx, radius_track_t *tt, request_t *request,
 						    uint8_t code, void *uctx)
 						    CC_HINT(nonnull(3,5,6));
 
@@ -105,7 +105,7 @@ void			radius_track_state_log(fr_log_t const *log, fr_log_type_t log_type, char 
  */
 #else
 int			radius_track_entry_reserve(radius_track_entry_t **te_out,
-						   TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request,
+						   TALLOC_CTX *ctx, radius_track_t *tt, request_t *request,
 						   uint8_t code, void *uctx)
 						   CC_HINT(nonnull(1,3,4));
 

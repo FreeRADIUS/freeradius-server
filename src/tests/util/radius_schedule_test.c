@@ -61,13 +61,13 @@ static int			my_port;
 static char const		*secret = "testing123";
 static fr_test_packet_ctx_t	tpc;
 
-static rlm_rcode_t test_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static rlm_rcode_t test_process(UNUSED void const *instance, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return RLM_MODULE_OK;
 }
 
-static int test_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	fr_listen_test_t const *pc = instance;
 
@@ -80,7 +80,7 @@ static int test_decode(void const *instance, REQUEST *request, uint8_t *const da
 	return 0;
 }
 
-static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	fr_md5_ctx_t	*md5_ctx;
 	fr_listen_test_t const *pc = instance;
@@ -193,7 +193,7 @@ static fr_app_io_t app_io = {
 	.decode = test_decode
 };
 
-static void entry_point_set(UNUSED void const *ctx, REQUEST *request)
+static void entry_point_set(UNUSED void const *ctx, request_t *request)
 {
 	request->async->process = test_process;
 }

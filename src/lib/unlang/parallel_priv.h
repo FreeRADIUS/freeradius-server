@@ -48,7 +48,7 @@ typedef enum {
  */
 typedef struct {
 	unlang_parallel_child_state_t	state;		//!< State of the child.
-	REQUEST				*child; 	//!< Child request.
+	request_t				*child; 	//!< Child request.
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 

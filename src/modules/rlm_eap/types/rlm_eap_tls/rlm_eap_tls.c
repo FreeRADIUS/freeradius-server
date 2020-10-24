@@ -71,9 +71,9 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request);
 
-static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap_session)
+static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *eap_session)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -119,7 +119,7 @@ static rlm_rcode_t eap_tls_success_with_prf(REQUEST *request, eap_session_t *eap
 	return RLM_MODULE_OK;
 }
 
-static unlang_action_t eap_tls_virtual_server_result(REQUEST *request, rlm_rcode_t *presult,
+static unlang_action_t eap_tls_virtual_server_result(request_t *request, rlm_rcode_t *presult,
 						     UNUSED int *priority, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
@@ -140,7 +140,7 @@ static unlang_action_t eap_tls_virtual_server_result(REQUEST *request, rlm_rcode
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request, eap_session_t *eap_session)
+static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *request, eap_session_t *eap_session)
 {
 	CONF_SECTION	*server_cs;
 	CONF_SECTION	*section;
@@ -189,7 +189,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, REQUEST *request,
 	return RLM_MODULE_YIELD;
 }
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_tls_status_t	status;
@@ -252,7 +252,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);

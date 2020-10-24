@@ -246,7 +246,7 @@ fail:
 	return ret;
 }
 
-int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t grp_num,
+int compute_password_element (request_t *request, pwd_session_t *session, uint16_t grp_num,
 			      char const *password, int password_len,
 			      char const *id_server, int id_server_len,
 			      char const *id_peer, int id_peer_len,
@@ -475,7 +475,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	return ret;
 }
 
-int compute_scalar_element(REQUEST *request, pwd_session_t *session, BN_CTX *bn_ctx)
+int compute_scalar_element(request_t *request, pwd_session_t *session, BN_CTX *bn_ctx)
 {
 	BIGNUM *mask = NULL;
 	int ret = -1;
@@ -515,7 +515,7 @@ error:
 	return ret;
 }
 
-int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
+int process_peer_commit(request_t *request, pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
 {
 	uint8_t		*ptr;
 	size_t		data_len;
@@ -641,7 +641,7 @@ finish:
 	return ret;
 }
 
-int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -741,7 +741,7 @@ finish:
 	return req;
 }
 
-int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -840,7 +840,7 @@ finish:
 	return req;
 }
 
-int compute_keys(UNUSED REQUEST *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
+int compute_keys(UNUSED request_t *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
 	HMAC_CTX	*hmac_ctx;
 	uint8_t		mk[SHA256_DIGEST_LENGTH], *cruft;

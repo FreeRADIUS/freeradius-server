@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-unlang_action_t unlang_group(REQUEST *request, UNUSED rlm_rcode_t *result)
+unlang_action_t unlang_group(request_t *request, UNUSED rlm_rcode_t *result)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -50,7 +50,7 @@ unlang_action_t unlang_group(REQUEST *request, UNUSED rlm_rcode_t *result)
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_policy(REQUEST *request, rlm_rcode_t *result)
+static unlang_action_t unlang_policy(request_t *request, rlm_rcode_t *result)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

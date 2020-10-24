@@ -45,7 +45,7 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-static int fr_tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
+static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p;
@@ -128,7 +128,7 @@ DIAG_ON(format-nonliteral)
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int fr_tls_log_error(REQUEST *request, char const *msg, ...)
+int fr_tls_log_error(request_t *request, char const *msg, ...)
 {
 	va_list ap;
 	int ret;
@@ -238,7 +238,7 @@ int tls_strerror_printf(char const *msg, ...)
 }
 
 static void _tls_ctx_print_cert_line(char const *file, int line,
-				     REQUEST *request, int index, X509 *cert)
+				     request_t *request, int index, X509 *cert)
 {
 	char		subject[1024];
 
@@ -263,7 +263,7 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
  * @param[in] cert	The leaf certificate.
  */
 void _fr_tls_log_certificate_chain(char const *file, int line,
-				REQUEST *request, STACK_OF(X509) *chain, X509 *cert)
+				request_t *request, STACK_OF(X509) *chain, X509 *cert)
 {
 	int i;
 
@@ -296,7 +296,7 @@ void _fr_tls_log_certificate_chain(char const *file, int line,
  *	- 0 TLS session may still be viable.
  *	- -1 TLS session cannot continue.
  */
-int fr_tls_log_io_error(REQUEST *request, fr_tls_session_t *session, int ret, char const *msg, ...)
+int fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
 {
 	int	error;
 	va_list	ap;

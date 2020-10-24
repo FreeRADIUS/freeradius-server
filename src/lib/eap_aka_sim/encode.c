@@ -935,7 +935,7 @@ ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor,
 	return slen;
 }
 
-ssize_t fr_aka_sim_encode(REQUEST *request, fr_pair_t *to_encode, void *encode_ctx)
+ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode_ctx)
 {
 	fr_pair_t		*vp;
 

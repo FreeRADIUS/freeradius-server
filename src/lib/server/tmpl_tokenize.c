@@ -275,7 +275,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 /** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
  *
- * These functions also resolve #pair_list_t and #request_ref_t values to #REQUEST
+ * These functions also resolve #pair_list_t and #request_ref_t values to #request_t
  * structs and the head of #fr_pair_t lists in those structs.
  *
  * For adding new #fr_pair_t to the lists, the #radius_list_ctx function can be used
@@ -290,7 +290,7 @@ void tmpl_debug(tmpl_t const *vpt)
  *
  * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
  * for that list to out. This value may be passed to #radius_list, along with the current
- * #REQUEST, to get a pointer to the actual list in the #REQUEST.
+ * #request_t, to get a pointer to the actual list in the #request_t.
  *
  * If we're sure we've definitely found a list qualifier token delimiter (``:``) but the
  * string doesn't match a #radius_list qualifier, return 0 and write #PAIR_LIST_UNKNOWN
@@ -368,7 +368,7 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 
 /** Resolve attribute name to a #request_ref_t value.
  *
- * Check the name string for qualifiers that reference a parent #REQUEST.
+ * Check the name string for qualifiers that reference a parent #request_t.
  *
  * If we find a string that matches a #request_ref_t qualifier, return the number of chars
  * we consumed.
@@ -1761,7 +1761,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
  * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
- *				- request_def		The default #REQUEST to set if no
+ *				- request_def		The default #request_t to set if no
  *							#request_ref_t qualifiers are found in name.
  *				- list_def		The default list to set if no #pair_list_t
  *							qualifiers are found in the name.
@@ -1776,7 +1776,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
  *							add the unknown attribute to the main dictionary.
  *							If the unknown attribute is not added to
  *							the main dictionary the #tmpl_t cannot be used
- *							to search for a #fr_pair_t in a #REQUEST.
+ *							to search for a #fr_pair_t in a #request_t.
  *				- allow_unresolved	If true, we don't generate a parse error on
  *							unknown attributes. If an unknown attribute is
  *							found a #TMPL_TYPE_ATTR_UNRESOLVED

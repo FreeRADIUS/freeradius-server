@@ -611,7 +611,7 @@ char const *module_state_method_to_str(module_state_func_table_t const *table,
  * @param[in] type_da		to use.  Usually attr_auth_type.
  * @param[in] enumv		Enumeration value of the specified type_da.
  */
-bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
+bool module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
 {
 	fr_pair_t *vp;
 

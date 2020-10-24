@@ -57,7 +57,7 @@ typedef struct log_dst log_dst_t;
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.  Usually an #fr_log_t for vlog_request.
  */
-typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
 			   char const *fmt, va_list ap, void *uctx);
 
@@ -76,43 +76,43 @@ extern size_t log_str2dst_len;
 
 #define debug_enabled(_type, _lvl) (((_type & L_DBG) != 0) && (_lvl <= fr_debug_lvl))
 
-bool	log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request) CC_HINT(nonnull);
+bool	log_rdebug_enabled(fr_log_lvl_t lvl, request_t *request) CC_HINT(nonnull);
 
-void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     char const *file, int line,
 		     char const *fmt, va_list ap, void *uctx)
 	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 4));
 
-void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		    char const *file, int line,
 		    char const *fmt, ...)
 		    CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3, 6));
 
-void	log_module_failure_msg(REQUEST *request, char const *fmt, ...)
+void	log_module_failure_msg(request_t *request, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3));
 
-void	vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+void	vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0));
 
-void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			  char const *file, int line,
 			  char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3, 6));
 
-void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3));
 
-void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix);
+void	log_request_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix);
 
-void	log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, fr_pair_t *vp, char const *prefix);
+void	log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix);
 
-void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
 			   char const *str, size_t idx,
 			   char const *fmt, ...) CC_HINT(format (printf, 8, 9)) CC_HINT(nonnull);
 
-void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
 			uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
@@ -158,7 +158,7 @@ void	log_global_free(void);
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
- * @warning If a REQUEST * is **NOT** available, these macros **MUST** be used.
+ * @warning If a request_t * is **NOT** available, these macros **MUST** be used.
  *
  * @note These macros should only be used for important global events.
  *
@@ -233,7 +233,7 @@ void	log_global_free(void);
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
  * @note Automatically prepends date (at lvl >= 3), request number, and module, to the log message.
- * @note If a REQUEST * is available, these macros should be used.
+ * @note If a request_t * is available, these macros should be used.
  * @note These macros should only be used for important global events.
  *
  * **Debug categories**
@@ -392,7 +392,7 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _type	log category, a #fr_log_type_t value.
  * @param[in] _lvl	log priority, a #fr_log_lvl_t value.
@@ -422,7 +422,7 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
  * @param[in] _idx	index e.g. 3 (starts from 0).
@@ -440,7 +440,7 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
  * @param[in] _idx	index e.g. 3 (starts from 0).

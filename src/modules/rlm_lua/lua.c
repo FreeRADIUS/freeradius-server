@@ -53,7 +53,7 @@ DIAG_OFF(type-limits)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_lua_marshall(REQUEST *request, lua_State *L, fr_pair_t const *vp)
+static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp)
 {
 	if (!vp) return -1;
 
@@ -196,7 +196,7 @@ DIAG_ON(type-limits)
  *	- -1 on failure.
  */
 static int fr_lua_unmarshall(fr_pair_t **out,
-			     UNUSED rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
+			     UNUSED rlm_lua_t const *inst, request_t *request, lua_State *L, fr_dict_attr_t const *da)
 {
 	fr_pair_t *vp;
 
@@ -311,7 +311,7 @@ static int fr_lua_unmarshall(fr_pair_t **out,
  */
 static int _lua_pair_get(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
@@ -353,7 +353,7 @@ static int _lua_pair_get(lua_State *L)
 static int _lua_pair_set(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_util_get_inst();
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp = NULL, *new;
@@ -408,7 +408,7 @@ static int _lua_pair_set(lua_State *L)
 
 static int _lua_pair_iterator(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	fr_pair_t		*vp;
@@ -437,7 +437,7 @@ static int _lua_pair_iterator(lua_State *L)
 
 static int _lua_pair_iterator_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	fr_dict_attr_t const	*da;
@@ -466,7 +466,7 @@ static int _lua_pair_iterator_init(lua_State *L)
 
 static int _lua_list_iterator(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	fr_pair_t		*vp;
@@ -497,7 +497,7 @@ static int _lua_list_iterator(lua_State *L)
  */
 static int _lua_list_iterator_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 	fr_cursor_t		*cursor;
 
 	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
@@ -519,7 +519,7 @@ static int _lua_list_iterator_init(lua_State *L)
  */
 static int _lua_pair_accessor_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_util_get_request();
+	request_t			*request = fr_lua_util_get_request();
 	char const		*attr;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*up;
@@ -662,7 +662,7 @@ done:
  * will be looked up in the global table.
  *
  */
-static int fr_lua_get_field(lua_State *L, REQUEST *request, char const *field)
+static int fr_lua_get_field(lua_State *L, request_t *request, char const *field)
 {
 	char buff[512];
 	char const *p = field, *q;
@@ -704,7 +704,7 @@ static int fr_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-static void _lua_fr_request_register(lua_State *L, REQUEST *request)
+static void _lua_fr_request_register(lua_State *L, request_t *request)
 {
 	/* fr = {} */
 	lua_getglobal(L, "fr");
@@ -737,7 +737,7 @@ static void _lua_fr_request_register(lua_State *L, REQUEST *request)
 	lua_setfield(L, -2, "request");
 }
 
-int fr_lua_run(module_ctx_t const *mctx, REQUEST *request, char const *funcname)
+int fr_lua_run(module_ctx_t const *mctx, request_t *request, char const *funcname)
 {
 	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);
 	rlm_lua_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
@@ -812,7 +812,7 @@ done:
  */
 static int _lua_rcode_table_newindex(UNUSED lua_State *L)
 {
-	REQUEST	*request = fr_lua_util_get_request();
+	request_t	*request = fr_lua_util_get_request();
 
 	RWDEBUG("You can't modify the table 'fr.rcode.{}' (read-only)");
 

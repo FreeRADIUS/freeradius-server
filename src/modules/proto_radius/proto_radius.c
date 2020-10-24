@@ -273,7 +273,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 /** Decode the packet
  *
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
@@ -388,7 +388,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
@@ -506,7 +506,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	dl_module_inst_t	*type_submodule;

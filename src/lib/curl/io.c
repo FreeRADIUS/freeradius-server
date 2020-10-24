@@ -62,7 +62,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 		case CURLMSG_DONE:
 		{
 			fr_curl_io_request_t	*randle;
-			REQUEST			*request = NULL;
+			request_t			*request = NULL;
 			CURL			*candle = m->easy_handle;
 			CURLcode		ret;
 
@@ -375,7 +375,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
  */
 static int curl_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
 {
-	REQUEST		*request = talloc_get_type_abort(uctx, REQUEST);
+	request_t		*request = talloc_get_type_abort(uctx, request_t);
 	char const	*p = data, *q, *end = p + len;
 	char const	*verb;
 
@@ -454,7 +454,7 @@ static int curl_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, REQUEST *request, fr_curl_io_request_t *randle)
+int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, request_t *request, fr_curl_io_request_t *randle)
 {
 	CURLcode		ret;
 	CURLMcode		mret;

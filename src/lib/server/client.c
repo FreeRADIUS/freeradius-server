@@ -944,7 +944,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  *	- New client on success.
  *	- NULL on error.
  */
-RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
+RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;

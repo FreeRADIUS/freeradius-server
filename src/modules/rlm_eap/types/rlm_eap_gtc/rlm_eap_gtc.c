@@ -68,7 +68,7 @@ fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request);
 
 /** Translate a string auth_type into an enumeration value
  *
@@ -98,7 +98,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  REQUEST *request)
+static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_rcode_t	rcode;
 
@@ -123,7 +123,7 @@ static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  REQUE
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
 	rlm_rcode_t		rcode;
@@ -192,7 +192,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	char		challenge_str[1024];

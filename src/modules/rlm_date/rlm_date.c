@@ -42,7 +42,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
+static ssize_t date_convert_string(request_t *request, char **out, size_t outlen,
 				   const char *str, const char *fmt)
 {
 	struct tm tminfo;
@@ -63,7 +63,7 @@ static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
 }
 
 static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const *inst,
-				    REQUEST *request, time_t date)
+				    request_t *request, time_t date)
 {
 	struct tm tminfo;
 
@@ -110,7 +110,7 @@ update request {
  */
 static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+				 request_t *request, char const *fmt)
 {
 	rlm_date_t const *inst = mod_inst;
 	struct tm tminfo;

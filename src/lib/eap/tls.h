@@ -154,31 +154,31 @@ extern size_t eap_tls_status_table_len;
 /*
  *	Externally exported TLS functions.
  */
-eap_tls_status_t	eap_tls_process(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
+eap_tls_status_t	eap_tls_process(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_start(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_start(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_success(REQUEST *request, eap_session_t *eap_session,
+int			eap_tls_success(request_t *request, eap_session_t *eap_session,
 					char const *keying_prf_label, size_t keying_prf_label_len,
 					char const *sessid_prf_label, size_t sessid_prf_label_len) CC_HINT(nonnull(1));
 
-int			eap_tls_fail(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_fail(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_request(REQUEST *request, eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_request(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_compose(REQUEST *request, eap_session_t *eap_session,
+int			eap_tls_compose(request_t *request, eap_session_t *eap_session,
 					eap_tls_status_t status, uint8_t flags,
 		    			fr_tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
-int			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,
+int			eap_crypto_mppe_keys(request_t *request, SSL *ssl,
 					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
 
-int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, REQUEST *request, SSL *ssl, uint8_t **out,
+int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, request_t *request, SSL *ssl, uint8_t **out,
 						  uint8_t eap_type, char const *prf_label, size_t prf_label_len);
 
 /* EAP-TLS framework */
-eap_tls_session_t	*eap_tls_session_init(REQUEST *request, eap_session_t *eap_session,
+eap_tls_session_t	*eap_tls_session_init(request_t *request, eap_session_t *eap_session,
 					      fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
 
 

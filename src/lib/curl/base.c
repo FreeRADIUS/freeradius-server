@@ -134,7 +134,7 @@ void fr_curl_free(void)
 
 int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *conf)
 {
-	REQUEST *request = randle->request;
+	request_t *request = randle->request;
 
 	if (conf->certificate_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSLCERT, conf->certificate_file);
 	if (conf->private_key_file) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSLKEY, conf->private_key_file);
@@ -154,7 +154,7 @@ error:
 	return -1;
 }
 
-int fr_curl_response_certinfo(REQUEST *request, fr_curl_io_request_t *randle)
+int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 {
 	CURL			*candle = randle->candle;
 	CURLcode		ret;

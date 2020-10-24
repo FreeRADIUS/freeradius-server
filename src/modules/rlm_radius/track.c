@@ -109,7 +109,7 @@ int _radius_track_entry_reserve(char const *file, int line,
 int radius_track_entry_reserve(
 #endif
 				radius_track_entry_t **te_out,
-				TALLOC_CTX *ctx, radius_track_t *tt, REQUEST *request, uint8_t code, void *uctx)
+				TALLOC_CTX *ctx, radius_track_t *tt, request_t *request, uint8_t code, void *uctx)
 {
 	radius_track_entry_t *te;
 

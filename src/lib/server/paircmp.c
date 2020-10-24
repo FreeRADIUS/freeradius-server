@@ -114,7 +114,7 @@ static paircmp_t *cmp;
  *	  add a FR_STRIPPED_USER_NAME to the request.
  */
 static int prefix_suffix_cmp(UNUSED void *instance,
-			     REQUEST *request,
+			     request_t *request,
 			     fr_pair_t *req,
 			     fr_pair_t *check,
 			     fr_pair_t *check_list)
@@ -182,7 +182,7 @@ static int prefix_suffix_cmp(UNUSED void *instance,
  *	Compare the request packet type.
  */
 static int packet_cmp(UNUSED void *instance,
-		      REQUEST *request,
+		      request_t *request,
 		      UNUSED fr_pair_t *req,
 		      fr_pair_t *check,
 		      UNUSED fr_pair_t *check_list)
@@ -198,7 +198,7 @@ static int packet_cmp(UNUSED void *instance,
  *	Generic comparisons, via xlat.
  */
 static int generic_cmp(UNUSED void *instance,
-		       REQUEST *request,
+		       request_t *request,
 		       fr_pair_t *req,
 		       fr_pair_t *check,
 		       UNUSED fr_pair_t *check_list)
@@ -293,9 +293,9 @@ static bool other_attr(fr_dict_attr_t const *da, fr_dict_attr_t const **from)
  *	- -2 on error.
  */
 #ifdef HAVE_REGEX
-int paircmp_pairs(REQUEST *request, fr_pair_t *check, fr_pair_t *vp)
+int paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp)
 #else
-int paircmp_pairs(UNUSED REQUEST *request, fr_pair_t *check, fr_pair_t *vp)
+int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 #endif
 {
 	int ret = 0;
@@ -508,7 +508,7 @@ finish:
  *	- -1 if vp value is less than check value.
  *	- 1 is vp value is more than check value.
  */
-static int paircmp_func(REQUEST *request,
+static int paircmp_func(request_t *request,
 			fr_pair_t *request_list,
 			fr_pair_t *check,
 			fr_pair_t *check_list)
@@ -549,7 +549,7 @@ static int paircmp_func(REQUEST *request,
  * @param[in] check		Check/control valuepairs.
  * @return 0 on match.
  */
-int paircmp(REQUEST *request,
+int paircmp(request_t *request,
 	    fr_pair_t *request_list,
 	    fr_pair_t *check)
 {

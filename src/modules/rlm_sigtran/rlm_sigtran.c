@@ -198,7 +198,7 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sigtran_t);
 	rlm_sigtran_thread_t const	*t = talloc_get_type_abort_const(mctx->thread, rlm_sigtran_thread_t);

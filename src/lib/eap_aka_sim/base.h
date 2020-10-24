@@ -248,7 +248,7 @@ extern size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 ssize_t		fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 					   uint8_t const *data, size_t data_len, void *decoder_ctx);
 
-int		fr_aka_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *dict,
+int		fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const *dict,
 				      uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *ctx);
 
 /*
@@ -256,7 +256,7 @@ int		fr_aka_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *
  */
 ssize_t		fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
-ssize_t		fr_aka_sim_encode(REQUEST *request, fr_pair_t *to_encode, void *encode_ctx);
+ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode_ctx);
 
 /*
  *	base.c
@@ -302,30 +302,30 @@ int		fr_aka_sim_crypto_kdf_0_reauth(fr_aka_sim_keys_t *keys);
 
 int		fr_aka_sim_crypto_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys);
 
-void		fr_aka_sim_crypto_keys_log(REQUEST *request, fr_aka_sim_keys_t *keys);
+void		fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys);
 
 /*
  *	vector.c
  */
-int		fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 						 int idx,
 						 fr_aka_sim_keys_t *keys,
 						 fr_aka_sim_vector_src_t *src);
 
-int		fr_aka_sim_vector_umts_from_attrs(REQUEST *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_t *vps,
 						  fr_aka_sim_keys_t *keys,
 						  fr_aka_sim_vector_src_t *src);
 
-int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_t *vps,
 								   fr_aka_sim_keys_t *keys);
 
-int		fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(REQUEST *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t *vps,
 							       fr_aka_sim_keys_t *keys);
 
 void		fr_aka_sim_vector_umts_reauth_clear(fr_aka_sim_keys_t *keys);
 
 int		fr_aka_sim_umts_resync_from_attrs(uint64_t *new_sqn,
-						  REQUEST *request, fr_pair_t *auts_vp,
+						  request_t *request, fr_pair_t *auts_vp,
 						  fr_aka_sim_keys_t *keys);
 
 /*

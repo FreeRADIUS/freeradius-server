@@ -159,19 +159,19 @@ xlat_t	*xlat_func_find(char const *name, ssize_t namelen);
  *	xlat_eval.c
  */
 void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
-			    REQUEST *request, void *rctx, fr_state_signal_t action);
+			    request_t *request, void *rctx, fr_state_signal_t action);
 
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_func_resume_t resume, xlat_exp_t const *exp,
-				       REQUEST *request, fr_value_box_t **result, void *rctx);
+				       request_t *request, fr_value_box_t **result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_exp_t const **child, bool *alternate,
-				       REQUEST *request, xlat_exp_t const **in,
+				       request_t *request, xlat_exp_t const **in,
 				       fr_value_box_t **result) CC_HINT(nonnull(1,2,3,5,6));
 
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
-				REQUEST *request, xlat_exp_t const **in);
+				request_t *request, xlat_exp_t const **in);
 
 int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void *uctx);
 

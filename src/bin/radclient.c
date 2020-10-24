@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
+typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 
 #include "smbdes.h"
 #include "mschap.h"

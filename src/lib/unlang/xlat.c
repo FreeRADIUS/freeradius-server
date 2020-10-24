@@ -58,7 +58,7 @@ typedef struct {
  *
  */
 typedef struct {
-	REQUEST				*request;			//!< Request this event pertains to.
+	request_t				*request;			//!< Request this event pertains to.
 	int				fd;				//!< File descriptor to wait on.
 	fr_unlang_xlat_timeout_t	timeout;			//!< Function to call on timeout.
 	fr_unlang_xlat_fd_event_t	fd_read;			//!< Function to call when FD is readable.
@@ -146,7 +146,7 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_tim
  *	- <0 on error
  *	- 0 on success
  */
-int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
+int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 				  void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -190,7 +190,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
 void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
+		      request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 
 	unlang_frame_state_xlat_t	*state;
@@ -219,7 +219,7 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -281,7 +281,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
  * @param[in] request		The current request.
  * @param[in] action		What the request should do (the type of signal).
  */
-static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_xlat_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -311,7 +311,7 @@ static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat_resume(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -368,7 +368,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
  * @param[in] rctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
-xlat_action_t unlang_xlat_yield(REQUEST *request,
+xlat_action_t unlang_xlat_yield(request_t *request,
 				xlat_func_resume_t resume, xlat_func_signal_t signal,
 				void *rctx)
 {

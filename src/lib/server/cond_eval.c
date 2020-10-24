@@ -125,7 +125,7 @@ void cond_debug(fr_cond_t const *cond)
  *
  * Converts a tmpl_t to a boolean value.
  *
- * @param[in] request the REQUEST
+ * @param[in] request the request_t
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] vpt the template to evaluate
  * @return
@@ -133,7 +133,7 @@ void cond_debug(fr_cond_t const *cond)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_tmpl(REQUEST *request, UNUSED int depth, tmpl_t const *vpt)
+int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 {
 	int rcode = -1;
 
@@ -201,7 +201,7 @@ int cond_eval_tmpl(REQUEST *request, UNUSED int depth, tmpl_t const *vpt)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
+static int cond_do_regex(request_t *request, fr_cond_t const *c,
 		         fr_value_box_t const *lhs,
 		         fr_value_box_t const *rhs)
 {
@@ -309,7 +309,7 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs, fr_value_box_t const *rhs)
+static int cond_cmp_values(request_t *request, fr_cond_t const *c, fr_value_box_t const *lhs, fr_value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 	int rcode;
@@ -369,7 +369,7 @@ finish:
 }
 
 
-static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static size_t regex_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char *p = out;
 
@@ -413,7 +413,7 @@ done:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs)
+static int cond_normalise_and_cmp(request_t *request, fr_cond_t const *c, fr_value_box_t const *lhs)
 {
 	vp_map_t const		*map = c->data.map;
 
@@ -620,7 +620,7 @@ finish:
 
 /** Evaluate a map
  *
- * @param[in] request the REQUEST
+ * @param[in] request the request_t
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
  * @return
@@ -628,7 +628,7 @@ finish:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
+int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
@@ -731,7 +731,7 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
 
 /** Evaluate a fr_cond_t;
  *
- * @param[in] request the REQUEST
+ * @param[in] request the request_t
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
@@ -741,7 +741,7 @@ int cond_eval_map(REQUEST *request, UNUSED int depth, fr_cond_t const *c)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval(REQUEST *request, rlm_rcode_t modreturn, int depth, fr_cond_t const *c)
+int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t const *c)
 {
 	int rcode = -1;
 #ifdef WITH_EVAL_DEBUG

@@ -65,7 +65,7 @@ static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 /*
  *	Escape special characters
  */
-static size_t rlm_exec_shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in,
+static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in,
 				    UNUSED void *inst)
 {
 	char *q, *end;
@@ -100,7 +100,7 @@ static size_t rlm_exec_shell_escape(UNUSED REQUEST *request, char *out, size_t o
  */
 static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	int			result;
 	rlm_exec_t const	*inst = mod_inst;
@@ -255,7 +255,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /** Resume a request after xlat expansion.
  *
  */
-static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
@@ -309,7 +309,7 @@ static const rlm_rcode_t status2rcode[] = {
  * @param status code returned by exec call.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, fr_value_box_t *box, int status)
+static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box, int status)
 {
 	rlm_rcode_t rcode;
 
@@ -348,7 +348,7 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, fr_value_box_t *box, 
 	return rcode;
 }
 
-static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	int			status;
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
@@ -388,7 +388,7 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, REQUEST *reque
 /*
  *  Dispatch an async exec method
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	rlm_exec_ctx_t		*m;

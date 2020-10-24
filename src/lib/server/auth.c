@@ -45,7 +45,7 @@ RCSID("$Id$")
  *	Run a virtual server auth and postauth
  *
  */
-rlm_rcode_t rad_virtual_server(REQUEST *request)
+rlm_rcode_t rad_virtual_server(request_t *request)
 {
 	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
@@ -183,7 +183,7 @@ runit:
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
 {
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];

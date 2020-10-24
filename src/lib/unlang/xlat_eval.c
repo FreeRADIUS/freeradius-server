@@ -91,7 +91,7 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
-static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
+static size_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
 			   xlat_escape_legacy_t escape, void  const *escape_ctx);
 
 /** Reconstruct the original expansion string from an xlat tree
@@ -177,7 +177,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] node	Being processed.
  * @param[in] args	from previous expansion.
  */
-static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *node, fr_value_box_t const *args)
+static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_t const *args)
 {
 	char *str;
 
@@ -203,7 +203,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
  * @param[in] request	The current request.
  * @param[in] result	of the expansion.
  */
-static inline void xlat_debug_log_result(REQUEST *request, fr_value_box_t const *result)
+static inline void xlat_debug_log_result(request_t *request, fr_value_box_t const *result)
 {
 	if (!RDEBUG_ENABLED2) return;
 
@@ -221,7 +221,7 @@ static inline void xlat_debug_log_result(REQUEST *request, fr_value_box_t const 
  *	- #XLAT_ACTION_DONE	if we're done processing this node.
  *
  */
-static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, char letter)
+static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, char letter)
 {
 
 	char		buffer[64];
@@ -407,7 +407,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
  *	- #XLAT_ACTION_FAIL	on memory allocation errors.
  *	- #XLAT_ACTION_DONE	if we're done processing this node.
  */
-static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, tmpl_t const *vpt)
 {
 	RADIUS_PACKET	*packet = NULL;
 	fr_value_box_t	*value;
@@ -556,7 +556,7 @@ done:
  *	- #XLAT_ACTION_FAIL		we failed getting a value for the attribute.
  *	- #XLAT_ACTION_DONE		we
  */
-static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
 	fr_value_box_t		*value;
@@ -678,7 +678,7 @@ static const char xlat_spaces[] = "                                             
  * @param[in] action		What the request should do (the type of signal).
  */
 void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
-		 REQUEST *request, void *rctx, fr_state_signal_t action)
+		 request_t *request, void *rctx, fr_state_signal_t action)
 {
 	signal(request, exp->call.inst, xlat_thread_instance_find(exp)->data, rctx, action);
 }
@@ -696,7 +696,7 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_func_resume_t resume, xlat_exp_t const *exp,
-				     REQUEST *request, fr_value_box_t **result, void *rctx)
+				     request_t *request, fr_value_box_t **result, void *rctx)
 {
 	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);
 	xlat_action_t		xa;
@@ -750,7 +750,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
  */
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_exp_t const **child, bool *alternate,
-				     REQUEST *request, xlat_exp_t const **in,
+				     request_t *request, xlat_exp_t const **in,
 				     fr_value_box_t **result)
 {
 	xlat_exp_t const	*node = *in;
@@ -990,7 +990,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *	- XLAT_ACTION_FAIL an xlat module failed.
  */
 xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
-			      REQUEST *request, xlat_exp_t const **in)
+			      request_t *request, xlat_exp_t const **in)
 {
 	xlat_exp_t const	*node = *in;
 	xlat_action_t		xa = XLAT_ACTION_DONE;
@@ -1162,7 +1162,7 @@ finish:
 	return xa;
 }
 
-static char *xlat_sync_eval(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
+static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t const * const node,
 			    xlat_escape_legacy_t escape, void const *escape_ctx,
 #ifndef DEBUG_XLAT
 			 UNUSED
@@ -1449,7 +1449,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const 
 }
 
 
-static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
+static size_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
 			   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int i, j, list;
@@ -1556,7 +1556,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
-static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
+static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request,
 				   xlat_exp_t const *node, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	char *buff;
@@ -1590,7 +1590,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, R
 	return len;
 }
 
-static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
+static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,
 			  xlat_escape_legacy_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
 
 /** Replace %whatever in a string.
@@ -1606,7 +1606,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
  * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
-static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
+static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,
 			  xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	ssize_t len;
@@ -1647,7 +1647,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	return len;
 }
 
-ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
+ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
 		  char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
@@ -1655,7 +1655,7 @@ ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
 	return _xlat_eval(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
 
-ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
+ssize_t xlat_eval_compiled(char *out, size_t outlen, request_t *request,
 			   xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
@@ -1663,7 +1663,7 @@ ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 	return _xlat_eval_compiled(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
 
-ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
+ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request, char const *fmt,
 		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
@@ -1672,7 +1672,7 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fm
 	return _xlat_eval(ctx, out, 0, request, fmt, escape, escape_ctx);
 }
 
-ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 			    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
@@ -1696,7 +1696,7 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
  *	- <=0 on error	number indicates which argument caused the problem
  *	- >0 on success	which is argc to the corresponding argv
  */
-int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
+int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 				 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int			i;
@@ -1763,7 +1763,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
  *	- -1 On xlat failure.
  *	- -2 On parse failure.
  */
-int xlat_eval_pair(REQUEST *request, fr_pair_t *vp)
+int xlat_eval_pair(request_t *request, fr_pair_t *vp)
 {
 	ssize_t slen;
 

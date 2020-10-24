@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "switch_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presult)
+static unlang_action_t unlang_switch(request_t *request, UNUSED rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -183,7 +183,7 @@ do_null_case:
 }
 
 
-static unlang_action_t unlang_case(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_case(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];

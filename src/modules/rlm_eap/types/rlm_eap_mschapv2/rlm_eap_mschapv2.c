@@ -95,7 +95,7 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ NULL }
 };
 
-static void mppe_keys_store(REQUEST *request, mschapv2_opaque_t *data)
+static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 {
 	RDEBUG2("Storing attributes for final response");
 
@@ -147,9 +147,9 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Compose the response.
  */
-static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
+static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *request, eap_session_t *eap_session,
 			       fr_pair_t *reply) CC_HINT(nonnull);
-static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
+static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *request, eap_session_t *eap_session,
 			       fr_pair_t *reply)
 {
 	uint8_t			*ptr;
@@ -260,7 +260,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request);
 
 #ifdef WITH_PROXY
 /*
@@ -274,7 +274,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 {
 	fr_pair_t		*response = NULL;
 	mschapv2_opaque_t	*data;
-	REQUEST			*request = eap_session->request;
+	request_t			*request = eap_session->request;
 
 	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	fr_assert(request != NULL);
@@ -343,7 +343,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 #endif
 
 
-static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *inst,
+static rlm_rcode_t mschap_finalize(request_t *request, rlm_eap_mschapv2_t const *inst,
 				   eap_session_t *eap_session, rlm_rcode_t rcode)
 {
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
@@ -424,7 +424,7 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t const *i
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process_auth_type(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_mschapv2_t);
 	rlm_rcode_t			rcode;
@@ -442,10 +442,10 @@ static rlm_rcode_t mod_process_auth_type(module_ctx_t const *mctx, REQUEST *requ
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_mschapv2_t);
-	REQUEST				*parent = request->parent;
+	request_t				*parent = request->parent;
 	eap_session_t			*eap_session = eap_session_get(parent);
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
@@ -766,9 +766,9 @@ packet_ready:
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
 {
-	REQUEST			*parent = request->parent;
+	request_t			*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
 	fr_pair_t		*auth_challenge;
 	fr_pair_t		*peer_challenge;

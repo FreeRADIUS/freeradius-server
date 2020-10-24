@@ -88,7 +88,7 @@ static const CONF_PARSER file_listen_config[] = {
 /*
  *	All of the decoding is done by proto_detail and proto_detail_work
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
 

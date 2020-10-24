@@ -45,7 +45,7 @@ static fr_time_t hup_time;
 fr_stats_t radius_auth_stats = FR_STATS_INIT;
 fr_stats_t radius_acct_stats = FR_STATS_INIT;
 
-void request_stats_final(REQUEST *request)
+void request_stats_final(request_t *request)
 {
 	if (request->master_state == REQUEST_COUNTED) return;
 

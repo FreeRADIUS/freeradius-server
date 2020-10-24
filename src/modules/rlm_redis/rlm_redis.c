@@ -67,7 +67,7 @@ typedef struct {
  *	- -2 failure that may leave the connection in a READONLY state.
  */
 static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **reply_out,
-				   REQUEST *request, fr_redis_conn_t *conn, int argc, char const **argv)
+				   request_t *request, fr_redis_conn_t *conn, int argc, char const **argv)
 {
 	bool			maybe_more = false;
 	redisReply		*reply;
@@ -157,7 +157,7 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
  * @ingroup xlat_functions
  */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, void const *xlat_inst,
+				      request_t *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
@@ -212,7 +212,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     REQUEST *request, void const *xlat_inst,
+				     request_t *request, void const *xlat_inst,
 				     UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -290,7 +290,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  */
 static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
-			  REQUEST *request, char const *fmt)
+			  request_t *request, char const *fmt)
 {
 	rlm_redis_t const	*inst = mod_inst;
 	fr_redis_conn_t		*conn;

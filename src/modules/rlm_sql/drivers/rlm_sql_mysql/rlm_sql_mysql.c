@@ -824,7 +824,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return mysql_affected_rows(conn->sock);
 }
 
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);

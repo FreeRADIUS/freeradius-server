@@ -511,7 +511,7 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *request,
+static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *request,
 		       fr_pair_t **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
@@ -532,7 +532,7 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *reque
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_passwd_t);
 

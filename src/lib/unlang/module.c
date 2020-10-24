@@ -42,7 +42,7 @@ RCSID("$Id$")
  *
  */
 typedef struct {
-	REQUEST				*request;	//!< Request this event pertains to.
+	request_t				*request;	//!< Request this event pertains to.
 	int				fd;		//!< File descriptor to wait on.
 	fr_unlang_module_timeout_t	timeout;	//!< Function to call on timeout.
 	fr_unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
@@ -134,7 +134,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
+int unlang_module_timeout_add(request_t *request, fr_unlang_module_timeout_t callback,
 			      void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -180,7 +180,7 @@ int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callb
  *	- -1 on error.
  *	- 0 on success.
  */
-int unlang_module_timeout_delete(REQUEST *request, void const *ctx)
+int unlang_module_timeout_delete(request_t *request, void const *ctx)
 {
 	unlang_module_event_t *ev;
 
@@ -260,7 +260,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_module_fd_add(REQUEST *request,
+int unlang_module_fd_add(request_t *request,
 			fr_unlang_module_fd_event_t read,
 			fr_unlang_module_fd_event_t write,
 			fr_unlang_module_fd_event_t error,
@@ -316,7 +316,7 @@ int unlang_module_fd_add(REQUEST *request,
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
+int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
 {
 	unlang_module_event_t *ev;
 
@@ -336,7 +336,7 @@ int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
+void unlang_module_push(rlm_rcode_t *out, request_t *request,
 			module_instance_t *module_instance, module_method_t method, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -398,7 +398,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
  *	- A new child request.
  *	- NULL on failure.
  */
-REQUEST *unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace)
+request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *namespace)
 {
 	return unlang_io_subrequest_alloc(parent, namespace, UNLANG_NORMAL_CHILD);
 }
@@ -415,7 +415,7 @@ REQUEST *unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *namesp
  * @return
  *	- RLM_MODULE_YIELD.
  */
-rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
+rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child,
 					      fr_unlang_module_resume_t resume,
 					      fr_unlang_module_signal_t signal,
 					      unlang_subrequest_session_t const *session,
@@ -461,7 +461,7 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
-					REQUEST *request, xlat_exp_t const *exp,
+					request_t *request, xlat_exp_t const *exp,
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)
 {
@@ -507,7 +507,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
-					REQUEST *request, tmpl_t const *vpt,
+					request_t *request, tmpl_t const *vpt,
 					fr_pair_t *vps,
 					fr_unlang_module_resume_t resume,
 					fr_unlang_module_signal_t signal, void *rctx)
@@ -526,7 +526,7 @@ rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, i
 	return RLM_MODULE_YIELD;
 }
 
-rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
+rlm_rcode_t unlang_module_yield_to_section(request_t *request, CONF_SECTION *subcs,
 					   rlm_rcode_t default_rcode,
 					   fr_unlang_module_resume_t resume,
 					   fr_unlang_module_signal_t signal, void *rctx)
@@ -590,7 +590,7 @@ static inline void safe_unlock(module_instance_t *instance)
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_module_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -616,7 +616,7 @@ static void unlang_module_signal(REQUEST *request, fr_state_signal_t action)
 /** Return UNLANG_CALCULATE_RESULT only for async async calls
  *
  */
-static unlang_action_t unlang_module_resume_final(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module_resume_final(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -632,7 +632,7 @@ static unlang_action_t unlang_module_resume_final(REQUEST *request, rlm_rcode_t 
 /** Wrapper to call a module's resumption function
  *
  */
-static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -724,7 +724,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
  *	- RLM_MODULE_FAIL (or asserts) if the current frame is not a module call or
  *	  resume frame.
  */
-rlm_rcode_t unlang_module_yield(REQUEST *request,
+rlm_rcode_t unlang_module_yield(request_t *request,
 				fr_unlang_module_resume_t resume, fr_unlang_module_signal_t signal, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -752,7 +752,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request,
 	return RLM_MODULE_YIELD;
 }
 
-static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_module_t			*sp;
 	unlang_stack_t			*stack = request->stack;

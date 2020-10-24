@@ -90,14 +90,14 @@ static void NEVER_RETURNS usage(void)
 	fr_exit_now(EXIT_FAILURE);
 }
 
-static rlm_rcode_t test_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static rlm_rcode_t test_process(UNUSED void const *instance, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return RLM_MODULE_OK;
 }
 
 
-static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
 								       fr_radius_packet_ctx_t);
@@ -112,7 +112,7 @@ static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *c
 	return 0;
 }
 
-static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	fr_md5_ctx_t	*md5_ctx;
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,

@@ -56,7 +56,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-int od_mschap_auth(REQUEST *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
+int od_mschap_auth(request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
 #endif
 
 /* Allowable account control bits */
@@ -192,7 +192,7 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_pair_t *mschap_identity_find(REQUEST *request)
+static fr_pair_t *mschap_identity_find(request_t *request)
 {
 	fr_pair_t *vp;
 
@@ -295,7 +295,7 @@ static int pdb_decode_acct_ctrl(char const *p)
  */
 static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	size_t			i, data_len;
 	uint8_t const  		*data = NULL;
@@ -676,7 +676,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_del
  *	Add MPPE attributes to the reply.
  */
 static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
-			   REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, size_t len)
+			   request_t *request, fr_dict_attr_t const *da, uint8_t const *value, size_t len)
 {
 	fr_pair_t *vp;
 
@@ -704,7 +704,7 @@ static int write_all(int fd, char const *buf, int len) {
  */
 
 static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
-						       REQUEST *request,
+						       request_t *request,
 #ifdef HAVE_OPENSSL_CRYPTO_H
 						       fr_pair_t *nt_password,
 #else
@@ -1067,7 +1067,7 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst, REQUEST *request,
+static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst, request_t *request,
 						      fr_pair_t *password,
 						      uint8_t const *challenge, uint8_t const *response,
 						      uint8_t nthashhash[static NT_DIGEST_LENGTH],
@@ -1370,7 +1370,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
 	fr_pair_t		*challenge = NULL;
@@ -1396,7 +1396,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsigned char ident,
+static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, request_t *request, unsigned char ident,
 				int mschap_result, int mschap_version, fr_pair_t *smb_ctrl)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -1496,7 +1496,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
  *	- -1 on failure.
  */
 static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, fr_pair_t **out,
-						      rlm_mschap_t const *inst, REQUEST *request)
+						      rlm_mschap_t const *inst, request_t *request)
 {
 	fr_pair_t		*password;
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password, attr_nt_password };
@@ -1583,7 +1583,7 @@ found_password:
  *	change request.
  */
 static rlm_rcode_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_mschap_t const *inst,
-							       REQUEST *request,
+							       request_t *request,
 							       fr_pair_t *cpw,
 							       fr_pair_t *nt_password)
 {
@@ -1707,7 +1707,7 @@ static rlm_rcode_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_mschap_t cons
 static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_response(int *mschap_version,
 									   uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									   rlm_mschap_t const *inst,
-									   REQUEST *request,
+									   request_t *request,
 									   fr_pair_t *smb_ctrl,
 									   fr_pair_t *nt_password,
 									   fr_pair_t *challenge,
@@ -1762,7 +1762,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_response(int *ms
 static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int *mschap_version,
 									    uint8_t nthashhash[static NT_DIGEST_LENGTH],
 									    rlm_mschap_t const *inst,
-									    REQUEST *request,
+									    request_t *request,
 									    fr_pair_t *smb_ctrl,
 									    fr_pair_t *nt_password,
 									    fr_pair_t *challenge,
@@ -1925,7 +1925,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2,3,4,7,8)) mschap_process_v2_response(int 
  *	MS-CHAP-Error for MS-CHAP or MS-CHAP v2
  *	If MS-CHAP2 succeeds we MUST return MS-CHAP2-Success
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
 	fr_pair_t		*challenge = NULL;

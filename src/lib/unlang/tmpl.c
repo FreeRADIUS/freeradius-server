@@ -38,7 +38,7 @@ RCSID("$Id$")
  *	If there is a waitpid handler, then this cleanup function MUST
  *	be called after setting the handler.
  */
-static void unlang_tmpl_exec_cleanup(REQUEST *request)
+static void unlang_tmpl_exec_cleanup(request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -74,7 +74,7 @@ static void unlang_tmpl_exec_cleanup(REQUEST *request)
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_tmpl_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -108,7 +108,7 @@ static void unlang_tmpl_signal(REQUEST *request, fr_state_signal_t action)
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  * @param[out] status		where the status of exited programs will be stored.
  */
-void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
+void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -158,7 +158,7 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, REQUEST *request, t
  */
 static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
 {
-	REQUEST				*request = uctx;
+	request_t				*request = uctx;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
@@ -184,7 +184,7 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 
 static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	REQUEST				*request = uctx;
+	request_t				*request = uctx;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
@@ -242,7 +242,7 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 
 static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	REQUEST				*request = uctx;
+	request_t				*request = uctx;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
@@ -265,7 +265,7 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
  *  called repeatedly until the resumption function returns a final
  *  value.
  */
-static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_resume(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -292,7 +292,7 @@ static unlang_action_t unlang_tmpl_resume(REQUEST *request, rlm_rcode_t *presult
 /** Wrapper to call exec after the program has finished executing
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_final(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_wait_final(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -382,7 +382,7 @@ resume:
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_wait_resume(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -454,7 +454,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(REQUEST *request, rlm_rcode_
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_nowait_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_nowait_resume(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -478,7 +478,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(REQUEST *request, rlm_rcod
 }
 
 
-static unlang_action_t unlang_tmpl(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

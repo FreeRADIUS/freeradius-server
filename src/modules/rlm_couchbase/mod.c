@@ -373,7 +373,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  *	- 0 on success.
  *	- <0 on error.
  */
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list)
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, json_object *json, pair_list_t list)
 {
 	json_object	*list_obj;
 	char const	*list_name = fr_table_str_by_value(pair_list_table, list, "<INVALID>");
@@ -510,7 +510,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
  * @param  vp      The value pair to convert.
  * @return A JSON object.
  */
-json_object *mod_value_pair_to_json_object(REQUEST *request, fr_pair_t *vp)
+json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp)
 {
 	char value[255];    /* radius attribute value */
 

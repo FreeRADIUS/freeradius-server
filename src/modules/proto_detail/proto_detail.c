@@ -235,7 +235,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_detail_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	int			num, lineno;
@@ -384,7 +384,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	if (buffer_len < 1) return -1;
 
@@ -392,7 +392,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 	return 1;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	fr_app_worker_t const *app_process;

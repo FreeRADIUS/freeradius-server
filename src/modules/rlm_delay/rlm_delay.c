@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
  *
  * Marks the request as resumable, and prints the delayed delay time.
  */
-static void _delay_done(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx, fr_time_t fired)
+static void _delay_done(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx, fr_time_t fired)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -67,7 +67,7 @@ static void _delay_done(UNUSED module_ctx_t const *mctx, REQUEST *request, void 
 	unlang_interpret_resumable(request);
 }
 
-static void _xlat_delay_done(REQUEST *request,
+static void _xlat_delay_done(request_t *request,
 			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, fr_time_t fired)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
@@ -83,7 +83,7 @@ static void _xlat_delay_done(REQUEST *request,
 	unlang_interpret_resumable(request);
 }
 
-static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
+static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 		     fr_time_t delay, bool force_reschedule, bool relative)
 {
 	/*
@@ -117,7 +117,7 @@ static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx)
+static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -130,7 +130,7 @@ static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, REQUEST *re
 	return RLM_MODULE_OK;
 }
 
-static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, REQUEST *request, void *rctx,
+static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
 			     fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -140,7 +140,7 @@ static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, REQUEST *request, 
 	(void) unlang_module_timeout_delete(request, rctx);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_delay_t);
 	fr_time_delta_t		delay;
@@ -182,7 +182,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, REQUEST 
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request,
+				       request_t *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
 {
@@ -203,7 +203,7 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
+static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED void *thread,
 			      UNUSED void *rctx, fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -221,7 +221,7 @@ static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED vo
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-				REQUEST *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)
 {
 	rlm_delay_t const	*inst;

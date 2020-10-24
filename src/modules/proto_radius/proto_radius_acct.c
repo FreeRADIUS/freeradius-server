@@ -49,7 +49,7 @@ fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 };
 
 
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t 	*vp;
 	rlm_rcode_t	rcode;

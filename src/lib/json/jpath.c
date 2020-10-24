@@ -103,7 +103,7 @@ static char const escape_chars[] = "[],*.:\\()?";
  * @param arg uctx data, not used.
  * @return the number of chars written to out.
  */
-size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p = in;
 	char *q = out, *end = out + outlen;

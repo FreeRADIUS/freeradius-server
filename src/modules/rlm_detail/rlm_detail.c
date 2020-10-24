@@ -245,7 +245,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] packet associated with the request (request, reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, RADIUS_PACKET *packet, bool compat)
 {
 	fr_pair_t *vp;
 	char timestamp[256];
@@ -365,7 +365,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 /*
  *	Do detail, compatible with old accounting
  */
-static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *request,
+static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, request_t *request,
 					      RADIUS_PACKET *packet, bool compat)
 {
 	int		outfd, dupfd;
@@ -448,7 +448,7 @@ skip_group:
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(mctx->instance, request, request->packet, true);
 }
@@ -456,7 +456,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, REQ
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(mctx->instance, request, request->packet, false);
 }
@@ -464,7 +464,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(mctx->instance, request, request->reply, false);
 }

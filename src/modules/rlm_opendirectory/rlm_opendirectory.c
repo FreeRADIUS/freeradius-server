@@ -88,7 +88,7 @@ fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[] = {
  *  Returns: ds err
  */
 
-static long od_check_passwd(REQUEST *request, char const *uname, char const *password)
+static long od_check_passwd(request_t *request, char const *uname, char const *password)
 {
 	long			result 		= eDSAuthFailed;
 	tDirReference		dsRef 		= 0;
@@ -306,7 +306,7 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
@@ -382,7 +382,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_opendirectory_t);
 	struct passwd			*userdata = NULL;

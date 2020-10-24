@@ -84,7 +84,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  *	- -1 auth failure.
  *	- -648 password expired.
  */
-int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
+int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 		     uint8_t const *challenge, uint8_t const *response,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {

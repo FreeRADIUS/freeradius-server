@@ -166,7 +166,7 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
 	return r;
 }
 
-static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
+static int eap_peap_soh_mstlv(request_t *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
 
 /** Parses the MS-SOH type/value (note: NOT type/length/value) data and update the sohvp list
  *
@@ -182,7 +182,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
+static int eap_peap_soh_mstlv(request_t *request, uint8_t const *p, unsigned int data_len)
 {
 	fr_pair_t *vp;
 	uint8_t c;
@@ -421,7 +421,7 @@ static char const *healthclass2str(uint8_t hc) {
  *	- 0 on success.
  *	- -1 on failure.
  */
-int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
+int soh_verify(request_t *request, uint8_t const *data, unsigned int data_len) {
 
 	fr_pair_t		*vp;
 	eap_soh			hdr;

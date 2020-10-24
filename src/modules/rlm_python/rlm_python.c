@@ -232,7 +232,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(const rlm_python_t *inst, REQUEST *request)
+static void python_error_log(const rlm_python_t *inst, request_t *request)
 {
 	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
@@ -268,14 +268,14 @@ failed:
 	Py_XDECREF(p_traceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request,
+static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *request,
 			fr_pair_t **vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
 	int		i;
 	Py_ssize_t	tuple_len;
 	tmpl_t	*dst;
 	fr_pair_t	*vp;
-	REQUEST		*current = request;
+	request_t		*current = request;
 
 	/*
 	 *	If the Python function gave us None for the tuple,
@@ -385,7 +385,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
  */
-static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, fr_pair_t *vp)
+static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, PyObject *pp, fr_pair_t *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
@@ -489,7 +489,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *p_func, char const *funcname)
+static rlm_rcode_t do_python_single(rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -623,7 +623,7 @@ finish:
  * Will swap in thread state specific to module/thread.
  */
 static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
-			     REQUEST *request, PyObject *p_func, char const *funcname)
+			     request_t *request, PyObject *p_func, char const *funcname)
 {
 	rlm_rcode_t		rcode;
 
@@ -642,7 +642,7 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(module_ctx_t const *mctx, REQUEST *request) \
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_python_t); \
 	rlm_python_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_python_thread_t); \

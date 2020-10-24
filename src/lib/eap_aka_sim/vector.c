@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 
-static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
+static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
 			      fr_pair_t *list, uint8_t const ki[MILENAGE_KI_SIZE])
 {
 	fr_pair_t	*opc_vp;
@@ -75,7 +75,7 @@ static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc
 	return 1;
 }
 
-static int vector_gsm_from_ki(REQUEST *request, fr_pair_t *vps, int idx, fr_aka_sim_keys_t *keys)
+static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*ki_vp, *version_vp;
 	uint8_t		opc_buff[MILENAGE_OPC_SIZE];
@@ -173,7 +173,7 @@ static int vector_gsm_from_ki(REQUEST *request, fr_pair_t *vps, int idx, fr_aka_
 	return 0;
 }
 
-static int vector_gsm_from_triplets(REQUEST *request, fr_pair_t *vps,
+static int vector_gsm_from_triplets(request_t *request, fr_pair_t *vps,
 				    int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*rand = NULL, *sres = NULL, *kc = NULL;
@@ -233,7 +233,7 @@ static int vector_gsm_from_triplets(REQUEST *request, fr_pair_t *vps,
 /** Derive triplets from quintuplets
  *
  */
-static int vector_gsm_from_quintuplets(REQUEST *request, fr_pair_t *vps,
+static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
 				       int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_cursor_t	cursor;
@@ -326,7 +326,7 @@ static int vector_gsm_from_quintuplets(REQUEST *request, fr_pair_t *vps,
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, fr_pair_t *vps,
+int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 				     int idx, fr_aka_sim_keys_t *keys, fr_aka_sim_vector_src_t *src)
 {
 	int		ret;
@@ -392,7 +392,7 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, fr_pair_t *vps,
 	return 0;
 }
 
-static int vector_umts_from_ki(REQUEST *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
 
@@ -589,7 +589,7 @@ static int vector_umts_from_ki(REQUEST *request, fr_pair_t *vps, fr_aka_sim_keys
 /** Get one set of quintuplets from the request
  *
  */
-static int vector_umts_from_quintuplets(REQUEST *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*rand_vp = NULL, *xres_vp = NULL, *ck_vp = NULL, *ik_vp = NULL;
 	fr_pair_t	*autn_vp = NULL, *sqn_vp = NULL, *ak_vp = NULL;
@@ -751,7 +751,7 @@ static int vector_umts_from_quintuplets(REQUEST *request, fr_pair_t *vps, fr_aka
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, fr_pair_t *vps,
+int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_t *vps,
 				      fr_aka_sim_keys_t *keys, fr_aka_sim_vector_src_t *src)
 {
 	int		ret;
@@ -820,7 +820,7 @@ int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, fr_pair_t *vps,
  *	- 0 on success.
  *	- -1 on validation failure.
  */
-int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t *counter_vp;
 	fr_pair_t *mk_vp;
@@ -870,7 +870,7 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, fr_pair
  *	- 0 on success.
  *	- -1 on validation failure.
  */
-int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(REQUEST *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t *counter_vp;
 	fr_pair_t *k_re_vp;
@@ -933,7 +933,7 @@ void fr_aka_sim_vector_umts_reauth_clear(fr_aka_sim_keys_t *keys)
  *	- -1 on validation failure.
  */
 int fr_aka_sim_umts_resync_from_attrs(uint64_t *new_sqn,
-				      REQUEST *request, fr_pair_t *auts_vp, fr_aka_sim_keys_t *keys)
+				      request_t *request, fr_pair_t *auts_vp, fr_aka_sim_keys_t *keys)
 {
 	if (keys->vector_src != AKA_SIM_VECTOR_SRC_KI) {
 		RDEBUG2("Original vectors were not generated locally, cannot perform AUTS validation");

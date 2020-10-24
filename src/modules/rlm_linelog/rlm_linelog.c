@@ -420,7 +420,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Escape unprintable characters.
  */
-static size_t linelog_escape_func(UNUSED REQUEST *request,
+static size_t linelog_escape_func(UNUSED request_t *request,
 		char *out, size_t outlen, char const *in,
 		UNUSED void *arg)
 {
@@ -446,7 +446,7 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
  *	- #RLM_MODULE_FAIL if we failed writing the message.
  *	- #RLM_MODULE_OK on success.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
 	linelog_conn_t			*conn;

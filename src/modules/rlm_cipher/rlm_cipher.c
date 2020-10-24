@@ -466,7 +466,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
  * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
@@ -530,7 +530,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					  REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					  request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
@@ -613,7 +613,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
@@ -677,7 +677,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),

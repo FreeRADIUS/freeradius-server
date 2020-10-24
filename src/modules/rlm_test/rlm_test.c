@@ -189,7 +189,7 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ NULL }
 };
 
-static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
+static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
 			UNUSED fr_pair_t *check_list)
 {
 	fr_assert(check->vp_type == FR_TYPE_STRING);
@@ -277,7 +277,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -310,7 +310,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -322,7 +322,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, U
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -334,7 +334,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, UNUSED
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -346,7 +346,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNU
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED module_ctx_t const *mctx, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	return RLM_MODULE_OK;
 }

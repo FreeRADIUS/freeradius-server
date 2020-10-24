@@ -63,7 +63,7 @@ fr_dict_attr_autoload_t proto_arp_dict_attr[] = {
 /** Decode the packet
  *
  */
-static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 //	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
 	fr_arp_packet_t	const	*arp;
@@ -103,7 +103,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 
 static uint8_t const zeros[6] = { 0 };
 
-static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			slen;
 	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
@@ -152,7 +152,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return slen;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
 	fr_app_worker_t const	*app_process;

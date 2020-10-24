@@ -66,12 +66,12 @@ typedef struct rad_protocol_s rad_protocol_t;
 typedef struct rad_listen rad_listen_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
-typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
+typedef int (*rad_listen_send_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_error_t)(rad_listen_t *, int);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef void (*rad_listen_debug_t)(REQUEST *, RADIUS_PACKET *, bool received);
-typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
+typedef void (*rad_listen_debug_t)(request_t *, RADIUS_PACKET *, bool received);
+typedef int (*rad_listen_encode_t)(rad_listen_t *, request_t *);
+typedef int (*rad_listen_decode_t)(rad_listen_t *, request_t *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
@@ -158,7 +158,7 @@ typedef struct {
 
 #if 0
 	fr_tls_session_t		*tls_session;
-	REQUEST			*request; /* horrible hacks */
+	request_t			*request; /* horrible hacks */
 	fr_pair_t		*cert_vps;
 	pthread_mutex_t		mutex;
 	uint8_t			*data;

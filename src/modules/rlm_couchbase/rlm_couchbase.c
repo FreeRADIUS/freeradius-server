@@ -97,7 +97,7 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  * @param request	The authorization request.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);		/* our module instance */
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
@@ -233,7 +233,7 @@ finish:
  * @param request	The accounting request object.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */

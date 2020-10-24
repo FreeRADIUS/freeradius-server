@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-void		unlang_interpret_push_method(REQUEST *request, void *instance, module_method_t method);
+void		unlang_interpret_push_method(request_t *request, void *instance, module_method_t method);
 
 #ifdef __cplusplus
 }

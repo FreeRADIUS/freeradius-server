@@ -35,7 +35,7 @@ typedef struct unlang_method_t {
 /*
  *	Note that the caller gives us NULL for priority.
  */
-static unlang_action_t unlang_method_call(REQUEST *request, rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
+static unlang_action_t unlang_method_call(request_t *request, rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
 {
 	unlang_method_t *process = talloc_get_type_abort(uctx, unlang_method_t);
 
@@ -55,7 +55,7 @@ static unlang_action_t unlang_method_call(REQUEST *request, rlm_rcode_t *presult
  * @param[in] instance		Instance of the processing section.
  * @param[in] method		to call.
  */
-void unlang_interpret_push_method(REQUEST *request, void *instance, module_method_t method)
+void unlang_interpret_push_method(request_t *request, void *instance, module_method_t method)
 {
 	unlang_method_t *process;
 	unlang_stack_t			*stack = request->stack;

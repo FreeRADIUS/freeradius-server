@@ -34,7 +34,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	rlm_rcode_t			*presult;			//!< Where to store the result.
-	REQUEST				*child;				//!< Pre-allocated child request.
+	request_t				*child;				//!< Pre-allocated child request.
 	bool				free_child;			//!< Whether we should free the child after
 									///< it completes.
 	bool				detachable;			//!< Whether the request can be detached.
@@ -63,7 +63,7 @@ typedef struct {
 
 static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
+	request_t *request = talloc_get_type_abort(uctx, request_t);
 
 	RDEBUG("Reached Request-Lifetime.  Forcibly stopping request");
 
@@ -82,12 +82,12 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_subrequest_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	REQUEST				*child = talloc_get_type_abort(state->child, REQUEST);
+	request_t				*child = talloc_get_type_abort(state->child, request_t);
 
 	unlang_interpret_signal(child, action);
 }
@@ -96,12 +96,12 @@ static void unlang_subrequest_signal(REQUEST *request, fr_state_signal_t action)
 /** Process a subrequest until it either detaches, or is done.
  *
  */
-static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	REQUEST				*child = talloc_get_type_abort(state->child, REQUEST);
+	request_t				*child = talloc_get_type_abort(state->child, request_t);
 	rlm_rcode_t			rcode;
 
 	fr_assert(child != NULL);
@@ -193,12 +193,12 @@ static unlang_action_t unlang_subrequest_process(REQUEST *request, rlm_rcode_t *
 }
 
 
-static unlang_action_t unlang_subrequest_start(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_start(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	REQUEST				*child = state->child;
+	request_t				*child = state->child;
 
 	/*
 	 *	Restore state from the parent to the
@@ -216,13 +216,13 @@ static unlang_action_t unlang_subrequest_start(REQUEST *request, rlm_rcode_t *pr
 }
 
 
-static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	REQUEST				*child;
+	request_t				*child;
 
 	rlm_rcode_t			rcode;
 	fr_pair_t			*vp;
@@ -354,7 +354,7 @@ static unlang_action_t unlang_subrequest_state_init(REQUEST *request, rlm_rcode_
  *  Detach it from the parent, set up it's lifetime, and mark it as
  *  runnable.
  */
-int unlang_detached_child_init(REQUEST *request)
+int unlang_detached_child_init(request_t *request)
 {
 	fr_pair_t		*vp;
 
@@ -404,7 +404,7 @@ int unlang_detached_child_init(REQUEST *request)
 	return 0;
 }
 
-static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -474,7 +474,7 @@ static unlang_action_t unlang_detach(REQUEST *request, rlm_rcode_t *presult)
  *
  * @param[in] child to free.
  */
-void unlang_subrequest_free(REQUEST **child)
+void unlang_subrequest_free(request_t **child)
 {
 	request_detach(*child, true);
 	talloc_free(*child);
@@ -515,7 +515,7 @@ static unlang_group_t subrequest_instruction = {
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child,
+void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 			    unlang_subrequest_session_t const *session, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;

@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				fr_value_box_t **key, vp_map_t const *maps);
 
 /*
@@ -839,7 +839,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Convert field X to a VP.
  */
-static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map, void *uctx)
+static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map, void *uctx)
 {
 	char const		*str = uctx;
 	fr_pair_t		*head = NULL, *vp;
@@ -897,10 +897,10 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, 
  * @param[in] maps	Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, REQUEST *request,
+static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 				fr_value_box_t const *key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
@@ -978,10 +978,10 @@ finish:
  * @param[in] maps	Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				fr_value_box_t **key, vp_map_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
@@ -1002,7 +1002,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_csv_t);
 	rlm_rcode_t rcode;

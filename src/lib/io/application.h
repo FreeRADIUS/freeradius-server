@@ -74,7 +74,7 @@ typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs
  * @param[in] instance	of the #fr_app_t.
  * @param[in] request	To set the next state function for.
  */
-typedef void (*fr_app_entry_point_set_t)(void const *instance, REQUEST *request);
+typedef void (*fr_app_entry_point_set_t)(void const *instance, request_t *request);
 
 /** Set the priority of a packet
  *

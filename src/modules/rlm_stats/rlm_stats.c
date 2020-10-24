@@ -144,7 +144,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_
 /*
  *	Do the statistics
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->instance, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);

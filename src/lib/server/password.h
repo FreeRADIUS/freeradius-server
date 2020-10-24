@@ -30,9 +30,9 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 
-int			password_normalise_and_replace(REQUEST *request, bool normify);
+int			password_normalise_and_replace(request_t *request, bool normify);
 
-fr_pair_t		*password_find(bool *ephemeral, TALLOC_CTX *ctx, REQUEST *request,
+fr_pair_t		*password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 				       fr_dict_attr_t const *allowed_attrs[],
 				       size_t allowed_attrs_len, bool normify);
 

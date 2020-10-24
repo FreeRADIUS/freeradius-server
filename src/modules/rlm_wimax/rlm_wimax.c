@@ -116,7 +116,7 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 
@@ -153,7 +153,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, request_t *request)
 {
 	return mod_authorize(mctx, request);
 }
@@ -161,7 +161,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUES
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;

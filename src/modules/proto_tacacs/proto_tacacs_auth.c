@@ -122,7 +122,7 @@ fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
 	{ NULL }
 };
 
-static void authentication_failed(REQUEST *request, char const *msg)
+static void authentication_failed(request_t *request, char const *msg)
 {
 	fr_pair_t	*vp;
 
@@ -144,7 +144,7 @@ static void authentication_failed(REQUEST *request, char const *msg)
 }
 
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 {
 	proto_tacacs_auth_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_auth_t);
 	fr_pair_t			*vp;

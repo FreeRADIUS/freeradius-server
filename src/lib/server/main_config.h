@@ -92,7 +92,7 @@ struct main_config_s {
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
+	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
 	uint32_t	max_requests;			//!< maximum number of requests outstanding
 
 	bool		write_pid;			//!< write the PID file

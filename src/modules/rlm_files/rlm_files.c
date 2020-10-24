@@ -291,7 +291,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
+static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	char const	*name;
@@ -400,7 +400,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
@@ -415,7 +415,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, REQU
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
@@ -424,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, REQUES
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
@@ -433,7 +433,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, R
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 

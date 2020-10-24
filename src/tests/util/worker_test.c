@@ -65,14 +65,14 @@ static bool		quiet = false;
 static fr_schedule_worker_t workers[MAX_WORKERS];
 
 /**********************************************************************/
-typedef struct fr_request_s REQUEST;
+typedef struct request_s request_t;
 
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx)
 {
 	return NULL;
 }
 
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST const *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t const *request)
 {
 }
 
@@ -100,13 +100,13 @@ static void NEVER_RETURNS usage(void)
 	fr_exit_now(EXIT_FAILURE);
 }
 
-static rlm_rcode_t test_process(UNUSED void const *inst, REQUEST *request, fr_io_action_t action)
+static rlm_rcode_t test_process(UNUSED void const *inst, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return RLM_MODULE_OK;
 }
 
-static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	uint32_t number;
 
@@ -123,7 +123,7 @@ static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *c
 	return 0;
 }
 
-static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static ssize_t test_encode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number,
 		instance, data, data_len);

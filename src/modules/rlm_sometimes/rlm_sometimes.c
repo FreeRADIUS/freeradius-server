@@ -69,7 +69,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void const *instance, request_t *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
 	uint32_t		hash;
 	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);
@@ -142,12 +142,12 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	return inst->rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(module_ctx_t const *mctx, request_t *request)
 {
 	return sometimes_return(mctx->instance, request, request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(module_ctx_t const *mctx, request_t *request)
 {
 	return sometimes_return(mctx->instance, request, request->reply, NULL);
 }

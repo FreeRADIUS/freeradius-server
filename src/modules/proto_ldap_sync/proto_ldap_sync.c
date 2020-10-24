@@ -228,7 +228,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ NULL }
 };
 
-static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
 	fr_assert(0 == 1);
@@ -300,7 +300,7 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  * @param[in] packet	containing attributes from the entry we received.
  * @param[in] received	Should always be true.
  */
-static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+static void proto_ldap_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
 {
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
@@ -337,7 +337,7 @@ static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, boo
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_running(REQUEST *request, fr_state_signal_t action)
+static void request_running(request_t *request, fr_state_signal_t action)
 {
 	CONF_SECTION	*unlang;
 	char const	*verb;
@@ -453,7 +453,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_queued(REQUEST *request, fr_state_signal_t action)
+static void request_queued(request_t *request, fr_state_signal_t action)
 {
 	REQUEST_VERIFY(request);
 
@@ -487,11 +487,11 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
  *	- A new request on success.
  *	- NULL on error.
  */
-static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
+static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
 {
 	TALLOC_CTX		*ctx;
 	RADIUS_PACKET		*packet;
-	REQUEST			*request;
+	request_t			*request;
 
 	ctx = talloc_pool(NULL, main_config->talloc_pool_size);
 	if (!ctx) return NULL;
@@ -528,7 +528,7 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int proto_ldap_attributes_add(REQUEST *request, sync_config_t const *config)
+static int proto_ldap_attributes_add(request_t *request, sync_config_t const *config)
 {
 	fr_pair_t *vp;
 
@@ -677,7 +677,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
-	REQUEST			*request;
+	request_t			*request;
 	fr_pair_t		*vp;
 
 	request = proto_ldap_request_setup(listen, inst, sync_id);
@@ -720,7 +720,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
 	fr_ldap_map_exp_t	expanded;
-	REQUEST			*request;
+	request_t			*request;
 
 	request = proto_ldap_request_setup(listen, inst, sync_id);
 	if (!request) return -1;
@@ -812,7 +812,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
 static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_t *listen, sync_config_t const *config)
 {
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
-	REQUEST			*request;
+	request_t			*request;
 	CONF_SECTION		*unlang;
 	int			ret = 0;
 

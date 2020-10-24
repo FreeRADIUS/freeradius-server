@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
-static int connection_check(fr_pool_t *pool, REQUEST *request);
+static int connection_check(fr_pool_t *pool, request_t *request);
 
 /** An individual connection within the connection pool
  *
@@ -246,7 +246,7 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
  * @param[in] request	The current request (may be NULL).
  * @param[in] event	trigger name suffix.
  */
-static inline void fr_pool_trigger_exec(fr_pool_t *pool, REQUEST *request, char const *event)
+static inline void fr_pool_trigger_exec(fr_pool_t *pool, request_t *request, char const *event)
 {
 	char	name[128];
 
@@ -323,7 +323,7 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
  *	- New connection struct.
  *	- NULL on error.
  */
-static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request, fr_time_t now, bool in_use, bool unlock)
+static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
 {
 	uint64_t		number;
 	uint32_t		pending_window;
@@ -533,7 +533,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
  * @param[in] request	The current request.
  * @param[in] this	Connection to delete.
  */
-static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this)
+static void connection_close_internal(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this)
 {
 	/*
 	 *	If it's in use, release it.
@@ -581,7 +581,7 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
  *	- 0 if connection was closed.
  *	- 1 if connection handle was left open.
  */
-static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this, time_t now)
+static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this, time_t now)
 {
 	fr_assert(pool != NULL);
 	fr_assert(this != NULL);
@@ -641,7 +641,7 @@ static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connecti
  * @param[in] request	The current request.
  * @return 1
  */
-static int connection_check(fr_pool_t *pool, REQUEST *request)
+static int connection_check(fr_pool_t *pool, request_t *request)
 {
 	uint32_t	spawn, idle, extra;
 	fr_time_t		now = fr_time();
@@ -802,7 +802,7 @@ done:
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spawn)
+static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool spawn)
 {
 	fr_time_t now;
 	fr_pool_connection_t *this;
@@ -1212,7 +1212,7 @@ void fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect)
  *	- -1 If we couldn't create start connections, this may be ignored
  *	     depending on the context in which this function is being called.
  */
-int fr_pool_reconnect(fr_pool_t *pool, REQUEST *request)
+int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 {
 	uint32_t		i;
 	fr_pool_connection_t	*this;
@@ -1359,7 +1359,7 @@ void fr_pool_free(fr_pool_t *pool)
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-void *fr_pool_connection_get(fr_pool_t *pool, REQUEST *request)
+void *fr_pool_connection_get(fr_pool_t *pool, request_t *request)
 {
 	return connection_get_internal(pool, request, true);
 }
@@ -1374,7 +1374,7 @@ void *fr_pool_connection_get(fr_pool_t *pool, REQUEST *request)
  * @param[in] request	The current request.
  * @param[in] conn	to release.
  */
-void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
+void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t	*this;
 	fr_time_delta_t		held;
@@ -1467,7 +1467,7 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
  * @param[in] conn	to reconnect.
  * @return new connection handle if successful else NULL.
  */
-void *fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn)
+void *fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t	*this;
 
@@ -1504,7 +1504,7 @@ void *fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn)
+int fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t *this;
 

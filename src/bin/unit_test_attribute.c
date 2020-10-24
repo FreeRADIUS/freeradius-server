@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 
-typedef struct fr_request_s REQUEST;
+typedef struct request_s request_t;
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/test_point.h>
@@ -238,7 +238,7 @@ typedef struct {
 
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 UNUSED REQUEST *request, UNUSED char const *fmt)
+			 UNUSED request_t *request, UNUSED char const *fmt)
 {
 	return 0;
 }

@@ -33,21 +33,21 @@ RCSID("$Id$")
 /** Send a signal from parent request to subrequest in another virtual server
  *
  */
-static void unlang_call_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_call_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	REQUEST				*child = frame->state;
+	request_t				*child = frame->state;
 
 	unlang_interpret_signal(child, action);
 }
 
 
-static unlang_action_t unlang_call_child(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_child(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	REQUEST				*child = frame->state;
+	request_t				*child = frame->state;
 	rlm_rcode_t			rcode;
 
 	/*
@@ -64,11 +64,11 @@ static unlang_action_t unlang_call_child(REQUEST *request, rlm_rcode_t *presult)
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	REQUEST				*child = frame->state;
+	request_t				*child = frame->state;
 	rlm_rcode_t			rcode;
 
 	/*
@@ -85,12 +85,12 @@ static unlang_action_t unlang_call_process(REQUEST *request, rlm_rcode_t *presul
 	return unlang_call_child(request, presult);
 }
 
-static unlang_action_t unlang_call(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	REQUEST				*child;
+	request_t				*child;
 
 	unlang_group_t			*g;
 	unlang_call_kctx_t		*kctx;

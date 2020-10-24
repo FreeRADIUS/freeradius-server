@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include "rlm_securid.h"
 
-static void securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *request, time_t timestamp);
+static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *request, time_t timestamp);
 
 static SECURID_SESSION* securid_sessionlist_delete(rlm_securid_t *inst,
 						   SECURID_SESSION *session);
@@ -39,7 +39,7 @@ SECURID_SESSION* securid_session_alloc(void)
 	return session;
 }
 
-void securid_session_free(UNUSED rlm_securid_t *inst,REQUEST *request,
+void securid_session_free(UNUSED rlm_securid_t *inst,request_t *request,
 			  SECURID_SESSION *session)
 {
 	if (!session) return;
@@ -56,7 +56,7 @@ void securid_session_free(UNUSED rlm_securid_t *inst,REQUEST *request,
 }
 
 
-void securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request)
+void securid_sessionlist_free(rlm_securid_t *inst,request_t *request)
 {
 	SECURID_SESSION *node, *next;
 
@@ -80,7 +80,7 @@ void securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request)
  *	Since we're adding it to the list, we guess that this means
  *	the packet needs a State attribute.  So add one.
  */
-int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSION *session)
+int securid_sessionlist_add(rlm_securid_t *inst,request_t *request, SECURID_SESSION *session)
 {
 	int		status = 0;
 	fr_pair_t	*state;
@@ -169,7 +169,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
  *	the caller.
  *
  */
-SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
+SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, request_t *request)
 {
 	fr_pair_t	*state;
 	SECURID_SESSION* session;
@@ -260,7 +260,7 @@ static SECURID_SESSION *securid_sessionlist_delete(rlm_securid_t *inst, SECURID_
 }
 
 
-static void securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *request, time_t timestamp)
+static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *request, time_t timestamp)
 {
 	int num_sessions;
 	SECURID_SESSION *session;

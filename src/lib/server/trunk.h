@@ -140,7 +140,7 @@ typedef enum {
  */
 typedef enum {
 	FR_TRUNK_REQUEST_STATE_INIT		= 0x0000,	//!< Initial state.  Requests in this state
-								///< were never assigned, and the REQUEST should
+								///< were never assigned, and the request_t should
 								///< not have been yielded.
 	FR_TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0001,	//!< Transition state - Request currently
 								///< not assigned to any connection.
@@ -313,7 +313,7 @@ struct fr_trunk_request_pub_s {
 
 	void			* _CONST rctx;		//!< Resume ctx of the module.
 
-	REQUEST			* _CONST request;	//!< The request that we're writing the data on behalf of.
+	request_t			* _CONST request;	//!< The request that we're writing the data on behalf of.
 };
 
 /** Public fields for the trunk connection
@@ -626,7 +626,7 @@ typedef void (*fr_trunk_request_conn_release_t)(fr_connection_t *conn, void *pre
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
-typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
+typedef void (*fr_trunk_request_complete_t)(request_t *request, void *preq, void *rctx, void *uctx);
 
 /** Write a failure result to the rctx so that the trunk API client is aware that the request failed
  *
@@ -644,14 +644,14 @@ typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
-typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx,
+typedef void (*fr_trunk_request_fail_t)(request_t *request, void *preq, void *rctx,
 					fr_trunk_request_state_t state, void *uctx);
 
 /** Free resources associated with a trunk request
  *
  * The trunk request is complete.  If there's a request still associated with the
  * trunk request, that will be provided so that it can be marked runnable, but
- * be aware that the REQUEST * value will be NULL if the request was cancelled due
+ * be aware that the request_t * value will be NULL if the request was cancelled due
  * to a signal.
  *
  * The preq and any associated data such as encoded packets or I/O library request
@@ -663,7 +663,7 @@ typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx
  * @param[in] preq_to_free	As per the name.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_free_t)(REQUEST *request, void *preq_to_free, void *uctx);
+typedef void (*fr_trunk_request_free_t)(request_t *request, void *preq_to_free, void *uctx);
 
 /** I/O functions to pass to fr_trunk_alloc
  *
@@ -740,15 +740,15 @@ uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int
 
 void		fr_trunk_request_free(fr_trunk_request_t **treq);
 
-fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request) CC_HINT(nonnull(1));
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, request_t *request) CC_HINT(nonnull(1));
 
-fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
+fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, request_t *request,
 					    void *preq, void *rctx) CC_HINT(nonnull(2));
 
 fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
 fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
-						    REQUEST *request, void *preq, void *rctx,
+						    request_t *request, void *preq, void *rctx,
 						    bool ignore_limits) CC_HINT(nonnull(2));
 
 #ifndef NDEBUG

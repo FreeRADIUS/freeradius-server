@@ -51,14 +51,14 @@ static int			max_outstanding = 1;
 static bool			touch_memory = false;
 
 /**********************************************************************/
-typedef struct fr_request_s REQUEST;
+typedef struct request_s request_t;
 
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx)
 {
 	return NULL;
 }
 
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST const *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t const *request)
 {
 }
 

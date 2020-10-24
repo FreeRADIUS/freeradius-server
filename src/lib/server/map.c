@@ -44,7 +44,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #ifdef DEBUG_MAP
-static void map_dump(REQUEST *request, vp_map_t const *map)
+static void map_dump(request_t *request, vp_map_t const *map)
 {
 	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
 	        fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
@@ -829,7 +829,7 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -909,11 +909,11 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
+int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
 	fr_pair_t	*vp = NULL, *found = NULL, *n;
-	REQUEST		*context = request;
+	request_t		*context = request;
 	fr_cursor_t	cursor;
 	ssize_t		slen;
 	char		*str;
@@ -1136,7 +1136,7 @@ do {\
 	} \
 } while (0)
 
-/** Convert #vp_map_t to #fr_pair_t (s) and add them to a #REQUEST.
+/** Convert #vp_map_t to #fr_pair_t (s) and add them to a #request_t.
  *
  * Takes a single #vp_map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
@@ -1153,12 +1153,12 @@ do {\
  *	- -2 in the source attribute wasn't valid.
  *	- 0 on success.
  */
-int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
+int map_to_request(request_t *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int			rcode = 0;
 	int			num;
 	fr_pair_t		**list, *vp, *dst, *head = NULL;
-	REQUEST			*context, *tmp_ctx = NULL;
+	request_t			*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	vp_cursor_t		dst_list, src_list;
 
@@ -1610,7 +1610,7 @@ ssize_t map_print(fr_sbuff_t *out, vp_map_t const *map)
 /*
  *	Debug print a map / VP
  */
-void map_debug_log(REQUEST *request, vp_map_t const *map, fr_pair_t const *vp)
+void map_debug_log(request_t *request, vp_map_t const *map, fr_pair_t const *vp)
 {
 	char *rhs = NULL, *value = NULL;
 	char buffer[256];

@@ -82,9 +82,9 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance);
 
 int mod_attribute_to_element(const char *name, json_object *map, void *buf);
 
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list);
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, json_object *json, pair_list_t list);
 
-json_object *mod_value_pair_to_json_object(REQUEST *request, fr_pair_t *vp);
+json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp);
 
 int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps);
 

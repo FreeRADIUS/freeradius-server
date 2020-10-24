@@ -100,7 +100,7 @@ extern size_t xlat_action_table_len;
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst,
+typedef	void (*fr_unlang_xlat_timeout_t)(request_t *request, void *xlat_inst,
 					 void *xlat_thread_inst, void *rctx, fr_time_t fired);
 
 /** A callback when the FD is ready for reading
@@ -116,7 +116,7 @@ typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst,
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst,
+typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
 					  void *xlat_thread_inst, void *rctx, int fd);
 
 /** xlat callback function
@@ -138,7 +138,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst,
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
 typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 				     fr_value_box_t **in);
 
 /** xlat callback resumption function
@@ -161,7 +161,7 @@ typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
 typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
-					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
@@ -174,7 +174,7 @@ typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*xlat_func_signal_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst,
+typedef void (*xlat_func_signal_t)(request_t *request, void *xlat_inst, void *xlat_thread_inst,
 				   void *rctx, fr_state_signal_t action);
 
 /** Allocate new instance data for an xlat instance
@@ -255,40 +255,40 @@ typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
  */
 typedef ssize_t (*xlat_func_legacy_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
 				      void const *mod_inst, void const *xlat_inst,
-				      REQUEST *request, char const *fmt);
+				      request_t *request, char const *fmt);
 
-typedef size_t (*xlat_escape_legacy_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 
 
-int		xlat_fmt_get_vp(fr_pair_t **out, REQUEST *request, char const *name);
-int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, REQUEST *request, char const *name);
+int		xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name);
+int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char const *name);
 
 int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
-				   bool *tainted, REQUEST *requst, char const *fmt);
+				   bool *tainted, request_t *requst, char const *fmt);
 
-ssize_t		xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_legacy_t escape,
+ssize_t		xlat_eval(char *out, size_t outlen, request_t *request, char const *fmt, xlat_escape_legacy_t escape,
 			  void const *escape_ctx)
 			  CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t		xlat_eval_compiled(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat,
+ssize_t		xlat_eval_compiled(char *out, size_t outlen, request_t *request, xlat_exp_t const *xlat,
 				   xlat_escape_legacy_t escape, void const *escape_ctx)
 				   CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t		xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t		xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request,
 			   char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
 			   CC_HINT(nonnull (2, 3, 4));
 
-ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 				    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 				    CC_HINT(nonnull (2, 3, 4));
 
-int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, REQUEST *request,
+int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 					 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx);
 
 int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat);
 
-int		xlat_eval_pair(REQUEST *request, fr_pair_t *vp);
+int		xlat_eval_pair(request_t *request, fr_pair_t *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
@@ -395,13 +395,13 @@ void		xlat_instances_free(void);
 /*
  *	xlat.c
  */
-int		unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
+int		unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, fr_time_t when);
 
 void		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-				 REQUEST *request, xlat_exp_t const *exp, bool top_frame);
+				 request_t *request, xlat_exp_t const *exp, bool top_frame);
 
-xlat_action_t	unlang_xlat_yield(REQUEST *request,
+xlat_action_t	unlang_xlat_yield(request_t *request,
 				  xlat_func_resume_t callback, xlat_func_signal_t signal,
 				  void *rctx);
 #ifdef __cplusplus

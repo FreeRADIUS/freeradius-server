@@ -61,7 +61,7 @@ static unlang_t function_instruction = {
  * @param[in] request	The current request.
  * @param[out] presult	The frame result.
  */
-static unlang_action_t unlang_function_call(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_function_call(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -96,7 +96,7 @@ static unlang_action_t unlang_function_call(REQUEST *request, rlm_rcode_t *presu
  *			This may be the same as func.
  * @param[in] uctx	to pass to func.
  */
-void unlang_interpret_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
+void unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;

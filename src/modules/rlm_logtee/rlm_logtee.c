@@ -200,12 +200,12 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t);
 
 static void logtee_fd_active(rlm_logtee_thread_t *t);
 
-static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		      char const *file, int line,
 		      char const *fmt, va_list ap, void *uctx)
 		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
-static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Connection errored
  *
@@ -451,7 +451,7 @@ static fr_connection_state_t _logtee_conn_init(void **h_out, fr_connection_t *co
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.
  */
-static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		      UNUSED char const *file, UNUSED int line,
 		      char const *fmt, va_list ap, void *uctx)
 {
@@ -522,7 +522,7 @@ finish:
  *	- #RLM_MODULE_NOOP	if log destination already exists.
  *	- #RLM_MODULE_OK	if we added a new destination.
  */
-static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, REQUEST *request)
+static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *request)
 {
 	fr_cursor_t	cursor;
 	log_dst_t	*dst;

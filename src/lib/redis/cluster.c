@@ -990,7 +990,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
  *	- FR_REDIS_CLUSTER_RCODE_NO_CONNECTION connection failure.
  *	- FR_REDIS_CLUSTER_RCODE_BAD_INPUT on validation failure (bad data returned from Redis).
  */
-fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn)
+fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn)
 {
 	time_t		now;
 	redisReply	*map;
@@ -1244,7 +1244,7 @@ static int cluster_node_pool_health(fr_time_t now, fr_pool_state_t const *state)
  *	- FR_REDIS_CLUSTER_RCODE_SUCCESS on success.
  *	- FR_REDIS_CLUSTER_RCODE_NO_CONNECTION on connection down.
  */
-static fr_redis_cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_cluster_node_t *node, fr_redis_conn_t *conn)
+static fr_redis_cluster_rcode_t cluster_node_ping(request_t *request, fr_redis_cluster_node_t *node, fr_redis_conn_t *conn)
 {
 	redisReply		*reply;
 	fr_redis_rcode_t	rcode;
@@ -1312,7 +1312,7 @@ static fr_redis_cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_clu
  * @return 0 (iterates over the whole tree).
  */
 static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_conn_t **live_conn,
-				  REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_cluster_node_t *skip)
+				  request_t *request, fr_redis_cluster_t *cluster, fr_redis_cluster_node_t *skip)
 {
 	uint32_t		i;
 
@@ -1563,7 +1563,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
  * @param key_len the length of the key.
  * @return pointer to key slot key resolves to.
  */
-fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
+fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, request_t *request,
 								uint8_t const *key, size_t key_len)
 {
 	fr_redis_cluster_key_slot_t *key_slot;
@@ -1702,7 +1702,7 @@ int fr_redis_cluster_port(uint16_t *out, fr_redis_cluster_node_t const *node)
  *	- REDIS_RCODE_RECONNECT - when no additional connections available.
  */
 fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,
-					     fr_redis_cluster_t *cluster, REQUEST *request,
+					     fr_redis_cluster_t *cluster, request_t *request,
 					     uint8_t const *key, size_t key_len, bool read_only)
 {
 	fr_redis_cluster_node_t			*node;
@@ -1822,7 +1822,7 @@ finish:
  *	- REDIS_RCODE_RECONNECT - when no additional connections available.
  */
 fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,
-					     fr_redis_cluster_t *cluster, REQUEST *request,
+					     fr_redis_cluster_t *cluster, request_t *request,
 					     fr_redis_rcode_t status, redisReply **reply)
 {
 	fr_assert(state && state->node && state->node->pool);
