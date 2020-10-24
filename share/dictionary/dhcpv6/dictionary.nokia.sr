@@ -21,5 +21,6 @@ BEGIN-VENDOR	Nokia-Service-Router
 ATTRIBUTE	WAN-Pool			1	string
 ATTRIBUTE	PFX-Pool			2	string
 ATTRIBUTE       PFX-Len                         3       uint8
+ATTRIBUTE       Reserved-NA-Len                 4       uint8
 
 END-VENDOR Nokia-Service-Router
