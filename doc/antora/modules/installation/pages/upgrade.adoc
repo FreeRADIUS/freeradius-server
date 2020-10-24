@@ -507,6 +507,11 @@ Some modules such as rlm_sql_postgresql can have their timeout set via
 an alternative configuration item (e.g. `radius_db` in the case of
 postgresql).
 
+== Xlat expansions
+
+The use of `%%` to escape `%` is no longer supported.  Just use `%`,
+and the parser is smart enough to figure things out.
+
 == New Modules
 
 The following modules are new in v4.
