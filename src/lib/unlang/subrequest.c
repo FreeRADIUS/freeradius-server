@@ -101,7 +101,8 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	request_t				*child = talloc_get_type_abort(state->child, request_t);
+	request_t			*child = talloc_get_type_abort(state->child, request_t);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	rlm_rcode_t			rcode;
 
 	fr_assert(child != NULL);
@@ -120,15 +121,14 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 		 */
 
 	calculate_result:
-		if (child->reply) {
+		if (child->reply && g->kctx) {		/* Only have kctx for keyword generated subrequests */
 			unlang_subrequest_kctx_t	*kctx;
 
 			/*
 			 *	Copy reply attributes into the specified
 			 *      destination.
 			 */
-			kctx = talloc_get_type_abort(unlang_generic_to_group(frame->instruction)->kctx,
-						     unlang_subrequest_kctx_t);
+			kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
 			if (kctx->dst) {
 				tmpl_attr_extent_t 	*extent = NULL;
 				fr_dlist_head_t		leaf;
@@ -222,7 +222,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	request_t				*child;
+	request_t			*child;
 
 	rlm_rcode_t			rcode;
 	fr_pair_t			*vp;
@@ -238,6 +238,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
 	kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
 
 	child = state->child = unlang_io_subrequest_alloc(request, kctx->dict, UNLANG_DETACHABLE);
