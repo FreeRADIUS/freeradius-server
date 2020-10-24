@@ -912,13 +912,19 @@ void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
  *
  */
 ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, size_t secret_len, int code, int id, fr_pair_t *vps)
+{
+	return fr_radius_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, secret, secret_len, code, id, vps);
+}
+
+ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_t *vps)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
 	fr_cursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
-	uint8_t			*out_p, *out_end;
+	fr_dbuff_t		work_dbuff, length_dbuff;
 
 	packet_ctx.secret = secret;
 	packet_ctx.rand_ctx.a = fr_rand();
@@ -927,15 +933,19 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
 	 */
-	if (packet_len > 65535) packet_len = 65535;
+	work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 65535);
 
-	out_p = packet;
-	out_end = packet + packet_len;
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, code, id);
+	length_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
 	switch (code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
-		memcpy(packet_ctx.vector, packet + 4, sizeof(packet_ctx.vector));
+		/*
+		 * Callers in these cases have preloaded the buffer with the authentication vector.
+		 */
+		FR_DBUFF_MEMCPY_OUT_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
@@ -952,14 +962,14 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			return -1;
 		}
 		memcpy(packet_ctx.vector, original + 4, sizeof(packet_ctx.vector));
-		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
-		memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
+		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	default:
@@ -967,33 +977,14 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		return -1;
 	}
 
-	CHECK_FREESPACE(out_end - out_p, RADIUS_HEADER_LENGTH);
-
-	*out_p++ = code;
-	*out_p++ = id;
-	*out_p++ = 0;
-	*out_p++ = RADIUS_HEADER_LENGTH;
-
-	/*
-	 *	Skip over the auth vector
-	 */
-	out_p += RADIUS_AUTH_VECTOR_LENGTH;
-
 	/*
 	 *	If we're sending Protocol-Error, add in
 	 *	Original-Packet-Code manually.  If the user adds it
 	 *	later themselves, well, too bad.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		CHECK_FREESPACE(out_end - out_p, 7);
-
-		*out_p++ = 241;
-		*out_p++ = 7;
-		*out_p++ = 4;	/* Original-Packet-Code */
-		*out_p++ = 0;
-		*out_p++ = 0;
-		*out_p++ = 0;
-		*out_p++ = original[0];
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 241, 7, 4 /* Original-Packet-Code */,
+					 0, 0, 0, original[0]);
 	}
 
 	/*
@@ -1024,8 +1015,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 					continue;
 				}
 
-				memcpy(out_p, vp->vp_octets, vp->vp_length);
-				out_p += vp->vp_length;
+				FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 				fr_cursor_next(&cursor);
 				continue;
 			}
@@ -1040,27 +1030,22 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = fr_radius_encode_pair(out_p, out_end - out_p, &cursor, &packet_ctx);
+		slen = fr_radius_encode_pair_dbuff(&work_dbuff, &cursor, &packet_ctx);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
 		}
-
-		/*
-		 *	Advance position in the output buffer
-		 */
-		out_p += slen;
 	} /* done looping over all attributes */
 
 	/*
 	 *	Fill in the length field we zeroed out earlier.
 	 *
 	 */
-	fr_net_from_uint16(packet + 2, out_p - packet);
+	fr_dbuff_in(&length_dbuff, (uint16_t) (fr_dbuff_used(&work_dbuff)));
 
-	FR_PROTO_HEX_DUMP(packet, out_p - packet, "%s encoded packet", __FUNCTION__);
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "%s encoded packet", __FUNCTION__);
 
-	return out_p - packet;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Decode a raw RADIUS packet into VPs.

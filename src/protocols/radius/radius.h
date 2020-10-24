@@ -127,6 +127,9 @@ ssize_t		fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, siz
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
 ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+				 char const *secret, size_t secret_len, int code, int id, fr_pair_t *vps);
+
+ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_t *vps);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
