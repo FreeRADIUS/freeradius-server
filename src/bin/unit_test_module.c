@@ -348,6 +348,12 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
 
+	request->master_state = REQUEST_ACTIVE;
+	request->server_cs = virtual_server_find("default");
+	fr_assert(request->server_cs != NULL);
+
+	request->config = main_config;
+
 	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';
 
