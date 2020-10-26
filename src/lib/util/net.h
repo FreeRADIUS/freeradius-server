@@ -269,35 +269,13 @@ static inline uint64_t fr_net_to_uint64(uint8_t const data[static sizeof(uint64_
 	return ((uint64_t)fr_net_to_uint32(data) << 32) | fr_net_to_uint32(data + sizeof(uint32_t));
 }
 
-/** Read an signed 16bit integer from wire format (big endian)
- *
- * @param[in] data	To convert to a 16bit signed integer of native endianness.
- * @return a 16 bit signed integer of native endianness.
+/*
+ * To get signed integers, simply cast.
  */
-static inline int16_t fr_net_to_int16(int8_t const data[static sizeof(int16_t)])
-{
-	return (((int16_t)data[0]) << 8) | data[1];
-}
+#define fr_net_to_int16(_x)	((int16_t) fr_net_to_uint16(_x))
+#define fr_net_to_int32(_x)	((int32_t) fr_net_to_uint32(_x))
+#define fr_net_to_int64(_x)	((int64_t) fr_net_to_uint64(_x))
 
-/** Read an signed 32bit integer from wire format (big endian)
- *
- * @param[in] data	To convert to a 32bit signed integer of native endianness.
- * @return a 32 bit signed integer of native endianness.
- */
-static inline int32_t fr_net_to_int32(int8_t const data[static sizeof(int32_t)])
-{
-	return ((int32_t)fr_net_to_int16(data) << 16) | fr_net_to_int16(data + sizeof(int16_t));
-}
-
-/** Read an signed 64bit integer from wire format (big endian)
- *
- * @param[in] data	To convert to a 64bit signed integer of native endianness.
- * @return a 64 bit signed integer of native endianness.
- */
-static inline int64_t fr_net_to_int64(int8_t const data[static sizeof(int64_t)])
-{
-	return ((int64_t)fr_net_to_int32(data) << 32) | fr_net_to_int32(data + sizeof(int32_t));
-}
 
 /** Read an unsigned 64bit integer from wire format (big endian) with a variable length encoding
  *
