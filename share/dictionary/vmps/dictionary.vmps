@@ -15,9 +15,9 @@
 #
 #  VQP / VMPS attributes for the packet header
 #
-ATTRIBUTE	Packet-Type				1	integer
-ATTRIBUTE	Error-Code				2	integer
-ATTRIBUTE	Sequence-Number				3	integer
+ATTRIBUTE	Packet-Type				1	uint32
+ATTRIBUTE	Error-Code				2	uint8
+ATTRIBUTE	Sequence-Number				3	uint32
 
 #
 #  VQP / VMPS Attributes

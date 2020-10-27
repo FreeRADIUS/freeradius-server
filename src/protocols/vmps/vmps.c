@@ -145,17 +145,14 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 }
 
 
-int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pair_t **vps, unsigned int *code)
+int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cursor_t *cursor, unsigned int *code)
 {
 	uint8_t const  	*ptr, *end;
 	int		attr;
 	size_t		attr_len;
-	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
 
 	if (data_len < FR_VQP_HDR_LEN) return -1;
-
-	fr_cursor_init(&cursor, vps);
 
 	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) {
@@ -167,14 +164,14 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 	if (code) *code = data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
 	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
 	if (!vp) goto oom;
@@ -183,7 +180,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 	vp->vp_uint32 = ntohl(vp->vp_uint32);
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(&cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	ptr = data + FR_VQP_HDR_LEN;
 	end = data + data_len;
@@ -196,7 +193,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 	while (ptr < end) {
 		if ((end - ptr) < 6) {
 			fr_strerror_printf("Packet is too small. (%ld < 6)", (end - ptr));
-			goto error;
+			return -1;
 		}
 
 		attr = (ptr[2] << 8) | ptr[3];
@@ -209,7 +206,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 		 */
 		if (attr_len > (size_t) (end - ptr)) {
 			fr_strerror_printf("Attribute length exceeds received data");
-			goto error;
+			return -1;
 		}
 
 		/*
@@ -218,9 +215,6 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 		vp = fr_pair_afrom_child_num(ctx, fr_dict_root(dict_vmps), attr);
 		if (!vp) {
 			fr_strerror_printf("No memory");
-
-		error:
-			fr_pair_list_free(vps);
 			return -1;
 		}
 
@@ -231,13 +225,13 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_pai
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, ptr, attr_len, true) < 0) {
 			talloc_free(vp);
-			goto error;
+			return -1;
 		}
 
 		ptr += attr_len;
 		vp->vp_tainted = true;
 		DEBUG2("&%pP", vp);
-		fr_cursor_append(&cursor, vp);
+		fr_cursor_append(cursor, vp);
 	}
 
 	/*
@@ -269,53 +263,29 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 #endif
 
 ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
-		       int code, uint32_t seq_no, fr_pair_t *vps)
+		       int code, uint32_t seq_no, fr_cursor_t *cursor)
 {
 	uint8_t *attr;
 	fr_pair_t *vp;
-	fr_cursor_t cursor;
-	int our_code = code;
 
 	if (buflen < 8) {
 		fr_strerror_printf("Output buffer is too small for VMPS header. (%zu < 8)", buflen);
 		return -1;
 	}
 
-	/* If the 'code' exist in the VP's, use it. */
-	vp = fr_pair_find_by_da(vps, attr_packet_type);
-	if (vp) our_code = vp->vp_uint8;
-
-	/* fill up */
+	/*
+	 *	Create the header
+	 */
 	buffer[0] = FR_VQP_VERSION;	/* Version */
-	buffer[1] = our_code;		/* Opcode */
-
-	vp = fr_pair_find_by_da(vps, attr_error_code);
-	buffer[2] = (vp) ? vp->vp_uint8 : FR_ERROR_CODE_VALUE_NO_ERROR;	/* Response Code */
-
+	buffer[1] = code;		/* Opcode */
+	buffer[2] = FR_ERROR_CODE_VALUE_NO_ERROR;	/* Response Code */
 	buffer[3] = 0;			/* Data Count */
 
-	/*
-	 *	The number of attributes is hard-coded.
-	 */
-	if (our_code != -1) {
-		uint32_t our_seq_no = seq_no;
-		uint32_t sequence;
-
-		vp = fr_pair_find_by_da(vps, attr_sequence_number);
-		if (vp) our_seq_no = vp->vp_uint32;
-
-		sequence = htonl(our_seq_no);
-		memcpy(buffer + 4, &sequence, 4);
-	} else {
-		if (!original) {
-			fr_strerror_printf("Cannot send VQP response without request");
-			return -1;
-		}
-
-		/*
-		 *	Packet Sequence Number
-		 */
+	if (original) {
 		memcpy(buffer + 4, original + 4, 4);
+	} else {
+		seq_no = htonl(seq_no);
+		memcpy(buffer + 4, &seq_no, 4);
 	}
 
 	attr = buffer + 8;
@@ -323,18 +293,32 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 	/*
 	 *	Encode the VP's.
 	 */
-	fr_cursor_init(&cursor, &vps);
-	while ((vp = fr_cursor_current(&cursor))) {
+	while ((vp = fr_cursor_current(cursor))) {
 		size_t len;
 
-		if (vp->da->flags.internal) goto next;
-
-		/*
-		 *	Skip non-VMPS attributes/
-		 */
-		if (!((vp->da->attr >= FR_CLIENT_IPV4_ADDRESS) && (vp->da->attr <= FR_COOKIE))) goto next;
-
 		if (attr >= (buffer + buflen)) break;
+
+		if (vp->da == attr_packet_type) {
+			buffer[1] = vp->vp_uint32;
+			fr_cursor_next(cursor);
+			continue;
+		}
+
+
+		if (vp->da == attr_error_code) {
+			buffer[2] = vp->vp_uint8;
+			fr_cursor_next(cursor);
+			continue;
+		}
+
+		if (!original && (vp->da == attr_sequence_number)) {
+			uint32_t sequence;
+
+			sequence = htonl(vp->vp_uint32);
+			memcpy(buffer + 4, &sequence, 4);
+			fr_cursor_next(cursor);
+			continue;
+		}
 
 		DEBUG2("&%pP", vp);
 
@@ -400,8 +384,7 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		}
 		buffer[3]++;
 
-next:
-		fr_cursor_next(&cursor);
+		fr_cursor_next(cursor);
 	}
 
 	return attr - buffer;
@@ -562,7 +545,11 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
  */
 static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_vmps_decode(ctx, data, data_len, vps, NULL);
+	fr_cursor_t cursor;
+
+	fr_cursor_init(&cursor, vps);
+
+	return fr_vmps_decode(ctx, data, data_len, &cursor, NULL);
 }
 
 static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
@@ -600,7 +587,11 @@ fr_test_point_proto_decode_t vmps_tp_decode_proto = {
  */
 static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_vmps_encode(data, data_len, NULL, -1, -1, vps);
+	fr_cursor_t cursor;
+
+	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
+
+	return fr_vmps_encode(data, data_len, NULL, -1, -1, &cursor);
 }
 
 static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)

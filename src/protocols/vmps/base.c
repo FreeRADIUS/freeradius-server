@@ -45,7 +45,7 @@ fr_dict_attr_t const *attr_sequence_number;
 
 extern fr_dict_attr_autoload_t libfreeradius_vmps_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_vmps_dict_attr[] = {
-	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_vmps },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ .out = &attr_sequence_number, .name = "Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ NULL }
