@@ -227,7 +227,7 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 	default:
 		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
 		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
-		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->datum.length,
+		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->vb_length,
 				     tmpl_regex_flags(map->rhs), true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
@@ -246,7 +246,7 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 	/*
 	 *	Evaluate the expression
 	 */
-	ret = regex_exec(preg, lhs->vb_strvalue, lhs->datum.length, regmatch);
+	ret = regex_exec(preg, lhs->vb_strvalue, lhs->vb_length, regmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -279,9 +279,9 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
 {
 	if (lhs) {
 		if (lhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%pV\" (%zu)" , &lhs->datum, lhs->datum.length);
+			EVAL_DEBUG("LHS: \"%pV\" (%zu)" , &lhs->datum, lhs->vb_length);
 		} else {
-			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->datum.length);
+			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->vb_length);
 		}
 	} else {
 		EVAL_DEBUG("LHS: VIRTUAL");
@@ -289,9 +289,9 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
 
 	if (rhs) {
 		if (rhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%pV\" (%zu)", &rhs->datum, rhs->datum.length);
+			EVAL_DEBUG("RHS: \"%pV\" (%zu)", &rhs->datum, rhs->vb_length);
 		} else {
-			EVAL_DEBUG("RHS: 0x%pH (%zu)", &rhs->datum, rhs->datum.length);
+			EVAL_DEBUG("RHS: 0x%pH (%zu)", &rhs->datum, rhs->vb_length);
 		}
 	} else {
 		EVAL_DEBUG("RHS: COMPILED");
