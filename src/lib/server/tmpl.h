@@ -651,14 +651,14 @@ static inline pair_list_t tmpl_list(tmpl_t const *vpt)
  * @{
  */
 #define tmpl_value(_tmpl)			(&(_tmpl)->data.literal)
-#define tmpl_value_length(_tmpl)		(_tmpl)->data.literal.datum.length
+#define tmpl_value_length(_tmpl)		(_tmpl)->data.literal.vb_length
 #define tmpl_value_type(_tmpl)			(_tmpl)->data.literal.type
 #define tmpl_value_enumv(_tmpl)			(_tmpl)->data.literal.enumv
 
 /*
  *	Temporary macros to track where we do assignments
  */
-#define tmpl_value_length_set(_tmpl, _len)	(_tmpl)->data.literal.datum.length = (_len)
+#define tmpl_value_length_set(_tmpl, _len)	(_tmpl)->data.literal.vb_length = (_len)
 #define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 

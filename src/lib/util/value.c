@@ -495,7 +495,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 {
 	switch (src->type) {
 	case FR_TYPE_VARIABLE_SIZE:
-		dst->datum.length = src->datum.length;
+		dst->vb_length = src->vb_length;
 		break;
 
 	default:
@@ -539,10 +539,10 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	{
 		size_t length;
 
-		if (a->datum.length < b->datum.length) {
-			length = a->datum.length;
+		if (a->vb_length < b->vb_length) {
+			length = a->vb_length;
 		} else {
-			length = b->datum.length;
+			length = b->vb_length;
 		}
 
 		if (length) {
@@ -556,7 +556,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 *
 		 *	i.e. "0x00" is smaller than "0x0000"
 		 */
-		compare = a->datum.length - b->datum.length;
+		compare = a->vb_length - b->vb_length;
 	}
 		break;
 
@@ -1132,7 +1132,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 	case FR_TYPE_VARIABLE_SIZE:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
-		return value->datum.length;
+		return value->vb_length;
 
 	default:
 		return fr_value_box_network_sizes[value->type][0];
@@ -1205,15 +1205,15 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		/*
 		 *	Figure dst if we'd overflow
 		 */
-		if (value->datum.length > fr_dbuff_remaining(dbuff)) {
-			if (need) *need = value->datum.length;
+		if (value->vb_length > fr_dbuff_remaining(dbuff)) {
+			if (need) *need = value->vb_length;
 			len = fr_dbuff_remaining(dbuff);
 		} else {
 			if (need) *need = 0;
-			len = value->datum.length;
+			len = value->vb_length;
 		}
 
-		if (value->datum.length > 0) fr_dbuff_memcpy_in(dbuff, (uint8_t const *)value->datum.ptr, len);
+		if (value->vb_length > 0) fr_dbuff_memcpy_in(dbuff, (uint8_t const *)value->datum.ptr, len);
 
 		return len;
 	}
@@ -1747,22 +1747,22 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 		if (!fr_cond_assert(false)) return -1;
 	}
 
-	if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
+	if (src->vb_length < fr_value_box_network_sizes[dst_type][0]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-				   src->datum.length,
+				   src->vb_length,
 				   fr_value_box_network_sizes[dst_type][0]);
 		return -1;
 	}
 
-	if (src->datum.length > fr_value_box_network_sizes[dst_type][1]) {
+	if (src->vb_length > fr_value_box_network_sizes[dst_type][1]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-				   src->datum.length,
+				   src->vb_length,
 				   fr_value_box_network_sizes[dst_type][1]);
 		return -1;
 	}
@@ -2029,7 +2029,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
 		break;
@@ -2085,11 +2085,11 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr), src->datum.length);
+					   sizeof(dst->vb_ip.addr.v4.s_addr), src->vb_length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ip.addr.v4.s_addr));
@@ -2137,7 +2137,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				             src->vb_strvalue, src->datum.length, '\0', src->tainted);
+				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
 		break;
@@ -2191,11 +2191,11 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->datum.length);
+					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.prefix = src->vb_octets[0];
@@ -2248,7 +2248,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
 		break;
@@ -2310,11 +2310,11 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->datum.length);
+					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->vb_length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
@@ -2353,7 +2353,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
 		break;
@@ -2400,11 +2400,11 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
+		if (src->vb_length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->datum.length);
+					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
@@ -2443,7 +2443,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
@@ -2502,7 +2502,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-					     src->vb_strvalue, src->datum.length, '\0', src->tainted);
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
@@ -2755,7 +2755,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				             src->vb_strvalue, src->datum.length, '\0', src->tainted);
+				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
@@ -2959,27 +2959,27 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 								      src->vb_strvalue,
-								      src->datum.length, '\0', src->tainted);
+								      src->vb_length, '\0', src->tainted);
 
 	if (src->type == FR_TYPE_OCTETS) {
 		fr_value_box_t tmp;
 
-		if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
+		if (src->vb_length < fr_value_box_network_sizes[dst_type][0]) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->datum.length,
+					   src->vb_length,
 					   fr_value_box_network_sizes[dst_type][0]);
 			return -1;
 		}
 
-		if (src->datum.length > fr_value_box_network_sizes[dst_type][1]) {
+		if (src->vb_length > fr_value_box_network_sizes[dst_type][1]) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->datum.length,
+					   src->vb_length,
 					   fr_value_box_network_sizes[dst_type][1]);
 			return -1;
 		}
@@ -3213,7 +3213,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		/*
 		 *	Zero length strings still have a one uint8 buffer
 		 */
-		str = talloc_bstrndup(ctx, src->vb_strvalue, src->datum.length);
+		str = talloc_bstrndup(ctx, src->vb_strvalue, src->vb_length);
 		if (!str) {
 			fr_strerror_printf("Failed allocating string buffer");
 			return -1;
@@ -3226,8 +3226,8 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	{
 		uint8_t *bin = NULL;
 
-		if (src->datum.length) {
-			bin = talloc_memdup(ctx, src->vb_octets, src->datum.length);
+		if (src->vb_length) {
+			bin = talloc_memdup(ctx, src->vb_octets, src->vb_length);
 			if (!bin) {
 				fr_strerror_printf("Failed allocating octets buffer");
 				return -1;
@@ -3446,7 +3446,7 @@ void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 {
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = src;
-	dst->datum.length = strlen(src);
+	dst->vb_length = strlen(src);
 }
 
 /** Copy a nul terminated string to a #fr_value_box_t
@@ -3626,7 +3626,7 @@ int fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
-	dst->datum.length = len - 1;
+	dst->vb_length = len - 1;
 
 	return 0;
 }
@@ -3743,7 +3743,7 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = bin;
-	dst->datum.length = len;
+	dst->vb_length = len;
 
 	if (out) *out = bin;
 
@@ -3824,7 +3824,7 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = bin;
-	dst->datum.length = len;
+	dst->vb_length = len;
 
 	return 0;
 }
@@ -3869,7 +3869,7 @@ void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 {
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = src;
-	dst->datum.length = len;
+	dst->vb_length = len;
 }
 
 /** Assign a talloced buffer to a box, but don't copy it
@@ -3889,7 +3889,7 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
-	dst->datum.length = talloc_array_length(src);
+	dst->vb_length = talloc_array_length(src);
 }
 
 /** Append data to an existing fr_value_box_t
@@ -4532,7 +4532,7 @@ parse:
 	}
 
 finish:
-	dst->datum.length = ret;
+	dst->vb_length = ret;
 	dst->type = *dst_type;
 	dst->tainted = tainted;
 
@@ -4577,14 +4577,14 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	switch (data->type) {
 	case FR_TYPE_STRING:
-		if (data->datum.length) FR_SBUFF_IN_ESCAPE_RETURN(&our_out,
-								  data->vb_strvalue, data->datum.length, e_rules);
+		if (data->vb_length) FR_SBUFF_IN_ESCAPE_RETURN(&our_out,
+								  data->vb_strvalue, data->vb_length, e_rules);
 		break;
 
 	case FR_TYPE_OCTETS:
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '0', 'x');
-		if (data->datum.length) FR_SBUFF_RETURN(fr_bin2hex, &our_out,
-							&FR_DBUFF_TMP(data->vb_octets, data->datum.length), SIZE_MAX);
+		if (data->vb_length) FR_SBUFF_RETURN(fr_bin2hex, &our_out,
+							&FR_DBUFF_TMP(data->vb_octets, data->vb_length), SIZE_MAX);
 		break;
 
 	/*
@@ -4781,7 +4781,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_ABINARY:
-		print_abinary(NULL, buf, sizeof(buf), (uint8_t const *) &data->datum.filter, data->datum.length, 0);
+		print_abinary(NULL, buf, sizeof(buf), data->datum.filter, data->vb_length, 0);
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
 		break;
 
