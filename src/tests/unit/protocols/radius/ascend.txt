@@ -7,5 +7,21 @@ match 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00
 decode-pair -
 match Ascend-Data-Filter = "ip in drop tcp dstport > 1023"
 
+attribute Ascend-Data-Filter = 0x01010100010203040a0b0c0d05200600000504d2020200000000000000000000
+match Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
+
+encode-pair -
+match 1a 28 00 00 02 11 f2 22 01 01 01 00 01 02 03 04 0a 0b 0c 0d 05 20 06 00 00 05 04 d2 02 02 00 00 00 00 00 00 00 00 00 00
+
+decode-pair 1a2800000211f22201010100010203040a0b0c0d05200600000504d2020200000000000000000000
+match Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
+
+
+encode-pair Ascend-Data-Filter = "ipv6 in forward srcip ::1 dstip ::1 tcp srcport = 5 dstport = 1234"
+match 1a 38 00 00 02 11 f2 32 03 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 80 80 06 00 00 05 04 d2 02 02 00 00
+
+decode-pair -
+match Ascend-Data-Filter = "ipv6 in forward srcip ::1/128 dstip ::1/128 tcp srcport = 5 dstport = 1234"
+
 count
-match 6
+match 16
