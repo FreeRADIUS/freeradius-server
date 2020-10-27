@@ -153,7 +153,7 @@ typedef struct {
 #define vp_strvalue		data.vb_strvalue
 #define vp_octets		data.vb_octets
 #define vp_ptr			data.datum.ptr			//!< Either octets or strvalue
-#define vp_length		data.datum.length
+#define vp_length		data.vb_length
 
 #define vp_ipv4addr		data.vb_ip.addr.v4.s_addr
 #define vp_ipv6addr		data.vb_ip.addr.v6.s6_addr
