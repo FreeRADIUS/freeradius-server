@@ -611,8 +611,6 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **
 	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		fr_pair_t *next;
-
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP list.
@@ -640,10 +638,8 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **
 			break;
 		}
 
-		do {
-			next = vp->next;
-			fr_cursor_append(&cursor, vp);
-		} while (next && (vp = next));
+		fr_cursor_append(&cursor, vp);
+		(void) fr_cursor_tail(&cursor);
 
 		buf[0] = '\0';
 	}
