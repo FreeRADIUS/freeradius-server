@@ -117,10 +117,8 @@ struct value_box_s {
 				char const	*strvalue;	//!< Pointer to UTF-8 string.
 				uint8_t const	*octets;	//!< Pointer to binary string.
 				void		*ptr;		//!< generic pointer.
-				uint8_t		filter[32];	//!< Ascend binary format (a packed data structure).
-
+				uint8_t const  	*filter;	//!< Ascend binary format (a packed data structure).
 			};
-			size_t		length;
 		};
 
 		/*
@@ -158,11 +156,13 @@ struct value_box_s {
 		fr_value_box_list_t	children;		//!< for groups
 	} datum;
 
+	size_t				length;
+
 	fr_type_t		_CONST type;			//!< Type of this value-box.
 
-	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
-
 	bool				tainted;		//!< i.e. did it come from an untrusted source
+
+	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
 	fr_value_box_t			*next;			//!< Next in a series of value_box.
 };
@@ -204,7 +204,7 @@ struct value_box_s {
 #define vb_timeval				datum.timeval
 #define vb_time_delta				datum.time_delta
 
-#define vb_length				datum.length
+#define vb_length				length
 /** @} */
 
 /** @name Argument boxing macros
@@ -215,7 +215,7 @@ struct value_box_s {
  *
  * @{
  */
-#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .datum.length = _len }
+#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .vb_length = _len }
 
 #define fr_box_strvalue(_val)			_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, strlen(_val))
 #define fr_box_strvalue_len(_val, _len)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, _len)

@@ -4224,6 +4224,18 @@ parse:
 		fr_strerror_printf("Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'");
 		return -1;
 
+	case FR_TYPE_ABINARY:
+		if ((len > 1) && (in[0] != '0') && (tolower((int) in[1]) != 'x')) {
+			if (ascend_parse_filter(ctx, dst, in, len) < 0 ) {
+				/* Allow ascend_parse_filter's strerror to bubble up */
+				return -1;
+			}
+
+			ret = talloc_array_length(dst->datum.filter);
+			goto finish;
+		}
+		FALL_THROUGH;
+
 	/* raw octets: 0x01020304... */
 	case FR_TYPE_OCTETS:
 	{
@@ -4259,30 +4271,6 @@ parse:
 
 		dst->vb_octets = p;
 	}
-		goto finish;
-
-	case FR_TYPE_ABINARY:
-		if ((len > 1) && (strncasecmp(in, "0x", 2) == 0)) {
-			ssize_t bin;
-
-			if (len > ((sizeof(dst->datum.filter) + 1) * 2)) {
-				fr_strerror_printf("Hex data is too large for ascend filter");
-				return -1;
-			}
-
-			bin = fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &dst->datum.filter, (len - 2) / 2),
-					 &FR_SBUFF_IN(in + 2, len - 2), false);
-			if (bin < ret) {
-				memset(((uint8_t *) &dst->datum.filter) + bin, 0, ret - bin);
-			}
-		} else {
-			if (ascend_parse_filter(dst, in, len) < 0 ) {
-				/* Allow ascend_parse_filter's strerror to bubble up */
-				return -1;
-			}
-		}
-
-		ret = sizeof(dst->datum.filter);
 		goto finish;
 
 	case FR_TYPE_IPV4_ADDR:

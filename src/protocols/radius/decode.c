@@ -1568,8 +1568,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_ABINARY:
-		if (data_len > sizeof(vp->vp_filter)) data_len = sizeof(vp->vp_filter);
-		memcpy(vp->vp_filter, p, data_len);
+		if (data_len > 32) goto raw;
+		vp->vp_filter = talloc_memdup(vp, p, data_len);
 		vp->vp_length = data_len;
 		break;
 

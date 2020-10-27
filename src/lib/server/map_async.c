@@ -151,8 +151,8 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 					.type = FR_TYPE_STRING,
 					.datum = {
 						.strvalue = "",
-						.length = 0
-					}
+					},
+					.length = 0,
 				};
 
 	n = list_mod_alloc(ctx);

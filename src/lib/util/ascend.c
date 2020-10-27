@@ -963,7 +963,7 @@ static int ascend_parse_generic(int argc, char **argv,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
+int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value, size_t len)
 {
 	int		token, type;
 	int		rcode;
@@ -1073,7 +1073,7 @@ int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 	/*
 	 *	Touch the VP only if everything was OK.
 	 */
-	if (rcode == 0) memcpy(out->datum.filter, &filter, sizeof(filter));
+	if (rcode == 0) out->datum.filter = talloc_memdup(ctx, &filter, sizeof(filter));
 	talloc_free(p);
 
 	return rcode;
