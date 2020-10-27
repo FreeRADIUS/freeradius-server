@@ -1,0 +1,11 @@
+proto radius
+proto-dictionary radius
+
+encode-pair Ascend-Data-Filter = "ip in drop tcp dstport > 1023"
+match 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00 00 03 ff 00 03 00 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match Ascend-Data-Filter = "ip in drop tcp dstport > 1023"
+
+count
+match 6
