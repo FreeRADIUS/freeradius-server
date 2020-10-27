@@ -233,7 +233,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		 *	here.
 		 */
 		fr_cursor_init(&child_cursor, &head);
-		rcode = decode_tlvs(ctx, &child_cursor, dict, fr_dict_root(dict_dhcpv6), data, data_len, decoder_ctx, false);
+		rcode = decode_tlvs(vp, &child_cursor, dict, fr_dict_root(dict_dhcpv6), data, data_len, decoder_ctx, false);
 		if (rcode < 0) {
 			talloc_free(vp);
 			goto raw;
@@ -530,7 +530,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 
 		fr_cursor_init(&cursor_group, &vp->vp_group);
-		rcode = fr_dhcpv6_decode(ctx, data + 4, len, &cursor_group);
+		rcode = fr_dhcpv6_decode(vp, data + 4, len, &cursor_group);
 		if (rcode < 0) {
 			talloc_free(vp);
 			return rcode;
