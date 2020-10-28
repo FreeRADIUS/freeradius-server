@@ -107,7 +107,7 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	unsigned char   fill[2];
+	uint8_t		end[0];
 
 	// @todo - extra juniper stuff
 } ascend_ip_filter_t;
@@ -160,7 +160,7 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	unsigned char   fill[2];
+	uint8_t		end[0];
 
 	// @todo - extra juniper stuff
 } ascend_ipv6_filter_t;
@@ -200,6 +200,7 @@ typedef struct {
 	ascend_ipx_net_t dst;
 	uint8_t		srcSocComp;
 	uint8_t		dstSocComp;
+	uint8_t		end[0];
 } ascend_ipx_filter_t;
 
 
@@ -234,7 +235,7 @@ typedef struct {
 	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
-	uint8_t		fill[3];	/* used to be fill[1] */
+	uint8_t		end[0];
 } ascend_generic_filter_t;
 
 /*
@@ -266,12 +267,11 @@ typedef struct {
 	uint8_t		direction;
 	uint8_t		fill;
 	union {
-		ascend_ip_filter_t   	 ip;
-		ascend_ipx_filter_t   	 ipx;
-		ascend_ipv6_filter_t   	 ipv6;
+		ascend_ip_filter_t   	ip;
+		ascend_ipx_filter_t   	ipx;
+		ascend_ipv6_filter_t   	ipv6;
 		ascend_generic_filter_t	generic;
-		uint8_t			data[28]; /* ensure it's 32 bytes */
-	} u;
+	};
 } ascend_filter_t;
 
 /*
@@ -313,15 +313,10 @@ static fr_table_num_sorted_t const filterType[] = {
 static size_t filterType_len = NUM_ELEMENTS(filterType);
 
 typedef enum {
-	FILTER_GENERIC_TYPE,
-	FILTER_IP_TYPE,
 	FILTER_IN,
 	FILTER_OUT,
 	FILTER_FORWARD,
 	FILTER_DROP,
-	FILTER_GENERIC_OFFSET,
-	FILTER_GENERIC_MASK,
-	FILTER_GENERIC_VALUE,
 	FILTER_GENERIC_COMPNEQ,
 	FILTER_GENERIC_COMPEQ,
 	FILTER_MORE,
@@ -331,7 +326,6 @@ typedef enum {
 	FILTER_IP_DST_PORT,
 	FILTER_IP_SRC_PORT,
 	FILTER_EST,
-	FILTER_IPX_TYPE,
 	FILTER_IPX_DST_IPXNET,
 	FILTER_IPX_DST_IPXNODE,
 	FILTER_IPX_DST_IPXSOCK,
@@ -344,21 +338,18 @@ typedef enum {
 static fr_table_num_sorted_t const filterKeywords[] = {
 	{ L("!="),		FILTER_GENERIC_COMPNEQ },
 	{ L("=="),		FILTER_GENERIC_COMPEQ  },
-	{ L("drop"),	FILTER_DROP },
-	{ L("dstip"),  	FILTER_IP_DST },
+	{ L("drop"),		FILTER_DROP },
+	{ L("dstip"),  		FILTER_IP_DST },
 	{ L("dstipxnet"),	FILTER_IPX_DST_IPXNET  },
 	{ L("dstipxnode"),	FILTER_IPX_DST_IPXNODE  },
 	{ L("dstipxsock"),	FILTER_IPX_DST_IPXSOCK  },
-	{ L("dstport"),	FILTER_IP_DST_PORT },
-	{ L("est"),	FILTER_EST },
-	{ L("forward"),	FILTER_FORWARD },
-	{ L("generic"),	FILTER_GENERIC_TYPE },
-	{ L("in"), 	FILTER_IN },
-	{ L("ip"), 	FILTER_IP_TYPE },
-	{ L("ipx"),	FILTER_IPX_TYPE  },
-	{ L("more"),	FILTER_MORE },
-	{ L("out"),	FILTER_OUT },
-	{ L("srcip"),  	FILTER_IP_SRC },
+	{ L("dstport"),		FILTER_IP_DST_PORT },
+	{ L("est"),		FILTER_EST },
+	{ L("forward"),		FILTER_FORWARD },
+	{ L("in"), 		FILTER_IN },
+	{ L("more"),		FILTER_MORE },
+	{ L("out"),		FILTER_OUT },
+	{ L("srcip"),  		FILTER_IP_SRC },
 	{ L("srcipxnet"),	FILTER_IPX_SRC_IPXNET  },
 	{ L("srcipxnode"),	FILTER_IPX_SRC_IPXNODE  },
 	{ L("srcipxsock"),	FILTER_IPX_SRC_IPXSOCK  },
@@ -1233,22 +1224,22 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 
 	switch (type) {
 	case ASCEND_FILTER_GENERIC:
-		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.u.generic);
+		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.generic);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IP:
-		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
+		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.ip);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IPX:
-		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
+		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.ipx);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IPV6:
-		rcode = ascend_parse_ipv6(argc - 3, &argv[3], &filter.u.ipv6);
+		rcode = ascend_parse_ipv6(argc - 3, &argv[3], &filter.ipv6);
 		size = sizeof(filter);
 		break;
 	}
@@ -1292,7 +1283,7 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (inlen < 32) {
+	if (inlen < 16) {
 	raw:
 		p += strlcpy(p, "0x", end - p);
 
@@ -1319,44 +1310,46 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 	 *	Handle IP filters
 	 */
 	case ASCEND_FILTER_IP:
-		if (filter->u.ip.srcip) {
+		if (inlen < (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter)) goto raw;
+
+		if (filter->ip.srcip) {
 			len = snprintf(p, end - p, " srcip %d.%d.%d.%d/%d",
-				       ((uint8_t const *) &filter->u.ip.srcip)[0],
-				       ((uint8_t const *) &filter->u.ip.srcip)[1],
-				       ((uint8_t const *) &filter->u.ip.srcip)[2],
-				       ((uint8_t const *) &filter->u.ip.srcip)[3],
-				       filter->u.ip.srcmask);
+				       ((uint8_t const *) &filter->ip.srcip)[0],
+				       ((uint8_t const *) &filter->ip.srcip)[1],
+				       ((uint8_t const *) &filter->ip.srcip)[2],
+				       ((uint8_t const *) &filter->ip.srcip)[3],
+				       filter->ip.srcmask);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		if (filter->u.ip.dstip) {
+		if (filter->ip.dstip) {
 			len = snprintf(p, end - p, " dstip %d.%d.%d.%d/%d",
-				       ((uint8_t const *) &filter->u.ip.dstip)[0],
-				       ((uint8_t const *) &filter->u.ip.dstip)[1],
-				       ((uint8_t const *) &filter->u.ip.dstip)[2],
-				       ((uint8_t const *) &filter->u.ip.dstip)[3],
-				       filter->u.ip.dstmask);
+				       ((uint8_t const *) &filter->ip.dstip)[0],
+				       ((uint8_t const *) &filter->ip.dstip)[1],
+				       ((uint8_t const *) &filter->ip.dstip)[2],
+				       ((uint8_t const *) &filter->ip.dstip)[3],
+				       filter->ip.dstmask);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		len = snprintf(p, end - p, " %s", fr_table_str_by_value(filterProtoName, filter->u.ip.proto, "??"));
+		len = snprintf(p, end - p, " %s", fr_table_str_by_value(filterProtoName, filter->ip.proto, "??"));
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-		if (filter->u.ip.srcPortComp > RAD_NO_COMPARE) {
+		if (filter->ip.srcPortComp > RAD_NO_COMPARE) {
 			len = snprintf(p, end - p, " srcport %s %d",
-				       fr_table_str_by_value(filterCompare, filter->u.ip.srcPortComp, "??"),
-				       ntohs(filter->u.ip.srcport));
+				       fr_table_str_by_value(filterCompare, filter->ip.srcPortComp, "??"),
+				       ntohs(filter->ip.srcport));
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
+		if (filter->ip.dstPortComp > RAD_NO_COMPARE) {
 			len = snprintf(p, end - p, " dstport %s %d",
-				       fr_table_str_by_value(filterCompare, filter->u.ip.dstPortComp, "??"),
-				       ntohs(filter->u.ip.dstport));
+				       fr_table_str_by_value(filterCompare, filter->ip.dstPortComp, "??"),
+				       ntohs(filter->ip.dstport));
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		if (filter->u.ip.established) {
+		if (filter->ip.established) {
 			len = snprintf(p, end - p, " est");
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
@@ -1366,66 +1359,70 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 	 *	Handle IPX filters
 	 */
 	case ASCEND_FILTER_IPX:
+		if (inlen < (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter)) goto raw;
+
 		/* print for source */
-		if (filter->u.ipx.src.net) {
+		if (filter->ipx.src.net) {
 			len = snprintf(p, end - p, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
-				       (unsigned int)ntohl(filter->u.ipx.src.net),
-				       filter->u.ipx.src.node[0], filter->u.ipx.src.node[1],
-				       filter->u.ipx.src.node[2], filter->u.ipx.src.node[3],
-				       filter->u.ipx.src.node[4], filter->u.ipx.src.node[5]);
+				       (unsigned int)ntohl(filter->ipx.src.net),
+				       filter->ipx.src.node[0], filter->ipx.src.node[1],
+				       filter->ipx.src.node[2], filter->ipx.src.node[3],
+				       filter->ipx.src.node[4], filter->ipx.src.node[5]);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-			if (filter->u.ipx.srcSocComp > RAD_NO_COMPARE) {
+			if (filter->ipx.srcSocComp > RAD_NO_COMPARE) {
 				len = snprintf(p, end - p, " srcipxsock %s 0x%04x",
-					       fr_table_str_by_value(filterCompare, filter->u.ipx.srcSocComp, "??"),
-					       ntohs(filter->u.ipx.src.socket));
+					       fr_table_str_by_value(filterCompare, filter->ipx.srcSocComp, "??"),
+					       ntohs(filter->ipx.src.socket));
 				RETURN_IF_TRUNCATED(need, len, p, out, end);
 			}
 		}
 
 		/* same for destination */
-		if (filter->u.ipx.dst.net) {
+		if (filter->ipx.dst.net) {
 			len = snprintf(p, end - p, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
-				       (unsigned int)ntohl(filter->u.ipx.dst.net),
-				       filter->u.ipx.dst.node[0], filter->u.ipx.dst.node[1],
-				       filter->u.ipx.dst.node[2], filter->u.ipx.dst.node[3],
-				       filter->u.ipx.dst.node[4], filter->u.ipx.dst.node[5]);
+				       (unsigned int)ntohl(filter->ipx.dst.net),
+				       filter->ipx.dst.node[0], filter->ipx.dst.node[1],
+				       filter->ipx.dst.node[2], filter->ipx.dst.node[3],
+				       filter->ipx.dst.node[4], filter->ipx.dst.node[5]);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-			if (filter->u.ipx.dstSocComp > RAD_NO_COMPARE) {
+			if (filter->ipx.dstSocComp > RAD_NO_COMPARE) {
 				len = snprintf(p, end - p, " dstipxsock %s 0x%04x",
-					       fr_table_str_by_value(filterCompare, filter->u.ipx.dstSocComp, "??"),
-					       ntohs(filter->u.ipx.dst.socket));
+					       fr_table_str_by_value(filterCompare, filter->ipx.dstSocComp, "??"),
+					       ntohs(filter->ipx.dst.socket));
 				RETURN_IF_TRUNCATED(need, len, p, out, end);
 			}
 		}
 		break;
 
 	case ASCEND_FILTER_GENERIC:
+		if (inlen < (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter)) goto raw;
+
 	{
 		int count;
 
-		len = snprintf(p, end - p, " %u ", (unsigned int) ntohs(filter->u.generic.offset));
+		len = snprintf(p, end - p, " %u ", (unsigned int) ntohs(filter->generic.offset));
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
 		/* show the mask */
-		for (count = 0; count < ntohs(filter->u.generic.len); count++) {
-			len = snprintf(p, end - p, "%02x", filter->u.generic.mask[count]);
+		for (count = 0; count < ntohs(filter->generic.len); count++) {
+			len = snprintf(p, end - p, "%02x", filter->generic.mask[count]);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
 		p += strlcpy(p, " ", end - p);
 
 		/* show the value */
-		for (count = 0; count < ntohs(filter->u.generic.len); count++) {
-			len = snprintf(p, end - p, "%02x", filter->u.generic.value[count]);
+		for (count = 0; count < ntohs(filter->generic.len); count++) {
+			len = snprintf(p, end - p, "%02x", filter->generic.value[count]);
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		len = snprintf(p, end - p, " %s", (filter->u.generic.compNeq) ? "!=" : "==");
+		len = snprintf(p, end - p, " %s", (filter->generic.compNeq) ? "!=" : "==");
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-		if (filter->u.generic.more != 0) {
+		if (filter->generic.more != 0) {
 			len = snprintf(p, end - p, " more");
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
@@ -1436,15 +1433,15 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 	 *	Handle IPv6 filters
 	 */
 	case ASCEND_FILTER_IPV6:
-		if (inlen < sizeof(filter)) goto raw;
+		if (inlen < (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter)) goto raw;
 
 		/*
 		 *	srcip
 		 */
 		memset(&ipaddr, 0, sizeof(ipaddr));
 		ipaddr.af = AF_INET6;
-		memcpy(&ipaddr.addr.v6.s6_addr, filter->u.ipv6.srcip, sizeof(filter->u.ipv6.srcip));
-		ipaddr.prefix = filter->u.ipv6.srcmask;
+		memcpy(&ipaddr.addr.v6.s6_addr, filter->ipv6.srcip, sizeof(filter->ipv6.srcip));
+		ipaddr.prefix = filter->ipv6.srcmask;
 
 		len = snprintf(p, end - p, " srcip ");
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
@@ -1458,8 +1455,8 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 		 */
 		memset(&ipaddr, 0, sizeof(ipaddr));
 		ipaddr.af = AF_INET6;
-		memcpy(&ipaddr.addr.v6.s6_addr, filter->u.ipv6.dstip, sizeof(filter->u.ipv6.dstip));
-		ipaddr.prefix = filter->u.ipv6.dstmask;
+		memcpy(&ipaddr.addr.v6.s6_addr, filter->ipv6.dstip, sizeof(filter->ipv6.dstip));
+		ipaddr.prefix = filter->ipv6.dstmask;
 
 		len = snprintf(p, end - p, " dstip ");
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
@@ -1468,24 +1465,24 @@ size_t print_abinary(size_t *need, char *out, size_t outlen, uint8_t const *in, 
 		len = strlen(p);
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-		len = snprintf(p, end - p, " %s", fr_table_str_by_value(filterProtoName, filter->u.ipv6.proto, "??"));
+		len = snprintf(p, end - p, " %s", fr_table_str_by_value(filterProtoName, filter->ipv6.proto, "??"));
 		RETURN_IF_TRUNCATED(need, len, p, out, end);
 
-		if (filter->u.ipv6.srcPortComp > RAD_NO_COMPARE) {
+		if (filter->ipv6.srcPortComp > RAD_NO_COMPARE) {
 			len = snprintf(p, end - p, " srcport %s %d",
-				       fr_table_str_by_value(filterCompare, filter->u.ipv6.srcPortComp, "??"),
-				       ntohs(filter->u.ipv6.srcport));
+				       fr_table_str_by_value(filterCompare, filter->ipv6.srcPortComp, "??"),
+				       ntohs(filter->ipv6.srcport));
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		if (filter->u.ipv6.dstPortComp > RAD_NO_COMPARE) {
+		if (filter->ipv6.dstPortComp > RAD_NO_COMPARE) {
 			len = snprintf(p, end - p, " dstport %s %d",
-				       fr_table_str_by_value(filterCompare, filter->u.ipv6.dstPortComp, "??"),
-				       ntohs(filter->u.ipv6.dstport));
+				       fr_table_str_by_value(filterCompare, filter->ipv6.dstPortComp, "??"),
+				       ntohs(filter->ipv6.dstport));
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
 
-		if (filter->u.ipv6.established) {
+		if (filter->ipv6.established) {
 			len = snprintf(p, end - p, " est");
 			RETURN_IF_TRUNCATED(need, len, p, out, end);
 		}
