@@ -440,7 +440,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-	data_len = fr_tacacs_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
 				    request->reply_pairs);
 	if (data_len < 0) {

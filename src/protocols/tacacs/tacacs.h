@@ -18,6 +18,8 @@
  * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
 
+#include <freeradius-devel/util/dbuff.h>
+
 #include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
 
@@ -286,7 +288,7 @@ typedef struct {
 } fr_tacacs_ctx_t;
 
 /* encode.c */
-ssize_t fr_tacacs_encode(uint8_t *buffer, size_t buffer_len, uint8_t const *original, char const *const secret, size_t secret_len, fr_pair_t *vps);
+ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original, char const *const secret, size_t secret_len, fr_pair_t *vps);
 
 /* decode.c */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_cursor_t *cursor);
