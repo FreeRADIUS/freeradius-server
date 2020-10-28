@@ -242,13 +242,16 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	/*
 	 *	Groups are special.
 	 */
-	if (n->da->type == FR_TYPE_GROUP) {
-		if (fr_pair_list_copy(n, &n->vp_group, vp->vp_ptr) < 0) {
+	switch (n->da->type) {
+	case FR_TYPE_STRUCTURAL:
+		if (fr_pair_list_copy(n, &n->vp_group, vp->vp_group) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
-
 		return n;
+
+	default:
+		break;
 	}
 
 	fr_value_box_copy(n, &n->data, &vp->data);
@@ -460,97 +463,132 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *pare
 	return NULL;
 }
 
+static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp)
+{
+	if (!vp) return NULL;
+
+	switch (vp->da->type) {
+	case FR_TYPE_STRUCTURAL:
+		return (fr_pair_list_t *)&vp->vp_group;
+
+	default:
+		return NULL;
+	}
+}
+
 /** Get the child list of a group
  *
- * @param head VP which MUST be of FR_TYPE_GROUP
+ * @param[in] vp	which MUST be of a type
+ *			that can contain children.
  * @return
  *	- NULL on error
  *	- pointer to head of the child list.
  */
-fr_pair_list_t *fr_pair_group_get_sublist(fr_pair_t *head)
+fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 {
-	if (!head || (head->vp_type != FR_TYPE_GROUP)) return NULL;
-
-	return (fr_pair_list_t *) &head->vp_group;
+	return pair_children(vp);
 }
 
 /** Find the pair with the matching DAs in a group
  *
- * @param[in] head VP which MUST be of FR_TYPE_GROUP
- * @param[in] da to search for
+ * @param[in] parent	Which MUST be a structural type.
+ * @param[in] da	to search for
  */
-fr_pair_t *fr_pair_group_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_child_by_da(fr_pair_t *parent, fr_dict_attr_t const *da)
 {
-	return fr_pair_find_by_da((fr_pair_t *) head, da);
-}
+	fr_pair_list_t *pl;
 
+	if (unlikely(!(pl = fr_pair_children(parent)))) return NULL;
+
+	return fr_pair_find_by_da(pl->slist, da);
+}
 
 /** Find the pair with the matching numbers in a group
  *
- * @param[in] head VP which MUST be of FR_TYPE_GROUP
- * @param[in] vendor to search for
- * @param[in] attr to search for
+ * @param[in] parent	Which MUST be a structural type.
+ * @param[in] vendor	to search for
+ * @param[in] attr	to search for
  */
-fr_pair_t *fr_pair_group_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr)
+fr_pair_t *fr_pair_child_by_num(fr_pair_t *parent, unsigned int vendor, unsigned int attr)
 {
-	return fr_pair_find_by_num((fr_pair_t *) head, vendor, attr);
+	fr_pair_list_t *pl;
+
+	if (unlikely(!(pl = fr_pair_children(parent)))) return NULL;
+
+	return fr_pair_find_by_num(pl->slist, vendor, attr);
 }
 
 /** Add a VP to the end of the FR_TYPE_GROUP.
  *
  * Locates the end of 'head', and links an additional VP 'add' at the end.
  *
- * @param[in] head VP which MUST be of type FR_TYPE_GROUP in linked list. Will add new VP to the end of this list.
- * @param[in] add VP to add to list.
+ * @param[in] parent	Which MUST be a structural type.
+ *			Will add new VP to the end of this list.
+ * @param[in] add	to list.
  */
-void fr_pair_group_add(fr_pair_list_t *head, fr_pair_t *add)
+void fr_pair_child_add(fr_pair_t *parent, fr_pair_t *add)
 {
-	fr_pair_add((fr_pair_t **) &head, add);
-}
+	fr_pair_list_t *pl;
 
+	if (unlikely(!(pl = fr_pair_children(parent)))) return;
+
+	fr_pair_add(&pl->slist, add);
+}
 
 /** Alloc a new fr_pair_list_t (and prepend)
  *
  * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_list_t.
- * @param[in,out] head	VP which MUST be of FR_TYPE_GROUP
+ * @param[in] parent	Which MUST be a structural type.
  * @param[in] da	of attribute to update.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_group_add_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da)
+int fr_pair_child_add_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da)
 {
-	return fr_pair_add_by_da(head, out, (fr_pair_t **) &head, da);
+	fr_pair_list_t *pl;
+
+	if (unlikely(!(pl = fr_pair_children(parent)))) return -1;
+
+	return fr_pair_add_by_da(parent, out, &pl->slist, da);
 }
 
 /** Return the first fr_pair_list_t matching the #fr_dict_attr_t or alloc a new fr_pair_list_t (and prepend)
  *
  * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_list_t.
- * @param[in,out] head	VP which MUST be of FR_TYPE_GROUP
+ * @param[in] parent	Which MUST be a structural type.
  * @param[in] da	of attribute to update.
  * @return
  *	- 1 if attribute already existed.
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-int fr_pair_group_update_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da)
+int fr_pair_child_update_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da)
 {
-	return fr_pair_update_by_da(head, out, (fr_pair_t **) &head, da);
+	fr_pair_list_t *pl;
+
+	if (unlikely(!(pl = fr_pair_children(parent)))) return -1;
+
+	return fr_pair_add_by_da(parent, out, &pl->slist, da);
 }
 
 /** Delete matching pairs from the specified list
  *
- * @param head VP which MUST be of FR_TYPE_GROUP
+ * @param[in] parent	Which MUST be a structural type.
  * @param[in] da	to match.
  * @return
  *	- >0 the number of pairs deleted.
  *	- 0 if no pairs were deleted.
  */
-int fr_pair_group_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
+int fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da)
 {
-	return fr_pair_delete_by_da((fr_pair_t **) &head, da);
+	fr_pair_list_t *pl;
+
+	if (unlikely(!(pl = fr_pair_children(parent)))) return 0;
+
+	return fr_pair_delete_by_da(&pl->slist, da);
 }
 
 /** Add a VP to the end of the list.
@@ -978,17 +1016,20 @@ int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
 		ret = (a_p->da < b_p->da) - (a_p->da > b_p->da);
 		if (ret != 0) return ret;
 
-		if (a_p->da->type == FR_TYPE_GROUP) {
+		switch (a_p->da->type) {
+		case FR_TYPE_STRUCTURAL:
 			ret = fr_pair_list_cmp(a_p->vp_group, b_p->vp_group);
 			if (ret != 0) return ret;
-			continue;
+			break;
+
+		default:
+			ret = fr_value_box_cmp(&a_p->data, &b_p->data);
+			if (ret != 0) {
+				(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
+				return ret;
+			}
 		}
 
-		ret = fr_value_box_cmp(&a_p->data, &b_p->data);
-		if (ret != 0) {
-			(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
-			return ret;
-		}
 	}
 
 	if (!a_p && !b_p) return 0;
@@ -1533,9 +1574,14 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
 	 *	haven't yet audited the uses of this function for that
 	 *	behavior.
 	 */
-	if (type == FR_TYPE_GROUP) {
-		fr_strerror_printf("Attributes of type 'group' are not yet supported");
+	switch (type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_printf("Attributes of type '%s' are not yet supported",
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 		return -1;
+
+	default:
+		break;
 	}
 
 	/*
@@ -2371,7 +2417,14 @@ void fr_pair_list_tainted(fr_pair_t *vps)
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
-		if (vp->da->type == FR_TYPE_GROUP) fr_pair_list_tainted(vp->vp_group);
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			fr_pair_list_tainted(vp->vp_group);
+			break;
+
+		default:
+			break;
+		}
 
 		vp->vp_tainted = true;
 	}

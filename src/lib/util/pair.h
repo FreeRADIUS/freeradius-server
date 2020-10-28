@@ -261,27 +261,20 @@ int		fr_pair_delete_by_da(fr_pair_t **head, fr_dict_attr_t const *da);
 
 void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
 
-/* functions for FR_TYPE_GROUP */
-fr_pair_list_t	*fr_pair_group_get_sublist(fr_pair_t *head);
+/* functions for FR_TYPE_STRUCTURAL */
+fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
 
-fr_pair_t	*fr_pair_group_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_child_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
 
-fr_pair_t	*fr_pair_group_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
+fr_pair_t	*fr_pair_child_by_num(fr_pair_t *parent, unsigned int vendor, unsigned int attr);
 
-void		fr_pair_group_add(fr_pair_list_t *head, fr_pair_t *vp);
+void		fr_pair_child_add(fr_pair_t *parent, fr_pair_t *vp);
 
-int		fr_pair_group_add_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
+int		fr_pair_child_add_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
 
-int		fr_pair_group_update_by_da(fr_pair_t **out, fr_pair_list_t *head, fr_dict_attr_t const *da);
+int		fr_pair_child_update_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
 
-int		fr_pair_group_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
-
-#define	fr_pair_group2_find_by_da fr_pair_find_by_da
-#define	fr_pair_group2_find_by_num fr_pair_find_by_num
-#define fr_pair_group2_add(_head, _vp) fr_pair_add(&(_head), _vp)
-#define fr_pair_group2_add_by_da(__out, _head, _vp, _da) fr_pair_add_by_da(_out, &(_head), _vp, _da)
-#define fr_pair_group2_update_by_da(_out, _head, _vp, _da) fr_pair_update_by_da(_out, &(_head), _vp, _da)
-#define fr_pair_group2_delete_by_da(_head, _da) fr_pair_delete_by_da(&(_head), _da)
+int		fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
