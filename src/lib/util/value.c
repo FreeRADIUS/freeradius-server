@@ -4769,7 +4769,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_ABINARY:
-		(void) print_abinary(&our_out, data->datum.filter, data->vb_length);
+		(void) print_abinary(&our_out, data);
 		break;
 
 	case FR_TYPE_GROUP:

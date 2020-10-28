@@ -1259,13 +1259,12 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
  *
  * @param[in,out] sbuff	Buffer to write the string to.
  * @param[in] in	Data to print as filter string.
- * @param[in] inlen	The length of the data we're printing.
  * @return
  *	- >0 The amount of data written to out.
  *	- = 0 nothing to do
  *	- <0 the number of bytes needed to write the content
  */
-ssize_t print_abinary(fr_sbuff_t *sbuff, uint8_t const *in, size_t inlen)
+ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 {
 	ascend_filter_t	const	*filter;
 	fr_ipaddr_t		ipaddr;
@@ -1277,36 +1276,36 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, uint8_t const *in, size_t inlen)
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (inlen < 4) {
+	if (in->vb_length < 4) {
 		size_t i;
 
 	raw:
 		FR_SBUFF_IN_STRCPY_RETURN(sbuff, "0x");
 
-		for (i = 0; i < inlen; i++) {
+		for (i = 0; i < in->vb_length; i++) {
 			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, "%02x", in[i]);
 		}
 
 		return fr_sbuff_used(sbuff);
 	}
 
-	filter = (ascend_filter_t const *) in;
+	filter = (ascend_filter_t const *) in->datum.filter;
 
 	switch ((ascend_filter_type_t)filter->type) {
 	case ASCEND_FILTER_IP:
-		if (inlen < (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter)) goto raw;
+		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter)) goto raw;
 		break;
 
 	case ASCEND_FILTER_IPX:
-		if (inlen < (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter)) goto raw;
+		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter)) goto raw;
 		break;
 
 	case ASCEND_FILTER_GENERIC:
-		if (inlen < (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter)) goto raw;
+		if (in->vb_length < (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter)) goto raw;
 		break;
 
 	case ASCEND_FILTER_IPV6:
-		if (inlen < (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter)) goto raw;
+		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter)) goto raw;
 		break;
 
 	default:

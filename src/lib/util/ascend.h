@@ -36,7 +36,7 @@ extern "C" {
 
 /* ascend.c */
 int		ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value, size_t len);
-ssize_t		print_abinary(fr_sbuff_t *sbuff, uint8_t const *data, size_t len);
+ssize_t		print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in);
 
 #ifdef __cplusplus
 }
