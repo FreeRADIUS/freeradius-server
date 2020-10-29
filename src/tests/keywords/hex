@@ -22,7 +22,7 @@ update request {
 	&Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
 	&Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
 	&Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
-#	&Tmp-String-5		:= "%{hex:%{Tmp-Cast-Abinary}}"
+	&Tmp-String-5		:= "%{hex:%{Tmp-Cast-Abinary}}"
 	&Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
 	&Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
 	&Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
@@ -50,9 +50,9 @@ if (&Tmp-String-4 != '39383734') {
 }
 
 # Abinary
-#if (&Tmp-String-5 != '0101000039383735000000002000110000000714000200000000000000000000') {
-#	test_fail
-#}
+if (&Tmp-String-5 != '0101000039383735000000002000110000000714000200000000000000000000') {
+	test_fail
+}
 
 # ifid
 if (&Tmp-String-6 != '0000000039383737') {

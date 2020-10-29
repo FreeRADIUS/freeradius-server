@@ -1890,6 +1890,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
+	case FR_TYPE_ABINARY:
 		if (fr_value_box_memdup(ctx, dst, dst_enumv,
 					(uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted) < 0) {
 			return -1;
