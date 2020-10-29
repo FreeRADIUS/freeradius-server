@@ -120,7 +120,7 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
-	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
+	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists, nonblock;
 
 	ssize_t		slen;
 
@@ -135,6 +135,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
 	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
 	tmpl = (type & FR_TYPE_TMPL);
+	nonblock = (type & FR_TYPE_NON_BLOCKING);
 
 	fr_assert(cp);
 	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
@@ -221,6 +222,22 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 
 		tmpl_cast_set(vpt, cast);
+
+		/*
+		 *	Non-blocking xlat's
+		 */
+		if (nonblock) {
+			if (vpt->type == TMPL_TYPE_EXEC) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking operation.", cp->attr);
+				return -1;
+			}
+
+			if ((vpt->type == TMPL_TYPE_XLAT) &&
+			    xlat_async_required(tmpl_xlat(vpt))) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking expansion.", cp->attr);
+				return -1;
+			}
+		}
 
 		*(tmpl_t **)out = vpt;
 

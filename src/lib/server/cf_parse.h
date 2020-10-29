@@ -322,6 +322,7 @@ _Generic((_ct), \
 									//!< or is_set_ptr.
 #define FR_TYPE_OK_MISSING     		(1 << 22) 			//!< OK if it's missing
 #define FR_TYPE_ON_READ     		(1 << 23) 			//!< run the parse callback during the file read phase
+#define FR_TYPE_NON_BLOCKING  		(1 << 24) 			//!< require a non-blocking xlat expansion
 
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
