@@ -100,7 +100,7 @@ linelog {
 	#  | unix   | Write to a UNIX socket.
 	#  |===
 	#
-	destination = 'file'
+	destination = file
 
 	#
 	#  .File as the destination for log messages.
