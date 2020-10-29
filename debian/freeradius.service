@@ -31,10 +31,10 @@ RuntimeDirectoryMode=0775
 User=freerad
 Group=freerad
 # This does not work on Ubuntu Bionic:
-ExecStartPre=/bin/chown freerad:freerad /var/run/freeradius
+ExecStartPre=/bin/chown -R freerad:freerad /run/radiusd/
 
-ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
-ExecStart=/usr/sbin/freeradius -f $FREERADIUS_OPTIONS
+ExecStartPre=/usr/local/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
+ExecStart=/usr/local/sbin/radiusd -f $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
 
@@ -58,12 +58,14 @@ ProtectKernelTunables=true
 
 # Only allow native system calls
 SystemCallArchitectures=native
-
 # We shouldn't be writing to the configuration directory
-ReadOnlyDirectories=/etc/freeradius/
+ReadOnlyDirectories=/usr/local/etc/raddb/
 
 # We can read and write to the log directory.
 ReadWriteDirectories=/var/log/freeradius/
+
+StandardOutput=file:/var/log/freeradius/standard.log
+StandardError=file:/var/log/freeradius/error.log
 
 [Install]
 WantedBy=multi-user.target
