@@ -55,7 +55,7 @@ typedef struct {
 	uint32_t	perm;		//!< Permissions to use for new files.
 	char const	*group;		//!< Group to use for new files.
 
-	char const	*header;	//!< Header format.
+	tmpl_t		*header;	//!< Header format.
 	bool		locking;	//!< Whether the file should be locked.
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
@@ -71,7 +71,8 @@ typedef struct {
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
-	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
+	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL | FR_TYPE_XLAT | FR_TYPE_NON_BLOCKING, rlm_detail_t, header),
+	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
 	{ FR_CONF_OFFSET("locking", FR_TYPE_BOOL, rlm_detail_t, locking), .dflt = "no" },
@@ -249,8 +250,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 {
 	fr_pair_t *vp;
 	char timestamp[256];
+	char *header;
 
-	if (xlat_eval(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
+	if (tmpl_expand(&header, timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
 		return -1;
 	}
 
