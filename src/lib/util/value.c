@@ -4220,10 +4220,6 @@ parse:
 	}
 		goto finish;
 
-	case FR_TYPE_VSA:
-		fr_strerror_printf("Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'");
-		return -1;
-
 	case FR_TYPE_ABINARY:
 		if ((len > 1) && (in[0] != '0') && (tolower((int) in[1]) != 'x')) {
 			if (ascend_parse_filter(ctx, dst, in, len) < 0 ) {
@@ -4327,8 +4323,7 @@ parse:
 	default:
 		break;
 
-	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
-	case FR_TYPE_VENDOR:
+	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Invalid dst_type %s",
 				   fr_table_str_by_value(fr_value_box_type_table, *dst_type, "<INVALID>"));
