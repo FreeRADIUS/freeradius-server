@@ -181,14 +181,14 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 						.allow_foreign = true
 					};
 		fr_type_t		cast = FR_TYPE_INVALID;
-		fr_sbuff_t		sbuff = FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp)));
+		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 
 		/*
 		 *	Parse the cast operator for barewords
 		 */
-		if (cf_pair_value_quote(cp) == T_BARE_WORD) {
+		if (cp->rhs_quote == T_BARE_WORD) {
 			slen = tmpl_cast_from_substr(&cast, &sbuff);
 			if (slen < 0) {
 				char *spaces, *text;
@@ -209,9 +209,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 
-		slen = tmpl_afrom_substr(cp, &vpt, &sbuff,
-					 cf_pair_value_quote(cp),
-					 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
+		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
+					 tmpl_parse_rules_unquoted[cp->rhs_quote],
 					 &rules);
 		if (slen < 0) goto tmpl_error;
 
