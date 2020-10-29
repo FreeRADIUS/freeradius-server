@@ -376,6 +376,7 @@ static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xla
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
 		node->call.func = func;
+		node->flags.needs_async = func->needs_async;
 	}
 
 	fr_sbuff_next(in);			/* Skip the ':' */
