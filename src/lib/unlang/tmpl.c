@@ -493,7 +493,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	 */
 	if (!state->ctx) state->ctx = state;
 
-	if (!tmpl_async_required(ut->tmpl)) {
+	if (tmpl_async_required(ut->tmpl)) {
 		if (!ut->inline_exec) {
 			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
 				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
