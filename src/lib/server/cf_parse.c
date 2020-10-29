@@ -333,9 +333,34 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (!cp->printed) {
 			if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
 				cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+
+			} else if (cp->rhs_quote == T_BARE_WORD) {
+				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+
 			} else {
-				cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cp->attr,
-					     fr_box_strvalue_buffer(cp->value));
+				/*
+				 *	Print the strings with the correct quotation character and escaping.
+				 */
+				char *tmp = fr_asprint(cs, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
+				char quote;
+
+				switch (cp->rhs_quote) {
+				default:
+				case T_DOUBLE_QUOTED_STRING:
+					quote = '"';
+					break;
+
+				case T_SINGLE_QUOTED_STRING:
+					quote = '\'';
+					break;
+
+				case T_BACK_QUOTED_STRING:
+					quote = '`';
+					break;
+				}
+
+				cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
+				talloc_free(tmp);
 			}
 		}
 
