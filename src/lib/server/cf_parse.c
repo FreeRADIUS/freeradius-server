@@ -102,6 +102,41 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 	}
 }
 
+static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, bool secret)
+{
+	if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
+		cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+
+	} else if (cp->rhs_quote == T_BARE_WORD) {
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+
+	} else {
+		/*
+		 *	Print the strings with the correct quotation character and escaping.
+		 */
+		char *tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
+		char quote;
+
+		switch (cp->rhs_quote) {
+		default:
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+		}
+
+		cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
+		talloc_free(tmp);
+	}
+}
+
 /** Parses a #CONF_PAIR into a C data type
  *
  * @copybrief cf_pair_value
@@ -183,7 +218,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		fr_type_t		cast = FR_TYPE_INVALID;
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
 		 *	Parse the cast operator for barewords
@@ -343,42 +378,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		char **str = out;
 
-		/*
-		 *	Hide secrets when using "radiusd -X".
-		 */
-		if (!cp->printed) {
-			if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
-				cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
-
-			} else if (cp->rhs_quote == T_BARE_WORD) {
-				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
-
-			} else {
-				/*
-				 *	Print the strings with the correct quotation character and escaping.
-				 */
-				char *tmp = fr_asprint(cs, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
-				char quote;
-
-				switch (cp->rhs_quote) {
-				default:
-				case T_DOUBLE_QUOTED_STRING:
-					quote = '"';
-					break;
-
-				case T_SINGLE_QUOTED_STRING:
-					quote = '\'';
-					break;
-
-				case T_BACK_QUOTED_STRING:
-					quote = '`';
-					break;
-				}
-
-				cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
-				talloc_free(tmp);
-			}
-		}
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
 		 *	If there's out AND it's an input file, check
