@@ -56,7 +56,7 @@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 sysconfdir = @sysconfdir@
-localstatedir = @localstatedir@
+localstatedir = "" # this places the PID in /run which is the correct path in systemd.
 sbindir = @sbindir@
 logdir = @logdir@
 raddbdir = @raddbdir@
