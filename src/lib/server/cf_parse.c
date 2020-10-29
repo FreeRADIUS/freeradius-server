@@ -148,7 +148,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Everything except templates must have a base type.
 	 */
 	if (!type && !tmpl) {
-		cf_log_err(cp, "Configuration pair \"%s\" must have a data type", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must have a data type", cp->attr);
 		return -1;
 	}
 
@@ -156,7 +156,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Catch crazy errors.
 	 */
 	if (!cp->value) {
-		cf_log_err(cp, "Configuration pair \"%s\" must have a value", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must have a value", cp->attr);
 		return -1;
 	}
 
@@ -164,7 +164,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Check for zero length strings
 	 */
 	if ((cp->value[0] == '\0') && cant_be_empty) {
-		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cp->attr);
 		if (!required) cf_log_err(cp, "Comment item to silence this message");
 		rcode = -1;
 
@@ -182,7 +182,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		fr_type_t		cast = FR_TYPE_INVALID;
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp)));
 
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 
 		/*
 		 *	Parse the cast operator for barewords
@@ -242,11 +242,11 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			*(bool *)out = false;
 		} else {
 			cf_log_err(cs, "Invalid value \"%s\" for boolean variable %s",
-				   cp->value, cf_pair_attr(cp));
+				   cp->value, cp->attr);
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 		break;
 
 	case FR_TYPE_UINT32:
@@ -262,13 +262,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 */
 		if (v > INT32_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), INT32_MAX);
+				   cp->attr, INT32_MAX);
 			rcode = -1;
 			goto error;
 		}
 
 		*(uint32_t *)out = v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint32_t *)out);
 	}
 		break;
 
@@ -278,12 +278,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (v > UINT8_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), UINT8_MAX);
+				   cp->attr, UINT8_MAX);
 			rcode = -1;
 			goto error;
 		}
 		*(uint8_t *)out = (uint8_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint8_t *)out);
 	}
 		break;
 
@@ -293,34 +293,34 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (v > UINT16_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), UINT16_MAX);
+				   cp->attr, UINT16_MAX);
 			rcode = -1;
 			goto error;
 		}
 		*(uint16_t *)out = (uint16_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint16_t *)out);
 	}
 		break;
 
 	case FR_TYPE_UINT64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 0);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint64_t *)out);
 		break;
 
 	case FR_TYPE_SIZE:
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cf_pair_attr(cp));
+			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cp->attr);
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cp->attr, *(size_t *)out);
 		break;
 	}
 
 	case FR_TYPE_INT32:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cp->attr, *(int32_t *)out);
 		break;
 
 	case FR_TYPE_STRING:
@@ -330,11 +330,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		/*
 		 *	Hide secrets when using "radiusd -X".
 		 */
-		if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
-			if (!cp->printed) cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
-		} else {
-			if (!cp->printed) cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-						       fr_box_strvalue_buffer(cp->value));
+		if (!cp->printed) {
+			if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
+				cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+			} else {
+				cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cp->attr,
+					     fr_box_strvalue_buffer(cp->value));
+			}
 		}
 
 		/*
@@ -372,7 +374,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
@@ -390,7 +392,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
@@ -452,7 +454,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
@@ -472,7 +474,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (!cp->printed) {
 			char *p;
 			fr_value_box_aprint(NULL, &p, fr_box_time_delta(delta), NULL);
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), p);
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, p);
 			talloc_free(p);
 		}
 
@@ -489,7 +491,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr,
 					       (double) num);
 		memcpy(out, &num, sizeof(num));
 	}
@@ -504,7 +506,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), num);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr, num);
 		memcpy(out, &num, sizeof(num));
 	}
 		break;
@@ -676,7 +678,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		if (deprecated) {
 		deprecated:
-			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cf_pair_attr(cp));
+			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cp->attr);
 			return -2;
 		}
 
@@ -778,7 +780,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			if (rule->func) {
 				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
-					     cf_pair_attr(cp), cp->value);
+					     cp->attr, cp->value);
 				func = rule->func;
 			} else {
 				if (!entry) goto no_out;
@@ -831,7 +833,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		if (deprecated) goto deprecated;
 
 		if (rule->func) {
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 			cp->printed = true;
 			func = rule->func;
 		}
