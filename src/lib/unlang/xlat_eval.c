@@ -1908,8 +1908,8 @@ void xlat_eval_free(void)
 
 /** Return whether or not async is required for this xlat.
  *
- *	If the xlat is needs_async, then it will never yield.
- *	If the xlat is not needs_async, then it may yield.
+ *	If the xlat is needs_async, then it MAY yield
+ *	If the xlat is not needs_async, then it will NOT yield
  *
  *	If the xlat yields, then async is required.
  */
@@ -1918,14 +1918,14 @@ bool xlat_async_required(xlat_exp_t const *xlat)
 	xlat_exp_t const *node;
 
 	if (xlat->type != XLAT_GROUP) {
-		return !xlat->flags.needs_async;
+		return xlat->flags.needs_async;
 	}
 
 	/*
 	 *	Set needs_async on the entire list.
 	 */
 	for (node = xlat; node != NULL; node = node->next) {
-		if (!node->flags.needs_async) return true;
+		if (node->flags.needs_async) return true;
 	}
 
 	return false;
