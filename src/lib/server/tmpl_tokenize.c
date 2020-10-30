@@ -4439,8 +4439,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 /** Return whether or not async is required for this tmpl.
  *
- *	If the tmpl is needs_async, then it will never yield.
- *	If the tmpl is not needs_async, then it may yield.
+ *	If the tmpl is needs_async, then it is async
+ *	If the tmpl is not needs_async, then it will not yield
  *
  *	If the tmpl yields, then async is required.
  */
