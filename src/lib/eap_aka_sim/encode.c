@@ -62,7 +62,7 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
 
 /** Evaluation function for EAP-AKA-encodability
  *
- * @param item	pointer to a VALUE_PAIR
+ * @param item	pointer to a fr_pair_t
  * @param uctx	context
  *
  * @return true if the underlying fr_pair_t is EAP_AKA encodable, false otherwise
