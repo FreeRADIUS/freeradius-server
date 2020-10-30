@@ -494,7 +494,6 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	if (!state->ctx) state->ctx = state;
 
 	if (!tmpl_async_required(ut->tmpl)) {
-		fprintf(stderr, "NO ASYNC\n");
 		if (!ut->inline_exec) {
 			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
 				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
@@ -515,8 +514,6 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
-
-	fprintf(stderr, "YES ASYNC\n");
 
 	/*
 	 *	XLAT structs are allowed.
