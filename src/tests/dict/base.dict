@@ -6,7 +6,7 @@ ATTRIBUTE	Base-String				1	string
 ATTRIBUTE	Base-Integer				2	integer
 ATTRIBUTE	Base-IP-Address				3	ipaddr
 ATTRIBUTE	Base-Date				4	date
-ATTRIBUTE	Base-ABinary				5	abinary
+# no longer allowed to have 'abinary' data types
 
 ATTRIBUTE	Base-Octets				6	octets
 ATTRIBUTE	Base-IF-ID				7	ifid

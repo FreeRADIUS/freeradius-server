@@ -6,7 +6,6 @@ update request {
 	&Tmp-Octets-0		:= 0x39383731
 	&Tmp-IP-Address-0	:= 57.56.55.50
 	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-Abinary	:= 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
 	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
 	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
 	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
@@ -22,7 +21,6 @@ update request {
 	&Tmp-String-1		:= "%{base64:%{Tmp-Octets-0}}"
 	&Tmp-String-2		:= "%{base64:%{Tmp-IP-Address-0}}"
 	&Tmp-String-4		:= "%{base64:%{Tmp-Integer-0}}"
-	&Tmp-String-5		:= "%{base64:%{Tmp-Cast-Abinary}}"
 	&Tmp-String-6		:= "%{base64:%{Tmp-Cast-Ifid}}"
 	&Tmp-String-7		:= "%{base64:%{Tmp-Cast-IPv6Addr}}"
 	&Tmp-String-8		:= "%{base64:%{Tmp-Cast-IPv6Prefix}}"
@@ -46,11 +44,6 @@ if (&Tmp-String-2[0] != 'OTg3Mg==') {
 
 # Integer - bin 0x39383734
 if (&Tmp-String-4[0] != 'OTg3NA==') {
-	test_fail
-}
-
-# Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
-if (&Tmp-String-5[0] != 'AQEAADk4NzUAAAAAIAARAAAABxQAAgAAAAAAAAAAAAA=') {
 	test_fail
 }
 
