@@ -407,7 +407,10 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	int		token;
 	char const	*p;
 
-	if (argc < 3) return -1;
+	if (argc < 3) {
+		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX network type");
+		return -1;
+	}
 
 	/*
 	 *	Parse the net, which is a hex number.
@@ -424,6 +427,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 		break;
 
 	default:
+		fr_strerror_printf("Unknown keyword '%s' for IPX network filter", argv[1]);
 		return -1;
 	}
 
@@ -440,7 +444,10 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	token = fr_hex2bin(NULL,
 			   &FR_DBUFF_TMP(net->node, IPX_NODE_ADDR_LEN),
 			   &FR_SBUFF_IN(p, strlen(p)), false);
-	if (token != IPX_NODE_ADDR_LEN) return -1;
+	if (token != IPX_NODE_ADDR_LEN) {
+		fr_strerror_printf("IPX network node name '%s' is the wrong size", argv[2]);
+		return -1;
+	}
 
 	/*
 	 *	Nothing more, die.
@@ -450,7 +457,10 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Can't be too little or too much.
 	 */
-	if (argc != 6) return -1;
+	if (argc != 6) {
+		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX network type");
+		return -1;
+	}
 
 	/*
 	 *	Parse the socket.
@@ -462,6 +472,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 		break;
 
 	default:
+		fr_strerror_printf("Unknown keyword '%s' for IPX network filter", argv[3]);
 		return -1;
 	}
 
@@ -478,6 +489,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 		break;
 
 	default:
+		fr_strerror_printf("Unknown keyword '%s' for IPX network filter", argv[4]);
 		return -1;
 	}
 
@@ -485,7 +497,10 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	 *	Parse the value.
 	 */
 	token = strtoul(argv[5], NULL, 16);
-	if (token > 65535) return -1;
+	if (token > 65535) {
+		fr_strerror_printf("Socket value '%s' is too large for IPX network filter", argv[5]);
+		return -1;
+	}
 
 	net->socket = token;
 	net->socket = htons(net->socket);
@@ -549,13 +564,20 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 	/*
 	 *	Must have "net N node M"
 	 */
-	if (argc < 4) return -1;
+	if (argc < 4) {
+		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX type");
+		return -1;
+	}
 
 	while ((argc > 0) && (flags != 0x03)) {
 		token = fr_table_value_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IPX_SRC_IPXNET:
-			if (flags & 0x01) return -1;
+			if (flags & 0x01) {
+duplicate:
+				fr_strerror_printf("Duplicate field when parsing 'abinary' IPX type");
+				return -1;
+			}
 			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
 						     &(filter->src),
 						     &(filter->srcSocComp));
@@ -566,7 +588,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 			break;
 
 		case FILTER_IPX_DST_IPXNET:
-			if (flags & 0x02) return -1;
+			if (flags & 0x02) goto duplicate;
 			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
 						     &(filter->dst),
 						     &(filter->dstSocComp));
@@ -586,7 +608,10 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 	/*
 	 *	Arguments left over: die.
 	 */
-	if (argc != 0) return -1;
+	if (argc != 0) {
+		fr_strerror_printf("Too many arguments to 'abinary' IPX filter");
+		return -1;
+	}
 
 	/*
 	 *	Everything's OK.
@@ -631,7 +656,10 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 
 			case '.': /* dot between IP numbers. */
 				str++;
-				if (ip[count] > 255) return -1;
+				if (ip[count] > 255) {
+					fr_strerror_printf("Invalid IP address in '%s'", str);
+					return -1;
+				}
 
 				/*
 				 *	24, 16, 8, 0, done.
@@ -643,7 +671,10 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 			case '/': /* netmask  */
 				str++;
 				masklen = atoi(str);
-				if ((masklen < 0) || (masklen > 32)) return -1;
+				if ((masklen < 0) || (masklen > 32)) {
+					fr_strerror_printf("Invalid mask in '%s'", str);
+					return -1;
+				}
 				str += strspn(str, "0123456789");
 				netmask = masklen;
 				goto finalize;
@@ -660,7 +691,10 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 		/*
 		 *	Do the last one, too.
 		 */
-		if (ip[count] > 255) return -1;
+		if (ip[count] > 255) {
+			fr_strerror_printf("Invalid mask in '%s'", str);
+			return -1;
+		}
 
 		/*
 		 *	24, 16, 8, 0, done.
@@ -708,7 +742,10 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 	 *	There MUST be a comparison string.
 	 */
 	rcode = fr_table_value_by_str(filterCompare, compare, -1);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) {
+		fr_strerror_printf("Unknown comparison operator '%s'", str);
+		return rcode;
+	}
 
 	if (strspn(str, "0123456789") == strlen(str)) {
 		token = atoi(str);
@@ -716,7 +753,10 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 		token = fr_table_value_by_str(filterPortType, str, -1);
 	}
 
-	if ((token < 0) || (token > 65535)) return -1;
+	if ((token < 0) || (token > 65535)) {
+		fr_strerror_printf("Unknown port name '%s'", str);
+		return -1;
+	}
 
 	*port = token;
 	*port = htons(*port);
@@ -786,8 +826,16 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 		token = fr_table_value_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IP_SRC:
-			if (flags & IP_SRC_ADDR_FLAG) return -1;
-			if (argc < 2) return -1;
+			if (flags & IP_SRC_ADDR_FLAG) {
+			duplicate:
+				fr_strerror_printf("Duplicate field '%s' when parsing 'abinary' IP type", argv[0]);
+				return -1;
+			}
+			if (argc < 2) {
+			insufficient:
+				fr_strerror_printf("Insufficient arguments for '%s' when parsing 'abinary' IP type", argv[0]);
+				return -1;
+			}
 
 			rcode = ascend_parse_ipaddr(&filter->srcip, argv[1]);
 			if (rcode < 0) return rcode;
@@ -799,8 +847,8 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			break;
 
 		case FILTER_IP_DST:
-			if (flags & IP_DEST_ADDR_FLAG) return -1;
-			if (argc < 2) return -1;
+			if (flags & IP_DEST_ADDR_FLAG) goto duplicate;
+			if (argc < 2) goto insufficient;
 
 			rcode = ascend_parse_ipaddr(&filter->dstip, argv[1]);
 			if (rcode < 0) return rcode;
@@ -812,8 +860,8 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			break;
 
 		case FILTER_IP_SRC_PORT:
-			if (flags & IP_SRC_PORT_FLAG) return -1;
-			if (argc < 3) return -1;
+			if (flags & IP_SRC_PORT_FLAG) goto duplicate;
+			if (argc < 3) goto insufficient;
 
 			rcode = ascend_parse_port(&filter->srcport,
 						  argv[1], argv[2]);
@@ -826,8 +874,8 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			break;
 
 		case FILTER_IP_DST_PORT:
-			if (flags & IP_DEST_PORT_FLAG) return -1;
-			if (argc < 3) return -1;
+			if (flags & IP_DEST_PORT_FLAG) goto duplicate;
+			if (argc < 3) goto insufficient;
 
 			rcode = ascend_parse_port(&filter->dstport,
 						  argv[1], argv[2]);
@@ -840,7 +888,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			break;
 
 		case FILTER_EST:
-			if (flags & IP_EST_FLAG) return -1;
+			if (flags & IP_EST_FLAG) goto duplicate;
 			filter->established = 1;
 			argv++;
 			argc--;
@@ -848,7 +896,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			break;
 
 		default:
-			if (flags & IP_PROTO_FLAG) return -1;
+			if (flags & IP_PROTO_FLAG) goto duplicate;
 			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
 				token = atoi(argv[0]);
 			} else {
@@ -908,8 +956,16 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 		token = fr_table_value_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IP_SRC:
-			if (flags & IP_SRC_ADDR_FLAG) return -1;
-			if (argc < 2) return -1;
+			if (flags & IP_SRC_ADDR_FLAG) {
+			duplicate:
+				fr_strerror_printf("Duplicate field '%s' when parsing 'abinary' IPv6 type", argv[0]);
+				return -1;
+			}
+			if (argc < 2) {
+			insufficient:
+				fr_strerror_printf("Insufficient arguments for '%s' when parsing 'abinary' IPv6 type", argv[0]);
+				return -1;
+			}
 
 			if (fr_inet_pton6(&ipaddr, argv[1], strlen(argv[1]), false, false, true) < 0) return -1;
 			memcpy(&filter->srcip, ipaddr.addr.v6.s6_addr, 16);
@@ -921,8 +977,8 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			break;
 
 		case FILTER_IP_DST:
-			if (flags & IP_DEST_ADDR_FLAG) return -1;
-			if (argc < 2) return -1;
+			if (flags & IP_DEST_ADDR_FLAG) goto duplicate;
+			if (argc < 2) goto insufficient;
 
 			if (fr_inet_pton6(&ipaddr, argv[1], strlen(argv[1]), false, false, true) < 0) return -1;
 			memcpy(&filter->dstip, ipaddr.addr.v6.s6_addr, 16);
@@ -934,8 +990,8 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			break;
 
 		case FILTER_IP_SRC_PORT:
-			if (flags & IP_SRC_PORT_FLAG) return -1;
-			if (argc < 3) return -1;
+			if (flags & IP_SRC_PORT_FLAG) goto duplicate;
+			if (argc < 3) goto insufficient;
 
 			rcode = ascend_parse_port(&filter->srcport,
 						  argv[1], argv[2]);
@@ -948,8 +1004,8 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			break;
 
 		case FILTER_IP_DST_PORT:
-			if (flags & IP_DEST_PORT_FLAG) return -1;
-			if (argc < 3) return -1;
+			if (flags & IP_DEST_PORT_FLAG) goto duplicate;
+			if (argc < 3) goto insufficient;
 
 			rcode = ascend_parse_port(&filter->dstport,
 						  argv[1], argv[2]);
@@ -962,7 +1018,7 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			break;
 
 		case FILTER_EST:
-			if (flags & IP_EST_FLAG) return -1;
+			if (flags & IP_EST_FLAG) goto duplicate;
 			filter->established = 1;
 			argv++;
 			argc--;
@@ -970,13 +1026,13 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			break;
 
 		default:
-			if (flags & IP_PROTO_FLAG) return -1;
+			if (flags & IP_PROTO_FLAG) goto duplicate;
 			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
 				token = atoi(argv[0]);
 			} else {
 				token = fr_table_value_by_str(filterProtoName, argv[0], -1);
 				if (token == -1) {
-					fr_strerror_printf("Unknown IP protocol \"%s\" in IP data filter",
+					fr_strerror_printf("Unknown IPv6 protocol \"%s\" in IP data filter",
 						   argv[0]);
 					return -1;
 				}
@@ -994,7 +1050,7 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 	 *	We should have parsed everything by now.
 	 */
 	if (argc != 0) {
-		fr_strerror_printf("Unknown extra string \"%s\" in IP data filter",
+		fr_strerror_printf("Unknown extra string \"%s\" in IPv6 data filter",
 			   argv[0]);
 		return -1;
 	}
@@ -1041,20 +1097,30 @@ static int ascend_parse_generic(int argc, char **argv,
 	/*
 	 *	We need at least "offset mask value"
 	 */
-	if (argc < 3) return -1;
+	if (argc < 3) {
+		fr_strerror_printf("Insufficient arguments to parse 'abinary' generic type");
+		return -1;
+	}
 
 	/*
 	 *	No more than optional comparison and "more"
 	 */
-	if (argc > 5) return -1;
+	if (argc > 5) {
+		fr_strerror_printf("Too many arguments to parse 'abinary' generic type");
+		return -1;
+	}
 
 	/*
 	 *	Offset is a uint16_t number.
 	 */
-	if (strspn(argv[0], "0123456789") != strlen(argv[0])) return -1;
+	if (strspn(argv[0], "0123456789") != strlen(argv[0])) {
+	invalid:
+		fr_strerror_printf("Invalid offset '%s'", argv[0]);
+		return -1;
+	}
 
 	rcode = atoi(argv[0]);
-	if (rcode > 65535) return -1;
+	if (rcode > 65535) goto invalid;
 
 	filter->offset = rcode;
 	filter->offset = htons(filter->offset);
@@ -1062,12 +1128,18 @@ static int ascend_parse_generic(int argc, char **argv,
 	rcode = fr_hex2bin(NULL,
 			   &FR_DBUFF_TMP(filter->mask, sizeof(filter->mask)),
 			   &FR_SBUFF_IN(argv[1], strlen(argv[1])), false);
-	if (rcode != sizeof(filter->mask)) return -1;
+	if (rcode != sizeof(filter->mask)) {
+		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
+		return -1;	
+	}
 
 	token = fr_hex2bin(NULL,
 			   &FR_DBUFF_TMP(filter->value, sizeof(filter->value)),
 			   &FR_SBUFF_IN(argv[2], strlen(argv[2])), false);
-	if (token != sizeof(filter->value)) return -1;
+	if (token != sizeof(filter->value)) {
+		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
+		return -1;
+	}
 
 	filter->len = rcode;
 	filter->len = htons(filter->len);
@@ -1085,18 +1157,22 @@ static int ascend_parse_generic(int argc, char **argv,
 		token = fr_table_value_by_str(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_GENERIC_COMPNEQ:
-			if (flags & 0x01) return -1;
+			if (flags & 0x01) {
+			duplicate:
+				fr_strerror_printf("Duplicate field '%s' when parsing 'abinary' generic type", argv[0]);
+				return -1;
+			}
 			filter->compNeq = true;
 			flags |= 0x01;
 			break;
 		case FILTER_GENERIC_COMPEQ:
-			if (flags & 0x01) return -1;
+			if (flags & 0x01) goto duplicate;
 			filter->compNeq = false;
 			flags |= 0x01;
 			break;
 
 		case FILTER_MORE:
-			if (flags & 0x02) return -1;
+			if (flags & 0x02) goto duplicate;
 			filter->more = htons( 1 );
 			flags |= 0x02;
 			break;
@@ -1145,15 +1221,9 @@ ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outle
 	 */
 	p = talloc_bstrndup(NULL, vp->vp_strvalue, vp->vp_length);
 
-	/*
-	 *	Rather than printing specific error messages, we create
-	 *	a general one here, which won't be used if the function
-	 *	returns OK.
-	 */
-	fr_strerror_printf("Failed parsing \"%s\" as ascend filer", p);
-
 	argc = fr_dict_str_to_argv(p, argv, 32);
 	if (argc < 3) {
+		fr_strerror_printf("Insufficient arguments to parse 'abinary' type");
 	fail:
 		talloc_free(p);
 		return 0;
