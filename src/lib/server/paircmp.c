@@ -393,7 +393,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 	 *	Attributes must be of the same type.
 	 *
 	 *	FIXME: deal with type mismatch properly if one side contain
-	 *	ABINARY, OCTETS or STRING by converting the other side to
+	 *	OCTETS or STRING by converting the other side to
 	 *	a string
 	 *
 	 */
@@ -403,11 +403,6 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 	 *	Not a regular expression, compare the types.
 	 */
 	switch (check->vp_type) {
-		/*
-		 *	Ascend binary attributes can be treated
-		 *	as opaque objects, I guess...
-		 */
-		case FR_TYPE_ABINARY:
 		case FR_TYPE_OCTETS:
 			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */

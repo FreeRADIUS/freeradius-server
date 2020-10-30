@@ -505,13 +505,18 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	If asked to encode more data than allowed, we
 	 *	encode only the allowed data.
 	 */
-	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, (uint8_t const *)(vp->vp_ptr), len);
-		break;
+		if (flag_abinary(&da->flags)) {
+			slen = fr_radius_encode_abinary(vp, fr_dbuff_current(&value_dbuff), fr_dbuff_remaining(&value_dbuff));
+			if (slen <= 0) return slen;
 
-	case FR_TYPE_ABINARY:
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, vp->vp_filter, len);
+			FR_DBUFF_ADVANCE_RETURN(&value_dbuff, (size_t) slen);
+			break;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_OCTETS:
+		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, (uint8_t const *)(vp->vp_ptr), len);
 		break;
 
 	/*

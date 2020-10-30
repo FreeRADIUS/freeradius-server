@@ -10,7 +10,8 @@ SOURCES		:= base.c \
 		   encode.c \
 		   list.c \
 		   packet.c \
-		   tcp.c
+		   tcp.c \
+		   abinary.c
 
 SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
 

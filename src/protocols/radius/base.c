@@ -112,7 +112,6 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 
 	[FR_TYPE_DATE]			= {4, 4},
 	[FR_TYPE_TIME_DELTA]   		= {4, 4},
-	[FR_TYPE_ABINARY]		= {32, ~0},
 
 	[FR_TYPE_TLV]			= {2, ~0},
 	[FR_TYPE_STRUCT]		= {1, ~0},
@@ -1142,6 +1141,7 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("extended"),       		FLAG_EXTENDED_ATTR },
 	{ L("concat"),			FLAG_CONCAT },
 	{ L("has_tag"),			FLAG_HAS_TAG },
+	{ L("abinary"),			FLAG_ABINARY },
 	{ L("has_tag,encrypt=2"),	FLAG_TAGGED_TUNNEL_PASSWORD },
 
 	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },

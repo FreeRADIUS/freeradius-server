@@ -367,9 +367,17 @@ bit fields are _only_ supported inside of a `struct` definition.
 The dictionary parser includes many more sanity checks and helpful
 messages for people who create new dictionaries.
 
-Dictionaries are now split up by protocol.  e.g._`share/freeradius/radius/dictionary...`
+Dictionaries are now split up by protocol.
+e.g._`share/freeradius/radius/dictionary*`.  All protocol-specific
+data types have been removed, and replaced with attribute flags.
 
-== "Tagged" RADIUS attributes
+The old `abinary` data type has been removed.  Attributes needing this
+functionality should instead be marked with a flag, e.g._`string abinary`.
+
+The old `extended` data type has been removed. Attributes needing this
+functionality should instead be marked with a flag, e.g._`tlv extended`.
+
+=== "Tagged" RADIUS attributes
 
 The old-style "tagged" RADIUS format has been removed.  Instead of using
 
@@ -399,7 +407,7 @@ There are 31 such attributes, `Tag-1` through `Tag-31`.  There is no
 After much effort, it was unfortunately impossible to continue
 supporting the `:tag` syntax for attributes.  This change requires
 modifications to all configuration files and databases which use tags.
-This change means also that `detail` files from v3 will not be
+This change means also that `detail` files from v3 may not be
 readable by v4.
 
 == Attribute references

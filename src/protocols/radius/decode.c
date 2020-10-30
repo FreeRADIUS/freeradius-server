@@ -1567,10 +1567,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	}
 		break;
 
-	case FR_TYPE_ABINARY:
-		if (data_len < 32) goto raw;
-		vp->vp_filter = talloc_memdup(vp, p, data_len);
-		vp->vp_length = data_len;
+	case FR_TYPE_STRING:
+		if (!flag_abinary(&parent->flags)) goto decode;
+
+		if (fr_radius_decode_abinary(vp, p, data_len) < 0) goto raw;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1582,6 +1582,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		FALL_THROUGH;
 
 	default:
+	decode:
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
 			/*
 			 *	Paranoid loop prevention

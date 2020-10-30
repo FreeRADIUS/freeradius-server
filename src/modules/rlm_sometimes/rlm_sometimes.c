@@ -93,10 +93,6 @@ static rlm_rcode_t sometimes_return(void const *instance, request_t *request, RA
 		hash = fr_hash(vp->data.datum.ptr, vp->vp_length);
 		break;
 
-	case FR_TYPE_ABINARY:
-		hash = fr_hash(vp->vp_filter, vp->vp_length);
-		break;
-
 	case FR_TYPE_STRUCTURAL:
 		return RLM_MODULE_FAIL;
 

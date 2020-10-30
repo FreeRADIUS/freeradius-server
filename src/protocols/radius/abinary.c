@@ -14,19 +14,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Routines to parse Ascend's filter attributes
+/** Routines to encode / decode Ascend's filter attributes
  *
- * @file src/lib/util/ascend.c
+ * @file src/protocols/radius/abinary.c
  *
  * @copyright 2003,2006 The FreeRADIUS server project
  */
 RCSID("$Id$")
 
-#include "ascend.h"
-
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/pair.h>
+
+#include "radius.h"
 
 #include <ctype.h>
 
@@ -394,7 +395,6 @@ static fr_table_num_sorted_t const filterCompare[] = {
 	{ L(">"),	RAD_COMPARE_GREATER	}
 };
 static size_t filterCompare_len = NUM_ELEMENTS(filterCompare);
-
 
 /*
  *	ascend_parse_ipx_net
@@ -1115,19 +1115,19 @@ static int ascend_parse_generic(int argc, char **argv,
 }
 
 
-/** Filter binary
+/** Encode a string to abinary.
  *
  * This routine will call routines to parse entries from an ASCII format
  * to a binary format recognized by the Ascend boxes.
  *
- * @param out Where to write parsed filter.
- * @param value ascend filter text.
- * @param len of value.
+ * @param vp	VP to encode
+ * @param out	where to write the VP data
+ * @param outlen length of the output buffer
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- >0 on success == size of the data encoded
+ *	- <=0 on failure, which is the size needed to encode the data
  */
-int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value, size_t len)
+ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen)
 {
 	int		token, type;
 	int		rcode;
@@ -1135,9 +1135,7 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 	char		*argv[32];
 	ascend_filter_t filter;
 	char		*p;
-	ssize_t		size;
-
-	rcode = -1;
+	size_t		size;
 
 	/*
 	 *	Tokenize the input string in the VP.
@@ -1145,7 +1143,7 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 	 *	Once the filter is *completely* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	p = talloc_bstrndup(NULL, value, len);
+	p = talloc_bstrndup(NULL, vp->vp_strvalue, vp->vp_length);
 
 	/*
 	 *	Rather than printing specific error messages, we create
@@ -1156,8 +1154,9 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 
 	argc = fr_dict_str_to_argv(p, argv, 32);
 	if (argc < 3) {
+	fail:
 		talloc_free(p);
-		return -1;
+		return 0;
 	}
 
 	/*
@@ -1179,8 +1178,7 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter type \"%s\"", argv[0]);
-		talloc_free(p);
-		return -1;
+		goto fail;
 	}
 
 	/*
@@ -1198,8 +1196,7 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter direction \"%s\"", argv[1]);
-		talloc_free(p);
-		return -1;
+		goto fail;
 	}
 
 	/*
@@ -1217,10 +1214,8 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter action \"%s\"", argv[2]);
-		talloc_free(p);
-		return -1;
+		goto fail;
 	}
-
 
 	switch (type) {
 	case ASCEND_FILTER_GENERIC:
@@ -1244,31 +1239,39 @@ int ascend_parse_filter(TALLOC_CTX *ctx, fr_value_box_t *out, char const *value,
 		break;
 	}
 
-	/*
-	 *	Touch the VP only if everything was OK.
-	 */
-	if (rcode == 0) out->datum.filter = talloc_memdup(ctx, &filter, size);
+	if (rcode < 0) goto fail;
+
 	talloc_free(p);
 
-	return rcode;
+	if (size > outlen) return -size;
+
+	/*
+	 *	Copy the encoded filter to the output buffer
+	 */
+	memcpy(out, &filter, size);
+
+	return size;
 }
 
 /** Print an Ascend binary filter attribute to a string,
  *
  * Grrr... Ascend makes the server do this work, instead of doing it on the NAS.
  *
- * @param[in,out] sbuff	Buffer to write the string to.
- * @param[in] in	Data to print as filter string.
+ * @param[in,out] vp	Where the decoded string will be stored.
+ * @param[in] data	binary data to decodee
+ * @param[in] data_len	length of the binary data to decodee
  * @return
- *	- >0 The amount of data written to out.
- *	- = 0 nothing to do
- *	- <0 the number of bytes needed to write the content
+ *	- 0 OK
+ *	- <0 on error.  VP is untouched.
  */
-ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
+ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 {
 	ascend_filter_t	const	*filter;
+	size_t			size;
 	fr_ipaddr_t		ipaddr;
 	char			buffer[FR_IPADDR_PREFIX_STRLEN];
+	char			string[256];
+	fr_sbuff_t		sbuff = FR_SBUFF_OUT(string, sizeof(string));
 
 	static char const *action[] = {"drop", "forward"};
 	static char const *direction[] = {"out", "in"};
@@ -1276,43 +1279,34 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (in->vb_length < 4) {
-		size_t i;
+	if (data_len < 4) return -1;
 
-	raw:
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, "0x");
-
-		for (i = 0; i < in->vb_length; i++) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, "%02x", in[i]);
-		}
-
-		return fr_sbuff_used(sbuff);
-	}
-
-	filter = (ascend_filter_t const *) in->datum.filter;
+	filter = (ascend_filter_t const *) data;
 
 	switch ((ascend_filter_type_t)filter->type) {
 	case ASCEND_FILTER_IP:
-		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter)) goto raw;
+		size = (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter);
 		break;
 
 	case ASCEND_FILTER_IPX:
-		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter)) goto raw;
+		size = (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter);
 		break;
 
 	case ASCEND_FILTER_GENERIC:
-		if (in->vb_length < (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter)) goto raw;
+		size = (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter);
 		break;
 
 	case ASCEND_FILTER_IPV6:
-		if (in->vb_length < (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter)) goto raw;
+		size = (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter);
 		break;
 
 	default:
-		goto raw;
+		return -1;
 	}
 
-	FR_SBUFF_IN_SPRINTF_RETURN(sbuff, "%s %s %s", fr_table_str_by_value(filterType, filter->type, "??"),
+	if (data_len < size) return -size;
+
+	FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%s %s %s", fr_table_str_by_value(filterType, filter->type, "??"),
 				   direction[filter->direction & 0x01], action[filter->forward & 0x01]);
 
 	switch ((ascend_filter_type_t)filter->type) {
@@ -1322,7 +1316,7 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 	 */
 	case ASCEND_FILTER_IP:
 		if (filter->ip.srcip) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " srcip %d.%d.%d.%d/%d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " srcip %d.%d.%d.%d/%d",
 						   ((uint8_t const *) &filter->ip.srcip)[0],
 						   ((uint8_t const *) &filter->ip.srcip)[1],
 						   ((uint8_t const *) &filter->ip.srcip)[2],
@@ -1331,7 +1325,7 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 		}
 
 		if (filter->ip.dstip) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " dstip %d.%d.%d.%d/%d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " dstip %d.%d.%d.%d/%d",
 						   ((uint8_t const *) &filter->ip.dstip)[0],
 						   ((uint8_t const *) &filter->ip.dstip)[1],
 						   ((uint8_t const *) &filter->ip.dstip)[2],
@@ -1339,22 +1333,22 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 						   filter->ip.dstmask);
 		}
 
-		FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " %s", fr_table_str_by_value(filterProtoName, filter->ip.proto, "??"));
+		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %s", fr_table_str_by_value(filterProtoName, filter->ip.proto, "??"));
 
 		if (filter->ip.srcPortComp > RAD_NO_COMPARE) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " srcport %s %d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " srcport %s %d",
 						   fr_table_str_by_value(filterCompare, filter->ip.srcPortComp, "??"),
 						   ntohs(filter->ip.srcport));
 		}
 
 		if (filter->ip.dstPortComp > RAD_NO_COMPARE) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " dstport %s %d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " dstport %s %d",
 						   fr_table_str_by_value(filterCompare, filter->ip.dstPortComp, "??"),
 						   ntohs(filter->ip.dstport));
 		}
 
 		if (filter->ip.established) {
-			FR_SBUFF_IN_STRCPY_RETURN(sbuff, " est");
+			FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " est");
 		}
 		break;
 
@@ -1364,14 +1358,14 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 	case ASCEND_FILTER_IPX:
 		/* print for source */
 		if (filter->ipx.src.net) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
 						   (unsigned int)ntohl(filter->ipx.src.net),
 						   filter->ipx.src.node[0], filter->ipx.src.node[1],
 						   filter->ipx.src.node[2], filter->ipx.src.node[3],
 						   filter->ipx.src.node[4], filter->ipx.src.node[5]);
 
 			if (filter->ipx.srcSocComp > RAD_NO_COMPARE) {
-				FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " srcipxsock %s 0x%04x",
+				FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " srcipxsock %s 0x%04x",
 							   fr_table_str_by_value(filterCompare, filter->ipx.srcSocComp, "??"),
 							   ntohs(filter->ipx.src.socket));
 			}
@@ -1379,14 +1373,14 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 
 		/* same for destination */
 		if (filter->ipx.dst.net) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
 						   (unsigned int)ntohl(filter->ipx.dst.net),
 						   filter->ipx.dst.node[0], filter->ipx.dst.node[1],
 						   filter->ipx.dst.node[2], filter->ipx.dst.node[3],
 						   filter->ipx.dst.node[4], filter->ipx.dst.node[5]);
 
 			if (filter->ipx.dstSocComp > RAD_NO_COMPARE) {
-				FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " dstipxsock %s 0x%04x",
+				FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " dstipxsock %s 0x%04x",
 							   fr_table_str_by_value(filterCompare, filter->ipx.dstSocComp, "??"),
 							   ntohs(filter->ipx.dst.socket));
 			}
@@ -1397,24 +1391,24 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 	{
 		int count;
 
-		FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " %u ", (unsigned int) ntohs(filter->generic.offset));
+		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %u ", (unsigned int) ntohs(filter->generic.offset));
 
 		/* show the mask */
 		for (count = 0; count < ntohs(filter->generic.len); count++) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, "%02x", filter->generic.mask[count]);
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.mask[count]);
 		}
 
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, " ");
+		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " ");
 
 		/* show the value */
 		for (count = 0; count < ntohs(filter->generic.len); count++) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, "%02x", filter->generic.value[count]);
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.value[count]);
 		}
 
-		FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " %s", (filter->generic.compNeq) ? "!=" : "==");
+		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %s", (filter->generic.compNeq) ? "!=" : "==");
 
 		if (filter->generic.more != 0) {
-			FR_SBUFF_IN_STRCPY_RETURN(sbuff, " more");
+			FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " more");
 		}
 	}
 		break;
@@ -1431,10 +1425,10 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 		memcpy(&ipaddr.addr.v6.s6_addr, filter->ipv6.srcip, sizeof(filter->ipv6.srcip));
 		ipaddr.prefix = filter->ipv6.srcmask;
 
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, " srcip ");
+		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " srcip ");
 
 		(void) fr_inet_ntop_prefix(buffer, sizeof(buffer), &ipaddr);
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, buffer);
+		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, buffer);
 
 		/*
 		 *	dstip
@@ -1444,27 +1438,27 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 		memcpy(&ipaddr.addr.v6.s6_addr, filter->ipv6.dstip, sizeof(filter->ipv6.dstip));
 		ipaddr.prefix = filter->ipv6.dstmask;
 
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, " dstip ");
+		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " dstip ");
 
 		(void) fr_inet_ntop_prefix(buffer, sizeof(buffer), &ipaddr);
-		FR_SBUFF_IN_STRCPY_RETURN(sbuff, buffer);
+		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, buffer);
 
-		FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " %s", fr_table_str_by_value(filterProtoName, filter->ipv6.proto, "??"));
+		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %s", fr_table_str_by_value(filterProtoName, filter->ipv6.proto, "??"));
 
 		if (filter->ipv6.srcPortComp > RAD_NO_COMPARE) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " srcport %s %d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " srcport %s %d",
 						   fr_table_str_by_value(filterCompare, filter->ipv6.srcPortComp, "??"),
 						   ntohs(filter->ipv6.srcport));
 		}
 
 		if (filter->ipv6.dstPortComp > RAD_NO_COMPARE) {
-			FR_SBUFF_IN_SPRINTF_RETURN(sbuff, " dstport %s %d",
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " dstport %s %d",
 						   fr_table_str_by_value(filterCompare, filter->ipv6.dstPortComp, "??"),
 						   ntohs(filter->ipv6.dstport));
 		}
 
 		if (filter->ipv6.established) {
-			FR_SBUFF_IN_STRCPY_RETURN(sbuff, " est");
+			FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " est");
 		}
 		break;
 
@@ -1472,5 +1466,10 @@ ssize_t print_abinary(fr_sbuff_t *sbuff, fr_value_box_t const *in)
 		break;
 	}
 
-	return fr_sbuff_used(sbuff);
+	/*
+	 *	Copy the finished string to the output VP.
+	 */
+	if (fr_pair_value_strdup(vp, string) < 0) return -1;
+
+	return 0;
 }

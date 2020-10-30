@@ -454,7 +454,6 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_IFID:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:

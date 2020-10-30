@@ -89,6 +89,7 @@ enum {
 	FLAG_LONG_EXTENDED_ATTR,	      		//!< the attribute is a long extended attribute
 	FLAG_CONCAT,					//!< the attribute is concatenated
 	FLAG_HAS_TAG,					//!< the attribute has a tag
+	FLAG_ABINARY,					//!< the attribute is in "abinary" format
 	FLAG_TAGGED_TUNNEL_PASSWORD,   			//!< the attribute has a tag and is encrypted
 
 	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
@@ -99,6 +100,7 @@ enum {
 
 #define flag_has_tag(_flags)	     (!(_flags)->extra && (((_flags)->subtype == FLAG_HAS_TAG) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 #define flag_concat(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_CONCAT)
+#define flag_abinary(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_ABINARY)
 #define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_TAGGED_TUNNEL_PASSWORD)
 #define flag_extended(_flags)        (!(_flags)->extra && (((_flags)->subtype == FLAG_EXTENDED_ATTR) || (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR))
 #define flag_long_extended(_flags)   (!(_flags)->extra && (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR)
@@ -174,6 +176,13 @@ typedef struct {
 	uint8_t			tag;			//!< current tag for encoding
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
 } fr_radius_ctx_t;
+
+/*
+ *	protocols/radius/abinary.c
+ */
+ssize_t		fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen);
+
+ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data_len);
 
 /*
  *	protocols/radius/encode.c

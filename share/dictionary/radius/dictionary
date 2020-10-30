@@ -35,7 +35,6 @@
 #	FreeRADIUS includes data types which are not defined
 #	in the RFC's.  These data types are:
 #
-#	abinary - Ascend's binary filter format.
 #	byte    - 8 bit unsigned integer
 #	ether   - 6 octets of hh:hh:hh:hh:hh:hh
 #		  where 'h' is hex digits, upper or lowercase.

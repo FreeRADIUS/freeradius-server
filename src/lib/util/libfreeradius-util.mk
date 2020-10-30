@@ -6,7 +6,6 @@
 TARGET		:= libfreeradius-util.a
 
 SOURCES		:= \
-		   ascend.c \
 		   base64.c \
 		   cap.c \
 		   cursor.c \

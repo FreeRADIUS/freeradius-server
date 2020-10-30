@@ -69,8 +69,6 @@ typedef enum {
 
 	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
-	FR_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
-
 	FR_TYPE_TLV,				//!< Contains nested attributes.
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
 
@@ -144,8 +142,7 @@ typedef enum {
  */
 #define FR_TYPE_VARIABLE_SIZE \
 	     FR_TYPE_STRING: \
-	case FR_TYPE_OCTETS: \
-	case FR_TYPE_ABINARY \
+	case FR_TYPE_OCTETS
 
 
 #define FR_TYPE_BAD \
@@ -194,8 +191,7 @@ typedef enum {
 	case FR_TYPE_IPV6_ADDR: \
 	case FR_TYPE_IPV6_PREFIX: \
 	case FR_TYPE_ETHERNET: \
-	case FR_TYPE_IFID: \
-	case FR_TYPE_ABINARY
+	case FR_TYPE_IFID
 
 /** Types which can fit in an #fr_ipaddr_t
  *
@@ -211,8 +207,7 @@ typedef enum {
  */
 #define FR_TYPE_QUOTED \
 	FR_TYPE_STRING: \
-	case FR_TYPE_DATE: \
-	case FR_TYPE_ABINARY
+	case FR_TYPE_DATE
 
 #ifdef __cplusplus
 }

@@ -92,7 +92,6 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_ABINARY:
 	{
 		char	buff[128];
 		ssize_t	slen;
