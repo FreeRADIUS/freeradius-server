@@ -117,7 +117,6 @@ struct value_box_s {
 				char const	*strvalue;	//!< Pointer to UTF-8 string.
 				uint8_t const	*octets;	//!< Pointer to binary string.
 				void		*ptr;		//!< generic pointer.
-				uint8_t const  	*filter;	//!< Ascend binary format (a packed data structure).
 			};
 		};
 
