@@ -468,6 +468,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	char const	*end;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
+	int		ret;
 
 	/*
 	 *	Zero out output so we don't have invalid fields
@@ -542,7 +543,6 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	Copy the IP portion into a temporary buffer if we haven't already.
 	 */
 	if (inlen < 0) memcpy(buffer, value, p - value);
-	buffer[p - value] = '\0';
 
 	/*
 	 *	We need a special function here, as inet_pton doesn't like
@@ -552,7 +552,11 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *
 	 *	@todo we should allow hostnames to be parsed as prefixes.
 	 */
-	if (ip_prefix_addr_from_str(&out->addr.v4, buffer) <= 0) {
+	buffer[p - value] = '\0';
+	ret = ip_prefix_addr_from_str(&out->addr.v4, buffer);
+	buffer[p - value] = '/';	/* Set back to '/' to produce proper errors */
+
+	if (ret <= 0) {
 		fr_strerror_printf("Failed to parse IPv4 prefix string \"%s\"", value);
 		return -1;
 	}
@@ -601,6 +605,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	unsigned int	prefix;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
+	int		ret;
 
 	/*
 	 *	Zero out output so we don't have fields
@@ -658,14 +663,21 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	Copy string to temporary buffer if we didn't do it earlier
 	 */
 	if (inlen < 0) memcpy(buffer, value, p - value);
-	buffer[p - value] = '\0';
 
 	if (!resolve) {
-		if (inet_pton(AF_INET6, buffer, out->addr.v6.s6_addr) <= 0) {
+		buffer[p - value] = '\0';
+		ret = inet_pton(AF_INET6, buffer, out->addr.v6.s6_addr);
+		buffer[p - value] = '/';
+		if (ret <= 0) {
 			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 			return -1;
 		}
-	} else if (fr_inet_hton(out, AF_INET6, buffer, fallback) < 0) return -1;
+	} else {
+		buffer[p - value] = '\0';
+		ret = fr_inet_hton(out, AF_INET6, buffer, fallback);
+		buffer[p - value] = '/';
+		if (ret < 0) return -1;
+	}
 
 	prefix = strtoul(p + 1, &eptr, 10);
 	if (prefix > 128) {
