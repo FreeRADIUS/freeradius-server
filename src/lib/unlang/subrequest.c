@@ -481,24 +481,7 @@ void unlang_subrequest_free(request_t **child)
 	*child = NULL;
 }
 
-static unlang_group_t subrequest_instruction = {
-	.self = {
-		.type = UNLANG_TYPE_SUBREQUEST,
-		.name = "subrequest",
-		.debug_name = "subrequest",
-		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
-		},
-	},
-};
+static unlang_group_t *subrequest_instruction;
 
 /** Push a pre-existing child back onto the stack as a subrequest
  *
@@ -525,7 +508,8 @@ void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_interpret_push(child->parent, &subrequest_instruction.self, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(child->parent, &subrequest_instruction->self,
+			      RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -545,6 +529,8 @@ void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 
 int unlang_subrequest_op_init(void)
 {
+	unlang_subrequest_t *gctx;
+
 	if (fr_dict_autoload(subrequest_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
@@ -553,6 +539,39 @@ int unlang_subrequest_op_init(void)
 		PERROR("%s", __FUNCTION__);
 		return -1;
 	}
+
+	/*
+	 *	Needs to be dynamically allocated
+	 *	so that talloc_get_type works
+	 *	correctly.
+	 */
+	gctx = talloc(NULL, unlang_subrequest_t);
+	if (!gctx) {
+		ERROR("%s: Out of memory", __FUNCTION__);
+		return -1;
+	}
+	*gctx = (unlang_subrequest_t){
+		.group = {
+			.self = {
+				.type = UNLANG_TYPE_SUBREQUEST,
+				.name = "subrequest",
+				.debug_name = "subrequest",
+				.actions = {
+					[RLM_MODULE_REJECT]	= 0,
+					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+					[RLM_MODULE_OK]		= 0,
+					[RLM_MODULE_HANDLED]	= 0,
+					[RLM_MODULE_INVALID]	= 0,
+					[RLM_MODULE_DISALLOW]	= 0,
+					[RLM_MODULE_NOTFOUND]	= 0,
+					[RLM_MODULE_NOOP]	= 0,
+					[RLM_MODULE_UPDATED]	= 0
+				}
+			}
+		}
+	};
+	talloc_set_memlimit(gctx, talloc_get_size(gctx));	/* Ensure where are no allocations */
+	subrequest_instruction = unlang_subrequest_to_group(gctx);
 
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			   &(unlang_op_t){
@@ -577,5 +596,6 @@ int unlang_subrequest_op_init(void)
 
 void unlang_subrequest_op_free(void)
 {
+	talloc_free(subrequest_instruction);
 	fr_dict_autofree(subrequest_dict);
 }
