@@ -121,15 +121,15 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 		 */
 
 	calculate_result:
-		if (child->reply && g->kctx) {		/* Only have kctx for keyword generated subrequests */
-			unlang_subrequest_kctx_t	*kctx;
+		if (child->reply) {
+			unlang_subrequest_t	*gext;
 
 			/*
 			 *	Copy reply attributes into the specified
 			 *      destination.
 			 */
-			kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
-			if (kctx->dst) {
+			gext = unlang_group_to_subrequest(g);
+			if (gext->dst) {
 				tmpl_attr_extent_t 	*extent = NULL;
 				fr_dlist_head_t		leaf;
 				fr_dlist_head_t		interior;
@@ -140,8 +140,8 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 				/*
 				 *	Find out what we need to build and build it
 				 */
-				if ((tmpl_extents_find(kctx, &leaf, &interior, request, kctx->dst) < 0) ||
-				    (tmpl_extents_build_to_leaf(&leaf, &interior, kctx->dst) < 0)) {
+				if ((tmpl_extents_find(gext, &leaf, &interior, request, gext->dst) < 0) ||
+				    (tmpl_extents_build_to_leaf(&leaf, &interior, gext->dst) < 0)) {
 					RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
 					fr_dlist_talloc_free(&leaf);
 					fr_dlist_talloc_free(&interior);
@@ -228,7 +228,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	fr_pair_t			*vp;
 
 	unlang_group_t			*g;
-	unlang_subrequest_kctx_t	*kctx;
+	unlang_subrequest_t	*gext;
 
 	/*
 	 *	Initialize the state
@@ -239,9 +239,8 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
-
-	child = state->child = unlang_io_subrequest_alloc(request, kctx->dict, UNLANG_DETACHABLE);
+	gext = unlang_group_to_subrequest(g);
+	child = state->child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
 		rcode = RLM_MODULE_FAIL;
@@ -260,21 +259,21 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	/*
 	 *	Set the packet type.
 	 */
-	MEM(vp = fr_pair_afrom_da(child->packet, kctx->attr_packet_type));
+	MEM(vp = fr_pair_afrom_da(child->packet, gext->attr_packet_type));
 
-	if (kctx->type_enum) {
-		child->packet->code = vp->vp_uint32 = kctx->type_enum->value->vb_uint32;
+	if (gext->type_enum) {
+		child->packet->code = vp->vp_uint32 = gext->type_enum->value->vb_uint32;
 	} else {
 		fr_dict_enum_t const	*type_enum;
 		fr_pair_t		*attr;
 
-		if (tmpl_find_vp(&attr, request, kctx->vpt) < 0) {
-			RDEBUG("Failed finding attribute %s", kctx->vpt->name);
+		if (tmpl_find_vp(&attr, request, gext->vpt) < 0) {
+			RDEBUG("Failed finding attribute %s", gext->vpt->name);
 			goto fail;
 		}
 
-		if (tmpl_da(kctx->vpt)->type == FR_TYPE_STRING) {
-			type_enum = fr_dict_enum_by_name(kctx->attr_packet_type, attr->vp_strvalue, attr->vp_length);
+		if (tmpl_da(gext->vpt)->type == FR_TYPE_STRING) {
+			type_enum = fr_dict_enum_by_name(gext->attr_packet_type, attr->vp_strvalue, attr->vp_length);
 			if (!type_enum) {
 				RDEBUG("Unknown Packet-Type %pV", &attr->data);
 				goto fail;
@@ -297,7 +296,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 			 *	"recv foo" section for it and we can't
 			 *	do anything with this packet.
 			 */
-			type_enum = fr_dict_enum_by_value(kctx->attr_packet_type, &box);
+			type_enum = fr_dict_enum_by_value(gext->attr_packet_type, &box);
 			if (!type_enum) {
 				RDEBUG("Invalid value %pV for Packet-Type", &box);
 				goto fail;
@@ -309,8 +308,8 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	}
 	fr_pair_add(&child->packet->vps, vp);
 
-	if (kctx->src) {
-		if (tmpl_copy_vps(child->packet, &child->packet->vps, request, kctx->src) < -1) {
+	if (gext->src) {
+		if (tmpl_copy_vps(child->packet, &child->packet->vps, request, gext->src) < -1) {
 			RPEDEBUG("Failed copying source attributes into subrequest");
 			goto fail;
 		}

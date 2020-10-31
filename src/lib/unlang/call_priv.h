@@ -26,10 +26,30 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
+#include <freeradius-devel/unlang/unlang_priv.h>
+
 typedef struct {
+	unlang_group_t		group;
 	CONF_SECTION		*server_cs;
 	fr_dict_attr_t const	*attr_packet_type;
-} unlang_call_kctx_t;
+} unlang_call_t;
+
+/** Cast a group structure to the call keyword extension
+ *
+ */
+static inline unlang_call_t *unlang_group_to_call(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_call_t);
+}
+
+/** Cast a call keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_call_to_group(unlang_call_t *call)
+{
+	return (unlang_group_t *)call;
+}
 
 #ifdef __cplusplus
 }

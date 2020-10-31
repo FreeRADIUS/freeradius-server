@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/util/dict.h>
 
 typedef struct {
+	unlang_group_t		group;
 	tmpl_t			*vpt;			//!< Value to expand to find the value to place
 							///< into the packet-type attribute.
 
@@ -41,7 +42,23 @@ typedef struct {
 	fr_dict_attr_t const	*attr_packet_type;	//!< Packet-type attribute in the subrequest protocol.
 	fr_dict_enum_t const	*type_enum;		//!< Static enumeration value for attr_packet_type
 							///< if the packet-type is static.
-} unlang_subrequest_kctx_t;
+} unlang_subrequest_t;
+
+/** Cast a group structure to the subrequest keyword extension
+ *
+ */
+static inline unlang_subrequest_t *unlang_group_to_subrequest(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_subrequest_t);
+}
+
+/** Cast a subrequest keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *subrequest)
+{
+	return (unlang_group_t *)subrequest;
+}
 
 void	unlang_subrequest_free(request_t **child);
 

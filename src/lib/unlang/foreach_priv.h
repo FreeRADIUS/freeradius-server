@@ -26,11 +26,29 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
 #include <freeradius-devel/server/tmpl.h>
 
 typedef struct {
+	unlang_group_t	group;
 	tmpl_t		*vpt;
-} unlang_foreach_kctx_t;
+} unlang_foreach_t;
+
+/** Cast a group structure to the foreach keyword extension
+ *
+ */
+static inline unlang_foreach_t *unlang_group_to_foreach(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_foreach_t);
+}
+
+/** Cast a foreach keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_foreach_to_group(unlang_foreach_t *foreach)
+{
+	return (unlang_group_t *)foreach;
+}
 
 #ifdef __cplusplus
 }

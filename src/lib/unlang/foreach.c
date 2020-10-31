@@ -130,7 +130,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	unlang_frame_state_foreach_t	*foreach = NULL;
 
 	unlang_group_t			*g;
-	unlang_foreach_kctx_t		*kctx;
+	unlang_foreach_t		*gext;
 
 	int				i, foreach_depth = 0;
 	fr_pair_t			*vps;
@@ -138,7 +138,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);
-	kctx = talloc_get_type_abort(g->kctx, unlang_foreach_kctx_t);
+	gext = unlang_group_to_foreach(g);
 
 	/*
 	 *	Ensure any breaks terminate here...
@@ -168,7 +168,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	 *	behaviour if someone decides to add or remove VPs in the set we're
 	 *	iterating over.
 	 */
-	if (tmpl_copy_vps(frame->state, &vps, request, kctx->vpt) < 0) {	/* nothing to loop over */
+	if (tmpl_copy_vps(frame->state, &vps, request, gext->vpt) < 0) {	/* nothing to loop over */
 		*presult = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}

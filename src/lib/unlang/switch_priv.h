@@ -29,12 +29,46 @@ extern "C" {
 #include <freeradius-devel/server/tmpl.h>
 
 typedef struct {
+	unlang_group_t	group;
 	tmpl_t		*vpt;
-} unlang_switch_kctx_t;
+} unlang_switch_t;
+
+/** Cast a group structure to the switch keyword extension
+ *
+ */
+static inline unlang_switch_t *unlang_group_to_switch(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_switch_t);
+}
+
+/** Cast a switch keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_switch_to_group(unlang_switch_t *sw)
+{
+	return (unlang_group_t *)sw;
+}
 
 typedef struct {
+	unlang_group_t	group;
 	tmpl_t		*vpt;
-} unlang_case_kctx_t;
+} unlang_case_t;
+
+/** Cast a group structure to the case keyword extension
+ *
+ */
+static inline unlang_case_t *unlang_group_to_case(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_case_t);
+}
+
+/** Cast a case keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_case_to_group(unlang_case_t *sw)
+{
+	return (unlang_group_t *)sw;
+}
 
 #ifdef __cplusplus
 }

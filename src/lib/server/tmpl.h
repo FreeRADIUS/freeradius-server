@@ -375,6 +375,17 @@ typedef struct {
 	request_ref_t		_CONST request;
 } tmpl_request_t;
 
+
+/** How many additional headers to allocate in a pool for a tmpl_t
+ *
+ */
+#define TMPL_POOL_DEF_HEADERS		4
+
+/** How many additional bytes to allocate in a pool for a tmpl_t
+ *
+ */
+#define TMPL_POOL_DEF_LEN		(sizeof(tmpl_t) + 64 + sizeof(tmpl_attr_t) + sizeof(tmpl_request_t))
+
 /** @name Field accessors for attribute references
  *
  * @{

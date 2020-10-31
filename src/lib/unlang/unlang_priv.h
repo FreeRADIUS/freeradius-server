@@ -96,8 +96,8 @@ typedef enum {
 #define UNLANG_NEXT_STOP	(false)
 #define UNLANG_NEXT_SIBLING	(true)
 
-#define UNLANG_DETACHABLE (true)
-#define UNLANG_NORMAL_CHILD (false)
+#define UNLANG_DETACHABLE	(true)
+#define UNLANG_NORMAL_CHILD	(false)
 
 typedef struct unlang_s unlang_t;
 
@@ -122,6 +122,17 @@ struct unlang_s {
 	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
 };
 
+/** Describes how to allocate an #unlang_group_t with additional memory keyword specific data
+ *
+ */
+typedef struct {
+	unlang_type_t		type;		//!< Keyword.
+	size_t			len;		//!< Total length of the unlang_group_t + specialisation struct.
+	unsigned		pool_headers;	//!< How much additional space to allocate for chunk headers.
+	size_t			pool_len;	//!< How much additional space to allocate for extensions.
+	char const		*type_name;	//!< Talloc type name.
+} unlang_ext_t;
+
 /** Generic representation of a grouping
  *
  * Can represent IF statements, maps, update sections etc...
@@ -133,8 +144,6 @@ typedef struct {
 	unlang_t		**tail;		//!< pointer to the tail which gets updated
 	CONF_SECTION		*cs;
 	int			num_children;
-
-	void			*kctx;		//!< Keyword specific data
 } unlang_group_t;
 
 /** A naked xlat
