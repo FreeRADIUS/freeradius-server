@@ -35,9 +35,9 @@ RCSID("$Id$")
  */
 static void unlang_call_signal(request_t *request, fr_state_signal_t action)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	request_t				*child = frame->state;
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	request_t		*child = frame->state;
 
 	unlang_interpret_signal(child, action);
 }
@@ -45,10 +45,10 @@ static void unlang_call_signal(request_t *request, fr_state_signal_t action)
 
 static unlang_action_t unlang_call_child(request_t *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	request_t				*child = frame->state;
-	rlm_rcode_t			rcode;
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	request_t		*child = frame->state;
+	rlm_rcode_t		rcode;
 
 	/*
 	 *	Run the *child* through the "call" section, as a way
@@ -66,10 +66,10 @@ static unlang_action_t unlang_call_child(request_t *request, rlm_rcode_t *presul
 
 static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	request_t				*child = frame->state;
-	rlm_rcode_t			rcode;
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	request_t		*child = frame->state;
+	rlm_rcode_t		rcode;
 
 	/*
 	 *	@todo - we can't change packet types
