@@ -100,11 +100,14 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 	module_method_t		process_p;
 	void			*process_inst;
 
+	/*
+	 *	Do not check for children here.
+	 *
+	 *	Call shouldn't require children to execute as there
+	 *	can still be side effects from executing the virtual
+	 *	server.
+	 */
 	g = unlang_generic_to_group(instruction);
-	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
 	gext = unlang_group_to_call(g);
 
 	server = cf_section_name2(gext->server_cs);
