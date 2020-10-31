@@ -87,18 +87,18 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 
 static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	request_t				*child;
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+	request_t		*child;
 
-	unlang_group_t			*g;
+	unlang_group_t		*g;
 	unlang_call_t		*gext;
-	char const			*server;
-	fr_dict_enum_t const		*type_enum;
+	char const		*server;
+	fr_dict_enum_t const	*type_enum;
 
-	module_method_t			process_p;
-	void				*process_inst;
+	module_method_t		process_p;
+	void			*process_inst;
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
