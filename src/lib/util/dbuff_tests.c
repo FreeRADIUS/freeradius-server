@@ -235,7 +235,7 @@ static void test_dbuff_no_advance(void)
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
 	fr_dbuff_advance(&no_advance_dbuff, 2);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
-	fr_dbuff_end(&no_advance_dbuff);
+	fr_dbuff_set_to_end(&no_advance_dbuff);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
 }
 
