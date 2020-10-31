@@ -124,9 +124,17 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 		unlang_stack_frame_t	*child_frame = &child_stack->frame[child_stack->depth];
 		unlang_t		*child_instruction = child_frame->instruction;
 
-		if (child_instruction == instruction) {
-			REDEBUG("Suppressing 'call' loop with server %s",
-				server);
+		/*
+		 *	This is a useful test but isn't always
+		 *	valid when we're using calls to strip off
+		 *	layers.
+		 *
+		 *	When the lists are unified under a single
+		 *	root pair, then all lists should be checked.
+		 */
+		if ((child_instruction == instruction) &&
+		    (fr_pair_list_cmp(child->packet->vps, request->packet->vps) == 0)) {
+			REDEBUG("Suppressing 'call' loop with server %s", server);
 			*presult = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
