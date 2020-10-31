@@ -193,8 +193,10 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 	/*
 	 *	Push OUR subsection onto the childs stack frame.
 	 */
-	unlang_interpret_push(child, g->children, frame->result,
-			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+	if (g->children) {
+		unlang_interpret_push(child, g->children, frame->result,
+				      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+	}
 	frame->interpret = unlang_call_process;
 	frame->state = child;
 	return unlang_call_process(request, presult);
