@@ -93,7 +93,7 @@ struct request_s {
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
 	fr_heap_t		*backlog;	//!< thread-specific backlog
-	request_state_t	request_state;	//!< state for the various protocol handlers.
+	request_state_t		request_state;	//!< state for the various protocol handlers.
 
 	fr_dlist_head_t		data;		//!< Request metadata.
 
@@ -115,8 +115,6 @@ struct request_s {
 
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
-
-	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.

@@ -321,6 +321,7 @@ static void proto_ldap_packet_debug(request_t *request, RADIUS_PACKET *packet, b
 	return;
 }
 
+#if 0
 /** Very simple state machine to process requests
  *
  * Unlike normal protocol requests which may have multiple distinct states,
@@ -439,7 +440,9 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		break;
 	}
 }
+#endif
 
+#if 0
 /** Process events while the request is queued.
  *
  *  \dot
@@ -459,8 +462,8 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 
 	switch (action) {
 	case FR_SIGNAL_RUN:
-		request->process = request_running;
-		request->process(request, action);
+//		request->process = request_running;
+//		request->process(request, action);
 		break;
 
 	case FR_SIGNAL_CANCEL:
@@ -472,6 +475,7 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 		break;
 	}
 }
+#endif
 
 /** Setup an LDAP sync request
  *
@@ -510,7 +514,7 @@ static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst
 	request = request_setup(ctx, listen, packet, inst->client, NULL);
 	if (!request) return NULL;
 
-	request->process = request_queued;
+//	request->process = request_queued;
 
 	return request;
 }
