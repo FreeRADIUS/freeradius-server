@@ -34,6 +34,14 @@ typedef struct {
 	tmpl_t		*vpt;
 } unlang_load_balance_t;
 
+/** State of a redundant operation
+ *
+ */
+typedef struct {
+	unlang_t 		*child;
+	unlang_t		*found;
+} unlang_frame_state_redundant_t;
+
 /** Cast a group structure to the load_balance keyword extension
  *
  */

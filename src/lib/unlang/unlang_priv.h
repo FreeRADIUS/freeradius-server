@@ -157,14 +157,6 @@ typedef struct {
 	xlat_flags_t		flags;
 } unlang_tmpl_t;
 
-/** State of a redundant operation
- *
- */
-typedef struct {
-	unlang_t 		*child;
-	unlang_t		*found;
-} unlang_frame_state_redundant_t;
-
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
