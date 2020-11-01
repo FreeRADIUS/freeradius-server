@@ -1,0 +1,7 @@
+#
+#  PRE: update
+#
+
+# Verify nothing bad happens when we hit the stack limit
+call default {
+}

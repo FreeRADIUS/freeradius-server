@@ -26,79 +26,65 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
 
+#include "call.h"
 #include "call_priv.h"
 #include "unlang_priv.h"
-#include "subrequest_priv.h"
-
-/** Send a signal from parent request to subrequest in another virtual server
- *
- */
-static void unlang_call_signal(request_t *request, fr_state_signal_t action)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	request_t		*child = frame->state;
-
-	unlang_interpret_signal(child, action);
-}
-
-
-static unlang_action_t unlang_call_child(request_t *request, rlm_rcode_t *presult)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	request_t		*child = frame->state;
-	rlm_rcode_t		rcode;
-
-	/*
-	 *	Run the *child* through the "call" section, as a way
-	 *	to get post-processing of the packet.
-	 */
-	rcode = unlang_interpret(child);
-	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-	fr_state_store_in_parent(child, frame->instruction, 0);
-	unlang_subrequest_free(&child);
-
-	*presult = rcode;
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
 
 static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	request_t		*child = frame->state;
-	rlm_rcode_t		rcode;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
+	unlang_t			*instruction = frame->instruction;
+	unlang_group_t			*g = unlang_generic_to_group(instruction);
+
+	rlm_rcode_t			rcode;
+
+	request->request_state = REQUEST_INIT;
+	request->server_cs = state->prev_server_cs;	/* So we get correct debug info */
 
 	/*
-	 *	@todo - we can't change packet types
-	 *	(e.g. Access-Request -> Accounting-Request) unless
-	 *	we're in a subrequest.
+	 *	Call the process function
+	 *
+	 *	This is a function in the virtual server's state machine.
 	 */
-	rcode = child->async->process(&(module_ctx_t){ .instance = child->async->process_inst }, child);
-	if (rcode == RLM_MODULE_YIELD) {
-		return UNLANG_ACTION_YIELD;
-	}
+	rcode = state->process(&(module_ctx_t){ .instance = state->instance }, request);
+	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
-	frame->process = unlang_call_child;
-	return unlang_call_child(request, presult);
+	/*
+	 *	Record the rcode and restore the previous virtual server
+	 */
+	*presult = rcode;
+	request->request_state = state->prev_request_state;
+	request->server_cs = state->prev_server_cs;
+
+	/*
+	 *	Push the contents of the call { } section onto the stack.
+	 *	This gets executed after the server returns.
+	 */
+	if (g->children) {
+		unlang_interpret_push(request, g->children, frame->result,
+				      UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+		return UNLANG_ACTION_PUSHED_CHILD;
+	};
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *presult)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	request_t		*child;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
+	unlang_t			*instruction = frame->instruction;
 
-	unlang_group_t		*g;
-	unlang_call_t		*gext;
-	char const		*server;
-	fr_dict_enum_t const	*type_enum;
+	unlang_group_t			*g;
+	unlang_call_t			*gext;
+	char const			*server;
+	fr_dict_enum_t const		*type_enum;
 
-	module_method_t		process_p;
-	void			*process_inst;
+	module_method_t			process_p;
+	void				*process_inst;
 
 	/*
 	 *	Do not check for children here.
@@ -109,37 +95,15 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 	 */
 	g = unlang_generic_to_group(instruction);
 	gext = unlang_group_to_call(g);
-
 	server = cf_section_name2(gext->server_cs);
 
 	/*
-	 *	Check for loops.  We do this by checking the source of
-	 *	the call statement.  If any parent is making a call
-	 *	from the same place as this one, then we're in a loop.
+	 *	Push OUR subsection onto the childs stack frame.
 	 */
-	for (child = request->parent;
-	     child != NULL;
-	     child = child->parent) {
-		unlang_stack_t		*child_stack = child->stack;
-		unlang_stack_frame_t	*child_frame = &child_stack->frame[child_stack->depth];
-		unlang_t		*child_instruction = child_frame->instruction;
 
-		/*
-		 *	This is a useful test but isn't always
-		 *	valid when we're using calls to strip off
-		 *	layers.
-		 *
-		 *	When the lists are unified under a single
-		 *	root pair, then all lists should be checked.
-		 */
-		if ((child_instruction == instruction) &&
-		    (fr_pair_list_cmp(child->packet->vps, request->packet->vps) == 0)) {
-			REDEBUG("Suppressing 'call' loop with server %s", server);
-			*presult = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
-	}
-
+	/*
+	 *	Work out the current request type.
+	 */
 	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
@@ -147,67 +111,94 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	/*
+	 *	...and get the processing function
+	 *	which matches that type in the target
+	 *	virtual server.
+	 */
 	if (virtual_server_get_process_by_name(gext->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
 		REDEBUG("Cannot call virtual server '%s' - %s", server, fr_strerror());
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	child = unlang_io_subrequest_alloc(request, request->dict, UNLANG_NORMAL_CHILD);
-	if (!child) {
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	*state = (unlang_frame_state_call_t){
+		.instance = process_inst,
+		.process = process_p,
+		.prev_request_state = request->request_state,
+		.prev_server_cs = request->server_cs,
+	};
 
-	/*
-	 *	Tell the child how to run.
-	 */
-	child->server_cs = gext->server_cs;
-	child->async->process = process_p;
-	child->async->process_inst = process_inst;
-
-	/*
-	 *	Expected by the process functions
-	 */
-	child->log.unlang_indent = 0;
-
-	/*
-	 *	Note that we do NOT copy the Session-State list!  That
-	 *	contains state information for the parent.
-	 */
-	if ((fr_pair_list_copy(child->packet,
-			       &child->packet->vps,
-			       request->request_pairs) < 0) ||
-	    (fr_pair_list_copy(child->reply,
-			       &child->reply->vps,
-			       request->reply_pairs) < 0) ||
-	    (fr_pair_list_copy(child,
-			       &child->control,
-			       request->control_pairs) < 0)) {
-		REDEBUG("failed copying lists to child");
-
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	/*
-	 *	Restore state from the parent to the
-	 *	subrequest.
-	 *	This is necessary for stateful modules like
-	 *	EAP to work.
-	 */
-	fr_state_restore_to_child(child, instruction, 0);
-
-	/*
-	 *	Push OUR subsection onto the childs stack frame.
-	 */
-	if (g->children) {
-		unlang_interpret_push(child, g->children, frame->result,
-				      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
-	}
-	frame->process = unlang_call_process;
-	frame->state = child;
 	return unlang_call_process(request, presult);
+}
+
+/** Push a call to a virtual server onto the stack for evaluation
+ *
+ * This does the same work as #unlang_call_frame_init.
+ *
+ * @param[in] request		The current request.
+ * @param[in] server_cs		of the virtual server to run.
+ * @param[in] instance		of the state machine.
+ * @param[in] entry_point	Where to start in the virtual server state machine.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ */
+void unlang_call_push(request_t *request, CONF_SECTION *server_cs,
+		      void *instance, module_method_t entry_point, bool top_frame)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_call_t	*state;
+	unlang_call_t			*c;
+	char const			*name;
+
+	/*
+	 *	We need to have a unlang_module_t to push on the
+	 *	stack.  The only sane way to do it is to attach it to
+	 *	the frame state.
+	 */
+	name = cf_section_name2(server_cs);
+	MEM(c = talloc(stack, unlang_call_t));	/* Free at the same time as the state */
+	*c = (unlang_call_t){
+		.group = {
+			.self = {
+				.type = UNLANG_TYPE_CALL,
+				.name = name,
+				.debug_name = name,
+				.actions = {
+					[RLM_MODULE_REJECT]	= 0,
+					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+					[RLM_MODULE_OK]		= 0,
+					[RLM_MODULE_HANDLED]	= 0,
+					[RLM_MODULE_INVALID]	= 0,
+					[RLM_MODULE_DISALLOW]	= 0,
+					[RLM_MODULE_NOTFOUND]	= 0,
+					[RLM_MODULE_NOOP]	= 0,
+					[RLM_MODULE_UPDATED]	= 0
+				}
+			}
+		}
+	};
+
+	/*
+	 *	Push a new call frame onto the stack
+	 */
+	unlang_interpret_push(request, unlang_call_to_generic(c), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+
+	/*
+	 *	And setup the frame.  The memory was
+	 *	pre-allocated for us by the interpreter.
+	 */
+	frame = &stack->frame[stack->depth];
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
+	*state = (unlang_frame_state_call_t){
+		.instance = instance,
+		.process = entry_point,		/* This mutates */
+		.prev_request_state = request->request_state,
+		.prev_server_cs = request->server_cs
+	};
+	frame->process = unlang_call_process;	/* Skip the initialisation */
+	talloc_steal(frame, c);			/* Bind our temporary unlang_call_t to the frame */
 }
 
 
@@ -215,10 +206,11 @@ void unlang_call_init(void)
 {
 	unlang_register(UNLANG_TYPE_CALL,
 			   &(unlang_op_t){
-				.name = "call",
-				.interpret = unlang_call,
-				.signal = unlang_call_signal,
-				.debug_braces = true
+				.name			= "call",
+				.interpret		= unlang_call_frame_init,
+				.debug_braces		= true,
+				.frame_state_size	= sizeof(unlang_frame_state_call_t),
+				.frame_state_name	= "unlang_frame_state_call_t"
 			   });
 }
 

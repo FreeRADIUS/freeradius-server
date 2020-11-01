@@ -1,10 +1,9 @@
 #
 #  PRE: update
 #
+
+# Test empty call section
 call second {
-        update reply {
-                &Reply-Message += 'call second post'
-        }
 }
 
 if (!&reply.Reply-Message) {
@@ -12,10 +11,6 @@ if (!&reply.Reply-Message) {
 }
 
 if (&reply.Reply-Message[0] != "call second") {
-	test_fail
-}
-
-if (&reply.Reply-Message[1] != "call second post") {
 	test_fail
 }
 
