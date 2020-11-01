@@ -116,8 +116,6 @@ struct request_s {
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
 
-	request_t			*proxy;		//!< proxied packet
-
 	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
@@ -128,7 +126,7 @@ struct request_s {
 
 	void			*stack;		//!< unlang interpreter stack.
 
-	request_t			*parent;
+	request_t		*parent;
 
 	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 
