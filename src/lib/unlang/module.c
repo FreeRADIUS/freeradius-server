@@ -344,50 +344,55 @@ void unlang_module_push(rlm_rcode_t *out, request_t *request,
 	unlang_frame_state_module_t	*state;
 	unlang_module_t			*mc;
 
-	static unlang_t module_instruction = {
-		.type = UNLANG_TYPE_MODULE,
-		.name = "module",
-		.debug_name = "module",
-		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
-		},
-	};
-
-	/*
-	 *	Allocate a state for module.
-	 */
-	MEM(state = talloc_zero(stack, unlang_frame_state_module_t));
-	state->presult = out;
-	state->thread = module_thread(module_instance);
-	fr_assert(state->thread != NULL);
-
 	/*
 	 *	We need to have a unlang_module_t to push on the
 	 *	stack.  The only sane way to do it is to attach it to
 	 *	the frame state.
 	 */
-	MEM(mc = talloc_zero(state, unlang_module_t));	/* Free at the same time as the state */
-	mc->self = module_instruction;
-	mc->self.name = module_instance->name;
-	mc->self.debug_name = mc->self.name;
-	mc->instance = module_instance;
-	mc->method = method;
+	MEM(mc = talloc(stack, unlang_module_t));	/* Still gets allocated from the stack pool */
+	*mc = (unlang_module_t){
+		.self = {
+			.type = UNLANG_TYPE_MODULE,
+			.name = module_instance->name,
+			.debug_name = module_instance->name,
+			.actions = {
+				[RLM_MODULE_REJECT]	= 0,
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+				[RLM_MODULE_OK]		= 0,
+				[RLM_MODULE_HANDLED]	= 0,
+				[RLM_MODULE_INVALID]	= 0,
+				[RLM_MODULE_DISALLOW]	= 0,
+				[RLM_MODULE_NOTFOUND]	= 0,
+				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_UPDATED]	= 0
+			}
+		},
+		.instance = module_instance,
+		.method = method
+	};
 
 	/*
 	 *	Push a new module frame onto the stack
 	 */
 	unlang_interpret_push(request, unlang_module_to_generic(mc), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+
 	frame = &stack->frame[stack->depth];
-	TALLOC_FREE(frame->state); /* was allocated for us, but we have our own version */
-	frame->state = state;
+	state = frame->state;
+	*state = (unlang_frame_state_module_t){
+		.presult = out,
+		.thread = module_thread(module_instance)
+	};
+
+	/*
+	 *	Bind the temporary unlang_module_t to the frame state.
+	 *
+	 *	There aren't _that_ many children in the stack context.
+	 *	so we should be ok.
+	 *
+	 *	Hopefully in future versions of talloc the O(n) problem
+	 *	will be fixed for stealing.
+	 */
+	talloc_steal(frame, mc);
 }
 
 /** Allocate a subrequest to run through a virtual server at some point in the future
