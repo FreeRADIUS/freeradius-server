@@ -35,11 +35,11 @@ extern "C" {
 
 /** Function to call when interpreting a frame
  *
+ * @param[in,out] p_result	Pointer to the current rcode, may be modified by the function.
  * @param[in] request		The current request.
- * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_process_t)(request_t *request, rlm_rcode_t *presult);
+typedef unlang_action_t (*unlang_process_t)(rlm_rcode_t *p_result, request_t *request);
 
 /** Function to call if the initial function yielded and the request was signalled
  *
@@ -60,7 +60,7 @@ typedef void (*unlang_signal_t)(request_t *request, fr_state_signal_t action);
  *				All input (args) and output will be done using this structure.
  * @return an #unlang_action_t.
  */
-typedef unlang_action_t (*unlang_function_t)(request_t *request, rlm_rcode_t *presult, int *priority, void *uctx);
+typedef unlang_action_t (*unlang_function_t)(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 
 /** An unlang operation
  *

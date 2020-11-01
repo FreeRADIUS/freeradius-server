@@ -119,21 +119,21 @@ static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *e
 	return RLM_MODULE_OK;
 }
 
-static unlang_action_t eap_tls_virtual_server_result(request_t *request, rlm_rcode_t *presult,
-						     UNUSED int *priority, void *uctx)
+static unlang_action_t eap_tls_virtual_server_result(rlm_rcode_t *p_result, UNUSED int *priority,
+						     request_t *request, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 
-	switch (*presult) {
+	switch (*p_result) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		*presult = eap_tls_success_with_prf(request, eap_session);
+		*p_result = eap_tls_success_with_prf(request, eap_session);
 		break;
 
 	default:
 		REDEBUG2("Certificate rejected by the virtual server");
 		eap_tls_fail(request, eap_session);
-		*presult = RLM_MODULE_REJECT;
+		*p_result = RLM_MODULE_REJECT;
 		break;
 	}
 

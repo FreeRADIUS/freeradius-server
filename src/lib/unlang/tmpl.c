@@ -268,7 +268,7 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
  *  called repeatedly until the resumption function returns a final
  *  value.
  */
-static unlang_action_t unlang_tmpl_resume(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -281,10 +281,10 @@ static unlang_action_t unlang_tmpl_resume(request_t *request, rlm_rcode_t *presu
 		rlm_rcode_t rcode;
 
 		rcode = state->resume(request, state->rctx);
-		*presult = rcode;
+		*p_result = rcode;
 		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 	} else {
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -295,7 +295,7 @@ static unlang_action_t unlang_tmpl_resume(request_t *request, rlm_rcode_t *presu
 /** Wrapper to call exec after the program has finished executing
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_final(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -368,7 +368,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(request_t *request, rlm_rcode
 		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
 			talloc_free(state->box);
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -378,14 +378,14 @@ static unlang_action_t unlang_tmpl_exec_wait_final(request_t *request, rlm_rcode
 	 */
 resume:
 	frame->process = unlang_tmpl_resume;
-	return unlang_tmpl_resume(request, presult);
+	return unlang_tmpl_resume(p_result, request);
 }
 
 
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_resume(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -404,7 +404,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(request_t *request, rlm_rcod
 	if (fr_exec_wait_start(request, state->box, state->vps, &pid, NULL, fd_p) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -450,14 +450,14 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(request_t *request, rlm_rcod
 
 	frame->process = unlang_tmpl_exec_wait_final;
 
-	*presult = RLM_MODULE_YIELD;
+	*p_result = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_YIELD;
 }
 
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_nowait_resume(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -466,10 +466,10 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(request_t *request, rlm_rc
 
 	if (fr_exec_nowait(request, state->box, state->vps) < 0) {
 		RPEDEBUG("Failed executing program");
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 
 	} else {
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 	}
 
 	/*
@@ -481,7 +481,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(request_t *request, rlm_rc
 }
 
 
-static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -500,10 +500,10 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 		if (!ut->inline_exec) {
 			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
 				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
-				*presult = RLM_MODULE_FAIL;
+				*p_result = RLM_MODULE_FAIL;
 			}
 
-			*presult = RLM_MODULE_OK;
+			*p_result = RLM_MODULE_OK;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -515,7 +515,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 
 		repeatable_set(frame);
 		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -528,7 +528,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 		frame->process = unlang_tmpl_resume;
 		repeatable_set(frame);
 		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -536,7 +536,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 
 	if (ut->tmpl->type == TMPL_TYPE_XLAT_UNRESOLVED) {
 		REDEBUG("Xlat expansions MUST be fully resolved before being run asynchronously");
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -545,7 +545,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	 */
 	if (ut->tmpl->type != TMPL_TYPE_EXEC) {
 		REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -558,7 +558,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	frame->process = unlang_tmpl_exec_wait_resume;
 	repeatable_set(frame);
 	if (unlang_xlat_push(state->ctx, &state->box, request, xlat, false) < 0) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

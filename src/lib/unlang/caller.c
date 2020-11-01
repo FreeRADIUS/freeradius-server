@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_caller(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_caller(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -55,7 +55,7 @@ static unlang_action_t unlang_caller(request_t *request, rlm_rcode_t *presult)
 	/*
 	 *	The dictionary matches.  Go recurse into its' children.
 	 */
-	return unlang_group(request, presult);
+	return unlang_group(p_result, request);
 }
 
 

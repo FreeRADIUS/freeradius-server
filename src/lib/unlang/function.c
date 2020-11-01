@@ -58,10 +58,10 @@ static unlang_t function_instruction = {
 
 /** Call a generic function
  *
+ * @param[out] p_result	The frame result.
  * @param[in] request	The current request.
- * @param[out] presult	The frame result.
  */
-static unlang_action_t unlang_function_call(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -76,9 +76,9 @@ static unlang_action_t unlang_function_call(request_t *request, rlm_rcode_t *pre
 	caller = request->module;
 	request->module = NULL;
 	if (!is_repeatable(frame)) {
-		ua = state->func(request, presult, NULL, state->uctx);
+		ua = state->func(p_result, NULL, request, state->uctx);
 	} else {
-		ua = state->repeat(request, presult, NULL, state->uctx);
+		ua = state->repeat(p_result, NULL, request, state->uctx);
 	}
 	request->module = caller;
 

@@ -52,7 +52,7 @@ typedef struct {
 	/** @name rcode output
 	 * @{
  	 */
-	rlm_rcode_t			*presult;		//!< Where to store the result.
+	rlm_rcode_t			*p_result;		//!< Where to store the result.
 	rlm_rcode_t			rcode;			//!< the result, only for unlang_module_resume_final.
 	/** @} */
 

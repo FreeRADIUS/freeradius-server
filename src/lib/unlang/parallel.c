@@ -32,7 +32,7 @@ RCSID("$Id$")
 /** When the chld is done, tell the parent that we've exited.
  *
  */
-static unlang_action_t unlang_parallel_child_done(request_t *request, UNUSED rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
+static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	unlang_parallel_child_t *child = uctx;
 
@@ -65,7 +65,7 @@ static unlang_action_t unlang_parallel_child_done(request_t *request, UNUSED rlm
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -123,7 +123,7 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
 
-					*presult = RLM_MODULE_FAIL;
+					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_CALCULATE_RESULT;
 				}
 			}
@@ -136,12 +136,11 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 			 */
 			if ((unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
 						   UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) ||
-			    (unlang_interpret_push_function(child, NULL,
-			    				    unlang_parallel_child_done, &state->children[i]) < 0) ||
+			    (unlang_interpret_push_function(child, unlang_parallel_child_done, NULL, &state->children[i]) < 0) ||
 			    (unlang_interpret_push(child,
 						   state->children[i].instruction, RLM_MODULE_FAIL,
 						   UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0)) {
-				*presult = RLM_MODULE_FAIL;
+				*p_result = RLM_MODULE_FAIL;
 				return UNLANG_ACTION_STOP_PROCESSING;
 			}
 
@@ -349,7 +348,7 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 		}
 	}
 
-	*presult = state->result;
+	*p_result = state->result;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -383,7 +382,7 @@ static void unlang_parallel_signal(request_t *request, fr_state_signal_t action)
 	}
 }
 
-static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -397,7 +396,7 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -411,7 +410,7 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 						sizeof(state->children[0]) *
 						g->num_children);
 	if (!state) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	};
 
@@ -431,7 +430,7 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 	}
 
 	frame->process = unlang_parallel_process;
-	return unlang_parallel_process(request, presult);
+	return unlang_parallel_process(p_result, request);
 }
 
 void unlang_parallel_init(void)

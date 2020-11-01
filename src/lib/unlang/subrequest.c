@@ -33,7 +33,7 @@ RCSID("$Id$")
  * State of one level of nesting within an xlat expansion.
  */
 typedef struct {
-	rlm_rcode_t			*presult;			//!< Where to store the result.
+	rlm_rcode_t			*p_result;			//!< Where to store the result.
 	request_t				*child;				//!< Pre-allocated child request.
 	bool				free_child;			//!< Whether we should free the child after
 									///< it completes.
@@ -96,7 +96,7 @@ static void unlang_subrequest_signal(request_t *request, fr_state_signal_t actio
 /** Process a subrequest until it either detaches, or is done.
  *
  */
-static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_process(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -167,9 +167,9 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 		 *	use it to modify the current section
 		 *	rcode.
 		 */
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
-		*presult = rcode;
+		*p_result = rcode;
 
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -193,12 +193,12 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 }
 
 
-static unlang_action_t unlang_subrequest_start(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_start(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	request_t				*child = state->child;
+	request_t			*child = state->child;
 
 	/*
 	 *	Restore state from the parent to the
@@ -212,11 +212,11 @@ static unlang_action_t unlang_subrequest_start(request_t *request, rlm_rcode_t *
 	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
 
 	frame->process = unlang_subrequest_process;
-	return unlang_subrequest_process(request, presult);
+	return unlang_subrequest_process(p_result, request);
 }
 
 
-static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -235,7 +235,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	 */
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -251,9 +251,9 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 		 *	use it to modify the current section
 		 *	rcode.
 		 */
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
-		*presult = rcode;
+		*p_result = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 	/*
@@ -323,17 +323,17 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 				  UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME) < 0) goto fail;
 
 	/*
-	 *	Probably not a great idea to set state->presult to
-	 *	presult, as it could be a pointer to an rlm_rcode_t
+	 *	Probably not a great idea to set state->p_result to
+	 *	p_result, as it could be a pointer to an rlm_rcode_t
 	 *	somewhere on the stack which could be invalidated
 	 *	between unlang_subrequest being called and
 	 *	unlang_subrequest_resume being called.
 	 *
 	 *	...so we just set it to NULL and interpret
-	 *	that as use the presult that was passed
+	 *	that as use the p_result that was passed
 	 *	in to the currently executing function.
 	 */
-	state->presult = NULL;
+	state->p_result = NULL;
 	state->free_child = true;
 	state->detachable = true;
 
@@ -346,7 +346,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	state->session.unique_int = 0;
 
 	frame->process = unlang_subrequest_start;
-	return unlang_subrequest_start(request, presult);
+	return unlang_subrequest_start(p_result, request);
 }
 
 /** Initialize a detached child
@@ -404,7 +404,7 @@ int unlang_detached_child_init(request_t *request)
 	return 0;
 }
 
-static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -418,7 +418,7 @@ static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
 	 *	continue.
 	 */
 	if (!request->parent) {
-		*presult = state->rcode;
+		*p_result = state->rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -461,7 +461,7 @@ static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
 	 *	Pass through whatever the previous instruction had as
 	 *	the result.
 	 */
-	state->rcode = *presult;
+	state->rcode = *p_result;
 
 	/*
 	 *	Yield to the parent, who will discover that there's no
@@ -522,13 +522,15 @@ int unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 	 *      the subrequest instruction would alloc.
 	 */
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	state->presult = out;
+	state->p_result = out;
 	state->child = child;
 	state->free_child = false;
 	state->detachable = false;
 	if (session) state->session = *session;
 
 	frame->process = unlang_subrequest_start;
+
+	return 0;
 }
 
 int unlang_subrequest_op_init(void)

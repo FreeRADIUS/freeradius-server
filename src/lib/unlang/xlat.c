@@ -226,7 +226,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -254,7 +254,7 @@ static unlang_action_t unlang_xlat(request_t *request, rlm_rcode_t *presult)
 		 */
 		talloc_list_free(&state->rhead);
 		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -267,17 +267,17 @@ static unlang_action_t unlang_xlat(request_t *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 		fail:
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	fr_assert(0);
-	*presult = RLM_MODULE_FAIL;
+	*p_result = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -311,17 +311,17 @@ static void unlang_xlat_signal(request_t *request, fr_state_signal_t action)
 
 /** Called when we're ready to resume processing the request
  *
- * @param[in] request	to resume processing.
- * @param[in] presult	the result of the xlat function.
+ * @param[in] p_result	the result of the xlat function.
  *			  - RLM_MODULE_OK on success.
  *			  - RLM_MODULE_FAIL on failure.
  *			  - RLM_MODULE_YIELD if additional asynchronous
  *			    operations need to be performed.
+ * @param[in] request	to resume processing.
  * @return
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -343,7 +343,7 @@ static unlang_action_t unlang_xlat_resume(request_t *request, rlm_rcode_t *presu
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_CHILD:
@@ -351,14 +351,14 @@ static unlang_action_t unlang_xlat_resume(request_t *request, rlm_rcode_t *presu
 		FALL_THROUGH;
 
 	case XLAT_ACTION_FAIL:
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
 	}
 
 	fr_assert(0);		/* Garbage xlat action */
 
-	*presult = RLM_MODULE_FAIL;
+	*p_result = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 

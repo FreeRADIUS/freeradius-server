@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "switch_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_switch(request_t *request, UNUSED rlm_rcode_t *presult)
+static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -179,7 +179,7 @@ do_null_case:
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
 	if (unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -187,7 +187,7 @@ do_null_case:
 }
 
 
-static unlang_action_t unlang_case(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_case(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -197,11 +197,11 @@ static unlang_action_t unlang_case(request_t *request, rlm_rcode_t *presult)
 	g = unlang_generic_to_group(instruction);
 
 	if (!g->children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_group(request, presult);
+	return unlang_group(p_result, request);
 }
 
 void unlang_switch_init(void)

@@ -42,9 +42,9 @@ RCSID("$Id$")
  *
  */
 typedef struct {
-	request_t				*request;	//!< Request this event pertains to.
+	request_t			*request;	//!< Request this event pertains to.
 	int				fd;		//!< File descriptor to wait on.
-	unlang_module_timeout_t	timeout;	//!< Function to call on timeout.
+	unlang_module_timeout_t		timeout;	//!< Function to call on timeout.
 	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
 	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
 	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
@@ -385,7 +385,7 @@ int unlang_module_push(rlm_rcode_t *out, request_t *request,
 	frame = &stack->frame[stack->depth];
 	state = frame->state;
 	*state = (unlang_frame_state_module_t){
-		.presult = out,
+		.p_result = out,
 		.thread = module_thread(module_instance)
 	};
 
@@ -632,23 +632,23 @@ static void unlang_module_signal(request_t *request, fr_state_signal_t action)
 /** Return UNLANG_CALCULATE_RESULT only for async async calls
  *
  */
-static unlang_action_t unlang_module_resume_final(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module_resume_final(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	request->rcode = state->rcode;
-	if (state->presult) *state->presult = state->rcode;
+	if (state->p_result) *state->p_result = state->rcode;
 
-	*presult = state->rcode;
+	*p_result = state->rcode;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Wrapper to call a module's resumption function
  *
  */
-static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -682,11 +682,11 @@ static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *pre
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked", mc->instance->module->name);
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
 		if (state->signal) state->thread->active_callers--;
 
-		*presult = rcode;
+		*p_result = rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -696,7 +696,7 @@ static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *pre
 	if (rcode == RLM_MODULE_YIELD) {
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		fr_assert(stack_depth == stack->depth);
-		*presult = rcode;
+		*p_result = rcode;
 		return UNLANG_ACTION_YIELD;
 	}
 
@@ -715,9 +715,9 @@ static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *pre
 	}
 
 	request->rcode = rcode;
-	if (state->presult) *state->presult = rcode;
+	if (state->p_result) *state->p_result = rcode;
 
-	*presult = rcode;
+	*p_result = rcode;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -768,7 +768,7 @@ rlm_rcode_t unlang_module_yield(request_t *request,
 	return RLM_MODULE_YIELD;
 }
 
-static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_module_t			*mc;
 	unlang_stack_t			*stack = request->stack;
@@ -797,7 +797,7 @@ static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
 	 *	Grab the thread/module specific data if any exists.
 	 */
 	state->thread = module_thread(mc->instance);
-	state->presult = NULL;
+	state->p_result = NULL;
 	fr_assert(state->thread != NULL);
 
 	/*
@@ -830,9 +830,9 @@ static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked", mc->instance->module->name);
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
-		*presult = rcode;
+		*p_result = rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -847,7 +847,7 @@ static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
 		state->thread->active_callers++;
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		fr_assert(stack_depth == stack->depth);
-		*presult = rcode;
+		*p_result = rcode;
 		frame->process = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 	}
@@ -870,9 +870,9 @@ done:
 	}
 
 	request->rcode = rcode;
-	if (state->presult) *state->presult = rcode;
+	if (state->p_result) *state->p_result = rcode;
 
-	*presult = rcode;
+	*p_result = rcode;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 

@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "call_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -54,7 +54,7 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 	/*
 	 *	Record the rcode and restore the previous virtual server
 	 */
-	*presult = rcode;
+	*p_result = rcode;
 	request->request_state = state->prev_request_state;
 	request->server_cs = state->prev_server_cs;
 
@@ -65,7 +65,7 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 	if (g->children) {
 		if (unlang_interpret_push(request, g->children, frame->result,
 					  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -74,7 +74,7 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -110,7 +110,7 @@ static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *p
 	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -121,7 +121,7 @@ static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *p
 	 */
 	if (virtual_server_get_process_by_name(gext->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
 		REDEBUG("Cannot call virtual server '%s' - %s", server, fr_strerror());
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -132,7 +132,7 @@ static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *p
 		.prev_server_cs = request->server_cs,
 	};
 
-	return unlang_call_process(request, presult);
+	return unlang_call_process(p_result, request);
 }
 
 /** Push a call to a virtual server onto the stack for evaluation

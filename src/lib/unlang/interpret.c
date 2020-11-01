@@ -481,7 +481,7 @@ static inline unlang_frame_action_t frame_eval(request_t *request, unlang_stack_
 			unlang_ops[instruction->type].name);
 
 		fr_assert(frame->process != NULL);
-		action = frame->process(request, result);
+		action = frame->process(result, request);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);

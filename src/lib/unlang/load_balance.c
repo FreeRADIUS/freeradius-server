@@ -31,7 +31,7 @@
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -46,7 +46,7 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 
 #ifdef __clang_analyzer__
 	if (!redundant->found) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 #endif
@@ -62,7 +62,7 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 		 *	back to the found one, then we're done.
 		 */
 		if (redundant->child == redundant->found) {
-			/* DON'T change presult, as it is taken from the child */
+			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -80,8 +80,8 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 		 *	If the current child says "return", then do
 		 *	so.
 		 */
-		if (redundant->child->actions[*presult] == MOD_ACTION_RETURN) {
-			/* DON'T change presult, as it is taken from the child */
+		if (redundant->child->actions[*p_result] == MOD_ACTION_RETURN) {
+			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -90,7 +90,7 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 	 *	Push the child, and yield for a later return.
 	 */
 	if (unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -112,7 +112,7 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -126,7 +126,7 @@ static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *pres
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -240,7 +240,7 @@ static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *pres
 	if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 		if (unlang_interpret_push(request, redundant->found,
 					  frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -254,7 +254,7 @@ static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *pres
 	redundant->child = NULL;
 
 	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(request, presult);
+	return unlang_load_balance_next(p_result, request);
 }
 
 void unlang_load_balance_init(void)
