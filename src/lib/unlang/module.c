@@ -335,9 +335,12 @@ int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
  * @param[in] method		to call.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_module_push(rlm_rcode_t *out, request_t *request,
-			module_instance_t *module_instance, module_method_t method, bool top_frame)
+int unlang_module_push(rlm_rcode_t *out, request_t *request,
+		       module_instance_t *module_instance, module_method_t method, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -374,7 +377,10 @@ void unlang_module_push(rlm_rcode_t *out, request_t *request,
 	/*
 	 *	Push a new module frame onto the stack
 	 */
-	unlang_interpret_push(request, unlang_module_to_generic(mc), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(request, unlang_module_to_generic(mc),
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+		return -1;
+	}
 
 	frame = &stack->frame[stack->depth];
 	state = frame->state;
@@ -393,6 +399,8 @@ void unlang_module_push(rlm_rcode_t *out, request_t *request,
 	 *	will be fixed for stealing.
 	 */
 	talloc_steal(frame, mc);
+
+	return 0;
 }
 
 /** Allocate a subrequest to run through a virtual server at some point in the future
@@ -435,7 +443,7 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child
 	/*
 	 *	Push the subrequest and immediately run it.
 	 */
-	unlang_subrequest_push(out, child, session, UNLANG_SUB_FRAME);
+	if (unlang_subrequest_push(out, child, session, UNLANG_SUB_FRAME) < 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_YIELD;
 }
@@ -479,7 +487,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push the xlat function
 	 */
-	unlang_xlat_push(ctx, out, request, exp, false);
+	if (unlang_xlat_push(ctx, out, request, exp, false) < 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_YIELD;
 }
@@ -526,7 +534,7 @@ rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, i
 	/*
 	 *	Push the xlat function
 	 */
-	unlang_tmpl_push(ctx, out, request, vpt, vps, status);
+	if (unlang_tmpl_push(ctx, out, request, vpt, vps, status) < 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_YIELD;
 }
@@ -564,7 +572,7 @@ rlm_rcode_t unlang_module_yield_to_section(request_t *request, CONF_SECTION *sub
 	 */
 	(void) unlang_module_yield(request, resume, signal, rctx);
 
-	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_SUB_FRAME) < 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_YIELD;
 }

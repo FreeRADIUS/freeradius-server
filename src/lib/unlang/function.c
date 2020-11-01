@@ -95,8 +95,11 @@ static unlang_action_t unlang_function_call(request_t *request, rlm_rcode_t *pre
  * @param[in] repeat	function to call going back down the stack (may be NULL).
  *			This may be the same as func.
  * @param[in] uctx	to pass to func.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
+int unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -105,7 +108,9 @@ void unlang_interpret_push_function(request_t *request, unlang_function_t func, 
 	/*
 	 *	Push module's function
 	 */
-	unlang_interpret_push(request, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, &function_instruction,
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) return -1;
+
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -121,6 +126,8 @@ void unlang_interpret_push_function(request_t *request, unlang_function_t func, 
 	state->func = func;
 	state->repeat = repeat;
 	state->uctx = uctx;
+
+	return 0;
 }
 
 void unlang_function_init(void)

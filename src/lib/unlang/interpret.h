@@ -72,7 +72,7 @@ typedef struct {
 
 	unlang_process_t	interpret;     			//!< Function to interpret the keyword
 
-	unlang_signal_t	signal;				//!< Function to signal stop / dup / whatever
+	unlang_signal_t		signal;				//!< Function to signal stop / dup / whatever
 
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
@@ -94,14 +94,17 @@ static inline bool unlang_request_is_scheduled(request_t const *request)
 	return (request->runnable_id >= 0);
 }
 
-void		unlang_interpret_push_function(request_t *request,
-					       unlang_function_t func, unlang_function_t repeat, void *uctx);
+int		unlang_interpret_push_function(request_t *request,
+					       unlang_function_t func, unlang_function_t repeat, void *uctx)
+					       CC_HINT(warn_unused_result);
 
-void		unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
-					      rlm_rcode_t default_action, bool top_frame);
+int		unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
+					      rlm_rcode_t default_action, bool top_frame)
+					      CC_HINT(warn_unused_result);
 
-void		unlang_interpret_push_instruction(request_t *request, void *instruction,
-						  rlm_rcode_t default_rcode, bool top_frame);
+int		unlang_interpret_push_instruction(request_t *request, void *instruction,
+						  rlm_rcode_t default_rcode, bool top_frame)
+						  CC_HINT(warn_unused_result);
 
 rlm_rcode_t	unlang_interpret(request_t *request);
 

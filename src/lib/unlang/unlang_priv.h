@@ -296,8 +296,9 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
  *
  * @{
  */
-void		unlang_interpret_push(request_t *request, unlang_t *instruction,
-				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);
+int		unlang_interpret_push(request_t *request, unlang_t *instruction,
+				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
+				      CC_HINT(warn_unused_result);
 
 int		unlang_op_init(void);
 

@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-unlang_action_t unlang_group(request_t *request, UNUSED rlm_rcode_t *result)
+unlang_action_t unlang_group(request_t *request, rlm_rcode_t *presult)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -46,7 +46,11 @@ unlang_action_t unlang_group(request_t *request, UNUSED rlm_rcode_t *result)
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

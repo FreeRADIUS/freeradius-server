@@ -398,8 +398,9 @@ void		xlat_instances_free(void);
 int		unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, fr_time_t when);
 
-void		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-				 request_t *request, xlat_exp_t const *exp, bool top_frame);
+int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+				 request_t *request, xlat_exp_t const *exp, bool top_frame)
+				 CC_HINT(warn_unused_result);
 
 xlat_action_t	unlang_xlat_yield(request_t *request,
 				  xlat_func_resume_t callback, xlat_func_signal_t signal,

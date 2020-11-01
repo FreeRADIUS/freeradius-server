@@ -188,9 +188,12 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
  * @param[in] exp		node to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-		      request_t *request, xlat_exp_t const *exp, bool top_frame)
+int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 
 	unlang_frame_state_xlat_t	*state;
@@ -200,7 +203,9 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+		return -1;
+	}
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -212,6 +217,8 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	fr_cursor_talloc_init(&state->values, out, fr_value_box_t);
 
 	state->ctx = ctx;
+
+	return 0;
 }
 
 /** Stub function for calling the xlat interpreter
@@ -246,7 +253,10 @@ static unlang_action_t unlang_xlat(request_t *request, rlm_rcode_t *presult)
 		 *	multiple sibling nodes.
 		 */
 		talloc_list_free(&state->rhead);
-		unlang_xlat_push(state->ctx, &state->rhead, request, child, false);
+		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:

@@ -134,13 +134,16 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 			 *	done, followed by the instruction to
 			 *	run in the child.
 			 */
-			unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
-					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-			unlang_interpret_push_function(child, NULL, unlang_parallel_child_done,
-						       &state->children[i]);
-			unlang_interpret_push(child,
-					      state->children[i].instruction, RLM_MODULE_FAIL,
-					      UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+			if ((unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
+						   UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) ||
+			    (unlang_interpret_push_function(child, NULL,
+			    				    unlang_parallel_child_done, &state->children[i]) < 0) ||
+			    (unlang_interpret_push(child,
+						   state->children[i].instruction, RLM_MODULE_FAIL,
+						   UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0)) {
+				*presult = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_STOP_PROCESSING;
+			}
 
 			/*
 			 *	It is often useful to create detached

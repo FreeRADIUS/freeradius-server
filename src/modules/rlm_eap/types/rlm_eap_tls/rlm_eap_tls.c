@@ -179,12 +179,16 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 	/*
 	 *	Catch the interpreter on the way back up the stack
 	 */
-	unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session);
+	if (unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Push unlang instructions for the virtual server section
 	 */
-	unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_YIELD;
 }

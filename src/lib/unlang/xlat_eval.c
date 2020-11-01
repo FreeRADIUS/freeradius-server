@@ -1279,7 +1279,10 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			 *	the async xlat up until the point
 			 *	that it needs to yield.
 			 */
-			unlang_xlat_push(pool, &result, request, node, true);
+			if (unlang_xlat_push(pool, &result, request, node, true) < 0) {
+				talloc_free(pool);
+				return NULL;
+			}
 
 			switch (unlang_interpret(request)) {
 			default:

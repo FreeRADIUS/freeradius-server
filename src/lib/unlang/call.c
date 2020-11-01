@@ -63,8 +63,11 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 	 *	This gets executed after the server returns.
 	 */
 	if (g->children) {
-		unlang_interpret_push(request, g->children, frame->result,
-				      UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+		if (unlang_interpret_push(request, g->children, frame->result,
+					  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	};
 
@@ -143,8 +146,8 @@ static unlang_action_t unlang_call_frame_init(request_t *request, rlm_rcode_t *p
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void unlang_call_push(request_t *request, CONF_SECTION *server_cs,
-		      void *instance, module_method_t entry_point, bool top_frame)
+int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
+		     void *instance, module_method_t entry_point, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -183,7 +186,11 @@ void unlang_call_push(request_t *request, CONF_SECTION *server_cs,
 	/*
 	 *	Push a new call frame onto the stack
 	 */
-	unlang_interpret_push(request, unlang_call_to_generic(c), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(request, unlang_call_to_generic(c),
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+		talloc_free(c);
+		return -1;
+	}
 
 	/*
 	 *	And setup the frame.  The memory was
@@ -199,6 +206,8 @@ void unlang_call_push(request_t *request, CONF_SECTION *server_cs,
 	};
 	frame->process = unlang_call_process;	/* Skip the initialisation */
 	talloc_steal(frame, c);			/* Bind our temporary unlang_call_t to the frame */
+
+	return 0;
 }
 
 

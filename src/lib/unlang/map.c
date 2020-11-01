@@ -147,13 +147,19 @@ static unlang_action_t list_mod_create(request_t *request, rlm_rcode_t *presult)
 				break;
 
 			case TMPL_TYPE_EXEC:
-				unlang_tmpl_push(update_state, &update_state->lhs_result,
-						 request, map->lhs, NULL, NULL);
+				if (unlang_tmpl_push(update_state, &update_state->lhs_result,
+						     request, map->lhs, NULL, NULL) < 0) {
+					*presult = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_XLAT:
-				unlang_xlat_push(update_state, &update_state->lhs_result,
-						 request, tmpl_xlat(map->lhs), false);
+				if (unlang_xlat_push(update_state, &update_state->lhs_result,
+						     request, tmpl_xlat(map->lhs), false) < 0) {
+					*presult = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
@@ -184,13 +190,19 @@ static unlang_action_t list_mod_create(request_t *request, rlm_rcode_t *presult)
 				break;
 
 			case TMPL_TYPE_EXEC:
-				unlang_tmpl_push(update_state, &update_state->rhs_result,
-						 request, map->rhs, NULL, NULL);
+				if (unlang_tmpl_push(update_state, &update_state->rhs_result,
+						     request, map->rhs, NULL, NULL) < 0) {
+					*presult = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_XLAT:
-				unlang_xlat_push(update_state, &update_state->rhs_result,
-						 request, tmpl_xlat(map->rhs), false);
+				if (unlang_xlat_push(update_state, &update_state->rhs_result,
+						     request, tmpl_xlat(map->rhs), false) < 0) {
+					*presult = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
@@ -342,13 +354,19 @@ static unlang_action_t unlang_map_state_init(request_t *request, rlm_rcode_t *pr
 		break;
 
 	case TMPL_TYPE_EXEC:
-		unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
-				 request, inst->src, NULL, NULL);
+		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
+				     request, inst->src, NULL, NULL) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case TMPL_TYPE_XLAT:
-		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
-				 request, tmpl_xlat(inst->src), false);
+		if (unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
+				     request, tmpl_xlat(inst->src), false) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 

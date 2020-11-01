@@ -72,7 +72,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'recv' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -142,7 +144,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;

@@ -319,8 +319,8 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	unlang_interpret_push(child, g->children, frame->result,
-			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+	if (unlang_interpret_push(child, g->children, frame->result,
+				  UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME) < 0) goto fail;
 
 	/*
 	 *	Probably not a great idea to set state->presult to
@@ -497,9 +497,12 @@ static unlang_group_t *subrequest_instruction;
  * @param[in] session		control values.  Whether we restore/store session info.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
-			    unlang_subrequest_session_t const *session, bool top_frame)
+int unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
+			   unlang_subrequest_session_t const *session, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -508,8 +511,9 @@ void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_interpret_push(child->parent, &subrequest_instruction->self,
-			      RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(child->parent, &subrequest_instruction->self,
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+
 	frame = &stack->frame[stack->depth];
 
 	/*

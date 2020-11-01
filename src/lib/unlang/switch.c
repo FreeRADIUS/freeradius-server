@@ -178,7 +178,11 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

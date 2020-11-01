@@ -117,7 +117,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(inst->recv_request), cf_filename(inst->recv_request));
-		unlang_interpret_push_instruction(request, inst->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, inst->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -149,7 +151,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(inst->send_reply), cf_filename(inst->send_reply));
-		unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;

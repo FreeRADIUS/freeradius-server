@@ -62,8 +62,9 @@ static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *su
 
 void	unlang_subrequest_free(request_t **child);
 
-void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
-			    unlang_subrequest_session_t const *session, bool top_frame);
+int unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
+			   unlang_subrequest_session_t const *session, bool top_frame)
+			   CC_HINT(warn_unused_result);
 
 int unlang_detached_child_init(request_t *request);
 

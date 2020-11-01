@@ -204,7 +204,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(auth_ctx->recv_request), cf_filename(auth_ctx->recv_request));
-		unlang_interpret_push_instruction(request, auth_ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -296,7 +298,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_PROCESS;
 		FALL_THROUGH;
@@ -335,7 +339,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 
 	setup_send:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(auth_ctx->send_reply), cf_filename(auth_ctx->send_reply));
-		unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;

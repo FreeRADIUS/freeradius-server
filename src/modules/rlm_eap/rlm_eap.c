@@ -618,6 +618,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 				      &eap_session->subrequest->control_pairs, request->control_pairs) < 0) {
 		list_copy_fail:
 			RERROR("Failed copying parent's attribute list");
+		fail:
 			TALLOC_FREE(eap_session->subrequest);
 			return RLM_MODULE_FAIL;
 		}
@@ -630,8 +631,10 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 	/*
 	 *	Push the submodule into the child's stack
 	 */
-	unlang_module_push(NULL,	/* rcode should bubble up and be returned by yield_to_subrequest */
-			   eap_session->subrequest, method->submodule_inst, eap_session->process, true);
+	if (unlang_module_push(NULL,	/* rcode should bubble up and be returned by yield_to_subrequest */
+			       eap_session->subrequest, method->submodule_inst, eap_session->process, true) < 0) {
+		goto fail;
+	}
 
 	if (eap_session->identity) {
 		fr_pair_t	*identity;

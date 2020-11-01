@@ -115,7 +115,11 @@ static unlang_action_t unlang_foreach_next(request_t *request, rlm_rcode_t *pres
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	repeatable_set(frame);
 
 	return UNLANG_ACTION_PUSHED_CHILD;

@@ -108,7 +108,7 @@ static void unlang_tmpl_signal(request_t *request, fr_state_signal_t action)
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  * @param[out] status		where the status of exited programs will be stored.
  */
-void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
+int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -140,7 +140,8 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request,
 	/*
 	 *	Push a new tmpl frame onto the stack
 	 */
-	unlang_interpret_push(request, unlang_tmpl_to_generic(ut), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
+	if (unlang_interpret_push(request, unlang_tmpl_to_generic(ut),
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
@@ -151,6 +152,8 @@ void unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request,
 		.vps = vps,
 		.status_p = status
 	};
+
+	return 0;
 }
 
 /*
@@ -511,7 +514,10 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 		frame->process = unlang_tmpl_exec_nowait_resume;
 
 		repeatable_set(frame);
-		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
+		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -521,7 +527,10 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
 		frame->process = unlang_tmpl_resume;
 		repeatable_set(frame);
-		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
+		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -548,7 +557,10 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	 */
 	frame->process = unlang_tmpl_exec_wait_resume;
 	repeatable_set(frame);
-	unlang_xlat_push(state->ctx, &state->box, request, xlat, false);
+	if (unlang_xlat_push(state->ctx, &state->box, request, xlat, false) < 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

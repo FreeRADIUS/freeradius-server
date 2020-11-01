@@ -28,8 +28,9 @@ extern "C" {
 
 #include <freeradius-devel/server/module.h>
 
-void unlang_call_push(request_t *request, CONF_SECTION *server_cs,
-		      void *instance, module_method_t entry_point, bool top_frame);
+int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
+		     void *instance, module_method_t entry_point, bool top_frame)
+		     CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus
 }

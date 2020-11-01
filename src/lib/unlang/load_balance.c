@@ -89,7 +89,10 @@ static unlang_action_t unlang_load_balance_next(request_t *request, rlm_rcode_t 
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
 
 	/*
 	 *	Now that we've pushed this child, make the next call
@@ -235,8 +238,11 @@ static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *pres
 	 *	Plain "load-balance".  Just do one child.
 	 */
 	if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-		unlang_interpret_push(request, redundant->found,
-				      frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+		if (unlang_interpret_push(request, redundant->found,
+					  frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+			*presult = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 

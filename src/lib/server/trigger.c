@@ -205,9 +205,9 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 		 */
 		(void) fr_pair_list_copy(request->packet, &request->request_pairs, ctx->vps);
 
-		unlang_interpret_push_instruction(request, NULL, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
-
-		unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true);
+		if (unlang_interpret_push_instruction(request, NULL,
+						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
+		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) return RLM_MODULE_FAIL;
 		ctx->expanded = true;
 
 		/*

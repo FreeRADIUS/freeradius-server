@@ -412,7 +412,9 @@ static void request_running(request_t *request, fr_state_signal_t action)
 
 		RDEBUG("Running '%s %s' from file %s", cf_section_name1(unlang),
 		       cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
