@@ -683,7 +683,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		{
 			unlang_module_t *single = unlang_generic_to_module(c);
 
-			DEBUG("%.*s%s", depth, unlang_spaces, single->module_instance->name);
+			DEBUG("%.*s%s", depth, unlang_spaces, single->instance->name);
 		}
 			break;
 
@@ -3408,7 +3408,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	}
 
 	MEM(single = talloc_zero(parent, unlang_module_t));
-	single->module_instance = inst;
+	single->instance = inst;
 	single->method = method;
 
 	c = unlang_module_to_generic(single);
