@@ -168,4 +168,10 @@ void _fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *fil
 	}
 }
 
-
+/** Useful for calling from debuggers
+ *
+ */
+void fr_pair_list_debug(fr_pair_t const *vp)
+{
+	_fr_pair_list_log(&default_log, vp, "<internal>", 0);
+}

@@ -397,12 +397,8 @@ void			fr_pair_fprint(FILE *, fr_pair_t const *vp);
 #define			fr_pair_list_log(_log, _vp) _fr_pair_list_log(_log, _vp, __FILE__, __LINE__);
 void			_fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *file, int line);
 
-/** Useful for calling directly from debug logs
- */
-static inline void fr_pair_list_debug(fr_pair_t const *vp)
-{
-	_fr_pair_list_log(&default_log, vp, "<internal>", 0);
-}
+void			fr_pair_list_debug(fr_pair_t const *vp);
+
 /** @} */
 
 void			fr_pair_list_tainted(fr_pair_t *vp);
