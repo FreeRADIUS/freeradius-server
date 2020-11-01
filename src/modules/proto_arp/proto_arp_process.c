@@ -103,8 +103,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		/*
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
@@ -156,8 +154,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

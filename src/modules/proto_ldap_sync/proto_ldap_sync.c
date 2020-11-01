@@ -435,7 +435,6 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		default:
 			break;
 		}
-		fr_assert(request->log.unlang_indent == 0);
 		//request_delete(request);
 		break;
 	}

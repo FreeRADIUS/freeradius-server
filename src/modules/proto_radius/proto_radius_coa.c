@@ -109,8 +109,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
@@ -154,8 +152,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
-		fr_assert(request->log.unlang_indent == 0);
-
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
 
@@ -165,8 +161,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*

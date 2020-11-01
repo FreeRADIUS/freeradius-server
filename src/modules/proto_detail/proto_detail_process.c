@@ -84,8 +84,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		switch (rcode) {
 		/*
 		 *	The module has a number of OK return codes.
@@ -155,8 +153,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
