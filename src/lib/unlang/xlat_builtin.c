@@ -118,7 +118,7 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char 
 	if (tmpl_afrom_attr_str(request, NULL,
 				&vpt, name, &(tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
-	rcode = tmpl_copy_vps(ctx, out, request, vpt);
+	rcode = tmpl_copy_pairs(ctx, out, request, vpt);
 	talloc_free(vpt);
 
 	return rcode;

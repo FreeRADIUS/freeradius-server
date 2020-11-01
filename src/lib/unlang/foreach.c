@@ -172,7 +172,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	 *	behaviour if someone decides to add or remove VPs in the set we're
 	 *	iterating over.
 	 */
-	if (tmpl_copy_vps(frame->state, &vps, request, gext->vpt) < 0) {	/* nothing to loop over */
+	if (tmpl_copy_pairs(frame->state, &vps, request, gext->vpt) < 0) {	/* nothing to loop over */
 		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}

@@ -309,9 +309,16 @@ static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, reque
 	fr_pair_add(&child->packet->vps, vp);
 
 	if (gext->src) {
-		if (tmpl_copy_vps(child->packet, &child->packet->vps, request, gext->src) < -1) {
-			RPEDEBUG("Failed copying source attributes into subrequest");
-			goto fail;
+		if (tmpl_is_list(gext->src)) {
+			if (tmpl_copy_pairs(child->packet, &child->packet->vps, request, gext->src) < -1) {
+				RPEDEBUG("Failed copying source attributes into subrequest");
+				goto fail;
+			}
+		} else {
+			if (tmpl_copy_pair_children(child->packet, &child->packet->vps, request, gext->src) < -1) {
+				RPEDEBUG("Failed copying source attributes into subrequest");
+				goto fail;
+			}
 		}
 	}
 

@@ -1027,7 +1027,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
-		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
+		if (tmpl_copy_pairs(ctx, &found, request, map->rhs) < 0) return 0;
 
 		vp = fr_cursor_init(&from, &found);
 

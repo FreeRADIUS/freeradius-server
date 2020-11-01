@@ -244,7 +244,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 		 * Get attributes from the template.
 		 * Missing attribute isn't an error (so -1, not 0).
 		 */
-		if (tmpl_copy_vps(ctx, &vps, request, vpt) < -1) {
+		if (tmpl_copy_pairs(ctx, &vps, request, vpt) < -1) {
 			RPEDEBUG("Error copying attributes");
 			goto error;
 		}

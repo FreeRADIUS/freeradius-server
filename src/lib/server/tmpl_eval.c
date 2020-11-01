@@ -1304,7 +1304,7 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
  *	- -3 if context could not be found (no parent #request_t available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		from, to;
@@ -1336,6 +1336,58 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t c
 
 	return err;
 }
+
+
+/** Copy children of pairs matching a #tmpl_t in the current #request_t
+ *
+ * @param ctx to allocate new #fr_pair_t in.
+ * @param out Where to write the copied #fr_pair_t (s).
+ * @param request The current #request_t.
+ * @param vpt specifying the #fr_pair_t type or list to copy.
+ *	Must be one of the following types:
+ *	- #TMPL_TYPE_LIST
+ *	- #TMPL_TYPE_ATTR
+ * @return
+ *	- -1 if no matching #fr_pair_t could be found.
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
+ *	- -4 on memory allocation error.
+ */
+int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+{
+	fr_pair_t		*vp;
+	fr_cursor_t		from;
+	tmpl_cursor_ctx_t	cc;
+
+	TMPL_VERIFY(vpt);
+
+	int err;
+
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+	*out = NULL;
+
+	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
+	     vp;
+	     vp = fr_cursor_next(&from)) {
+	     	switch (vp->da->type) {
+	     	case FR_TYPE_STRUCTURAL:
+	     		if (fr_pair_list_copy(ctx, out, vp->vp_group) < 0) {
+	     			err = -4;
+	     			goto done;
+	     		}
+	     		break;
+
+		default:
+			continue;
+	     	}
+	}
+done:
+	tmpl_cursor_clear(&cc);
+
+	return err;
+}
+
 
 /** Returns the first VP matching a #tmpl_t
  *

@@ -51,7 +51,7 @@
  * Or for simplicity, there are functions which wrap the cursor functions, to copy or
  * return the #fr_pair_t that match the VPT.
  *
- * @see tmpl_copy_vps
+ * @see tmpl_copy_pairs
  * @see tmpl_find_vp
  *
  * If you just need the string value of whatever the VPT refers to, the tmpl_*expand
@@ -975,8 +975,11 @@ fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
-int			tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				      tmpl_t const *vpt);
+int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out,
+					request_t *request, tmpl_t const *vpt);
+
+int			tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out,
+						request_t *request, tmpl_t const *vpt);
 
 int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
 
