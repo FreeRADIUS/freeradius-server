@@ -326,7 +326,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	int			rcode;
 	CONF_SECTION		*cs;
 	char const		*name2;
-	vp_map_t		*head = NULL;
+	map_t		*head = NULL;
 
 	fr_assert(cf_item_is_section(ci));
 

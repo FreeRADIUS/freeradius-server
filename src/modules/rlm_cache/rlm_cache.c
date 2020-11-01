@@ -156,7 +156,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_cache_entry_t *c)
 {
 	fr_pair_t	*vp;
-	vp_map_t	*map;
+	map_t	*map;
 	int		merged = 0;
 
 	RDEBUG2("Merging cache entry into request");
@@ -293,8 +293,8 @@ static rlm_rcode_t cache_expire(rlm_cache_t const *inst, request_t *request,
 static rlm_rcode_t cache_insert(rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
 				uint8_t const *key, size_t key_len, int ttl)
 {
-	vp_map_t		const *map;
-	vp_map_t		**last, *c_map;
+	map_t		const *map;
+	map_t		**last, *c_map;
 
 	fr_pair_t		*vp;
 	bool			merge = false;
@@ -367,7 +367,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, request_t *request, rlm
 			if (RDEBUG_ENABLED2) map_debug_log(request, map, vp);
 			REXDENT();
 
-			MEM(c_map = talloc_zero(c, vp_map_t));
+			MEM(c_map = talloc_zero(c, map_t));
 			c_map->op = map->op;
 
 			/*
@@ -510,7 +510,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, request_t *request,
 /** Verify that a map in the cache section makes sense
  *
  */
-static int cache_verify(vp_map_t *map, void *ctx)
+static int cache_verify(map_t *map, void *ctx)
 {
 	if (unlang_fixup_update(map, ctx) < 0) return -1;
 
@@ -802,7 +802,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 	ssize_t			key_len;
 
 	tmpl_t		*target = NULL;
-	vp_map_t		*map = NULL;
+	map_t		*map = NULL;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);

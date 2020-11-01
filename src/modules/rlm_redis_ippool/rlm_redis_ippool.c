@@ -662,7 +662,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	 */
 	if (reply->elements > 1) {
 		tmpl_t ip_rhs;
-		vp_map_t ip_map = {
+		map_t ip_map = {
 			.lhs = inst->allocated_address_attr,
 			.op = T_OP_SET,
 			.rhs = &ip_rhs
@@ -725,7 +725,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 		case REDIS_REPLY_STRING:
 		{
 			tmpl_t range_rhs;
-			vp_map_t range_map = {
+			map_t range_map = {
 				.lhs = inst->range_attr,
 				.op = T_OP_SET,
 				.rhs = &range_rhs
@@ -757,7 +757,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	 */
 	if (inst->expiry_attr && (reply->elements > 3)) {
 		tmpl_t expiry_rhs;
-		vp_map_t expiry_map = {
+		map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
@@ -799,7 +799,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
 	tmpl_t		range_rhs;
-	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+	map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	tmpl_init_shallow(&range_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 
@@ -902,7 +902,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 	 */
 	if (inst->expiry_attr) {
 		tmpl_t expiry_rhs;
-		vp_map_t expiry_map = {
+		map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
@@ -1161,7 +1161,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 					.type = TMPL_TYPE_DATA,
 					.quote = T_BARE_WORD,
 				};
-				vp_map_t ip_map = {
+				map_t ip_map = {
 					.lhs = inst->allocated_address_attr,
 					.op = T_OP_SET,
 					.rhs = &ip_rhs

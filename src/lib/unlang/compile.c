@@ -196,7 +196,7 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_
 static bool pass2_fixup_map(fr_cond_t *c)
 {
 	tmpl_t		*vpt;
-	vp_map_t	*map;
+	map_t	*map;
 
 	map = c->data.map;	/* shorter */
 
@@ -540,7 +540,7 @@ static bool pass2_cond_callback(fr_cond_t *c, UNUSED void *uctx)
 	}
 }
 
-static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
+static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	if (tmpl_is_xlat_unresolved(map->lhs)) {
 		fr_assert(tmpl_xlat(map->lhs) == NULL);
@@ -632,7 +632,7 @@ static bool pass2_fixup_update_map(vp_map_t *map, tmpl_rules_t const *rules, fr_
 static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	unlang_map_t	*gext = unlang_group_to_map(g);
-	vp_map_t		*map;
+	map_t		*map;
 
 	for (map = gext->map; map != NULL; map = map->next) {
 		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
@@ -665,7 +665,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 {
 	unlang_t *c;
 	unlang_group_t *g;
-	vp_map_t *map;
+	map_t *map;
 	char buffer[1024];
 
 	for (c = instruction; c != NULL; c = c->next) {
@@ -744,7 +744,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
  * @param ctx data to pass to fixup function (currently unused).
  * @return 0 if valid else -1.
  */
-static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
+static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -808,7 +808,7 @@ static int unlang_fixup_map(vp_map_t *map, UNUSED void *ctx)
  *	- 0 if valid.
  *	- -1 not valid.
  */
-int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
+int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1005,7 +1005,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
  *	- 0 if valid.
  *	- -1 not valid.
  */
-static int unlang_fixup_filter(vp_map_t *map, UNUSED void *ctx)
+static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1240,7 +1240,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	ssize_t			slen;
 	char const		*tmpl_str;
 
-	vp_map_t		*head;
+	map_t		*head;
 	tmpl_t			*vpt = NULL;
 
 	map_proc_t		*proc;
@@ -1378,7 +1378,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	vp_map_t		*head;
+	map_t		*head;
 
 	tmpl_rules_t		parse_rules;
 
@@ -1439,7 +1439,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	vp_map_t		*head;
+	map_t		*head;
 
 	tmpl_rules_t		parse_rules;
 
@@ -2492,7 +2492,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(vp_map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &if_ext);
@@ -2505,7 +2505,7 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(vp_map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &elsif_ext);

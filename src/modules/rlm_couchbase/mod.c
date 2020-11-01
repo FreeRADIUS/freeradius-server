@@ -468,7 +468,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 		 */
 		{
 			fr_value_box_t	tmp = { .type = FR_TYPE_INVALID };
-			vp_map_t	*map;
+			map_t	*map;
 
 			if (fr_json_object_to_value_box(ctx, &tmp, value_obj, da, true) < 0) {
 			bad_value:

@@ -1370,7 +1370,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			     request_t *request, char const *fmt)
 {
-	vp_map_t	*map = NULL;
+	map_t	*map = NULL;
 	int		ret;
 
 	tmpl_rules_t	attr_rules = {

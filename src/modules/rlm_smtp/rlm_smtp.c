@@ -72,7 +72,7 @@ typedef struct {
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 	char const		*name;			//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;
-	vp_map_t		*header_maps;		//!< Attribute map used to process header elements
+	map_t		*header_maps;		//!< Attribute map used to process header elements
 	CONF_SECTION		*cs;
 	bool 			set_date;
 } rlm_smtp_t;
@@ -509,7 +509,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, UNUSED rlm_smt
 	request_t				*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
-	vp_map_t			*conf_map;
+	map_t			*conf_map;
 
 	char 				*expanded_rhs;
 
@@ -958,7 +958,7 @@ static void mod_unload(void)
 /** Verify that a map in the header section makes sense
  *
  */
-static int smtp_verify(vp_map_t *map, void *ctx)
+static int smtp_verify(map_t *map, void *ctx)
 {
 	if (unlang_fixup_update(map, ctx) < 0) return -1;
 

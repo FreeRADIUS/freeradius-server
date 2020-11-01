@@ -36,7 +36,7 @@ USES_APPLE_DEPRECATED_API
  *
  * @see map_to_vp
  */
-int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map, void *uctx)
+int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, void *uctx)
 {
 	fr_ldap_result_t	*self = uctx;
 	fr_pair_t		*head = NULL, *vp;
@@ -59,7 +59,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, v
 	 */
 	case TMPL_TYPE_LIST:
 		for (i = 0; i < self->count; i++) {
-			vp_map_t	*attr = NULL;
+			map_t	*attr = NULL;
 			char		*attr_str;
 
 			tmpl_rules_t	lhs_rules = {
@@ -180,7 +180,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, v
 	return 0;
 }
 
-int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
+int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 {
 	/*
 	 *	Destinations where we can put the fr_pair_ts we
@@ -250,9 +250,9 @@ int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, vp_map_t const *maps)
+int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_t const *maps)
 {
-	vp_map_t const	*map;
+	map_t const	*map;
 	unsigned int	total = 0;
 
 	TALLOC_CTX	*ctx = NULL;
@@ -304,7 +304,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, vp_map_t
 int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
-	vp_map_t const		*map;
+	map_t const		*map;
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
@@ -362,7 +362,7 @@ int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
-			vp_map_t	*attr;
+			map_t	*attr;
 			char		*value;
 
 			tmpl_rules_t parse_rules = {

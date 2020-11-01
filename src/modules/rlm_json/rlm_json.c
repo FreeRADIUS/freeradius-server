@@ -311,10 +311,10 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    tmpl_t const *src, vp_map_t const *maps)
+				    tmpl_t const *src, map_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
-	vp_map_t const		*map;
+	map_t const		*map;
 	ssize_t			slen;
 	rlm_json_jpath_cache_t	*cache = cache_inst, **tail = &cache->next;
 
@@ -396,7 +396,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
  *	- -1 on failure.
  */
 static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				    vp_map_t const *map, void *uctx)
+				    map_t const *map, void *uctx)
 {
 	fr_pair_t			*vp;
 	fr_cursor_t			cursor;
@@ -444,13 +444,13 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, request_t 
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_t **json, vp_map_t const *maps)
+			      	fr_value_box_t **json, map_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
 
 	rlm_json_jpath_cache_t		*cache = proc_inst;
-	vp_map_t const			*map;
+	map_t const			*map;
 
 	rlm_json_jpath_to_eval_t	to_eval;
 

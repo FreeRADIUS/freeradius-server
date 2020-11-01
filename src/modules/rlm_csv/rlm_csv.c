@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, vp_map_t const *maps);
+				fr_value_box_t **key, map_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -64,7 +64,7 @@ typedef struct {
 	tmpl_t		*key;
 	fr_type_t	key_data_type;
 
-	vp_map_t	*map;		//!< if there is an "update" section in the configuration.
+	map_t	*map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
 typedef struct rlm_csv_entry_s rlm_csv_entry_t;
@@ -393,7 +393,7 @@ static int fieldname2offset(rlm_csv_t const *inst, char const *field_name, int *
 /*
  *	Verify one map entry.
  */
-static int csv_map_verify(vp_map_t *map, void *instance)
+static int csv_map_verify(map_t *map, void *instance)
 {
 	rlm_csv_t *inst = instance;
 	int offset;
@@ -489,9 +489,9 @@ static int csv_map_verify(vp_map_t *map, void *instance)
  *	Verify the result of the map.
  */
 static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
-			  tmpl_t const *src, vp_map_t const *maps)
+			  tmpl_t const *src, map_t const *maps)
 {
-	vp_map_t const *map;
+	map_t const *map;
 
 	if (!src) {
 		cf_log_err(cs, "Missing key expansion");
@@ -502,7 +502,7 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 	for (map = maps;
 	     map != NULL;
 	     map = map->next) {
-		vp_map_t *unconst_map;
+		map_t *unconst_map;
 
 		memcpy(&unconst_map, &map, sizeof(map));
 
@@ -839,7 +839,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Convert field X to a VP.
  */
-static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map, void *uctx)
+static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, void *uctx)
 {
 	char const		*str = uctx;
 	fr_pair_t		*head = NULL, *vp;
@@ -901,11 +901,11 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
-				fr_value_box_t const *key, vp_map_t const *maps)
+				fr_value_box_t const *key, map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_entry_t		*e;
-	vp_map_t const		*map;
+	map_t const		*map;
 
 	e = find_entry(inst, key);
 	if (!e) {
@@ -982,7 +982,7 @@ finish:
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, vp_map_t const *maps)
+				fr_value_box_t **key, map_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 

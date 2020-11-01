@@ -84,7 +84,7 @@ struct fr_cond_s {
 						///< is derived from.
 
 	union {
-		vp_map_t		*map;		//!< Binary expression.
+		map_t		*map;		//!< Binary expression.
 		tmpl_t			*vpt;		//!< Unary expression.
 		fr_cond_t  		*child;		//!< Nested condition.
 		rlm_rcode_t		rcode;		//!< Rcode check.   We handle this outside of

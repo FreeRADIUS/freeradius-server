@@ -69,7 +69,7 @@ struct rlm_radius_s {
 	uint32_t		proxy_state;  		//!< Unique ID (mostly) of this module.
 	uint32_t		*types;			//!< array of allowed packet types
 	uint32_t		status_check;  		//!< code of status-check type
-	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
+	map_t		*status_check_map;	//!< attributes for the status-server checks
 	uint32_t		num_answers_to_alive;		//!< How many status check responses we need to
 							///< mark the connection as alive.
 

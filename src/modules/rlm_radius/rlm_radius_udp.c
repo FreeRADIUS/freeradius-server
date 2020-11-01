@@ -338,7 +338,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	udp_request_t		*u;
 	request_t			*request;
 	rlm_radius_udp_t const	*inst = h->inst;
-	vp_map_t		*map;
+	map_t		*map;
 
 	fr_assert(!h->status_u && !h->status_r && !h->status_request);
 

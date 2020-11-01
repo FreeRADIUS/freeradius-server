@@ -30,7 +30,7 @@ RCSIDH(map_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct vp_map_s vp_map_t;
+typedef struct vp_map_s map_t;
 typedef struct vp_list_mod_s vp_list_mod_t;
 
 #ifdef __cplusplus
@@ -77,17 +77,17 @@ struct vp_map_s {
 	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
 						//!< logging validation errors.
 
-	vp_map_t		*child;		//!< a child map.  If it exists, `rhs` MUST be NULL
-	vp_map_t		*next;		//!< The next valuepair map.
+	map_t		*child;		//!< a child map.  If it exists, `rhs` MUST be NULL
+	map_t		*next;		//!< The next valuepair map.
 };
 
 /** A list modification
  *
  */
 struct vp_list_mod_s {
-	vp_map_t const		*map;		//!< Original map describing the change to be made.
+	map_t const		*map;		//!< Original map describing the change to be made.
 
-	vp_map_t		*mod;		//!< New map containing the destination (LHS) and
+	map_t		*mod;		//!< New map containing the destination (LHS) and
 						///< values (RHS).
 	vp_list_mod_t		*next;
 };
@@ -101,53 +101,53 @@ struct vp_list_mod_s {
 } while (0)
 #endif
 
-typedef int (*map_validate_t)(vp_map_t *map, void *ctx);
+typedef int (*map_validate_t)(map_t *map, void *ctx);
 typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				     vp_map_t const *map, void *uctx);
+				     map_t const *map, void *uctx);
 
-int		map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
+int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
+int		map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
-int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
+int		map_afrom_fields(TALLOC_CTX *ctx, map_t **out,
 				 char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 				 fr_token_t op,
 				 char const *rhs, fr_token_t rhs_type, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
+int		map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 				    char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 				    fr_token_t op,
 				    fr_value_box_t *rhs, bool steal_rhs_buffs);
 
-int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
+int		map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *raw,
 				   tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, fr_pair_t *vp,
+int		map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp,
 			     tmpl_rules_t const *rules);
 
-void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
+void		map_sort(map_t **maps, fr_cmp_t cmp);
 
 int		map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
+			  map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
 int		map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm);
 
 int		map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
-				request_t *request, vp_map_t const *map,
+				request_t *request, map_t const *map,
 				fr_value_box_t **lhs_result, fr_value_box_t **rhs_result);
 
-int		map_to_request(request_t *request, vp_map_t const *map,
+int		map_to_request(request_t *request, map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);
 
-ssize_t		map_print(fr_sbuff_t *out, vp_map_t const *map);
+ssize_t		map_print(fr_sbuff_t *out, map_t const *map);
 
-void		map_debug_log(request_t *request, vp_map_t const *map,
+void		map_debug_log(request_t *request, map_t const *map,
 			      fr_pair_t const *vp) CC_HINT(nonnull(1, 2));
 
-bool		map_cast_from_hex(vp_map_t *map, fr_token_t rhs_type, char const *rhs);
+bool		map_cast_from_hex(map_t *map, fr_token_t rhs_type, char const *rhs);
 #ifdef __cplusplus
 }
 #endif

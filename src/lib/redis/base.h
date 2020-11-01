@@ -143,10 +143,10 @@ void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *requ
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
 						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
 
-int			fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
+int			fr_redis_reply_to_map(TALLOC_CTX *ctx, map_t **out,
 					      request_t *request, redisReply *key, redisReply *op, redisReply *value);
 
-int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
+int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map);
 
 fr_redis_rcode_t	fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn);
 

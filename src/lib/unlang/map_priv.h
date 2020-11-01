@@ -31,7 +31,7 @@ extern "C" {
 typedef struct {
 	unlang_group_t		group;
 	tmpl_t			*vpt;
-	vp_map_t		*map;		//!< Head of the map list
+	map_t		*map;		//!< Head of the map list
 	map_proc_inst_t		*proc_inst;
 } unlang_map_t;
 

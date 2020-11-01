@@ -44,7 +44,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #ifdef DEBUG_MAP
-static void map_dump(request_t *request, vp_map_t const *map)
+static void map_dump(request_t *request, map_t const *map)
 {
 	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
 	        fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
@@ -56,9 +56,9 @@ static void map_dump(request_t *request, vp_map_t const *map)
 }
 #endif
 
-static inline vp_map_t *map_alloc(TALLOC_CTX *ctx)
+static inline map_t *map_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, vp_map_t);
+	return talloc_zero(ctx, map_t);
 }
 
 /** re-parse a map where the lhs is an unknown attribute.
@@ -68,7 +68,7 @@ static inline vp_map_t *map_alloc(TALLOC_CTX *ctx)
  * @param rhs_quote quotation type around rhs.
  * @param rhs string to re-parse.
  */
-bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_quote, char const *rhs)
+bool map_cast_from_hex(map_t *map, fr_token_t rhs_quote, char const *rhs)
 {
 	size_t			len;
 	uint8_t			*ptr;
@@ -171,7 +171,7 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_quote, char const *rhs)
 	return true;
 }
 
-/** Convert CONFIG_PAIR (which may contain refs) to vp_map_t.
+/** Convert CONFIG_PAIR (which may contain refs) to map_t.
  *
  * Treats the left operand as an attribute reference
  * @verbatim<request>.<list>.<attribute>@endverbatim
@@ -183,18 +183,18 @@ bool map_cast_from_hex(vp_map_t *map, fr_token_t rhs_quote, char const *rhs)
  * Return must be freed with talloc_free
  *
  * @param[in] ctx		for talloc.
- * @param[in] out		Where to write the pointer to the new #vp_map_t.
+ * @param[in] out		Where to write the pointer to the new #map_t.
  * @param[in] cp		to convert to map.
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @return
- *	- #vp_map_t if successful.
+ *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
+int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
-	vp_map_t	*map;
+	map_t	*map;
 	char const	*attr, *value, *marker_subject;
 	ssize_t		slen;
 	fr_token_t	type;
@@ -203,7 +203,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = talloc_zero(ctx, vp_map_t));
+	MEM(map = talloc_zero(ctx, map_t));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -319,7 +319,7 @@ error:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
+int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
@@ -330,7 +330,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 	CONF_PAIR 	*cp;
 
 	unsigned int 	total = 0;
-	vp_map_t	**tail, *map;
+	map_t	**tail, *map;
 	TALLOC_CTX	*parent;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
@@ -490,7 +490,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 
 }
 
-/** Convert strings to #vp_map_t
+/** Convert strings to #map_t
  *
  * Treatment of operands depends on quotation, barewords are treated
  * as attribute references, double quoted values are treated as
@@ -509,18 +509,18 @@ int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
  * @param[in] rhs_quote		type of quoting aounrd the RHS string.
  * @param[in] rhs_rules		rules that control parsing of the RHS string.
  * @return
- *	- #vp_map_t if successful.
+ *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
+int map_afrom_fields(TALLOC_CTX *ctx, map_t **out,
 		     char const *lhs, fr_token_t lhs_quote, tmpl_rules_t const *lhs_rules,
 		     fr_token_t op,
 		     char const *rhs, fr_token_t rhs_quote, tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
-	vp_map_t *map;
+	map_t *map;
 
-	map = talloc_zero(ctx, vp_map_t);
+	map = talloc_zero(ctx, map_t);
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
 				 lhs_quote,
@@ -570,18 +570,18 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
  * @param[in] steal_rhs_buffs	Whether we attempt to save allocs by stealing the buffers
  *				from the rhs #fr_value_box_t.
  * @return
- *	- #vp_map_t if successful.
+ *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
+int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 			char const *lhs, fr_token_t lhs_quote, tmpl_rules_t const *lhs_rules,
 			fr_token_t op,
 			fr_value_box_t *rhs, bool steal_rhs_buffs)
 {
 	ssize_t slen;
-	vp_map_t *map;
+	map_t *map;
 
-	map = talloc_zero(ctx, vp_map_t);
+	map = talloc_zero(ctx, map_t);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
@@ -607,7 +607,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
 /** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
- * #vp_map_t.
+ * #map_t.
  *
  * Attribute string is in the format (where @verbatim <qu> @endverbatim is a quotation char ['"]):
  @verbatim
@@ -623,14 +623,14 @@ int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
  *	- 0 on success.
  *	- < 0 on error.
  */
-int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
+int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 		       tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	char const *p = vp_str;
 	fr_token_t quote;
 
 	fr_pair_t_RAW raw;
-	vp_map_t *map = NULL;
+	map_t *map = NULL;
 
 	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
 	switch (quote) {
@@ -680,11 +680,11 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
+int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
 {
 	char buffer[256];
 
-	vp_map_t *map;
+	map_t *map;
 
 	map = map_alloc(ctx);
 	if (!map) {
@@ -731,10 +731,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, fr_pair_t *vp, tmpl_rules_t co
 	return 0;
 }
 
-static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
+static void map_sort_split(map_t *source, map_t **front, map_t **back)
 {
-	vp_map_t *fast;
-	vp_map_t *slow;
+	map_t *fast;
+	map_t *slow;
 
 	/*
 	 *	Stopping condition - no more elements left to split
@@ -766,9 +766,9 @@ static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
 	slow->next = NULL;
 }
 
-static vp_map_t *map_sort_merge(vp_map_t *a, vp_map_t *b, fr_cmp_t cmp)
+static map_t *map_sort_merge(map_t *a, map_t *b, fr_cmp_t cmp)
 {
-	vp_map_t *result = NULL;
+	map_t *result = NULL;
 
 	if (!a) return b;
 	if (!b) return a;
@@ -787,16 +787,16 @@ static vp_map_t *map_sort_merge(vp_map_t *a, vp_map_t *b, fr_cmp_t cmp)
 	return result;
 }
 
-/** Sort a linked list of #vp_map_t using merge sort
+/** Sort a linked list of #map_t using merge sort
  *
- * @param[in,out] maps List of #vp_map_t to sort.
+ * @param[in,out] maps List of #map_t to sort.
  * @param[in] cmp to sort with
  */
-void map_sort(vp_map_t **maps, fr_cmp_t cmp)
+void map_sort(map_t **maps, fr_cmp_t cmp)
 {
-	vp_map_t *head = *maps;
-	vp_map_t *a;
-	vp_map_t *b;
+	map_t *head = *maps;
+	map_t *a;
+	map_t *b;
 
 	/*
 	 *	If there's 0-1 elements it must already be sorted.
@@ -829,7 +829,7 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -909,7 +909,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, vp_map_t const *map, UNUSED void *uctx)
+int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
 	fr_pair_t	*vp = NULL, *found = NULL, *n;
@@ -1136,9 +1136,9 @@ do {\
 	} \
 } while (0)
 
-/** Convert #vp_map_t to #fr_pair_t (s) and add them to a #request_t.
+/** Convert #map_t to #fr_pair_t (s) and add them to a #request_t.
  *
- * Takes a single #vp_map_t, resolves request and list identifiers
+ * Takes a single #map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
@@ -1153,7 +1153,7 @@ do {\
  *	- -2 in the source attribute wasn't valid.
  *	- 0 on success.
  */
-int map_to_request(request_t *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
+int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int			rcode = 0;
 	int			num;
@@ -1164,7 +1164,7 @@ int map_to_request(request_t *request, vp_map_t const *map, radius_map_getvalue_
 
 	bool			found = false;
 
-	vp_map_t		exp_map;
+	map_t		exp_map;
 	tmpl_t			*exp_lhs;
 	request_ref_t		request_ref;
 	pair_list_t		list_ref;
@@ -1564,7 +1564,7 @@ finish:
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-ssize_t map_print(fr_sbuff_t *out, vp_map_t const *map)
+ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 {
 	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
 
@@ -1610,7 +1610,7 @@ ssize_t map_print(fr_sbuff_t *out, vp_map_t const *map)
 /*
  *	Debug print a map / VP
  */
-void map_debug_log(request_t *request, vp_map_t const *map, fr_pair_t const *vp)
+void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 {
 	char *rhs = NULL, *value = NULL;
 	char buffer[256];

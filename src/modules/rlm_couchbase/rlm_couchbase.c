@@ -149,7 +149,7 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 	{
 		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
 		fr_cursor_t	maps, vlms;
-		vp_map_t	*map_head = NULL, *map;
+		map_t	*map_head = NULL, *map;
 		vp_list_mod_t	*vlm_head = NULL, *vlm;
 
 		fr_cursor_init(&maps, &map_head);

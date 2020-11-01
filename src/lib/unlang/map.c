@@ -127,7 +127,7 @@ static unlang_action_t list_mod_create(request_t *request, rlm_rcode_t *presult)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_update_t	*update_state = frame->state;
-	vp_map_t			*map;
+	map_t			*map;
 
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
@@ -262,7 +262,7 @@ static unlang_action_t unlang_update_state_init(request_t *request, rlm_rcode_t 
 	 *	Initialise the frame state
 	 */
 	MEM(frame->state = update_state = talloc_zero_pooled_object(stack, unlang_frame_state_update_t,
-								    (sizeof(vp_map_t) +
+								    (sizeof(map_t) +
 								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
 
