@@ -427,7 +427,7 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 		state->children[i].instruction = instruction;
 	}
 
-	frame->interpret = unlang_parallel_process;
+	frame->process = unlang_parallel_process;
 	return unlang_parallel_process(request, presult);
 }
 

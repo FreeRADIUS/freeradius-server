@@ -39,18 +39,18 @@ extern "C" {
  * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_op_interpret_t)(request_t *request, rlm_rcode_t *presult);
+typedef unlang_action_t (*unlang_process_t)(request_t *request, rlm_rcode_t *presult);
 
 /** Function to call if the initial function yielded and the request was signalled
  *
  * This is the operation specific cancellation function.  This function will usually
  * either call a more specialised cancellation function set when something like a module yielded,
- * or just cleanup the state of the original #unlang_op_interpret_t.
+ * or just cleanup the state of the original #unlang_process_t.
  *
  * @param[in] request		The current request.
  * @param[in] action		We're being signalled with.
  */
-typedef void (*unlang_op_signal_t)(request_t *request, fr_state_signal_t action);
+typedef void (*unlang_signal_t)(request_t *request, fr_state_signal_t action);
 
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *
@@ -70,9 +70,9 @@ typedef unlang_action_t (*unlang_function_t)(request_t *request, rlm_rcode_t *pr
 typedef struct {
 	char const		*name;				//!< Name of the operation.
 
-	unlang_op_interpret_t	interpret;     			//!< Function to interpret the keyword
+	unlang_process_t	interpret;     			//!< Function to interpret the keyword
 
-	unlang_op_signal_t	signal;				//!< Function to signal stop / dup / whatever
+	unlang_signal_t	signal;				//!< Function to signal stop / dup / whatever
 
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.

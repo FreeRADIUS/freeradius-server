@@ -124,7 +124,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_name ? op->frame_state_name : __location__;
 
-	frame->interpret = op->interpret;
+	frame->process = op->interpret;
 	frame->signal = op->signal;
 
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
@@ -471,8 +471,8 @@ static inline unlang_frame_action_t frame_eval(request_t *request, unlang_stack_
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		fr_assert(frame->interpret != NULL);
-		action = frame->interpret(request, result);
+		fr_assert(frame->process != NULL);
+		action = frame->process(request, result);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);

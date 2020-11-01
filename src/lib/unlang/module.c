@@ -694,7 +694,7 @@ static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *pre
 	if (stack_depth < stack->depth) {
 		state->rcode = rcode;
 		repeatable_set(frame);
-		frame->interpret = unlang_module_resume_final;
+		frame->process = unlang_module_resume_final;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -747,7 +747,7 @@ rlm_rcode_t unlang_module_yield(request_t *request,
 	 *	that the interpreter never gets a chance to set this
 	 *	flag.
 	 */
-	frame->interpret = unlang_module_resume;
+	frame->process = unlang_module_resume;
 	repeatable_set(frame);
 	return RLM_MODULE_YIELD;
 }
@@ -831,7 +831,7 @@ static unlang_action_t unlang_module(request_t *request, rlm_rcode_t *presult)
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		fr_assert(stack_depth == stack->depth);
 		*presult = rcode;
-		frame->interpret = unlang_module_resume;
+		frame->process = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 	}
 
@@ -848,7 +848,7 @@ done:
 	if (stack_depth < stack->depth) {
 		state->rcode = rcode;
 		repeatable_set(frame);
-		frame->interpret = unlang_module_resume_final;
+		frame->process = unlang_module_resume_final;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 

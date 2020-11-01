@@ -184,7 +184,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 #endif
 	talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
 
-	frame->interpret = unlang_foreach_next;
+	frame->process = unlang_foreach_next;
 	return unlang_foreach_next(request, presult);
 }
 

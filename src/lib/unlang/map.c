@@ -273,7 +273,7 @@ static unlang_action_t unlang_update_state_init(request_t *request, rlm_rcode_t 
 	/*
 	 *	Call list_mod_create
 	 */
-	frame->interpret = list_mod_create;
+	frame->process = list_mod_create;
 	return list_mod_create(request, presult);
 }
 
@@ -325,7 +325,7 @@ static unlang_action_t unlang_map_state_init(request_t *request, rlm_rcode_t *pr
 	 *	Set this BEFORE doing anything else, as we will be
 	 *	called again after unlang_xlat_push() returns.
 	 */
-	frame->interpret = map_proc_apply;
+	frame->process = map_proc_apply;
 
 	/*
 	 *	Expand the map source

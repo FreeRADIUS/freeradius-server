@@ -181,8 +181,8 @@ typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
 	unlang_t		*next;				//!< The next unlang node we will evaluate
 
-	unlang_op_interpret_t	interpret;			//!< function to call for interpreting this stack frame
-	unlang_op_signal_t	signal;				//!< function to call when signalling this stack frame
+	unlang_process_t	process;			//!< function to call for interpreting this stack frame
+	unlang_signal_t		signal;				//!< function to call when signalling this stack frame
 
 	/** Stack frame specialisations
 	 *

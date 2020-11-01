@@ -374,7 +374,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(request_t *request, rlm_rcode
 	 *	Ensure that the callers resume function is called.
 	 */
 resume:
-	frame->interpret = unlang_tmpl_resume;
+	frame->process = unlang_tmpl_resume;
 	return unlang_tmpl_resume(request, presult);
 }
 
@@ -445,7 +445,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(request_t *request, rlm_rcod
 		state->ptr = state->buffer;
 	}
 
-	frame->interpret = unlang_tmpl_exec_wait_final;
+	frame->process = unlang_tmpl_exec_wait_final;
 
 	*presult = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_YIELD;
@@ -508,7 +508,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 		 *	Inline exec's are only called from in-line
 		 *	text in the configuration files.
 		 */
-		frame->interpret = unlang_tmpl_exec_nowait_resume;
+		frame->process = unlang_tmpl_exec_nowait_resume;
 
 		repeatable_set(frame);
 		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
@@ -519,7 +519,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	 *	XLAT structs are allowed.
 	 */
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
-		frame->interpret = unlang_tmpl_resume;
+		frame->process = unlang_tmpl_resume;
 		repeatable_set(frame);
 		unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false);
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -546,7 +546,7 @@ static unlang_action_t unlang_tmpl(request_t *request, rlm_rcode_t *presult)
 	/*
 	 *	Expand the arguments to the program we're executing.
 	 */
-	frame->interpret = unlang_tmpl_exec_wait_resume;
+	frame->process = unlang_tmpl_exec_wait_resume;
 	repeatable_set(frame);
 	unlang_xlat_push(state->ctx, &state->box, request, xlat, false);
 

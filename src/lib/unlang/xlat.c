@@ -376,7 +376,7 @@ xlat_action_t unlang_xlat_yield(request_t *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	frame->interpret = unlang_xlat_resume;
+	frame->process = unlang_xlat_resume;
 
 	/*
 	 *	Over-ride whatever functions were there before.

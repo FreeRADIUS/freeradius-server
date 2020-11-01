@@ -247,7 +247,7 @@ static unlang_action_t unlang_load_balance(request_t *request, rlm_rcode_t *pres
 	 */
 	redundant->child = NULL;
 
-	frame->interpret = unlang_load_balance_next;
+	frame->process = unlang_load_balance_next;
 	return unlang_load_balance_next(request, presult);
 }
 

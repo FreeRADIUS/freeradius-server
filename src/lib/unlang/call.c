@@ -81,7 +81,7 @@ static unlang_action_t unlang_call_process(request_t *request, rlm_rcode_t *pres
 		return UNLANG_ACTION_YIELD;
 	}
 
-	frame->interpret = unlang_call_child;
+	frame->process = unlang_call_child;
 	return unlang_call_child(request, presult);
 }
 
@@ -205,7 +205,7 @@ static unlang_action_t unlang_call(request_t *request, rlm_rcode_t *presult)
 		unlang_interpret_push(child, g->children, frame->result,
 				      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
 	}
-	frame->interpret = unlang_call_process;
+	frame->process = unlang_call_process;
 	frame->state = child;
 	return unlang_call_process(request, presult);
 }
