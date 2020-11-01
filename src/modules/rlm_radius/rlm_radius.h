@@ -94,6 +94,6 @@ struct rlm_radius_io_s {
 	FR_MODULE_THREADED_COMMON;
 
 	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a request_t with an IO submodule.
-	fr_unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
-	fr_unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
+	unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
+	unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
 };

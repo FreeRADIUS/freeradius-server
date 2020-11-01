@@ -1036,7 +1036,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
  * The signaling stops at the "limit" frame.  This is so that keywords
  * such as "timeout" and "limit" can signal frames *lower* than theirs
@@ -1088,7 +1088,7 @@ static void frame_signal(request_t *request, fr_state_signal_t action, int limit
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.

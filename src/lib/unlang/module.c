@@ -44,10 +44,10 @@ RCSID("$Id$")
 typedef struct {
 	request_t				*request;	//!< Request this event pertains to.
 	int				fd;		//!< File descriptor to wait on.
-	fr_unlang_module_timeout_t	timeout;	//!< Function to call on timeout.
-	fr_unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
-	fr_unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
-	fr_unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
+	unlang_module_timeout_t	timeout;	//!< Function to call on timeout.
+	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
+	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
+	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
 	void const			*inst;		//!< Module instance to pass to callbacks.
 	void				*thread;	//!< Thread specific module instance.
 	void const			*ctx;		//!< ctx data to pass to callbacks.
@@ -134,7 +134,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_module_timeout_add(request_t *request, fr_unlang_module_timeout_t callback,
+int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
 			      void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -261,9 +261,9 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  *	- <0 on error.
  */
 int unlang_module_fd_add(request_t *request,
-			fr_unlang_module_fd_event_t read,
-			fr_unlang_module_fd_event_t write,
-			fr_unlang_module_fd_event_t error,
+			unlang_module_fd_event_t read,
+			unlang_module_fd_event_t write,
+			unlang_module_fd_event_t error,
 			void const *ctx, int fd)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -416,8 +416,8 @@ request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *na
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child,
-					      fr_unlang_module_resume_t resume,
-					      fr_unlang_module_signal_t signal,
+					      unlang_module_resume_t resume,
+					      unlang_module_signal_t signal,
 					      unlang_subrequest_session_t const *session,
 					      void *rctx)
 {
@@ -462,8 +462,8 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child
  */
 rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					request_t *request, xlat_exp_t const *exp,
-					fr_unlang_module_resume_t resume,
-					fr_unlang_module_signal_t signal, void *rctx)
+					unlang_module_resume_t resume,
+					unlang_module_signal_t signal, void *rctx)
 {
 	/*
 	 *	Push the resumption point BEFORE pushing the xlat onto
@@ -509,8 +509,8 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
 					request_t *request, tmpl_t const *vpt,
 					fr_pair_t *vps,
-					fr_unlang_module_resume_t resume,
-					fr_unlang_module_signal_t signal, void *rctx)
+					unlang_module_resume_t resume,
+					unlang_module_signal_t signal, void *rctx)
 {
 	/*
 	 *	Push the resumption point BEFORE pushing the xlat onto
@@ -528,8 +528,8 @@ rlm_rcode_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, i
 
 rlm_rcode_t unlang_module_yield_to_section(request_t *request, CONF_SECTION *subcs,
 					   rlm_rcode_t default_rcode,
-					   fr_unlang_module_resume_t resume,
-					   fr_unlang_module_signal_t signal, void *rctx)
+					   unlang_module_resume_t resume,
+					   unlang_module_signal_t signal, void *rctx)
 {
 	if (!subcs) {
 		unlang_stack_t		*stack = request->stack;
@@ -585,7 +585,7 @@ static inline void safe_unlock(module_instance_t *instance)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
@@ -725,7 +725,7 @@ static unlang_action_t unlang_module_resume(request_t *request, rlm_rcode_t *pre
  *	  resume frame.
  */
 rlm_rcode_t unlang_module_yield(request_t *request,
-				fr_unlang_module_resume_t resume, fr_unlang_module_signal_t signal, void *rctx)
+				unlang_module_resume_t resume, unlang_module_signal_t signal, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
