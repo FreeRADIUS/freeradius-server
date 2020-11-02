@@ -1158,13 +1158,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	int			rcode = 0;
 	int			num;
 	fr_pair_t		**list, *vp, *dst, *head = NULL;
-	request_t			*context, *tmp_ctx = NULL;
+	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	vp_cursor_t		dst_list, src_list;
 
 	bool			found = false;
 
-	map_t		exp_map;
+	map_t			exp_map;
 	tmpl_t			*exp_lhs;
 	request_ref_t		request_ref;
 	pair_list_t		list_ref;
