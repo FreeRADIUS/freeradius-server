@@ -541,7 +541,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Now look for EOL, hash, etc.
 		 */
-		if (!*p || (*p == '#') || (*p == '\n')) {
+		if (!*p || (*p == '#') || (*p == '\n')) {			
 			last_token = T_EOL;
 			break;
 		}
@@ -602,23 +602,23 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
  */
 int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **out, FILE *fp, bool *pfiledone)
 {
-	char buf[8192];
-	fr_token_t last_token = T_EOL;
+	fr_token_t	last_token = T_EOL;
+	bool		found = false;
+	fr_cursor_t	cursor;
+	char		buf[8192];
 
-	fr_cursor_t cursor;
-
-	fr_pair_t *vp = NULL;
 	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		fr_cursor_t append;
+		fr_pair_t   *vp;
 
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP list.
 		 */
 		if (buf[0] == '\n') {
-			if (vp) {
+			if (found) {
 				*pfiledone = false;
 				return 0;
 			}
@@ -632,31 +632,34 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **
 
 		/*
 		 *	Read all of the attributes on the current line.
+		 *
+		 *	If we get nothing but an EOL, it's likely OK.
 		 */
 		vp = NULL;
 		last_token = fr_pair_list_afrom_str(ctx, dict, buf, &vp);
 		if (!vp) {
-			if (last_token != T_EOL) goto error;
-			break;
+			if (last_token == T_EOL) break;
+
+			/*
+			 *	Didn't read anything, but the previous
+			 *	line wasn't EOL.  The input file has a
+			 *	format error.
+			 */
+			*pfiledone = false;
+			vp = fr_cursor_head(&cursor);
+			if (vp) fr_pair_list_free(&vp);
+			*out = NULL;
+			return -1;
 		}
 
+		found = true;
 		fr_cursor_init(&append, &vp);
 		fr_cursor_merge(&cursor, &append);
 		(void) fr_cursor_tail(&cursor);
-
-		buf[0] = '\0';
 	}
+
 	*pfiledone = true;
-
 	return 0;
-
-error:
-	*pfiledone = false;
-	vp = fr_cursor_head(&cursor);
-	if (vp) fr_pair_list_free(&vp);
-	*out = NULL;
-
-	return -1;
 }
 
 
