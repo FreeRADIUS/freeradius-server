@@ -65,7 +65,7 @@ typedef struct {
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
 	uint32_t	counter;	       	//!< for pinging the same IP multiple times
-	request_t		*request;		//!< so it can be resumed when we get the echo reply
+	request_t	*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
 
 /** Wrapper around the module thread stuct for individual xlats
@@ -535,12 +535,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 #ifdef __linux__
 #  ifndef HAVE_CAPABILITY_H
-	if ((getuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
+	if ((geteuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
 #  else
 	/*
 	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
 	 */
-	if ((fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE) < 0) && (getuid() != 0)) {
+	if ((fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE) < 0) && (geteuid() != 0)) {
 		PERROR("Failed setting capabilities required to open ICMP socket");
 		return -1;
 	}
