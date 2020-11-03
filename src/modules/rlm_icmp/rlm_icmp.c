@@ -474,7 +474,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	fd = socket(af, SOCK_DGRAM, proto);
 	if (fd < 0) {
-		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed opening socket (%s, %s): %s",
+				   fr_table_str_by_value(fr_net_af_table, af, "<INVALID>"),
+				   fr_table_str_by_value(fr_net_ip_proto_table, proto, "<INVALID>"),
+				   fr_syserror(errno));
 		return -1;
 	}
 

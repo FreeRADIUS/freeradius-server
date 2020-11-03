@@ -26,8 +26,10 @@
  *
  */
 fr_table_num_sorted_t const fr_net_ip_proto_table[] = {
-	{ L("TCP"),	IPPROTO_TCP },
-	{ L("UDP"),	IPPROTO_UDP }
+	{ L("ICMP"),	IPPROTO_ICMP	},
+	{ L("ICMPv6"),	IPPROTO_ICMPV6	},
+	{ L("TCP"),	IPPROTO_TCP	},
+	{ L("UDP"),	IPPROTO_UDP	}
 };
 size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
 
