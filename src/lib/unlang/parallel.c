@@ -112,10 +112,10 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 				 *	the parent.
 				 */
 				if ((fr_pair_list_copy(child->packet,
-						       &child->packet->vps,
+						       &child->request_pairs,
 						       request->request_pairs) < 0) ||
 				    (fr_pair_list_copy(child->reply,
-						       &child->reply->vps,
+						       &child->reply_pairs,
 						       request->reply_pairs) < 0) ||
 				    (fr_pair_list_copy(child,
 						       &child->control,

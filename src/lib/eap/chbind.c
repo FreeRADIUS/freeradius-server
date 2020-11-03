@@ -182,13 +182,13 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 
 	/* Set-up the fake request */
 	fake = request_alloc_fake(request, NULL);
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
 		vp = fr_pair_copy(fake->packet, chbind->username);
-		fr_pair_add(&fake->packet->vps, vp);
+		fr_pair_add(&fake->request_pairs, vp);
 	}
 
 	/*
@@ -202,7 +202,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 
 		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_cursor_init(&cursor, &fake->packet->vps);
+		fr_cursor_init(&cursor, &fake->request_pairs);
 		while (data_len > 0) {
 			ssize_t attr_len;
 

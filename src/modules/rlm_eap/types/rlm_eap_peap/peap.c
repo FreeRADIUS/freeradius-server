@@ -164,7 +164,7 @@ static void eap_peap_soh_verify(request_t *request, fr_radius_packet_t *packet,
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_soh_supported));
 	vp->vp_bool = false;
-	fr_pair_add(&packet->vps, vp);
+	fr_pair_add(&request->request_pairs, vp);
 
 	if (data && data[0] == FR_EAP_METHOD_NAK) {
 		REDEBUG("SoH - client NAKed");
@@ -551,7 +551,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request, NULL);
-		fr_assert(!fake->packet->vps);
+		fr_assert(!fake->request_pairs);
 		eap_peap_soh_verify(fake, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
 
@@ -652,7 +652,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 	}
 
 	fake = request_alloc_fake(request, NULL);
-	fr_assert(!fake->packet->vps);
+	fr_assert(!fake->request_pairs);
 
 	switch (t->status) {
 	/*
@@ -679,14 +679,14 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 		q[4] = FR_EAP_METHOD_IDENTITY;
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
-		fr_pair_add(&fake->packet->vps, vp);
+		fr_pair_add(&fake->request_pairs, vp);
 	}
 		break;
 
 	case PEAP_STATUS_PHASE2:
-		fake->packet->vps = eap_peap_inner_to_pairs(request, fake->packet,
+		fake->request_pairs = eap_peap_inner_to_pairs(request, fake->packet,
 							    eap_round, data, data_len);
-		if (!fake->packet->vps) {
+		if (!fake->request_pairs) {
 			talloc_free(fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 			rcode = RLM_MODULE_REJECT;
@@ -701,7 +701,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 	}
 
 	RDEBUG2("Got tunneled request");
-	log_request_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, fake->request_pairs, NULL);
 
 	/*
 	 *	Update other items in the request_t data structure.
@@ -754,12 +754,12 @@ static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fa
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->packet, t->username);
-		fr_pair_add(&fake->packet->vps, vp);
+		fr_pair_add(&fake->request_pairs, vp);
 		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
 	} else {

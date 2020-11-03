@@ -148,7 +148,7 @@ static unlang_action_t unlang_subrequest_process(rlm_rcode_t *p_result, request_
 					goto done;
 				}
 				while ((extent = fr_dlist_head(&leaf))) {
-					fr_pair_list_copy(extent->list_ctx, extent->list, child->reply->vps);
+					fr_pair_list_copy(extent->list_ctx, extent->list, child->reply_pairs);
 					fr_dlist_talloc_free_head(&leaf);
 				}
 			}
@@ -209,7 +209,7 @@ static unlang_action_t unlang_subrequest_start(rlm_rcode_t *p_result, request_t 
 							     state->session.unique_int);
 
 	RDEBUG2("Creating subrequest (%s)", child->name);
-	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, child->request_pairs, NULL);
 
 	frame->process = unlang_subrequest_process;
 	return unlang_subrequest_process(p_result, request);
@@ -306,16 +306,16 @@ static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, reque
 		}
 
 	}
-	fr_pair_add(&child->packet->vps, vp);
+	fr_pair_add(&child->request_pairs, vp);
 
 	if (gext->src) {
 		if (tmpl_is_list(gext->src)) {
-			if (tmpl_copy_pairs(child->packet, &child->packet->vps, request, gext->src) < -1) {
+			if (tmpl_copy_pairs(child->packet, &child->request_pairs, request, gext->src) < -1) {
 				RPEDEBUG("Failed copying source attributes into subrequest");
 				goto fail;
 			}
 		} else {
-			if (tmpl_copy_pair_children(child->packet, &child->packet->vps, request, gext->src) < -1) {
+			if (tmpl_copy_pair_children(child->packet, &child->request_pairs, request, gext->src) < -1) {
 				RPEDEBUG("Failed copying source attributes into subrequest");
 				goto fail;
 			}
