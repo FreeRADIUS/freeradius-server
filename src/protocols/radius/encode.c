@@ -51,15 +51,15 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 /** Encode a CHAP password
  *
  * @param[out] out		An output buffer of 17 bytes (id + digest).
- * @param[in] packet		containing the authentication vector/chap-challenge password.
  * @param[in] id		CHAP ID, a random ID for request/response matching.
+ * @param[in] vector		from the original packet or challenge attribute.
  * @param[in] password		Input password to hash.
  * @param[in] password_len	Length of input password.
  */
 void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-				    fr_radius_packet_t *packet, uint8_t id, char const *password, size_t password_len)
+				    uint8_t id, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH],
+				    char const *password, size_t password_len)
 {
-	fr_pair_t	*challenge;
 	fr_md5_ctx_t	*md5_ctx;
 
 	md5_ctx = fr_md5_ctx_alloc(true);
@@ -70,17 +70,7 @@ void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE
 	fr_md5_update(md5_ctx, (uint8_t const *)&id, 1);
 	fr_md5_update(md5_ctx, (uint8_t const *)password, password_len);
 
-	/*
-	 *	Use Chap-Challenge pair if present,
-	 *	Request Authenticator otherwise.
-	 */
-	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge);
-	if (challenge) {
-		fr_md5_update(md5_ctx, challenge->vp_octets, challenge->vp_length);
-	} else {
-		fr_md5_update(md5_ctx, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
-	}
-
+	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	out[0] = id;
 	fr_md5_final(out + 1, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);

@@ -191,8 +191,8 @@ ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t dat
  *	protocols/radius/encode.c
  */
 void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-					       fr_radius_packet_t *packet, uint8_t id,
-					       char const *password, size_t password_len) CC_HINT(nonnull(1,2,4));
+					       uint8_t id, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH],
+					       char const *password, size_t password_len) CC_HINT(nonnull(1,3,4));
 
 ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 

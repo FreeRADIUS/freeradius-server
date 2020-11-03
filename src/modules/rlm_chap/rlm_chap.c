@@ -79,6 +79,8 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 	fr_value_box_t	*vb;
+	fr_pair_t	*challenge;
+	uint8_t	const	*vector;
 
 	/*
 	 *	If there's no input, there's no output
@@ -90,7 +92,17 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_radius_encode_chap_password(chap_password, request->packet, (uint8_t)(fr_rand() & 0xff),
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector,
 				       (*in)->vb_strvalue, (*in)->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -159,6 +171,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
+	fr_pair_t		*challenge;
+	uint8_t	const		*vector;
+
 	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
 	if (!username) {
 		REDEBUG("&User-Name attribute is required for authentication");
@@ -199,7 +214,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	Output is id + password hash
 	 */
-	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0],
+
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector,
 				       known_good->vp_strvalue, known_good->vp_length);
 
 	/*
