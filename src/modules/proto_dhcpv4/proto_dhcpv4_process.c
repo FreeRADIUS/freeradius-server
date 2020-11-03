@@ -51,33 +51,6 @@ fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[] = {
-	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
-	[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
-	[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
-	[FR_DHCP_DECLINE]	= 0,
-	[FR_DHCP_ACK]		= FR_DHCP_ACK,
-	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= 0,
-	[FR_DHCP_INFORM]	= FR_DHCP_ACK,
-	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_ACTIVE, /* not really correct, but whatever */
-};
-
-static int reply_fail[] = {
-	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_DISCOVER]	= 0,
-	[FR_DHCP_OFFER]		= FR_DHCP_NAK,
-	[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
-	[FR_DHCP_DECLINE]	= 0,
-	[FR_DHCP_ACK]		= FR_DHCP_NAK,
-	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= 0,
-	[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
-};
-
-
 /*
  *	Debug the packet if requested.
  */
@@ -142,6 +115,32 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
 	fr_pair_t *vp;
+
+	static int reply_ok[] = {
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
+		[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
+		[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
+		[FR_DHCP_DECLINE]	= 0,
+		[FR_DHCP_ACK]		= FR_DHCP_ACK,
+		[FR_DHCP_NAK]		= FR_DHCP_NAK,
+		[FR_DHCP_RELEASE]	= 0,
+		[FR_DHCP_INFORM]	= FR_DHCP_ACK,
+		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_ACTIVE, /* not really correct, but whatever */
+	};
+
+	static int reply_fail[] = {
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_DISCOVER]	= 0,
+		[FR_DHCP_OFFER]		= FR_DHCP_NAK,
+		[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
+		[FR_DHCP_DECLINE]	= 0,
+		[FR_DHCP_ACK]		= FR_DHCP_NAK,
+		[FR_DHCP_NAK]		= FR_DHCP_NAK,
+		[FR_DHCP_RELEASE]	= 0,
+		[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
+	};
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);

@@ -46,16 +46,6 @@ fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
-	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
-	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
-};
-
-static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
-	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
-	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
-};
-
 static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
@@ -63,6 +53,16 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
 	fr_pair_t *vp;
+
+	static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
+		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
+		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
+	};
+
+	static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
+		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
+		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
+	};
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
