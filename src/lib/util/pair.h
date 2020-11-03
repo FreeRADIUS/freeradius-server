@@ -264,18 +264,6 @@ void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
 
-fr_pair_t	*fr_pair_child_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
-
-fr_pair_t	*fr_pair_child_by_num(fr_pair_t *parent, unsigned int vendor, unsigned int attr);
-
-void		fr_pair_child_add(fr_pair_t *parent, fr_pair_t *vp);
-
-int		fr_pair_child_add_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
-
-int		fr_pair_child_update_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
-
-int		fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
-
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
