@@ -1483,45 +1483,24 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
  */
 void fr_pair_value_clear(fr_pair_t *vp)
 {
+	fr_pair_t *child;
+	fr_cursor_t cursor;
+
 	switch (vp->da->type) {
 	default:
 		fr_value_box_clear_value(&vp->data);
-		return;
+		break;
 
 	case FR_TYPE_STRUCTURAL:
-		/*
-		 *	Depth first freeing of children
-		 *
-		 *	This ensures orderly freeing, regardless
-		 *	of talloc hierarchy.
-		 */
-		switch (vp->children.type) {
-		case FR_PAIR_LIST_SINGLE:
-		{
-			fr_cursor_t	cursor;
-			fr_pair_t	*vpc;
+		if (!vp->vp_group) return;
 
-			for (vpc = fr_cursor_init(&cursor, &vp->children.slist);
-			     vpc;
-			     vpc = fr_cursor_next(&cursor)) {
-				fr_pair_value_clear(vpc);
-				talloc_free(vpc);
-			}
+		for (child = fr_cursor_init(&cursor, &vp->vp_group);
+		     child;
+		     child = fr_cursor_next(&cursor)) {
+			fr_pair_value_clear(child);
+			talloc_free(child);
 		}
-			break;
-
-		case FR_PAIR_LIST_DOUBLE:
-		{
-			fr_pair_t	*vpc = NULL;
-
-			while ((vpc = fr_dlist_next(&vp->children.dlist, vpc))) {
-				fr_pair_value_clear(vpc);
-				talloc_free(vpc);
-			}
-		}
-			break;
-		}
-		return;
+		break;
 	}
 }
 
