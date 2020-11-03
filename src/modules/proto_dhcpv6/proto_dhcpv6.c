@@ -305,7 +305,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	This function also copies over and initializes the
 	 *	various header fields necessary to build the reply packet.
 	 */
-	(void) fr_dhcpv6_reply_initialize(request->reply, &request->reply->vps, packet->data, packet->data_len);
+	(void) fr_dhcpv6_reply_initialize(request->reply, &request->reply_pairs, packet->data, packet->data_len);
 
 	if (!inst->io.app_io->decode) return 0;
 
