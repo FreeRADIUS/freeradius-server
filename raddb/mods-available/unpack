@@ -7,17 +7,22 @@
 #
 #  = Unpack Module
 #
-#  The `unpack` module unpacks binary data from octets type attributes
+#  The `unpack` module provides two xlat functions:
+#
+#  `unpack` unpacks binary data from octets type attributes
 #  into individual attributes.
 #
 #  It is used when vendors put multiple fields into one attribute
 #  of type "octets".
 #
+#  `substring` returns a substring from either the string representation
+#  of an attribute or a literal string
+#
 #  NOTE: The module is useful only for `xlat`.
 #
 
 #
-#  ## Syntax
+#  ## Unpack Syntax
 #
 #  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
@@ -43,13 +48,50 @@
 #
 
 #
-#  ## Sample
+#  ## Unpack Sample
 #
 #  if we have `Class = 0x00000001020304`, then
 #
 #    %{unpack:&Class 4 uint16}
 #
 #  will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
+#
+
+#
+#  ## Substring Syntax
+#
+#  `substring` is for use on the right-hand side of variable assignment.
+#
+#    %{substring:<data> <start> <len>}
+#
+#  The arguments are three fields:
+#
+#  data::
+#
+#  Either `&Attribute-Name` the name of an attribute to express as a string
+#  or literal `string` data.
+#
+#  start::
+#
+#  The offset into the expanded string from which the substring is copied.  The
+#  offset starts at zero.  Values of `start` less than zero are counted in from
+#  the end of the string.
+#
+#  len::
+#
+#  The length of the substring to return.  If the requested length is greater
+#  than the available string then the returned length will be reduced.  Negative
+#  values for `len` remove that many characters from the end of the string.
+#
+
+#
+#  ## Substring Sample
+#
+#  if we have `Tmp-String-0 = "foo bar"`, then
+#
+#    %{substring:&Tmp-String-0 2 3}
+#
+#  will return "o b"
 #
 
 #
