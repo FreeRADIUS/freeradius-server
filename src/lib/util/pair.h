@@ -72,23 +72,6 @@ typedef enum value_type {
 
 typedef struct value_pair_s fr_pair_t;
 
-typedef enum {
-	FR_PAIR_LIST_SINGLE = 0,				//!< Singly linked list.
-	FR_PAIR_LIST_DOUBLE,					//!< Doubly linked list.
-} fr_pair_list_type_t;
-
-/** Placeholder structure to represent lists of pairs
- *
- * Should have additional fields added later.
- */
-typedef struct {
-	union {
-		fr_pair_t	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
-	};
-	fr_pair_list_type_t type;				//!< What type of list this is.
-} fr_pair_list_t;
-
 /** Stores an attribute, a value and various bits of other data
  *
  * fr_pair_ts are the main data structure used in the server
@@ -117,7 +100,7 @@ struct value_pair_s {
 	 */
 	union {
 		fr_value_box_t		data;			//!< The value of this pair.
-		fr_pair_list_t		children;		//!< Nested attributes of this pair.
+		fr_pair_t		*children;		//!< Nested attributes of this pair.
 	};
 };
 
@@ -177,7 +160,7 @@ typedef struct {
 
 #define vp_date			data.vb_date
 
-#define vp_group		children.slist
+#define vp_group		children
 
 #define vp_size			data.datum.size
 #define vp_filter		data.datum.filter
