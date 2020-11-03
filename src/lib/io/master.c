@@ -1539,13 +1539,13 @@ have_client:
 			if (*is_dup) {
 				fr_network_t *nr;
 
-				if (!track->reply) {
-					DEBUG("Ignoring retransmit from client %s - we are still processing the request", client->radclient->shortname);
+				if (track->do_not_respond) {
+					DEBUG("Ignoring retransmit from client %s - we are not responding to this request ", client->radclient->shortname);
 					return 0;
 				}
 
-				if (track->do_not_respond) {
-					DEBUG("Ignoring retransmit from client %s - we are not responding to this request ", client->radclient->shortname);
+				if (!track->reply) {
+					DEBUG("Ignoring retransmit from client %s - we are still processing the request", client->radclient->shortname);
 					return 0;
 				}
 
