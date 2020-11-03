@@ -166,6 +166,18 @@ static inline void fr_net_from_uint16(uint8_t out[static sizeof(uint16_t)], uint
 	out[1] = num & 0xff;
 }
 
+/** Write out an unsigned 24bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_uint24(uint8_t out[static 3], uint32_t num)
+{
+	out[0] = (num >> 16) & 0xff;
+	out[1] = (num >> 8) & 0xff;
+	out[2] = num & 0xff;
+}
+
 /** Write out an unsigned 32bit integer in wire format (big endian)
  *
  * @param[out] out	Where to write the integer.
@@ -247,6 +259,16 @@ static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 static inline uint16_t fr_net_to_uint16(uint8_t const data[static sizeof(uint16_t)])
 {
 	return (((uint16_t)data[0]) << 8) | data[1];
+}
+
+/** Read an unsigned 24bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 24bit unsigned integer of native endianness.
+ * @return a 24 bit unsigned integer of native endianness.
+ */
+static inline uint32_t fr_net_to_uint24(uint8_t const data[static 3])
+{
+	return (((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | data[2];
 }
 
 /** Read an unsigned 32bit integer from wire format (big endian)

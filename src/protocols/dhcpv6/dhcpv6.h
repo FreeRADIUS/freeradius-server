@@ -34,9 +34,22 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 
+#define DHCPV6_MSG_TYPE_LEN		1
+
+#define DHCPV6_TRANSACTION_ID_LEN	3
+
+#define DHCPV6_HOP_COUNT_LEN		1
+#define DHCPV6_LINK_ADDRESS_LEN		16
+#define DHCPV6_PEER_ADDRESS_LEN		16
+
+#define DHCPV6_HDR_LEN			(DHCPV6_MSG_TYPE_LEN + DHCPV6_TRANSACTION_ID_LEN)
+#define DHCPV6_RELAY_HDR_LEN		(DHCPV6_MSG_TYPE_LEN + DHCPV6_HOP_COUNT_LEN + DHCPV6_LINK_ADDRESS_LEN + DHCPV6_PEER_ADDRESS_LEN)
 #define DHCPV6_OPT_HDR_LEN		(sizeof(uint16_t) * 2)
+
 #define DHCPV6_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
 #define DHCPV6_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
+
+#define DHCPV6_MAX_RELAY_NESTING	10
 
 /*
  *	Defined addresses from RFC 8415 Section 7.1

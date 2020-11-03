@@ -600,7 +600,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-
 /** Encode a Vendor-Specific Information Option
  *
  *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1

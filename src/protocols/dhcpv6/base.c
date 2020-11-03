@@ -95,47 +95,46 @@ size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
 };
 
-
 /*
  * grep VALUE share/dictionary/dhcpv6/dictionary.freeradius.internal  | awk '{print "[" $4 "] = \"" $3 "\"," }'
  */
 char const *fr_dhcpv6_packet_types[FR_DHCPV6_MAX_CODE] = {
-	 [0] = "invalid",
-	 [1] = "Solicit",
-	 [2] = "Advertise",
-	 [3] = "Request",
-	 [4] = "Confirm",
-	 [5] = "Renew",
-	 [6] = "Rebind",
-	 [7] = "Reply",
-	 [8] = "Release",
-	 [9] = "Decline",
-	 [10] = "Reconfigure",
-	 [11] = "Information-Request",
-	 [12] = "Relay-Forward",
-	 [13] = "Relay-Reply",
-	 [14] = "Lease-Query",
-	 [15] = "Lease-Query-Reply",
-	 [16] = "Lease-Query-Done",
-	 [17] = "Lease-Query-Data",
-	 [18] = "Reconfigure-Request",
-	 [19] = "Reconfigure-Reply",
-	 [20] = "DHCPv4-Query",
-	 [21] = "DHCPv4-Response",
-	 [22] = "Active-Lease-Query",
-	 [23] = "Start-TLS",
-	 [24] = "Bind-Update",
-	 [25] = "Bind-Reply",
-	 [26] = "Pool-Request",
-	 [27] = "Pool-Response",
-	 [28] = "Update-Request",
-	 [29] = "Update-Request-All",
-	 [30] = "Update-Done",
-	 [31] = "Connect",
-	 [32] = "Connect-Reply",
-	 [33] = "Disconnect",
-	 [34] = "State",
-	 [35] = "Contact",
+	 [0]						= "invalid",
+	 [FR_PACKET_TYPE_VALUE_SOLICIT]			= "Solicit",
+	 [FR_PACKET_TYPE_VALUE_ADVERTISE]		= "Advertise",
+	 [FR_PACKET_TYPE_VALUE_REQUEST]			= "Request",
+	 [FR_PACKET_TYPE_VALUE_CONFIRM]			= "Confirm",
+	 [FR_PACKET_TYPE_VALUE_RENEW]			= "Renew",
+	 [FR_PACKET_TYPE_VALUE_REBIND]			= "Rebind",
+	 [FR_PACKET_TYPE_VALUE_REPLY]			= "Reply",
+	 [FR_PACKET_TYPE_VALUE_RELEASE]			= "Release",
+	 [FR_PACKET_TYPE_VALUE_DECLINE]			= "Decline",
+	 [FR_PACKET_TYPE_VALUE_RECONFIGURE]		= "Reconfigure",
+	 [FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST]	= "Information-Request",
+	 [FR_PACKET_TYPE_VALUE_RELAY_FORWARD]		= "Relay-Forward",
+	 [FR_PACKET_TYPE_VALUE_RELAY_REPLY]		= "Relay-Reply",
+	 [FR_PACKET_TYPE_VALUE_LEASE_QUERY]		= "Lease-Query",
+	 [FR_PACKET_TYPE_VALUE_LEASE_QUERY_REPLY]	= "Lease-Query-Reply",
+	 [FR_PACKET_TYPE_VALUE_LEASE_QUERY_DONE]	= "Lease-Query-Done",
+	 [FR_PACKET_TYPE_VALUE_LEASE_QUERY_DATA]	= "Lease-Query-Data",
+	 [FR_PACKET_TYPE_VALUE_RECONFIGURE_REQUEST]	= "Reconfigure-Request",
+	 [FR_PACKET_TYPE_VALUE_RECONFIGURE_REPLY]	= "Reconfigure-Reply",
+	 [FR_PACKET_TYPE_VALUE_DHCPV4_QUERY]		= "DHCPv4-Query",
+	 [FR_PACKET_TYPE_VALUE_DHCPV4_RESPONSE]		= "DHCPv4-Response",
+	 [FR_PACKET_TYPE_VALUE_ACTIVE_LEASE_QUERY]	= "Active-Lease-Query",
+	 [FR_PACKET_TYPE_VALUE_START_TLS]		= "Start-TLS",
+	 [FR_PACKET_TYPE_VALUE_BIND_UPDATE]		= "Bind-Update",
+	 [FR_PACKET_TYPE_VALUE_BIND_REPLY]		= "Bind-Reply",
+	 [FR_PACKET_TYPE_VALUE_POOL_REQUEST]		= "Pool-Request",
+	 [FR_PACKET_TYPE_VALUE_POOL_RESPONSE]		= "Pool-Response",
+	 [FR_PACKET_TYPE_VALUE_UPDATE_REQUEST]		= "Update-Request",
+	 [FR_PACKET_TYPE_VALUE_UPDATE_REQUEST_ALL]	= "Update-Request-All",
+	 [FR_PACKET_TYPE_VALUE_UPDATE_DONE]		= "Update-Done",
+	 [FR_PACKET_TYPE_VALUE_CONNECT]			= "Connect",
+	 [FR_PACKET_TYPE_VALUE_CONNECT_REPLY]		= "Connect-Reply",
+	 [FR_PACKET_TYPE_VALUE_DISCONNECT]		= "Disconnect",
+	 [FR_PACKET_TYPE_VALUE_STATE]			= "State",
+	 [FR_PACKET_TYPE_VALUE_CONTACT]			= "Contact"
 };
 
 /** Return the on-the-wire length of an attribute value
@@ -153,14 +152,14 @@ size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
 		if (vp->data.enumv->flags.length) return vp->data.enumv->flags.length;
-		return 4;
-
-	default:
-		return fr_dhcpv6_attr_sizes[vp->vp_type][0];
+		return sizeof(uint32_t);
 
 	case FR_TYPE_STRUCTURAL:
 		fr_assert_fail(NULL);
 		return 0;
+
+	default:
+		return fr_dhcpv6_attr_sizes[vp->vp_type][0];
 	}
 }
 
@@ -179,13 +178,13 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	while (p < end) {
 		uint16_t len;
 
-		if ((end - p) < 4) {
+		if ((size_t)(end - p) < DHCPV6_OPT_HDR_LEN) {
 			*error = "Not enough room for option header";
 			return -(p - packet);
 		}
 
 		len = DHCPV6_GET_OPTION_LEN(p);
-		if ((end - p) < (4 + len)) {
+		if ((size_t)(end - p) < (DHCPV6_OPT_HDR_LEN + len)) {
 			*error = "Option length overflows the packet";
 			return -(p - packet);
 		}
@@ -207,14 +206,12 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 			 *	Recurse to check the encapsulated packet.
 			 */
 			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1, error);
-			if (child <= 0) {
-				return -((p + 4) - packet) + child;
-			}
+			if (child <= 0) return -((p + 4) - packet) + child;
 
 			attributes += child;
 		}
 
-		p += 4 + len;
+		p += DHCPV6_OPT_HDR_LEN + len;
 	}
 
 	return attributes;
@@ -223,37 +220,40 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
 				     char const **error)
 {
-	uint8_t const *p;
-	ssize_t attributes;
-	bool allow_relay;
-	size_t packet_len = end - packet;
+	uint8_t const	*p;
+	ssize_t		attributes;
+	bool		allow_relay;
+	size_t		packet_len = end - packet;
 
-	if (depth > 8) {
+	if (depth > DHCPV6_MAX_RELAY_NESTING) {
 		*error = "Too many layers forwarded packets";
 		return 0;
 	}
 
-	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
-	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
-		if (packet_len < 2 + 32) {
+	switch (packet[0]) {
+	case FR_DHCPV6_RELAY_FORWARD:
+	case FR_DHCPV6_RELAY_REPLY:
+		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
 			*error = "Packet is too small for relay header";
 			return 0;
 		}
 
-		p = packet + 2 + 32;
+		p = packet + DHCPV6_RELAY_HDR_LEN;
 		allow_relay = true;
+		break;
 
-	} else {
+	default:
 		/*
 		 *	8 bit code + 24 bits of transaction ID
 		 */
-		if (packet_len < 4) {
+		if (packet_len < DHCPV6_HDR_LEN) {
 			*error = "Packet is too small for DHCPv6 header";
 			return 0;
 		}
 
-		p = packet + 4;
+		p = packet + DHCPV6_HDR_LEN;
 		allow_relay = false;
+		break;
 	}
 
 	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth, error);
@@ -298,16 +298,16 @@ uint8_t const *fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, u
 		uint16_t found;
 		uint16_t len;
 
-		if ((end - p) < 4) return NULL;
+		if ((size_t)(end - p) < DHCPV6_OPT_HDR_LEN) return NULL;
 
 		found = DHCPV6_GET_OPTION_NUM(p);
 		len = DHCPV6_GET_OPTION_LEN(p);
 
-		if ((p + 4 + len) > end) return NULL;
+		if ((p + DHCPV6_OPT_HDR_LEN + len) > end) return NULL;
 
 		if (found == option) return p;
 
-		p += 4 + len;
+		p += DHCPV6_OPT_HDR_LEN + len;
 	}
 
 	return NULL;
@@ -336,7 +336,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 
 	switch (packet[0]) {
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
-		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
+		transaction_id = fr_net_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) {
 		fail_tid:
 			fr_strerror_printf("Transaction ID does not match");
@@ -374,7 +374,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		return true;
 
 	case FR_PACKET_TYPE_VALUE_REPLY:
-		transaction_id = (packet[1] << 16) | (packet[2] << 8) | packet[3];
+		transaction_id = fr_net_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
 
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
@@ -419,12 +419,12 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		break;
 
 	case FR_DHCPV6_RELAY_REPLY:
-		if (packet_len < 2 + 32) {
+		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
 			fr_strerror_printf("Relay-Reply message is too small");
 			return false;
 		}
 
-		options += (2 + 32 - 4); /* we assumed it was a normal packet above  */
+		options += (DHCPV6_RELAY_HDR_LEN - 4); /* we assumed it was a normal packet above  */
 		option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
 		if (!option) {
 			fr_strerror_printf("Packet does not contain a Relay-Message option");
@@ -523,12 +523,12 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		break;
 
 	case FR_DHCPV6_RELAY_FORWARD:
-		if (packet_len < 2 + 32) {
+		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
 			fr_strerror_printf("Relay-Forward message is too small");
 			return false;
 		}
 
-		options += (2 + 32 - 4); /* we assumed it was a normal packet above  */
+		options += (DHCPV6_RELAY_HDR_LEN - 4); /* we assumed it was a normal packet above  */
 		option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
 		if (!option) {
 			fr_strerror_printf("Packet does not contain a Relay-Message option");
@@ -613,7 +613,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		/*
 		 *	Just for sanity check.
 		 */
-		if (packet_len < 2 + 32) {
+		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
 			return -1;
 		}
 
@@ -642,7 +642,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 		fr_cursor_append(cursor, vp);
 
-		p = packet + 2 + 32;
+		p = packet + DHCPV6_RELAY_HDR_LEN;
 		goto decode_options;
 	}
 
@@ -877,7 +877,7 @@ int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const
 	 *	Relay-Forward packets MAY include an Interface-ID.  In
 	 *	which case it MUST be echoed in the reply/
 	 */
-	options = packet + 2 + 32;
+	options = packet + DHCPV6_RELAY_HDR_LEN;
 	option = fr_dhcpv6_option_find(options, end, FR_INTERFACE_ID);
 	if (option) {
 		slen = fr_dhcpv6_decode_option(ctx, &cursor, dict_dhcpv6, option, end - option, &packet_ctx);
