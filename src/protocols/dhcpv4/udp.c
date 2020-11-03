@@ -51,7 +51,7 @@
  *	- >= 0 if successful.
  *	- < 0 if failed.
  */
-int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
+int fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet)
 {
 	int ret;
 	struct sockaddr_storage	dst;
@@ -79,16 +79,16 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
  *
  * @param sockfd handle.
  * @return
- *	- pointer to RADIUS_PACKET if successful.
+ *	- pointer to fr_radius_packet_t if successful.
  *	- NULL if failed.
  */
-RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
+fr_radius_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src;
 	socklen_t		sizeof_dst;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	uint8_t			*data;
 	ssize_t			data_len;
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;

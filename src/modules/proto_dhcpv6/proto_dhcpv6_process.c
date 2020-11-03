@@ -51,7 +51,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv6_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];

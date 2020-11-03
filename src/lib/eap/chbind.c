@@ -301,7 +301,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps)
 	return packet;
 }
 
-fr_pair_t *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
+fr_pair_t *eap_chbind_packet2vp(fr_radius_packet_t *packet, chbind_packet_t *chbind)
 {
 	fr_pair_t	*vp;
 

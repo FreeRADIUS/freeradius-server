@@ -102,7 +102,7 @@ fr_pair_t *fr_pair_alloc(TALLOC_CTX *ctx)
  *
  * @note Doesn't require qualification with a dictionary as fr_dict_attr_t are unique.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
  * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
  * @return
  *	- A new #fr_pair_t.
@@ -157,7 +157,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
  * @param[in] parent	of the attribute being allocated (usually a dictionary or vendor).
  * @param[in] attr	number.
  * @return

@@ -142,26 +142,26 @@ void		fr_radius_free(void);
 /*
  *	protocols/radius/packet.c
  */
-ssize_t		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+ssize_t		fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,3));
-int		fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+int		fr_radius_packet_decode(fr_radius_packet_t *packet, fr_radius_packet_t *original,
 					uint32_t max_attributes, bool tunnel_password_zeros,
 					char const *secret) CC_HINT(nonnull (1,5));
 
-bool		fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma,
+bool		fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma,
 				    decode_fail_t *reason) CC_HINT(nonnull (1));
 
-int		fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+int		fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *original,
 					char const *secret) CC_HINT(nonnull (1,3));
-int		fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int		fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
-RADIUS_PACKET	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma);
-int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+fr_radius_packet_t	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma);
+int		fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
 #define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__);
-void		_fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line) CC_HINT(nonnull);
+void		_fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {
 	fr_pair_t	*parent;
@@ -191,7 +191,7 @@ ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t dat
  *	protocols/radius/encode.c
  */
 void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-					       RADIUS_PACKET *packet, uint8_t id,
+					       fr_radius_packet_t *packet, uint8_t id,
 					       char const *password, size_t password_len) CC_HINT(nonnull(1,2,4));
 
 ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);

@@ -289,7 +289,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
  * @note Called with the mutex held.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
-					    RADIUS_PACKET *packet, fr_state_entry_t *old)
+					    fr_radius_packet_t *packet, fr_state_entry_t *old)
 {
 	size_t			i;
 	uint32_t		x;

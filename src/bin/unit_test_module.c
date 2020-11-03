@@ -294,7 +294,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 }
 
 
-static void print_packet(FILE *fp, RADIUS_PACKET *packet)
+static void print_packet(FILE *fp, fr_radius_packet_t *packet)
 {
 	fr_pair_t *vp;
 	fr_cursor_t cursor;

@@ -75,7 +75,7 @@ typedef enum {
 	RS_LOST		= 0x20
 } rs_status_t;
 
-typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
 				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
@@ -175,7 +175,7 @@ typedef struct {
 	uint8_t			*data;			//!< PCAP packet data.
 } rs_capture_t;
 
-/** Wrapper for RADIUS_PACKET
+/** Wrapper for fr_radius_packet_t
  *
  * Allows an event to be associated with a request packet.  This is required because we need to disarm
  * the event timer when a response is received, so we don't erroneously log the response as lost.
@@ -189,9 +189,9 @@ typedef struct {
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	RADIUS_PACKET		*packet;		//!< The original packet.
-	RADIUS_PACKET		*expect;		//!< Request/response.
-	RADIUS_PACKET		*linked;		//!< The subsequent response or forwarded request the packet
+	fr_radius_packet_t		*packet;		//!< The original packet.
+	fr_radius_packet_t		*expect;		//!< Request/response.
+	fr_radius_packet_t		*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
 
 

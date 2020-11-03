@@ -115,7 +115,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ NULL }
 };
 
-fr_pair_t *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
+fr_pair_t *eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	uint8_t const *ptr;

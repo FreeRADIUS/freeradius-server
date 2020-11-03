@@ -153,7 +153,7 @@ static int eap_peap_soh(request_t *request,fr_tls_session_t *tls_session)
 	return 1;
 }
 
-static void eap_peap_soh_verify(request_t *request, RADIUS_PACKET *packet,
+static void eap_peap_soh_verify(request_t *request, fr_radius_packet_t *packet,
 			  	uint8_t const *data, unsigned int data_len) {
 
 	fr_pair_t *vp;
@@ -260,7 +260,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 /*
  *	Convert a pseudo-EAP packet to a list of fr_pair_t's.
  */
-static fr_pair_t *eap_peap_inner_to_pairs(UNUSED request_t *request, RADIUS_PACKET *packet,
+static fr_pair_t *eap_peap_inner_to_pairs(UNUSED request_t *request, fr_radius_packet_t *packet,
 			  		   eap_round_t *eap_round,
 			  		   uint8_t const *data, size_t data_len)
 {
@@ -367,7 +367,7 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request, RADIUS_PACKET *reply)
+						  request_t *request, fr_radius_packet_t *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	fr_pair_t *vp;

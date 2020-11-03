@@ -37,7 +37,7 @@ extern "C" {
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];

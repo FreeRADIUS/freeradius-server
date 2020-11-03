@@ -69,7 +69,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void const *instance, request_t *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void const *instance, request_t *request, fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
 	uint32_t		hash;
 	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);

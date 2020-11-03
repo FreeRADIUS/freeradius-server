@@ -75,20 +75,20 @@ fr_pair_t **radius_list(request_t *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a list to the #RADIUS_PACKET holding the HEAD pointer for a #fr_pair_t list
+/** Resolve a list to the #fr_radius_packet_t holding the HEAD pointer for a #fr_pair_t list
  *
- * Returns a pointer to the #RADIUS_PACKET that holds the HEAD pointer of a given list,
+ * Returns a pointer to the #fr_radius_packet_t that holds the HEAD pointer of a given list,
  * for the current #request_t.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #pair_list_t value to resolve to #RADIUS_PACKET.
+ * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
  * @return
- *	- #RADIUS_PACKET on success.
+ *	- #fr_radius_packet_t on success.
  *	- NULL on failure.
  *
  * @see radius_list
  */
-RADIUS_PACKET *radius_packet(request_t *request, pair_list_t list)
+fr_radius_packet_t *radius_packet(request_t *request, pair_list_t list)
 {
 	switch (list) {
 	/* Don't add default */
@@ -110,8 +110,8 @@ RADIUS_PACKET *radius_packet(request_t *request, pair_list_t list)
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
  * Allocating new #fr_pair_t in the context of a #request_t is usually wrong.
- * #fr_pair_t should be allocated in the context of a #RADIUS_PACKET, so that if the
- * #RADIUS_PACKET is freed before the #request_t, the associated #fr_pair_t lists are
+ * #fr_pair_t should be allocated in the context of a #fr_radius_packet_t, so that if the
+ * #fr_radius_packet_t is freed before the #request_t, the associated #fr_pair_t lists are
  * freed too.
  *
  * @param[in] request containing the target lists.

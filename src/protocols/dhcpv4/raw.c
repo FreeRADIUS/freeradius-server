@@ -104,7 +104,7 @@ int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int ifindex)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *packet)
+int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, fr_radius_packet_t *packet)
 {
 	uint8_t			dhcp_packet[1518] = { 0 };
 	ethernet_header_t	*eth_hdr = (ethernet_header_t *)dhcp_packet;
@@ -171,10 +171,10 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
  *
  *	FIXME: split this into two, recv_raw_packet, and verify(packet, original)
  */
-RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *request)
+fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, fr_radius_packet_t *request)
 {
 	fr_pair_t		*vp;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	uint8_t const		*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;

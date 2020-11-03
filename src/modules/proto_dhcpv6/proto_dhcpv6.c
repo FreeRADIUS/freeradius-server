@@ -253,7 +253,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
 	RADCLIENT const *client;
-	RADIUS_PACKET *packet = request->packet;
+	fr_radius_packet_t *packet = request->packet;
 	fr_cursor_t cursor;
 
 	/*

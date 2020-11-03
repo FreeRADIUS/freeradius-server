@@ -47,7 +47,7 @@ RCSID("$Id$")
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
+ * @param[in] ctx for allocated memory, usually a pointer to a #fr_radius_packet_t.
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return

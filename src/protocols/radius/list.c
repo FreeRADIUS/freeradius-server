@@ -39,7 +39,7 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
+int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b)
 {
 	int rcode;
 
@@ -85,8 +85,8 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 /*
  *	Create a fake "request" from a reply, for later lookup.
  */
-void fr_request_from_reply(RADIUS_PACKET *request,
-			   RADIUS_PACKET const *reply)
+void fr_request_from_reply(fr_radius_packet_t *request,
+			   fr_radius_packet_t const *reply)
 {
 	fr_socket_addr_swap(&request->socket, &reply->socket);
 	request->id = reply->id;
@@ -279,8 +279,8 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 static int packet_entry_cmp(void const *one, void const *two)
 {
-	RADIUS_PACKET const * const *a = one;
-	RADIUS_PACKET const * const *b = two;
+	fr_radius_packet_t const * const *a = one;
+	fr_radius_packet_t const * const *b = two;
 
 	return fr_packet_cmp(*a, *b);
 }
@@ -325,14 +325,14 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
  *	be called before inserting the packet into the list!
  */
 bool fr_packet_list_insert(fr_packet_list_t *pl,
-			    RADIUS_PACKET **request_p)
+			    fr_radius_packet_t **request_p)
 {
 	if (!pl || !request_p || !*request_p) return 0;
 
 	return rbtree_insert(pl->tree, request_p);
 }
 
-RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl, RADIUS_PACKET *request)
+fr_radius_packet_t **fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
 	if (!pl || !request) return 0;
 
@@ -344,9 +344,9 @@ RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl, RADIUS_PACKET *request
  *	This presumes that the reply has dst_ipaddr && dst_port set up
  *	correctly (i.e. real IP, or "*").
  */
-RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET *reply)
+fr_radius_packet_t **fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply)
 {
-	RADIUS_PACKET my_request, *request;
+	fr_radius_packet_t my_request, *request;
 	fr_packet_socket_t *ps;
 
 	if (!pl || !reply) return NULL;
@@ -382,7 +382,7 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET 
 }
 
 
-bool fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
+bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
 	rbnode_t *node;
 
@@ -423,12 +423,12 @@ uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	should be used.
  */
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    RADIUS_PACKET **request_p, void **pctx)
+			    fr_radius_packet_t **request_p, void **pctx)
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	fr_packet_socket_t *ps= NULL;
-	RADIUS_PACKET *request = *request_p;
+	fr_radius_packet_t *request = *request_p;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
@@ -647,7 +647,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
  *	any newly inserted entries don't collide with this one.
  */
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			    RADIUS_PACKET *request, bool yank)
+			    fr_radius_packet_t *request, bool yank)
 {
 	fr_packet_socket_t *ps;
 
@@ -711,10 +711,10 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add socket.fd, if -1, do round-robin, else do socket.fd
  *		IF in fdset.
  */
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
+fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
 {
 	int start;
-	RADIUS_PACKET *packet;
+	fr_radius_packet_t *packet;
 
 	if (!pl || !set) return NULL;
 
@@ -769,7 +769,7 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
 /*
  *	Debug the packet if requested.
  */
-void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received)
+void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received)
 {
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
@@ -840,7 +840,7 @@ void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool recei
 /*
  *	Debug the packet header and all attributes
  */
-void fr_packet_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received)
+void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received)
 {
 	fr_packet_header_log(log, packet, received);
 	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, packet->vps);

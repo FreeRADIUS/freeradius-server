@@ -37,7 +37,7 @@
  *	- -1 on failure.
  *	- 0 on success.
  */
-int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet)
+int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_radius_packet_t *packet)
 {
 	int			ret;
 	uint8_t			dhcp_packet[1518] = { 0 };
@@ -107,10 +107,10 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET 
  *
  * @param pcap handle
  * @return
- *	- pointer to RADIUS_PACKET if successful.
+ *	- pointer to fr_radius_packet_t if successful.
  *	- NULL if failed.
  */
-RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
+fr_radius_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 {
 	int			ret;
 
@@ -120,7 +120,7 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	uint16_t		src_port, dst_port;
 	struct pcap_pkthdr	*header;
 	ssize_t			link_len, len;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 
 	/*
 	 *	Pointers into the packet data we just received

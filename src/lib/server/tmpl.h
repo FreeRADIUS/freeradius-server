@@ -836,7 +836,7 @@ void			tmpl_debug(tmpl_t const *vpt);
 
 fr_pair_t		**radius_list(request_t *request, pair_list_t list);
 
-RADIUS_PACKET		*radius_packet(request_t *request, pair_list_t list_name);
+fr_radius_packet_t		*radius_packet(request_t *request, pair_list_t list_name);
 
 TALLOC_CTX		*radius_list_ctx(request_t *request, pair_list_t list_name);
 

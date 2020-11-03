@@ -292,7 +292,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char const *filename, rbtree_t *tree,
-			       RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+			       fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
 	char const	*name;
 	fr_pair_t	*check_tmp = NULL;

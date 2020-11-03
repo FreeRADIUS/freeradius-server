@@ -57,7 +57,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
  * @param[in] password_len	Length of input password.
  */
 void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-				    RADIUS_PACKET *packet, uint8_t id, char const *password, size_t password_len)
+				    fr_radius_packet_t *packet, uint8_t id, char const *password, size_t password_len)
 {
 	fr_pair_t	*challenge;
 	fr_md5_ctx_t	*md5_ctx;

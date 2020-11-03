@@ -202,7 +202,7 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	return fr_pair_cmp_by_parent_num(my_a, my_b);
 }
 
-/** Check received DHCP request is valid and build RADIUS_PACKET structure if it is
+/** Check received DHCP request is valid and build fr_radius_packet_t structure if it is
  *
  * @param data pointer to received packet.
  * @param data_len length of received data, and then length of the actual DHCP data.

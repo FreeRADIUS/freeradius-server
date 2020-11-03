@@ -304,7 +304,7 @@ static void rs_packet_print_csv_header(void)
 	fprintf(stdout , "%s\n", buffer);
 }
 
-static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
 				UNUSED struct timeval *elapsed, struct timeval *latency, UNUSED bool response,
 				bool body)
 {
@@ -377,7 +377,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	fprintf(stdout , "%s\n", buffer);
 }
 
-static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
 				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
 	char buffer[2048];
@@ -473,7 +473,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 }
 
 static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				   RADIUS_PACKET *packet, struct timeval *elapsed, struct timeval *latency,
+				   fr_radius_packet_t *packet, struct timeval *elapsed, struct timeval *latency,
 				   bool response, bool body)
 {
 	if (!conf->logger) return;
@@ -1008,7 +1008,7 @@ static int _request_free(rs_request_t *request)
 static void rs_packet_cleanup(rs_request_t *request)
 {
 
-	RADIUS_PACKET *packet = request->packet;
+	fr_radius_packet_t *packet = request->packet;
 	uint64_t count = request->id;
 
 	RS_ASSERT(request->stats_req);
@@ -1207,7 +1207,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	static uint64_t		captured = 0;
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
-	RADIUS_PACKET		*packet;		/* Current packet were processing */
+	fr_radius_packet_t		*packet;		/* Current packet were processing */
 	rs_request_t		*original = NULL;
 
 	rs_request_t		search;

@@ -100,8 +100,8 @@ struct request_s {
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
-	RADIUS_PACKET		*packet;	//!< Incoming request.
-	RADIUS_PACKET		*reply;		//!< Outgoing response.
+	fr_radius_packet_t		*packet;	//!< Incoming request.
+	fr_radius_packet_t		*reply;		//!< Outgoing response.
 
 	fr_pair_t		*control;	//!< #fr_pair_t (s) used to set per request parameters
 						//!< for modules and the server core at runtime.

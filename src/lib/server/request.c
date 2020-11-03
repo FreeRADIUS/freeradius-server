@@ -259,7 +259,7 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx)
 							2 + 				/* packets */
 							10,				/* extra */
 							(UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
-							(sizeof(RADIUS_PACKET) * 2) +	/* packets */
+							(sizeof(fr_radius_packet_t) * 2) +	/* packets */
 							128				/* extra */
 							));
 		talloc_set_destructor(request, _request_free);
@@ -496,11 +496,11 @@ int request_detach(request_t *fake, bool will_free)
 /*
  *	Verify a packet.
  */
-static void packet_verify(char const *file, int line, request_t const *request, RADIUS_PACKET const *packet, char const *type)
+static void packet_verify(char const *file, int line, request_t const *request, fr_radius_packet_t const *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
-	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL",
+	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: fr_radius_packet_t %s pointer was NULL",
 			    file, line, type);
 
 	parent = talloc_parent(packet);
@@ -509,7 +509,7 @@ static void packet_verify(char const *file, int line, request_t const *request, 
 		if (parent) fr_log_talloc_report(parent);
 
 
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected fr_radius_packet_t %s to be parented "
 				     "by %p (%s), but parented by %p (%s)",
 				     file, line, type, request, talloc_get_name(request),
 				     parent, parent ? talloc_get_name(parent) : "NULL");

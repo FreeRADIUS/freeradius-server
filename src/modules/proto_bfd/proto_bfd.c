@@ -384,7 +384,7 @@ static const char *bfd_state[] = {
 };
 
 
-static void bfd_request(bfd_state_t *session, request_t *request, RADIUS_PACKET *packet)
+static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_packet_t *packet)
 {
 	memset(request, 0, sizeof(*request));
 	memset(packet, 0, sizeof(*packet));
@@ -398,7 +398,7 @@ static void bfd_request(bfd_state_t *session, request_t *request, RADIUS_PACKET 
 
 static void bfd_trigger(bfd_state_t *session)
 {
-	RADIUS_PACKET packet;
+	fr_radius_packet_t packet;
 	request_t request;
 	char buffer[256];
 
@@ -1324,7 +1324,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	 *	Warn about it.
 	 */
 	if ((session->detect_multi >= 2) && (session->last_recv > session->next_recv)) {
-		RADIUS_PACKET packet;
+		fr_radius_packet_t packet;
 		request_t request;
 
 		bfd_request(session, &request, &packet);
@@ -1341,7 +1341,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 
 	if (session->server_cs) {
 		request_t *request;
-		RADIUS_PACKET *packet, *reply;
+		fr_radius_packet_t *packet, *reply;
 
 		request = request_alloc(session);
 		packet = fr_radius_alloc(request, 0);

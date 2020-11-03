@@ -190,7 +190,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-static int mschapv1_encode(RADIUS_PACKET *packet, fr_pair_t **request,
+static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_t **request,
 			   char const *password)
 {
 	unsigned int		i;
@@ -942,7 +942,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	fd_set		set;
 	fr_time_delta_t our_wait_time;
 	rc_request_t	*request;
-	RADIUS_PACKET	*reply, **packet_p;
+	fr_radius_packet_t	*reply, **packet_p;
 	volatile int	max_fd;
 
 	/* And wait for reply, timing out as necessary */

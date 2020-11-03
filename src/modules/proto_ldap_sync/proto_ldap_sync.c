@@ -228,7 +228,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ NULL }
 };
 
-static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED fr_radius_packet_t *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
 	fr_assert(0 == 1);
@@ -300,7 +300,7 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  * @param[in] packet	containing attributes from the entry we received.
  * @param[in] received	Should always be true.
  */
-static void proto_ldap_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+static void proto_ldap_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
@@ -495,7 +495,7 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
 {
 	TALLOC_CTX		*ctx;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	request_t			*request;
 
 	ctx = talloc_pool(NULL, main_config->talloc_pool_size);
