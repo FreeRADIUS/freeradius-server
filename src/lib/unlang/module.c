@@ -398,7 +398,7 @@ int unlang_module_push(rlm_rcode_t *out, request_t *request,
 	 *	Hopefully in future versions of talloc the O(n) problem
 	 *	will be fixed for stealing.
 	 */
-	talloc_steal(frame, mc);
+	talloc_steal(state, mc);
 
 	return 0;
 }
