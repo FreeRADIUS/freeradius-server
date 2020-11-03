@@ -102,10 +102,7 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  *
  * The cursor is used to track how many pairs there are remaining.
  *
- * @param[out] out		Where to write encoded data.  The encoding function should
- *				not assume that this buffer has been initialised, and must
- *				zero out any portions used for padding.
- * @param[in] outlen		The length of the buffer provided.
+ * @param[out] out		Where to write the encoded data.
  * @param[in] cursor		Cursor containing the list of attributes to process.
  * @param[in] encoder_ctx	Any encoder specific data such as secrets or configurables.
  * @return
@@ -116,7 +113,7 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  *	  integer that would be required to encode the attribute.
  *	- >0 - The number of bytes written to out.
  */
-typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
+typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_cursor_t *cursor, void *encoder_ctx);
 
 /** A generic interface for decoding fr_pair_ts
  *

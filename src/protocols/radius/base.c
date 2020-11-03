@@ -1030,7 +1030,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = fr_radius_encode_pair_dbuff(&work_dbuff, &cursor, &packet_ctx);
+		slen = fr_radius_encode_pair(&work_dbuff, &cursor, &packet_ctx);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;

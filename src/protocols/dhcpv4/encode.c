@@ -479,8 +479,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 
 /** Encode a DHCP option and any sub-options.
  *
- * @param[out] out		Where to write encoded DHCP attributes.
- * @param[in] outlen		Length of out buffer.
+ * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
  * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
@@ -489,12 +488,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	return fr_dhcpv4_encode_option_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
-}
-
-ssize_t fr_dhcpv4_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;

@@ -854,15 +854,18 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	return p - out;	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	fr_pair_t const	*vp;
+	fr_pair_t const		*vp;
 	ssize_t			slen;
 	size_t			attr_len;
 
 	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;
 	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
+
+	uint8_t			*out = fr_dbuff_start(dbuff);
+	size_t			outlen = fr_dbuff_remaining(dbuff);
 
 	if (!cursor || !out) return PAIR_ENCODE_FATAL_ERROR;
 
@@ -1019,7 +1022,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 */
 	(void)fr_cursor_head(&cursor);
 	while (fr_cursor_current(&cursor)) {
-		slen = fr_aka_sim_encode_pair(p, end - p, &cursor, packet_ctx);
+		slen = fr_aka_sim_encode_pair(&FR_DBUFF_TMP(p, end), &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
 			talloc_free(buff);

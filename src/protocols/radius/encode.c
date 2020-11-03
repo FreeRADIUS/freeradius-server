@@ -345,7 +345,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = fr_radius_encode_pair_dbuff(dbuff, &cursor, encoder_ctx);
+		slen = fr_radius_encode_pair(dbuff, &cursor, encoder_ctx);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
@@ -1267,8 +1267,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
  * we use for tracking our TLV/VSA nesting and then calls the appropriate
  * dispatch function.
  *
- * @param[out] out		Where to write encoded data.
- * @param[in] outlen		Length of the out buffer.
+ * @param[out] dbuff		Where to write encoded data.
  * @param[in] cursor		Specifying attribute to encode.
  * @param[in] encoder_ctx	Additional data such as the shared secret to use.
  * @return
@@ -1276,14 +1275,9 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
-	return fr_radius_encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
-}
-
-ssize_t fr_radius_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	fr_pair_t const	*vp;
+	fr_pair_t const		*vp;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 

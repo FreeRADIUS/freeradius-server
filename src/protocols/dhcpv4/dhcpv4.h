@@ -162,9 +162,7 @@ ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 /*
  *	encode.c
  */
-ssize_t		fr_dhcpv4_encode_option(uint8_t *out, size_t outlen,
-					fr_cursor_t *cursor, void *encoder_ctx);
-ssize_t		fr_dhcpv4_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
 /*
  *	packet.c

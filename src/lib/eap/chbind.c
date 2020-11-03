@@ -99,7 +99,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 		}
 		if (vp->da == attr_message_authenticator) goto next;
 
-		slen = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
+		slen = fr_radius_encode_pair(&FR_DBUFF_TMP(ptr, end), &cursor, NULL);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) goto next;
 

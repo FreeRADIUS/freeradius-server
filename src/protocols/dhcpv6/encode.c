@@ -109,7 +109,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	VP_VERIFY(vp);
@@ -217,7 +217,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		if (vp->vp_length < (size_t)slen) {
 			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), vp->vp_length);
-			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, slen - vp->vp_length);
+			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0x00, slen - vp->vp_length);
 		} else {
 			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), (size_t) slen);
 		}
@@ -330,7 +330,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 			while (fr_cursor_current(&child_cursor) != NULL) {
 				child = fr_cursor_current(&child_cursor);
-				slen = fr_dhcpv6_encode_option_dbuff(&work_dbuff, &child_cursor, encoder_ctx);
+				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encoder_ctx);
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
 				if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
@@ -765,8 +765,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 
 /** Encode a DHCPv6 option and any sub-options.
  *
- * @param[out] out		Where to write encoded DHCP attributes.
- * @param[in] outlen		Length of out buffer.
+ * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
  * @param[in] encoder_ctx	containing parameters for the encoder.
@@ -774,12 +773,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
  *	- > 0 length of data written.
  *	- < 0 error.
  */
-ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	return fr_dhcpv6_encode_option_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
-}
-
-ssize_t fr_dhcpv6_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx)
+ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;

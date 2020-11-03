@@ -816,7 +816,7 @@ ssize_t	fr_dhcpv6_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original, size_
 
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
 	while ((fr_dbuff_extend(dbuff) > 0) && (fr_cursor_current(&cursor) != NULL)) {
-		slen = fr_dhcpv6_encode_option_dbuff(dbuff, &cursor, &packet_ctx);
+		slen = fr_dhcpv6_encode_option(dbuff, &cursor, &packet_ctx);
 		switch (slen) {
 		case PAIR_ENCODE_SKIPPED:
 			continue;
