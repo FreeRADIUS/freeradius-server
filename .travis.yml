@@ -12,6 +12,8 @@ env:
   - KQUEUE_DEBUG="yes"
   - M_PERTURB=0x42
   - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  - SMTP_TEST_SERVER="127.0.0.1"
+  - IMAP_TEST_SERVER="127.0.0.1"
   - SQL_MYSQL_TEST_SERVER="127.0.0.1"
   - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
   - LDAP_TEST_SERVER="127.0.0.1"
