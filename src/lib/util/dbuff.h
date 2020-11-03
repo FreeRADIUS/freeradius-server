@@ -1105,14 +1105,48 @@ FR_DBUFF_OUT_DEF(int64)
 
 #define fr_dbuff_out(_value, _dbuff) \
 	_Generic((_value), \
+		uint8_t *	: fr_dbuff_memcpy_out((uint8_t *)(_value), _dbuff, 1), \
 		uint16_t *	: fr_dbuff_uint16_out((uint16_t *)(_value), _dbuff), \
 		uint32_t *	: fr_dbuff_uint32_out((uint32_t *)(_value), _dbuff), \
 		uint64_t *	: fr_dbuff_uint64_out((uint64_t *)(_value), _dbuff), \
+		int8_t *	: fr_dbuff_memcpy_out((uint8_t *)(_value), _dbuff, 1), \
 		int16_t *	: fr_dbuff_int16_out((int16_t *)(_value), _dbuff), \
 		int32_t *	: fr_dbuff_int32_out((int32_t *)(_value), _dbuff), \
-		int64_t *	: fr_dbuff_int64_out((int64_t *)(_value), _dbuff) \
+		int64_t *	: fr_dbuff_int64_out((int64_t *)(_value), _dbuff), \
+		float *		: fr_dbuff_uint32_out((uint32_t *)(_value), _dbuff), \
+		double *	: fr_dbuff_uint64_out((uint64_t *)(_value), _dbuff) \
 	)
 #define FR_DBUFF_OUT_RETURN(_value, _dbuff) FR_DBUFF_RETURN(fr_dbuff_out, _value, _dbuff)
+
+/** Read bytes from a dbuff and interpret them as a network order unsigned integer
+ * @param[in] num	points to a uint64_t to store the integer in
+ * @param[in] dbuff	data to copy bytes from
+ * @param[in] length	number of bytes to read
+ *
+ * @return
+ *	- 0	no data read.
+ *	- >0	the number of bytes read.
+ *	- <0	the number of bytes we would have needed
+ *		to complete the read operation.
+ */
+static inline ssize_t fr_dbuff_uint64v_out(uint64_t *num, fr_dbuff_t *dbuff, size_t length)
+{
+	size_t		i;
+	uint8_t		byte;
+	uint64_t	value = 0;
+
+	fr_assert(length <= 8);
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, length);
+
+	for (i = 0; i < length; i++) {
+		fr_dbuff_out(&byte, dbuff);
+		value = (value << 8) | byte;
+	}
+	*num  = value;
+	return length;
+}
+
+#define FR_DBUFF_UINT64V_OUT_RETURN(_num, _dbuff, _length) FR_DBUFF_RETURN(fr_dbuff_uint64v_out, _num, _dbuff, _length)
 
 /** @} */
 

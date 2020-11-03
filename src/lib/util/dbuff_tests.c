@@ -357,21 +357,27 @@ static void test_dbuff_out(void)
 	uint8_t		buff3[8];
 	fr_dbuff_t	dbuff1;
 	fr_dbuff_t	dbuff2;
+	uint8_t		u8val = 0;
 	uint16_t	u16val = 0;
 	uint32_t	u32val = 0;
 	uint64_t	u64val = 0;
+	int8_t		i8val = 0;
 	int16_t		i16val = 0;
 	int32_t		i32val = 0;
 	int64_t		i64val = 0;
+	float		fval1 = 1.5, fval2 = 0;
+	double		dval1 = 2048.0625, dval2 = 0;
 
 	fr_dbuff_init(&dbuff1, buff1, sizeof(buff1));
 	fr_dbuff_init(&dbuff2, buff2, sizeof(buff2));
 
 	TEST_CASE("Check dbuff reads of unsigned integers");
+	TEST_CHECK(fr_dbuff_out(&u8val, &dbuff1) == 1);
+	TEST_CHECK(u8val == 0x01);
 	TEST_CHECK(fr_dbuff_out(&u16val, &dbuff1) == 2);
-	TEST_CHECK(u16val == 0x0123);
+	TEST_CHECK(u16val == 0x2345);
 	TEST_CHECK(fr_dbuff_out(&u32val, &dbuff1) == 4);
-	TEST_CHECK(u32val == 0x456789ab);
+	TEST_CHECK(u32val == 0x6789abcd);
 	fr_dbuff_set_to_start(&dbuff1);
 	TEST_CHECK(fr_dbuff_out(&u64val, &dbuff1) == 8);
 	TEST_CHECK(u64val == 0x0123456789abcdef);
@@ -381,16 +387,40 @@ static void test_dbuff_out(void)
 
 	TEST_CASE("Check dbuff reads of signed integers");
 	fr_dbuff_set_to_start(&dbuff1);
+	TEST_CHECK(fr_dbuff_out(&i8val, &dbuff1) == 1);
+	TEST_CHECK(i8val == 0x01);
 	TEST_CHECK(fr_dbuff_out(&i16val, &dbuff1) == 2);
-	TEST_CHECK(i16val == 0x0123);
+	TEST_CHECK(i16val == 0x2345);
 	TEST_CHECK(fr_dbuff_out(&i32val, &dbuff1) == 4);
-	TEST_CHECK(i32val == 0x456789ab);
+	TEST_CHECK(i32val == 0x6789abcd);
 	fr_dbuff_set_to_start(&dbuff1);
 	TEST_CHECK(fr_dbuff_out(&i64val, &dbuff1) == 8);
 	TEST_CHECK(i64val == 0x0123456789abcdef);
 
+	TEST_CASE("Check dbuff reads of floating point values");
+	TEST_CHECK(fr_dbuff_in(&dbuff2, *(uint32_t *)&fval1) == 4);
+	fr_dbuff_set_to_start(&dbuff2);
+	TEST_CHECK(fr_dbuff_out(&fval2, &dbuff2) == 4);
+	TEST_CHECK(fval1 == fval2);
+	fr_dbuff_set_to_start(&dbuff2);
+	TEST_CHECK(fr_dbuff_in(&dbuff2, *(uint64_t *)&dval1) == 8);
+	fr_dbuff_set_to_start(&dbuff2);
+	TEST_CHECK(fr_dbuff_out(&dval2, &dbuff2) == 8);
+	TEST_CHECK(dval1 == dval2);
+
+	TEST_CASE("Check variable length uint64_t read");
+	fr_dbuff_set_to_start(&dbuff1);
+	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 2) == 2);
+	TEST_CHECK(u64val == 0x0123);
+	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 4) == 4);
+	TEST_CHECK(u64val == 0x456789ab);
+	fr_dbuff_set_to_start(&dbuff1);
+	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 8) == 8);
+	TEST_CHECK(u64val == 0x0123456789abcdef);
+
 	TEST_CASE("fr_dbuff_memcpy_out");
 	fr_dbuff_set_to_start(&dbuff1);
+	fr_dbuff_set_to_start(&dbuff2);
 	memset(buff3, 0, sizeof(buff3));
 	TEST_CHECK(fr_dbuff_memcpy_out(buff3, &dbuff1, 7) == 7);
 	TEST_CHECK(memcmp(buff3, fr_dbuff_start(&dbuff1), 7) == 0 && buff3[7] == 0);
