@@ -74,7 +74,6 @@ typedef struct {
 
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
-RADIUS_PACKET	*fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
 void		fr_radius_packet_free(RADIUS_PACKET **);
 
 #ifdef __cplusplus
