@@ -51,7 +51,7 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 	     vp = fr_cursor_next(&cursor)) {
 		if (arg_cnt == 255) break;
 
-		if (vp->da != da || vp->vp_length > 0xff) {
+		if ((vp->da != da) || (vp->vp_length > 0xff)) {
 			continue;
 		}
 
