@@ -705,6 +705,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	uint8_t const		*original = NULL;
 	size_t			original_length = 0;
 	fr_pair_t		*vp;
+	int			msg_type = 0;
 	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -729,6 +730,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 
 		if (packet_ctx->original[0] == FR_DHCPV6_RELAY_FORWARD) {
 			options = packet_ctx->original + 2 + 32;
+			msg_type = FR_DHCPV6_RELAY_REPLY; /* nothing else makes sense */
 		} else {
 			options = packet_ctx->original + 4;
 		}
@@ -743,7 +745,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 
 	vp = fr_cursor_current(cursor);
 
-	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, 0, vp->vp_group);
+	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, msg_type, vp->vp_group);
 	if (len <= 0) return -1;
 
 	fr_dbuff_advance(&work_dbuff, len);
