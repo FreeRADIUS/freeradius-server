@@ -262,7 +262,7 @@ int		fr_pair_delete_by_da(fr_pair_t **head, fr_dict_attr_t const *da);
 void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
 
 /* functions for FR_TYPE_STRUCTURAL */
-fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
+fr_pair_t	**fr_pair_children(fr_pair_t *head);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);

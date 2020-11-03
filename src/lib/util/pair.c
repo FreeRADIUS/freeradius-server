@@ -463,13 +463,13 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *pare
 	return NULL;
 }
 
-static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp)
+static inline CC_HINT(always_inline) fr_pair_t **pair_children(fr_pair_t *vp)
 {
 	if (!vp) return NULL;
 
 	switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
-		return (fr_pair_list_t *)&vp->vp_group;
+		return &vp->vp_group;
 
 	default:
 		return NULL;
@@ -484,7 +484,7 @@ static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp
  *	- NULL on error
  *	- pointer to head of the child list.
  */
-fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
+fr_pair_t **fr_pair_children(fr_pair_t *vp)
 {
 	return pair_children(vp);
 }
