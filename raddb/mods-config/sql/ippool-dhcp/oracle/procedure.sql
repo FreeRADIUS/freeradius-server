@@ -43,12 +43,12 @@ BEGIN
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
 	BEGIN
-		SELECT address INTO r_address FROM dhcpippool WHERE id IN (
+		SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 			SELECT id FROM (
 				SELECT *
-				FROM dhcpippool
+				FROM fr_ippool
 				JOIN dhcpstatus
-				ON dhcpstatus.status_id = dhcpippool.status_id
+				ON dhcpstatus.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 					AND expiry_time > current_timestamp
 					AND pool_key = v_pool_key
@@ -63,10 +63,10 @@ BEGIN
 	-- Oracle >= 12c version of the above query
 	--
 	-- BEGIN
-	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
-	--		SELECT id FROM dhcpippool
+	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
+	--		SELECT id FROM fr_ippool
 	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = dhcpippool.status_id
+	--		ON dhcpstatus.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND expiry_time > current_timestamp
 	--			AND pool_key = v_pool_key
@@ -86,12 +86,12 @@ BEGIN
 	-- for expired leases.
 	--
 	-- BEGIN
-	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
+	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 	--		SELECT id FROM (
 	--			SELECT *
-	--			FROM dhcpippool
+	--			FROM fr_ippool
 	--			JOIN dhcpstatus
-	--			ON dhcpstatus.status_id = dhcpippool.status_id
+	--			ON dhcpstatus.status_id = fr_ippool.status_id
 	--			WHERE pool_name = v_pool_name
 	--				AND pool_key = v_pool_key
 	--				AND dhcpstatus.status IN ('dynamic', 'static')
@@ -105,10 +105,10 @@ BEGIN
 	-- Oracle >= 12c version of the above query
 	--
 	-- BEGIN
-	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
-	--		SELECT id FROM dhcpippool
+	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
+	--		SELECT id FROM fr_ippool
 	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = dhcpippool.status_id
+	--		ON dhcpstatus.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND pool_key = v_pool_key
 	--			AND dhcpstatus.status IN ('dynamic', 'static')
@@ -123,12 +123,12 @@ BEGIN
 	--
 	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
 		BEGIN
-		SELECT address INTO r_address FROM dhcpippool WHERE id IN (
+		SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 			SELECT id FROM (
 				SELECT *
-				FROM dhcpippool
+				FROM fr_ippool
 				JOIN dhcpstatus
-				ON dhcpstatus.status_id = dhcpippool.status_id
+				ON dhcpstatus.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 					AND address = v_requested_address
 					AND dhcpstatus.status = 'dynamic'
@@ -145,10 +145,10 @@ BEGIN
 	--
 	-- IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
 	--	BEGIN
-	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
-	--		SELECT id FROM dhcpippool
+	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
+	--		SELECT id FROM fr_ippool
 	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = dhcpippool.status_id
+	--		ON dhcpstatus.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND address = v_requested_address
 	--			AND dhcpstatus.status = 'dynamic'
@@ -172,9 +172,9 @@ BEGIN
 		BEGIN
 			OPEN l_cursor FOR
 				SELECT address
-				FROM dhcpippool
+				FROM fr_ippool
 				JOIN dhcpstatus
-				ON dhcpstatus.status_id = dhcpippool.status_id
+				ON dhcpstatus.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 				AND expiry_time < CURRENT_TIMESTAMP
 				AND dhcpstatus.status = 'dynamic'
@@ -197,7 +197,7 @@ BEGIN
 
 	-- Update the pool having allocated an IP address
 	--
-	UPDATE dhcpippool
+	UPDATE fr_ippool
 	SET
 		gateway = v_gateway,
 		pool_key = v_pool_key,

@@ -8,10 +8,10 @@ INSERT INTO dhcpstatus (status_id, status) VALUES (2, 'static');
 INSERT INTO dhcpstatus (status_id, status) VALUES (3, 'declined');
 INSERT INTO dhcpstatus (status_id, status) VALUES (4, 'disabled');
 
-CREATE SEQUENCE dhcpippool_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE fr_ippool_seq START WITH 1 INCREMENT BY 1;
 
-CREATE TABLE dhcpippool (
-	id			INT DEFAULT ON NULL dhcpippool_seq.NEXTVAL PRIMARY KEY,
+CREATE TABLE fr_ippool (
+	id			INT DEFAULT ON NULL fr_ippool_seq.NEXTVAL PRIMARY KEY,
 	pool_name		VARCHAR(30) NOT NULL,
 	address		VARCHAR(15) NOT NULL,
 	pool_key		VARCHAR(30) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE dhcpippool (
 	FOREIGN KEY (status_id) REFERENCES dhcpstatus(status_id)
 );
 
-CREATE INDEX dhcpippool_poolname_expire ON dhcpippool (pool_name, expiry_time);
-CREATE INDEX dhcpippool_address ON dhcpippool (address);
-CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool (pool_name, pool_key, address);
+CREATE INDEX fr_ippool_poolname_expire ON fr_ippool (pool_name, expiry_time);
+CREATE INDEX fr_ippool_address ON fr_ippool (address);
+CREATE INDEX fr_ippool_poolname_poolkey ON fr_ippool (pool_name, pool_key, address);
 

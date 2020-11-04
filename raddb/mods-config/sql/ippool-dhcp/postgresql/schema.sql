@@ -1,5 +1,5 @@
 --
--- Table structure for table 'dhcpippool'
+-- Table structure for table 'fr_ippool'
 --
 -- See also "procedure.sql" in this directory for
 -- a stored procedure that can give faster response.
@@ -7,7 +7,7 @@
 
 CREATE TYPE dhcp_status AS ENUM ('dynamic', 'static', 'declined', 'disabled');
 
-CREATE TABLE dhcpippool (
+CREATE TABLE fr_ippool (
 	id			BIGSERIAL PRIMARY KEY,
 	pool_name		varchar(64) NOT NULL,
 	address		INET NOT NULL,
@@ -18,6 +18,6 @@ CREATE TABLE dhcpippool (
 	counter			INT NOT NULL DEFAULT 0
 );
 
-CREATE INDEX dhcpippool_poolname_expire ON dhcpippool USING btree (pool_name, expiry_time);
-CREATE INDEX dhcpippool_address ON dhcpippool USING btree (address);
-CREATE INDEX dhcpippool_poolname_poolkey_ipaddress ON dhcpippool USING btree (pool_name, pool_key, address);
+CREATE INDEX fr_ippool_poolname_expire ON fr_ippool USING btree (pool_name, expiry_time);
+CREATE INDEX fr_ippool_address ON fr_ippool USING btree (address);
+CREATE INDEX fr_ippool_poolname_poolkey_ipaddress ON fr_ippool USING btree (pool_name, pool_key, address);

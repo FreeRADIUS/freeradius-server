@@ -45,16 +45,16 @@ BEGIN
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
 	WITH ips AS (
-		SELECT address FROM dhcpippool
+		SELECT address FROM fr_ippool
 		WHERE pool_name = v_pool_name
 			AND pool_key = v_pool_key
 			AND expiry_time > NOW()
 			AND status IN ('dynamic', 'static')
 		LIMIT 1 FOR UPDATE SKIP LOCKED )
-	UPDATE dhcpippool
+	UPDATE fr_ippool
 	SET expiry_time = NOW() + v_lease_duration * interval '1 sec'
-	FROM ips WHERE dhcpippool.address = ips.address
-	RETURNING dhcpippool.address INTO r_address;
+	FROM ips WHERE fr_ippool.address = ips.address
+	RETURNING fr_ippool.address INTO r_address;
 
 	-- Reissue an user's previous IP address, provided that the lease is
 	-- available (i.e. enable sticky IPs)
@@ -64,32 +64,32 @@ BEGIN
 	-- for expired leases.
 	--
 	-- WITH ips AS (
-	--	SELECT address FROM dhcpippool
+	--	SELECT address FROM fr_ippool
 	--	WHERE pool_name = v_pool_name
 	--		AND pool_key = v_pool_key
 	--		AND status IN ('dynamic', 'static')
 	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
-	-- UPDATE dhcpippool
+	-- UPDATE fr_ippool
 	-- SET expiry_time = NOW + v_lease_duration * interval '1 sec'
-	-- FROM ips WHERE dhcpippool.address = ips.address
-	-- RETURNING dhcpippool.address INTO r_address;
+	-- FROM ips WHERE fr_ippool.address = ips.address
+	-- RETURNING fr_ippool.address INTO r_address;
 
 	-- Issue the requested IP address if it is available
 	--
 	IF r_address IS NULL AND v_requested_address != '0.0.0.0' THEN
 		WITH ips AS (
-			SELECT address FROM dhcpippool
+			SELECT address FROM fr_ippool
 			WHERE pool_name = v_pool_name
 				AND address = v_requested_address
 				AND status = 'dynamic'
 				AND expiry_time < NOW()
 			LIMIT 1 FOR UPDATE SKIP LOCKED )
-		UPDATE dhcpippool
+		UPDATE fr_ippool
 		SET pool_key = v_pool_key,
 			expiry_time = NOW() + v_lease_duration * interval '1 sec',
 			gateway = v_gateway
-		FROM ips WHERE dhcpippool.address = ips.address
-		RETURNING dhcpippool.address INTO r_address;
+		FROM ips WHERE fr_ippool.address = ips.address
+		RETURNING fr_ippool.address INTO r_address;
 	END IF;
 
 	-- If we didn't reallocate a previous address then pick the least
@@ -98,18 +98,18 @@ BEGIN
 	--
 	IF r_address IS NULL THEN
 		WITH ips AS (
-			SELECT address FROM dhcpippool
+			SELECT address FROM fr_ippool
 			WHERE pool_name = v_pool_name
 				AND expiry_time < NOW()
 				AND status = 'dynamic'
 			ORDER BY expiry_time
 			LIMIT 1 FOR UPDATE SKIP LOCKED )
-		UPDATE dhcpippool
+		UPDATE fr_ippool
 		SET pool_key = v_pool_key,
 			expiry_time = NOW() + v_lease_duration * interval '1 sec',
 			gateway = v_gateway
-		FROM ips WHERE dhcpippool.address = ips.address
-		RETURNING dhcpippool.address INTO r_address;
+		FROM ips WHERE fr_ippool.address = ips.address
+		RETURNING fr_ippool.address INTO r_address;
 	END IF;
 
 	-- Return the address that we allocated

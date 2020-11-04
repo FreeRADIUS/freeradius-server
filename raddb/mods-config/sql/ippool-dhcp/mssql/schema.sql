@@ -1,5 +1,5 @@
 --
--- Table structure for table 'dhcpippool'
+-- Table structure for table 'fr_ippool'
 --
 -- See also "procedure.sql" in this directory for
 -- a stored procedure that gives much faster response.
@@ -15,7 +15,7 @@ GO
 INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled')
 GO
 
-CREATE TABLE dhcpippool (
+CREATE TABLE fr_ippool (
 	id			int IDENTITY (1,1) NOT NULL,
 	pool_name		varchar(30) NOT NULL,
 	address		varchar(15) NOT NULL default '',
@@ -29,12 +29,12 @@ CREATE TABLE dhcpippool (
 )
 GO
 
-CREATE INDEX dhcp_poolname_expire ON dhcpippool(pool_name, expiry_time)
+CREATE INDEX dhcp_poolname_expire ON fr_ippool(pool_name, expiry_time)
 GO
 
-CREATE INDEX dhcp_address ON dhcpippool(address)
+CREATE INDEX dhcp_address ON fr_ippool(address)
 GO
 
-CREATE INDEX dhcp_poolname_poolkey_address ON dhcpippool(pool_name, pool_key, address)
+CREATE INDEX dhcp_poolname_poolkey_address ON fr_ippool(pool_name, pool_key, address)
 GO
 

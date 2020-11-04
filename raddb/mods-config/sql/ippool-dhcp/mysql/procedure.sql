@@ -85,7 +85,7 @@ proc:BEGIN
 	--
 	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
 		SELECT address INTO r_address
-		FROM dhcpippool
+		FROM fr_ippool
 		WHERE pool_name = v_pool_name
 			AND address = v_requested_address
 			AND `status` = 'dynamic'

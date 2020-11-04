@@ -1,5 +1,5 @@
 --
--- Table structure for table 'dhcpippool'
+-- Table structure for table 'fr_ippool'
 --
 CREATE TABLE dhcpstatus (
   status_id             int PRIMARY KEY,
@@ -8,7 +8,7 @@ CREATE TABLE dhcpstatus (
 
 INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled');
 
-CREATE TABLE dhcpippool (
+CREATE TABLE fr_ippool (
 	id			int PRIMARY KEY,
 	pool_name		varchar(30) NOT NULL,
 	address		varchar(15) NOT NULL,
@@ -20,13 +20,13 @@ CREATE TABLE dhcpippool (
 	FOREIGN KEY(status_id) REFERENCES dhcpstatus(status_id)
 );
 
-CREATE INDEX dhcpippool_poolname_expire ON dhcpippool(pool_name, expiry_time);
-CREATE INDEX dhcpippool_address ON dhcpippool(address);
-CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool(pool_name, pool_key, address);
+CREATE INDEX fr_ippool_poolname_expire ON fr_ippool(pool_name, expiry_time);
+CREATE INDEX fr_ippool_address ON fr_ippool(address);
+CREATE INDEX fr_ippool_poolname_poolkey ON fr_ippool(pool_name, pool_key, address);
 
 -- Example of how to put IPs in the pool
--- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.10');
--- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.11');
--- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.12');
--- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.13');
+-- INSERT INTO fr_ippool (pool_name, address) VALUES ('local', '192.168.5.10');
+-- INSERT INTO fr_ippool (pool_name, address) VALUES ('local', '192.168.5.11');
+-- INSERT INTO fr_ippool (pool_name, address) VALUES ('local', '192.168.5.12');
+-- INSERT INTO fr_ippool (pool_name, address) VALUES ('local', '192.168.5.13');
 

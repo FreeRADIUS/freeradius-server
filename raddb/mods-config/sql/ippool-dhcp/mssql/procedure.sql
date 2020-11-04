@@ -56,9 +56,9 @@ AS
 		--
 		WITH cte AS (
 			SELECT TOP(1) address
-			FROM dhcpippool
+			FROM fr_ippool
 			JOIN dhcpstatus
-			ON dhcpstatus.status_id = dhcpippool.status_id
+			ON dhcpstatus.status_id = fr_ippool.status_id
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
 				AND pool_key = @v_pool_key
@@ -78,9 +78,9 @@ AS
 		--
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) address
-		-- 	FROM dhcpippool
+		-- 	FROM fr_ippool
 		--	JOIN dhcpstatus
-		--	ON dhcpstatus.status_id = dhcpippool.status_id
+		--	ON dhcpstatus.status_id = fr_ippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
 		-- 		AND pool_key = @v_pool_key
 		--		AND dhcpstatus.status IN ('dynamic', 'static')
@@ -96,9 +96,9 @@ AS
 		BEGIN
 			WITH cte AS (
 				SELECT TOP(1) address
-				FROM dhcpippool WITH (rowlock, readpast)
+				FROM fr_ippool WITH (rowlock, readpast)
 				JOIN dhcpstatus
-				ON dhcpstatus.status_id = dhcpippool.status_id
+				ON dhcpstatus.status_id = fr_ippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND address = @v_requested_address
 					AND dhcpstatus.status = 'dynamic'
@@ -118,9 +118,9 @@ AS
 		BEGIN
 			WITH cte AS (
 				SELECT TOP(1) address
-				FROM dhcpippool WITH (xlock rowlock readpast)
+				FROM fr_ippool WITH (xlock rowlock readpast)
 				JOIN dhcpstatus
-				ON dhcpstatus.status_id = dhcpippool.status_id
+				ON dhcpstatus.status_id = fr_ippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND expiry_time < CURRENT_TIMESTAMP
 					AND dhcpstatus.status = 'dynamic'
@@ -143,7 +143,7 @@ AS
 
 		-- Update the pool having allocated an IP address
 		--
-		UPDATE dhcpippool
+		UPDATE fr_ippool
 		SET
 			gateway = @v_gateway,
 			pool_key = @v_pool_key,

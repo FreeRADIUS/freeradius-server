@@ -1,7 +1,7 @@
 #
-# Table structure for table 'dhcpippool'
+# Table structure for table 'fr_ippool'
 #
-CREATE TABLE dhcpippool (
+CREATE TABLE fr_ippool (
 	id			int unsigned NOT NULL auto_increment,
 	pool_name		varchar(30) NOT NULL,
 	address		varchar(15) NOT NULL DEFAULT '',
@@ -11,7 +11,7 @@ CREATE TABLE dhcpippool (
 	status			ENUM('dynamic', 'static', 'declined', 'disabled') DEFAULT 'dynamic',
 	counter			int unsigned NOT NULL DEFAULT 0,
 	PRIMARY KEY (id),
-	KEY dhcpippool_poolname_expire (pool_name, expiry_time),
+	KEY fr_ippool_poolname_expire (pool_name, expiry_time),
 	KEY address (address),
-	KEY dhcpippool_poolname_poolkey_ipaddress (pool_name, pool_key, address)
+	KEY fr_ippool_poolname_poolkey_ipaddress (pool_name, pool_key, address)
 ) ENGINE=InnoDB;
