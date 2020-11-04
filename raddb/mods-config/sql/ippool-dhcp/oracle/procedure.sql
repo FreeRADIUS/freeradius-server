@@ -47,12 +47,12 @@ BEGIN
 			SELECT id FROM (
 				SELECT *
 				FROM fr_ippool
-				JOIN dhcpstatus
-				ON dhcpstatus.status_id = fr_ippool.status_id
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 					AND expiry_time > current_timestamp
 					AND pool_key = v_pool_key
-					AND dhcpstatus.status IN ('dynamic', 'static')
+					AND fr_ippool_status.status IN ('dynamic', 'static')
 			) WHERE ROWNUM <= 1
 		) FOR UPDATE SKIP LOCKED;
 	EXCEPTION
@@ -65,12 +65,12 @@ BEGIN
 	-- BEGIN
 	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 	--		SELECT id FROM fr_ippool
-	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = fr_ippool.status_id
+	--		JOIN fr_ippool_status
+	--		ON fr_ippool_status.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND expiry_time > current_timestamp
 	--			AND pool_key = v_pool_key
-	--			AND dhcpstatus.status IN ('dynamic', 'static')
+	--			AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
 	-- EXCEPTION
@@ -90,11 +90,11 @@ BEGIN
 	--		SELECT id FROM (
 	--			SELECT *
 	--			FROM fr_ippool
-	--			JOIN dhcpstatus
-	--			ON dhcpstatus.status_id = fr_ippool.status_id
+	--			JOIN fr_ippool_status
+	--			ON fr_ippool_status.status_id = fr_ippool.status_id
 	--			WHERE pool_name = v_pool_name
 	--				AND pool_key = v_pool_key
-	--				AND dhcpstatus.status IN ('dynamic', 'static')
+	--				AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		) WHERE ROWNUM <= 1
 	--	) FOR UPDATE SKIP LOCKED;
 	-- EXCEPTION
@@ -107,11 +107,11 @@ BEGIN
 	-- BEGIN
 	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 	--		SELECT id FROM fr_ippool
-	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = fr_ippool.status_id
+	--		JOIN fr_ippool_status
+	--		ON fr_ippool_status.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND pool_key = v_pool_key
-	--			AND dhcpstatus.status IN ('dynamic', 'static')
+	--			AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
 	-- EXCEPTION
@@ -127,11 +127,11 @@ BEGIN
 			SELECT id FROM (
 				SELECT *
 				FROM fr_ippool
-				JOIN dhcpstatus
-				ON dhcpstatus.status_id = fr_ippool.status_id
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 					AND address = v_requested_address
-					AND dhcpstatus.status = 'dynamic'
+					AND fr_ippool_status.status = 'dynamic'
 					AND expiry_time < CURRENT_TIMESTAMP
 				) WHERE ROWNUM <= 1
 		) FOR UPDATE SKIP LOCKED;
@@ -147,11 +147,11 @@ BEGIN
 	--	BEGIN
 	--	SELECT address INTO r_address FROM fr_ippool WHERE id IN (
 	--		SELECT id FROM fr_ippool
-	--		JOIN dhcpstatus
-	--		ON dhcpstatus.status_id = fr_ippool.status_id
+	--		JOIN fr_ippool_status
+	--		ON fr_ippool_status.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND address = v_requested_address
-	--			AND dhcpstatus.status = 'dynamic'
+	--			AND fr_ippool_status.status = 'dynamic'
 	--			AND expiry_time < CURRENT_TIMESTAMP
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
@@ -173,11 +173,11 @@ BEGIN
 			OPEN l_cursor FOR
 				SELECT address
 				FROM fr_ippool
-				JOIN dhcpstatus
-				ON dhcpstatus.status_id = fr_ippool.status_id
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 				AND expiry_time < CURRENT_TIMESTAMP
-				AND dhcpstatus.status = 'dynamic'
+				AND fr_ippool_status.status = 'dynamic'
 				ORDER BY expiry_time
 				FOR UPDATE SKIP LOCKED;
 			FETCH l_cursor INTO r_address;

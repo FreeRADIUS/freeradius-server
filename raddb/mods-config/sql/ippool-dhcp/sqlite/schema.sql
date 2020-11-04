@@ -1,12 +1,12 @@
 --
 -- Table structure for table 'fr_ippool'
 --
-CREATE TABLE dhcpstatus (
+CREATE TABLE fr_ippool_status (
   status_id             int PRIMARY KEY,
   status		varchar(10) NOT NULL
 );
 
-INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled');
+INSERT INTO fr_ippool_status (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled');
 
 CREATE TABLE fr_ippool (
 	id			int PRIMARY KEY,
@@ -17,7 +17,7 @@ CREATE TABLE fr_ippool (
 	expiry_time		DATETIME NOT NULL default (DATETIME('now')),
 	status_id		int NOT NULL DEFAULT 1,
 	counter			int NOT NULL DEFAULT 0,
-	FOREIGN KEY(status_id) REFERENCES dhcpstatus(status_id)
+	FOREIGN KEY(status_id) REFERENCES fr_ippool_status(status_id)
 );
 
 CREATE INDEX fr_ippool_poolname_expire ON fr_ippool(pool_name, expiry_time);

@@ -57,12 +57,12 @@ AS
 		WITH cte AS (
 			SELECT TOP(1) address
 			FROM fr_ippool
-			JOIN dhcpstatus
-			ON dhcpstatus.status_id = fr_ippool.status_id
+			JOIN fr_ippool_status
+			ON fr_ippool_status.status_id = fr_ippool.status_id
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
 				AND pool_key = @v_pool_key
-				AND dhcpstatus.status IN ('dynamic', 'static')
+				AND fr_ippool_status.status IN ('dynamic', 'static')
 		)
 		UPDATE cte WITH (rowlock, readpast)
 		SET address = address
@@ -79,11 +79,11 @@ AS
 		-- WITH cte AS (
 		-- 	SELECT TOP(1) address
 		-- 	FROM fr_ippool
-		--	JOIN dhcpstatus
-		--	ON dhcpstatus.status_id = fr_ippool.status_id
+		--	JOIN fr_ippool_status
+		--	ON fr_ippool_status.status_id = fr_ippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
 		-- 		AND pool_key = @v_pool_key
-		--		AND dhcpstatus.status IN ('dynamic', 'static')
+		--		AND fr_ippool_status.status IN ('dynamic', 'static')
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
 		-- SET address = address
@@ -97,11 +97,11 @@ AS
 			WITH cte AS (
 				SELECT TOP(1) address
 				FROM fr_ippool WITH (rowlock, readpast)
-				JOIN dhcpstatus
-				ON dhcpstatus.status_id = fr_ippool.status_id
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND address = @v_requested_address
-					AND dhcpstatus.status = 'dynamic'
+					AND fr_ippool_status.status = 'dynamic'
 					AND expiry_time < CURRENT_TIMESTAMP
 			)
 			UPDATE cte
@@ -119,11 +119,11 @@ AS
 			WITH cte AS (
 				SELECT TOP(1) address
 				FROM fr_ippool WITH (xlock rowlock readpast)
-				JOIN dhcpstatus
-				ON dhcpstatus.status_id = fr_ippool.status_id
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND expiry_time < CURRENT_TIMESTAMP
-					AND dhcpstatus.status = 'dynamic'
+					AND fr_ippool_status.status = 'dynamic'
 				ORDER BY
 					expiry_time
 			)

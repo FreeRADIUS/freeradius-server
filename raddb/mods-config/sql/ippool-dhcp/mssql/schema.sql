@@ -5,14 +5,14 @@
 -- a stored procedure that gives much faster response.
 --
 
-CREATE TABLE dhcpstatus (
+CREATE TABLE fr_ippool_status (
 	status_id	int NOT NULL,
 	status		varchar(10) NOT NULL,
 	PRIMARY KEY (status_id)
 )
 GO
 
-INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled')
+INSERT INTO fr_ippool_status (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled')
 GO
 
 CREATE TABLE fr_ippool (
@@ -24,7 +24,7 @@ CREATE TABLE fr_ippool (
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
 	status_id		int NOT NULL default 1,
 	counter			int NOT NULL default 0,
-	CONSTRAINT fk_status_id FOREIGN KEY (status_id) REFERENCES dhcpstatus (status_id),
+	CONSTRAINT fk_status_id FOREIGN KEY (status_id) REFERENCES fr_ippool_status (status_id),
 	PRIMARY KEY (id)
 )
 GO
