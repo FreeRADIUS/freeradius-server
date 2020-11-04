@@ -18,7 +18,7 @@ GO
 CREATE TABLE fr_ippool (
 	id			int IDENTITY (1,1) NOT NULL,
 	pool_name		varchar(30) NOT NULL,
-	address		varchar(15) NOT NULL default '',
+	address		        varchar(15) NOT NULL default '',
 	pool_key		varchar(30) NOT NULL default '',
 	gateway			varchar(15) NOT NULL default '',
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
@@ -29,12 +29,12 @@ CREATE TABLE fr_ippool (
 )
 GO
 
-CREATE INDEX dhcp_poolname_expire ON fr_ippool(pool_name, expiry_time)
+CREATE INDEX fr_ippool_poolname_expire ON fr_ippool(pool_name, expiry_time)
 GO
 
-CREATE INDEX dhcp_address ON fr_ippool(address)
+CREATE INDEX fr_ippool_address ON fr_ippool(address)
 GO
 
-CREATE INDEX dhcp_poolname_poolkey_address ON fr_ippool(pool_name, pool_key, address)
+CREATE INDEX fr_poolname_poolkey_address ON fr_ippool(pool_name, pool_key, address)
 GO
 
