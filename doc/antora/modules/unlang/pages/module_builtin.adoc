@@ -1,0 +1,42 @@
+= Built-in Modules
+
+In some cases, it is useful to reject a request immediately or perform another
+action on it.  The built-in modules can be used to perform these actions.  These
+modules are named for the return codes given in the xref:module.adoc[module]
+section.
+
+In practice, these modules are implemented by the `always` module and
+exist so that a success or failure can be forced during the processing
+of a policy.
+
+The names and behaviours of these modules are given below:
+
+`fail`::
+Causes the request to be treated as if a database failure had
+occurred.
+
+`noop`::
+Do nothing. This also serves as an instruction to the
+configurable failover tracking that nothing was done in the current
+section.
+
+`ok`::
+Instructs the server that the request was processed properly. This keyword can be used to over-ride earlier failures if the local
+administrator determines that the failures are not catastrophic.
+
+`reject`::
+Causes the request to be immediately rejected.
+
+.Example
+[source,unlang]
+----
+if (!&User-Name) {
+    update reply {
+        Reply-Message := "We don't know who you are"
+    }
+    reject
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

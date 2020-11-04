@@ -1,0 +1,39 @@
+= The redundant-load-balance Statement
+
+.Syntax
+[source,unlang]
+----
+redundant-load-balance {
+    [ statements ]
+}
+----
+
+The `redundant-load-balance` section operates as a combination of the
+xref:redundant.adoc[redundant] and xref:load-balance.adoc[load-balance]
+sections.
+
+[ statements ]:: One or more `unlang` commands.
++
+If the selected statement succeeds, then the server stops processing
+the `redundant-load-balance` section. If, however, that statement fails,
+then the next statement in the list is chosen (wrapping around to the
+top).  This process continues until either one statement succeeds or all
+of the statements have failed.
++
+All of the statements in the list should be modules, and of the same
+type (e.g., `ldap` or `sql`). All of the statements in the list should
+behave identically, otherwise different requests will be processed
+through different modules and will give different results.
+
+.Example
+[source,unlang]
+----
+redundant-load-balance &User-Name {
+    sql1
+    sql2
+    sql3
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -1,0 +1,78 @@
+= Keywords
+
+The following tables list the keywords used in `Unlang`.  These keywords
+implement the "flow control" of the policies.
+
+== Flow Control Keywords
+
+The _flow control_ keywords allow _if / then / else_ checks, simple
+looping, etc.
+
+.Flow Control
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Keyword | Description
+| xref:break.adoc[break]     | Exit early from a `foreach` loop.
+| xref:case.adoc[case]       | Match inside of a `switch`.
+| xref:else.adoc[else]       | Do something when an `if` does not match.
+| xref:elsif.adoc[elsif]     | Check for condition when a previous `if` does not match.
+| xref:foreach.adoc[foreach] | Loop over a list of attributes.
+| xref:if.adoc[if]           | Check for a condition, and execute a sub-policy if it matches.
+| xref:return.adoc[return]   | Immediately stop processing a section.
+| xref:switch.adoc[switch]   | Check for multiple values.
+|=====
+
+== Attribute Editing Keywords
+
+The _attribute editing_ keywords allow policies to add, delete, and
+modify attributes in any list or packet.
+
+.Attribute Editing
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Keyword | Description
+| xref:update.adoc[update]   | Add or filter attributes to a list
+|=====
+
+== Grouping Keywords
+
+The _grouping_ keywords allow policies to be organized into groups,
+including load-balancing.
+
+.Grouping
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Keyword | Description
+| xref:group.adoc[group]               | Group a series of statements.
+| xref:load-balance.adoc[load-balance] | Define a load balancing group without fail-over.
+| xref:redundant.adoc[redundant]       | Define a redundant group with fail-over.
+| xref:redundant-load-balance.adoc[redundant-load-balance] | Define a redundant group with fail-over and load balancing.
+|=====
+
+== Module Keywords
+
+The _module_ keywords refer pre-packaged libraries that implement
+specific functionality, such as connecting to SQL, LDAP, etc.  The
+name used here is not the literal string `module`.  Instead, it is the
+name of an instance of a pre-packaged module such as `sql`, or `ldap`, or
+`eap`.
+
+The documentation below describes how to reference modules.  That is,
+how to use `sql`, etc. in the policies.  Please see
+`raddb/mods-available/` for configuration examples for each module.
+
+.Modules
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Keyword | Description
+| xref:module.adoc[<module>]                 | Execute a named module, e.g., `sql`.
+| xref:module_method.adoc[<module>.<method>] | Execute a particular method of a named module, e.g., `pap.authorize`
+| xref:module_builtin.adoc[reject]           | Built-in modules, e.g., `reject`, or `ok`, etc.
+|=====
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

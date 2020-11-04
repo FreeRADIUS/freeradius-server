@@ -1,0 +1,39 @@
+= Double-Quoted Strings
+
+.Syntax
+`"string"`
+
+A double-quoted string is interpreted via the usual rules in
+programming languages for double quoted strings. The double-quote
+character can be placed in a string by escaping it with a backslash.
+Carriage returns and line-feeds can also be used via the usual `\r` and
+`\n` syntax.
+
+The main difference between the single and double quoted strings is
+that the double quoted strings can be dynamically expanded. The syntax
+`${...}` is used for parse-time expansion and `%{...}` is used for
+run-time expansion. The difference between the two methods is that the
+`${...}` form is expanded when the server loads the configuration
+files and is valid anywhere in the configuration files. The `%{...}`
+link:xlat.adoc[string expansion] form is valid only in conditional
+expressions and attribute assignments.
+
+The output of the dynamic expansion can be interpreted as a string,
+a number, or an IP address, depending on its context.
+
+Note that the interpretation of text _strongly_ depends on the
+context.  The text `"0000"` can be interpreted as a data type
+"integer", having value zero, or a data type "string", having value
+`"0000"`.  In general when a particular piece of text is used, it is
+used with the context of a known attribute.  That attribute has a
+link:data.adoc[data type], and the text will be interpreted as that
+data type.
+
+.Examples
+
+`"word"` +
+`"a string"` +
+`"this has embedded\ncharacters"`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

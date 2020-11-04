@@ -1,0 +1,15 @@
+= IP Addresses
+
+.Examples
+
+`192.0.2.16` +
+`::1` +
+`example.com`
+
+Depending on the context, a "simple word", as above, may be
+interpreted as an IPv4 or an IPv6 address. This interpretation is
+usually done when the string is used in the context of an attribute,
+or to compare two addresses or assign an address to an attribute.
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

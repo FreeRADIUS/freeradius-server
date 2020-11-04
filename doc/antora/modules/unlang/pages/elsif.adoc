@@ -1,0 +1,43 @@
+= The elsif Statement
+
+.Syntax
+[source,unlang]
+----
+if (condition-1) {
+    [ statements-1 ]
+}
+elsif (condition-2) {
+    [ statements-2 ]
+}
+else {
+    [ statements-3 ]
+}
+----
+
+An `elsif` statement is used to evaluate a subsequent
+xref:condition/index.adoc[condition] after a preceding xref:if.adoc[if] statement
+evaluates to `false`.  In the example above, when _condition-1_
+evaluates to false, then _statements-1_ are skipped and _condition-2_
+is checked.  When _condition-2_ evaluates true, then _statements-2_
+are executed.  When _condition-2_ evaluates false, then
+_statements-2_ are skipped and _statements-3_ are executed.
+
+As with xref:if.adoc[if], an `elsif` clause does not need to be followed by
+an xref:else.adoc[else] statement.  However, any xref:else.adoc[else] statement
+must be the last statement in an `elsif` chain. An arbitrary number of
+`elsif` statements can be chained together to create a series of
+conditional checks and statements.
+
+.Example
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    reject
+}
+elsif (&User-Name == "doug") {
+    ok
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

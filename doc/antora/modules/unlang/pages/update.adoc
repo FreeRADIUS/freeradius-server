@@ -1,0 +1,158 @@
+= The update Statement
+
+.Syntax
+[source,unlang]
+----
+update [ <list> ] {
+	<server-attribute> <op> <value>
+	...
+}
+----
+
+The `update` statement adds attributes to, or edits the attributes in,
+the named _<list>_.
+
+The `update` statement consists of the following syntax elements:
+
+<list>:: The attribute list which will be updated.  The list is
+usually `request`, `reply`, or `control`.
++
+If the _<list>_ qualifier is omitted, then each entry inside of the
+`update` section *must* be prefixed with a list name.  For example,
+`&request.User-Name ...`
+
+<server-attribute>:: The server attribute which is assigned the
+_<value>_.
+
+<op>:: The operator such as `=`, `:=`, etc.
+
+<value>:: The value which is assigned to the attribute.  If the field
+is a double-quoted string, it undergoes xref:xlat/index.adoc[string
+expansion], and the resulting value is assigned to the attribute.
+
+The update process is atomic, in that either all of the attributes are
+modified, or none of them are modified.  If the `update` fails for any
+reason, then all of the results are discarded, and the `update` does
+not affect any server attributes.
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Reply-Message := "Hello!"
+   &Framed-IP-Address := 192.0.2.4
+}
+----
+
+== Lists
+
+The _<list>_ field sets the attribute list that will be updated.  If
+the _<list>_ qualifier is omitted, then each entry inside of the
+`update` section *must* be prefixed with a list name.  For example,
+`&request.User-Name ...`
+
+Please see the xref:list.adoc[list] page for valid list names.
+
+== Server Attributes
+
+The _<server-attribute>_ field is an attribute name, such as
+`&Reply-Message`.  The attribute name may also be prefixed with a
+_<list>_ qualifier, which overrides the _<list>_ given at the start
+of the `update` section.
+
+NOTE: In version 3, the leading `&` is optional but recommended.
+
+== Editing Operators
+
+The `<op>` field is used to define how the attribute is processed.
+Different operators allow attributes to be added, deleted, or
+replaced, as defined below.
+
+.Editing Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Add the attribute to the list, if and only if an attribute of
+the same name is not already present in that list.
+| :=       | Add the attribute to the list. If any attribute of the same
+name is already present in that list, its value is replaced with the
+value of the current attribute.
+| +=       | Add the attribute to the tail of the list, even if attributes
+of the same name are already present in the list.
+| -=       | Remove all attributes from the list that match _<value>_.
+| !*       | Delete all occurances of the attribute, no matter what the value.
+|=====
+
+== Filtering Operators
+
+The following operators may also be used in addition to the ones
+listed above. These operators use the _<server-attribute>_ and
+_<value>_ fields to enforce limits on all attributes in the given
+_<list>_, and to edit attributes which have a matching
+_<server-attribute>_ name. All other attributes are ignored.
+
+.Filtering Operators
+[options="header]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| ==       | Keep only the attributes in the list that match _<value>_
+| <        | Keep only the attributes in the list that have values less than _<value>_.
+| \<=      | Keep only the attributes in the list that have values less than or equal to _<value>_.
+| >        | Keep only the attributes in the list that have values greater than _<value>_.
+| >=       | Keep only the attributes in the list that have values greater than or equal to _<value>_.
+| =~       | Keep only the attributes in the list which match the regular expression given in _<value>_.
+| !~       | Keep only the attributes in the list which do not match the regular expression given in _<value>_.
+|=====
+
+The `==` operator is very different from the `=` operator listed
+above. The `=` operator is used to add new attributes to the list,
+while the `==` operator removes all attributes that do not match the
+given value.
+
+The comparison operators `<`, `<=`, `>`, and `>=` have some additional
+side effects.  Any non-matching value is replaced by the _<value>_
+given here.  If no attribute exists, it is created with the given
+_<value>_.
+
+For IP addresses, the operators `>`, `>=`, `<`, and `\<=` check for
+membership in a network.  The _<value>_ field should then be a IP
+network, given in `address/mask` format.
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Session-timeout := 86400
+}
+----
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Reply-Message += "Rejected: Also, realm does not end with ac.uk"
+}
+----
+
+== Values
+
+The _<value>_ field is the value which is assigned to the
+_<server-attribute>_.  The interpretation of the _<value>_ field
+depends on the data type of the contents.  For example, if the string
+`"192.0.2.1"` is assigned to an attribute of the `string` data type,
+then the result is an ASCII string containing that value.  However, if
+the same string is assigned to an attribute of the `ipaddr` data type,
+then the result is a 32-bit IPv4 address, with binary value `0xc0000201`.
+
+.Example
+[source,unlang]
+----
+update reply {
+   &Session-Timeout <= 3600
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

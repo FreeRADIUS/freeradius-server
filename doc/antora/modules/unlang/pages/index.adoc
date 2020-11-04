@@ -1,0 +1,162 @@
+= Unlang Policy Language
+
+The server supports a simple processing language called "Unlang",
+which is short for "un-language". The original intention of using an
+"un-language" was to avoid creating yet another programming language.
+Instead, the `unlang` syntax allows for simple _if / then / else_
+checks, and attribute editing.  It does not support recursion,
+subroutines, or more complex flow controls.
+
+Where more complicated functionality is required, we recommend using
+the `lua`, `perl` or `python` modules.  Those modules allow the insertion of
+full-featured scripts at any point in the packet processing.
+
+NOTE: The documentation is this directory is _reference_
+documentation.  That is, it describes the syntax of `unlang` keywords,
+using minimal examples.  The reference documentation does not,
+however, describe _when_ to use the keywords, or _how_ to create
+policies. Please see the xref:howto:index.adoc[howto] directory for
+more in-depth "how to" guides.
+
+The documentation is organized so that each item is on its own page.
+The page beings with a description of the item, followed by some text
+explaining what the item does.  The page concludes with one or more
+examples of using the item in `unlang` policies.
+
+The `unlang` processing can be split into some high-level concepts.
+
+== Keywords
+
+xref:keywords.adoc[Keywords], which are the basic statements of the
+language, e.g., xref:load-balance.adoc[load-balance],
+xref:if.adoc[if], xref:else.adoc[else], etc.
+
+.Example
+[source,unlang]
+----
+load-balance {
+	sql1
+	sql2
+	sql3
+}
+----
+
+== Conditional Expressions
+
+xref:condition/index.adoc[Conditional expressions], which are used to check
+if conditions evaluate to _true_ or _false_.  Conditional expressions
+can be used to control the flow of processing.
+
+.Example
+[source,unlang]
+----
+if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
+	...
+}
+----
+
+== Update Statements
+
+xref:update.adoc[update] statements are used to edit attributes and
+lists of attributes.
+
+Most request packets will result in reply packets that contain
+additional information for the requestor.  The `update` section allows
+policies to add attributes to requests, replies, or to other places.
+
+.Example
+[source,unlang]
+----
+update reply {
+	&Session-Timeout := 3600
+	&Framed-IP-Address := 192.0.2.4
+}
+----
+
+== String Expansions
+
+xref:xlat/index.adoc[String expansion] Using `%{...}` to perform dynamic
+string expansions. (also known as xref:xlat/index.adoc[xlat])
+
+String expansions are usually performed in order to get additional
+information which is not immediately available to the policy.  This
+information can be taken from almost any source, including other
+attributes, databases, and scripts.
+
+.Example
+[source,unlang]
+----
+update reply {
+	&Framed-IP-Address := "%{sql:SELECT static_ip from table WHERE user = '%{User-Name}'}"
+}
+----
+
+== Data Types
+
+Each attribute used by the server has an associated
+xref:type/index.adoc[data type].  The `unlang` interpreter enforces
+restrictions on assignments, so that only valid data types can be
+assigned to an attribute.  Invalid assignments result in a run-time
+error.
+
+.Example
+[source,unlang]
+----
+update reply {
+	&Framed-IP-Address := 192.0.2.4
+	&Session-Timeout := 5
+	&Reply-Message := "hello"
+}
+----
+
+== Design Goals of Unlang
+
+The goal of `unlang` is to allow simple policies to be written with
+minimal effort. Conditional checks can be performed by the policies,
+which can then update the request or response attributes based on the
+results of those checks. `unlang` can only be used in a processing
+section, it cannot be used anywhere else, including in configuration
+sections for a client or a module. The reason for this limitation is
+that the language is intended to perform specific actions on requests
+and responses. The client and module sections contain definitions for
+a client or module; they do not define how a request is processed.
+
+`unlang` uses the same the basic syntax as the configuration files.
+The syntax of the configuration file for lines, comments, sections,
+sub-section, etc., all apply to `unlang`.
+
+Where `unlang` differs from the basic configuration file format is in
+complexity and operation.  The normal configuration files are
+_declarative_ and they are _static_.  That is, they declare variables
+and values for those variables.  Those values do not change when the
+server is running.
+
+In contrast, `unlang` performs run-time processing of requests.
+Conditional statements such as xref:if.adoc[if] are evaluated for every
+packet that is received.  Attribute editing statements such as
+xref:update.adoc[update] can be used to edit attribute contents or lists
+of attributes.
+
+.Example
+[source,unlang]
+----
+# First, the keyword 'if'
+
+# followed by condition which checks that the User-Name
+# attribute has value "bob"
+
+if (&User-Name == "bob") {
+    # keyword "update"
+
+    # followed by instructions to add the Reply-Message
+    # attribute to the "reply" list, with contents
+    # "Hello, bob"
+
+    update reply {
+        Reply-Message := "Hello, bob"
+    }
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

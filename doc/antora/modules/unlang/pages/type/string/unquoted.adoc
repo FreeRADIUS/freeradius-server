@@ -1,0 +1,21 @@
+= Unquoted Strings
+
+Where a series of characters cannot be parsed as a decimal number,
+they are interpreted as a simple string composed of one word. This
+word is delimited by spaces, or by other tokens, such as `)` in
+conditional expressions.
+
+This unquoted text is interpreted as simple strings and are generally
+equivalent to placing the string in single quotes.
+
+The interpretation of the text depends on the context, which is
+usually defined by an attribute which has a xref:type/index.adoc[data type].
+
+.Examples
+
+`Hello` +
+`192.168.0.1` +
+`00:01:02:03:04:05`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -1,0 +1,56 @@
+= String Expansion
+
+String expansion is a feature that allows strings to dynamically
+define their value at run time. For historical reasons, these string
+expansions are called "xlats".
+
+String expansion is performed via the following syntax:
+
+`%{...}`
+
+Where the `%{` signals the start of a dynamic expansion, and `}`
+signals the end of the dynamic expansion.  The contents of the
+expansion can be many things:
+
+.String Expansions
+[options="header"]
+|=====
+| Keyword                                           | Description
+| xref:xlat/attribute.adoc[attributes]              | Expand the value of a named attribute.
+| xref:xlat/character.adoc[single character]        | Single character expansions.
+| xref:xlat/module.adoc[modules]                    | Pass a string to a module such as `sql`.
+| xref:xlat/alternation.adoc[condition]             | Conditionally expand a string.
+| xref:xlat/builtin.adoc[built-in expansions]       | Such as string length, tolower, etc...
+|=====
+
+This feature is used to create policies which refer to concepts rather
+than to specific values. For example, a policy can be created that
+refers to the User-Name in a request, via:
+
+`%{User-Name}`
+
+This string expansion is done only for double-quoted strings and for
+the back-tick operator.
+
+== Caveats
+
+Unlike other languages, there is no way to define new variables.  All
+of the string expansions must refer to attributes that already exist,
+or to modules that will return a string value.
+
+== Character Escaping
+
+Some characters need to be escaped within a dynamically expanded
+string `%{...}`. The `%` character is used for variable expansion, so a
+literal `%` character can be created by using `%%`.
+
+Other than within a dynamically expanded string, very little
+character escaping is needed. The rules of the enclosing string context
+determine whether or not a space or " character needs to be escaped.
+
+.Example
+
+`Reply-Message := "%{User-Name} with a literal %%`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
