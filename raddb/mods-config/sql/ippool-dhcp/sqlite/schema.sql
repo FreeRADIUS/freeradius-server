@@ -11,7 +11,7 @@ INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'),
 CREATE TABLE dhcpippool (
 	id			int PRIMARY KEY,
 	pool_name		varchar(30) NOT NULL,
-	framedipaddress		varchar(15) NOT NULL,
+	address		varchar(15) NOT NULL,
 	pool_key		varchar(30) NOT NULL DEFAULT '',
 	gateway			varchar(15) NOT NULL DEFAULT '',
 	expiry_time		DATETIME NOT NULL default (DATETIME('now')),
@@ -21,12 +21,12 @@ CREATE TABLE dhcpippool (
 );
 
 CREATE INDEX dhcpippool_poolname_expire ON dhcpippool(pool_name, expiry_time);
-CREATE INDEX dhcpippool_framedipaddress ON dhcpippool(framedipaddress);
-CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool(pool_name, pool_key, framedipaddress);
+CREATE INDEX dhcpippool_address ON dhcpippool(address);
+CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool(pool_name, pool_key, address);
 
 -- Example of how to put IPs in the pool
--- INSERT INTO dhcpippool (pool_name, framedipaddress) VALUES ('local', '192.168.5.10');
--- INSERT INTO dhcpippool (pool_name, framedipaddress) VALUES ('local', '192.168.5.11');
--- INSERT INTO dhcpippool (pool_name, framedipaddress) VALUES ('local', '192.168.5.12');
--- INSERT INTO dhcpippool (pool_name, framedipaddress) VALUES ('local', '192.168.5.13');
+-- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.10');
+-- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.11');
+-- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.12');
+-- INSERT INTO dhcpippool (pool_name, address) VALUES ('local', '192.168.5.13');
 

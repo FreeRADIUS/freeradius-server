@@ -13,7 +13,7 @@ CREATE SEQUENCE dhcpippool_seq START WITH 1 INCREMENT BY 1;
 CREATE TABLE dhcpippool (
 	id			INT DEFAULT ON NULL dhcpippool_seq.NEXTVAL PRIMARY KEY,
 	pool_name		VARCHAR(30) NOT NULL,
-	framedipaddress		VARCHAR(15) NOT NULL,
+	address		VARCHAR(15) NOT NULL,
 	pool_key		VARCHAR(30) NOT NULL,
 	gateway			VARCHAR(15) NOT NULL,
 	expiry_time		TIMESTAMP(0) NOT NULL,
@@ -23,6 +23,6 @@ CREATE TABLE dhcpippool (
 );
 
 CREATE INDEX dhcpippool_poolname_expire ON dhcpippool (pool_name, expiry_time);
-CREATE INDEX dhcpippool_framedipaddress ON dhcpippool (framedipaddress);
-CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool (pool_name, pool_key, framedipaddress);
+CREATE INDEX dhcpippool_address ON dhcpippool (address);
+CREATE INDEX dhcpippool_poolname_poolkey ON dhcpippool (pool_name, pool_key, address);
 

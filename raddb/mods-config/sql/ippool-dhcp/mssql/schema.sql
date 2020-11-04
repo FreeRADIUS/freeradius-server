@@ -18,7 +18,7 @@ GO
 CREATE TABLE dhcpippool (
 	id			int IDENTITY (1,1) NOT NULL,
 	pool_name		varchar(30) NOT NULL,
-	FramedIPAddress		varchar(15) NOT NULL default '',
+	address		varchar(15) NOT NULL default '',
 	pool_key		varchar(30) NOT NULL default '',
 	gateway			varchar(15) NOT NULL default '',
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
@@ -32,9 +32,9 @@ GO
 CREATE INDEX dhcp_poolname_expire ON dhcpippool(pool_name, expiry_time)
 GO
 
-CREATE INDEX dhcp_FramedIPAddress ON dhcpippool(FramedIPAddress)
+CREATE INDEX dhcp_address ON dhcpippool(address)
 GO
 
-CREATE INDEX dhcp_poolname_poolkey_FramedIPAddress ON dhcpippool(pool_name, pool_key, FramedIPAddress)
+CREATE INDEX dhcp_poolname_poolkey_address ON dhcpippool(pool_name, pool_key, address)
 GO
 

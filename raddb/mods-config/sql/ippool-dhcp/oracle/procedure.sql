@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---	 SELECT fr_dhcp_allocate_previous_or_new_framedipaddress( \
+--	 SELECT fr_dhcp_allocate_previous_or_new_address( \
 --		 '%{control.${pool_name}}', \
 --		 '%{DHCP-Gateway-IP-Address}', \
 --		 '${pool_key}', \
@@ -28,7 +28,7 @@
 -- allocate_commit = ""
 --
 
-CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_framedipaddress (
+CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_address (
 	v_pool_name IN VARCHAR2,
 	v_gateway IN VARCHAR2,
 	v_pool_key IN VARCHAR2,
@@ -43,7 +43,7 @@ BEGIN
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
 	BEGIN
-		SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+		SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 			SELECT id FROM (
 				SELECT *
 				FROM dhcpippool
@@ -63,7 +63,7 @@ BEGIN
 	-- Oracle >= 12c version of the above query
 	--
 	-- BEGIN
-	--	SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 	--		SELECT id FROM dhcpippool
 	--		JOIN dhcpstatus
 	--		ON dhcpstatus.status_id = dhcpippool.status_id
@@ -86,7 +86,7 @@ BEGIN
 	-- for expired leases.
 	--
 	-- BEGIN
-	--	SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 	--		SELECT id FROM (
 	--			SELECT *
 	--			FROM dhcpippool
@@ -105,7 +105,7 @@ BEGIN
 	-- Oracle >= 12c version of the above query
 	--
 	-- BEGIN
-	--	SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 	--		SELECT id FROM dhcpippool
 	--		JOIN dhcpstatus
 	--		ON dhcpstatus.status_id = dhcpippool.status_id
@@ -123,14 +123,14 @@ BEGIN
 	--
 	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
 		BEGIN
-		SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+		SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 			SELECT id FROM (
 				SELECT *
 				FROM dhcpippool
 				JOIN dhcpstatus
 				ON dhcpstatus.status_id = dhcpippool.status_id
 				WHERE pool_name = v_pool_name
-					AND framedipaddress = v_requested_address
+					AND address = v_requested_address
 					AND dhcpstatus.status = 'dynamic'
 					AND expiry_time < CURRENT_TIMESTAMP
 				) WHERE ROWNUM <= 1
@@ -145,12 +145,12 @@ BEGIN
 	--
 	-- IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
 	--	BEGIN
-	--	SELECT framedipaddress INTO r_address FROM dhcpippool WHERE id IN (
+	--	SELECT address INTO r_address FROM dhcpippool WHERE id IN (
 	--		SELECT id FROM dhcpippool
 	--		JOIN dhcpstatus
 	--		ON dhcpstatus.status_id = dhcpippool.status_id
 	--		WHERE pool_name = v_pool_name
-	--			AND framedipaddress = v_requested_address
+	--			AND address = v_requested_address
 	--			AND dhcpstatus.status = 'dynamic'
 	--			AND expiry_time < CURRENT_TIMESTAMP
 	--		FETCH FIRST 1 ROWS ONLY
@@ -171,7 +171,7 @@ BEGIN
 			l_cursor sys_refcursor;
 		BEGIN
 			OPEN l_cursor FOR
-				SELECT framedipaddress
+				SELECT address
 				FROM dhcpippool
 				JOIN dhcpstatus
 				ON dhcpstatus.status_id = dhcpippool.status_id
@@ -202,7 +202,7 @@ BEGIN
 		gateway = v_gateway,
 		pool_key = v_pool_key,
 		expiry_time = CURRENT_TIMESTAMP + v_lease_duration * INTERVAL '1' SECOND(1)
-	WHERE framedipaddress = r_address;
+	WHERE address = r_address;
 
 	-- Return the address that we allocated
 	COMMIT;

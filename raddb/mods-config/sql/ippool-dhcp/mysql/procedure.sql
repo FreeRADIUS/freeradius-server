@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
--- 	CALL fr_dhcp_allocate_previous_or_new_framedipaddress( \
+-- 	CALL fr_dhcp_allocate_previous_or_new_address( \
 -- 		'%{control.${pool_name}}', \
 -- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
@@ -30,8 +30,8 @@
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_framedipaddress;
-CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_framedipaddress (
+DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_address;
+CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_address (
 	IN v_pool_name VARCHAR(64),
 	IN v_gateway VARCHAR(15),
 	IN v_pool_key VARCHAR(64),
@@ -47,7 +47,7 @@ proc:BEGIN
 
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
-	SELECT framedipaddress INTO r_address
+	SELECT address INTO r_address
 	FROM radippool
 	WHERE pool_name = v_pool_name
 		AND expiry_time > NOW()
@@ -72,7 +72,7 @@ proc:BEGIN
 	-- set allocate_clear = "" in queries.conf to persist the associations
 	-- for expired leases.
 	--
-	-- SELECT framedipaddress INTO r_address
+	-- SELECT address INTO r_address
 	-- FROM radippool
 	-- WHERE pool_name = v_pool_name
 	--	AND pool_key = v_pool_key
@@ -84,10 +84,10 @@ proc:BEGIN
 	-- Issue the requested IP address if it is available
 	--
 	IF r_address IS NULL AND v_requested_address <> '0.0.0.0' THEN
-		SELECT framedipaddress INTO r_address
+		SELECT address INTO r_address
 		FROM dhcpippool
 		WHERE pool_name = v_pool_name
-			AND framedipaddress = v_requested_address
+			AND address = v_requested_address
 			AND `status` = 'dynamic'
 			AND expiry_time < NOW()
 		FOR UPDATE;
@@ -99,7 +99,7 @@ proc:BEGIN
 	-- of re-assigning the other addresses to their recent user
 	--
 	IF r_address IS NULL THEN
-		SELECT framedipaddress INTO r_address
+		SELECT address INTO r_address
 		FROM radippool
 		WHERE pool_name = v_pool_name
 			AND expiry_time < NOW()
@@ -125,7 +125,7 @@ proc:BEGIN
 		gateway = v_gateway,
 		pool_key = v_pool_key,
 		expiry_time = NOW() + INTERVAL v_lease_duration SECOND
-	WHERE framedipaddress = r_address;
+	WHERE address = r_address;
 
 	COMMIT;
 
