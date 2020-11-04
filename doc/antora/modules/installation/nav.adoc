@@ -1,0 +1,5 @@
+* xref:index.adoc[Installing and upgrading]
+** xref:packages.adoc[Install from packages]
+** xref:dependencies.adoc[Dependencies]
+** xref:source.adoc[Build from source]
+** xref:upgrade.adoc[Upgrading to v3]
