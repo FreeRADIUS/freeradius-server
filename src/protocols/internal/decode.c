@@ -37,13 +37,13 @@
 
 #include <talloc.h>
 
-static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_attr_t const *parent_da,
+static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				    uint8_t const *start, uint8_t const *end, void *decoder_ctx);
 
 /** Decodes the value of an attribute, potentially producing a pair (added to the cursor)
  *
  */
-static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_attr_t const *parent_da,
+static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 					  uint8_t const *start, uint8_t const *end,
 					  bool tainted, UNUSED void *decoder_ctx)
 {
@@ -69,7 +69,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_t **head, fr_
 /** Decode a TLV as a group type attribute
  *
  */
-static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_attr_t const *parent_da,
+static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				   uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 
@@ -120,7 +120,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_at
 /** Decode a group
  *
  */
-static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_attr_t const *parent_da,
+static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				     uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 	fr_pair_t	*vp;
@@ -151,7 +151,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_
 	return p - start;
 }
 
-static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_t **head, fr_dict_attr_t const *parent_da,
+static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				    uint8_t const *start, uint8_t const *end, void *decoder_ctx)
 {
 	ssize_t			slen = 0;
