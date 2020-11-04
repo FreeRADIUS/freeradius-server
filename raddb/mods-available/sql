@@ -14,8 +14,8 @@
 #  [options="header,autowidth"]
 #  |===
 #  | Directory                      | Description
-#  | sql/<driver>/main/schema.sql	| Schema
-#  | sql/<driver>/main/queries.conf	| Authorisation and Accounting queries
+#  | sql/main/<driver>/schema.sql   | Schema
+#  | sql/main/<driver>/queries.conf | Authorisation and Accounting queries
 #  |===
 #
 #  Driver specific configuration options are located in `sql` prefix
