@@ -63,33 +63,33 @@ typedef struct {
 
 	char const		*name;		//!< Instance name.
 
-	tmpl_t		*pool_name;	//!< Name of the pool we're allocating IP addresses from.
+	tmpl_t			*pool_name;	//!< Name of the pool we're allocating IP addresses from.
 
-	tmpl_t		*offer_time;	//!< How long we should reserve a lease for during
+	tmpl_t			*offer_time;	//!< How long we should reserve a lease for during
 						//!< the pre-allocation stage (typically responding
 						//!< to DHCP discover).
-	tmpl_t		*lease_time;	//!< How long an IP address should be allocated for.
+	tmpl_t			*lease_time;	//!< How long an IP address should be allocated for.
 
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
 						//!< or updates.
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
-	tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
+	tmpl_t			*device_id;	//!< Unique device identifier.  Could be mac-address
 						//!< or a combination of User-Name and something
 						//!< unique to the device.
 
-	tmpl_t		*gateway_id;	//!< Gateway identifier, usually
+	tmpl_t			*gateway_id;	//!< Gateway identifier, usually
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
+	tmpl_t			*requested_address;		//!< Attribute to read the IP for renewal from.
 
-	tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
+	tmpl_t			*allocated_address_attr;	//!< IP attribute and destination.
 
-	tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
+	tmpl_t			*range_attr;	//!< Attribute to write the range ID to.
 
-	tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
+	tmpl_t			*expiry_attr;	//!< Time at which the lease will expire.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
