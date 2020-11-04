@@ -1132,7 +1132,7 @@ FR_DBUFF_OUT_DEF(int64)
 static inline ssize_t fr_dbuff_uint64v_out(uint64_t *num, fr_dbuff_t *dbuff, size_t length)
 {
 	size_t		i;
-	uint8_t		byte;
+	uint8_t		byte = 0;
 	uint64_t	value = 0;
 
 	fr_assert(length <= 8);
