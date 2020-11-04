@@ -72,6 +72,8 @@ typedef enum value_type {
 
 typedef struct value_pair_s fr_pair_t;
 
+typedef fr_pair_t* fr_pair_list_t;
+
 /** Stores an attribute, a value and various bits of other data
  *
  * fr_pair_ts are the main data structure used in the server
@@ -186,7 +188,7 @@ fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
 
 void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
-void		fr_pair_list_free(fr_pair_t **);
+void		fr_pair_list_free(fr_pair_list_t *list);
 
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp);
@@ -204,7 +206,7 @@ void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
  *	- NULL if no pairs match.
  */
 static inline fr_pair_t *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
-						    fr_pair_t **list, fr_dict_attr_t const *da)
+						    fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_da, da, fr_pair_t);
 }
@@ -219,7 +221,7 @@ static inline fr_pair_t *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
  *	- NULL if no pairs match.
  */
 static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
-							  fr_pair_t **list, fr_dict_attr_t const *da)
+							  fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
@@ -230,22 +232,22 @@ fr_pair_t	*fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned in
 
 fr_pair_t	*fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
-void		fr_pair_add(fr_pair_t **head, fr_pair_t *vp);
+void		fr_pair_add(fr_pair_list_t *head, fr_pair_t *vp);
 
-void		fr_pair_replace(fr_pair_t **head, fr_pair_t *add);
+void		fr_pair_replace(fr_pair_list_t *head, fr_pair_t *add);
 
-void		fr_pair_delete_by_child_num(fr_pair_t **head, fr_dict_attr_t const *parent, unsigned int attr);
+void		fr_pair_delete_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
-int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
+int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
-int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
+int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
-int		fr_pair_delete_by_da(fr_pair_t **head, fr_dict_attr_t const *da);
+int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
+void		fr_pair_delete(fr_pair_list_t *list, fr_pair_t const *vp);
 
 /* functions for FR_TYPE_STRUCTURAL */
-fr_pair_t	**fr_pair_children(fr_pair_t *head);
+fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
@@ -262,18 +264,18 @@ int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
 int		fr_pair_cmp(fr_pair_t *a, fr_pair_t *b);
 int		fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b);
-void		fr_pair_list_sort(fr_pair_t **vps, fr_cmp_t cmp) CC_HINT(nonnull);
+void		fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp) CC_HINT(nonnull);
 
 /* Filtering */
 void		fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2]);
-bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
-bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
+bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list) CC_HINT(nonnull(2,3));
+bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list) CC_HINT(nonnull(2,3));
 
 /* Lists */
-int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from);
-int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
+int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_t *from);
+int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					fr_pair_t *from, fr_dict_attr_t const *da);
-int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
+int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					      fr_pair_t *from, fr_dict_attr_t const *parent_da);
 
 /** @name Pair to pair copying
