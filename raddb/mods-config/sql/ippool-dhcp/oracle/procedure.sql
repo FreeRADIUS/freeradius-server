@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---	 SELECT fr_dhcp_allocate_previous_or_new_address( \
+--	 SELECT fr_ippool_allocate_previous_or_new_address( \
 --		 '%{control.${pool_name}}', \
 --		 '%{DHCP-Gateway-IP-Address}', \
 --		 '${pool_key}', \
@@ -28,7 +28,7 @@
 -- allocate_commit = ""
 --
 
-CREATE OR REPLACE FUNCTION fr_dhcp_allocate_previous_or_new_address (
+CREATE OR REPLACE FUNCTION fr_ippool_allocate_previous_or_new_address (
 	v_pool_name IN VARCHAR2,
 	v_gateway IN VARCHAR2,
 	v_pool_key IN VARCHAR2,

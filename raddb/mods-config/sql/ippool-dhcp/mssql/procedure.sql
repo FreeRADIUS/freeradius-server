@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---      EXEC fr_dhcp_allocate_previous_or_new_address \
+--      EXEC fr_ippool_allocate_previous_or_new_address \
 --              @v_pool_name = '%{control.${pool_name}}', \
 --              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
 --              @v_pool_key = '${pool_key}', \
@@ -28,7 +28,7 @@
 -- allocate_commit = ""
 --
 
-CREATE OR ALTER PROCEDURE fr_dhcp_allocate_previous_or_new_address
+CREATE OR ALTER PROCEDURE fr_ippool_allocate_previous_or_new_address
 	@v_pool_name VARCHAR(64),
 	@v_gateway VARCHAR(15),
 	@v_pool_key VARCHAR(64),

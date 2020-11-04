@@ -17,7 +17,7 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
--- 	CALL fr_dhcp_allocate_previous_or_new_address( \
+-- 	CALL fr_ippool_allocate_previous_or_new_address( \
 -- 		'%{control.${pool_name}}', \
 -- 		'%{DHCP-Gateway-IP-Address}', \
 -- 		'${pool_key}', \
@@ -30,8 +30,8 @@
 
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS fr_dhcp_allocate_previous_or_new_address;
-CREATE PROCEDURE fr_dhcp_allocate_previous_or_new_address (
+DROP PROCEDURE IF EXISTS fr_ippool_allocate_previous_or_new_address;
+CREATE PROCEDURE fr_ippool_allocate_previous_or_new_address (
 	IN v_pool_name VARCHAR(64),
 	IN v_gateway VARCHAR(15),
 	IN v_pool_key VARCHAR(64),
