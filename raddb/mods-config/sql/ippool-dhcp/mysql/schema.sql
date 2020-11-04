@@ -5,7 +5,7 @@ CREATE TABLE fr_ippool (
 	id			int unsigned NOT NULL auto_increment,
 	pool_name		varchar(30) NOT NULL,
 	address		varchar(15) NOT NULL DEFAULT '',
-	pool_key		varchar(30) NOT NULL DEFAULT '',
+	owner		varchar(30) NOT NULL DEFAULT '',
 	gateway			varchar(15) NOT NULL DEFAULT '',
 	expiry_time		DATETIME NOT NULL DEFAULT NOW(),
 	status			ENUM('dynamic', 'static', 'declined', 'disabled') DEFAULT 'dynamic',
@@ -13,5 +13,5 @@ CREATE TABLE fr_ippool (
 	PRIMARY KEY (id),
 	KEY fr_ippool_poolname_expire (pool_name, expiry_time),
 	KEY address (address),
-	KEY fr_ippool_poolname_poolkey_ipaddress (pool_name, pool_key, address)
+	KEY fr_ippool_poolname_poolkey_ipaddress (pool_name, owner, address)
 ) ENGINE=InnoDB;

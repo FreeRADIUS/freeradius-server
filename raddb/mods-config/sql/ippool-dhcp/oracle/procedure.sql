@@ -20,7 +20,7 @@
 --	 SELECT fr_ippool_allocate_previous_or_new_address( \
 --		 '%{control.${pool_name}}', \
 --		 '%{DHCP-Gateway-IP-Address}', \
---		 '${pool_key}', \
+--		 '${owner}', \
 --		 ${offer_duration}, \
 --		 '%{%{${req_attribute_name}}:-0.0.0.0}'
 --	 ) FROM dual"
@@ -31,7 +31,7 @@
 CREATE OR REPLACE FUNCTION fr_ippool_allocate_previous_or_new_address (
 	v_pool_name IN VARCHAR2,
 	v_gateway IN VARCHAR2,
-	v_pool_key IN VARCHAR2,
+	v_owner IN VARCHAR2,
 	v_lease_duration IN INTEGER,
 	v_requsted_address IN VARCHAR2
 )
@@ -51,7 +51,7 @@ BEGIN
 				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = v_pool_name
 					AND expiry_time > current_timestamp
-					AND pool_key = v_pool_key
+					AND owner = v_owner
 					AND fr_ippool_status.status IN ('dynamic', 'static')
 			) WHERE ROWNUM <= 1
 		) FOR UPDATE SKIP LOCKED;
@@ -69,7 +69,7 @@ BEGIN
 	--		ON fr_ippool_status.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
 	--			AND expiry_time > current_timestamp
-	--			AND pool_key = v_pool_key
+	--			AND owner = v_owner
 	--			AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
@@ -93,7 +93,7 @@ BEGIN
 	--			JOIN fr_ippool_status
 	--			ON fr_ippool_status.status_id = fr_ippool.status_id
 	--			WHERE pool_name = v_pool_name
-	--				AND pool_key = v_pool_key
+	--				AND owner = v_owner
 	--				AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		) WHERE ROWNUM <= 1
 	--	) FOR UPDATE SKIP LOCKED;
@@ -110,7 +110,7 @@ BEGIN
 	--		JOIN fr_ippool_status
 	--		ON fr_ippool_status.status_id = fr_ippool.status_id
 	--		WHERE pool_name = v_pool_name
-	--			AND pool_key = v_pool_key
+	--			AND owner = v_owner
 	--			AND fr_ippool_status.status IN ('dynamic', 'static')
 	--		FETCH FIRST 1 ROWS ONLY
 	--	) FOR UPDATE SKIP LOCKED;
@@ -200,7 +200,7 @@ BEGIN
 	UPDATE fr_ippool
 	SET
 		gateway = v_gateway,
-		pool_key = v_pool_key,
+		owner = v_owner,
 		expiry_time = CURRENT_TIMESTAMP + v_lease_duration * INTERVAL '1' SECOND(1)
 	WHERE address = r_address;
 

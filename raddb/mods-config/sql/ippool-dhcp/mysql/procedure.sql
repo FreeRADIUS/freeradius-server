@@ -20,7 +20,7 @@
 -- 	CALL fr_ippool_allocate_previous_or_new_address( \
 -- 		'%{control.${pool_name}}', \
 -- 		'%{DHCP-Gateway-IP-Address}', \
--- 		'${pool_key}', \
+-- 		'${owner}', \
 -- 		${offer_duration}, \
 --		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 -- 	)"
@@ -34,7 +34,7 @@ DROP PROCEDURE IF EXISTS fr_ippool_allocate_previous_or_new_address;
 CREATE PROCEDURE fr_ippool_allocate_previous_or_new_address (
 	IN v_pool_name VARCHAR(64),
 	IN v_gateway VARCHAR(15),
-	IN v_pool_key VARCHAR(64),
+	IN v_owner VARCHAR(64),
 	IN v_lease_duration INT,
 	IN v_requested_address VARCHAR(15)
 )
@@ -51,7 +51,7 @@ proc:BEGIN
 	FROM fr_ippool
 	WHERE pool_name = v_pool_name
 		AND expiry_time > NOW()
-		AND pool_key = v_pool_key
+		AND owner = v_owner
 		AND `status` IN ('dynamic', 'static')
 	LIMIT 1
 	FOR UPDATE;
@@ -75,7 +75,7 @@ proc:BEGIN
 	-- SELECT address INTO r_address
 	-- FROM fr_ippool
 	-- WHERE pool_name = v_pool_name
-	--	AND pool_key = v_pool_key
+	--	AND owner = v_owner
 	--	AND `status` IN ('dynamic', 'static')
 	-- LIMIT 1
 	-- FOR UPDATE;
@@ -123,7 +123,7 @@ proc:BEGIN
 	UPDATE fr_ippool
 	SET
 		gateway = v_gateway,
-		pool_key = v_pool_key,
+		owner = v_owner,
 		expiry_time = NOW() + INTERVAL v_lease_duration SECOND
 	WHERE address = r_address;
 

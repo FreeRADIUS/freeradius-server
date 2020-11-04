@@ -20,7 +20,7 @@
 --	SELECT fr_ippool_allocate_previous_or_new_address( \
 --		'%{control.${pool_name}}', \
 --		'%{DHCP-Gateway-IP-Address}', \
---		'${pool_key}', \
+--		'${owner}', \
 --		${offer_duration}, \
 --		'%{%{${req_attribute_name}}:-0.0.0.0}' \
 --	)"
@@ -31,7 +31,7 @@
 CREATE OR REPLACE FUNCTION fr_ippool_allocate_previous_or_new_address (
 	v_pool_name VARCHAR(64),
 	v_gateway VARCHAR(16),
-	v_pool_key VARCHAR(64),
+	v_owner VARCHAR(64),
 	v_lease_duration INT,
 	v_requested_address INET
 )
@@ -47,7 +47,7 @@ BEGIN
 	WITH ips AS (
 		SELECT address FROM fr_ippool
 		WHERE pool_name = v_pool_name
-			AND pool_key = v_pool_key
+			AND owner = v_owner
 			AND expiry_time > NOW()
 			AND status IN ('dynamic', 'static')
 		LIMIT 1 FOR UPDATE SKIP LOCKED )
@@ -66,7 +66,7 @@ BEGIN
 	-- WITH ips AS (
 	--	SELECT address FROM fr_ippool
 	--	WHERE pool_name = v_pool_name
-	--		AND pool_key = v_pool_key
+	--		AND owner = v_owner
 	--		AND status IN ('dynamic', 'static')
 	--	LIMIT 1 FOR UPDATE SKIP LOCKED )
 	-- UPDATE fr_ippool
@@ -85,7 +85,7 @@ BEGIN
 				AND expiry_time < NOW()
 			LIMIT 1 FOR UPDATE SKIP LOCKED )
 		UPDATE fr_ippool
-		SET pool_key = v_pool_key,
+		SET owner = v_owner,
 			expiry_time = NOW() + v_lease_duration * interval '1 sec',
 			gateway = v_gateway
 		FROM ips WHERE fr_ippool.address = ips.address
@@ -105,7 +105,7 @@ BEGIN
 			ORDER BY expiry_time
 			LIMIT 1 FOR UPDATE SKIP LOCKED )
 		UPDATE fr_ippool
-		SET pool_key = v_pool_key,
+		SET owner = v_owner,
 			expiry_time = NOW() + v_lease_duration * interval '1 sec',
 			gateway = v_gateway
 		FROM ips WHERE fr_ippool.address = ips.address

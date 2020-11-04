@@ -19,7 +19,7 @@ CREATE TABLE fr_ippool (
 	id			int IDENTITY (1,1) NOT NULL,
 	pool_name		varchar(30) NOT NULL,
 	address		        varchar(15) NOT NULL default '',
-	pool_key		varchar(30) NOT NULL default '',
+	owner		varchar(30) NOT NULL default '',
 	gateway			varchar(15) NOT NULL default '',
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
 	status_id		int NOT NULL default 1,
@@ -35,6 +35,6 @@ GO
 CREATE INDEX fr_ippool_address ON fr_ippool(address)
 GO
 
-CREATE INDEX fr_poolname_poolkey_address ON fr_ippool(pool_name, pool_key, address)
+CREATE INDEX fr_poolname_poolkey_address ON fr_ippool(pool_name, owner, address)
 GO
 

@@ -14,7 +14,7 @@ CREATE TABLE fr_ippool (
 	id			INT DEFAULT ON NULL fr_ippool_seq.NEXTVAL PRIMARY KEY,
 	pool_name		VARCHAR(30) NOT NULL,
 	address		VARCHAR(15) NOT NULL,
-	pool_key		VARCHAR(30) NOT NULL,
+	owner		VARCHAR(30) NOT NULL,
 	gateway			VARCHAR(15) NOT NULL,
 	expiry_time		TIMESTAMP(0) NOT NULL,
 	status_id		INT DEFAULT 1,
@@ -24,5 +24,5 @@ CREATE TABLE fr_ippool (
 
 CREATE INDEX fr_ippool_poolname_expire ON fr_ippool (pool_name, expiry_time);
 CREATE INDEX fr_ippool_address ON fr_ippool (address);
-CREATE INDEX fr_ippool_poolname_poolkey ON fr_ippool (pool_name, pool_key, address);
+CREATE INDEX fr_ippool_poolname_poolkey ON fr_ippool (pool_name, owner, address);
 

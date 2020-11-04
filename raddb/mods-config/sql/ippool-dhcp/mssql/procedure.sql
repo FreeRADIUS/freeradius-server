@@ -20,7 +20,7 @@
 --      EXEC fr_ippool_allocate_previous_or_new_address \
 --              @v_pool_name = '%{control.${pool_name}}', \
 --              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
---              @v_pool_key = '${pool_key}', \
+--              @v_owner = '${owner}', \
 --              @v_lease_duration = ${offer_duration}, \
 --              @v_requested_address = '%{%{${req_attribute_name}}:-0.0.0.0}' \
 --      "
@@ -31,7 +31,7 @@
 CREATE OR ALTER PROCEDURE fr_ippool_allocate_previous_or_new_address
 	@v_pool_name VARCHAR(64),
 	@v_gateway VARCHAR(15),
-	@v_pool_key VARCHAR(64),
+	@v_owner VARCHAR(64),
 	@v_lease_duration INT,
 	@v_requested_address VARCHAR(15)
 AS
@@ -61,7 +61,7 @@ AS
 			ON fr_ippool_status.status_id = fr_ippool.status_id
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
-				AND pool_key = @v_pool_key
+				AND owner = @v_owner
 				AND fr_ippool_status.status IN ('dynamic', 'static')
 		)
 		UPDATE cte WITH (rowlock, readpast)
@@ -82,7 +82,7 @@ AS
 		--	JOIN fr_ippool_status
 		--	ON fr_ippool_status.status_id = fr_ippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
-		-- 		AND pool_key = @v_pool_key
+		-- 		AND owner = @v_owner
 		--		AND fr_ippool_status.status IN ('dynamic', 'static')
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
@@ -146,7 +146,7 @@ AS
 		UPDATE fr_ippool
 		SET
 			gateway = @v_gateway,
-			pool_key = @v_pool_key,
+			owner = @v_owner,
 			expiry_time = DATEADD(SECOND,@v_lease_duration,CURRENT_TIMESTAMP)
 		WHERE address = @r_address;
 
