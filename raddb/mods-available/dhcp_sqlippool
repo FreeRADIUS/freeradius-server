@@ -23,7 +23,7 @@ sqlippool dhcp_sqlippool {
 	#
 	#  If you have multiple sql instances such as "sql sql1 {...}",
 	#  use the *instance* name here: sql1
-	sql_module_instance = "sql"
+	sql_module_instance = "dhcp_sql"
 
 	#  This should be set the same as the dialect for the SQL
 	#  instance in use

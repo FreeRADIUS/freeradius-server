@@ -114,3 +114,7 @@ ATTRIBUTE	DHCP-Network-Subnet			274	ipv4prefix
 # This is a name for the group(s) a client belongs to, used for
 # looking up of options
 ATTRIBUTE	DHCP-Group-Name				275	string
+
+# These are for controlling option lookups
+ATTRIBUTE	DHCP-SQL-Option-Identifier		276	string
+ATTRIBUTE	DHCP-SQL-Option-Context			277	string

@@ -1,0 +1,72 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = DHCP SQL Module
+#
+#  This is an instance of the `sql` module that handles configuration
+#  for the SQL drivers for use with DHCP.
+#
+#  The database schemas and queries are located in subdirectories:
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Directory                      | Description
+#  | sql/dhcp/<driver>/schema.sql   | Schema
+#  | sql/dhcp/<driver>/queries.conf | Authorisation and Accounting queries
+#  |===
+#
+#  Driver specific configuration options are located in `sql` prefix
+#  config files in:
+#
+#    mods-config/sql/driver/<driver>
+#
+#  Where `<driver>` is cassandra, db2, firebird, freetds, null, mysql
+#  oracle, postgresql, sqlite and unixodbc.
+#
+#  See raddb/mods-available/sql for a description of the configuration items
+#  for the sql module.
+#
+sql dhcp_sql {
+
+	dialect = "sqlite"
+	driver = "rlm_sql_${dialect}"
+
+	#
+	#  Include driver specific configuration file if one
+	#  exists. These are in a separate configuration file
+	#  in mods-config/sql/driver/<driver>.
+	#
+	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
+
+#	server = "localhost"
+#	port = 3306
+#	login = "radius"
+#	password = "radpass"
+
+	radius_db = "radius"
+
+	dhcpreply_table = "dhcpreply"
+	groupreply_table = "dhcpgroupreply"
+	dhcpgroup_table = "dhcpgroup"
+	read_groups = no
+
+	pool {
+		start = ${thread[pool].num_workers}
+		min = ${thread[pool].num_workers}
+		max = ${thread[pool].num_workers}
+		spare = 1
+		uses = 0
+		retry_delay = 30
+		lifetime = 0
+		idle_timeout = 60
+		connect_timeout = 3.0
+	}
+
+	group_attribute = "${.:instance}-SQL-Group"
+
+	$INCLUDE ${modconfdir}/sql/dhcp/${dialect}/queries.conf
+}
