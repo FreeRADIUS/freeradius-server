@@ -48,7 +48,7 @@ proc:BEGIN
 	-- Reissue an existing IP address lease when re-authenticating a session
 	--
 	SELECT address INTO r_address
-	FROM radippool
+	FROM fr_ippool
 	WHERE pool_name = v_pool_name
 		AND expiry_time > NOW()
 		AND pool_key = v_pool_key
@@ -73,7 +73,7 @@ proc:BEGIN
 	-- for expired leases.
 	--
 	-- SELECT address INTO r_address
-	-- FROM radippool
+	-- FROM fr_ippool
 	-- WHERE pool_name = v_pool_name
 	--	AND pool_key = v_pool_key
 	--	AND `status` IN ('dynamic', 'static')
@@ -100,7 +100,7 @@ proc:BEGIN
 	--
 	IF r_address IS NULL THEN
 		SELECT address INTO r_address
-		FROM radippool
+		FROM fr_ippool
 		WHERE pool_name = v_pool_name
 			AND expiry_time < NOW()
 			AND `status` = 'dynamic'
@@ -120,7 +120,7 @@ proc:BEGIN
 
 	-- Update the pool having allocated an IP address
 	--
-	UPDATE radippool
+	UPDATE fr_ippool
 	SET
 		gateway = v_gateway,
 		pool_key = v_pool_key,
