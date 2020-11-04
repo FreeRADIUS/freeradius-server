@@ -29,7 +29,7 @@
  *	with priority set by expiry time.
  * - @verbatim {<pool name>:<pool type>}:ip:<address> @endverbatim (hash) contains four keys
  *     * range   - Range identifier, used to lookup attributes associated with a range within a pool.
- *     * device  - Device identifier for the device which last bound this address.
+ *     * device  - Lease owner identifier for the device which last bound this address.
  *     * gateway - Gateway of device which last bound this address.
  *     * counter - How many times this IP address has been bound.
  * - @verbatim {<pool name>:<pool type>}:device:<client id> @endverbatim (string) contains last
@@ -75,7 +75,7 @@ typedef struct {
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
-	tmpl_t			*device_id;	//!< Unique device identifier.  Could be mac-address
+	tmpl_t			*owner;	//!< Unique Lease owner identifier.  Could be mac-address
 						//!< or a combination of User-Name and something
 						//!< unique to the device.
 
@@ -108,7 +108,7 @@ static CONF_PARSER redis_config[] = {
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, pool_name) },
 
-	{ FR_CONF_OFFSET("device", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, device_id) },
+	{ FR_CONF_OFFSET("owner", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, owner) },
 	{ FR_CONF_OFFSET("gateway", FR_TYPE_TMPL, rlm_redis_ippool_t, gateway_id) },\
 
 	{ FR_CONF_OFFSET("offer_time", FR_TYPE_TMPL, rlm_redis_ippool_t, offer_time) },
@@ -168,7 +168,7 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
  * - KEYS[1] The pool name.
  * - ARGV[1] Wall time (seconds since epoch).
  * - ARGV[2] Expires in (seconds).
- * - ARGV[3] Device identifier (administratively configured).
+ * - ARGV[3] Lease owner identifier (administratively configured).
  * - ARGV[4] (optional) Gateway identifier.
  *
  * Returns @verbatim { <rcode>[, <ip>][, <range>][, <lease time>][, <counter>] } @endverbatim
@@ -181,10 +181,10 @@ static char lua_alloc_cmd[] =
 
 	"local pool_key" EOL										/* 3 */
 	"local address_key" EOL										/* 4 */
-	"local device_key" EOL										/* 5 */
+	"local owner_key" EOL										/* 5 */
 
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL					/* 6 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL			/* 7 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL			/* 7 */
 
 	/*
 	 *	Check to see if the client already has a lease,
@@ -193,7 +193,7 @@ static char lua_alloc_cmd[] =
 	 *	The additional sanity checks are to allow for the record
 	 *	of device/ip binding to persist for longer than the lease.
 	 */
-	"exists = redis.call('GET', device_key);" EOL							/* 8 */
+	"exists = redis.call('GET', owner_key);" EOL							/* 8 */
 	"if exists then" EOL										/* 9 */
 	"  local expires_in = tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1])" EOL		/* 10 */
 	"  if expires_in > 0 then" EOL									/* 11 */
@@ -225,8 +225,8 @@ static char lua_alloc_cmd[] =
 	 */
 	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ip[1]" EOL			/* 30 */
 	"redis.call('HMSET', address_key, 'device', ARGV[3], 'gateway', ARGV[4])" EOL			/* 31 */
-	"redis.call('SET', device_key, ip[1])" EOL							/* 32 */
-	"redis.call('EXPIRE', device_key, ARGV[2])" EOL							/* 33 */
+	"redis.call('SET', owner_key, ip[1])" EOL							/* 32 */
+	"redis.call('EXPIRE', owner_key, ARGV[2])" EOL							/* 33 */
 	"return { " EOL											/* 34 */
 	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL							/* 35 */
 	"  ip[1], " EOL											/* 36 */
@@ -242,7 +242,7 @@ static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  * - ARGV[1] Wall time (seconds since epoch).
  * - ARGV[2] Expires in (seconds).
  * - ARGV[3] IP address to update.
- * - ARGV[4] Device identifier.
+ * - ARGV[4] Lease owner identifier.
  * - ARGV[5] (optional) Gateway identifier.
  *
  * Returns @verbatim array { <rcode>[, <range>] } @endverbatim
@@ -257,7 +257,7 @@ static char lua_update_cmd[] =
 
 	"local pool_key" EOL								/* 3 */
 	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
+	"local owner_key" EOL								/* 5 */
 
 	/*
 	 *	We either need to know that the IP was last allocated to the
@@ -287,10 +287,10 @@ static char lua_update_cmd[] =
 	 *	of a lease being expired, it may have been
 	 *	removed.
 	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[4]" EOL	/* 16 */
-	"if redis.call('EXPIRE', device_key, ARGV[2]) == 0 then" EOL			/* 17 */
-	"  redis.call('SET', device_key, ARGV[3])" EOL					/* 18 */
-	"  redis.call('EXPIRE', device_key, ARGV[2])" EOL				/* 19 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[4]" EOL	/* 16 */
+	"if redis.call('EXPIRE', owner_key, ARGV[2]) == 0 then" EOL			/* 17 */
+	"  redis.call('SET', owner_key, ARGV[3])" EOL					/* 18 */
+	"  redis.call('EXPIRE', owner_key, ARGV[2])" EOL				/* 19 */
 	"end" EOL									/* 20 */
 
 	/*
@@ -323,7 +323,7 @@ static char lua_release_cmd[] =
 
 	"local pool_key" EOL								/* 3 */
 	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
+	"local owner_key" EOL								/* 5 */
 
 	/*
 	 *	Check that the device releasing was the one
@@ -347,8 +347,8 @@ static char lua_release_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL	/* 17 */
-	"redis.call('DEL', device_key)" EOL						/* 18 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL	/* 17 */
+	"redis.call('DEL', owner_key)" EOL						/* 18 */
 	"return { " EOL
 	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL					/* 19 */
 	"  redis.call('HINCRBY', address_key, 'counter', 1) - 1" EOL			/* 20 */
@@ -385,7 +385,7 @@ static void ippool_action_print(request_t *request, ippool_action_t action,
 				fr_log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
 				char const *ip_str,
-				uint8_t const *device_id, size_t device_id_len,
+				uint8_t const *owner, size_t owner_len,
 				uint8_t const *gateway_id, size_t gateway_id_len,
 				uint32_t expires)
 {
@@ -393,7 +393,7 @@ static void ippool_action_print(request_t *request, ippool_action_t action,
 
 	key_prefix_str = fr_asprint(request, (char const *)key_prefix, key_prefix_len, '"');
 	if (gateway_id) gateway_str = fr_asprint(request, (char const *)gateway_id, gateway_id_len, '"');
-	if (device_id) device_str = fr_asprint(request, (char const *)device_id, device_id_len, '"');
+	if (owner) device_str = fr_asprint(request, (char const *)owner, owner_len, '"');
 
 	switch (action) {
 	case POOL_ACTION_ALLOCATE:
@@ -596,7 +596,7 @@ finish:
  */
 static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, request_t *request,
 					    uint8_t const *key_prefix, size_t key_prefix_len,
-					    uint8_t const *device_id, size_t device_id_len,
+					    uint8_t const *owner, size_t owner_len,
 					    uint8_t const *gateway_id, size_t gateway_id_len,
 					    uint32_t expires)
 {
@@ -607,7 +607,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
 	fr_assert(key_prefix);
-	fr_assert(device_id);
+	fr_assert(owner);
 
 	now = fr_time_to_timeval(fr_time());
 
@@ -624,7 +624,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	 		       lua_alloc_digest,
 			       key_prefix, key_prefix_len,
 			       (unsigned int)now.tv_sec, expires,
-			       device_id, device_id_len,
+			       owner, owner_len,
 			       gateway_id, gateway_id_len);
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
@@ -788,7 +788,7 @@ finish:
 static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, request_t *request,
 					  uint8_t const *key_prefix, size_t key_prefix_len,
 					  fr_ipaddr_t *ip,
-					  uint8_t const *device_id, size_t device_id_len,
+					  uint8_t const *owner, size_t owner_len,
 					  uint8_t const *gateway_id, size_t gateway_id_len,
 					  uint32_t expires)
 {
@@ -808,7 +808,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
 	 */
-	if (!device_id) device_id = (uint8_t const *)"";
+	if (!owner) owner = (uint8_t const *)"";
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
@@ -821,7 +821,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len,
+				       owner, owner_len,
 				       gateway_id, gateway_id_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
@@ -836,7 +836,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       ip_buff,
-				       device_id, device_id_len,
+				       owner, owner_len,
 				       gateway_id, gateway_id_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
@@ -930,7 +930,7 @@ finish:
 static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, request_t *request,
 					   uint8_t const *key_prefix, size_t key_prefix_len,
 					   fr_ipaddr_t *ip,
-					   uint8_t const *device_id, size_t device_id_len)
+					   uint8_t const *owner, size_t owner_len)
 {
 	struct			timeval now;
 	redisReply		*reply = NULL;
@@ -943,7 +943,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, reque
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
 	 */
-	if (!device_id) device_id = (uint8_t const *)"";
+	if (!owner) owner = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
@@ -955,7 +955,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, reque
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len);
+				       owner, owner_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
@@ -969,7 +969,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, reque
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       ip_buff,
-				       device_id, device_id_len);
+				       owner, owner_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
@@ -1048,9 +1048,9 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 
 static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request, ippool_action_t action)
 {
-	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
-	uint8_t const	*key_prefix, *device_id = NULL, *gateway_id = NULL;
-	size_t		key_prefix_len, device_id_len = 0, gateway_id_len = 0;
+	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], owner_buff[256], gateway_id_buff[256];
+	uint8_t const	*key_prefix, *owner = NULL, *gateway_id = NULL;
+	size_t		key_prefix_len, owner_len = 0, gateway_id_len = 0;
 	ssize_t		slen;
 	fr_ipaddr_t	ip;
 	char		expires_buff[20];
@@ -1064,15 +1064,15 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 
 	key_prefix_len = (size_t)slen;
 
-	if (inst->device_id) {
-		slen = tmpl_expand((char const **)&device_id,
-				   (char *)&device_id_buff, sizeof(device_id_buff),
-				   request, inst->device_id, NULL, NULL);
+	if (inst->owner) {
+		slen = tmpl_expand((char const **)&owner,
+				   (char *)&owner_buff, sizeof(owner_buff),
+				   request, inst->owner, NULL, NULL);
 		if (slen < 0) {
-			REDEBUG("Failed expanding device (%s)", inst->device_id->name);
+			REDEBUG("Failed expanding device (%s)", inst->owner->name);
 			return RLM_MODULE_FAIL;
 		}
-		device_id_len = (size_t)slen;
+		owner_len = (size_t)slen;
 	}
 
 	if (inst->gateway_id) {
@@ -1101,9 +1101,9 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len, NULL,
-				    device_id, device_id_len, gateway_id, gateway_id_len, expires);
+				    owner, owner_len, gateway_id, gateway_id_len, expires);
 		switch (redis_ippool_allocate(inst, request, key_prefix, key_prefix_len,
-					      device_id, device_id_len,
+					      owner, owner_len,
 					      gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address lease allocated");
@@ -1145,9 +1145,9 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, expires);
+				    ip_str, owner, owner_len, gateway_id, gateway_id_len, expires);
 		switch (redis_ippool_update(inst, request, key_prefix, key_prefix_len,
-					    &ip, device_id, device_id_len,
+					    &ip, owner, owner_len,
 					    gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("Requested IP address' \"%s\" lease updated", ip_str);
@@ -1211,9 +1211,9 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, 0);
+				    ip_str, owner, owner_len, gateway_id, gateway_id_len, 0);
 		switch (redis_ippool_release(inst, request, key_prefix, key_prefix_len,
-					     &ip, device_id, device_id_len)) {
+					     &ip, owner, owner_len)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address \"%s\" released", ip_str);
 			return RLM_MODULE_UPDATED;
