@@ -1457,9 +1457,16 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				  uint8_t const *src, size_t len,
 				  bool tainted)
 {
-	uint8_t	const *p = src;
-	uint8_t const *end = p + len;
-	size_t	min, max;
+	return fr_value_box_from_network_dbuff(ctx, dst, type, enumv, &FR_DBUFF_TMP(src, len), len, tainted);
+}
+
+ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
+					fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					fr_dbuff_t *dbuff, size_t len,
+					bool tainted)
+{
+	size_t		min, max;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	min = fr_value_box_network_sizes[type][0];
 	max = fr_value_box_network_sizes[type][1];
@@ -1481,14 +1488,16 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	switch (type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) {
+		if (fr_value_box_bstrndup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
 			return FR_VALUE_BOX_NET_OOM;
 		}
-		return len;
+		return fr_dbuff_set(dbuff, &work_dbuff);
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_memdup(ctx, dst, enumv, src, len, tainted) < 0) return FR_VALUE_BOX_NET_OOM;
-		return len;
+		if (fr_value_box_memdup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
+			return FR_VALUE_BOX_NET_OOM;
+		}
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	default:
 		break;
 	}
@@ -1506,65 +1515,101 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			.af = AF_INET,
 			.prefix = 32,
 		};
-		memcpy(&dst->vb_ip.addr.v4, p, (end - p));
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v4, &work_dbuff, len);
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET,
-			.prefix = *p++,
 		};
-		memcpy(&dst->vb_ip.addr.v4, p, (end - p));
+		FR_DBUFF_OUT_RETURN(&dst->vb_ip.prefix, &work_dbuff);
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v4, &work_dbuff, len - 1);
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET6,
-			.scope_id = len == max ? *p++ : 0, /* optional */
+			.scope_id = 0,
 			.prefix = 128
 		};
-		memcpy(&dst->vb_ip.addr.v6, p, (end - p));
+		if (len == max) {
+			uint8_t	scope_id = 0;
+
+			FR_DBUFF_OUT_RETURN(&scope_id, &work_dbuff);
+			dst->vb_ip.scope_id = scope_id;
+			len--;
+		}
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v6, &work_dbuff, len);
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET6,
-			.scope_id = len == max ? *p++ : 0,
+			.scope_id = 0,
 		};
+		if (len == max) {
+			uint8_t	scope_id = 0;
 
-		/*
-		 *	Can't increment p multiple times
-		 *	in an initialiser because the operations
-		 *	aren't explicitly ordered.
-		 */
-		dst->vb_ip.prefix = *p++;
-		memcpy(&dst->vb_ip.addr.v6, p, (end - p));
+			FR_DBUFF_OUT_RETURN(&scope_id, &work_dbuff);
+			dst->vb_ip.scope_id = scope_id;
+			len--;
+		}
+		FR_DBUFF_OUT_RETURN(&dst->vb_ip.prefix, &work_dbuff);
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v6, &work_dbuff, len - 1);
 		break;
 
 	case FR_TYPE_BOOL:
-		dst->datum.boolean = src[0] > 0 ? true : false;
+		{
+			uint8_t	val = 0;
+
+			FR_DBUFF_OUT_RETURN(&val, &work_dbuff);
+			dst->datum.boolean = (val != 0);
+		}
 		break;
 
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_INT8:
-		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
+		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], &work_dbuff, len);
 		break;
 
-	/*
-	 *	Needs a bytesex operation
-	 */
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int8, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT8:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint8, &work_dbuff);
+		break;
+
 	case FR_TYPE_INT16:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int16, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT16:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint16, &work_dbuff);
+		break;
+
 	case FR_TYPE_INT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int32, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint32, &work_dbuff);
+		break;
+
 	case FR_TYPE_INT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int64, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint64, &work_dbuff);
+		break;
+
 	case FR_TYPE_FLOAT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_float32, &work_dbuff);
+		break;
+
 	case FR_TYPE_FLOAT64:
-		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
-		fr_value_box_hton(dst, dst);	/* Operate in-place */
+		FR_DBUFF_OUT_RETURN(&dst->vb_float64, &work_dbuff);
 		break;
 
 	/*
@@ -1576,7 +1621,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	 */
 	case FR_TYPE_DATE:
 	{
-		size_t i, length = 4;
+		size_t length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
 
@@ -1589,21 +1634,11 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return (len > length) ? -(length) : -(len);
+		if (len > length) return -(length);
 
-		/*
-		 *	Just loop over the input data until we reach
-		 *	the end.  Shifting it every time.
-		 */
-		date = 0;
 		dst->enumv = enumv;
 
-		i = 0;
-		do {
-			date <<= 8;
-			date |= *(p++);
-			i++;
-		} while (i < length);
+		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
 		switch (precision) {
 		default:
@@ -1629,7 +1664,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		size_t i, length = 4;
+		size_t length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
 
@@ -1642,21 +1677,11 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return (len > length) ? -(length) : -(len);
+		if (len > length) return -(length);
 
-		/*
-		 *	Just loop over the input data until we reach
-		 *	the end.  Shifting it every time.
-		 */
-		date = 0;
 		dst->enumv = enumv;
 
-		i = 0;
-		do {
-			date <<= 8;
-			date |= *(p++);
-			i++;
-		} while (i < length);
+		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
 		switch (precision) {
 		default:
@@ -1691,7 +1716,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 	}
 
-	return len;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Convert octets to a fixed size value box value
@@ -3521,6 +3546,27 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	return 0;
 }
 
+int fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				fr_dbuff_t *dbuff, size_t len, bool tainted)
+{
+	char	*str;
+
+	str = talloc_array(ctx, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
+		return -1;
+	}
+
+	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) return -1;
+	str[len] = '\0';
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = len;
+
+	return 0;
+}
+
 /** Copy a nul terminated talloced buffer to a #fr_value_box_t
  *
  * Copy a talloced nul terminated buffer, setting fields in the dst value box appropriately.
@@ -3791,6 +3837,26 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 		fr_strerror_const("Failed allocating octets buffer");
 		return -1;
 	}
+	talloc_set_type(bin, uint8_t);
+
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = bin;
+	dst->vb_length = len;
+
+	return 0;
+}
+
+int fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			      fr_dbuff_t *dbuff, size_t len, bool tainted)
+{
+	uint8_t *bin;
+
+	bin = talloc_size(ctx, len);
+	if (!bin) {
+		fr_strerror_printf("Failed allocating octets buffer");
+		return -1;
+	}
+	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) return -1;
 	talloc_set_type(bin, uint8_t);
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
