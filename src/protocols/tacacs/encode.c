@@ -45,6 +45,7 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 	uint8_t     arg_cnt = 0;
 	fr_pair_t   *vp;
 	fr_cursor_t cursor;
+	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
@@ -61,6 +62,8 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 		arg_cnt++;
 	}
 
+	fr_dbuff_set(dbuff, &work_dbuff);
+
 	return arg_cnt;
 }
 
@@ -69,6 +72,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_di
 	fr_pair_t   *vp;
 	fr_cursor_t cursor;
 	uint8_t     arg_cnt = 0;
+	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
@@ -80,10 +84,10 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_di
 		}
 
 		/* Append the <arg_N> field */
-		FR_DBUFF_MEMCPY_IN_RETURN(dbuff, vp->vp_strvalue, vp->vp_length);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
 	}
 
-	return 0;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /*
@@ -91,14 +95,19 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_di
  */
 static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_attr_t const *da, size_t max_len)
 {
-	fr_pair_t 		*vp;
+	fr_pair_t  *vp;
+	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	vp = fr_pair_find_by_da(vps, da);
 	if (!vp || !vp->vp_length || (vp->vp_length > max_len)) return 0;
 
-	FR_DBUFF_MEMCPY_IN_RETURN(dbuff, vp->vp_strvalue, vp->vp_length);
+	if (da->type == FR_TYPE_STRING) {
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
+	} else {
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
+	}
 
-	return vp->vp_length;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /*
@@ -118,7 +127,7 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_at
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, UNUSED char const *secret, UNUSED size_t secret_len, fr_pair_t *vps)
+ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len, fr_pair_t *vps)
 {
 	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -167,6 +176,11 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, UNUS
 	 *	Handle the fields in-place.
 	 */
 	packet = (fr_tacacs_packet_t *)fr_dbuff_start(&work_dbuff);
+
+	/*
+	 *	Initialize the buffer avoiding invalid values.
+	 */
+	memset(packet, 0, sizeof(fr_tacacs_packet_t));
 
 	/*
 	 *	Initialize the reply from the request.
@@ -493,7 +507,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, UNUS
 			/**
 			 * 6.1. The Account REQUEST Packet Body
 			 *
-			 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
 			 * +----------------+----------------+----------------+----------------+
 			 * |      flags     |  authen_method |    priv_lvl    |  authen_type   |
 			 * +----------------+----------------+----------------+----------------+
