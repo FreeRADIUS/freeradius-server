@@ -19,10 +19,10 @@
 -- allocate_find = "\
 -- 	CALL fr_ippool_allocate_previous_or_new_address( \
 -- 		'%{control.${pool_name}}', \
--- 		'%{DHCP-Gateway-IP-Address}', \
+-- 		'${gateway}', \
 -- 		'${owner}', \
 -- 		${offer_duration}, \
---		'%{%{${req_attribute_name}}:-0.0.0.0}' \
+--		'%{${requested_address}:-0.0.0.0}' \
 -- 	)"
 -- allocate_update = ""
 -- allocate_commit = ""

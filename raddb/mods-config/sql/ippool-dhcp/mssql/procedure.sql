@@ -19,10 +19,10 @@
 -- allocate_find = "\
 --      EXEC fr_ippool_allocate_previous_or_new_address \
 --              @v_pool_name = '%{control.${pool_name}}', \
---              @v_gateway = '%{DHCP-Gateway-IP-Address}', \
+--              @v_gateway = '${gateway}', \
 --              @v_owner = '${owner}', \
 --              @v_lease_duration = ${offer_duration}, \
---              @v_requested_address = '%{%{${req_attribute_name}}:-0.0.0.0}' \
+--              @v_requested_address = '%{${requested_address}:-0.0.0.0}' \
 --      "
 -- allocate_update = ""
 -- allocate_commit = ""
