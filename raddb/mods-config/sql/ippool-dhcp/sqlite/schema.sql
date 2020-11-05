@@ -11,9 +11,9 @@ INSERT INTO fr_ippool_status (status_id, status) VALUES (1, 'dynamic'), (2, 'sta
 CREATE TABLE fr_ippool (
 	id			int PRIMARY KEY,
 	pool_name		varchar(30) NOT NULL,
-	address		varchar(15) NOT NULL,
-	owner		varchar(30) NOT NULL DEFAULT '',
-	gateway			varchar(15) NOT NULL DEFAULT '',
+	address		        varchar(15) NOT NULL,
+	owner		        varchar(128) NOT NULL DEFAULT '',
+	gateway			varchar(128) NOT NULL DEFAULT '',
 	expiry_time		DATETIME NOT NULL default (DATETIME('now')),
 	status_id		int NOT NULL DEFAULT 1,
 	counter			int NOT NULL DEFAULT 0,
