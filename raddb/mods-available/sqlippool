@@ -35,7 +35,7 @@ sqlippool {
 	ippool_table = "fr_ippool"
 
 	#
-	#  lease_duration:: IP lease duration. (Leases expire even if `Acct Stop` packet is lost).
+	#  lease_duration:: IP lease duration.
 	#
 	lease_duration = 3600
 
@@ -51,7 +51,7 @@ sqlippool {
 	allocated_address_attr = radius.Framed-IP-Address
 
 	#
-	#  owner:: Attribute which identifies the owner of the lease.
+	#  owner:: Expansion which identifies the owner of the lease.
 	#
 	#  For an operation (i.e. a request to extend a lease, or release an
 	#  IP address) to be applied, the owner specified in the incoming
@@ -64,21 +64,21 @@ sqlippool {
 	#
 	#  For RADIUS the owner will likely be specified by:
 	#
-	#  * `%{Calling-Station-Id}` which binds the lease to the mac address
+	#  * `%{radius.Calling-Station-Id}` which binds the lease to the mac address
 	#    of the user's device.  For RADIUS this is almost always the better
 	#    option as it can allow the user's device to move between NAS.
 	#
-	#  * `%{NAS-Port}` which binds the lease to a given port on the NAS.
+	#  * `%{radius.NAS-Port}` which binds the lease to a given port on the NAS.
 	#    i.e. any device on that port can modify the lease.  This should only
 	#    be used when the port is constant for the length of the session
 	#    (nearly everywhere except 802.11 wireless).
 	#
 	#  For DHCPv4 the owner will likely be specified by:
 	#
-	#  * `%{DHCP-Client-Hardware-Address}` which binds the lease to the
+	#  * `%{dhcpv4.DHCP-Client-Hardware-Address}` which binds the lease to the
 	#    mac address of the user's device.
 	#
-	#  * `%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}`
+	#  * `%{%{dhcpv4.DHCP-Client-Identifier}:-%{dhcpv4.DHCP-Client-Hardware-Address}}`
 	#    which binds the lease to either the custom identifier set by the
 	#    DHCP client, or if this is absent, the mac address of the user's
 	#    device.
@@ -100,23 +100,23 @@ sqlippool {
 	#  trusted attribute.
 	#  One example would be `%{ADSL-Agent-Circuit-Id}.%{Calling-Station-Id}`.`
 	#
-	owner = "%{Calling-Station-ID}"
+	owner = "%{radius.Calling-Station-ID}"
 
-#       owner = "%{ADSL-Agent-Circuit-Id}.%{Calling-Station-Id}"
+#       owner = "%{radius.ADSL-Agent-Circuit-Id}.%{radius.Calling-Station-Id}"
 
-#	owner = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+#	owner = "%{%{dhcpv4.DHCP-Client-Identifier}:-%{dhcpv4.DHCP-Client-Hardware-Address}}"
 
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	#  For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
+	#  For RADIUS the requested_address will almost always be `%{radius.Framed-IP-Address}`.
 	#
 	#  For DHCPv4 the requested_address will almost always be
-	#  `%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}`.
+	#  `%{%{dhcpv4.DHCP-Requested-IP-Address}:-%{dhcpv4.DHCP-Client-IP-Address}}`.
 	#
-	requested_address = "%{Framed-IP-Address}"
+	requested_address = "%{dhcpv4.Framed-IP-Address}"
 
-#	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+#	requested_address = "%{%{dhcpv4.DHCP-Requested-IP-Address}:-%{dhcpv4.DHCP-Client-IP-Address}}"
 
 	#
 	#  gateway:: The device controlling access to the network or relaying
@@ -130,9 +130,9 @@ sqlippool {
 	#  For DHCPv4, this device is recorded so that we can respond correctly
 	#  to lease queries.
 	#
-	gateway = "%{%{NAS-Identifier}:-%{NAS-IP-Address}}"
+	gateway = "%{%{radius.NAS-Identifier}:-%{radius.NAS-IP-Address}}"
 
-#       gateway = "%{DHCP-Gateway-IP-Address}"
+#       gateway = "%{dhcpv4.DHCP-Gateway-IP-Address}"
 
 	#
 	#  messages { ... }:: These messages are added to the `control.:` items, as
