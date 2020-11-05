@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file proto_arp_udp.c
- * @brief RADIUS handler for UDP.
+ * @file proto_arp_ethernet.c
+ * @brief ARP handler for ethernet
  *
  * @copyright 2016 The FreeRADIUS server project.
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/fr_assert.h
+ * @file lib/server/rad_assert.h
  * @brief Debug assertions, with logging.
  *
  * @copyright 2000,2001,2006 The FreeRADIUS server project

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file src/lib/server/xlat_priv.h
+ * @file src/lib/unlang/xlat_priv.h
  * @brief String expansion ("translation"). Implements %Attribute -> value
  *
  * Private structures for the xlat tokenizer and xlat eval code.

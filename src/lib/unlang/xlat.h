@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/xlat.h
+ * @file lib/unlang/xlat.h
  * @brief xlat expansion parsing and evaluation API.
  *
  * @copyright 2015 The FreeRADIUS server project
