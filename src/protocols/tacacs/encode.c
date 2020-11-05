@@ -169,6 +169,11 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	packet = (fr_tacacs_packet_t *)fr_dbuff_start(&work_dbuff);
 
 	/*
+	 *	Initialize the buffer avoiding invalid values.
+	 */
+	memset(packet, 0, sizeof(fr_tacacs_packet_t));
+
+	/*
 	 *	Initialize the reply from the request.
 	 */
 	if (original) {
