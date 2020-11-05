@@ -493,7 +493,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/**
 			 * 6.1. The Account REQUEST Packet Body
 			 *
-			 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
 			 * +----------------+----------------+----------------+----------------+
 			 * |      flags     |  authen_method |    priv_lvl    |  authen_type   |
 			 * +----------------+----------------+----------------+----------------+
