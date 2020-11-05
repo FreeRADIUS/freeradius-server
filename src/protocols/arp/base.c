@@ -220,7 +220,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps
 /** Decode a raw ARP packet into VPs
  *
  */
-ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_t **vps)
+ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_list_t *list)
 {
 	fr_arp_packet_t const *arp;
 	fr_cursor_t cursor;
@@ -258,7 +258,8 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	/*
 	 *	If the packet is too long, we discard any extra data.
 	 */
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, &child, NULL, NULL);
 }
 
@@ -340,9 +341,9 @@ fr_test_point_proto_encode_t arp_tp_encode_proto = {
 	.func		= fr_arp_encode_proto
 };
 
-static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_decode(ctx, data, data_len, vps);
+	return fr_arp_decode(ctx, data, data_len, list);
 }
 
 extern fr_test_point_proto_decode_t arp_tp_decode_proto;

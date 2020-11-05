@@ -526,11 +526,12 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	fr_cursor_t cursor;
 
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	return fr_vmps_decode(ctx, data, data_len, &cursor, NULL);
 }

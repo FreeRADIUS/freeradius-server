@@ -562,15 +562,15 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 }
 
 
-static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	unsigned int	code;
 	fr_cursor_t	cursor;
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return -1;
 
-	*vps = NULL;
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	if (fr_dhcpv4_decode(ctx, data, data_len, &cursor, &code) < 0) return -1;
 

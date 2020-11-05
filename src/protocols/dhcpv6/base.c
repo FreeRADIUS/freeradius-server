@@ -841,11 +841,11 @@ ssize_t	fr_dhcpv6_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original, size_
  *  However, that would prevent us from properly copying structures.
  *
  * @param[in] ctx	the context to use for allocations
- * @param[out] reply	the reply attributes to create
+ * @param[out] reply_list list of the reply attributes to create
  * @param[in] packet	the input packet to check
  * @param[in] packet_len the length of the input packet.
  */
-int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const *packet, size_t packet_len)
+int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_list_t *reply_list, uint8_t const *packet, size_t packet_len)
 {
 	uint8_t const		*option, *options, *end;
 	ssize_t			slen;
@@ -854,7 +854,9 @@ int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 
 	end = packet + packet_len;
-	fr_cursor_init(&cursor, reply);
+
+	fr_packet_list_init(reply_list);
+	fr_cursor_init(&cursor, reply_list);
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/*
