@@ -118,7 +118,7 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_at
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, UNUSED char const *secret, UNUSED size_t secret_len, fr_pair_t *vps)
+ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len, fr_pair_t *vps)
 {
 	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
