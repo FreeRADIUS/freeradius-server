@@ -74,11 +74,13 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 {
 
 	ssize_t		slen;
-	fr_pair_t	*children = NULL;
+	fr_pair_list_t	children;
 	fr_cursor_t	cursor;
 	uint8_t	const	*p = start;
 
 	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, end - start);
+
+	fr_pair_list_init(&children);
 
 	/*
 	 *	Decode all the children of this TLV
@@ -328,16 +330,16 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 				uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	fr_pair_t	*tmp = NULL;
+	fr_pair_list_t	list;
 	fr_cursor_t	tmp_cursor;
 	ssize_t		slen;
 
-	memset(&tmp, 0 , sizeof(tmp));
+	fr_pair_list_init(&list);
 
-	slen = internal_decode_pair(ctx, &tmp, fr_dict_root(dict), data, data + data_len, decoder_ctx);
+	slen = internal_decode_pair(ctx, &list, fr_dict_root(dict), data, data + data_len, decoder_ctx);
 	if (slen <= 0) return slen;
 
-	fr_cursor_init(&tmp_cursor, &tmp);
+	fr_cursor_init(&tmp_cursor, &list);
 	fr_cursor_merge(cursor, &tmp_cursor);
 
 	return slen;

@@ -102,7 +102,7 @@ struct value_pair_s {
 	 */
 	union {
 		fr_value_box_t		data;			//!< The value of this pair.
-		fr_pair_t		*children;		//!< Nested attributes of this pair.
+		fr_pair_list_t		children;		//!< Nested attributes of this pair.
 	};
 };
 
@@ -189,6 +189,13 @@ fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
 void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
 void		fr_pair_list_free(fr_pair_list_t *list);
+
+/*
+ *  Temporary hack to (a) get type-checking in macros, and (b) be fast
+ */
+#define		fr_pair_list_init(_list) (*(_list) = _Generic((_list), \
+				fr_pair_list_t *  : NULL, \
+				default		  : (fr_pair_list_t *) NULL))
 
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp);
