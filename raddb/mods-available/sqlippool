@@ -114,7 +114,7 @@ sqlippool {
 	#  For DHCPv4 the requested_address will almost always be
 	#  `%{%{dhcpv4.DHCP-Requested-IP-Address}:-%{dhcpv4.DHCP-Client-IP-Address}}`.
 	#
-	requested_address = "%{dhcpv4.Framed-IP-Address}"
+	requested_address = "%{radius.Framed-IP-Address}"
 
 #	requested_address = "%{%{dhcpv4.DHCP-Requested-IP-Address}:-%{dhcpv4.DHCP-Client-IP-Address}}"
 
