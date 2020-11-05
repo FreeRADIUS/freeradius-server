@@ -48,9 +48,9 @@ typedef struct {
 
 	char const	*pool_name;
 	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
-	char const	*attribute_name;	//!< name of the IP address attribute
+	char const	*allocated_address_attr;	//!< name of the IP address attribute
 	fr_dict_attr_t const *req_framed_ip_address; //!< the attribute for requested IP address
-	char const	*req_attribute_name;	//!< name of the requested IP address attribute
+	char const	*req_allocated_address_attr;	//!< name of the requested IP address attribute
 
 						/* Alloc sequence */
 	char const	*alloc_begin;		//!< SQL query to begin.
@@ -111,9 +111,9 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name) },
 
-	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
+	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr), .dflt = "Framed-IP-Address" },
 
-	{ FR_CONF_OFFSET("req_attribute_name", FR_TYPE_STRING, rlm_sqlippool_t, req_attribute_name) },
+	{ FR_CONF_OFFSET("req_allocated_address_attr", FR_TYPE_STRING, rlm_sqlippool_t, req_allocated_address_attr) },
 
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
@@ -429,14 +429,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	if (fr_dict_attr_by_qualified_name(&inst->framed_ip_address,
-					   dict_freeradius, inst->attribute_name, false) != FR_DICT_ATTR_OK) {
+					   dict_freeradius, inst->allocated_address_attr, false) != FR_DICT_ATTR_OK) {
 		cf_log_perr(conf, "Failed resolving attribute");
 		return -1;
 	}
 
 	switch (inst->framed_ip_address->type) {
 	default:
-		cf_log_err(conf, "Cannot use non-IP attributes for 'attribute_name = %s'", inst->attribute_name);
+		cf_log_err(conf, "Cannot use non-IP attributes for 'allocated_address_attr = %s'", inst->allocated_address_attr);
 		return -1;
 
 	case FR_TYPE_IPV4_ADDR:
@@ -446,16 +446,16 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 	}
 
-	if (inst->req_attribute_name) {
+	if (inst->req_allocated_address_attr) {
 		if (fr_dict_attr_by_qualified_name(&inst->req_framed_ip_address,
-						   dict_freeradius, inst->req_attribute_name, false) != FR_DICT_ATTR_OK) {
+						   dict_freeradius, inst->req_allocated_address_attr, false) != FR_DICT_ATTR_OK) {
 			cf_log_perr(conf, "Failed resolving requested attribute");
 			return -1;
 		}
 
 		switch (inst->req_framed_ip_address->type) {
 		default:
-			cf_log_err(conf, "Cannot use non-IP attributes for 'req_attribute_name = %s'", inst->req_attribute_name);
+			cf_log_err(conf, "Cannot use non-IP attributes for 'req_allocated_address_attr = %s'", inst->req_allocated_address_attr);
 			return -1;
 
 		case FR_TYPE_IPV4_ADDR:

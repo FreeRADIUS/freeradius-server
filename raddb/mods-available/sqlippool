@@ -40,7 +40,7 @@ sqlippool {
 	lease_duration = 3600
 
 	#
-	#  attribute_name:: Attribute to use for querying / updating IP addresses.
+	#  allocated_address_attr:: List and attribute where the allocated address is written to.
 	#
 	#  [NOTE]
 	#  ====
@@ -48,8 +48,7 @@ sqlippool {
 	#
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
-	#
-	attribute_name = radius.Framed-IP-Address
+	allocated_address_attr = radius.Framed-IP-Address
 
 	#
 	#  owner:: Attribute which identifies the owner of the lease.
