@@ -18,7 +18,7 @@ GO
 CREATE TABLE fr_ippool (
 	id			int IDENTITY (1,1) NOT NULL,
 	pool_name		varchar(30) NOT NULL,
-	address		        varchar(15) NOT NULL default '',
+	address		        varchar(43) NOT NULL default '',
 	owner		        varchar(128) NOT NULL default '',
 	gateway			varchar(128) NOT NULL default '',
 	expiry_time		DATETIME NOT NULL default CURRENT_TIMESTAMP,
