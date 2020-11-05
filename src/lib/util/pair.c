@@ -2377,3 +2377,19 @@ fr_pair_t *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_val
 	fr_pair_list_tainted(vps);
 	return vps;
 }
+
+/** Evaluation function for matching if vp matches a given da
+ *
+ * Can be used as a filter function for fr_cursor_filter_next()
+ *
+ * @param item	pointer to a fr_pair_t
+ * @param uctx	da to match
+ *
+ * @return true if the pair matches the da
+ */
+bool fr_pair_matches_da(void const *item, void const *uctx)
+{
+	fr_pair_t const		*vp = item;
+	fr_dict_attr_t const	*da = uctx;
+	return da == vp->da;
+}

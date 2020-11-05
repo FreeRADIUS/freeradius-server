@@ -202,6 +202,7 @@ int		fr_pair_to_unknown(fr_pair_t *vp);
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
+bool		fr_pair_matches_da(void const *item, void const *uctx);
 
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
