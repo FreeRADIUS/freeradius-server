@@ -32,7 +32,7 @@ sqlippool {
 	#
 	#  ippool_table:: SQL table to use for ippool range and lease info.
 	#
-	ippool_table = "radippool"
+	ippool_table = "fr_ippool"
 
 	#
 	#  lease_duration:: IP lease duration. (Leases expire even if `Acct Stop` packet is lost).
@@ -52,14 +52,88 @@ sqlippool {
 	attribute_name = radius.Framed-IP-Address
 
 	#
-	#  pool_key:: Attribute which should be considered unique per NAS.
+	#  owner:: Attribute which identifies the owner of the lease.
 	#
-	#  * Using `NAS-Port` gives behaviour similar to `rlm_ippool` and ACS. (default).
-	#  * Using `Calling-Station-Id` works for NAS that send fixed `NAS-Port`.
+	#  For an operation (i.e. a request to extend a lease, or release an
+	#  IP address) to be applied, the owner specified in the incoming
+	#  packet must match the owner recorded for the lease.
 	#
-	#  WARNING: ONLY change this if you know what you are doing!
+	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
+	#  attribute the "owner" identifier could be a `User-Name` or a
+	#  certificate serial number provided that the number of sessions is
+	#  limited to one per user/serial.
 	#
-	pool_key = "%{NAS-Port}"
+	#  For RADIUS the owner will likely be specified by:
+	#
+	#  * `%{Calling-Station-Id}` which binds the lease to the mac address
+	#    of the user's device.  For RADIUS this is almost always the better
+	#    option as it can allow the user's device to move between NAS.
+	#
+	#  * `%{NAS-Port}` which binds the lease to a given port on the NAS.
+	#    i.e. any device on that port can modify the lease.  This should only
+	#    be used when the port is constant for the length of the session
+	#    (nearly everywhere except 802.11 wireless).
+	#
+	#  For DHCPv4 the owner will likely be specified by:
+	#
+	#  * `%{DHCP-Client-Hardware-Address}` which binds the lease to the
+	#    mac address of the user's device.
+	#
+	#  * `%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}`
+	#    which binds the lease to either the custom identifier set by the
+	#    DHCP client, or if this is absent, the mac address of the user's
+	#    device.
+	#
+	#  On a hostile network the owner SHOULD include a component that you
+	#  trust, arranged such that the overall value cannot be spoofed by
+	#  manipulation of the user-controlled data (i.e. the mac or identifier)
+	#  provided by the user's device.
+	#
+	#  For example it might be that the value `ADSL-Agent-Circuit-Id` is
+	#  considered trusted as it's set by a controlled device at the edge of
+	#  the network.  Calling-Station-Id however, is usually provided by
+	#  the user's device so may be spoofed.
+	#
+	#  In order to prevent an attacker releasing DHCP leases for another
+	#  device on the network, the owner string should be constructed so
+	#  that it contains both the trusted and untrusted attributes, or if
+	#  the trusted attribute is sufficiently stable and unique, only the
+	#  trusted attribute.
+	#  One example would be `%{ADSL-Agent-Circuit-Id}.%{Calling-Station-Id}`.`
+	#
+	owner = "%{Calling-Station-ID}"
+
+#       owner = "%{ADSL-Agent-Circuit-Id}.%{Calling-Station-Id}"
+
+#	owner = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+
+	#
+	#  requested_address:: The IP address being renewed or released.
+	#
+	#  For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
+	#
+	#  For DHCPv4 the requested_address will almost always be
+	#  `%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}`.
+	#
+	requested_address = "%{Framed-IP-Address}"
+
+#	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+
+	#
+	#  gateway:: The device controlling access to the network or relaying
+	#  DHCP packets.
+	#
+	#  For RADIUS, this device is recorded so that if an Accounting-On or
+	#  Accounting-Off packet is received, then all leases associated with
+	#  the gateway can be released. 'gateway' in this context is synonymous
+	#  with the NAS the user is connected to.
+	#
+	#  For DHCPv4, this device is recorded so that we can respond correctly
+	#  to lease queries.
+	#
+	gateway = "%{%{NAS-Identifier}:-%{NAS-IP-Address}}"
+
+#       gateway = "%{DHCP-Gateway-IP-Address}"
 
 	#
 	#  messages { ... }:: These messages are added to the `control.:` items, as
