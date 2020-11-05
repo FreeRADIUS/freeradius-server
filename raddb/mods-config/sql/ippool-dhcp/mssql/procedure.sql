@@ -30,8 +30,8 @@
 
 CREATE OR ALTER PROCEDURE fr_ippool_allocate_previous_or_new_address
 	@v_pool_name VARCHAR(64),
-	@v_gateway VARCHAR(15),
-	@v_owner VARCHAR(64),
+	@v_gateway VARCHAR(128),
+	@v_owner VARCHAR(128),
 	@v_lease_duration INT,
 	@v_requested_address VARCHAR(15)
 AS

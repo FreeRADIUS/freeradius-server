@@ -10,9 +10,9 @@ CREATE TYPE dhcp_status AS ENUM ('dynamic', 'static', 'declined', 'disabled');
 CREATE TABLE fr_ippool (
 	id			BIGSERIAL PRIMARY KEY,
 	pool_name		varchar(64) NOT NULL,
-	address		INET NOT NULL,
-	owner		VARCHAR(64) NOT NULL default '0',
-	gateway			VARCHAR(16) NOT NULL default '',
+	address		        INET NOT NULL,
+	owner		        VARCHAR(128) NOT NULL default '0',
+	gateway			VARCHAR(128) NOT NULL default '',
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default NOW(),
 	status			dhcp_status DEFAULT 'dynamic',
 	counter			INT NOT NULL DEFAULT 0

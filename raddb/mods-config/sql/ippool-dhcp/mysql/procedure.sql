@@ -33,8 +33,8 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS fr_ippool_allocate_previous_or_new_address;
 CREATE PROCEDURE fr_ippool_allocate_previous_or_new_address (
 	IN v_pool_name VARCHAR(64),
-	IN v_gateway VARCHAR(15),
-	IN v_owner VARCHAR(64),
+	IN v_gateway VARCHAR(128),
+	IN v_owner VARCHAR(128),
 	IN v_lease_duration INT,
 	IN v_requested_address VARCHAR(15)
 )
