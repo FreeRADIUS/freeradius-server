@@ -264,12 +264,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	- else for offer/ack, look at option 54, for Server Identification and use that
 		 *	- else leave source IP as whatever is already in "address.socket.inet.src_ipaddr".
 		 */
-		if (inst->src_ipaddr.addr.v4.s_addr != INADDR_ANY) {
+		if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) {
 			address.socket.inet.src_ipaddr = inst->src_ipaddr;
-
-		} else if (inst->ipaddr.addr.v4.s_addr != INADDR_ANY) {
+		} else if (!fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
 			address.socket.inet.src_ipaddr = inst->ipaddr;
-
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 		} else if ((address->socket.inet.ifindex > 0) &&
 			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &address.socket.inet.dst_ipaddr.af,

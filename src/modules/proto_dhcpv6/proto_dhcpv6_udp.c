@@ -239,7 +239,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	originate packets from our src_ipaddr.
 	 */
 	fr_socket_addr_swap(&address.socket, &track->address->socket);
-	address.socket.inet.src_ipaddr = inst->src_ipaddr;
+	if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) address.socket.inet.src_ipaddr = inst->src_ipaddr;
 
 	/*
 	 *	Figure out which kind of packet we're sending.
