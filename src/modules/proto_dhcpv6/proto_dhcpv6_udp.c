@@ -55,7 +55,7 @@ typedef struct {
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
-	uint8_t				ethernet[6];		//!< ethernet address associated with the interface
+	fr_ethernet_t			ethernet;		//!< ethernet address associated with the interface
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
@@ -158,12 +158,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	address->socket.proto = IPPROTO_UDP;
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.ifindex,
-			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
-			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
-			     recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
 		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
@@ -252,10 +247,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	proto_dhcpv6 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     address.socket.inet.ifindex,
-			     &address.socket.inet.src_ipaddr, address.socket.inet.src_port,
-			     &address.socket.inet.dst_ipaddr, address.socket.inet.dst_port);
+	data_size = udp_send(&address.socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -557,7 +549,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	Get the MAC address associated with this interface.
 	 *	It can be used to create a server ID.
 	 */
-	(void) fr_interface_to_ethernet(inst->interface, inst->ethernet);
+	(void) fr_interface_to_ethernet(inst->interface, &inst->ethernet);
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);

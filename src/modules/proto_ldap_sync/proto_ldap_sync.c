@@ -1045,7 +1045,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
 		goto error;
 	}
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->src_ipaddr, &inst->src_port);
+	fr_ipaddr_from_sockaddr(&inst->src_ipaddr, &inst->src_port, &addr, len);
 
 	if (getpeername(listen->fd, (struct sockaddr *)&addr, &len) < 0) {
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
@@ -1055,7 +1055,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Allocate a fake client to use in requests
 	 */
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->dst_ipaddr, &inst->dst_port);
+	fr_ipaddr_from_sockaddr(&inst->dst_ipaddr, &inst->dst_port, &addr, len);
 	inst->client = proto_ldap_fake_client_alloc(inst);
 
 	DEBUG2("Starting sync(s)");

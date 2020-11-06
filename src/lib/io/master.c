@@ -692,7 +692,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 			fd = connection->child->fd;
 
-			if (fr_ipaddr_to_sockaddr(&connection->address->socket.inet.src_ipaddr, connection->address->socket.inet.src_port, &src, &salen) < 0) {
+			if (fr_ipaddr_to_sockaddr(&src, &salen,
+						  &connection->address->socket.inet.src_ipaddr,
+						  connection->address->socket.inet.src_port) < 0) {
 				DEBUG("Failed getting IP address");
 				talloc_free(dl_inst);
 				return NULL;
@@ -1223,16 +1225,16 @@ redo:
 		 *	Get IP addresses only if we have IP addresses.
 		 */
 		if ((saremote.ss_family == AF_INET) || (saremote.ss_family == AF_INET6)) {
-			(void) fr_ipaddr_from_sockaddr(&saremote, salen,
-						       &address.socket.inet.src_ipaddr, &address.socket.inet.src_port);
+			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.src_ipaddr, &address.socket.inet.src_port,
+						       &saremote, salen);
 			salen = sizeof(saremote);
 
 			/*
 			 *	@todo - only if the local listen address is "*".
 			 */
 			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
-			(void) fr_ipaddr_from_sockaddr(&saremote, salen,
-						       &address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port);
+			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port,
+						       &saremote, salen);
 		}
 
 	} else {

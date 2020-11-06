@@ -2181,7 +2181,7 @@ void test_intersect_iterator_disjoint(void)
 	TEST_CHECK(fr_cursor_intersect_head(&cursor_a, &cursor_b) == NULL);
 }
 
-bool eval_eq(void const *item, void const * uctx)
+bool eval_eq(void const *item, void const *uctx)
 {
 	test_item_t const	*t = item;
 	char const		*s = uctx;
