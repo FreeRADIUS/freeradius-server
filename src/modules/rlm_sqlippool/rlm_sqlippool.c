@@ -500,13 +500,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_da(request->reply_pairs, inst->allocated_address_da) != NULL) {
+	if (fr_pair_find_by_da(&request->reply_pairs, inst->allocated_address_da) != NULL) {
 		RDEBUG2("%s already exists", inst->allocated_address_da->name);
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_da(request->control_pairs, attr_pool_name) == NULL) {
+	if (fr_pair_find_by_da(&request->control_pairs, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -810,7 +810,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 
 	int			acct_status_type;
 
-	vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

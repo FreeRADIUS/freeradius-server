@@ -373,7 +373,7 @@ int unlang_detached_child_init(request_t *request)
 	/*
 	 *	Set Request Lifetime
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_request_lifetime);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_request_lifetime);
 	if (!vp || (vp->vp_uint32 > 0)) {
 		fr_time_delta_t when = 0;
 		const fr_event_timer_t **ev_p;

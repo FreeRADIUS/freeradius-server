@@ -249,7 +249,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
 	char *princ_name;
 	fr_pair_t *username;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -328,7 +328,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	krb5_principal		client = NULL;
 	fr_pair_t		*password;
 
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
@@ -423,7 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	char			*nonconst_password;		/* compiler warnings */
 	fr_pair_t		*password;
 
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");

@@ -131,7 +131,7 @@ static void authentication_failed(request_t *request, char const *msg)
 	/*
 	 *	Set the server reply message.  Note that we do not tell the user *why* they failed authentication.
 	 */
-	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Authentication failed");
 	}
@@ -256,7 +256,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	No Auth-Type, force it to reject.
 		 */
 		if (!auth_type) {
-			vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_authentication_type);
+			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_authentication_type);
 			if (!vp) {
 				authentication_failed(request, "No Auth-Type or TACACS-Authentication-Type configured: rejecting authentication.");
 				goto setup_send;

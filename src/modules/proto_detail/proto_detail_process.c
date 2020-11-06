@@ -134,7 +134,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, inst->attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, inst->attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {

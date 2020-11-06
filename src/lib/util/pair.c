@@ -394,18 +394,18 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
 /** Find the pair with the matching DAs
  *
  */
-fr_pair_t *fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
 {
 	fr_pair_t	*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
-	LIST_VERIFY(head);
+	LIST_VERIFY(*head);
 
 	if (!da) return NULL;
 
-	for (vp = head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
+	for (vp = *head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
 	return NULL;
 }
 

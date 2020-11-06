@@ -82,8 +82,8 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	re-authorization requests.
 		 */
 		if (request->packet->code == FR_CODE_COA_REQUEST) {
-			vp = fr_pair_find_by_da(request->reply_pairs, attr_service_type);
-			if (vp && !fr_pair_find_by_da(request->reply_pairs, attr_state)) {
+			vp = fr_pair_find_by_da(&request->reply_pairs, attr_service_type);
+			if (vp && !fr_pair_find_by_da(&request->reply_pairs, attr_state)) {
 				REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 				request->reply->code = FR_CODE_COA_NAK;
 				goto nak;
@@ -135,7 +135,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 	nak:

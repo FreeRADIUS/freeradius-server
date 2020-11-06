@@ -427,7 +427,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, request_t *request, rlm
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_cache_merge_new);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_merge_new);
 	if (vp && vp->vp_bool) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -564,7 +564,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(module_ctx_t const *mctx, reque
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_cache_status_only);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_status_only);
 	if (vp && vp->vp_bool) {
 		RINDENT();
 		RDEBUG3("status-only: yes");
@@ -584,13 +584,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(module_ctx_t const *mctx, reque
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_cache_allow_merge);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_allow_merge);
 	if (vp) merge = vp->vp_bool;
 
-	vp = fr_pair_find_by_da(request->control_pairs, attr_cache_allow_insert);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_allow_insert);
 	if (vp) insert = vp->vp_bool;
 
-	vp = fr_pair_find_by_da(request->control_pairs, attr_cache_ttl);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_ttl);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;

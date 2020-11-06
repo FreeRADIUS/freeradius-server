@@ -101,7 +101,7 @@ static void accounting_failed(request_t *request, char const *msg)
 	/*
 	 *	Set the server reply message.
 	 */
-	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Accounting failed");
 	}
@@ -197,7 +197,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Run accounting foo { ... }
 		 */
-		vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_accounting_flags);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_accounting_flags);
 		if (!vp) goto setup_send;
 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);

@@ -265,7 +265,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_eap_tls_require_client_cert);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_tls_require_client_cert);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {

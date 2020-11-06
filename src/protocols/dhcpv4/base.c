@@ -314,7 +314,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 */
 
 	/* DHCP-DHCP-Maximum-Msg-Size */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_dhcp_maximum_msg_size);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_dhcp_maximum_msg_size);
 	if (vp && (vp->vp_uint32 > mms)) {
 		mms = vp->vp_uint32;
 
@@ -322,7 +322,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 #endif
 
-	vp = fr_pair_find_by_da(vps, attr_dhcp_opcode);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_opcode);
 	if (vp) {
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t) vp->vp_uint8);
 	} else {
@@ -330,7 +330,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Hardware-Type */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_type);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_hardware_type);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint8);
 
@@ -342,7 +342,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Hardware-Address-len */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_address_length);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_hardware_address_length);
 	if (vp) {
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_uint8);
 
@@ -354,7 +354,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Hop-Count */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_hop_count);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_hop_count);
 	if (vp) {
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_uint8);
 
@@ -369,7 +369,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	FR_DBUFF_IN_RETURN(&work_dbuff, xid);
 
 	/* DHCP-Number-of-Seconds */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_number_of_seconds);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_number_of_seconds);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint16);
 	} else {
@@ -377,7 +377,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Flags */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_flags);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_flags);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint16);
 	} else {
@@ -385,7 +385,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Client-IP-Address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_client_ip_address);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_client_ip_address);
 	if (vp) {
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 	} else {
@@ -393,7 +393,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Your-IP-address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_your_ip_address);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_your_ip_address);
 	if (vp) {
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 	} else {
@@ -401,7 +401,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Server-IP-Address */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_server_ip_address);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_server_ip_address);
 	if (vp) {
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 	} else {
@@ -411,7 +411,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	/*
 	 *	DHCP-Gateway-IP-Address
 	 */
-	vp = fr_pair_find_by_da(vps, attr_dhcp_gateway_ip_address);
+	vp = fr_pair_find_by_da(&vps, attr_dhcp_gateway_ip_address);
 	if (vp) {
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 
@@ -423,7 +423,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Client-Hardware-Address */
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_client_hardware_address))) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_client_hardware_address))) {
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)vp->vp_ether, sizeof(vp->vp_ether));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, DHCP_CHADDR_LEN - sizeof(vp->vp_ether));
 
@@ -435,7 +435,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/* DHCP-Server-Host-Name */
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_server_host_name))) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_server_host_name))) {
 		if (vp->vp_length > DHCP_SNAME_LEN) {
 			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_strvalue, DHCP_SNAME_LEN);
 		} else {
@@ -457,7 +457,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 */
 
 	/* DHCP-Boot-Filename */
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_boot_filename))) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_boot_filename))) {
 		if (vp->vp_length > DHCP_FILE_LEN) {
 			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_strvalue, DHCP_FILE_LEN);
 		} else {
@@ -471,7 +471,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	/* DHCP magic number */
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) DHCP_OPTION_MAGIC_NUMBER);
 
-	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_message_type))) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_message_type))) {
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 1, vp->vp_uint8);
 	} else {
 		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 1, (uint8_t) code);
