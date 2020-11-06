@@ -199,7 +199,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t const  		*address = track->address;
+	fr_socket_t  			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -212,6 +212,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	thread->stats.total_responses++;
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
+
+	/*
+	 *	Swap src/dst address so we send the response to
+	 *	the client, not ourselves.
+	 */
+	fr_socket_addr_swap(&socket, &track->address->socket);
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -229,7 +235,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(&address->socket, flags, packet, track->reply_len);
+			(void) udp_send(&socket, flags, packet, track->reply_len);
 		}
 
 		return buffer_len;
@@ -244,7 +250,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = udp_send(&address->socket, flags, buffer, buffer_len);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...

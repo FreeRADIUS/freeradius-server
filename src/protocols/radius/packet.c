@@ -457,6 +457,8 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
 int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 			  char const *secret)
 {
+	fr_socket_t	socket;
+
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
 	 */
@@ -504,9 +506,15 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *
 	}
 
 	/*
+	 *	Swap src/dst address so we send the response to
+	 *	the client, not ourselves.
+	 */
+	fr_socket_addr_swap(&socket, &packet->socket);
+
+	/*
 	 *	And send it on it's way.
 	 */
-	return udp_send(&packet->socket, 0, packet->data, packet->data_len);
+	return udp_send(&socket, 0, packet->data, packet->data_len);
 }
 
 void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line)

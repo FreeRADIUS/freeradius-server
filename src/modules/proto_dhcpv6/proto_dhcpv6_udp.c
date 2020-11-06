@@ -216,7 +216,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			address = {};
+	fr_socket_t			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -234,8 +234,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Send packets to the originator, EXCEPT that we always
 	 *	originate packets from our src_ipaddr.
 	 */
-	fr_socket_addr_swap(&address.socket, &track->address->socket);
-	if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) address.socket.inet.src_ipaddr = inst->src_ipaddr;
+	fr_socket_addr_swap(&socket, &track->address->socket);
+	if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) socket.inet.src_ipaddr = inst->src_ipaddr;
 
 	/*
 	 *	Figure out which kind of packet we're sending.
@@ -247,7 +247,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	proto_dhcpv6 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(&address.socket, flags, buffer, buffer_len);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...
