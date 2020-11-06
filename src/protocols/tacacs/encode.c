@@ -55,7 +55,7 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 		if ((vp->da != da) || (vp->vp_length > 0xff)) continue;
 
 		/* Append the <arg_N_len> fields length */
-		fr_dbuff_in(dbuff, (uint8_t) vp->vp_length);
+		fr_dbuff_in(&work_dbuff, (uint8_t) vp->vp_length);
 
 		arg_cnt++;
 	}
