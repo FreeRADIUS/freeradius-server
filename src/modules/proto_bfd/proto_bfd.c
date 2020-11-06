@@ -584,8 +584,8 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	session->socket.inet.src_ipaddr = sock->my_ipaddr;
 	session->socket.inet.src_port = sock->my_port;
 
-	fr_ipaddr_to_sockaddr(ipaddr, port,
-			   &session->remote_sockaddr, &session->salen);
+	fr_ipaddr_to_sockaddr(&session->remote_sockaddr, &session->salen,
+			      ipaddr, port);
 
 	if (!rbtree_insert(sock->session_tree, session)) {
 		ERROR("FAILED creating new session!");
@@ -1481,7 +1481,8 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We SHOULD use "your_disc", but what the heck.
 	 */
-	fr_ipaddr_from_sockaddr(&src, sizeof_src, &my_session.socket.inet.dst_ipaddr, &my_session.socket.inet.dst_port);
+	fr_ipaddr_from_sockaddr(&my_session.socket.inet.dst_ipaddr,
+				&my_session.socket.inet.dst_port, &src, sizeof_src);
 
 	session = rbtree_finddata(sock->session_tree, &my_session);
 	if (!session) {

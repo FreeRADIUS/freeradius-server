@@ -245,7 +245,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		.counter = echo->counter
 	};
 
-	(void) fr_ipaddr_to_sockaddr(&echo->ip->vb_ip, 0, &dst, &salen);
+	(void) fr_ipaddr_to_sockaddr(&dst, &salen, &echo->ip->vb_ip, 0);
 
 	/*
 	 *	Calculate the checksum

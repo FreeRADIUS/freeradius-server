@@ -356,12 +356,7 @@ static ssize_t rad_recvfrom(int sockfd, fr_radius_packet_t *packet, int flags)
 
 	packet->data_len = data_len;
 
-	packet->socket.proto = IPPROTO_UDP;
-	return udp_recv(sockfd, packet->data, packet->data_len, flags,
-			&packet->socket.inet.ifindex,
-			&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port,
-			&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port,
-			&packet->timestamp);
+	return udp_recv(sockfd, flags, &packet->socket, packet->data, packet->data_len, &packet->timestamp);
 }
 
 

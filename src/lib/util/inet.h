@@ -156,11 +156,11 @@ int	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 /*
  *	Sockaddr conversion functions
  */
-int	fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
-			      struct sockaddr_storage *sa, socklen_t *salen);
+int	fr_ipaddr_to_sockaddr(struct sockaddr_storage *sa, socklen_t *salen,
+			      fr_ipaddr_t const *ipaddr, uint16_t port);
 
-int	fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
-				fr_ipaddr_t *ipaddr, uint16_t *port);
+int	fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
+				struct sockaddr_storage const *sa, socklen_t salen);
 
 #ifdef __cplusplus
 }

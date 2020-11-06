@@ -59,8 +59,8 @@ int fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet)
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr_to_sockaddr(&packet->socket.inet.src_ipaddr, packet->socket.inet.src_port, &src, &sizeof_src);
-	fr_ipaddr_to_sockaddr(&packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port, &dst, &sizeof_dst);
+	fr_ipaddr_to_sockaddr(&src, &sizeof_src, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port);
+	fr_ipaddr_to_sockaddr(&dst, &sizeof_dst, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
 	if (packet->data_len == 0) {
 		fr_strerror_printf("No data to send");
 		return -1;
@@ -132,8 +132,8 @@ fr_radius_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 		return NULL;
 	}
 
-	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
-	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
+	fr_ipaddr_from_sockaddr(&dst_ipaddr, &dst_port, &dst, sizeof_dst);
+	fr_ipaddr_from_sockaddr(&src_ipaddr, &src_port, &src, sizeof_src);
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
 

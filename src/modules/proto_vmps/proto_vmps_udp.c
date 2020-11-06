@@ -129,12 +129,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	address->socket.proto = IPPROTO_UDP;
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.ifindex,
-			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
-			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
-			     recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_vmps_udp got read error %zd", data_size);
 		return data_size;
