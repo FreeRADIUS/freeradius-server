@@ -206,9 +206,10 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 #ifdef WITH_UDPFROMTO
 	if (dst_ipaddr) {
 		slen = recvfromto(sockfd, data, data_len, sock_flags,
+				  ifindex,
 				  (struct sockaddr *)&src, &sizeof_src,
 				  (struct sockaddr *)&dst, &sizeof_dst,
-				  ifindex, when);
+				  when);
 		if (slen <= 0) goto done;
 	} else {
 		slen = recvfrom(sockfd, data, data_len, sock_flags,

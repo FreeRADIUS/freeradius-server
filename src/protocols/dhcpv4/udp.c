@@ -68,8 +68,10 @@ int fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet)
 
 	errno = 0;
 
-	ret = sendfromto(packet->socket.fd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			 (struct sockaddr *)&dst, sizeof_dst, packet->socket.inet.ifindex);
+	ret = sendfromto(packet->socket.fd, packet->data, packet->data_len, 0,
+			 packet->socket.inet.ifindex,
+			 (struct sockaddr *)&src, sizeof_src,
+			 (struct sockaddr *)&dst, sizeof_dst);
 	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
 
 	return ret;
@@ -105,8 +107,9 @@ fr_radius_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 	sizeof_src = sizeof(src);
 	sizeof_dst = sizeof(dst);
 	data_len = recvfromto(sockfd, data, MAX_PACKET_SIZE, 0,
+	 		      &ifindex,
 			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst, &ifindex, &when);
+			      (struct sockaddr *)&dst, &sizeof_dst, &when);
 
 	if (data_len <= 0) {
 		fr_strerror_printf("Failed reading data from DHCP socket: %s", fr_syserror(errno));

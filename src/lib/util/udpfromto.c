@@ -177,13 +177,13 @@ int udpfromto_init(int s)
  * @param[out] buf	Where to write the received datagram data.
  * @param[in] len	of buf.
  * @param[in] flags	passed unmolested to recvmsg.
+ * @param[out] ifindex	The interface which received the datagram (may be NULL).
+ *			Will only be populated if to is not NULL.
  * @param[out] from	Where to write the source address.
  * @param[in] from_len	Length of the structure pointed to by from.
  * @param[out] to	Where to write the destination address.  If NULL recvmsg()
  *			will be used instead.
  * @param[in] to_len	Length of the structure pointed to by to.
- * @param[out] ifindex	The interface which received the datagram (may be NULL).
- *			Will only be populated if to is not NULL.
  * @param[out] when	the packet was received (may be NULL).  If SO_TIMESTAMP is
  *			not available or SO_TIMESTAMP Was not set on the socket,
  *			then another method will be used instead to get the time.
@@ -192,9 +192,10 @@ int udpfromto_init(int s)
  *	- -1 on failure.
  */
 int recvfromto(int fd, void *buf, size_t len, int flags,
+	       int *ifindex,
 	       struct sockaddr *from, socklen_t *from_len,
 	       struct sockaddr *to, socklen_t *to_len,
-	       int *ifindex, fr_time_t *when)
+	       fr_time_t *when)
 {
 	struct msghdr		msgh;
 	struct cmsghdr		*cmsg;
@@ -369,19 +370,20 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
  * @param[in] buf	Where to read datagram data from.
  * @param[in] len	of datagram data.
  * @param[in] flags	passed unmolested to sendmsg.
+ * @param[in] ifindex	The interface on which to send the datagram.
+ *			If automatic interface selection is desired, value should be 0.
  * @param[in] from	The source address.
  * @param[in] from_len	Length of the structure pointed to by from.
  * @param[in] to	The destination address.
  * @param[in] to_len	Length of the structure pointed to by to.
- * @param[in] ifindex	The interface on which to send the datagram.
- *			If automatic interface selection is desired, value should be 0.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int sendfromto(int fd, void *buf, size_t len, int flags,
+	       int ifindex,
 	       struct sockaddr *from, socklen_t from_len,
-	       struct sockaddr *to, socklen_t to_len, int ifindex)
+	       struct sockaddr *to, socklen_t to_len)
 {
 	struct msghdr	msgh;
 	struct iovec	iov;
@@ -598,8 +600,9 @@ int main(int argc, char **argv)
 	printf("server: replying from address packet was received on to source address\n");
 
 	if ((n = sendfromto(server_socket, buf, n, 0,
+		0,
 		(struct sockaddr *)&to, tl,
-		(struct sockaddr *)&from, fl, 0)) < 0) {
+		(struct sockaddr *)&from, fl)) < 0) {
 		perror("server: sendfromto");
 	}
 
