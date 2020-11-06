@@ -637,6 +637,10 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		attr += dhcp_header_sizes[i];
 	}
 
+	fprintf(fp, "\tmagic:\t%02x %02x %02x %02x\n", attr[0], attr[1], attr[2], attr[3]);
+	attr += 4;
+
+	fprintf(fp, "\toptions\n");
 	while (attr < end) {
 		fprintf(fp, "\t\t");
 
@@ -651,6 +655,8 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 		attr += attr[1] + 2;
 	}
+
+	fprintf(fp, "\n");
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
