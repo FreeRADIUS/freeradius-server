@@ -855,7 +855,7 @@ int fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_list_t *reply_list, uint
 
 	end = packet + packet_len;
 
-	fr_packet_list_init(reply_list);
+	fr_pair_list_init(reply_list);
 	fr_cursor_init(&cursor, reply_list);
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
