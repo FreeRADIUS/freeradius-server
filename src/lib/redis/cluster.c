@@ -204,8 +204,8 @@ struct fr_redis_cluster_node_s {
 							//!< text for debug messages.
 	uint8_t			id;			//!< Node ID (index in node array).
 
-	fr_socket_t	addr;			//!< Current node address.
-	fr_socket_t	pending_addr;		//!< New node address to be applied when the pool
+	fr_socket_t		addr;			//!< Current node address.
+	fr_socket_t		pending_addr;		//!< New node address to be applied when the pool
 							//!< is reconnected.
 
 	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
@@ -250,7 +250,7 @@ struct fr_redis_cluster {
 	fr_redis_conf_t		*conf;			//!< Base configuration data such as the database number
 							//!< and passwords.
 
-	fr_redis_cluster_node_t		*node;			//!< Structure containing a node id, its address and
+	fr_redis_cluster_node_t	*node;			//!< Structure containing a node id, its address and
 							//!< a pool of its connections.
 
 	fr_fifo_t		*free_nodes;		//!< Queue of free nodes (or nodes waiting to be reused).
@@ -263,7 +263,7 @@ struct fr_redis_cluster {
 };
 
 fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[] = {
-	{ L("bad-input"),		FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
+	{ L("bad-input"),	FR_REDIS_CLUSTER_RCODE_BAD_INPUT	},
 	{ L("failed"),		FR_REDIS_CLUSTER_RCODE_FAILED		},
 	{ L("ignored"),		FR_REDIS_CLUSTER_RCODE_IGNORED		},
 	{ L("no-connection"),	FR_REDIS_CLUSTER_RCODE_NO_CONNECTION	},
