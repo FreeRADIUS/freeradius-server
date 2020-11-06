@@ -496,16 +496,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 */
 	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
 	if (p[0] == 255) {			/* 0xff - End of options signifier */
-#ifndef NDEBUG
-		size_t i;
-
-		for (i = 1; i < data_len; i++) {
-			if (p[i] != 0) {
-				FR_PROTO_HEX_DUMP(p + i, data_len - i, "ignoring trailing junk at end of packet");
-				break;
-			}
-		}
-#endif
 		return data_len;
 	}
 
