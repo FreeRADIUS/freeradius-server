@@ -210,6 +210,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
+			if (p[0] == 0) break; /* padding */
+
 			len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
 				fr_cursor_head(cursor);
@@ -240,6 +242,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 				p = data + 44;
 				end = p + 64;
 				while (p < end) {
+					if (p[0] == 0) break; /* padding */
+
 					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
@@ -258,6 +262,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 				p = data + 108;
 				end = p + 128;
 				while (p < end) {
+					if (p[0] == 0) break; /* padding */
+
 					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
