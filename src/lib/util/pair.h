@@ -224,7 +224,7 @@ static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
 
-fr_pair_t	*fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
 fr_pair_t	*fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned int attr);
 

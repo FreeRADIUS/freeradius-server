@@ -1470,7 +1470,7 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, ui
 	fr_pair_t *vp;
 	ssize_t slen;
 
-	vp = fr_pair_find_by_da(vps, attr_packet_type);
+	vp = fr_pair_find_by_da(&vps, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {

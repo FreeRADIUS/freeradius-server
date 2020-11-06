@@ -728,8 +728,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	fr_ldap_sasl_t		sasl;
 	fr_pair_t *username, *password;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -1020,7 +1020,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_da(request->control_pairs, attr_cleartext_password)) goto skip_edir;
+	if (fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory

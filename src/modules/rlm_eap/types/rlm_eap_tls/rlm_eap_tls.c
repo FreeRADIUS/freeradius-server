@@ -147,7 +147,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 	fr_pair_t	*vp;
 
 	/* set the virtual server to use */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_virtual_server);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_virtual_server);
 	if (vp) {
 		server_cs = virtual_server_find(vp->vp_strvalue);
 		if (!server_cs) {
@@ -271,7 +271,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_eap_tls_require_client_cert);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_tls_require_client_cert);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {

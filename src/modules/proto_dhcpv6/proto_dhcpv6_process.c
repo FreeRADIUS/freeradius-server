@@ -157,7 +157,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) {
 			request->reply->code = vp->vp_uint32;
 		} else switch (rcode) {

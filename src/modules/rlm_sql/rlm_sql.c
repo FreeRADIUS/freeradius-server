@@ -148,7 +148,7 @@ static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t out
 static sql_fall_through_t fall_through(fr_pair_t *vp)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -1371,7 +1371,7 @@ skip_reply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_da(request->control_pairs, attr_user_profile);
+		user_profile = fr_pair_find_by_da(&request->control_pairs, attr_user_profile);
 
 		profile = user_profile ?
 				      user_profile->vp_strvalue :

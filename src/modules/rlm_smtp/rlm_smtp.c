@@ -742,15 +742,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 
 	fr_pair_t const 		*smtp_body, *username, *password;
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(&request->control, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
 	/* Elements provided by the request */
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
-	smtp_body = fr_pair_find_by_da(request->request_pairs, attr_smtp_body);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	smtp_body = fr_pair_find_by_da(&request->request_pairs, attr_smtp_body);
 
 	/* Make sure all of the essential email components are present and possible*/
 	if(!smtp_body) {
@@ -907,8 +907,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 		return RLM_MODULE_FAIL;
 	}
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/* Make sure we have a user-name and user-password, and that they are possible */
 	if (!username) {

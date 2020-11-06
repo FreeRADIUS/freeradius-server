@@ -836,10 +836,10 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			fr_pair_t *vp;
 
-			if ((vp = fr_pair_find_by_da(request->request_pairs, attr_user_password)) != NULL) {
+			if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password)) != NULL) {
 				fr_pair_value_strdup(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_da(request->request_pairs,
+			} else if ((vp = fr_pair_find_by_da(&request->request_pairs,
 							    attr_chap_password)) != NULL) {
 				uint8_t		buffer[17];
 				fr_pair_t	*challenge;
@@ -849,7 +849,7 @@ static int send_one_packet(rc_request_t *request)
 				 *	Use Chap-Challenge pair if present,
 				 *	Request Authenticator otherwise.
 				 */
-				challenge = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
+				challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
 				if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
 					vector = challenge->vp_octets;
 				} else {
@@ -862,7 +862,7 @@ static int send_one_packet(rc_request_t *request)
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-			} else if (fr_pair_find_by_da(request->request_pairs, attr_ms_chap_password) != NULL) {
+			} else if (fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_password) != NULL) {
 				mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
 
 			} else {

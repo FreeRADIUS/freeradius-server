@@ -239,7 +239,7 @@ rlm_rcode_t od_mschap_auth(request_t *request, fr_pair_t *challenge, fr_pair_t *
 	unsigned int t;
 #endif
 
-	response = fr_pair_find_by_da(request->request_pairs, attr_ms_chap2_response);
+	response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response);
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string) return RLM_MODULE_FAIL;

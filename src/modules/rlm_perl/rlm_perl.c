@@ -958,7 +958,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	fr_pair_t		*pair;
 	int 			acct_status_type = 0;
 
-	pair = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
+	pair = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (pair != NULL) {
 		acct_status_type = pair->vp_uint32;
 	} else {

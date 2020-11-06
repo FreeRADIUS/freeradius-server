@@ -81,7 +81,7 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 static int fall_through(fr_pair_t *vp)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }

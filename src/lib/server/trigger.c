@@ -89,7 +89,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(head, da);
+	vp = fr_pair_find_by_da(&head, da);
 	if (!vp) {
 		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
 		return -1;

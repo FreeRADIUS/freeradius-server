@@ -750,7 +750,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	root = fr_dict_root(dict_dhcpv6);
 
 	if (!msg_type) {
-		vp = fr_pair_find_by_da(vps, attr_packet_type);
+		vp = fr_pair_find_by_da(&vps, attr_packet_type);
 		if (vp) msg_type = vp->vp_uint32;
 	}
 
@@ -771,13 +771,13 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	case FR_DHCPV6_RELAY_FORWARD:
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, 1 + 32);
 
-		vp = fr_pair_find_by_da(vps, attr_hop_count);
+		vp = fr_pair_find_by_da(&vps, attr_hop_count);
 		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
-		vp = fr_pair_find_by_da(vps, attr_relay_link_address);
+		vp = fr_pair_find_by_da(&vps, attr_relay_link_address);
 		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
-		vp = fr_pair_find_by_da(vps, attr_relay_peer_address);
+		vp = fr_pair_find_by_da(&vps, attr_relay_peer_address);
 		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
 
 		break;
@@ -792,7 +792,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 			/*
 			 *	We can set an XID, or we can pick a random one.
 			 */
-			vp = fr_pair_find_by_da(vps, attr_transaction_id);
+			vp = fr_pair_find_by_da(&vps, attr_transaction_id);
 			if (vp && (vp->vp_length >= 3)) {
 				FR_DBUFF_MEMCPY_IN_RETURN(dbuff, vp->vp_octets, 3);
 			} else {

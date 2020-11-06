@@ -156,16 +156,16 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
 			fr_pair_t *vp;
 
-			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_address);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_address);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_prefix);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_prefix);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_prefix);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_prefix);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
 			}
 
-			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_secret);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_secret);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client-Secret attribute");
 				goto deny;

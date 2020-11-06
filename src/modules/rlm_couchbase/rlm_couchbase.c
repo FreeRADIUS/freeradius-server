@@ -254,7 +254,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 	fr_assert(request->packet != NULL);
 
 	/* sanity check */
-	if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
 		/* log debug */
 		RDEBUG2("could not find status type in packet");
 		/* return */
@@ -334,7 +334,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 	switch (status) {
 	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type)) != NULL) {
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
@@ -343,7 +343,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 
 	case FR_STATUS_STOP:
 		/* add stop time */
-		if ((vp = fr_pair_find_by_da(request->request_pairs, attr_event_timestamp)) != NULL) {
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
