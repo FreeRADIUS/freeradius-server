@@ -200,7 +200,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] op	to assign to new #fr_pair_t.
  * @return a new #fr_pair_t.
  */
-fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **vps,
+fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *vps,
 			 char const *attribute, char const *value, fr_token_t op)
 {
 	fr_dict_attr_t const	*da;
@@ -314,7 +314,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **vps,
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list, fr_token_t *token, int depth)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list, fr_token_t *token, int depth)
 {
 	fr_pair_t	*vp, *head, **tail;
 	char const	*p, *next;
@@ -588,7 +588,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list)
 {
 	fr_token_t token;
 
@@ -599,7 +599,7 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **out, FILE *fp, bool *pfiledone)
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *out, FILE *fp, bool *pfiledone)
 {
 	fr_token_t	last_token = T_EOL;
 	bool		found = false;
@@ -675,7 +675,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(fr_pair_t **to, fr_pair_t **from)
+void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from)
 {
 	fr_pair_t *i, *found;
 	fr_pair_t *head_new, **tail_new;
