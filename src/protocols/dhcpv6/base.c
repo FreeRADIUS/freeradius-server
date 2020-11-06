@@ -141,7 +141,6 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
 	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL }
 };
-static size_t subtype_table_len = NUM_ELEMENTS(subtype_table);
 
 /** Return the on-the-wire length of an attribute value
  *
@@ -741,13 +740,7 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 /** Encode a DHCPv6 packet
  *
  */
-ssize_t	fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
-			 int msg_type, fr_pair_t *vps)
-{
-	return fr_dhcpv6_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, length, msg_type, vps);
-}
-
-ssize_t	fr_dhcpv6_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original, size_t length, int msg_type, fr_pair_t *vps)
+ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length, int msg_type, fr_pair_t *vps)
 {
 	fr_pair_t *vp;
 	fr_dict_attr_t const *root;
@@ -999,6 +992,6 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.default_type_size = 2,
 	.default_type_length = 2,
 	.subtype_table = subtype_table,
-	.subtype_table_len = subtype_table_len,
+	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
 };

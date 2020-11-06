@@ -744,7 +744,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 
 	vp = fr_cursor_current(cursor);
 
-	len = fr_dhcpv6_encode(work_dbuff.p, fr_dbuff_remaining(&work_dbuff), original, original_length, msg_type, vp->vp_group);
+	len = fr_dhcpv6_encode(&work_dbuff, original, original_length, msg_type, vp->vp_group);
 	if (len <= 0) return -1;
 
 	fr_dbuff_advance(&work_dbuff, len);
@@ -852,7 +852,7 @@ static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, ui
 {
 //	fr_dhcpv6_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_dhcpv6_decode_ctx_t);
 
-	return fr_dhcpv6_encode(data, data_len, NULL, 0, 0, vps);
+	return fr_dhcpv6_encode(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
 }
 
 /*

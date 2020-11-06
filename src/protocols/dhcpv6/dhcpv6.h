@@ -151,12 +151,8 @@ bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
 				 bool from_server);
 
-ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
+ssize_t		fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length,
 				 int msg_type, fr_pair_t *vps);
-
-ssize_t		fr_dhcpv6_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original, size_t length,
-				 int msg_type, fr_pair_t *vps);
-
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 fr_cursor_t *cursor);
