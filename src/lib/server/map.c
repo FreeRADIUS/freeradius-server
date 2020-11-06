@@ -35,7 +35,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
@@ -1160,7 +1159,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_pair_t		**list, *vp, *dst, *head = NULL;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
-	vp_cursor_t		dst_list, src_list;
+	fr_cursor_t		dst_list, src_list;
 
 	bool			found = false;
 
@@ -1174,7 +1173,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_assert(map->rhs != NULL);
 
 	tmp_ctx = talloc_new(request);
-	fr_pair_cursor_init(&src_list, &head);
+	fr_cursor_init(&src_list, &head);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
@@ -1350,13 +1349,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	being NULL (no attribute at that index).
 	 */
 	num = tmpl_num(map->lhs);
-	(void) fr_pair_cursor_init(&dst_list, list);
+	(void) fr_cursor_init(&dst_list, list);
+
 	if ((num != NUM_ALL) && (num != NUM_ANY)) {
-		while ((dst = fr_pair_cursor_next_by_da(&dst_list, tmpl_da(map->lhs)))) {
+		while ((dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs)))) {
 			if (num-- == 0) break;
 		}
 	} else {
-		dst = fr_pair_cursor_next_by_da(&dst_list, tmpl_da(map->lhs));
+		dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs));
 	}
 	fr_assert(!dst || (tmpl_da(map->lhs) == dst->da));
 
@@ -1385,7 +1385,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	We've found the Nth one.  Delete it, and only it.
 		 */
 		} else {
-			dst = fr_pair_cursor_remove(&dst_list);
+			dst = fr_cursor_remove(&dst_list);
 			fr_pair_list_free(&dst);
 		}
 
@@ -1416,13 +1416,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Instance specific[n] delete
 		 */
 		if (tmpl_num(map->lhs) != NUM_ANY) {
-			for (vp = fr_pair_cursor_head(&src_list);
+			for (vp = fr_cursor_head(&src_list);
 			     vp;
-			     vp = fr_pair_cursor_next(&src_list)) {
+			     vp = fr_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_pair_cursor_remove(&dst_list);
+					dst = fr_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);
 					found = true;
 				}
@@ -1436,16 +1436,16 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	All instances[*] delete
 		 */
-		for (dst = fr_pair_cursor_current(&dst_list);
+		for (dst = fr_cursor_current(&dst_list);
 		     dst;
-		     dst = fr_pair_cursor_next_by_da(&dst_list, tmpl_da(map->lhs))) {
-			for (vp = fr_pair_cursor_head(&src_list);
+		     dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
+			for (vp = fr_cursor_head(&src_list);
 			     vp;
-			     vp = fr_pair_cursor_next(&src_list)) {
+			     vp = fr_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_pair_cursor_remove(&dst_list);
+					dst = fr_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);
 					found = true;
 				}
@@ -1469,8 +1469,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		/* Insert first instance (if multiple) */
-		fr_pair_cursor_head(&src_list);
-		fr_pair_cursor_append(&dst_list, fr_pair_cursor_remove(&src_list));
+		fr_cursor_head(&src_list);
+		fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
 		break;
@@ -1480,13 +1480,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 */
 	case T_OP_SET:
 		/* Wind to last instance */
-		fr_pair_cursor_tail(&src_list);
+		fr_cursor_tail(&src_list);
 		if (dst) {
-			DEBUG_OVERWRITE(dst, fr_pair_cursor_current(&src_list));
-			dst = fr_pair_cursor_replace(&dst_list, fr_pair_cursor_remove(&src_list));
+			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
+			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
 			talloc_free(dst);
 		} else {
-			fr_pair_cursor_append(&dst_list, fr_pair_cursor_remove(&src_list));
+			fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
 		}
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
@@ -1516,14 +1516,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		fr_pair_list_sort(&head, fr_pair_cmp_by_da);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-		fr_pair_cursor_head(&dst_list);
+		fr_cursor_head(&dst_list);
 
-		for (b = fr_pair_cursor_head(&src_list);
+		for (b = fr_cursor_head(&src_list);
 		     b;
-		     b = fr_pair_cursor_next(&src_list)) {
-			for (a = fr_pair_cursor_current(&dst_list);
+		     b = fr_cursor_next(&src_list)) {
+			for (a = fr_cursor_current(&dst_list);
 			     a;
-			     a = fr_pair_cursor_next(&dst_list)) {
+			     a = fr_cursor_next(&dst_list)) {
 				int8_t cmp;
 
 				cmp = fr_pair_cmp_by_da(a, b);	/* attribute and tag match */
@@ -1532,7 +1532,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 				cmp = (fr_value_box_cmp_op(map->op, &a->data, &b->data) == 0);
 				if (cmp != 0) {
-					a = fr_pair_cursor_remove(&dst_list);
+					a = fr_cursor_remove(&dst_list);
 					talloc_free(a);
 				}
 			}

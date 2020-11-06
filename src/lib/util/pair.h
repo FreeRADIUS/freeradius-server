@@ -106,22 +106,6 @@ struct value_pair_s {
 	};
 };
 
-/** Abstraction to allow iterating over different configurations of fr_pair_ts
- *
- * This allows functions which do not care about the structure of collections of fr_pair_ts
- * to iterate over all members in a collection.
- *
- * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
- * manipulated with the pair* functions.
- */
-typedef struct {
-	fr_pair_t	**first;
-	fr_pair_t	*found;					//!< pairfind marker.
-	fr_pair_t	*last;					//!< Temporary only used for fr_pair_cursor_append
-	fr_pair_t	*current;				//!< The current attribute.
-	fr_pair_t	*next;					//!< Next attribute to process.
-} vp_cursor_t;
-
 /** A fr_pair_t in string format.
  *
  * Used to represent pairs in the legacy 'users' file format.
@@ -202,6 +186,7 @@ int		fr_pair_to_unknown(fr_pair_t *vp);
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
+bool		fr_pair_matches_da(void const *item, void const *uctx);
 
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
