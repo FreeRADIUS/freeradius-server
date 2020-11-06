@@ -1155,7 +1155,6 @@ do {\
 int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int			rcode = 0;
-	int			num;
 	fr_pair_t		**list, *vp, *dst, *head = NULL;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
@@ -1167,6 +1166,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	tmpl_t			*exp_lhs;
 	request_ref_t		request_ref;
 	pair_list_t		list_ref;
+
+	tmpl_cursor_ctx_t	cc;
 
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
@@ -1348,18 +1349,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	the dst_list and vp pointing to the attribute or the VP
 	 *	being NULL (no attribute at that index).
 	 */
-	num = tmpl_num(map->lhs);
-	(void) fr_cursor_init(&dst_list, list);
-
-	if ((num != NUM_ALL) && (num != NUM_ANY)) {
-		while ((dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs)))) {
-			if (num-- == 0) break;
-		}
-	} else {
-		dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs));
-	}
-	fr_assert(!dst || (tmpl_da(map->lhs) == dst->da));
-
+	dst = tmpl_cursor_init(NULL, NULL, &cc, &dst_list, request, map->lhs);
 	/*
 	 *	The destination is an attribute
 	 */
@@ -1552,6 +1542,7 @@ update:
 	fr_assert(!head);
 
 finish:
+	tmpl_cursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
 }
