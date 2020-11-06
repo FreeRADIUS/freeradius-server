@@ -747,8 +747,6 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	len = fr_dhcpv6_encode(&work_dbuff, original, original_length, msg_type, vp->vp_group);
 	if (len <= 0) return -1;
 
-	fr_dbuff_advance(&work_dbuff, len);
-
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
 	 */
