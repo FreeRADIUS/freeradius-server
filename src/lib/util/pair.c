@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/print.h>
@@ -1157,8 +1156,8 @@ mismatch:
  */
 bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list)
 {
-	vp_cursor_t	filter_cursor;
-	vp_cursor_t	list_cursor;
+	fr_cursor_t	filter_cursor;
+	fr_cursor_t	list_cursor;
 
 	fr_pair_t *check, *last_check = NULL, *match = NULL;
 
@@ -1175,10 +1174,10 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 	fr_pair_list_sort(filter, fr_pair_cmp_by_da);
 	fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-	fr_pair_cursor_init(&list_cursor, list);
-	for (check = fr_pair_cursor_init(&filter_cursor, filter);
+	fr_cursor_init(&list_cursor, list);
+	for (check = fr_cursor_init(&filter_cursor, filter);
 	     check;
-	     check = fr_pair_cursor_next(&filter_cursor)) {
+	     check = fr_cursor_next(&filter_cursor)) {
 		/*
 		 *	Were processing check attributes of a new type.
 		 */
@@ -1187,22 +1186,22 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
 			 */
-			match = fr_pair_cursor_next_by_da(&list_cursor, check->da);
+			match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, check->da);
 			if (!match) {
 				if (check->op == T_OP_CMP_FALSE) continue;
 				goto mismatch;
 			}
 
-			fr_pair_cursor_init(&list_cursor, &match);
+			fr_cursor_init(&list_cursor, &match);
 			last_check = check;
 		}
 
 		/*
 		 *	Now iterate over all attributes of the same type.
 		 */
-		for (match = fr_pair_cursor_head(&list_cursor);
+		for (match = fr_cursor_head(&list_cursor);
 		     ATTRIBUTE_EQ(match, check);
-		     match = fr_pair_cursor_next(&list_cursor)) {
+		     match = fr_cursor_next(&list_cursor)) {
 			switch (check->da->type) {
 			case FR_TYPE_STRUCTURAL:
 				if (!fr_pair_validate_relaxed(failed, &check->vp_group, &match->vp_group)) goto mismatch;
