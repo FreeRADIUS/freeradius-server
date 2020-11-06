@@ -684,6 +684,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			return -1;
 		}
 
+		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), packet_len, "fr_tacacs_packet_t (unencrypted)");
+
 		if (fr_tacacs_body_xor(packet, fr_dbuff_marker_current(&body), body_len, secret, secret_len) != 0) return -1;
 	}
 
