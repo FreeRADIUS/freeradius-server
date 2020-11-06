@@ -568,7 +568,6 @@ rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %endif
 %if %{?_with_rlm_unbound:0}%{!?_with_rlm_unbound:1}
@@ -756,7 +755,6 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/driver
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/main
 
 #
@@ -772,8 +770,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/mysql/*
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/mysql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/mysql/*
-%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mysql
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mysql/*
 
 #
 #  NDB
@@ -794,8 +790,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/postgresql/*
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql/*
-%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/postgresql
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/postgresql/*
 
 #
 #  SQLite
@@ -810,8 +804,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/sqlite/*
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite/*
-%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/sqlite
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/sqlite/*
 
 #
 #  Cassandra
@@ -828,8 +820,6 @@ fi
 
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/mssql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/mssql/*
-%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mssql
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mssql/*
 
 #
 #  Oracle
@@ -840,8 +830,6 @@ fi
 
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle/*
-%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle/*
 %endif
 
 %files utils
