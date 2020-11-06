@@ -281,9 +281,9 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
  *
  * @return true if the underlying fr_pair_t is DHCPv4 encodable, false otherwise
  */
-bool fr_dhcpv4_is_encodable(void *item, UNUSED void * uctx)
+bool fr_dhcpv4_is_encodable(void const *item, UNUSED void const *uctx)
 {
-	fr_pair_t *vp = item;
+	fr_pair_t const *vp = item;
 
 	VP_VERIFY(vp);
 	return (vp->da->dict == dict_dhcpv4) && (!vp->da->flags.internal);

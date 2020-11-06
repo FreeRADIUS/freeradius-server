@@ -65,10 +65,10 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  *
  * @return true if the underlying fr_pair_t is EAP_AKA encodable, false otherwise
  */
-static bool is_eap_aka_encodable(void *item, void *uctx)
+static bool is_eap_aka_encodable(void const *item, void const *uctx)
 {
-	fr_pair_t		*vp = item;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = uctx;
+	fr_pair_t const		*vp = item;
+	fr_aka_sim_encode_ctx_t	const *packet_ctx = uctx;
 
 	if (!vp) return false;
 	if (vp->da->flags.internal) return false;

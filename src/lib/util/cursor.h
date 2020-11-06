@@ -56,7 +56,7 @@ typedef void *(*fr_cursor_iter_t)(void **prev, void *to_eval, void *uctx);
  * 	- true if the evaluation function is satisfied.
  * 	- false if the evaluation function is not satisfied.
  */
-typedef bool (*fr_cursor_eval_t)(void *item, void *uctx);
+typedef bool (*fr_cursor_eval_t)(void const *item, void const *uctx);
 
 typedef struct {
 	void			**head;		//!< First item in the list.
@@ -99,11 +99,11 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append) CC_HINT(nonnull);
 
-void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
+void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
-void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
+void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
-void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx);
+void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
 void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
 

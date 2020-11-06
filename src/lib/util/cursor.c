@@ -409,7 +409,7 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
  * @param[in] uctx	context for the evaluation function
  * @return the first item satisfying eval, or NULL if no such item exists
  */
-void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
 	void *item;
 
@@ -426,7 +426,7 @@ void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uc
  * @param[in] uctx	context for the evaluation function
  * @return the next item satisfying eval, or NULL if no such item exists
  */
-void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
 	void *item;
 
@@ -444,7 +444,7 @@ void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uc
  * @param[in] uctx	context for the evaluation function
  * @return the next item satisfying eval, or NULL if no such item exists
  */
-void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void *uctx)
+void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
         void *item;
 
