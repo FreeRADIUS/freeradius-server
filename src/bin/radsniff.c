@@ -938,19 +938,19 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  */
 static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
 {
-	vp_cursor_t list_cursor, out_cursor;
+	fr_cursor_t list_cursor, out_cursor;
 	fr_pair_t *match, *last_match, *copy;
 	uint64_t count = 0;
 	int i;
 
 	last_match = vps;
 
-	fr_pair_cursor_init(&list_cursor, &last_match);
-	fr_pair_cursor_init(&out_cursor, out);
+	fr_cursor_init(&list_cursor, &last_match);
+	fr_cursor_init(&out_cursor, out);
 	for (i = 0; i < num; i++) {
-		match = fr_pair_cursor_next_by_da(&list_cursor, da[i]);
+		match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {
-			fr_pair_cursor_init(&list_cursor, &last_match);
+			fr_cursor_init(&list_cursor, &last_match);
 			continue;
 		}
 
@@ -960,11 +960,11 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dic
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_pair_cursor_append(&out_cursor, copy);
+			fr_cursor_append(&out_cursor, copy);
 			last_match = match;
 
 			count++;
-		} while ((match = fr_pair_cursor_next_by_da(&list_cursor, da[i])));
+		} while ((match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i])));
 	}
 
 	return count;
