@@ -536,6 +536,11 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *en
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
+}
+
 static int _encode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
 {
 	fr_dhcpv4_global_free();
@@ -566,4 +571,12 @@ extern fr_test_point_pair_encode_t dhcpv4_tp_encode_pair;
 fr_test_point_pair_encode_t dhcpv4_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_dhcpv4_encode_option
+};
+
+
+
+extern fr_test_point_proto_encode_t dhcpv4_tp_encode_proto;
+fr_test_point_proto_encode_t dhcpv4_tp_encode_proto = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_dhcpv4_encode_proto
 };
