@@ -410,7 +410,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	/* DHCP-Server-IP-Address */
 	vp = fr_pair_find_by_da(vps, attr_dhcp_server_ip_address);
 	if (vp) {
-		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) vp->vp_ipv4addr);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 	} else {
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) INADDR_ANY);
 	}
@@ -420,10 +420,11 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 */
 	vp = fr_pair_find_by_da(vps, attr_dhcp_gateway_ip_address);
 	if (vp) {
-		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) vp->vp_ipv4addr);
+		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, 4);
 
 	} else if (original) {	/* copy whatever value was in the original */
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&original->giaddr, sizeof(original->giaddr));
+
 	} else {
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) INADDR_ANY);
 	}
