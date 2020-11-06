@@ -700,13 +700,6 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 #endif
 }
 
-/*
- * Preserve current set interface for markers pro tempore;
- * note that fr_dbuff_set() uses _fr_dbuff_marker_set(), so the
- * former fr_dbuff_marker_set() function remains under the new name.
- */
-#define fr_dbuff_marker_set(_marker, _p) fr_dbuff_set(_marker, _p)
-
 /** Change the position in the buffer a marker points to
  *
  * @param[in] m		marker to alter.
@@ -728,36 +721,6 @@ static inline ssize_t _fr_dbuff_marker_set(fr_dbuff_marker_t *m, uint8_t const *
 
 	return p - current;
 }
-
-/*
- * Change the position in the buffer a marker points to
- */
-#define fr_dbuff_marker_advance(_marker, _n) fr_dbuff_advance(_marker, _n)
-
-/*
- * Reset the position in a dbuff to specified marker
- */
-#define fr_dbuff_set_to_marker(_marker) fr_dbuff_set(_marker->parent, _marker)
-
-/*
- * Return the current position of a marker.
- */
-#define fr_dbuff_marker_current(_marker) fr_dbuff_current(_marker)
-
-/*
- * How many free bytes remain in the buffer (calculated from marker).
- */
-#define fr_dbuff_marker_remaining(_marker) fr_dbuff_remaining(_marker)
-
-/*
- * How many bytes we've used in the buffer (calculated from marker)
- */
-#define fr_dbuff_marker_used(_marker) fr_dbuff_used(_marker)
-
-/* what is the end of the buffer (determined from marker)
- *
- */
-#define fr_dbuff_marker_end(_marker) fr_dbuff_end(_marker)
 /** @} */
 
 /** @name copy data to dbuff

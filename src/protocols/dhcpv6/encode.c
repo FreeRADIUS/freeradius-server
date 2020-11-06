@@ -200,7 +200,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			 *	zero.
 			 */
 			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) &&
-			    (*(fr_dbuff_marker_current(&p) + fr_dbuff_marker_current(&p)[0] + 1) == 0)) {
+			    (*(fr_dbuff_current(&p) + fr_dbuff_current(&p)[0] + 1) == 0)) {
 				fr_dbuff_set_to_start(&work_dbuff);
 				fr_dbuff_advance(&work_dbuff, slen - 1);
 			}

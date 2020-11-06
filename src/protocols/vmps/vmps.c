@@ -297,20 +297,20 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		size_t len;
 
 		if (vp->da == attr_packet_type) {
-			fr_dbuff_marker_current(&hdr)[1] = (uint8_t)vp->vp_uint32;
+			fr_dbuff_current(&hdr)[1] = (uint8_t)vp->vp_uint32;
 			fr_cursor_next(cursor);
 			continue;
 		}
 
 		if (vp->da == attr_error_code) {
-			fr_dbuff_marker_current(&hdr)[2] = vp->vp_uint8;
+			fr_dbuff_current(&hdr)[2] = vp->vp_uint8;
 			fr_cursor_next(cursor);
 			continue;
 		}
 
 		if (!original && (vp->da == attr_sequence_number)) {
 			sequence = htonl(vp->vp_uint32);
-			memcpy(&fr_dbuff_marker_current(&hdr)[4], &sequence, sizeof(sequence));
+			memcpy(&fr_dbuff_current(&hdr)[4], &sequence, sizeof(sequence));
 			fr_cursor_next(cursor);
 			continue;
 		}
@@ -365,7 +365,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		default:
 			return -1;
 		}
-		fr_dbuff_marker_current(&hdr)[3]++;	/* Update the Data Count */
+		fr_dbuff_current(&hdr)[3]++;	/* Update the Data Count */
 
 		fr_cursor_next(cursor);
 	}

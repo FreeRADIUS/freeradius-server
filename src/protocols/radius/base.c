@@ -261,7 +261,7 @@ ssize_t fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, size
 	fr_md5_final(digest, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) fr_dbuff_marker_current(&start)[i] ^= digest[i];
+	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) fr_dbuff_current(&start)[i] ^= digest[i];
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

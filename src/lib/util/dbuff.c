@@ -85,7 +85,7 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
  * we'll attempt to extend dbuffs where possible and needed to make len bytes
  * available in both in and out.
  *
@@ -97,13 +97,13 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
 size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len)
 {
 	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_marker_remaining(in);
+	size_t i_remaining = fr_dbuff_remaining(in);
 	size_t to_copy = len;
 	if (to_copy > o_remaining) to_copy = o_remaining;
 	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(out->p, out->end, fr_dbuff_marker_current(in),
-	        fr_dbuff_marker_current(in) + to_copy);
-	return fr_dbuff_advance(out, fr_dbuff_marker_advance(in, to_copy));
+	safecpy(out->p, out->end, fr_dbuff_current(in),
+	        fr_dbuff_current(in) + to_copy);
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
 /** Move data from one marker to another
@@ -111,7 +111,7 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_marker_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
  * we'll attempt to extend dbuffs where possible and needed to make len bytes
  * available in both in and out.
  *
@@ -122,14 +122,14 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  */
 size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_marker_remaining(out);
-	size_t i_remaining = fr_dbuff_marker_remaining(in);
+	size_t o_remaining = fr_dbuff_remaining(out);
+	size_t i_remaining = fr_dbuff_remaining(in);
 	size_t to_copy = len;
 	if (to_copy > o_remaining) to_copy = o_remaining;
 	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(out->p, out->parent->end, fr_dbuff_marker_current(in),
-		fr_dbuff_marker_current(in) + to_copy);
-	return fr_dbuff_marker_advance(out, fr_dbuff_marker_advance(in, to_copy));
+	safecpy(out->p, out->parent->end, fr_dbuff_current(in),
+		fr_dbuff_current(in) + to_copy);
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
 /** Move data from a dbuff to a marker
@@ -137,7 +137,7 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_marker_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
  * we'll attempt to extend dbuffs where possible and needed to make len bytes
  * available in both in and out.
  *
@@ -148,14 +148,14 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  */
 size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_marker_remaining(out);
+	size_t o_remaining = fr_dbuff_remaining(out);
 	size_t i_remaining = fr_dbuff_remaining(in);
 	size_t to_copy = len;
 	if (to_copy > o_remaining) to_copy = o_remaining;
 	if (to_copy > i_remaining) to_copy = i_remaining;
 	safecpy(out->p, out->parent->end, fr_dbuff_current(in),
 		fr_dbuff_current(in) + to_copy);
-	return fr_dbuff_marker_advance(out, fr_dbuff_advance(in, to_copy));
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
 static inline size_t	min(size_t x, size_t y)

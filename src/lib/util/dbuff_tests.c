@@ -261,22 +261,22 @@ static void test_dbuff_move(void)
 	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMnopqrstuvwxyz", 26) == 0);
 
 	TEST_CASE("move dbuff to marker");
-	fr_dbuff_marker_advance(&marker2, 4);
+	fr_dbuff_advance(&marker2, 4);
 	TEST_CHECK(fr_dbuff_move(&marker2, &dbuff3, 10) == 10);
-	TEST_CHECK(fr_dbuff_marker_used(&marker2) == 14);
+	TEST_CHECK(fr_dbuff_used(&marker2) == 14);
 	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789OPQRSTUVWXYZ", 26) == 0);
 
 	TEST_CASE("move marker to dbuff");
-	fr_dbuff_marker_advance(&marker1, 7);
+	fr_dbuff_advance(&marker1, 7);
 	TEST_CHECK(fr_dbuff_move(&dbuff1, &marker1, 6) == 6);
 	TEST_CHECK(fr_dbuff_used(&dbuff1) == 19);
-	TEST_CHECK(fr_dbuff_marker_used(&marker1) == 13);
+	TEST_CHECK(fr_dbuff_used(&marker1) == 13);
 	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMHIJKLMtuvwxyz", 26) == 0);
 
 	TEST_CASE("move marker to marker");
 	TEST_CHECK(fr_dbuff_move(&marker2, &marker1, 8) == 8);
-	TEST_CHECK(fr_dbuff_marker_used(&marker1) == 21);
-	TEST_CHECK(fr_dbuff_marker_used(&marker2) == 22);
+	TEST_CHECK(fr_dbuff_used(&marker1) == 21);
+	TEST_CHECK(fr_dbuff_used(&marker2) == 22);
 	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789HIJKLMtuWXYZ", 26) == 0);
 }
 
@@ -301,7 +301,7 @@ static void test_dbuff_talloc_extend(void)
 	TEST_CASE("Markers track extended buffer");
 	TEST_CHECK(marker.p == dbuff.start);
 	TEST_CASE("Already-written content stays with the buffer");
-	TEST_CHECK(memcmp(fr_dbuff_marker_current(&marker), value, sizeof(value)) == 0);
+	TEST_CHECK(memcmp(fr_dbuff_current(&marker), value, sizeof(value)) == 0);
 	TEST_CASE("Refuse to extend past specified maximum");
 	TEST_CHECK(fr_dbuff_in(&dbuff, (uint64_t) 0x123456789abcdef0) == -2);
 }

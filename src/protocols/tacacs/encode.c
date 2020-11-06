@@ -564,7 +564,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Just to avoid malformed packet.
 			 */
-			if (!fr_dbuff_marker_current(&hdr)[0]) fr_dbuff_marker_current(&hdr)[0] = 0xc1; /* version 12.1 */
+			if (!fr_dbuff_current(&hdr)[0]) fr_dbuff_current(&hdr)[0] = 0xc1; /* version 12.1 */
 
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
@@ -619,7 +619,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	they have the correct values.
 			 */
 			if (original) {
-				if (!fr_dbuff_marker_current(&hdr)[0]) {
+				if (!fr_dbuff_current(&hdr)[0]) {
 				 	packet->hdr.version = original->version;
 				}
 
@@ -652,7 +652,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 *	include the size of the header.  But we tell the
 	 *	caller about the total length of the packet.
 	 */
-	packet_len = fr_dbuff_marker_used(&work_dbuff);
+	packet_len = fr_dbuff_used(&work_dbuff);
 	body_len = (packet_len - sizeof(fr_tacacs_packet_hdr_t));
 	fr_assert(packet_len < FR_TACACS_MAX_PACKET_SIZE);
 	packet->hdr.length = htonl(body_len);
@@ -686,7 +686,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), packet_len, "fr_tacacs_packet_t (unencrypted)");
 
-		if (fr_tacacs_body_xor(packet, fr_dbuff_marker_current(&body), body_len, secret, secret_len) != 0) return -1;
+		if (fr_tacacs_body_xor(packet, fr_dbuff_current(&body), body_len, secret, secret_len) != 0) return -1;
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), packet_len, "fr_tacacs_packet_t (encoded)");
