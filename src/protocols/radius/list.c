@@ -773,7 +773,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 {
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -789,7 +789,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 	if (is_radius_code(packet->code)) {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       "%s%s%s"
 #endif
 		       "length %zu\n",
@@ -804,7 +804,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
 		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->socket.inet.dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 			received ? "via " : "",
 			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 			received ? " " : "",
@@ -813,7 +813,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 	} else {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       "%s%s%s"
 #endif
 		       "length %zu\n",
@@ -828,7 +828,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->socket.inet.dst_ipaddr),
 		        packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->socket.inet.dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 			received ? "via " : "",
 			received ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 			received ? " " : "",

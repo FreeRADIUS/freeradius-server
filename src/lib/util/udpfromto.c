@@ -27,8 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/udpfromto.h>
 
-#ifdef WITH_UDPFROMTO
-
 #ifdef HAVE_SYS_UIO_H
 #  include <sys/uio.h>
 #endif
@@ -643,4 +641,3 @@ client:
 }
 
 #endif /* TESTING */
-#endif /* WITH_UDPFROMTO */

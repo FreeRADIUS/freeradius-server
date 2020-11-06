@@ -29,11 +29,9 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#ifdef WITH_UDPFROMTO
-#  include <freeradius-devel/util/udpfromto.h>
-#endif
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/udpfromto.h>
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)

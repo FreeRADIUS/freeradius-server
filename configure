@@ -762,7 +762,6 @@ with_logdir
 with_radacctdir
 with_raddbdir
 with_dictdir
-with_udpfromto
 with_cap
 with_cap_lib_dir
 with_cap_include_dir
@@ -1463,7 +1462,6 @@ Optional Packages:
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
-  --with-udpfromto        compile in support for udpfromto (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
   --with-cap-include-dir=DIR
@@ -6077,36 +6075,6 @@ fi
 $as_echo "$dictdir" >&6; }
 
 modconfdir='${raddbdir}/mods-config'
-
-
-
-
-    WITH_UDPFROMTO=yes
-
-
-# Check whether --with-udpfromto was given.
-if test "${with_udpfromto+set}" = set; then :
-  withval=$with_udpfromto; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-udpfromto expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
-
-    fi
 
 
 

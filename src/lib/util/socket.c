@@ -689,7 +689,6 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	 */
 	if (socket_dont_inherit(sockfd) < 0) goto error;
 
-#ifdef WITH_UDPFROMTO
 	/*
 	 *	Initialize udpfromto for UDP sockets.
 	 */
@@ -697,7 +696,6 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 		fr_strerror_printf("Failed initializing udpfromto: %s", fr_syserror(errno));
 		goto error;
 	}
-#endif
 
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.

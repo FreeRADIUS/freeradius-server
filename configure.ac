@@ -655,14 +655,6 @@ AC_SUBST(modconfdir)
 
 dnl #############################################################
 dnl #
-dnl #  0d. Enable/disable build time features
-dnl #
-dnl #############################################################
-
-AX_WITH_FEATURE_ARGS([udpfromto],[yes])
-
-dnl #############################################################
-dnl #
 dnl #  0e. Library/include paths
 dnl #
 dnl #############################################################

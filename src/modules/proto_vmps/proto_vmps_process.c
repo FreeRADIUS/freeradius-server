@@ -178,8 +178,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 			return RLM_MODULE_HANDLED;
 		}
 
-#if 0
-#ifdef WITH_UDPFROMTO
 		/*
 		 *	Overwrite the src ip address on the outbound packet
 		 *	with the one specified by the client.
@@ -187,10 +185,8 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	and other routing issues.
 		 */
 		if (request->client && (request->client->src_ipaddr.af != AF_UNSPEC)) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
+			request->reply->socket.inet.src_ipaddr = request->client->src_ipaddr;
 		}
-#endif
-#endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;

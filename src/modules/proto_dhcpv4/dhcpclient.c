@@ -544,7 +544,7 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, bool received)
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
 	char		dst_ipaddr[INET6_ADDRSTRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#if defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char		if_name[IFNAMSIZ];
 #endif
 	fr_pair_t	*vp;
@@ -558,7 +558,7 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	printf("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	       "%s%s%s"
 #endif
 	       "length %zu\n",
@@ -577,7 +577,7 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, bool received)
 			 dst_ipaddr, sizeof(dst_ipaddr)),
 	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->socket.inet.dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	       packet->socket.inet.ifindex ? "via " : "",
 	       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 	       packet->socket.inet.ifindex ? " " : "",

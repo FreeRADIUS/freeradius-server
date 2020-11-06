@@ -27,15 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udp.h>
 
-/*
- *	This is easier than ifdef's in the function definition.
- */
-#ifdef WITH_UDPFROMTO
-#define UDP_UNUSED
-#else
-#define UDP_UNUSED UNUSED
-#endif
-
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
 
 /** Send a packet via a UDP socket.
@@ -51,8 +42,8 @@ RCSID("$Id$")
  * @param[in] dst_port		of the packet.
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 UDP_UNUSED int ifindex,
-		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port,
+		 int ifindex,
+		 fr_ipaddr_t const *src_ipaddr, uint16_t src_port,
 		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
@@ -70,7 +61,6 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 */
 		if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst) < 0) return -1;
 
-#ifdef WITH_UDPFROMTO
 		/*
 		 *	And if they don't specify a source IP address, don't
 		 *	use udpfromto.
@@ -83,12 +73,13 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 			fr_ipaddr_to_sockaddr(src_ipaddr, src_port, &src, &sizeof_src);
 
 			rcode = sendfromto(sockfd, data, data_len, 0,
+					   ifindex,
 					   (struct sockaddr *)&src, sizeof_src,
-					   (struct sockaddr *)&dst, sizeof_dst, ifindex);
-		} else
-#endif
+					   (struct sockaddr *)&dst, sizeof_dst);
+		} else {
 			rcode = sendto(sockfd, data, data_len, 0,
 				       (struct sockaddr *) &dst, sizeof_dst);
+		}
 	}
 
 	if (rcode < 0) fr_strerror_printf("udp_sendto failed: %s", fr_syserror(errno));
@@ -203,7 +194,6 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 *	Receive the packet.  The OS will discard any data in the
 	 *	packet after "len" bytes.
 	 */
-#ifdef WITH_UDPFROMTO
 	if (dst_ipaddr) {
 		slen = recvfromto(sockfd, data, data_len, sock_flags,
 				  ifindex,
@@ -216,20 +206,6 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 				(struct sockaddr *)&src, &sizeof_src);
 		if (slen <= 0) goto done;
 	}
-#else
-	slen = recvfrom(sockfd, data, data_len, sock_flags,
-			(struct sockaddr *)&src, &sizeof_src);
-	if (slen <= 0) goto done;
-
-	/*
-	 *	Get the destination address, if requested.
-	 */
-	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) {
-		return -1;
-	}
-
-	if (ifindex) *ifindex = 0;
-#endif
 
 	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
 		fr_strerror_printf_push("Failed converting sockaddr to ipaddr");

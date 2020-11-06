@@ -833,7 +833,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 *	request.
 	 */
 	if (cl_srcipaddr) {
-#ifdef WITH_UDPFROMTO
 		switch (c->ipaddr.af) {
 		case AF_INET:
 			if (fr_inet_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
@@ -852,9 +851,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			cf_log_err(cs, "ipaddr was not defined");
 			goto error;
 		}
-#else
-		WARN("Server not built with udpfromto, ignoring client src_ipaddr");
-#endif
 		cl_srcipaddr = NULL;
 	}
 

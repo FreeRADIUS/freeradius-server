@@ -53,7 +53,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
  */
 static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -61,7 +61,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 	if (!RDEBUG_ENABLED) return;
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		    "%s%s%s"
 #endif
 		    "",
@@ -76,7 +76,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 		    fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
 		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		    packet->socket.inet.dst_port
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		    , packet->socket.inet.ifindex ? "via " : "",
 		    packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 		    packet->socket.inet.ifindex ? " " : ""

@@ -639,9 +639,6 @@
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
 
-/* define if you want udpfromto */
-#undef WITH_UDPFROMTO
-
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD

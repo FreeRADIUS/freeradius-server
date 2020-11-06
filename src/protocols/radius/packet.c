@@ -28,10 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
-
-#ifdef WITH_UDPFROMTO
 #include <freeradius-devel/util/udpfromto.h>
-#endif
 
 #include <fcntl.h>
 #include <ctype.h>
@@ -499,9 +496,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *
 
 	/*
 	 *	If the socket is TCP, call write().  Calling sendto()
-	 *	is allowed on some platforms, but it's not nice.  Even
-	 *	worse, if UDPFROMTO is defined, we *can't* use it on
-	 *	TCP sockets.  So... just call write().
+	 *	is allowed on some platforms, but it's not nice.
 	 */
 	if (packet->socket.proto == IPPROTO_TCP) {
 		ssize_t rcode;
