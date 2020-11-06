@@ -55,7 +55,7 @@ typedef struct {
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
-	uint8_t				ethernet[6];		//!< ethernet address associated with the interface
+	fr_ethernet_t			ethernet;		//!< ethernet address associated with the interface
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
@@ -557,7 +557,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	Get the MAC address associated with this interface.
 	 *	It can be used to create a server ID.
 	 */
-	(void) fr_interface_to_ethernet(inst->interface, inst->ethernet);
+	(void) fr_interface_to_ethernet(inst->interface, &inst->ethernet);
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);

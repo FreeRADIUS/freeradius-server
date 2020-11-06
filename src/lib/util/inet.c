@@ -1472,7 +1472,7 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 #define AF_LINK AF_PACKET
 #endif
 
-int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
+int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 {
 	struct ifaddrs *list = NULL;
 	struct ifaddrs *i;
@@ -1490,7 +1490,7 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 		ll = (struct sockaddr_ll *) i->ifa_addr;
 		if ((ll->sll_hatype != 1) || (ll->sll_halen != 6)) continue;
 
-		memcpy(ethernet, ll->sll_addr, 6);
+		memcpy(ethernet->addr, ll->sll_addr, 6);
 
 #else
 		struct sockaddr_dl *ll;
@@ -1498,7 +1498,7 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 		ll = (struct sockaddr_dl *) i->ifa_addr;
 		if (ll->sdl_alen != 6) continue;
 
-		memcpy(ethernet, LLADDR(ll), 6);
+		memcpy(ethernet->addr, LLADDR(ll), 6);
 #endif
 		ret = 0;
 		break;
