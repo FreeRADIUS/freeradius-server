@@ -193,7 +193,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	hdr = work_dbuff.p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -284,7 +284,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	start = hdr = dbuff->p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	Encode any sub TLVs or values
@@ -419,9 +419,9 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0x00);
 	fr_dbuff_in(&work_dbuff, dv->attr);
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0x00);
 
 	/*
 	 *	https://tools.ietf.org/html/rfc3925#section-4

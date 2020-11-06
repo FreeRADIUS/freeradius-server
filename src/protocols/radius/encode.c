@@ -1223,7 +1223,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	 *	Thank you, WiMAX!
 	 */
 	if ((vp->da == attr_chargeable_user_identity) && (vp->vp_length == 0)) {
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)vp->da->attr, 2);
+		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&start), 2, "header rfc");
 
