@@ -333,7 +333,7 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
 typedef struct {
 	fr_socket_t		socket;		//!< src/dst ip and port.
 
-	RADCLIENT const			*radclient;	//!< old-style client definition
+	RADCLIENT const		*radclient;	//!< old-style client definition
 } fr_io_address_t;
 
 typedef int (*fr_io_connection_set_t)(fr_listen_t *li, fr_io_address_t *connection);

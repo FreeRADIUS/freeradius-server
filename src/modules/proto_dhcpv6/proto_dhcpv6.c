@@ -249,12 +249,12 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	RADCLIENT const *client;
-	fr_radius_packet_t *packet = request->packet;
-	fr_cursor_t cursor;
+	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const	*address = track->address;
+	RADCLIENT const		*client;
+	fr_radius_packet_t	*packet = request->packet;
+	fr_cursor_t		cursor;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -317,13 +317,13 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	fr_dhcpv6_packet_t *reply = (fr_dhcpv6_packet_t *) buffer;
-	fr_dhcpv6_packet_t *original = (fr_dhcpv6_packet_t *) request->packet->data;
-	ssize_t data_len;
-	RADCLIENT const *client;
+	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const	*address = track->address;
+	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
+	fr_dhcpv6_packet_t	*original = (fr_dhcpv6_packet_t *) request->packet->data;
+	ssize_t			data_len;
+	RADCLIENT const		*client;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.

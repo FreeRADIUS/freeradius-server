@@ -613,14 +613,13 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	vp->type = VT_DATA;
 	fr_cursor_append(cursor, vp);
 
-	if ((packet[0] == FR_DHCPV6_RELAY_FORWARD) ||
-	    (packet[0] == FR_DHCPV6_RELAY_REPLY)) {
+	switch (packet[0]) {
+	case FR_DHCPV6_RELAY_FORWARD:
+	case FR_DHCPV6_RELAY_REPLY:
 		/*
 		 *	Just for sanity check.
 		 */
-		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
-			return -1;
-		}
+		if (packet_len < DHCPV6_RELAY_HDR_LEN) return -1;
 
 		/*
 		 *	Decode the header fields.
@@ -649,6 +648,9 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 		p = packet + DHCPV6_RELAY_HDR_LEN;
 		goto decode_options;
+
+	default:
+		break;
 	}
 
 	/*
@@ -669,7 +671,6 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 	vp->type = VT_DATA;
 	fr_cursor_append(cursor, vp);
-
 
 	p = packet + 4;
 
@@ -734,8 +735,6 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
 
 	return c;
 }
-
-
 
 /** Encode a DHCPv6 packet
  *

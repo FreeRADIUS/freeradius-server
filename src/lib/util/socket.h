@@ -123,7 +123,7 @@ static inline void fr_socket_addr_swap(fr_socket_t *dst, fr_socket_t const *src)
 {
 	fr_socket_t	tmp = *src;
 
-	if (dst != src) *dst = tmp;
+	if (dst != src) *dst = tmp;	/* copy non-address fields over */
 
 	switch (src->proto) {
 	case IPPROTO_UDP:

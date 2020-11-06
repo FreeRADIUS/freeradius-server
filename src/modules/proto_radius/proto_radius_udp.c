@@ -108,7 +108,8 @@ static const CONF_PARSER udp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
+			size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
@@ -125,7 +126,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Where the addresses should go.  This is a special case
 	 *	for proto_radius.
 	 */
-	address_p = (fr_io_address_t **) packet_ctx;
+	address_p = (fr_io_address_t **)packet_ctx;
 	address = *address_p;
 
 	/*

@@ -126,9 +126,9 @@ typedef struct CC_HINT(__packed__) {
 #define DHCPV6_DATE_OFFSET (946684800)
 
 typedef struct {
-	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
-	uint8_t const		*original;			//!< original packet
-	size_t			original_length;		//!< length of the original packet
+	fr_dict_attr_t const	*root;			//!< Root attribute of the dictionary.
+	uint8_t const		*original;		//!< original packet
+	size_t			original_length;	//!< length of the original packet
 } fr_dhcpv6_encode_ctx_t;
 
 typedef struct {
