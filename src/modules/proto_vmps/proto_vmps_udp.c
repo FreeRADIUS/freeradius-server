@@ -131,9 +131,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	address->socket.proto = IPPROTO_UDP;
 	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
+			     &address->socket.inet.ifindex,
 			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
 			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
-			     &address->socket.inet.ifindex, recv_time_p);
+			     recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_vmps_udp got read error %zd", data_size);
 		return data_size;
@@ -237,8 +238,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
 			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
-					&address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
 					address->socket.inet.ifindex,
+					&address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
 					&address->socket.inet.src_ipaddr, address->socket.inet.src_port);
 		}
 
@@ -255,8 +256,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	sometimes we want to NOT send a reply...
 	 */
 	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
 			     address->socket.inet.ifindex,
+			     &address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
 			     &address->socket.inet.src_ipaddr, address->socket.inet.src_port);
 
 	/*

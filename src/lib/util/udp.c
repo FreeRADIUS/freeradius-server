@@ -40,18 +40,19 @@ RCSID("$Id$")
 
 /** Send a packet via a UDP socket.
  *
- * @param[in] sockfd we're reading from.
- * @param[in] data pointer to data to send
- * @param[in] data_len length of data to send
- * @param[in] flags to pass to send(), or sendto()
- * @param[in] src_ipaddr of the packet.
- * @param[in] src_port of the packet.
- * @param[in] ifindex of the packet.
- * @param[in] dst_ipaddr of the packet.
- * @param[in] dst_port of the packet.
+ * @param[in] sockfd		we're reading from.
+ * @param[in] data pointer	to data to send
+ * @param[in] data_len		length of data to send
+ * @param[in] flags		to pass to send(), or sendto()
+ * @param[in] ifindex		Interface to send the packe from.
+ * @param[in] src_ipaddr	of the packet.
+ * @param[in] src_port		of the packet.
+ * @param[in] dst_ipaddr	of the packet.
+ * @param[in] dst_port		of the packet.
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int ifindex,
+		 UDP_UNUSED int ifindex,
+		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port,
 		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
@@ -158,23 +159,24 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 
 /** Read a UDP packet
  *
- * @param[in] sockfd we're reading from.
- * @param[out] data pointer where data will be written
- * @param[in] data_len length of data to read
- * @param[in] flags for things
- * @param[out] src_ipaddr of the packet.
- * @param[out] src_port of the packet.
- * @param[out] dst_ipaddr of the packet.
- * @param[out] dst_port of the packet.
- * @param[out] ifindex of the interface that received the packet.
- * @param[out] when the packet was received.
+ * @param[in] sockfd		we're reading from.
+ * @param[out] data		pointer where data will be written
+ * @param[in] data_len		length of data to read
+ * @param[in] flags		for things
+ * @param[out] ifindex		of the interface that received the packet.
+ * @param[out] src_ipaddr	of the packet.
+ * @param[out] src_port		of the packet.
+ * @param[out] dst_ipaddr	of the packet.
+ * @param[out] dst_port		of the packet.
+ * @param[out] when		the packet was received.
  * @return
  *	- > 0 on success (number of bytes read).
  *	- < 0 on failure.
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
+		 int *ifindex,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *ifindex,
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port,
 		 fr_time_t *when)
 {
 	int			sock_flags = 0;
@@ -182,7 +184,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src = sizeof(src);
 	socklen_t		sizeof_dst = sizeof(dst);
-	ssize_t			received;
+	ssize_t			slen;
 	uint16_t		port;
 
 	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
@@ -193,7 +195,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 *	Connected sockets already know src/dst IP/port
 	 */
 	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
-		received = recv(sockfd, data, data_len, sock_flags);
+		slen = recv(sockfd, data, data_len, sock_flags);
 		goto done;
 	}
 
@@ -203,20 +205,20 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 */
 #ifdef WITH_UDPFROMTO
 	if (dst_ipaddr) {
-		received = recvfromto(sockfd, data, data_len, sock_flags,
-				      (struct sockaddr *)&src, &sizeof_src,
-				      (struct sockaddr *)&dst, &sizeof_dst,
-				      ifindex, when);
-		if (received <= 0) goto done;
+		slen = recvfromto(sockfd, data, data_len, sock_flags,
+				  (struct sockaddr *)&src, &sizeof_src,
+				  (struct sockaddr *)&dst, &sizeof_dst,
+				  ifindex, when);
+		if (slen <= 0) goto done;
 	} else {
-		received = recvfrom(sockfd, data, data_len, sock_flags,
-				    (struct sockaddr *)&src, &sizeof_src);
-		if (received <= 0) goto done;
+		slen = recvfrom(sockfd, data, data_len, sock_flags,
+				(struct sockaddr *)&src, &sizeof_src);
+		if (slen <= 0) goto done;
 	}
 #else
-	received = recvfrom(sockfd, data, data_len, sock_flags,
-			    (struct sockaddr *)&src, &sizeof_src);
-	if (received <= 0) goto done;
+	slen = recvfrom(sockfd, data, data_len, sock_flags,
+			(struct sockaddr *)&src, &sizeof_src);
+	if (slen <= 0) goto done;
 
 	/*
 	 *	Get the destination address, if requested.
@@ -241,11 +243,11 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	}
 
 done:
-	if (received < 0) {
+	if (slen < 0) {
 		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) return 0;
 
 		fr_strerror_printf("Failed reading socket: %s", fr_syserror(errno));
-		return received;
+		return slen;
 	}
 
 	/*
@@ -254,5 +256,5 @@ done:
 	 */
 	if (when && !*when) *when = fr_time();
 
-	return received;
+	return slen;
 }
