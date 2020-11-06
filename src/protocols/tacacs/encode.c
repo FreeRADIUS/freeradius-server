@@ -52,9 +52,7 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 	     vp = fr_cursor_next(&cursor)) {
 		if (arg_cnt == 255) break;
 
-		if ((vp->da != da) || (vp->vp_length > 0xff)) {
-			continue;
-		}
+		if ((vp->da != da) || (vp->vp_length > 0xff)) continue;
 
 		/* Append the <arg_N_len> fields length */
 		fr_dbuff_in(dbuff, (uint8_t) vp->vp_length);
@@ -79,9 +77,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_di
 	     vp = fr_cursor_next(&cursor), arg_cnt++) {
 		if (arg_cnt == 255) break;
 
-		if (vp->da != da || vp->vp_length > 0xff) {
-			continue;
-		}
+		if (vp->da != da || vp->vp_length > 0xff) continue;
 
 		/* Append the <arg_N> field */
 		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
