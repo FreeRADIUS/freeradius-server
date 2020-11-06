@@ -471,7 +471,11 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	/* DHCP magic number */
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) DHCP_OPTION_MAGIC_NUMBER);
 
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 1, (uint8_t) code);
+	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_message_type))) {
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 1, vp->vp_uint8);
+	} else {
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 1, (uint8_t) code);
+	}
 
 	/*
 	 *  Pre-sort attributes into contiguous blocks so that fr_dhcpv4_encode_option
