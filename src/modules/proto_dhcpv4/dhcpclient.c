@@ -234,62 +234,6 @@ static fr_radius_packet_t *request_init(char const *filename)
 	return packet;
 }
 
-static void print_hex(fr_radius_packet_t *packet)
-{
-	int i, j;
-	uint8_t const *p, *a;
-
-	if (!packet->data) return;
-
-	if (packet->data_len < 244) {
-		printf("Huh?\n");
-		return;
-	}
-
-	printf("----------------------------------------------------------------------\n");
-	fflush(stdout);
-
-	p = packet->data;
-	for (i = 0; i < 14; i++) {
-		printf("%s = 0x", (*dhcp_header_attrs[i])->name);
-		for (j = 0; j < dhcp_header_sizes[i]; j++) {
-			printf("%02x", p[j]);
-
-		}
-		printf("\n");
-		p += dhcp_header_sizes[i];
-	}
-
-	/*
-	 *	Magic number
-	 */
-	printf("%02x %02x %02x %02x\n",
-	       p[0], p[1], p[2], p[3]);
-	p += 4;
-
-	while (p < (packet->data + packet->data_len)) {
-
-		if (*p == 0) break;
-		if (*p == 255) break; /* end of options signifier */
-		if ((p + 2) > (packet->data + packet->data_len)) break;
-
-		printf("%02x  %02x  ", p[0], p[1]);
-		a = p + 2;
-
-		for (i = 0; i < p[1]; i++) {
-			if ((i > 0) && ((i & 0x0f) == 0x00))
-				printf("\t\t");
-			printf("%02x ", a[i]);
-			if ((i & 0x0f) == 0x0f) printf("\n");
-		}
-
-		if ((p[1] & 0x0f) != 0x00) printf("\n");
-
-		p += p[1] + 2;
-	}
-	printf("\n----------------------------------------------------------------------\n");
-	fflush(stdout);
-}
 
 /*
  *	Loop waiting for DHCP replies until timer expires.
@@ -353,7 +297,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 		if (reply) {
 			nb_reply ++;
 
-			if (fr_debug_lvl) print_hex(reply);
+			if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, reply->data, reply->data_len);
 
 			fr_cursor_init(&cursor, &reply->vps);
 			if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &cursor, &reply->code) < 0) {
@@ -787,6 +731,9 @@ int main(int argc, char **argv)
 	if (fr_debug_lvl) {
 		fr_cursor_t cursor;
 		fr_cursor_init(&cursor, &packet->vps);
+
+		if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, packet->data, packet->data_len);
+
 		fr_dhcpv4_decode(packet, packet->data, packet->data_len, &cursor, &packet->code);
 		dhcp_packet_debug(packet, false);
 	}
