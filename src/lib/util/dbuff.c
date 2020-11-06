@@ -127,7 +127,7 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
 	size_t to_copy = len;
 	if (to_copy > o_remaining) to_copy = o_remaining;
 	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(out->p, out->end, fr_dbuff_marker_current(in),
+	safecpy(out->p, out->parent->end, fr_dbuff_marker_current(in),
 		fr_dbuff_marker_current(in) + to_copy);
 	return fr_dbuff_marker_advance(out, fr_dbuff_marker_advance(in, to_copy));
 }
@@ -153,7 +153,7 @@ size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, si
 	size_t to_copy = len;
 	if (to_copy > o_remaining) to_copy = o_remaining;
 	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(out->p, out->end, fr_dbuff_current(in),
+	safecpy(out->p, out->parent->end, fr_dbuff_current(in),
 		fr_dbuff_current(in) + to_copy);
 	return fr_dbuff_marker_advance(out, fr_dbuff_advance(in, to_copy));
 }

@@ -184,8 +184,6 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	fr_pair_t		*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	if (fr_dbuff_remaining(&work_dbuff) < 3) return 0;	/* No space */
-
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -193,7 +191,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	hdr = work_dbuff.p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0x00);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -272,10 +270,8 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	uint8_t			*hdr, *next_hdr, *start;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-
-	if (fr_dbuff_remaining(&work_dbuff) < 5) return 0;	/* No space */
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -284,12 +280,12 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	start = hdr = dbuff->p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0x00);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	Encode any sub TLVs or values
 	 */
-	while (fr_dbuff_remaining(&work_dbuff) >= 3) {
+	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, 3) >= 3) {
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
@@ -300,7 +296,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		}
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
-
 
 		/*
 		 *	If the newly added data fits within the

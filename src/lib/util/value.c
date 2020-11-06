@@ -1196,7 +1196,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		/*
 		 *	Figure dst if we'd overflow
 		 */
-		if (value->vb_length > fr_dbuff_remaining(dbuff)) {
+		if (value->vb_length > fr_dbuff_extend_lowat(NULL, dbuff, value->vb_length)) {
 			if (need) *need = value->vb_length;
 			len = fr_dbuff_remaining(dbuff);
 		} else {
@@ -1238,7 +1238,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	/*
 	 *	Fixed type would overflow output buffer
 	 */
-	if (max > fr_dbuff_remaining(dbuff)) {
+	if (max > fr_dbuff_extend_lowat(NULL, dbuff, max)) {
 		if (need) *need = max;
 		return 0;
 	}
