@@ -457,7 +457,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	field_dbuff = FR_DBUFF_MAX_NO_ADVANCE(&work_dbuff, DHCP_SNAME_LEN);
 	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_server_host_name))) {
 		fr_dbuff_memcpy_in_partial(&field_dbuff, vp->vp_strvalue, vp->vp_length);
-		}
+	}
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCP_SNAME_LEN);
 	fr_dbuff_advance(&work_dbuff, DHCP_SNAME_LEN);
 
@@ -475,7 +475,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	field_dbuff = FR_DBUFF_MAX_NO_ADVANCE(&work_dbuff, DHCP_FILE_LEN);
 	if ((vp = fr_pair_find_by_da(vps, attr_dhcp_boot_filename))) {
 		fr_dbuff_memcpy_in_partial(&field_dbuff, vp->vp_strvalue, vp->vp_length);
-		}
+	}
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCP_FILE_LEN);
 	fr_dbuff_advance(&work_dbuff, DHCP_FILE_LEN);
 
