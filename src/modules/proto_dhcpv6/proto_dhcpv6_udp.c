@@ -247,10 +247,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	proto_dhcpv6 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     address.socket.inet.ifindex,
-			     &address.socket.inet.src_ipaddr, address.socket.inet.src_port,
-			     &address.socket.inet.dst_ipaddr, address.socket.inet.dst_port);
+	data_size = udp_send(&address.socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...

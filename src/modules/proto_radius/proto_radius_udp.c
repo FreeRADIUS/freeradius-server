@@ -229,10 +229,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
-					address->socket.inet.ifindex,
-					&address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
-					&address->socket.inet.src_ipaddr, address->socket.inet.src_port);
+			(void) udp_send(&address->socket, flags, packet, track->reply_len);
 		}
 
 		return buffer_len;
@@ -247,10 +244,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     address->socket.inet.ifindex,
-			     &address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
-			     &address->socket.inet.src_ipaddr, address->socket.inet.src_port);
+	data_size = udp_send(&address->socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...

@@ -32,60 +32,43 @@ RCSID("$Id$")
 
 /** Send a packet via a UDP socket.
  *
- * @param[in] sockfd		we're reading from.
- * @param[in] data pointer	to data to send
- * @param[in] data_len		length of data to send
+ * @param[in] socket		we're reading from.
  * @param[in] flags		to pass to send(), or sendto()
- * @param[in] ifindex		Interface to send the packe from.
- * @param[in] src_ipaddr	of the packet.
- * @param[in] src_port		of the packet.
- * @param[in] dst_ipaddr	of the packet.
- * @param[in] dst_port		of the packet.
+ * @param[in] data		to data to send
+ * @param[in] data_len		length of data to send
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 int ifindex,
-		 fr_ipaddr_t const *src_ipaddr, uint16_t src_port,
-		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port)
+int udp_send(fr_socket_t const *socket, int flags, void *data, size_t data_len)
 {
-	int rcode;
+	int ret;
 
-	if (flags & UDP_FLAGS_CONNECTED) {
-		rcode = send(sockfd, data, data_len, 0);
-
-	} else {
-		struct sockaddr_storage	dst;
-		socklen_t		sizeof_dst;
-
-		/*
-		 *	@fixme: We shoul probably just move to sockaddr_storage for
-		 *	all IP address things.
-		 */
-		if (fr_ipaddr_to_sockaddr(&dst, &sizeof_dst, dst_ipaddr, dst_port) < 0) return -1;
-
-		/*
-		 *	And if they don't specify a source IP address, don't
-		 *	use udpfromto.
-		 */
-		if ((src_ipaddr->af != AF_UNSPEC) && (dst_ipaddr->af != AF_UNSPEC) &&
-		    !fr_ipaddr_is_inaddr_any(src_ipaddr)) {
-			struct sockaddr_storage	src;
-			socklen_t		sizeof_src;
-
-			fr_ipaddr_to_sockaddr(&src, &sizeof_src, src_ipaddr, src_port);
-
-			rcode = sendfromto(sockfd, data, data_len, 0,
-					   ifindex,
-					   (struct sockaddr *)&src, sizeof_src,
-					   (struct sockaddr *)&dst, sizeof_dst);
-		} else {
-			rcode = sendto(sockfd, data, data_len, 0,
-				       (struct sockaddr *) &dst, sizeof_dst);
-		}
+	if (unlikely(socket->proto != IPPROTO_UDP)) {
+		fr_strerror_printf("Invalid proto type %u", socket->proto);
+		return -1;
 	}
 
-	if (rcode < 0) fr_strerror_printf("udp_sendto failed: %s", fr_syserror(errno));
+	if (flags & UDP_FLAGS_CONNECTED) {
+		ret = (send(socket->fd, data, data_len, 0) == (ssize_t)data_len) ? 0 : -1;
+	} else {
+		struct sockaddr_storage	dst, src;
+		socklen_t		sizeof_dst, sizeof_src;
 
-	return rcode;
+		if (fr_ipaddr_to_sockaddr(&dst, &sizeof_dst,
+					  &socket->inet.dst_ipaddr, socket->inet.dst_port) < 0) return -1;
+		if (fr_ipaddr_to_sockaddr(&src, &sizeof_src,
+					  &socket->inet.src_ipaddr, socket->inet.src_port) < 0) return -1;
+
+		ret = sendfromto(socket->fd, data, data_len, 0,
+				 socket->inet.ifindex,
+				 (struct sockaddr *)&src, sizeof_src,
+				 (struct sockaddr *)&dst, sizeof_dst);
+	}
+
+	if (ret < 0) fr_strerror_printf("udp_send failed: %s", fr_syserror(errno));
+
+	return ret;
 }
 
 

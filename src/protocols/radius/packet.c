@@ -506,10 +506,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *
 	/*
 	 *	And send it on it's way.
 	 */
-	return udp_send(packet->socket.fd, packet->data, packet->data_len, 0,
-	 		packet->socket.inet.ifindex,
-			&packet->socket.inet.src_ipaddr, packet->socket.inet.src_port,
-			&packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
+	return udp_send(&packet->socket, 0, packet->data, packet->data_len);
 }
 
 void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line)
