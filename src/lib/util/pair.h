@@ -72,7 +72,13 @@ typedef enum value_type {
 
 typedef struct value_pair_s fr_pair_t;
 
+#ifdef USE_DOUBLE_LIST
+typedef struct {
+        fr_dlist_head_t head;
+} fr_pair_list_t;
+#else
 typedef fr_pair_t* fr_pair_list_t;
+#endif
 
 /** Stores an attribute, a value and various bits of other data
  *
