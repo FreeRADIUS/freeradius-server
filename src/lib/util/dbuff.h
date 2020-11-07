@@ -943,15 +943,17 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 	)
 #define FR_DBUFF_IN_RETURN(_dbuff, _value) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff, _value)
 
-static inline ssize_t fr_dbuff_uint64v_in(fr_dbuff_t *dbuff, uint64_t num)
+static inline ssize_t _fr_dbuff_uint64v_in(uint8_t **out_p, fr_dbuff_t *dbuff, uint64_t num)
 {
 	size_t	ret;
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x08), 8);
 	num = ntohll(num);
 
-	return fr_dbuff_memcpy_in(dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
+	return _fr_dbuff_memcpy_in(out_p, dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
+#define fr_dbuff_uint64v_in(_dbuff_or_marker, _num) \
+	_fr_dbuff_uint64v_in(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _num)
 
 size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len);
 
