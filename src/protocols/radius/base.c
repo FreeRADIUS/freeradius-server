@@ -230,14 +230,8 @@ size_t fr_radius_attr_len(fr_pair_t const *vp)
  * We put them into MD5 in the reverse order from that used when
  * encrypting passwords to RADIUS.
  */
-ssize_t fr_radius_ascend_secret(uint8_t *out, size_t outlen, uint8_t const *in, size_t inlen,
+ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 				char const *secret, uint8_t const *vector)
-{
-	return fr_radius_ascend_secret_dbuff(&FR_DBUFF_TMP(out, outlen), in, inlen, secret, vector);
-}
-
-ssize_t fr_radius_ascend_secret_dbuff(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
-				      char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t		*md5_ctx;
 	size_t			i;

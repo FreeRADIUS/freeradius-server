@@ -603,8 +603,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	always fits.
 	 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
-		slen = fr_radius_ascend_secret_dbuff(&work_dbuff, fr_dbuff_current(&value_start),
-						     fr_dbuff_used(&value_dbuff),
+		slen = fr_radius_ascend_secret(&work_dbuff,
+					       fr_dbuff_current(&value_start), fr_dbuff_used(&value_dbuff),
 					       packet_ctx->secret, packet_ctx->vector);
 		if (slen < 0) return slen;
 		encrypted = true;
