@@ -1,0 +1,65 @@
+#
+#  PRE: update
+#
+update control {
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-0 += 'baz'
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control
+}
+
+debug_request
+
+# Prepend a single value
+update request {
+	&Tmp-String-0 ^= 'boink'
+}
+
+# The prepended value should be first followd by the other two
+if (("%{Tmp-String-0[0]}" != 'boink') || ("%{Tmp-String-0[1]}" != 'foo') || ("%{Tmp-String-0[2]}" != 'baz')) {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 1a"
+	}
+}
+
+# Add an extra element to the start of control
+update control {
+	&Tmp-String-0 ^= 'wibble'
+}
+
+# Prepend control to request
+update {
+	&request ^= &control
+}
+
+debug_request
+
+# The attributes should now be "wibble", "foo", "baz", "boink", "foo", "baz"
+if (("%{Tmp-String-0[0]}" != 'wibble') || ("%{Tmp-String-0[1]}" != 'foo') || ("%{Tmp-String-0[2]}" != 'baz') || ("%{Tmp-String-0[3]}" != 'boink') || ("%{Tmp-String-0[4]}" != 'foo') || ("%{Tmp-String-0[5]}" != 'baz')) {
+	update reply {
+		Filter-Id += "fail 2"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 6) {
+	update reply {
+		Filter-Id += "fail 2a"
+	}
+}
+
+if (!reply:Filter-Id) {
+	update {
+		&request:User-Password := 'hello'
+		&reply:Filter-Id := 'filter'
+	}
+}

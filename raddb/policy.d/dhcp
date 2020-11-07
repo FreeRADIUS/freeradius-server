@@ -6,6 +6,7 @@ dhcp_common {
 		&DHCP-Domain-Name-Server = 127.0.0.2
 		&DHCP-Subnet-Mask = 255.255.255.0
 		&DHCP-Router-Address = 192.0.2.1
+		&DHCP-Broadcast-Address = 192.0.2.255
 		&DHCP-IP-Address-Lease-Time = 7200
 		&DHCP-DHCP-Server-Identifier = &control:DHCP-DHCP-Server-Identifier
 	}
@@ -15,31 +16,66 @@ dhcp_common {
 #  of multiple groups so can cover the ISC concepts of "group" and "class"
 #  To use this enable the "dhcp_files" module
 #dhcp_group_options {
-#	foreach &control:DHCP-Group-Name {
+#	foreach &request:DHCP-Group-Name {
 #		dhcp_set_group_options
 #	}
 #}
 
-#  Policy to override DHCP-Network-IP-Address
+#  Policy to override DHCP-Network-Subnet
 #
-#  Some network configurations have "shared-networks" in which multiple IP
-#  subnets may co-exist in a single Layer 2 network (or VLAN).  This may be
-#  due to discontinuous extension of the original address plan or it may be
-#  to provide loose segregation between classes of devices such as local
-#  network atached storage or IP telephony.
+#  Some networks have a "shared-network" or "multinet" configuration (as
+#  defined by some other DHCP servers) in which multiple IP subnets may
+#  co-exist in a single Layer 2 network (or VLAN).
 #
-#  By default DHCP-Network-IP-Address is populated such that it normally
-#  refers to the Layer 2 network from which the DHCP query originates - it
-#  cannot know the intended subnet for the device without policy input.
-#  Override DHCP-Network-IP-Address to be an address within the desired
-#  subnet to force selection of particular network parameters including
-#  the address pool
+#  In enterprise environments this is often for the purpose of providing loose
+#  segregation between classes of devices such as local network-attached
+#  storage or IP telephony. There are valid reasons why each of the subnets is
+#  not seperately VLANed, such as to enable the use of ICMP redirects to avoid
+#  hairpinning of cross-subnet traffic via a gateway.
+#
+#  In ISP environments this is a common configuration for edge networks whose
+#  access is provided by DOCSIS cable modems that share a VLAN with the devices
+#  they provide a service to but are seperately addressed.
+#
+#  Where it is necessary to force the selection of a particular subnet for a
+#  device, multiple pools must be configured for each subnet and referenced
+#  with unique identifiers in the *network-specific* section of
+#  mods-config/files/dhcp.
+#
+#  By default DHCP-Network-Subnet is populated such that it normally
+#  refers to the Layer 2 network from which the DHCP query originates - we
+#  cannot know the intended subnet for the device without additional input to
+#  the policy.
+#
+#  Override DHCP-Network-Subnet to be an address within the desired
+#  network to force selection of a particular address pool and/or network
+#  parameters.
+#
+#  Note: If each subnet within a network is equally valid for the DHCP requests
+#  originating from that network then you do not need to call this policy,
+#  rather look at the examples concerning dhcp_subnet in
+#  mods-config/files/dhcp instead, which use a single pool containing addresses
+#  from all subnets then set the correct subnet-specific options based on the
+#  randomly assigned IP address.
+#
 #dhcp_override_network {
 #	if (&DHCP-Vendor-Class-Identifier && &DHCP-Vendor-Class-Identifier == "SIP100")
 #		update request {
-#			DHCP-Network-IP-Address := 10.10.0.0
+#			DHCP-Network-Subnet := 10.10.0.0
 #		}
 #	}
+#}
+
+
+#  Policy that calls the files instance of the same name after first making
+#  DHCP-Network-Subnet specific to the allocated IP address of the client.
+#dhcp_subnet {
+#	update {
+#		&DHCP-Network-Subnet := "%{%{reply:DHCP-Your-IP-Address}:-%{DHCP-Client-IP-Address}}"
+#	}
+#
+#	# Call the dhcp_subnet instance of the files module
+#	dhcp_subnet
 #}
 
 #  Assign compatibility data to request for sqlippool for DHCP Request
@@ -102,3 +138,190 @@ dhcp_sqlippool_decline {
 
 }
 
+#  Example policy for fetching option data from SQL
+dhcp_policy_sql {
+
+	#
+	#  Network-specific options
+	#
+
+	#
+	#  We want to lookup the Layer 2 network specific DHCP options to
+	#  include in the reply. For this we need a stable identifier for the
+	#  network from which the request is originating (based on
+	#  DHCP-Network-Subnet) which can be used as the lookup key
+	#  (DHCP-SQL-Option-Identifier) for the network options.
+	#
+	#  Here we fabricate an example for the purpose of placing all
+	#  configuration elements into SQL. We use a PostgreSQL query that
+	#  returns the network identifier in the row containing the smallest
+	#  enclosing CIDR, which assumes a schema such as the following:
+	#
+	#    CREATE TABLE fr_network_to_identifier (network CIDR, network_id TEXT)
+	#
+	#  Note: An rlm_files based lookup of the network_identifier (as per
+	#  the examples in the dhcp virtual server) may be preferable to an ad
+	#  hoc SQL query assuming that the network topology does not change
+	#  frequently.
+	#
+#	update control {
+#		&control:Tmp-String-0 := "%{dhcp_sql:SELECT network_id \
+#		    FROM fr_network_to_identifier \
+#		    WHERE '%{DHCP-Network-Subnet}'::inet << network \
+#		    ORDER BY MASKLEN(network) DESC LIMIT 1;}"
+#	}
+
+	#
+	#  Use the network identifer to lookup the options specific to the
+	#  originating network, using "network" context.  Common network
+	#  settings can be placed into a group and shared, with individual
+	#  networks mapped to one or more option groups.
+	#
+	#    - Place network-specific options in the dhcpreply table with
+	#      "context = 'network'".
+	#    - Add "Fall-Through := Yes" to the network options in the dhcpreply
+	#      table to trigger group lookups for the network, which are
+	#      disabled by default.
+	#    - Place "identifier = <network_id>, groupname = <group>,
+	#      priority = <priority>, context = 'network'" in the dhcpgroup
+	#      table to map a network to a shared set of network options.
+	#    - Place group-specific options in the dhcpgroupreply table with
+	#      "context = 'network'".
+	#
+	#  Note: In "shared-network" or "multinet" topologies you can instead
+	#  just set all of the network options once in the subnet-specific
+	#  options (after obtaining an IP address), below.
+	#
+#	update control {
+#		&DHCP-SQL-Option-Context := "network"
+#		&DHCP-SQL-Option-Identifier := &control:Tmp-String-0
+#	}
+#	dhcp_sql.authorize
+
+
+	#
+	#  Allocate IPs from the DHCP pool in SQL.
+	#
+	#  Here we simply reuse the network_id (obtained previously) as the
+	#  Pool-Name.
+	#
+#	update control {
+#		&Pool-Name := &control:Tmp-String-0
+#	}
+#	dhcp_sqlippool
+
+
+	#
+	#  Subnet-specific options
+	#
+
+	#
+	#  In "shared-network" or "multinet" topologies (in which a Layer 2
+	#  network has a single pool that contains addresses from multiple
+	#  subnets) it is necessary to set subnet-specific options based on the
+	#  address that has just been allocated.
+	#
+	#  Again, for this we need to derive a stable identifier for the subnet
+	#  to which the IP address we are issuing belongs that will serve as a
+	#  lookup key for the network options.
+	#
+	#  Continuing our previous example, we can use a PostgreSQL query to
+	#  find the subnet identifer in the row with the closest enclosing
+	#  CIDR, which assumes a schema such as the following:
+	#
+	#      CREATE TABLE fr_subnet_to_identifier (subnet CIDR, subnet_id TEXT)
+	#
+	#  Note: An rlm_files based lookup of the subnet_identifier (as per the
+	#  examples in the dhcp virtual server) is preferable to an ad hoc SQL
+	#  query assuming that the network topology does not change frequently.
+	#
+#	update control {
+#		&control:Tmp-String-0 := "%{dhcp_sql:SELECT subnet_id \
+#		    FROM fr_subnet_to_identifier \
+#		    WHERE '%{reply:DHCP-Your-IP-Address}'::inet << subnet \
+#		    ORDER BY MASKLEN(subnet) DESC LIMIT 1;}"
+#	}
+
+	#
+	#  Use the subnet identifer to lookup the options specific to the
+	#  subnet for the IP we are allocating, using "subnet" context.  Common
+	#  subnet settings can be placed into a group and shared, with
+	#  individual subnets mapped to one or more option groups.
+	#
+	#    - Place subnet-specific options in the dhcpreply table with
+	#      "context = 'subnet'".
+	#    - Add "Fall-Through := Yes" to the subnet options in the dhcpreply
+	#      table to trigger group lookups for the subnet, which are
+	#      disabled by default.
+	#    - Place "identifier = <subnet_id>, groupname = <group>,
+	#      priority = <priority>, context = 'subnet'" in the dhcpgroup
+	#      table to map a subnet to a shared set of subnet options.
+	#    - Place group-specific options in the dhcpgroupreply table with
+	#      "context = 'subnet'".
+	#
+#	update control {
+#		&DHCP-SQL-Option-Context := "subnet"
+#		&DHCP-SQL-Option-Identifier := &control:Tmp-String-0
+#	}
+#	dhcp_sql.authorize
+
+
+	#
+	#  Host-specific and group-specific options
+	#
+
+	#  "Groups" conventionally differentiate devices based on manual
+	#  groupings using a device-specific identifier such as the MAC
+	#  address.
+	#
+	#    - Place host-specific options in the dhcpreply table with
+	#      "context = 'group'".
+	#    - Add "Fall-Through := Yes" to the device options in the dhcpreply
+	#      table to trigger group lookups, which are disabled by default.
+	#    - Place "identifier = <MAC-Address>, groupname = <group>,
+	#      priority = <priority>, context='group'" in the dhcpgroup table
+	#      to map a device to its groups.
+	#    - Place group-specific options in the dhcpgroupreply table with
+	#      "context = 'group'".
+	#
+#	update control {
+#		&DHCP-SQL-Option-Context := "group"
+#		&DHCP-SQL-Option-Identifier := &request:DHCP-Client-Hardware-Address
+#	}
+#	dhcp_sql.authorize
+
+
+	#
+	#  Class/subclass-specific options
+	#
+
+	#
+	#  "Classes" conventionally differentiate devices based on all or part
+	#  of one or more DHCP request options, or any combination of
+	#  information that is available in the request or has already looked
+	#  up from some datastore.
+	#
+	#  Create multiple instances of the following block, one for each
+	#  class. Differentiate between classes by setting
+	#  DHCP-SQL-Option-Context uniquely.
+	#
+	#    - Place "subclass"-specific options (i.e. each member of a class)
+	#      in the dhcpreply table with "context = <class-name>".
+	#    - For class-level options common to every member of a class,
+	#      either:
+	#        - Duplicate the options for each member of the subclass.
+	#      or:
+	#        - Add "Fall-Through := Yes" to each members options to trigger
+	#          group lookups, which are disabled by default.
+	#        - Map each member of the class to a group in the dhcpgroup
+	#          table with context = '<class-name>';
+	#        - Create the corresponding class in the dhcpgroupreply table
+	#          with "context = '<class-name>'".
+	#
+#	update control {
+#		&DHCP-SQL-Option-Context := "class-vci-substring"
+#		&DHCP-SQL-Option-Identifier := "%{substring %{request:DHCP-Vendor-Class-Identifier} 5 4}"
+#	}
+#	dhcp_sql.authorize
+
+}

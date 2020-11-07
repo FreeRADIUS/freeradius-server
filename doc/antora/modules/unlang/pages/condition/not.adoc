@@ -1,0 +1,19 @@
+= The ! Operator
+
+.Syntax
+[source,unlang]
+----
+! condition
+----
+
+The `!` operator negates the result of the following condition.  It
+returns `true` when _condition_ returns `false`.  It returns `false`
+when _condition_ returns `true`.
+
+.Examples
+
+`(! (foo == bar))` +
+`! &User-Name`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

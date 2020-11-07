@@ -1,0 +1,21 @@
+= The || Operator
+
+.Syntax
+[source,unlang]
+----
+(expression-1 || expression-2)
+----
+
+The `||` operator performs a short-circuit "or" evaluation of the two
+expressions. This operator evaluates _condition-1_ and returns `true`
+if _condition-1_ returns true. Only if _condition-1_ returns `false`
+is _condition-2_ evaluated and its result returned.
+
+.Examples
+[source,unlang]
+----
+if (&User-Name || &NAS-IP-Address) { ...
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

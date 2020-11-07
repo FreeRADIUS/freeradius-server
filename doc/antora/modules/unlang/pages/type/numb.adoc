@@ -1,0 +1,11 @@
+= Numbers
+
+.Examples
+
+`0` +
+`563`
+
+Numbers are unsigned integers that are composed of decimal digits.
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

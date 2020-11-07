@@ -1143,7 +1143,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	client belongs to based on packet data.  The sequence here
 	 *	is based on ISC DHCP behaviour and RFCs 3527 and 3011.  We
 	 *	store the found address in an internal attribute of 274 -
-	 *	DHCP-Network-IP-Address.  This is stored as an IPv4 prefix
+	 *	DHCP-Network-Subnet.  This is stored as an IPv4 prefix
 	 *	with a /32 netmask allowing "closest containing subnet"
 	 *	matching in rlm_files
 	 */
@@ -1226,6 +1226,12 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
+
+	/*
+	 *	ADSL Forum vendor-specific options after others to remain grouped
+	 */
+	if ((my_a->da->vendor == VENDORPEC_ADSL) && (my_b->da->vendor != VENDORPEC_ADSL)) return +1;
+	if ((my_a->da->vendor != VENDORPEC_ADSL) && (my_b->da->vendor == VENDORPEC_ADSL)) return -1;
 
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
@@ -1452,7 +1458,7 @@ static ssize_t fr_dhcp_encode_adsl(uint8_t *out, size_t outlen, vp_cursor_t *cur
 	 */
 	if (out[1] == 5) return 0;
 
-	return out[1];
+	return out[1] + 2;
 }
 
 /** Encode a DHCP option and any sub-options.

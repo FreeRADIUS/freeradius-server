@@ -2409,7 +2409,8 @@ static int my_dict_init(char const *parent, char const *filename,
 		/*
 		 *	Optionally include a dictionary
 		 */
-		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
+		if ((strcasecmp(argv[0], "$INCLUDE-") == 0) ||
+		    (strcasecmp(argv[0], "$-INCLUDE") == 0)) {
 			int rcode = my_dict_init(dir, argv[1], fn, line);
 
 			if (rcode == -2) continue;

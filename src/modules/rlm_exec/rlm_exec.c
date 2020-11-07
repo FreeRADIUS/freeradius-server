@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	 *	If we're not waiting, then there are no output pairs.
 	 */
 	if (inst->output) {
-		fr_pair_list_move(ctx, output_pairs, &answer);
+		fr_pair_list_move(ctx, output_pairs, &answer, T_OP_ADD);
 	}
 	fr_pair_list_free(&answer);
 
@@ -399,7 +399,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	Always add the value-pairs to the reply.
 	 */
-	fr_pair_list_move(request->reply, &request->reply->vps, &tmp);
+	fr_pair_list_move(request->reply, &request->reply->vps, &tmp, T_OP_ADD);
 	fr_pair_list_free(&tmp);
 
 	finish:

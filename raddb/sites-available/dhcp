@@ -123,15 +123,37 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
-#  An internal attribute of DHCP-Network-IP-Address is set to provide
+#  An internal attribute of DHCP-Network-Subnet is set to provide
 #  a basis for determining the network that a client belongs to.  This
 #  is a hierarchical assignment based on:
 #
-#  - DHCP-Relay-Link-Selection
-#  - DHCP-Subnet-Selection-Option
-#  - DHCP-Gateway-IP-Address
-#  - DHCP-Client-IP-Address
-
+#    - DHCP-Relay-Link-Selection
+#    - DHCP-Subnet-Selection-Option
+#    - DHCP-Gateway-IP-Address
+#    - DHCP-Client-IP-Address
+#
+#  Except for cases where all IP allocation is performed using a mapping from
+#  the device MAC address to a fixed IP address the DHCP configuration will
+#  involve the use of one or more pools.
+#
+#  Each pool should be composed of a set of equally valid IP addresses for the
+#  devices designated as users of the pool. During IP allocation the choice of
+#  pool is driven by setting the Pool-Name attribute which may either be
+#  specified directly or chosen (usually with the help of the dhcp_network
+#  module) based on the initial value of DHCP-Network-Subnet.
+#
+#  DHCP-Network-Subnet indicates the network from which the request is
+#  originating. In cases where the originating network alone is insufficent to
+#  define the required IP allocated policy, DHCP-Network-Subnet may be
+#  overridden to force the selection of a particular pool.
+#
+#  IP addresses belonging to a single pool that is designated for a Layer 2
+#  network containing multiple subnets (a "shared-network" or "multinet"
+#  configuration as defined by some other DHCP servers), will by definition be
+#  members of distinct subnets that require their own DHCP reply parameters. In
+#  this case the dhcp_subnet policy can be used to set the correct
+#  DHCP-Subnet-Mask, DHCP-Router-Address and DHCP-Broadcast-Address options
+#  based on the allocated IP.
 
 dhcp DHCP-Discover {
 
@@ -143,9 +165,13 @@ dhcp DHCP-Discover {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Use a "passwd" module to set group memberships in DHCP-Group-Name
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
 	#  If clients need to be assigned to a particular network based on
 	#  an attribute in the packet rather than the calculated
-	#  DHCP-Network-IP-Address described above, then call a policy
+	#  DHCP-Network-Subnet described above, then call a policy
 	#  (defined in policy.d/dhcp) to perform the override
 	#dhcp_override_network
 
@@ -155,11 +181,40 @@ dhcp DHCP-Discover {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
-	#  Use a "passwd" module to determine group membership
-	#  Enable mods-available/dhcp_passwd to use this
-	#dhcp_group_membership
+	#  Do a simple mapping of MAC to assigned IP.
+	#
+	#  See below for the definition of the "mac2ip"
+	#  module.
+	#
+	#mac2ip
 
-	#  Use a "files" module to lookup group specific options
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
+	#  set the pool name here if you haven't set it elsewhere.
+	#update control {
+	#	&Pool-Name := "local"
+	#}
+	#dhcp_sqlippool
+
+	#  If the IP address was not allocated, do something else.
+	#  You could call a Perl, Python, or Java script here.
+	#if (notfound) {
+	# ...
+	#}
+
+	#  "Shared-networks" may have multiple IP subnets co-existing in a
+	#  single Layer 2 network. If the pool for the network contains
+	#  addresses from more that one subnet then the setting subnet-specific
+	#  DHCP-Subnet-Mask, DHCP-Router-Address and DHCP-Broadcast-Address
+	#  parameters must be performed after the allocation of the IP address.
+	#
+	#  Set any subnet-specific parameters using this policy.
+	#
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this.
+	#
+	#dhcp_subnet
+
+	#  Use a "files" module to lookup options based on DHCP-Group-Name
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_group_options
@@ -169,26 +224,11 @@ dhcp DHCP-Discover {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
 
-	#  Do a simple mapping of MAC to assigned IP.
-	#
-	#  See below for the definition of the "mac2ip"
-	#  module.
-	#
-	#mac2ip
-
-	#  If the MAC wasn't found in that list, do something else.
-	#  You could call a Perl, Python, or Java script here.
-
-	#if (notfound) {
-	# ...
-	#}
-
-	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
-	#  set the pool name here if you haven't set it elsewhere.
-#	update control {
-#		&Pool-Name := "local"
-#	}
-#	dhcp_sqlippool
+	#  As an alternative or complement to configuration files based lookup
+	#  for options data you can instead use an SQL database. Example
+	#  configuration is found in dhcp_policy_sql in policy.d/dhcp which
+	#  will need to be adapted to your requirements.
+	#dhcp_policy_sql
 
 	#  Set the type of packet to send in reply.
 	#
@@ -240,21 +280,52 @@ dhcp DHCP-Request {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Use a "passwd" module to set group memberships in DHCP-Group-Name
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
 	#  Optionally override the network address based on client attributes
 	#  See Discover section
 	#dhcp_override_network
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common
-	#  Enable mods-available/dhcp_files to use this
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
-	#  Use a "passwd" module to determine group membership
-	#  Enable mods-available/dhcp_passwd to use this
-	#dhcp_group_membership
+	#  Do a simple mapping of MAC to assigned IP.
+	#
+	#  See below for the definition of the "mac2ip"
+	#  module.
+	#
+	#mac2ip
 
-	#  Use a "files" module to lookup group specific options
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
+	#  set the pool name here if you haven't set it elsewhere.
+#	update control {
+#		&Pool-Name := "local"
+#	}
+#	dhcp_sqlippool_request
+
+	#  If the IP was not allocated, do something else.
+	#  You could call a Perl, Python, or Java script here.
+	#if (notfound) {
+	# ...
+	#}
+
+	#  "Shared-networks" may have multiple IP subnets co-existing in a
+	#  single Layer 2 network. If the pool for the network contains
+	#  addresses from more that one subnet then the setting subnet-specific
+	#  DHCP-Subnet-Mask, DHCP-Router-Address and DHCP-Broadcast-Address
+	#  parameters must be performed after the allocation of the IP address.
+	#
+	#  Set any subnet-specific parameters using this policy.
+	#
+	#dhcp_subnet
+
+	#  Use a "files" module to lookup options based on DHCP-Group-Name
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_group_options
@@ -264,26 +335,11 @@ dhcp DHCP-Request {
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
 
-	#  Do a simple mapping of MAC to assigned IP.
-	#
-	#  See below for the definition of the "mac2ip"
-	#  module.
-	#
-	#mac2ip
-
-	#  If the MAC wasn't found in that list, do something else.
-	#  You could call a Perl, Python, or Java script here.
-
-	#if (notfound) {
-	# ...
-	#}
-
-	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
-	#  set the pool name here if you haven't set it elsewhere.
-#	update control {
-#		&Pool-Name := "local"
-#	}
-#	dhcp_sqlippool_request
+	#  As an alternative or complement to configuration files based lookup
+	#  for options data you can instead use an SQL database. Example
+	#  configuration is found in dhcp_policy_sql in policy.d/dhcp which
+	#  will need to be adapted to your requirements.
+	#dhcp_policy_sql
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a DHCP-Ack
@@ -304,10 +360,22 @@ dhcp DHCP-Request {
 
 dhcp DHCP-Decline {
 
+	#  Use a "passwd" module to set group memberships in DHCP-Group-Name
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
+
 	#  Use a "files" module to lookup global and subnet options
+	#  For multiple networks use this in place of dhcp_common
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
+
+	#  Use a policy that set options from data stored in an SQL database
+	#dhcp_policy_sql
 
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
@@ -331,21 +399,28 @@ dhcp DHCP-Inform {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
+	#  Use a "passwd" module to set group memberships in DHCP-Group-Name
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
 	#  Optionally override the network address based on client attributes
 	#  See Discover section
 	#dhcp_override_network
 
-	#  Use a "files" module to lookup global and subnet options
-	#  For multiple subnets use this in place of dhcp_common
+	#  Use a "files" module to lookup global and network options
+	#  For multiple networks use this in place of dhcp_common
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_network
 
-	#  Use a "passwd" module to determine group membership
-	#  Enable mods-available/dhcp_passwd to use this
-	#dhcp_group_membership
+	#  Use a policy with calls a "files" module of the same name to lookup
+	#  subnet options
+	#  Enable mods-available/dhcp_files AND uncomment dhcp_subnet in
+	#  policy.d/dhcp to use this
+	#  Options are set in mods-config/files/dhcp
+	#dhcp_subnet
 
-	#  Use a "files" module to lookup group specific options
+	#  Use a "files" module to lookup options based on DHCP-Group-Name
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_group_options
@@ -354,6 +429,9 @@ dhcp DHCP-Inform {
 	#  Enable mods-available/dhcp_files to use this
 	#  Options are set in mods-config/files/dhcp
 	#dhcp_hosts
+
+	#  Use a policy that set options from data stored in an SQL database
+	#dhcp_policy_sql
 
 	ok
 }
@@ -372,6 +450,14 @@ dhcp DHCP-Inform {
 #}
 
 dhcp DHCP-Release {
+
+	#  Use a "passwd" module to set group memberships in DHCP-Group-Name
+	#  Enable mods-available/dhcp_passwd to use this
+	#dhcp_group_membership
+
+	#  Optionally override the network address based on client attributes
+	#  See Discover section
+	#dhcp_override_network
 
 	#  Use a "files" module to lookup global and subnet options
 	#  For multiple subnets use this in place of dhcp_common

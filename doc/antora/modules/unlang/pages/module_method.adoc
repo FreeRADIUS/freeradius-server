@@ -1,0 +1,27 @@
+= Module methods
+
+.Syntax
+[source,unlang]
+----
+<module>.<method>
+----
+
+This variant of xref:module.adoc[<module>] is used in one processing
+section. It calls a module using the method of another processing
+section. For example, it can be used to call a module's `authorize`
+method while processing the `post-auth` section.
+
+The `<module>` portion must refer to an existing module; the
+`<method>` portion must refer to processing method supported by that
+module.  Typically, the names of the processing method will be the
+same as the processing sections.
+
+.Example
+[source,unlang]
+----
+sql.recv.Accounting-Request
+files.recv.Access-Request
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -1,0 +1,38 @@
+= Backtick-quoted string
+
+.Syntax
+`{backtick}string{backtick}`
+
+The backtick operator is used to perform a run-time expansion
+similar to what is done with the Unix shell. The contents of the string
+are split into one or more sub-strings, based on intermediate
+whitespace. Each substring is then expanded as described above for
+double quoted strings. The resulting set of strings is used to execute a
+program with the associated arguments.
+
+The output of the program is recorded, and the resulting data is
+used in place of the input string value. Where the output is composed of
+multiple lines, any carriage returns and line feeds are replaced by
+spaces.
+
+For safety reasons, the full path to the executed program should be
+given. In addition, the string is split into arguments _before_ the
+substrings are dynamically expanded.  This step is done both to allow
+the substrings to contain spaces, and to prevent spaces in the
+expanded substrings from affecting the number of command-line
+arguments.
+
+For performance reasons, we recommend that the use of back-quoted
+strings be kept to a minimum. Executing external programs is
+relatively expensive, and executing a large number of programs for
+every request can quickly use all of the CPU time in a server. If many
+programs need to be executed, it is suggested that alternative ways to
+achieve the same result be found. In some cases, using a real
+programming language such as `lua`, `perl` or `python` may be better.
+
+.Examples
+
+`{backtick}/bin/echo hello{backtick}`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -125,9 +125,19 @@ server copy-acct-to-home-server {
 		#
 		#  Accounting requests are generally proxied to the same
 		#  home server as authentication requests.
-	#	IPASS
-		suffix
-	#	ntdomain
+#		IPASS
+#		suffix
+#		ntdomain
+
+		#
+		#  Edit proxy.conf to add a "home_server" section,
+		#  which points to the other server.
+		#
+		#  Then set that home_server name here.
+		#
+		update control {
+			Home-Server-Name := "name_of_home_server_from_proxy.conf"
+		}
 
 		#
 		#  Read the 'acct_users' file.  This isn't always

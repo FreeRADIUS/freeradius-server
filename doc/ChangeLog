@@ -68,6 +68,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Use better API when decoding DHCP packets, to avoid unnecessary work.
 	  This improves performance noticably.
 	* Parse locale-dependent dates.  Fixes #3602.
+	* Strip out "-frecord-gcc-switches" from rlm_python3 configure build. Fixes #3693
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements

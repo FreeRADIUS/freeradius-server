@@ -1173,9 +1173,13 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
 				/* FALL-THROUGH */
 		case T_OP_ADD:
-				fr_pair_list_move(parent, list, &head);
+				fr_pair_list_move(parent, list, &head, map->op);
 				fr_pair_list_free(&head);
 			}
+			goto finish;
+		case T_OP_PREPEND:
+			fr_pair_list_move(parent, list, &head, T_OP_PREPEND);
+			fr_pair_list_free(&head);
 			goto finish;
 
 		default:
@@ -1339,6 +1343,14 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
+		break;
+
+	/*
+	 *	^= - Prepend src_list attributes to the destination
+	 */
+	case T_OP_PREPEND:
+		fr_pair_prepend(list, head);
+		head = NULL;
 		break;
 
 	/*
