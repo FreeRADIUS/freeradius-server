@@ -286,11 +286,9 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t		slen;
-	fr_dbuff_marker_t	hdr;
+	ssize_t			slen;
+	fr_dbuff_marker_t	len_m;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-
-	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -309,12 +307,14 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode the first level of TLVs
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 2);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+	fr_dbuff_marker(&len_m, &work_dbuff);		/* Mark the start of the length field */
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);	/* One byte for the length */
 
 	slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encoder_ctx);
 	if (slen <= 0) return slen;
 
-	fr_dbuff_current(&hdr)[1] += slen;
+	fr_dbuff_in(&len_m, (uint8_t)(slen + 2));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
