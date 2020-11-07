@@ -2,6 +2,21 @@
 
 #include "dbuff.h"
 
+#define TEST_CHECK_LEN(_got, _exp) \
+do { \
+	size_t _our_got = (_got); \
+	TEST_CHECK((_exp) == (_our_got)); \
+	TEST_MSG("Expected length : %zu", (ssize_t)_exp); \
+	TEST_MSG("Got length      : %zu", (ssize_t)_our_got); \
+} while(0)
+
+#define TEST_CHECK_SLEN(_got, _exp) \
+do { \
+	ssize_t _our_got = (_got); \
+	TEST_CHECK((_exp) == (_our_got)); \
+	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
+	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
+} while(0)
 
 //#include <gperftools/profiler.h>
 
@@ -255,28 +270,28 @@ static void test_dbuff_move(void)
 	fr_dbuff_marker(&marker2, &dbuff2);
 
 	TEST_CASE("move dbuff to dbuff");
-	TEST_CHECK(fr_dbuff_move(&dbuff1, &dbuff2, 13) == 13);
-	TEST_CHECK(fr_dbuff_used(&dbuff1) == 13);
-	TEST_CHECK(fr_dbuff_used(&dbuff2) == 13);
+	TEST_CHECK_LEN(fr_dbuff_move(&dbuff1, &dbuff2, 13), 13);
+	TEST_CHECK_LEN(fr_dbuff_used(&dbuff1), 13);
+	TEST_CHECK_LEN(fr_dbuff_used(&dbuff2), 13);
 	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMnopqrstuvwxyz", 26) == 0);
 
 	TEST_CASE("move dbuff to marker");
-	fr_dbuff_advance(&marker2, 4);
-	TEST_CHECK(fr_dbuff_move(&marker2, &dbuff3, 10) == 10);
-	TEST_CHECK(fr_dbuff_used(&marker2) == 14);
+	TEST_CHECK_SLEN(fr_dbuff_advance(&marker2, 4), 4);
+	TEST_CHECK_LEN(fr_dbuff_move(&marker2, &dbuff3, 10), 10);
+	TEST_CHECK_LEN(fr_dbuff_used(&marker2), 14);
 	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789OPQRSTUVWXYZ", 26) == 0);
 
 	TEST_CASE("move marker to dbuff");
-	fr_dbuff_advance(&marker1, 7);
-	TEST_CHECK(fr_dbuff_move(&dbuff1, &marker1, 6) == 6);
-	TEST_CHECK(fr_dbuff_used(&dbuff1) == 19);
-	TEST_CHECK(fr_dbuff_used(&marker1) == 13);
+	TEST_CHECK_SLEN(fr_dbuff_advance(&marker1, 7), 7);
+	TEST_CHECK_LEN(fr_dbuff_move(&dbuff1, &marker1, 6), 6);
+	TEST_CHECK_LEN(fr_dbuff_used(&dbuff1), 19);
+	TEST_CHECK_LEN(fr_dbuff_used(&marker1), 13);
 	TEST_CHECK(memcmp(dbuff1.start, "ABCDEFGHIJKLMHIJKLMtuvwxyz", 26) == 0);
 
 	TEST_CASE("move marker to marker");
-	TEST_CHECK(fr_dbuff_move(&marker2, &marker1, 8) == 8);
-	TEST_CHECK(fr_dbuff_used(&marker1) == 21);
-	TEST_CHECK(fr_dbuff_used(&marker2) == 22);
+	TEST_CHECK_LEN(fr_dbuff_move(&marker2, &marker1, 8), 8);
+	TEST_CHECK_LEN(fr_dbuff_used(&marker1), 21);
+	TEST_CHECK_LEN(fr_dbuff_used(&marker2), 22);
 	TEST_CHECK(memcmp(dbuff2.start, "ABCD0123456789HIJKLMtuWXYZ", 26) == 0);
 }
 
@@ -395,8 +410,8 @@ TEST_LIST = {
 	{ "fr_dbuff_init",				test_dbuff_init },
 	{ "fr_dbuff_init_no_parent",			test_dbuff_init_no_parent },
 	{ "fr_dbuff_max",				test_dbuff_max },
-	{ "fr_dbuff_in",			test_dbuff_net_encode },
-	{ "fr_dbuff_no_advance",		test_dbuff_no_advance },
+	{ "fr_dbuff_in",				test_dbuff_net_encode },
+	{ "fr_dbuff_no_advance",			test_dbuff_no_advance },
 	{ "fr_dbuff_move",				test_dbuff_move },
 	{ "fr_dbuff_talloc_extend",			test_dbuff_talloc_extend },
 	{ "fr_dbuff_talloc_extend_multi_level",		test_dbuff_talloc_extend_multi_level },

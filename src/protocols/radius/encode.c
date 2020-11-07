@@ -998,15 +998,15 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case 4:
-		fr_dbuff_uint32_in(&work_dbuff, da->attr);
+		fr_dbuff_in(&work_dbuff, (uint32_t)da->attr);
 		break;
 
 	case 2:
-		fr_dbuff_uint16_in(&work_dbuff, da->attr);
+		fr_dbuff_in(&work_dbuff, (uint16_t)da->attr);
 		break;
 
 	case 1:
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr);
+		fr_dbuff_in(&work_dbuff, (uint8_t)da->attr);
 		break;
 	}
 

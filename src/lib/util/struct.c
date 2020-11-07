@@ -659,7 +659,7 @@ done:
 	if (do_length) {
 		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
 		if (len > 65535) return -1;
-		fr_dbuff_uint16_in(&hdr_dbuff, len);
+		fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
