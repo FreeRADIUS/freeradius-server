@@ -443,16 +443,16 @@ do { \
  *
  * @note This is intended for internal use within the dbuff API only.
  *
- * @param[in,out] _out_p	the position pointer to use.
+ * @param[in,out] _pos_p	the position pointer to use.
  * @param[in] _dbuff		to extend.
  * @param[in] _len		The minimum amount the dbuff should be extended by.
  * @return The number of bytes we would need to satisfy _len as a negative integer.
  */
-#define _FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(_out_p, _dbuff_or_marker, _len) \
+#define _FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(_pos_p, _dbuff_or_marker, _len) \
 do { \
 	size_t _remaining = _fr_dbuff_extend_lowat(NULL, \
 						  fr_dbuff_ptr(_dbuff_or_marker), \
-			       			  fr_dbuff_end(_dbuff_or_marker) - (*(_out_p)), _len); \
+			       			  fr_dbuff_end(_dbuff_or_marker) - (*(_pos_p)), _len); \
 	if (_remaining < _len) return -(_len - _remaining); \
 } while (0)
 
@@ -601,7 +601,7 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
 
 /** Set a new position for 'p' in an dbuff or marker
  *
- * @param[in,out] out_p		position pointer to modify.
+ * @param[in,out] pos_p		position pointer to modify.
  * @param[out] dbuff		dbuff to use for constraints checks.
  * @param[in] p			Position to set.
  * @return
@@ -609,16 +609,16 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
  *	- >0	the number of bytes the dbuff advanced by.
  *	- <0	the number of bytes the dbuff retreated by.
  */
-static inline ssize_t _fr_dbuff_set(uint8_t **out_p, fr_dbuff_t *dbuff, uint8_t const *p)
+static inline ssize_t _fr_dbuff_set(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t const *p)
 {
 	uint8_t *c;
 
 	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
 	if (unlikely(p < dbuff->start)) return 0;
 
-	c = *out_p;
+	c = *pos_p;
 	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, p);
-	memcpy(out_p, &p, sizeof(*out_p));
+	memcpy(pos_p, &p, sizeof(*pos_p));
 
 	return p - c;
 }
@@ -738,18 +738,18 @@ do { \
 	if (_slen < 0) return _slen; \
 } while (0)
 
-static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **out_p, fr_dbuff_t *out,
+static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **pos_p, fr_dbuff_t *out,
 					  uint8_t const *in, size_t inlen)
 {
 	fr_assert(!out->is_const);
 
-	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(out_p, out, inlen);
+	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(pos_p, out, inlen);
 
-	memcpy((*out_p), in, inlen);					/* Copy to out */
-	return _fr_dbuff_set(out_p, out, (*out_p) + inlen);		/* Advance out */
+	memcpy((*pos_p), in, inlen);					/* Copy to out */
+	return _fr_dbuff_set(pos_p, out, (*pos_p) + inlen);		/* Advance out */
 }
 
-static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **out_p, fr_dbuff_t *out,
+static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
 					        uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
 {
 	fr_dbuff_t	*our_in;
@@ -764,7 +764,7 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **out_p, fr_dbuff_t *out
 	 *	in_p to the memcpy function.
 	 */
 	inlen = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
-	return _fr_dbuff_memcpy_in(out_p, out, *our_in_p, inlen);	/* Copy _in to _out */
+	return _fr_dbuff_memcpy_in(pos_p, out, *our_in_p, inlen);	/* Copy _in to _out */
 }
 
 /** Copy inlen bytes into the dbuff
@@ -809,18 +809,18 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **out_p, fr_dbuff_t *out
  */
 #define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
 
-static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **out_p, fr_dbuff_t *out,
+static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						 uint8_t const *in, size_t inlen)
 {
 	fr_assert(!out->is_const);
 
-	inlen = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*out_p), inlen);
+	inlen = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*pos_p), inlen);
 
-	memcpy((*out_p), in, inlen);
-	return _fr_dbuff_set(out_p, out, (*out_p) + inlen);
+	memcpy((*pos_p), in, inlen);
+	return _fr_dbuff_set(pos_p, out, (*pos_p) + inlen);
 }
 
-static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **out_p, fr_dbuff_t *out,
+static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						       uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
 {
 	fr_dbuff_t	*our_in;
@@ -835,7 +835,7 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **out_p, fr_dbuff
 	 *	in_p to the memcpy function.
 	 */
 	inlen = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
-	return _fr_dbuff_memcpy_in_partial(out_p, out, (*our_in_p), inlen);
+	return _fr_dbuff_memcpy_in_partial(pos_p, out, (*our_in_p), inlen);
 }
 
 /** Copy at most inlen bytes into the dbuff
@@ -891,15 +891,15 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **out_p, fr_dbuff
 #define FR_DBUFF_BYTES_IN_RETURN(_dbuff, ...) \
 	FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
-static inline ssize_t _fr_dbuff_memset(uint8_t **out_p, fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
+static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
 {
 	fr_assert(!dbuff->is_const);
 
-	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(out_p, dbuff, inlen);
+	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(pos_p, dbuff, inlen);
 
-	memset((*out_p), c, inlen);
+	memset((*pos_p), c, inlen);
 
-	return _fr_dbuff_set(out_p, dbuff, (*out_p) + inlen);
+	return _fr_dbuff_set(pos_p, dbuff, (*pos_p) + inlen);
 }
 /** Set n bytes of a buffer to the provided value
  *
@@ -916,12 +916,12 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **out_p, fr_dbuff_t *dbuff, uint8
 #define FR_DBUFF_MEMSET_RETURN(_dbuff_or_marker, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff_or_marker, _c, _inlen)
 
 #define FR_DBUFF_PARSE_INT_DEF(_type) \
-static inline ssize_t _fr_dbuff_##_type##_in(uint8_t **out_p, fr_dbuff_t *out, _type##_t num) \
+static inline ssize_t _fr_dbuff_##_type##_in(uint8_t **pos_p, fr_dbuff_t *out, _type##_t num) \
 { \
 	fr_assert(!out->is_const); \
-	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(out_p, out, sizeof(_type##_t)); \
-	fr_net_from_##_type((*out_p), num); \
-	return _fr_dbuff_set(out_p, out, (*out_p) + sizeof(_type##_t)); \
+	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(pos_p, out, sizeof(_type##_t)); \
+	fr_net_from_##_type((*pos_p), num); \
+	return _fr_dbuff_set(pos_p, out, (*pos_p) + sizeof(_type##_t)); \
 }
 FR_DBUFF_PARSE_INT_DEF(uint16)
 FR_DBUFF_PARSE_INT_DEF(uint32)
@@ -943,14 +943,14 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 	)
 #define FR_DBUFF_IN_RETURN(_dbuff, _value) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff, _value)
 
-static inline ssize_t _fr_dbuff_uint64v_in(uint8_t **out_p, fr_dbuff_t *dbuff, uint64_t num)
+static inline ssize_t _fr_dbuff_uint64v_in(uint8_t **pos_p, fr_dbuff_t *dbuff, uint64_t num)
 {
 	size_t	ret;
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x08), 8);
 	num = ntohll(num);
 
-	return _fr_dbuff_memcpy_in(out_p, dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
+	return _fr_dbuff_memcpy_in(pos_p, dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
 #define fr_dbuff_uint64v_in(_dbuff_or_marker, _num) \
 	_fr_dbuff_uint64v_in(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _num)
