@@ -26,5 +26,19 @@ match 1a 38 00 00 02 11 f2 32 03 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 decode-pair -
 match Ascend-Data-Filter = "ipv6 in forward srcip ::1/128 dstip ::1/128 tcp srcport = 5 dstport = 1234"
 
+# length < 16 gets padded with zeros
+encode-pair Ascend-Send-Secret = "foo"
+match 1a 18 00 00 02 11 d6 12 ce 8d bb 09 a0 cd c2 9c ca f1 bd cb 25 41 f7 70
+
+decode-pair -
+match Ascend-Send-Secret = "foo"
+
+# length > 16 gets chopped
+encode-pair Ascend-Send-Secret = "foo 56789abcdef012"
+match 1a 18 00 00 02 11 d6 12 ce 8d bb 29 95 fb f5 a4 f3 90 df a8 41 24 91 40
+
+decode-pair -
+match Ascend-Send-Secret = "foo 56789abcdef0"
+
 count
-match 14
+match 22
