@@ -77,9 +77,9 @@ struct fr_dbuff_s {
 	uint8_t			adv_parent:1;	//!< Whether we advance the parent
 						///< of this dbuff.
 
-	fr_dbuff_extend_t	extend;			//!< Function to re-populate or extend
-							///< the buffer.
-	void			*uctx;			//!< Extend uctx data.
+	fr_dbuff_extend_t	extend;		//!< Function to re-populate or extend
+						///< the buffer.
+	void			*uctx;		//!< Extend uctx data.
 
 	fr_dbuff_t		*parent;
 
@@ -381,6 +381,8 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 #define FR_DBUFF_CHECK_REMAINING_RETURN(_dbuff, _len) \
 	if ((_len) > fr_dbuff_remaining(_dbuff)) return -((_len) - fr_dbuff_remaining(_dbuff))
 
+/** Internal function - do not call directly
+ */
 static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr_dbuff_t *in,
 					    size_t remaining, size_t lowat)
 {
@@ -486,6 +488,9 @@ do { \
  * Caching the values of these pointers or the pointer values from the dbuff
  * directly is strongly discouraged as they can become invalidated during
  * stream parsing or when printing to an auto-expanding buffer.
+ *
+ * Using offsets of these pointers is also strongly discouraged as it
+ * invalidates many of the protections dbuffs give.
  *
  * These functions should only be used to pass dbuff pointers into 3rd party
  * APIs.
@@ -773,9 +778,10 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
  * number of bytes available in _in, then the copy operation will
  * be truncated, so that we don't read off the end of the buffer.
  *
- * @note _in will not be advanced.  If this is required fr_dbuff_move() should be used.
+ * @note If _in is a dbuff _in will not be advanced.
+ *	 If this is required fr_dbuff_move() should be used.
  *
- * @param[in] _out	to copy data to may be a dbuff or marker.
+ * @param[in] _out	Where to copy data to.  May be a dbuff or marker.
  * @param[in] _in	Data to copy to dbuff or marker.
  * @param[in] _inlen	How much data we need to copy.
  *			If _in is a char * or dbuff * and SIZE_MAX
@@ -809,6 +815,8 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
  */
 #define FR_DBUFF_MEMCPY_IN_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_in, _dbuff, _in, _inlen)
 
+/** Internal function - do not call directly
+ */
 static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						 uint8_t const *in, size_t inlen)
 {
@@ -820,6 +828,8 @@ static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **pos_p, fr_dbuff_t *ou
 	return _fr_dbuff_set(pos_p, out, (*pos_p) + inlen);
 }
 
+/** Internal function - do not call directly
+ */
 static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						       uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
 {
@@ -901,6 +911,7 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
 
 	return _fr_dbuff_set(pos_p, dbuff, (*pos_p) + inlen);
 }
+
 /** Set n bytes of a buffer to the provided value
  *
  * @param[in] _dbuff_or_marker	to copy data to.
@@ -913,6 +924,17 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
  */
 #define fr_dbuff_memset(_dbuff_or_marker, _c, _inlen) \
 	_fr_dbuff_memset(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _c, _inlen)
+
+/** Set n bytes of a dbuff or marker to the provided value returning if there is insufficient space
+ *
+ * @param[in] _dbuff_or_marker	to copy data to.
+ * @param[in] _c		Value to set.
+ * @param[in] _inlen		How much data we need to copy.
+ * @return
+ *	- 0	no data set.
+ *	- >0	the number of bytes set in the dbuff.
+ *	- <0	the number of bytes required.
+ */
 #define FR_DBUFF_MEMSET_RETURN(_dbuff_or_marker, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff_or_marker, _c, _inlen)
 
 #define FR_DBUFF_PARSE_INT_DEF(_type) \
@@ -952,15 +974,32 @@ static inline ssize_t _fr_dbuff_uint64v_in(uint8_t **pos_p, fr_dbuff_t *dbuff, u
 
 	return _fr_dbuff_memcpy_in(pos_p, dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
 }
+
+/** Copy an integer value into a dbuff or marker using our internal variable length encoding
+ *
+ * @param[out] _dbuff_or_marker		to copy integer value to.
+ * @param[in] _num			to copy.
+ * @return
+ *	- <0 the number of bytes we would have needed to encode the integer value.
+ *	- >0 the number of bytes used to represent the integer value.
+ */
 #define fr_dbuff_uint64v_in(_dbuff_or_marker, _num) \
 	_fr_dbuff_uint64v_in(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _num)
 
+/** Internal function - do not call directly
+ */
 size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len);
 
+/** Internal function - do not call directly
+ */
 size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len);
 
+/** Internal function - do not call directly
+ */
 size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len);
 
+/** Internal function - do not call directly
+ */
 size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len);
 
 /** Copy in as many bytes as possible from one dbuff or marker to another
