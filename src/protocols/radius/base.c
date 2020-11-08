@@ -231,7 +231,7 @@ size_t fr_radius_attr_len(fr_pair_t const *vp)
  * encrypting passwords to RADIUS.
  */
 ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
-				char const *secret, uint8_t const *vector)
+				char const *secret, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH])
 {
 	fr_md5_ctx_t		*md5_ctx;
 	size_t			i;
@@ -246,7 +246,7 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 	fr_md5_final(digest, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	if (inlen > RADIUS_AUTH_VECTOR_LENGTH) inlen = RADIUS_AUTH_VECTOR_LENGTH;
+	if (inlen > sizeof(digest)) inlen = sizeof(digest);
 	for (i = 0; i < inlen; i++) digest[i] ^= in[i];
 
 	fr_dbuff_memcpy_in(&work_dbuff, digest, sizeof(digest));
