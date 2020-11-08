@@ -236,7 +236,6 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 	fr_md5_ctx_t		*md5_ctx;
 	size_t			i;
 	uint8_t			digest[MD5_DIGEST_LENGTH];
-	uint8_t			data[MD5_DIGEST_LENGTH];
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, sizeof(digest));
@@ -247,10 +246,8 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 	fr_md5_final(digest, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	if (inlen > sizeof(data)) inlen = sizeof(data);
-	memset(data, 0, sizeof(data));
-	memcpy(data, in, inlen);
-	for (i = 0; i < inlen; i++) digest[i] ^= data[i];
+	if (inlen > RADIUS_AUTH_VECTOR_LENGTH) inlen = RADIUS_AUTH_VECTOR_LENGTH;
+	for (i = 0; i < inlen; i++) digest[i] ^= in[i];
 
 	fr_dbuff_memcpy_in(&work_dbuff, digest, sizeof(digest));
 
