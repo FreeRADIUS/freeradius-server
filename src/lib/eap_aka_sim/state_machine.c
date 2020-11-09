@@ -2981,7 +2981,7 @@ static int sim_start_selected_version_check(request_t *request, fr_pair_list_t *
  *
  * Does not actually perform cryptographic validation of AT_NONCE_MT, this is done later.
  */
-static int sim_start_nonce_mt_check(request_t *request, fr_pair_t *from_peer,
+static int sim_start_nonce_mt_check(request_t *request, fr_pair_list_t *from_peer,
 				    eap_aka_sim_session_t *eap_aka_sim_session)
 {
 	fr_pair_t	*nonce_mt_vp;
@@ -2989,7 +2989,7 @@ static int sim_start_nonce_mt_check(request_t *request, fr_pair_t *from_peer,
 	/*
 	 *	Copy nonce_mt to the keying material
 	 */
-	nonce_mt_vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_nonce_mt);
+	nonce_mt_vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_nonce_mt);
 	if (!nonce_mt_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_NONCE_MT");
 		return -1;
