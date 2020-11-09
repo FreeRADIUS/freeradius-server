@@ -192,7 +192,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_t **request,
+static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *request,
 			   char const *password)
 {
 	unsigned int		i;
