@@ -386,7 +386,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
  */
 static int radsnmp_get_response(int fd,
 				fr_dict_attr_t const *root, fr_dict_attr_t const *type,
-				fr_pair_t *head)
+				fr_pair_list_t *head)
 {
 	fr_cursor_t		cursor;
 	fr_pair_t		*vp, *type_vp;
@@ -426,7 +426,7 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_cursor_init(&cursor, &head);
+	 for (vp = fr_cursor_init(&cursor, head);
 	      vp;
 	      vp = fr_cursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
@@ -850,7 +850,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			case RADSNMP_GET:
 			case RADSNMP_GETNEXT:
 				ret = radsnmp_get_response(STDOUT_FILENO, conf->snmp_oid_root,
-							   attr_freeradius_snmp_type, reply->vps);
+							   attr_freeradius_snmp_type, &reply->vps);
 				switch (ret) {
 				case -1:
 					fr_perror("Failed converting pairs to varbind response");
