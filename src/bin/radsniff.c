@@ -936,7 +936,7 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
+static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
 {
 	fr_cursor_t list_cursor, out_cursor;
 	fr_pair_t *match, *copy;
@@ -1978,7 +1978,7 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 	return i;
 }
 
-static int rs_build_filter(fr_pair_t **out, char const *filter)
+static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 {
 	fr_cursor_t cursor;
 	fr_pair_t *vp;
