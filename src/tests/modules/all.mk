@@ -14,8 +14,16 @@ FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(call FIND_FILES_SUFFIX,$(DIR),*.u
 #  Remove things which are known to fail on travis.
 #  Or which are known to have long runtimes 
 #
+#  Also don't run icmp tests on Linux, they require setcap, or root.
+#  @todo - on Linux, *check* for root, or use "getcap" to see if the
+#  unit_test_module binary has the correct permissions.
+#
 ifeq "$(TRAVIS)" "1"
   FILES_SKIP := $(filter icmp/%,$(FILES))
+
+else ifeq "$(findstring apple,$(AC_HOSTINFO))" ""
+  FILES_SKIP := $(filter icmp/%,$(FILES))
+
 else ifneq "$(RUN_SLOW_TESTS)" "1"
   FILES_SKIP += $(filter imap/%,$(FILES))
 endif
