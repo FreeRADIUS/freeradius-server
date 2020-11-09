@@ -54,7 +54,7 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-static void fr_exec_pair_to_env(request_t *request, fr_pair_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
+static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
 {
 	char			*p;
 	size_t			i;
@@ -69,7 +69,7 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_t *input_pairs, char
 	 *	hold mutexes.  They might be locked when we fork,
 	 *	and will remain locked in the child.
 	 */
-	for (vp = fr_cursor_init(&cursor, &input_pairs), i = 0;
+	for (vp = fr_cursor_init(&cursor, input_pairs), i = 0;
 	     vp && (i < envlen - 1);
 	     vp = fr_cursor_next(&cursor)) {
 		size_t n;
@@ -278,7 +278,7 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 
 	MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
 	envp[0] = NULL;
-	if (input_pairs) fr_exec_pair_to_env(request, input_pairs, envp, MAX_ENVP, shell_escape);
+	if (input_pairs) fr_exec_pair_to_env(request, &input_pairs, envp, MAX_ENVP, shell_escape);
 
 	pid = fork();
 	if (pid == 0) {
@@ -630,7 +630,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs)
 	 */
 	if (env_pairs) {
 		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
-		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+		fr_exec_pair_to_env(request, &env_pairs, envp, MAX_ENVP, true);
 	} else {
 		MEM(envp = talloc_zero_array(request, char *, 1));
 		envp[0] = NULL;
@@ -725,7 +725,7 @@ int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pa
 	 */
 	if (env_pairs) {
 		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
-		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+		fr_exec_pair_to_env(request, &env_pairs, envp, MAX_ENVP, true);
 	} else {
 		MEM(envp = talloc_zero_array(request, char *, 1));
 		envp[0] = NULL;
