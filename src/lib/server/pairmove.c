@@ -42,7 +42,7 @@ RCSID("$Id$")
  *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(request_t *request, fr_pair_t **to, fr_pair_t *from, bool do_xlat)
+void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_t *from, bool do_xlat)
 {
 	int		i, j, count, from_count, to_count, tailto;
 	fr_cursor_t	cursor;
