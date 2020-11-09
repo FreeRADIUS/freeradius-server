@@ -650,7 +650,9 @@ _fr_dbuff_set(\
 		fr_dbuff_marker_t *		: fr_dbuff_current((fr_dbuff_marker_t const *)(_src)), \
 		uint8_t const *			: (uint8_t const *)(_src), \
 		uint8_t *			: (uint8_t const *)(_src), \
-		size_t				: (fr_dbuff_start(_dst) + (uintptr_t)(_src)) \
+		size_t				: (fr_dbuff_start(_dst) + (uintptr_t)(_src)), \
+		long				: (fr_dbuff_start(_dst) + (uintptr_t)(_src)), \
+		int				: (fr_dbuff_start(_dst) + (uintptr_t)(_src)) \
 	) \
 )
 #define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
