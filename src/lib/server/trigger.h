@@ -43,7 +43,7 @@ ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 int		trigger_exec_init(CONF_SECTION const *cs);
 
 int		trigger_exec(request_t *request, CONF_SECTION const *cs,
-			     char const *name, bool quench, fr_pair_t *args)
+			     char const *name, bool quench, fr_pair_list_t *args)
 			     CC_HINT(nonnull (3));
 
 void		trigger_exec_free(void);
