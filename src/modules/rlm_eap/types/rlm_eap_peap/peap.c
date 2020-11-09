@@ -411,7 +411,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		fr_pair_list_copy_by_da(t, &vp, reply->vps, attr_eap_message);
+		fr_pair_list_copy_by_da(t, &vp, &reply->vps, attr_eap_message);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
