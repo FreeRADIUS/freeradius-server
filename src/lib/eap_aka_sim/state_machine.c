@@ -1371,7 +1371,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 	 *	Get vectors from attribute or generate
 	 *	them using COMP128-* or Milenage.
 	 */
-	if (fr_aka_sim_vector_umts_from_attrs(request, request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
+	if (fr_aka_sim_vector_umts_from_attrs(request, &request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		goto failure;
 	}
