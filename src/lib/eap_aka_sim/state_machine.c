@@ -3344,7 +3344,7 @@ static unlang_action_t common_reauthentication_response_recv_resume(rlm_rcode_t 
  *
  * This is called by the state_* functions to decode the peer's response.
  */
-static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_t **vps,
+static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps,
 				     rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
