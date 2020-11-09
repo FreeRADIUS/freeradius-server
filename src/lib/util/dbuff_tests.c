@@ -87,7 +87,9 @@ static void test_dbuff_net_encode(void)
 {
 	uint8_t		buff[sizeof(uint64_t)];
 	fr_dbuff_t	dbuff;
+	fr_dbuff_marker_t	marker;
 	uint16_t	u16val = 0x1234;
+	uint16_t	u16val2 = 0xcdef;
 	uint32_t	u32val = 0x12345678;
 	uint64_t	u64val = 0x123456789abcdef0;
 	int16_t		i16val = 0x1234;
@@ -97,10 +99,16 @@ static void test_dbuff_net_encode(void)
 	TEST_CASE("Generate wire format unsigned 16-bit value");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_marker(&marker, &dbuff);
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, u16val) == sizeof(uint16_t));
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
+
+	TEST_CASE("Generate wire format unsigned 16-bit value using marker");
+	TEST_CHECK(fr_dbuff_in(&marker, u16val2) == sizeof(uint16_t));
+	TEST_CHECK(buff[0] == 0xcd);
+	TEST_CHECK(buff[1] == 0xef);
 
 	TEST_CASE("Generate wire format unsigned 32-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -301,24 +309,33 @@ static void test_dbuff_move(void)
 
 static void test_dbuff_talloc_extend(void)
 {
-	fr_dbuff_t		dbuff;
-	fr_dbuff_uctx_talloc_t	tctx;
-	fr_dbuff_marker_t	marker;
+	fr_dbuff_t		dbuff1, dbuff2;
+	fr_dbuff_uctx_talloc_t	tctx1, tctx2;
+	fr_dbuff_marker_t	marker1;
 	uint8_t const		value[] = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0};
 
 	TEST_CASE("Initial allocation");
-	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 4, 14) == &dbuff);
-	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
-	TEST_CHECK(fr_dbuff_remaining(&dbuff) == 4);
-	fr_dbuff_marker(&marker, &dbuff);
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff1, &tctx1, 4, 14) == &dbuff1);
+	TEST_CHECK(fr_dbuff_used(&dbuff1) == 0);
+	TEST_CHECK(fr_dbuff_remaining(&dbuff1) == 4);
+	fr_dbuff_marker(&marker1, &dbuff1);
+
 	TEST_CASE("Extension");
-	TEST_CHECK(fr_dbuff_in(&dbuff, (uint64_t) 0x123456789abcdef0) == sizeof(uint64_t));
+	TEST_CHECK(fr_dbuff_in(&dbuff1, (uint64_t) 0x123456789abcdef0) == sizeof(uint64_t));
 	TEST_CASE("Markers track extended buffer");
-	TEST_CHECK(marker.p == dbuff.start);
+	TEST_CHECK(marker1.p == dbuff1.start);
 	TEST_CASE("Already-written content stays with the buffer");
-	TEST_CHECK(memcmp(fr_dbuff_current(&marker), value, sizeof(value)) == 0);
+	TEST_CHECK(memcmp(fr_dbuff_current(&marker1), value, sizeof(value)) == 0);
 	TEST_CASE("Refuse to extend past specified maximum");
-	TEST_CHECK(fr_dbuff_in(&dbuff, (uint64_t) 0x123456789abcdef0) == -2);
+	TEST_CHECK(fr_dbuff_in(&dbuff1, (uint64_t) 0x123456789abcdef0) == -2);
+	TEST_CASE("Extend move destination if possible and input length demands");
+	TEST_CHECK(fr_dbuff_init_talloc(NULL, &dbuff2, &tctx2, 4, 14) == &dbuff2);
+	fr_dbuff_set_to_start(&dbuff1);
+	TEST_CHECK(fr_dbuff_move(&dbuff2, &dbuff1, sizeof(value)) == sizeof(value));
+	TEST_CHECK(fr_dbuff_used(&dbuff2) == sizeof(value));
+	/*
+	 * @todo: the analogous test for extensible source.
+	 */
 }
 
 static void test_dbuff_talloc_extend_multi_level(void)
@@ -357,9 +374,11 @@ static void test_dbuff_out(void)
 	uint8_t		buff3[8];
 	fr_dbuff_t	dbuff1;
 	fr_dbuff_t	dbuff2;
+	fr_dbuff_marker_t	marker1;
 	uint16_t	u16val = 0;
 	uint32_t	u32val = 0;
 	uint64_t	u64val = 0;
+	uint64_t	u64val2 = 0;
 	int16_t		i16val = 0;
 	int32_t		i32val = 0;
 	int64_t		i64val = 0;
@@ -379,6 +398,14 @@ static void test_dbuff_out(void)
 	TEST_CASE("Don't walk off the end of the buffer");
 	TEST_CHECK(fr_dbuff_out(&u32val, &dbuff1) == -4);
 
+	TEST_CASE("Check dbuff reads using markers");
+	fr_dbuff_set_to_start(&dbuff1);
+	fr_dbuff_marker(&marker1, &dbuff1);
+	TEST_CHECK(fr_dbuff_out(&u64val, &marker1) == 8);
+	TEST_CHECK(fr_dbuff_out(&u64val2, &dbuff1) == 8);
+	TEST_CHECK(u64val == u64val2);
+	TEST_CHECK(fr_dbuff_current(&dbuff1) == fr_dbuff_current(&marker1));
+
 	TEST_CASE("Check dbuff reads of signed integers");
 	fr_dbuff_set_to_start(&dbuff1);
 	TEST_CHECK(fr_dbuff_out(&i16val, &dbuff1) == 2);
@@ -391,9 +418,11 @@ static void test_dbuff_out(void)
 
 	TEST_CASE("fr_dbuff_memcpy_out");
 	fr_dbuff_set_to_start(&dbuff1);
+	fr_dbuff_marker(&marker1, &dbuff1);
 	memset(buff3, 0, sizeof(buff3));
 	TEST_CHECK(fr_dbuff_memcpy_out(buff3, &dbuff1, 7) == 7);
 	TEST_CHECK(memcmp(buff3, fr_dbuff_start(&dbuff1), 7) == 0 && buff3[7] == 0);
+	TEST_CHECK(fr_dbuff_current(&dbuff1) - fr_dbuff_current(&marker1) == 7);
 	fr_dbuff_set_to_start(&dbuff1);
 	TEST_CHECK(fr_dbuff_memcpy_out(&dbuff2, &dbuff1, 4) == 4);
 	fr_dbuff_set_to_start(&dbuff1);
