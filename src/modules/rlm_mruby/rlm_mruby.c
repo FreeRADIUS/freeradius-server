@@ -210,7 +210,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb, fr_pair_t **vps)
+static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb, fr_pair_list_t *vps)
 {
 	mrb_value	res;
 	fr_pair_t	*vp;
@@ -302,7 +302,7 @@ static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb
 	return 0;
 }
 
-static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, mrb_state *mrb, mrb_value value, char const *function_name)
+static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, mrb_state *mrb, mrb_value value, char const *function_name)
 {
 	int i;
 
@@ -384,7 +384,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, m
 }
 
 static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,
-				char const *list_name, fr_pair_t **vps)
+				char const *list_name, fr_pair_list_t *vps)
 {
 	mrb_value res;
 
