@@ -40,12 +40,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 
 static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
-			      fr_pair_t *list, uint8_t const ki[MILENAGE_KI_SIZE])
+			      fr_pair_list_t *list, uint8_t const ki[MILENAGE_KI_SIZE])
 {
 	fr_pair_t	*opc_vp;
 	fr_pair_t	*op_vp;
 
-	opc_vp = fr_pair_find_by_da(&list, attr_sim_opc);
+	opc_vp = fr_pair_find_by_da(list, attr_sim_opc);
 	if (opc_vp) {
 		if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
 			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
@@ -56,7 +56,7 @@ static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t o
 		return 0;
 	}
 
-	op_vp = fr_pair_find_by_da(&list, attr_sim_op);
+	op_vp = fr_pair_find_by_da(list, attr_sim_op);
 	if (op_vp) {
 		if (op_vp->vp_length != MILENAGE_OP_SIZE) {
 			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
@@ -102,7 +102,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_ak
 	 */
 	version_vp = fr_pair_find_by_da(&vps, attr_sim_algo_version);
 	if (!version_vp) {
-		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+		if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
 		version = opc_p ? FR_SIM_ALGO_VERSION_VALUE_COMP128_4 : FR_SIM_ALGO_VERSION_VALUE_COMP128_3;
 	/*
 	 *	Version was explicitly specified, see if we can find the prerequisite
@@ -111,7 +111,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_ak
 	} else {
 		version = version_vp->vp_uint32;
 		if (version == FR_SIM_ALGO_VERSION_VALUE_COMP128_4) {
-			if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+			if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
 			if (!opc_p) {
 				RPEDEBUG2("No &control.%s or &control.%s found, "
 					  "can't run Milenage (COMP128-4)", attr_sim_op->name, attr_sim_opc->name);
@@ -482,7 +482,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_ke
 		uint8_t 	opc_buff[MILENAGE_OPC_SIZE];
 		uint8_t	const	*opc_p;
 
-		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+		if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
 
 		uint48_to_buff(sqn_buff, keys->sqn);
 		if (amf_vp) memcpy(amf_buff, amf_vp->vp_octets, amf_size);
