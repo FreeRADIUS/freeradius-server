@@ -270,11 +270,11 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 /** Print out the error the client returned
  *
  */
-static inline void client_error_debug(request_t *request, fr_pair_t *from_peer)
+static inline void client_error_debug(request_t *request, fr_pair_list_t *from_peer)
 {
 	fr_pair_t *vp;
 
-	vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_client_error_code);
+	vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_client_error_code);
 	if (!vp) {
 		REDEBUG("Peer has not supplied a AT_ERROR_CODE");
 	} else {
@@ -3532,7 +3532,7 @@ static unlang_action_t common_reauthentication(rlm_rcode_t *p_result, module_ctx
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3663,7 +3663,7 @@ static unlang_action_t aka_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3728,7 +3728,7 @@ static unlang_action_t sim_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3844,7 +3844,7 @@ static unlang_action_t aka_identity(rlm_rcode_t *p_result, module_ctx_t const *m
 	 *	identity.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3953,7 +3953,7 @@ static unlang_action_t sim_start(rlm_rcode_t *p_result, module_ctx_t const *mctx
 	 *	identity.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
