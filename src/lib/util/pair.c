@@ -972,22 +972,22 @@ static void _pair_list_sort_split(fr_pair_list_t *source, fr_pair_list_t *front,
 	slow->next = NULL;
 }
 
-static fr_pair_t *_pair_list_sort_merge(fr_pair_t *a, fr_pair_t *b, fr_cmp_t cmp)
+static fr_pair_t *_pair_list_sort_merge(fr_pair_list_t *a, fr_pair_list_t *b, fr_cmp_t cmp)
 {
 	fr_pair_t *result = NULL;
 
-	if (!a) return b;
-	if (!b) return a;
+	if (!*a) return *b;
+	if (!*b) return *a;
 
 	/*
 	 *	Compare the fr_dict_attr_ts and tags
 	 */
-	if (cmp(a, b) <= 0) {
-		result = a;
-		result->next = _pair_list_sort_merge(a->next, b, cmp);
+	if (cmp(*a, *b) <= 0) {
+		result = *a;
+		result->next = _pair_list_sort_merge(&(*a)->next, b, cmp);
 	} else {
-		result = b;
-		result->next = _pair_list_sort_merge(a, b->next, cmp);
+		result = *b;
+		result->next = _pair_list_sort_merge(a, &(*b)->next, cmp);
 	}
 
 	return result;
@@ -1021,7 +1021,7 @@ void fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp)
 	/*
 	 *	merge the two sorted lists together
 	 */
-	*vps = _pair_list_sort_merge(a, b, cmp);
+	*vps = _pair_list_sort_merge(&a, &b, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
