@@ -265,7 +265,7 @@ static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int f
 
 static int 		encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id);
 
-static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
+static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			       udp_handle_t *h, request_t *request, udp_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
@@ -1176,7 +1176,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_NONE on success.
  *	- DECODE_FAIL_* on failure.
  */
-static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
+static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			    udp_handle_t *h, request_t *request, udp_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
