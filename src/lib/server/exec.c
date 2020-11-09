@@ -464,7 +464,7 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
  *	- -1 on failure.
  */
 int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
-			request_t *request, char const *cmd, fr_pair_t *input_pairs,
+			request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 
 {
@@ -481,7 +481,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 
 	if (out) *out = '\0';
 
-	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, &input_pairs, shell_escape);
+	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
 	if (pid < 0) {
 		return -1;
 	}

@@ -916,7 +916,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	 */
 	result = radius_exec_program(ctx, answer, sizeof(answer),
 				     tmpl_is_list(map->lhs) ? &output_pairs : NULL,
-				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
+				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);
 	if (result != 0) {

@@ -124,7 +124,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? *input_pairs : NULL,
+	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
 	if (result != 0) return -1;
 

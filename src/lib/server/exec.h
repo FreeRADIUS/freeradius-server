@@ -54,7 +54,7 @@ int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 				char *answer, int left);
 
 int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
-			    request_t *request, char const *cmd, fr_pair_t *input_pairs,
+			    request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
 
 int	fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs);
