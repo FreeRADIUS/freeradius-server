@@ -745,6 +745,36 @@ do { \
 	if (_slen < 0) return _slen; \
 } while (0)
 
+/** Internal copy function to switch between memcpy and memmove - do not call directly
+ *
+ * @param[out] o_start		Where to copy data to.
+ * @param[in] o_end		end of the output buffer.
+ * @param[in] i_start		Where to copy data from.
+ * @param[in] i_end		end of the source buffer.
+ * @return
+ *	- 0 on sanity check error.
+ *	- >0 the number of bytes copied.
+ */
+static inline CC_HINT(always_inline) size_t _fr_dbuff_safecpy(uint8_t *o_start, uint8_t *o_end,
+							      uint8_t const *i_start, uint8_t const *i_end)
+{
+	ssize_t	diff;
+	size_t	i_len = i_end - i_start;
+
+	if (unlikely((o_end < o_start) || (i_end < i_start))) return 0;	/* sanity check */
+
+	diff = (o_end - o_start) - (i_len);
+	if (diff < 0) return 0;
+
+	if ((i_start > o_end) || (i_end < o_start)) {			/* no-overlap */
+		memcpy(o_start,  i_start, i_len);
+	} else {							/* overlap */
+		memmove(o_start, i_start, i_len);
+	}
+
+	return (i_len);
+}
+
 static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **pos_p, fr_dbuff_t *out,
 					  uint8_t const *in, size_t inlen)
 {
@@ -752,8 +782,7 @@ static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **pos_p, fr_dbuff_t *out,
 
 	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(pos_p, out, inlen);
 
-	memcpy((*pos_p), in, inlen);					/* Copy to out */
-	return _fr_dbuff_set(pos_p, out, (*pos_p) + inlen);		/* Advance out */
+	return _fr_dbuff_set(pos_p, out, (*pos_p) + _fr_dbuff_safecpy((*pos_p), (*pos_p) + inlen, in, in + inlen));		/* Advance out */
 }
 
 static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
@@ -826,8 +855,7 @@ static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **pos_p, fr_dbuff_t *ou
 
 	inlen = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*pos_p), inlen);
 
-	memcpy((*pos_p), in, inlen);
-	return _fr_dbuff_set(pos_p, out, (*pos_p) + inlen);
+	return _fr_dbuff_set(pos_p, out, (*pos_p) + _fr_dbuff_safecpy((*pos_p), (*pos_p) + inlen, in, in + inlen));
 }
 
 /** Internal function - do not call directly
