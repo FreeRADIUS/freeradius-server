@@ -898,12 +898,12 @@ int fr_pair_cmp(fr_pair_t *a, fr_pair_t *b)
  *	- 1 if a > b.
  *	- -2 on error.
  */
-int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
+int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 {
 	fr_cursor_t a_cursor, b_cursor;
 	fr_pair_t *a_p, *b_p;
 
-	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	for (a_p = fr_cursor_init(&a_cursor, a), b_p = fr_cursor_init(&b_cursor, b);
 	     a_p && b_p;
 	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
 		int ret;
@@ -916,7 +916,7 @@ int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
 
 		switch (a_p->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			ret = fr_pair_list_cmp(a_p->vp_group, b_p->vp_group);
+			ret = fr_pair_list_cmp(&a_p->vp_group, &b_p->vp_group);
 			if (ret != 0) return ret;
 			break;
 
