@@ -696,20 +696,23 @@ done:
  * @param[in] in		Where to copy from.  Will copy len bytes from current position in buffer.
  * @param[in] len		How many bytes to copy.  If SIZE_MAX the entire buffer will be copied.
  * @param[in] tt		Token terminals in the encompassing grammar.
- * @param[in] escape_chr	If not '\0', ignore characters in the until set when
- *				prefixed with this escape character.
+ * @param[in] u_rules		If not NULL, ignore characters in the until set when
+ *				prefixed with u_rules->chr. FIXME - Should actually evaluate
+ *				u_rules fully.
  * @return
  *	- 0 no bytes copied.
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt, char escape_chr)
+				   fr_sbuff_term_t const *tt,
+				   fr_sbuff_unescape_rules_t const *u_rules)
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
 	bool		do_escape = false;		/* Track state across extensions */
 
 	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
 	size_t		needle_len = 1;
+	char		escape_chr = u_rules ? u_rules->chr : '\0';
 
 	CHECK_SBUFF_INIT(in);
 
@@ -790,7 +793,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	 *	If we don't need to do unescaping
 	 *	call a more suitable function.
 	 */
-	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, '\0');
+	if (!u_rules || (u_rules->chr == '\0')) return fr_sbuff_out_bstrncpy_until(out, in, len, tt, u_rules);
 
 	CHECK_SBUFF_INIT(in);
 

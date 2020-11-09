@@ -1153,7 +1153,8 @@ size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 				      bool const allowed[static UINT8_MAX + 1]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				    fr_sbuff_term_t const *tt, char escape_chr);
+				    fr_sbuff_term_t const *tt,
+				    fr_sbuff_unescape_rules_t const *u_rules);
 
 size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    fr_sbuff_term_t const *tt,
@@ -1268,12 +1269,14 @@ static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out,
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed);
 
 static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_term_t const *tt, char escape_chr)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, escape_chr);
+						  fr_sbuff_term_t const *tt,
+						  fr_sbuff_unescape_rules_t const *u_rules)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, u_rules);
 
 static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_term_t const *tt, fr_sbuff_unescape_rules_t const *rules)
-SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, rules);
+						  fr_sbuff_term_t const *tt,
+						  fr_sbuff_unescape_rules_t const *u_rules)
+SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, u_rules);
 /** @} */
 
 /** @name Look for a token in a particular format, parse it, and write it to the output pointer
