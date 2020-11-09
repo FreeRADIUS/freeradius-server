@@ -1350,6 +1350,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	being NULL (no attribute at that index).
 	 */
 	dst = tmpl_cursor_init(NULL, NULL, &cc, &dst_list, request, map->lhs);
+
 	/*
 	 *	The destination is an attribute
 	 */
@@ -1363,7 +1364,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case T_OP_CMP_FALSE:
 		/* We don't need the src VPs (should just be 'ANY') */
 		fr_assert(!head);
-		if (!dst) goto finish;
+		if (!dst) goto finish_clear;
 
 		/*
 		 *	Wildcard: delete all of the matching ones
@@ -1399,7 +1400,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/* We didn't find any attributes earlier */
 		if (!dst) {
 			fr_pair_list_free(&head);
-			goto finish;
+			goto finish_clear;
 		}
 
 		/*
@@ -1419,7 +1420,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			}
 			rcode = 0;
 			fr_pair_list_free(&head);
-			if (!found) goto finish;
+			if (!found) goto finish_clear;
 			goto update;
 		}
 
@@ -1443,7 +1444,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 		rcode = 0;
 		fr_pair_list_free(&head);
-		if (!found) goto finish;
+		if (!found) goto finish_clear;
 		goto update;
 	}
 
@@ -1455,7 +1456,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
 			fr_pair_list_free(&head);
-			goto finish;
+			goto finish_clear;
 		}
 
 		/* Insert first instance (if multiple) */
@@ -1535,14 +1536,16 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	default:
 		fr_assert(0);	/* Should have been caught be the caller */
 		rcode = -1;
-		goto finish;
+		goto finish_clear;
 	}
 
 update:
 	fr_assert(!head);
 
-finish:
+finish_clear:
 	tmpl_cursor_clear(&cc);
+
+finish:	
 	talloc_free(tmp_ctx);
 	return rcode;
 }
