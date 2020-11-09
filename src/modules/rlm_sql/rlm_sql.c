@@ -275,12 +275,15 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				   request_t *request, map_t const *map, void *uctx)
 {
 	fr_pair_t	*vp;
 	char const	*value = uctx;
+	fr_cursor_t	cursor;
 
+	fr_pair_list_init(out);
+	fr_cursor_init(&cursor, out);
 	vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs));
 	if (!vp) return -1;
 
@@ -297,7 +300,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
 	}
 
 	vp->op = map->op;
-	*out = vp;
+	fr_cursor_append(&cursor, vp);
 
 	return 0;
 }
