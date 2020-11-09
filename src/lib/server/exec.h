@@ -57,7 +57,7 @@ int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 			    request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
 
-int	fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs);
+int	fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs);
 
 int	fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd);
 

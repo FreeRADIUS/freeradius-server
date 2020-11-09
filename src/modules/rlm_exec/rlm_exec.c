@@ -278,7 +278,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 		env_pairs = *input_pairs;
 	}
 
-	if (fr_exec_nowait(request, box, env_pairs) < 0) {
+	if (fr_exec_nowait(request, box, &env_pairs) < 0) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}
