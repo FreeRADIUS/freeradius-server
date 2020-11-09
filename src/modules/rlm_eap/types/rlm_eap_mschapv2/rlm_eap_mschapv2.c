@@ -100,19 +100,19 @@ static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 	RDEBUG2("Storing attributes for final response");
 
 	RINDENT();
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
 				    attr_ms_mppe_encryption_policy) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_policy->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
 				    attr_ms_mppe_encryption_type) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_type->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
 				    attr_ms_mppe_recv_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_recv_key->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
 				    attr_ms_mppe_send_key) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_send_key->name);
 	}
@@ -292,7 +292,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap2_success);
+		fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success);
 		break;
 
 	default:
@@ -361,14 +361,14 @@ static rlm_rcode_t mschap_finalize(request_t *request, rlm_eap_mschapv2_t const 
 	 *	return success or failure, depending on the result.
 	 */
 	if (rcode == RLM_MODULE_OK) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap2_success) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
 			return RLM_MODULE_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply_pairs, attr_ms_chap_error) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap_error) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
 			return RLM_MODULE_FAIL;
 		}
