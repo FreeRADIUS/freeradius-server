@@ -75,7 +75,7 @@ static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t o
 	return 1;
 }
 
-static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_aka_sim_keys_t *keys)
+static int vector_gsm_from_ki(request_t *request, fr_pair_list_t *vps, int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*ki_vp, *version_vp;
 	uint8_t		opc_buff[MILENAGE_OPC_SIZE];
@@ -86,7 +86,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_ak
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	ki_vp = fr_pair_find_by_da(&vps, attr_sim_ki);
+	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki);
 	if (!ki_vp) {
 		RDEBUG3("No &control.%sfound, not generating triplets locally", attr_sim_ki->name);
 		return 1;
@@ -100,9 +100,9 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_ak
 	 *	Check to see if we have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version_vp = fr_pair_find_by_da(&vps, attr_sim_algo_version);
+	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version);
 	if (!version_vp) {
-		if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
+		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 		version = opc_p ? FR_SIM_ALGO_VERSION_VALUE_COMP128_4 : FR_SIM_ALGO_VERSION_VALUE_COMP128_3;
 	/*
 	 *	Version was explicitly specified, see if we can find the prerequisite
@@ -111,7 +111,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_t *vps, int idx, fr_ak
 	} else {
 		version = version_vp->vp_uint32;
 		if (version == FR_SIM_ALGO_VERSION_VALUE_COMP128_4) {
-			if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
+			if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 			if (!opc_p) {
 				RPEDEBUG2("No &control.%s or &control.%s found, "
 					  "can't run Milenage (COMP128-4)", attr_sim_op->name, attr_sim_opc->name);
@@ -337,7 +337,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 	switch (*src) {
 	default:
 	case AKA_SIM_VECTOR_SRC_KI:
-		ret = vector_gsm_from_ki(request, vps, idx, keys);
+		ret = vector_gsm_from_ki(request, &vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_KI;
 			break;
