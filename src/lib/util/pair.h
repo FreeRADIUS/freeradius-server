@@ -261,7 +261,7 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
 int		fr_pair_cmp(fr_pair_t *a, fr_pair_t *b);
-int		fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b);
+int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b);
 void		fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp) CC_HINT(nonnull);
 
 /* Filtering */

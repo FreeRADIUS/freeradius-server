@@ -1937,7 +1937,7 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (rcode != 0) return rcode;
 
-	return fr_pair_list_cmp(a->link_vps, b->link_vps);
+	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }
 
 static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
