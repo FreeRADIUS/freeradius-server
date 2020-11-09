@@ -693,7 +693,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	/*
 	 *	Process channel binding.
 	 */
-	chbind = eap_chbind_vp2packet(request, request->request_pairs);
+	chbind = eap_chbind_vp2packet(request, &request->request_pairs);
 	if (chbind) {
 		FR_CODE chbind_code;
 		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
