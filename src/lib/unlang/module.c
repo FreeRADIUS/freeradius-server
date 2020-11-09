@@ -521,7 +521,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **ou
  */
 unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
 					    request_t *request, tmpl_t const *vpt,
-					    fr_pair_t *vps,
+					    fr_pair_list_t *vps,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
 {
@@ -534,7 +534,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **ou
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_tmpl_push(ctx, out, request, vpt, vps, status) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_tmpl_push(ctx, out, request, vpt, *vps, status) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_YIELD;
 }
