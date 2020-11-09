@@ -672,7 +672,7 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
  *  	Example for this is Vendor-Specific.Cisco.AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, HV *rad_hv,
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)
 {
 	fr_pair_t *vp;
@@ -749,7 +749,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_t
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, char *key, SV *sv, fr_token_t op,
+static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, char *key, SV *sv, fr_token_t op,
 		      const char *hash_name, const char *list_name)
 {
 	char		*val;
@@ -790,7 +790,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, char
 /*
  *     Gets the content from hashes
  */
-static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_t **vps,
+static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_list_t *vps,
 			  const char *hash_name, const char *list_name)
 {
 	SV		*res_sv, **av_sv;
