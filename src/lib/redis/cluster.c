@@ -2252,7 +2252,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   bool triggers_enabled,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
-					   fr_pair_t *trigger_args)
+					   fr_pair_list_t *trigger_args)
 {
 	uint8_t			i;
 	uint16_t		s;
@@ -2266,7 +2266,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	fr_redis_cluster_t	*cluster;
 
 	fr_assert(triggers_enabled || !trigger_prefix);
-	fr_assert(triggers_enabled || !trigger_args);
+	fr_assert(triggers_enabled || !*trigger_args);
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
@@ -2292,7 +2292,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		/*
 		 *	Duplicate the trigger arguments.
 		 */
-		 if (trigger_args) MEM(fr_pair_list_copy(cluster, &cluster->trigger_args, &trigger_args) >= 0);
+		 if (trigger_args) MEM(fr_pair_list_copy(cluster, &cluster->trigger_args, trigger_args) >= 0);
 	}
 
 	/*

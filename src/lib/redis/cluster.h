@@ -134,7 +134,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   bool enable_triggers,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
-					   fr_pair_t *trigger_args);
+					   fr_pair_list_t *trigger_args);
 
 #ifdef __cplusplus
 }
