@@ -256,7 +256,7 @@ int		fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const
  */
 ssize_t		fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
-ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode_ctx);
+ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *encode_ctx);
 
 /*
  *	base.c

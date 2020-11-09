@@ -886,7 +886,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	eap_session->this_round->request->id = eap_aka_sim_session->id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
-	ret = fr_aka_sim_encode(request, head, &encoder_ctx);
+	ret = fr_aka_sim_encode(request, &head, &encoder_ctx);
 	fr_cursor_head(&to_encode);
 	fr_cursor_free_list(&to_encode);
 
