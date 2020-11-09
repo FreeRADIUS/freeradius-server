@@ -552,7 +552,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_t **o
 		 *	We want to mark the new attributes as tainted,
 		 *	but not the existing ones.
 		 */
-		fr_pair_list_tainted(vps);
+		fr_pair_list_tainted(&vps);
 		fr_pair_add(output_pairs, vps);
 
 	} else if (out) {
