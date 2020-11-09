@@ -1160,7 +1160,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 */
 	case FR_EAP_METHOD_SIM:
 	case FR_EAP_METHOD_AKA:
-		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, request->state,
+		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, &request->state,
 								       &eap_aka_sim_session->keys) != 0) {
 		request_new_id:
 			switch (eap_aka_sim_session->last_id_req) {
