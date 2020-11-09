@@ -194,7 +194,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  * @param[in] trigger_args to make available in any triggers executed by the exfile api.
  *	Exfile-File is automatically added to this list.
  */
-void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_t *trigger_args)
+void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
@@ -205,7 +205,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 
 	if (!trigger_args) return;
 
-	(void) fr_pair_list_copy(ef, &ef->trigger_args, &trigger_args);
+	(void) fr_pair_list_copy(ef, &ef->trigger_args, trigger_args);
 }
 
 

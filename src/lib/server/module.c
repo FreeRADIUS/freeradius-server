@@ -324,7 +324,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
+	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, &trigger_args);
 
 	return handle;
 }
