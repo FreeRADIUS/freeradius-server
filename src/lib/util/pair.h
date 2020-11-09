@@ -164,7 +164,7 @@ typedef struct {
 
 #  ifdef WITH_VERIFY_PTR
 void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp);
-void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_t *vps);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *vps);
 #  endif
 
 /* Allocation and management */

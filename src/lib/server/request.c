@@ -519,7 +519,7 @@ static void packet_verify(char const *file, int line, request_t const *request, 
 
 	if (!packet->vps) return;
 
-	fr_pair_list_verify(file, line, packet, packet->vps);
+	fr_pair_list_verify(file, line, packet, &packet->vps);
 }
 
 /*
@@ -539,8 +539,8 @@ void request_verify(char const *file, int line, request_t const *request)
 			    "CONSISTENCY CHECK FAILED %s[%i]: expected request_t size of %zu bytes, got %zu bytes",
 			    file, line, sizeof(request_t), talloc_get_size(request));
 
-	fr_pair_list_verify(file, line, request, request->control_pairs);
-	fr_pair_list_verify(file, line, request->state_ctx, request->state);
+	fr_pair_list_verify(file, line, request, &request->control_pairs);
+	fr_pair_list_verify(file, line, request->state_ctx, &request->state);
 
 	fr_assert(request->server_cs != NULL);
 
