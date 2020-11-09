@@ -406,7 +406,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 	return remaining + extended;
 }
 
-/** Extend a buffer if we're below a specified low water mark
+/** Extend if we're below a specified low water mark
  *
  * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
  *				for the first call to this function if used
@@ -425,9 +425,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 			       fr_dbuff_ptr(_dbuff_or_marker), \
 			       fr_dbuff_remaining(_dbuff_or_marker), _lowat)
 
-/** Check if _len bytes are available in the dbuff and extend the buffer if possible
- *
- * If we do not have _len bytes in the dbuff after extending, then return.
+/** Extend if we're below a specified low water mark and return if we can't extend above the low water mark
  *
  * @param[in] _dbuff_or_marker	to extend.
  * @param[in] _len		The minimum amount the dbuff should be extended by.
@@ -439,9 +437,7 @@ do { \
 	if (_remaining < _len) return -(_len - _remaining); \
 } while (0)
 
-/** Check if _len bytes are available in the dbuff and extend the buffer if possible
- *
- * If we do not have _len bytes in the dbuff after extending, then return.
+/** Extend if we're below a specified low water mark and return if we can't extend above the low water mark
  *
  * @note This is intended for internal use within the dbuff API only.
  *
@@ -717,9 +713,6 @@ static inline uint8_t *fr_dbuff_marker(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
  *
  * Pointers should be released in the inverse order to allocation.
  *
- * Alternatively the oldest pointer can be released, resulting in any newer pointer
- * also being removed from the list.
- *
  * @param[in] m		to release.
  */
 static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
@@ -775,6 +768,8 @@ static inline CC_HINT(always_inline) size_t _fr_dbuff_safecpy(uint8_t *o_start, 
 	return (i_len);
 }
 
+/** Internal function - do not call directly
+ */
 static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **pos_p, fr_dbuff_t *out,
 					  uint8_t const *in, size_t inlen)
 {
@@ -785,6 +780,8 @@ static inline ssize_t _fr_dbuff_memcpy_in(uint8_t **pos_p, fr_dbuff_t *out,
 	return _fr_dbuff_set(pos_p, out, (*pos_p) + _fr_dbuff_safecpy((*pos_p), (*pos_p) + inlen, in, in + inlen));		/* Advance out */
 }
 
+/** Internal function - do not call directly
+ */
 static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
 					        uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
 {
@@ -811,7 +808,7 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
  * be truncated, so that we don't read off the end of the buffer.
  *
  * @note If _in is a dbuff _in will not be advanced.
- *	 If this is required fr_dbuff_move() should be used.
+ *	 If this is required #fr_dbuff_move should be used.
  *
  * @param[in] _out	Where to copy data to.  May be a dbuff or marker.
  * @param[in] _in	Data to copy to dbuff or marker.
@@ -835,7 +832,7 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 		fr_dbuff_marker_t *	: _fr_dbuff_memcpy_in_dbuff(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), &((fr_dbuff_marker_t const *)(_in))->p, ((fr_dbuff_marker_t const *)(_in))->parent, _inlen) \
 	)
 
-/** Copy exactly n bytes into dbuff
+/** Copy exactly n bytes into dbuff returning if there's insufficient space
  *
  * @param[in] dbuff	to copy data to.
  * @param[in] in	Data to copy to dbuff.
@@ -984,19 +981,40 @@ FR_DBUFF_PARSE_INT_DEF(int16)
 FR_DBUFF_PARSE_INT_DEF(int32)
 FR_DBUFF_PARSE_INT_DEF(int64)
 
-#define fr_dbuff_in(_out, _value) \
-	_Generic((_value), \
-		int8_t		: fr_dbuff_bytes_in(_out, (int8_t)_value), \
-		int16_t		: _fr_dbuff_int16_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int16_t)_value), \
-		int32_t		: _fr_dbuff_int32_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int32_t)_value), \
-		int64_t		: _fr_dbuff_int64_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int64_t)_value), \
-		uint8_t		: fr_dbuff_bytes_in(_out, (uint8_t)_value), \
-		uint16_t	: _fr_dbuff_uint16_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint16_t)_value), \
-		uint32_t	: _fr_dbuff_uint32_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint32_t)_value), \
-		uint64_t	: _fr_dbuff_uint64_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint64_t)_value) \
+/** Copy data from a fixed sized C type to a dbuff.
+ *
+ * @param[out] _out	dbuff to write to.  Integer types will be automatically
+ *			converted to big endian byte order.
+ * @param[in] _in	Value to copy.
+ * @return
+ *	- <0 the number of bytes we would have needed to complete the conversion.
+ *	- >0 the number of bytes _in was advanced by.
+ */
+#define fr_dbuff_in(_out, _in) \
+	_Generic((_in), \
+		int8_t		: fr_dbuff_bytes_in(_out, (int8_t)_in), \
+		int16_t		: _fr_dbuff_int16_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int16_t)_in), \
+		int32_t		: _fr_dbuff_int32_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int32_t)_in), \
+		int64_t		: _fr_dbuff_int64_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int64_t)_in), \
+		uint8_t		: fr_dbuff_bytes_in(_out, (uint8_t)_in), \
+		uint16_t	: _fr_dbuff_uint16_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint16_t)_in), \
+		uint32_t	: _fr_dbuff_uint32_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint32_t)_in), \
+		uint64_t	: _fr_dbuff_uint64_in(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint64_t)_in) \
 	)
-#define FR_DBUFF_IN_RETURN(_dbuff, _value) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff, _value)
 
+/** Copy data from a fixed sized C type to a dbuff, returning if there is insufficient space
+ *
+ * @param[out] _out	dbuff to write to.  Integer types will be automatically
+ *			converted to big endian byte order.
+ * @param[in] _in	Value to copy.
+ * @return
+ *	- <0 the number of bytes we would have needed to complete the conversion.
+ *	- >0 the number of bytes _in was advanced by.
+ */
+#define FR_DBUFF_IN_RETURN(_dbuff, _in) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff, _in)
+
+/** Internal function - do not call directly
+ */
 static inline ssize_t _fr_dbuff_uint64v_in(uint8_t **pos_p, fr_dbuff_t *dbuff, uint64_t num)
 {
 	size_t	ret;
