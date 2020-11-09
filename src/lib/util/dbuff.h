@@ -1082,41 +1082,31 @@ size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, si
  * @{
  */
 
-static inline ssize_t _fr_dbuff_memcpy_out(uint8_t *out, fr_dbuff_t *dbuff, size_t outlen)
+/** Internal function - do not call directly
+ */
+static inline ssize_t _fr_dbuff_memcpy_out(uint8_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, outlen);
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(in, outlen);
 
-	memcpy(out, dbuff->p, outlen);
-
-	return _fr_dbuff_set(&dbuff->p, dbuff, dbuff->p + outlen);
+	return _fr_dbuff_set(pos_p, in, (*pos_p) + _fr_dbuff_safecpy(out, out + outlen, (*pos_p), (*pos_p) + outlen));
 }
-
-static inline ssize_t _fr_dbuff_memcpy_out_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t outlen)
+/** Internal function - do not call directly
+ */
+static inline ssize_t _fr_dbuff_memcpy_out_dbuff(uint8_t *out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
-	if (outlen > fr_dbuff_remaining(in)) outlen = fr_dbuff_remaining(in);
-
-	/*
-	 *	If there's too many bytes, then
-	 *	return how many additional bytes
-	 *	we would have needed.
-	 */
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(out, outlen);
 
-	(void)_fr_dbuff_memcpy_out(out->p, in, outlen);
-
-	return _fr_dbuff_set(&out->p, out, out->p + outlen);
+	return _fr_dbuff_memcpy_out(out_p, pos_p, in, outlen);
 }
 
-#define FR_DBUFF_MEMCPY_OUT_RETURN(_out, _dbuff, _outlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_out, _out, _dbuff, _outlen)
-
 /** Copy outlen bytes from the dbuff
- *
- * If _out is a dbuff, it will be advanced by the number of bytes
- * copied from _in.
  *
  * If _out is a dbuff and _outlen is greater than the
  * number of bytes available in _out, then the copy operation will
  * be truncated, so that we don't write off the end of the buffer.
+ *
+ * @note If _out is a dbuff it will not be advanced.
+ *	 If this is required fr_dbuff_move() should be used.
  *
  * @param[in] _out	to copy data to.
  * @param[in] _in	Data to copy to dbuff.
@@ -1132,18 +1122,21 @@ static inline ssize_t _fr_dbuff_memcpy_out_dbuff(fr_dbuff_t *out, fr_dbuff_t *in
  */
 #define fr_dbuff_memcpy_out(_out, _in, _outlen) \
 	_Generic((_out), \
-		 uint8_t *	: _fr_dbuff_memcpy_out((uint8_t *)(_out), _in, _outlen), \
-		 int8_t *	: _fr_dbuff_memcpy_out((uint8_t *)(_out), _in, _outlen), \
-		 fr_dbuff_t *	: _fr_dbuff_memcpy_out_dbuff((fr_dbuff_t *)_out, _in, _outlen) \
+		 uint8_t *		: _fr_dbuff_memcpy_out((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), _in, _outlen), \
+		 fr_dbuff_t *		: _fr_dbuff_memcpy_out_dbuff(((fr_dbuff_t *)(_out))->p, fr_dbuff_ptr((fr_dbuff_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen), \
+		 fr_dbuff_marker_t *	: _fr_dbuff_memcpy_out_dbuff(((fr_dbuff_marker_t *)(_out))->p, fr_dbuff_ptr((fr_dbuff_marker_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen) \
 	)
+#define FR_DBUFF_MEMCPY_OUT_RETURN(_out, _dbuff, _outlen) FR_DBUFF_RETURN(fr_dbuff_memcpy_out, _out, _dbuff, _outlen)
 
+/** Internal macro for defining dbuff to integer type conversion functions
+ */
 #define FR_DBUFF_OUT_DEF(_type) \
-static inline ssize_t fr_dbuff_##_type##_out(_type##_t *num, fr_dbuff_t *dbuff) \
+static inline ssize_t _fr_dbuff_##_type##_out(_type##_t *out, uint8_t **pos_p, fr_dbuff_t *in) \
 { \
-	fr_assert(num); \
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, sizeof(_type##_t)); \
-	*num = fr_net_to_##_type(dbuff->p); \
-	return fr_dbuff_advance(dbuff, sizeof(_type##_t)); \
+	fr_assert(out); \
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(in, sizeof(_type##_t)); \
+	*out = fr_net_to_##_type((*pos_p)); \
+	return _fr_dbuff_set(pos_p, in, (*pos_p) + sizeof(_type##_t)); \
 }
 
 FR_DBUFF_OUT_DEF(uint16)
@@ -1153,16 +1146,30 @@ FR_DBUFF_OUT_DEF(int16)
 FR_DBUFF_OUT_DEF(int32)
 FR_DBUFF_OUT_DEF(int64)
 
-#define fr_dbuff_out(_value, _dbuff) \
-	_Generic((_value), \
-		uint16_t *	: fr_dbuff_uint16_out((uint16_t *)(_value), _dbuff), \
-		uint32_t *	: fr_dbuff_uint32_out((uint32_t *)(_value), _dbuff), \
-		uint64_t *	: fr_dbuff_uint64_out((uint64_t *)(_value), _dbuff), \
-		int16_t *	: fr_dbuff_int16_out((int16_t *)(_value), _dbuff), \
-		int32_t *	: fr_dbuff_int32_out((int32_t *)(_value), _dbuff), \
-		int64_t *	: fr_dbuff_int64_out((int64_t *)(_value), _dbuff) \
+/** Copy data from a dbuff or marker to a fixed sized C type
+ *
+ * @param[out] _out	Where to write the data.  If out is an integer type
+ *			the endianess of the data copied from _in will be
+ *			converted from bigendian to local endianess.
+ * @param[in] _in	A dbuff or marker to copy data from.  The dbuff or
+ *			marker will be advanced by the number of bytes
+ *			consumed.
+ * @return
+ *	- <0 the number of bytes we would have needed to complete the conversion.
+ *	- >0 the number of bytes _in was advanced by.
+ */
+#define fr_dbuff_out(_out, _in) \
+	_Generic((_out), \
+		uint8_t *	: _fr_dbuff_memcpy_out((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), _in, 1), \
+		uint16_t *	: _fr_dbuff_uint16_out((uint16_t *)(_out), _fr_dbuff_current_ptr(_in), _in), \
+		uint32_t *	: _fr_dbuff_uint32_out((uint32_t *)(_out), _fr_dbuff_current_ptr(_in), _in), \
+		uint64_t *	: _fr_dbuff_uint64_out((uint64_t *)(_out), _fr_dbuff_current_ptr(_in), _in), \
+		int8_t *	: _fr_dbuff_memcpy_out((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), _in, 1), \
+		int16_t *	: _fr_dbuff_int16_out((int16_t *)(_out), _fr_dbuff_current_ptr(_in), _in), \
+		int32_t *	: _fr_dbuff_int32_out((int32_t *)(_out), _fr_dbuff_current_ptr(_in), _in), \
+		int64_t *	: _fr_dbuff_int64_out((int64_t *)(_out), _fr_dbuff_current_ptr(_in), _in) \
 	)
-#define FR_DBUFF_OUT_RETURN(_value, _dbuff) FR_DBUFF_RETURN(fr_dbuff_out, _value, _dbuff)
+#define FR_DBUFF_OUT_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_out, _out, _in)
 
 /** @} */
 
