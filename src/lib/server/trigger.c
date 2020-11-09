@@ -203,7 +203,7 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Bootstrap these for simpliciy.
 		 */
-		(void) fr_pair_list_copy(request->packet, &request->request_pairs, ctx->vps);
+		(void) fr_pair_list_copy(request->packet, &request->request_pairs, &ctx->vps);
 
 		if (unlang_interpret_push_instruction(request, NULL,
 						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
@@ -395,7 +395,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 	if (request) {
 		if (request->request_pairs) {
-			(void) fr_pair_list_copy(ctx, &ctx->vps, request->request_pairs);
+			(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
 		}
 
 		fake->log = request->log;

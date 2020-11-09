@@ -1372,7 +1372,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request
 	     vp = fr_cursor_next(&from)) {
 	     	switch (vp->da->type) {
 	     	case FR_TYPE_STRUCTURAL:
-	     		if (fr_pair_list_copy(ctx, out, vp->vp_group) < 0) {
+	     		if (fr_pair_list_copy(ctx, out, &vp->vp_group) < 0) {
 	     			err = -4;
 	     			goto done;
 	     		}

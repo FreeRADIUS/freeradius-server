@@ -551,7 +551,7 @@ static request_t *request_clone(request_t *old)
 	if (!request->reply) request->reply = fr_radius_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->request_pairs, old->packet->vps);
+	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->packet->vps);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 

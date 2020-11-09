@@ -830,7 +830,7 @@ void fr_state_detach(request_t *request, bool will_free)
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
 
-	(void) fr_pair_list_copy(new_state_ctx, &vps, request->state);
+	(void) fr_pair_list_copy(new_state_ctx, &vps, &request->state);
 	fr_pair_list_free(&request->state);
 
 	request->state_pairs = vps;
