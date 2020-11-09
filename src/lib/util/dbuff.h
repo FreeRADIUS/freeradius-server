@@ -790,17 +790,18 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 {
 	fr_dbuff_t	*our_in;
 	uint8_t		**our_in_p;
+	size_t		ext_len;
 
 	memcpy(&our_in, &in, sizeof(our_in));		/* Stupid const issues caused by generics */
 	memcpy(&our_in_p, &in_p, sizeof(our_in_p));	/* Stupid const issues caused by generics */
 
-	/*
-	 *	Ordering is important here, we need to attempt
-	 *	the extension _before_ passing a dereferenced
-	 *	in_p to the memcpy function.
-	 */
-	inlen = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
-	return _fr_dbuff_memcpy_in(pos_p, out, *our_in_p, inlen);	/* Copy _in to _out */
+	if (inlen == SIZE_MAX) {
+		ext_len = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
+		if (ext_len < inlen) inlen = ext_len;
+	} else {
+		_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(our_in_p, our_in, inlen);		/* Extend in or return */
+	}
+	return _fr_dbuff_memcpy_in(pos_p, out, *our_in_p, inlen);			/* Copy _in to _out */
 }
 
 /** Copy inlen bytes into the dbuff
@@ -851,9 +852,12 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 static inline size_t _fr_dbuff_memcpy_in_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						 uint8_t const *in, size_t inlen)
 {
+	size_t ext_len;
+
 	fr_assert(!out->is_const);
 
-	inlen = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*pos_p), inlen);
+	ext_len = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*pos_p), inlen);
+	if (ext_len < inlen) inlen = ext_len;
 
 	return _fr_dbuff_set(pos_p, out, (*pos_p) + _fr_dbuff_safecpy((*pos_p), (*pos_p) + inlen, in, in + inlen));
 }
@@ -865,16 +869,14 @@ static inline size_t _fr_dbuff_memcpy_in_dbuff_partial(uint8_t **pos_p, fr_dbuff
 {
 	fr_dbuff_t	*our_in;
 	uint8_t		**our_in_p;
+	size_t		ext_len;
 
 	memcpy(&our_in, &in, sizeof(our_in));		/* Stupid const issues caused by generics */
 	memcpy(&our_in_p, &in_p, sizeof(our_in_p));	/* Stupid const issues caused by generics */
 
-	/*
-	 *	Ordering is important here, we need to attempt
-	 *	the extension _before_ passing a dereferenced
-	 *	in_p to the memcpy function.
-	 */
-	inlen = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
+	ext_len = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
+	if (ext_len < inlen) inlen = ext_len;
+
 	return _fr_dbuff_memcpy_in_partial(pos_p, out, (*our_in_p), inlen);
 }
 
