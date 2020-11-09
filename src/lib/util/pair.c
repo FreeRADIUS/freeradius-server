@@ -2282,21 +2282,21 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 /** Mark up a list of VPs as tainted.
  *
  */
-void fr_pair_list_tainted(fr_pair_t *vps)
+void fr_pair_list_tainted(fr_pair_list_t *vps)
 {
 	fr_pair_t	*vp;
 	fr_cursor_t	cursor;
 
-	if (!vps) return;
+	if (!*vps) return;
 
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			fr_pair_list_tainted(vp->vp_group);
+			fr_pair_list_tainted(&vp->vp_group);
 			break;
 
 		default:
@@ -2373,7 +2373,7 @@ fr_pair_t *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_val
 	/*
 	 *	Mark the attributes as tainted.
 	 */
-	fr_pair_list_tainted(vps);
+	fr_pair_list_tainted(&vps);
 	return vps;
 }
 
