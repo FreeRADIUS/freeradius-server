@@ -102,7 +102,7 @@ struct vp_list_mod_s {
 #endif
 
 typedef int (*map_validate_t)(map_t *map, void *ctx);
-typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
+typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				     map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
@@ -130,7 +130,7 @@ int		map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 
 void		map_sort(map_t **maps, fr_cmp_t cmp);
 
-int		map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
+int		map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 			  map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
 int		map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm);
