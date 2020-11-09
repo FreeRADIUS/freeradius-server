@@ -414,16 +414,16 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
  *
  * @todo should take DAs and do a pointer comparison.
  */
-fr_pair_t *fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned int attr)
+fr_pair_t *fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr)
 {
 	fr_pair_t	*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
-	LIST_VERIFY(head);
+	LIST_VERIFY(*head);
 
-	for (vp = head; vp != NULL; vp = vp->next) {
+	for (vp = *head; vp != NULL; vp = vp->next) {
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 	     	if (vendor > 0) {
