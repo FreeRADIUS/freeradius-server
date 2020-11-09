@@ -604,7 +604,7 @@ json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
+int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps)
 {
 	json_object *j_value;      /* json object value */
 	struct tm tm;           /* struct to hold event time */
@@ -627,7 +627,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = fr_pair_find_by_da(&vps, attr_event_timestamp)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp)) != NULL) {
 		/* get seconds value from attribute */
 		ts = fr_time_to_sec(vp->vp_date);
 	} else {
@@ -641,7 +641,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = fr_pair_find_by_da(&vps, attr_acct_session_time)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_uint32);
 		/* calculate start time */

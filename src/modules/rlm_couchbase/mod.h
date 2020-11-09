@@ -86,7 +86,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 
 json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp);
 
-int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps);
+int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps);
 
 int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
 
