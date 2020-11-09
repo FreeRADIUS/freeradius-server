@@ -243,7 +243,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 */
 	switch (n->da->type) {
 	case FR_TYPE_STRUCTURAL:
-		if (fr_pair_list_copy(n, &n->vp_group, vp->vp_group) < 0) {
+		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
@@ -1239,7 +1239,7 @@ mismatch:
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
-int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_t *from)
+int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from)
 {
 	fr_cursor_t	src, dst, tmp;
 
@@ -1248,7 +1248,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_t *from)
 	int		cnt = 0;
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
-	for (vp = fr_cursor_talloc_init(&src, &from, fr_pair_t);
+	for (vp = fr_cursor_talloc_init(&src, from, fr_pair_t);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);

@@ -329,7 +329,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	MEM(fr_pair_list_copy(data, &data->reply, request->reply_pairs) >= 0);
+	MEM(fr_pair_list_copy(data, &data->reply, &request->reply_pairs) >= 0);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -556,7 +556,7 @@ failure:
 			if (data->mppe_keys) {
 				RDEBUG2("Adding stored attributes to parent");
 				log_request_pair_list(L_DBG_LVL_2, request, data->mppe_keys, "&parent.reply.");
-				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, data->mppe_keys) >= 0);
+				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");
 			}
@@ -570,7 +570,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, data->reply) >= 0);
+			MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, &data->reply) >= 0);
 			return RLM_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);

@@ -165,7 +165,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			 *	cert_vps have a different talloc parent, so we
 			 *	can't just reference them.
 			 */
-			MEM(fr_pair_list_copy(request->state_ctx, &request->state, cert_vps) >= 0);
+			MEM(fr_pair_list_copy(request->state_ctx, &request->state, &cert_vps) >= 0);
 			fr_pair_list_free(&cert_vps);
 		}
 	}

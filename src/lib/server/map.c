@@ -943,7 +943,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 		}
 		if (!from) return 0;
 
-		if (fr_pair_list_copy(ctx, &found, *from) < 0) return -1;
+		if (fr_pair_list_copy(ctx, &found, from) < 0) return -1;
 
 		/*
 		 *	List to list copy is empty if the src list has no attributes.

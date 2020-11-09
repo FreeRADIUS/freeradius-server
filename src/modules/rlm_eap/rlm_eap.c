@@ -615,7 +615,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 
 	if (method->submodule->clone_parent_lists) {
 		if (fr_pair_list_copy(eap_session->subrequest,
-				      &eap_session->subrequest->control_pairs, request->control_pairs) < 0) {
+				      &eap_session->subrequest->control_pairs, &request->control_pairs) < 0) {
 		list_copy_fail:
 			RERROR("Failed copying parent's attribute list");
 		fail:
@@ -625,7 +625,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 
 		if (fr_pair_list_copy(eap_session->subrequest->packet,
 				      &eap_session->subrequest->request_pairs,
-				      request->request_pairs) < 0) goto list_copy_fail;
+				      &request->request_pairs) < 0) goto list_copy_fail;
 	}
 
 	/*

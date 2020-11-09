@@ -343,7 +343,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
 			default_pl = default_pl->next;
 		}
 
-		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
+		MEM(fr_pair_list_copy(request, &check_tmp, &pl->check) >= 0);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -360,7 +360,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
 
 			/* ctx may be reply */
 			if (pl->reply) {
-				MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
+				MEM(fr_pair_list_copy(reply, &reply_tmp, &pl->reply) >= 0);
 				radius_pairmove(request, &reply->vps, reply_tmp, true);
 			}
 			fr_pair_list_move(&request->control_pairs, &check_tmp);

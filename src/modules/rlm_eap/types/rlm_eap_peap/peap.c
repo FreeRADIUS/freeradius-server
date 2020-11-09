@@ -572,7 +572,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 
 		/* save the SoH VPs */
 		fr_assert(!t->soh_reply_vps);
-		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, fake->reply->vps) >= 0);
+		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, &fake->reply->vps) >= 0);
 		fr_assert(!fake->reply->vps);
 		TALLOC_FREE(fake);
 
