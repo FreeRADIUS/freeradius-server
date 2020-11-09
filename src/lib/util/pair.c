@@ -401,7 +401,7 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
 	/* List head may be NULL if it contains no VPs */
 	if (!*head) return NULL;
 
-	LIST_VERIFY(*head);
+	LIST_VERIFY(head);
 
 	if (!da) return NULL;
 
@@ -421,7 +421,7 @@ fr_pair_t *fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsign
 	/* List head may be NULL if it contains no VPs */
 	if (!*head) return NULL;
 
-	LIST_VERIFY(*head);
+	LIST_VERIFY(head);
 
 	for (vp = *head; vp != NULL; vp = vp->next) {
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
@@ -452,7 +452,7 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const 
 	/* List head may be NULL if it contains no VPs */
 	if (!*head) return NULL;
 
-	LIST_VERIFY(*head);
+	LIST_VERIFY(head);
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
@@ -2240,17 +2240,17 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 /*
  *	Verify a pair list
  */
-void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_t *vps)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *vps)
 {
 	fr_cursor_t		slow_cursor, fast_cursor;
 	fr_pair_t		*slow, *fast;
 	TALLOC_CTX		*parent;
 
-	if (!vps) return;	/* Fast path */
+	if (!*vps) return;	/* Fast path */
 
-	fr_cursor_init(&fast_cursor, &vps);
+	fr_cursor_init(&fast_cursor, vps);
 
-	for (slow = fr_cursor_init(&slow_cursor, &vps), fast = fr_cursor_init(&fast_cursor, &vps);
+	for (slow = fr_cursor_init(&slow_cursor, vps), fast = fr_cursor_init(&fast_cursor, vps);
 	     slow && fast;
 	     slow = fr_cursor_next(&fast_cursor), fast = fr_cursor_next(&fast_cursor)) {
 		VP_VERIFY(slow);
