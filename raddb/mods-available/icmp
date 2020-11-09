@@ -24,6 +24,14 @@
 #	`%{icmp:%{NAS-IP-Address}}`
 #
 #
+# == Capabilities and Permissions
+#
+#  On Linus, you may need to do:
+#
+#	$ setcap cap_net_raw+ep ${bindir}/radiusd
+#
+#  In order for the `icmp` module to bind to a "raw" socket.
+#
 
 #
 #  ## Configuration Settings
