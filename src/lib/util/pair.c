@@ -444,20 +444,20 @@ fr_pair_t *fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsign
 /** Find the pair with the matching attribute
  *
  */
-fr_pair_t *fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr)
+fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
-	LIST_VERIFY(head);
+	LIST_VERIFY(*head);
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
 
-	for (vp = head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
+	for (vp = *head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
 
 	return NULL;
 }
