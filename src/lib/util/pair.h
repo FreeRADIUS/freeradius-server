@@ -274,7 +274,7 @@ int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const
 int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					fr_pair_list_t *from, fr_dict_attr_t const *da);
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-					      fr_pair_t *from, fr_dict_attr_t const *parent_da);
+					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da);
 
 /** @name Pair to pair copying
  *

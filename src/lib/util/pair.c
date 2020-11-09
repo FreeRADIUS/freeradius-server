@@ -1338,7 +1338,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-				  fr_pair_t *from, fr_dict_attr_t const *parent_da)
+				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da)
 {
 	fr_cursor_t	src, dst, tmp;
 
@@ -1352,7 +1352,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	}
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
-	for (vp = fr_cursor_iter_by_ancestor_init(&src, &from, parent_da);
+	for (vp = fr_cursor_iter_by_ancestor_init(&src, from, parent_da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
