@@ -937,7 +937,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 	return 1;
 }
 
-static void _pair_list_sort_split(fr_pair_t *source, fr_pair_list_t *front, fr_pair_list_t *back)
+static void _pair_list_sort_split(fr_pair_list_t *source, fr_pair_list_t *front, fr_pair_list_t *back)
 {
 	fr_pair_t *fast;
 	fr_pair_t *slow;
@@ -945,8 +945,8 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_list_t *front, fr_p
 	/*
 	 *	Stopping condition - no more elements left to split
 	 */
-	if (!source || !source->next) {
-		*front = source;
+	if (!*source || !(*source)->next) {
+		*front = *source;
 		*back = NULL;
 
 		return;
@@ -956,8 +956,8 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_list_t *front, fr_p
 	 *	Fast advances twice as fast as slow, so when it gets to the end,
 	 *	slow will point to the middle of the linked list.
 	 */
-	slow = source;
-	fast = source->next;
+	slow = *source;
+	fast = (*source)->next;
 
 	while (fast) {
 		fast = fast->next;
@@ -967,7 +967,7 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_list_t *front, fr_p
 		}
 	}
 
-	*front = source;
+	*front = *source;
 	*back = slow->next;
 	slow->next = NULL;
 }
@@ -1014,7 +1014,7 @@ void fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp)
 	 */
 	if (!head || !head->next) return;
 
-	_pair_list_sort_split(head, &a, &b);	/* Split into sublists */
+	_pair_list_sort_split(&head, &a, &b);	/* Split into sublists */
 	fr_pair_list_sort(&a, cmp);		/* Traverse left */
 	fr_pair_list_sort(&b, cmp);		/* Traverse right */
 
