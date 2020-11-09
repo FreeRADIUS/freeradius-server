@@ -392,7 +392,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 	return 0;
 }
 
-static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
 
@@ -403,7 +403,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_ke
 	/*
 	 *	Select the algorithm (default to Milenage)
 	 */
-	version_vp = fr_pair_find_by_da(&vps, attr_sim_algo_version);
+	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version);
 	if (version_vp) version = version_vp->vp_uint32;
 
 	/*
@@ -438,7 +438,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_ke
 	/*
 	 *	Find the Ki VP and check its length
 	 */
-	ki_vp = fr_pair_find_by_da(&vps, attr_sim_ki);
+	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki);
 	if (!ki_vp) {
 		RDEBUG3("No &control.%s found, not generating quintuplets locally", attr_sim_ki->name);
 		return 1;
@@ -451,13 +451,13 @@ static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_ke
 	/*
 	 *	Find the Sequence Number VP or default to SQN = 2
 	 */
-	sqn_vp = fr_pair_find_by_da(&vps, attr_sim_sqn);
+	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn);
 	keys->sqn = sqn_vp ? sqn_vp->vp_uint64 : 2;	/* 2 is the lowest valid SQN on our side */
 
 	/*
 	 *	Check if we have an AMF value
 	 */
-	amf_vp = fr_pair_find_by_da(&vps, attr_sim_amf);
+	amf_vp = fr_pair_find_by_da(vps, attr_sim_amf);
 	if (amf_vp) {
 		if (amf_vp->vp_length != amf_size) {
 			REDEBUG("&control.%s has incorrect length, expected %zu bytes got %zu bytes",
@@ -482,7 +482,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_t *vps, fr_aka_sim_ke
 		uint8_t 	opc_buff[MILENAGE_OPC_SIZE];
 		uint8_t	const	*opc_p;
 
-		if (vector_opc_from_op(request, &opc_p, opc_buff, &vps, ki_vp->vp_octets) < 0) return -1;
+		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 
 		uint48_to_buff(sqn_buff, keys->sqn);
 		if (amf_vp) memcpy(amf_buff, amf_vp->vp_octets, amf_size);
@@ -761,7 +761,7 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_t *vps,
 	switch (*src) {
 	default:
 	case AKA_SIM_VECTOR_SRC_KI:
-		ret = vector_umts_from_ki(request, vps, keys);
+		ret = vector_umts_from_ki(request, &vps, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_KI;
 			break;
