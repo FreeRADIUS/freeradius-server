@@ -842,7 +842,7 @@ void _tmpl_cursor_pool_init(tmpl_cursor_ctx_t *cc)
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_attr_t		*prev = fr_dlist_prev(&cc->vpt->data.attribute.ar, ar);
 
@@ -932,7 +932,7 @@ static fr_pair_t *_tmpl_cursor_group_eval(fr_pair_t **prev, UNUSED fr_pair_t *cu
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -968,7 +968,7 @@ static fr_pair_t *_tmpl_cursor_leaf_eval(fr_pair_t **prev, fr_pair_t *curr, tmpl
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t	*ns = &cc->leaf;
 
@@ -1086,7 +1086,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t **prev, fr_pair_t *curr, tmpl_cursor_ctx_
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
@@ -1318,7 +1318,7 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
  *	- -3 if context could not be found (no parent #request_t available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		from, to;
@@ -1367,7 +1367,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t
  *	- -3 if context could not be found (no parent #request_t available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		from;
