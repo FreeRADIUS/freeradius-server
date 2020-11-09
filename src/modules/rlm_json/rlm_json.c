@@ -393,7 +393,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
+static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				    map_t const *map, void *uctx)
 {
 	fr_pair_t			*vp;
@@ -402,7 +402,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out, request_t 
 	fr_value_box_t			*head, *value;
 	int				ret;
 
-	*out = NULL;
+	fr_pair_list_init(out);
 
 	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
