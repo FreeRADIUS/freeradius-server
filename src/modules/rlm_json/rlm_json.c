@@ -283,7 +283,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	 */
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	json_str = fr_json_afrom_pair_list(vb, json_vps, format);
+	json_str = fr_json_afrom_pair_list(vb, &json_vps, format);
 	if (!json_str) {
 		REDEBUG("Failed to generate JSON string");
 		goto error;
