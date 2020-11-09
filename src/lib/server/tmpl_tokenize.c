@@ -2005,7 +2005,7 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	bool		a_bool;
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 
 	if (!fr_sbuff_out(NULL, &a_bool, &our_in)) {
 		fr_strerror_printf("Not a boolean value");
@@ -2042,7 +2042,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 					fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 	char		*hex;
 	size_t		binlen, len;
 	uint8_t		*bin;
@@ -2100,7 +2100,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	uint8_t		octet;
 	fr_type_t	type;
@@ -2167,7 +2167,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
-	tmpl_t		*vpt;
+	tmpl_t			*vpt;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_sbuff_marker_t	m;
 	fr_type_t		type;
@@ -3663,7 +3663,7 @@ do { \
 void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 {
 	tmpl_attr_t	*ar = NULL;
-	tmpl_attr_t  *slow = NULL, *fast = NULL;
+	tmpl_attr_t  	*slow = NULL, *fast = NULL;
 	tmpl_attr_t	*seen_unknown = NULL;
 	tmpl_attr_t	*seen_unresolved = NULL;
 

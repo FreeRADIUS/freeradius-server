@@ -518,7 +518,7 @@ struct tmpl_cursor_ctx_s {
 
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
-	request_t			*request;	//!< Result of following the request references.
+	request_t		*request;	//!< Result of following the request references.
 	fr_pair_t		**list;		//!< List within the request.
 
 	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
