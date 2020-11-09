@@ -2927,7 +2927,7 @@ static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, modu
  * Also checks the version matches one of the ones we advertised in our version list,
  * which is a bit redundant seeing as there's only one version of EAP-SIM.
  */
-static int sim_start_selected_version_check(request_t *request, fr_pair_t *from_peer,
+static int sim_start_selected_version_check(request_t *request, fr_pair_list_t *from_peer,
 					    eap_aka_sim_session_t *eap_aka_sim_session)
 {
 	fr_pair_t		*selected_version_vp;
@@ -2935,7 +2935,7 @@ static int sim_start_selected_version_check(request_t *request, fr_pair_t *from_
 	/*
 	 *	Check that we got an AT_SELECTED_VERSION
 	 */
-	selected_version_vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_selected_version);
+	selected_version_vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_selected_version);
 	if (!selected_version_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_SELECTED_VERSION");
 		return -1;
@@ -3103,8 +3103,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	if pseudonym resolution went ok.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PSEUDONYM:
-		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3121,8 +3121,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	later.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PERMANENT:
-		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		FALL_THROUGH;
 	default:
