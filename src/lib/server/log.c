@@ -753,25 +753,26 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
- * @param[in] parent	of vp to print, may be NULL.
- * @param[in] vp	to print.
+ * @param[in] parent	of vps to print, may be NULL.
+ * @param[in] vps	to print.
  * @param[in] prefix	(optional).
  */
 void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
-			   fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
+			   fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
 	fr_cursor_t 		cursor;
-	fr_pair_t		*m_vp;
+	fr_pair_list_t		*m_vp;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!vp || !request->log.dst) return;
+	if (!*vps || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
-	memcpy(&m_vp, &vp, sizeof(m_vp));
+	memcpy(&m_vp, &vps, sizeof(m_vp));
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &m_vp);
+	for (vp = fr_cursor_init(&cursor, m_vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
@@ -789,7 +790,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 
 			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
 				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
-			log_request_pair_list(lvl, request, vp, (fr_pair_t *) vp->vp_group, prefix);
+			log_request_pair_list(lvl, request, vp, (fr_pair_list_t *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
 			continue;
 		}

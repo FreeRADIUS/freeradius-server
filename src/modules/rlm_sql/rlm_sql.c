@@ -945,7 +945,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
 			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
 
-			log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_tmp, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
 			radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 			fr_pair_list_init(&reply_tmp);
@@ -1319,7 +1319,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_tmp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
 		radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
 

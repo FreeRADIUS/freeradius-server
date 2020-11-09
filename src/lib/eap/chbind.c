@@ -83,7 +83,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	ptr[3] = CHBIND_NSID_RADIUS;
 
 	RDEBUG2("Sending chbind response: code %i", (int )(ptr[0]));
-	log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 
 	/* Encode the chbind attributes into the response */
 	ptr += 4;

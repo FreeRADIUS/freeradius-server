@@ -209,7 +209,7 @@ static unlang_action_t unlang_subrequest_start(rlm_rcode_t *p_result, request_t 
 							     state->session.unique_int);
 
 	RDEBUG2("Creating subrequest (%s)", child->name);
-	log_request_pair_list(L_DBG_LVL_1, request, NULL, child->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &child->request_pairs, NULL);
 
 	frame->process = unlang_subrequest_process;
 	return unlang_subrequest_process(p_result, request);

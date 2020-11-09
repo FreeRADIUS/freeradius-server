@@ -291,7 +291,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		/*
 		 *	Maybe the shared secret is wrong?
@@ -401,7 +401,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	RHEXDUMP3(buffer, data_len, "proto_tacacs encode packet");

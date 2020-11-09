@@ -104,7 +104,7 @@ void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3));
 
 void	log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
-			      fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
+			      fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 			      CC_HINT(nonnull(2));
 
 void	log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
