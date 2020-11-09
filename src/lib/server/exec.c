@@ -700,7 +700,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_p
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
+int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
 {
 	int		argc;
 	char		**envp;
@@ -725,7 +725,7 @@ int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pa
 	 */
 	if (env_pairs) {
 		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
-		fr_exec_pair_to_env(request, &env_pairs, envp, MAX_ENVP, true);
+		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
 	} else {
 		MEM(envp = talloc_zero_array(request, char *, 1));
 		envp[0] = NULL;
