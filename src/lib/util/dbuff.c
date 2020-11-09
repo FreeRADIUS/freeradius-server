@@ -38,9 +38,7 @@ RCSID("$Id$")
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	dbuff to copy data from.
@@ -49,11 +47,13 @@ RCSID("$Id$")
  */
 size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
 
 	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
 
@@ -65,9 +65,7 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -76,11 +74,13 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
  */
 size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
 
 	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
 
@@ -92,9 +92,7 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -103,11 +101,13 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  */
 size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
 
 	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
 
@@ -119,9 +119,7 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)};.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -130,12 +128,13 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  */
 size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
+	size_t ext_len, to_copy = len;
 
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
 
 	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
 
