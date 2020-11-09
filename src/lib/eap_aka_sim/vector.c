@@ -173,14 +173,14 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_list_t *vps, int idx, 
 	return 0;
 }
 
-static int vector_gsm_from_triplets(request_t *request, fr_pair_t *vps,
+static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 				    int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*rand = NULL, *sres = NULL, *kc = NULL;
 	fr_cursor_t	cursor;
 	int		i;
 
-	for (i = 0, (kc = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_kc));
+	for (i = 0, (kc = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_kc));
 	     (i < idx) && (kc = fr_cursor_next(&cursor));
 	     i++);
 	if (!kc) {
@@ -194,7 +194,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_t *vps,
 		return -1;
 	}
 
-	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_rand));
+	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
 	     (i < idx) && (rand = fr_cursor_next(&cursor));
 	     i++);
 	if (!rand) {
@@ -208,7 +208,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_t *vps,
 		return -1;
 	}
 
-	for (i = 0, (sres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_sres));
+	for (i = 0, (sres = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_sres));
 	     (i < idx) && (sres = fr_cursor_next(&cursor));
 	     i++);
 	if (!sres) {
@@ -347,7 +347,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_TRIPLETS:
-		ret = vector_gsm_from_triplets(request, vps, idx, keys);
+		ret = vector_gsm_from_triplets(request, &vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_TRIPLETS;
 			break;
