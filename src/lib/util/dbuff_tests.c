@@ -399,8 +399,7 @@ static void test_dbuff_out(void)
 	fr_dbuff_set_to_start(&dbuff1);
 	fr_dbuff_advance(&dbuff1, 3);
 	TEST_CHECK(fr_dbuff_memcpy_out(&dbuff2, &dbuff1, 4) == 4);
-	TEST_CHECK(memcmp(fr_dbuff_start(&dbuff2), fr_dbuff_start(&dbuff1), 4) == 0 &&
-		   memcmp(fr_dbuff_start(&dbuff2) + 4, fr_dbuff_start(&dbuff1) + 3, 4) == 0);
+	TEST_CHECK(memcmp(fr_dbuff_start(&dbuff2), fr_dbuff_start(&dbuff1) + 3, 4) == 0);
 }
 
 TEST_LIST = {
