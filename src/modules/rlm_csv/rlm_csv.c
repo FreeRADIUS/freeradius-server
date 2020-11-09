@@ -841,7 +841,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Convert field X to a VP.
  */
-static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, void *uctx)
+static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
 {
 	char const		*str = uctx;
 	fr_pair_list_t		head;
