@@ -48,7 +48,7 @@ extern "C" {
 #endif
 pid_t	radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 			     int *input_fd, int *output_fd,
-			     fr_pair_t *input_pairs, bool shell_escape);
+			     fr_pair_list_t *input_pairs, bool shell_escape);
 
 int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 				char *answer, int left);

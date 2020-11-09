@@ -225,7 +225,7 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
  */
 pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
-			   fr_pair_t *input_pairs, bool shell_escape)
+			   fr_pair_list_t *input_pairs, bool shell_escape)
 {
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
@@ -278,7 +278,7 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 
 	MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
 	envp[0] = NULL;
-	if (input_pairs) fr_exec_pair_to_env(request, &input_pairs, envp, MAX_ENVP, shell_escape);
+	if (input_pairs) fr_exec_pair_to_env(request, input_pairs, envp, MAX_ENVP, shell_escape);
 
 	pid = fork();
 	if (pid == 0) {
@@ -481,7 +481,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 
 	if (out) *out = '\0';
 
-	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
+	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, &input_pairs, shell_escape);
 	if (pid < 0) {
 		return -1;
 	}
