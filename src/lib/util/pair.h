@@ -228,7 +228,7 @@ fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
 fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
 
-fr_pair_t	*fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr);
+fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
 void		fr_pair_add(fr_pair_list_t *head, fr_pair_t *vp);
 
