@@ -463,7 +463,7 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
  *	- exit code if exec_wait!=0.
  *	- -1 on failure.
  */
-int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_t **output_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
 			request_t *request, char const *cmd, fr_pair_t *input_pairs,
 			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 
