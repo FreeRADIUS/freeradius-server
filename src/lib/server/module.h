@@ -270,7 +270,7 @@ fr_pool_t	*module_connection_pool_init(CONF_SECTION *module,
 					     fr_pool_connection_alive_t a,
 					     char const *log_prefix,
 					     char const *trigger_prefix,
-					     fr_pair_t *trigger_args);
+					     fr_pair_list_t *trigger_args);
 exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
 			     	    CONF_SECTION *module,
 				    uint32_t max_entries,
