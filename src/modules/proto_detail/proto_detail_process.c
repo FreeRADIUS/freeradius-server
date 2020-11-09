@@ -190,7 +190,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			       request->reply->id);
 		}
 
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		break;
 
 	default:
