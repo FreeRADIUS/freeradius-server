@@ -233,7 +233,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 /** Derive triplets from quintuplets
  *
  */
-static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
+static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 				       int idx, fr_aka_sim_keys_t *keys)
 {
 	fr_cursor_t	cursor;
@@ -245,7 +245,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, (ck = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_ck));
+	for (i = 0, (ck = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ck));
 	     (i < idx) && (ck = fr_cursor_next(&cursor));
 	     i++);
 	if (!ck) {
@@ -257,7 +257,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, (ik = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_ik));
+	for (i = 0, (ik = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ik));
 	     (i < idx) && (ik = fr_cursor_next(&cursor));
 	     i++);
 	if (!ik) {
@@ -269,7 +269,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_rand));
+	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
 	     (i < idx) && (rand = fr_cursor_next(&cursor));
 	     i++);
 	if (!rand) {
@@ -288,7 +288,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_t *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, (xres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_xres));
+	for (i = 0, (xres = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_xres));
 	     (i < idx) && (xres = fr_cursor_next(&cursor));
 	     i++);
 	if (!xres) {
@@ -357,7 +357,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
-		ret = vector_gsm_from_quintuplets(request, vps, idx, keys);
+		ret = vector_gsm_from_quintuplets(request, &vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_QUINTUPLETS;
 			break;
