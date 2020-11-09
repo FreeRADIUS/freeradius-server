@@ -589,7 +589,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_s
 /** Get one set of quintuplets from the request
  *
  */
-static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t	*rand_vp = NULL, *xres_vp = NULL, *ck_vp = NULL, *ik_vp = NULL;
 	fr_pair_t	*autn_vp = NULL, *sqn_vp = NULL, *ak_vp = NULL;
@@ -597,7 +597,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch AUTN
 	 */
-	autn_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_autn);
+	autn_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_autn);
 	if (!autn_vp) {
 		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_autn->name);
 		return 1;
@@ -613,7 +613,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch CK
 	 */
-	ck_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_ck);
+	ck_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ck);
 	if (!ck_vp) {
 		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ck->name);
 		return 1;
@@ -629,7 +629,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch IK
 	 */
-	ik_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_ik);
+	ik_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ik);
 	if (!ik_vp) {
 		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ik->name);
 		return 1;
@@ -645,7 +645,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch RAND
 	 */
-	rand_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_rand);
+	rand_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_rand);
 	if (!rand_vp) {
 		RDEBUG3("No &control.%s attribute found, not using quintuplet derivation", attr_eap_aka_sim_rand->name);
 		return 1;
@@ -660,7 +660,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch XRES
 	 */
-	xres_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_xres);
+	xres_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_xres);
 	if (!xres_vp) {
 		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_xres->name);
 		return 1;
@@ -676,7 +676,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch (optional) AK
 	 */
-	ak_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_ak);
+	ak_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ak);
 	if (ak_vp && (ak_vp->vp_length != MILENAGE_AK_SIZE)) {
 		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
@@ -687,7 +687,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_t *vps, fr_a
 	/*
 	 *	Fetch (optional) SQN
 	 */
-	sqn_vp = fr_pair_find_by_da(&vps, attr_sim_sqn);
+	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn);
 	if (sqn_vp && (sqn_vp->vp_length != MILENAGE_SQN_SIZE)) {
 		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
@@ -771,7 +771,7 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_t *vps,
 		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
-		ret = vector_umts_from_quintuplets(request, vps, keys);
+		ret = vector_umts_from_quintuplets(request, &vps, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_QUINTUPLETS;
 			break;;
