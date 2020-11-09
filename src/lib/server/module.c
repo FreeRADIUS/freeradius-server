@@ -311,7 +311,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 			     uint32_t max_idle,
 			     bool locking,
 			     char const *trigger_prefix,
-			     fr_pair_t *trigger_args)
+			     fr_pair_list_t *trigger_args)
 {
 	char		trigger_prefix_buff[128];
 	exfile_t	*handle;
@@ -324,7 +324,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, &trigger_args);
+	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
 
 	return handle;
 }
