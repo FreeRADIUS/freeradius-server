@@ -870,7 +870,7 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pa
  *	- 0 on success.
  *	- -1 on validation failure.
  */
-int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t *counter_vp;
 	fr_pair_t *k_re_vp;
@@ -879,7 +879,7 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t
 	 *	This is the *old* counter value increment
 	 *	by 1 to get the *new* counter value
 	 */
-	counter_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_counter);
+	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
 		RDEBUG2("No &session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
@@ -887,8 +887,8 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t
 	}
 	counter_vp->vp_uint16++;
 
-	k_re_vp = fr_pair_find_by_da(&vps, attr_session_data);
-	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(&vps, attr_eap_aka_sim_k_re);
+	k_re_vp = fr_pair_find_by_da(vps, attr_session_data);
+	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_k_re);
 	if (!k_re_vp) {
 		RDEBUG2("Neither &session-state.%s or &session-sate:%s attributes found, "
 			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_k_re->name);
