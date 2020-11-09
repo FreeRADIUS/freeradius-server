@@ -936,7 +936,7 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
+static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], int num)
 {
 	fr_cursor_t list_cursor, out_cursor;
 	fr_pair_t *match, *copy;
@@ -944,7 +944,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_t *vps, fr
 	uint64_t count = 0;
 	int i;
 
-	last_match = vps;
+	last_match = *vps;
 
 	fr_cursor_init(&list_cursor, &last_match);
 	fr_cursor_init(&out_cursor, out);
@@ -962,7 +962,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_t *vps, fr
 				return -1;
 			}
 			fr_cursor_append(&out_cursor, copy);
-			last_match = match;
+			fr_pair_list_set_head(last_match, *match);
 
 			count++;
 		} while ((match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i])));
@@ -1568,7 +1568,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		if ((conf->link_da_num > 0) && packet->vps) {
 			int ret;
-			ret = rs_get_pairs(packet, &search.link_vps, packet->vps, conf->link_da,
+			ret = rs_get_pairs(packet, &search.link_vps, &packet->vps, conf->link_da,
 					   conf->link_da_num);
 			if (ret < 0) {
 				ERROR("Failed extracting RTX linking pairs from request");

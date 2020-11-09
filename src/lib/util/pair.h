@@ -174,6 +174,11 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
 				fr_pair_list_t *  : NULL, \
 				default		  : (fr_pair_list_t *) NULL))
 
+/*
+ *  Temporary macro to point the head of a pair_list to a specific vp
+ */
+#define fr_pair_list_set_head(_list, _vp) (_list = &_vp)
+
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
 
