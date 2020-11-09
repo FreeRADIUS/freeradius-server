@@ -326,7 +326,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
+int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 				     int idx, fr_aka_sim_keys_t *keys, fr_aka_sim_vector_src_t *src)
 {
 	int		ret;
@@ -337,7 +337,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 	switch (*src) {
 	default:
 	case AKA_SIM_VECTOR_SRC_KI:
-		ret = vector_gsm_from_ki(request, &vps, idx, keys);
+		ret = vector_gsm_from_ki(request, vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_KI;
 			break;
@@ -347,7 +347,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_TRIPLETS:
-		ret = vector_gsm_from_triplets(request, &vps, idx, keys);
+		ret = vector_gsm_from_triplets(request, vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_TRIPLETS;
 			break;
@@ -357,7 +357,7 @@ int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
 		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
-		ret = vector_gsm_from_quintuplets(request, &vps, idx, keys);
+		ret = vector_gsm_from_quintuplets(request, vps, idx, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_QUINTUPLETS;
 			break;

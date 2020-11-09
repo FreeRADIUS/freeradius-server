@@ -307,7 +307,7 @@ void		fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys);
 /*
  *	vector.c
  */
-int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 						 int idx,
 						 fr_aka_sim_keys_t *keys,
 						 fr_aka_sim_vector_src_t *src);

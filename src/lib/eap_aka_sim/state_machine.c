@@ -1544,11 +1544,11 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
 	}
 
 	RDEBUG2("Acquiring GSM vector(s)");
-	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 0,
+	if ((fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 0,
 					      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 1,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 1,
 	    				      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 2,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 2,
 	    				      &eap_aka_sim_session->keys, &src) != 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		RETURN_MODULE_FAIL;
