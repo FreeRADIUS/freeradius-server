@@ -53,12 +53,12 @@ rlm_rcode_t rad_virtual_server(request_t *request)
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
 
-	username = fr_pair_find_by_num(request->request_pairs, 0, FR_STRIPPED_USER_NAME);
-	if (!username) username = fr_pair_find_by_num(request->request_pairs, 0, FR_USER_NAME);
+	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
+	if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
 
 	if (request->parent) {
-		parent_username = fr_pair_find_by_num(request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
-		if (!parent_username) parent_username = fr_pair_find_by_num(request->parent->request_pairs, 0, FR_USER_NAME);
+		parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
+		if (!parent_username) parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 	}
 
 	/*
@@ -69,7 +69,7 @@ rlm_rcode_t rad_virtual_server(request_t *request)
 		 *	Look at the full User-Name with realm.
 		 */
 		if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
-			vp = fr_pair_find_by_num(request->parent->request_pairs, 0, FR_USER_NAME);
+			vp = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 			if (!vp) goto runit;
 		} else {
 			vp = parent_username;
