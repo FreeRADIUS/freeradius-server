@@ -32,7 +32,7 @@ RCSIDH(pairmove_h, "$Id$")
 extern "C" {
 #endif
 
-void	radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_t *from, bool do_xlat) CC_HINT(nonnull);
+void	radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from, bool do_xlat) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

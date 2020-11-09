@@ -366,7 +366,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			/* ctx may be reply */
 			if (pl->reply) {
 				MEM(fr_pair_list_copy(reply, &reply_tmp, &pl->reply) >= 0);
-				radius_pairmove(request, &reply->vps, reply_tmp, true);
+				radius_pairmove(request, &reply->vps, &reply_tmp, true);
 			}
 			fr_pair_list_move(&request->control_pairs, &check_tmp);
 
