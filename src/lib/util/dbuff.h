@@ -41,15 +41,52 @@ extern "C" {
 typedef struct fr_dbuff_s fr_dbuff_t;
 typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
 
+/** A pointer into a dbuff
+ *
+ * Markers are used whenever the caller needs to access part
+ * of the underlying buffer other than the start, current
+ * position. or end.
+ *
+ * Markers are needed because if a dbuff is extended pointers
+ * into the underlying buffer may be invalidated by a realloc
+ * or data shifting.
+ *
+ * Markers are intended to be allocated on the stack, and
+ * associated with a stack specific `fr_dbuff_t`.  Using a
+ * stack frame specific dbuff ensures markers are automatically
+ * released when the stack frame is popped.
+ */
 struct fr_dbuff_marker_s {
 	union {
-		uint8_t const *p_i;		//!< Immutable position pointer.
-		uint8_t *p;			//!< Mutable position pointer.
+		uint8_t const *p_i;			//!< Immutable position pointer.
+		uint8_t *p;				//!< Mutable position pointer.
 	};
-	fr_dbuff_marker_t	*next;		//!< Next m in the list.
+	fr_dbuff_marker_t	*next;		//!< Next marker in the list.
 	fr_dbuff_t		*parent;	//!< Owner of the marker.
 };
 
+/** dbuff extension function
+ *
+ * This callback is used to extend the underlying buffer.
+ *
+ * - Where the buffer is being used to aggregate data, this
+ * function will usually call realloc to extend the buffer.
+ *
+ * - Where the buffer is being used for stream parsing, this
+ * function will usually shift the existing data in the
+ * buffer to the left, and read in more data from the
+ * stream.
+ *
+ * Generally the caller will request the minimum amount the
+ * buffer should be extended by.  This callback may choose
+ * to ignore the request and extend the buffer by more than
+ * the requested amount.
+ *
+ * @param[in] dbuff		to extend.
+ * @param[in] req_extension	How much the caller wants
+ *				to extend the buffer by.
+ * @return How much the buffer was extended by.
+ */
 typedef size_t(*fr_dbuff_extend_t)(fr_dbuff_t *dbuff, size_t req_extension);
 
 struct fr_dbuff_s {
@@ -81,7 +118,10 @@ struct fr_dbuff_s {
 						///< the buffer.
 	void			*uctx;		//!< Extend uctx data.
 
-	fr_dbuff_t		*parent;
+	fr_dbuff_t		*parent;	//!< The #fr_dbuff_t this #fr_dbuff_t was
+						///< created from.
+						///< This will usually be the #fr_dbuff_t
+						///< passed into a function.
 
 	fr_dbuff_marker_t	*m;		//!< Pointers to update if the underlying
 						///< buffer changes.
