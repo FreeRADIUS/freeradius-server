@@ -50,7 +50,7 @@ jobs:
       matrix:
         os:
           - ubuntu-18.04
-          - ubuntu-20.04
+#          - ubuntu-20.04
         env:
           - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
