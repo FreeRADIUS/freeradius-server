@@ -58,7 +58,6 @@ RCSID("$Id$")
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
-static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
 /** Evaluation function for EAP-AKA-encodability
  *
@@ -120,8 +119,8 @@ static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encoder_ctx)
 
 	memcpy(packet_ctx->iv, (uint8_t *)&iv[0], sizeof(packet_ctx->iv));	/* ensures alignment */
 
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_IV, (4 + AKA_SIM_IV_SIZE) >> 2, 0, 0);
-	FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, packet_ctx->iv, sizeof(packet_ctx->iv));
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_IV, (4 + AKA_SIM_IV_SIZE) >> 2, 0, 0);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx->iv, sizeof(packet_ctx->iv));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Initialisation vector");
 
@@ -177,7 +176,7 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	Usually in and out will be the same buffer
 	 */
 	if (unlikely(fr_dbuff_start(&work_dbuff) != in)) {
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, in, inlen);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, in, inlen);
 	} else {
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, inlen);
 		fr_dbuff_advance(&work_dbuff, inlen);
@@ -187,7 +186,7 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	Append an AT_PADDING attribute if required
 	 */
 	if (pad_len != 0) {
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_PADDING, (uint8_t)(pad_len >> 2));
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_PADDING, (uint8_t)(pad_len >> 2));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, pad_len - 2);
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), pad_len, "Done padding attribute");
 	}
@@ -252,7 +251,7 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	Overwrite the plaintext with our encrypted blob
 	 */
 	fr_dbuff_set_to_start(&work_dbuff);
-	FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, encr, encr_len);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, encr, encr_len);
 
 	talloc_free(encr);
 	EVP_CIPHER_CTX_free(evp_ctx);
@@ -348,7 +347,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		}
 
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)(vp->vp_length * 8));	/* RES Length (bits, big endian) */
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 		goto done;
 
 	/*
@@ -367,8 +366,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_CHECKCODE:
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0, 0);	/* Reserved */
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);	/* Reserved */
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 		goto done;
 
 	default:
@@ -402,7 +401,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		}
 
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)vp->vp_length);		/* Big endian real string length */
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -433,7 +432,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			/*
 			 *	Copy in value
 			 */
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 
 			/*
 			 *	Pad out the value
@@ -445,7 +444,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 */
 		} else {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)vp->vp_length);	/* Big endian real string length */
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 		}
 		break;
 
@@ -461,7 +460,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	+---------------+---------------+-------------------------------+
 	 */
 	case FR_TYPE_BOOL:
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0, 0);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);
 		break;
 
 	/*
@@ -648,7 +647,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, pad_len);
 	}
 
-	fr_dbuff_bytes_in(&hdr_dbuff, (uint8_t)da->attr,
+	fr_dbuff_in_bytes(&hdr_dbuff, (uint8_t)da->attr,
 			  (uint8_t)(fr_dbuff_used(&work_dbuff) >> 2));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done RFC attribute");
@@ -667,7 +666,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);
 
 	value_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
 	fr_dbuff_marker(&value_start, &value_dbuff);
@@ -712,7 +711,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	if (!da->flags.extra && da->flags.subtype) {
 		ssize_t	value_len = fr_dbuff_used(&work_dbuff) - 2;
 
-		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_marker_current(&value_start),
+		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_current(&value_start),
 					      value_len, encoder_ctx);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
@@ -774,14 +773,14 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	length field in the buffer.
 	 */
 	total_len = ROUND_UP_POW2(len + 2, 4);
-	FR_DBUFF_BYTES_IN_RETURN(&tl_dbuff, (uint8_t)da->attr, (uint8_t)(total_len >> 2));
+	FR_DBUFF_IN_BYTES_RETURN(&tl_dbuff, (uint8_t)da->attr, (uint8_t)(total_len >> 2));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV attribute");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-static ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t const		*vp;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -925,13 +924,13 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 
 	fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, 1024);
 
-	fr_dbuff_bytes_in(&dbuff, subtype, 0, 0);
+	fr_dbuff_in_bytes(&dbuff, subtype, 0, 0);
 
 	/*
 	 *	Add space in the packet for AT_MAC
 	 */
 	if (do_hmac) {
-		FR_DBUFF_BYTES_IN_RETURN(&dbuff, FR_MAC, AKA_SIM_MAC_SIZE >> 2, 0, 0);
+		FR_DBUFF_IN_BYTES_RETURN(&dbuff, FR_MAC, AKA_SIM_MAC_SIZE >> 2, 0, 0);
 		fr_dbuff_marker(&hmac, &dbuff);
 		FR_DBUFF_MEMSET_RETURN(&dbuff, 0, 16);
 	}
@@ -941,7 +940,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 */
 	(void)fr_cursor_head(&cursor);
 	while (fr_cursor_current(&cursor)) {
-		slen = fr_aka_sim_encode_pair(&FR_DBUFF_TMP(p, end), &cursor, packet_ctx);
+		slen = fr_aka_sim_encode_pair(&dbuff, &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
 			talloc_free(fr_dbuff_buff(&dbuff));
@@ -957,12 +956,12 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
-		slen = fr_aka_sim_crypto_sign_packet(fr_dbuff_marker_current(&hmac), eap_packet, false,
+		slen = fr_aka_sim_crypto_sign_packet(fr_dbuff_current(&hmac), eap_packet, false,
 						 packet_ctx->hmac_md,
 						 packet_ctx->keys->k_aut, packet_ctx->keys->k_aut_len,
 						 packet_ctx->hmac_extra, packet_ctx->hmac_extra_len);
 		if (slen < 0) goto error;
-		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hmac) - 4, AKA_SIM_MAC_SIZE, "hmac attribute");
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hmac) - 4, AKA_SIM_MAC_SIZE, "hmac attribute");
 	}
 	FR_PROTO_HEX_DUMP(eap_packet->type.data, eap_packet->type.length, "sim packet");
 

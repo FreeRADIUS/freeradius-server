@@ -412,7 +412,7 @@ static int put_bits_dbuff(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t 
 	data = htonll(data);
 
 	start_bit += num_bits;
-	if (start_bit > 7) FR_DBUFF_MEMCPY_IN_RETURN(dbuff, (uint8_t const *) &data, (size_t)(start_bit / 8));
+	if (start_bit > 7) FR_DBUFF_IN_MEMCPY_RETURN(dbuff, (uint8_t const *) &data, (size_t)(start_bit / 8));
 
 	*p = ((uint8_t *) &data)[start_bit / 8];
 	return start_bit % 8;
@@ -590,11 +590,11 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 				size_t mylen = vp->da->flags.length;
 
 				if (vp->vp_length < mylen) {
-					FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr),
+					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr),
 								  vp->vp_length);
 					FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, mylen - vp->vp_length);
 				} else {
-					FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), mylen);
+					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), mylen);
 				}
 
 			} else {

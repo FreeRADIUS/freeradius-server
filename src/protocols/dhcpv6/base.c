@@ -759,13 +759,13 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		return -1;
 	}
 
-	FR_DBUFF_BYTES_IN_RETURN(dbuff, (uint8_t) msg_type);
+	FR_DBUFF_IN_BYTES_RETURN(dbuff, (uint8_t) msg_type);
 
 	switch (msg_type) {
 	case FR_DHCPV6_RELAY_REPLY:
 		if (!original) return -1;
 
-		FR_DBUFF_MEMCPY_IN_RETURN(dbuff, original + 1, 1 + 32);
+		FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 1 + 32);
 		break;
 
 	case FR_DHCPV6_RELAY_FORWARD:
@@ -787,19 +787,19 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		 *	Copy over original transaction ID if we have it.
 		 */
 		if (original) {
-			FR_DBUFF_MEMCPY_IN_RETURN(dbuff, original + 1, 3);
+			FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 3);
 		} else {
 			/*
 			 *	We can set an XID, or we can pick a random one.
 			 */
 			vp = fr_pair_find_by_da(&vps, attr_transaction_id);
 			if (vp && (vp->vp_length >= 3)) {
-				FR_DBUFF_MEMCPY_IN_RETURN(dbuff, vp->vp_octets, 3);
+				FR_DBUFF_IN_MEMCPY_RETURN(dbuff, vp->vp_octets, 3);
 			} else {
 				uint8_t id[sizeof(uint32_t)];
 
 				fr_net_from_uint32(id, fr_rand());
-				FR_DBUFF_MEMCPY_IN_RETURN(dbuff, &id[1], 3);
+				FR_DBUFF_IN_MEMCPY_RETURN(dbuff, &id[1], 3);
 			}
 		}
 		break;

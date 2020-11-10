@@ -1204,7 +1204,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			len = value->vb_length;
 		}
 
-		if (value->vb_length > 0) fr_dbuff_memcpy_in(dbuff, (uint8_t const *)value->datum.ptr, len);
+		if (value->vb_length > 0) fr_dbuff_in_memcpy(dbuff, (uint8_t const *)value->datum.ptr, len);
 
 		return len;
 	}
@@ -1245,31 +1245,31 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
-		fr_dbuff_memcpy_in(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+		fr_dbuff_in_memcpy(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
 				   sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 	/*
 	 *	Needs special mangling
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		fr_dbuff_memcpy_in(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
-		fr_dbuff_memcpy_in(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+		fr_dbuff_in_memcpy(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
+		fr_dbuff_in_memcpy(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
 				   sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		if (value->vb_ip.scope_id > 0) fr_dbuff_bytes_in(dbuff, value->vb_ip.scope_id);
-		fr_dbuff_memcpy_in(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) fr_dbuff_in_bytes(dbuff, value->vb_ip.scope_id);
+		fr_dbuff_in_memcpy(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (value->vb_ip.scope_id > 0) fr_dbuff_bytes_in(dbuff, value->vb_ip.scope_id);
-		fr_dbuff_memcpy_in(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
-		fr_dbuff_memcpy_in(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) fr_dbuff_in_bytes(dbuff, value->vb_ip.scope_id);
+		fr_dbuff_in_memcpy(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
+		fr_dbuff_in_memcpy(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_BOOL:
-		fr_dbuff_bytes_in(dbuff, value->datum.boolean);
+		fr_dbuff_in_bytes(dbuff, value->datum.boolean);
 		break;
 
 	/*
@@ -1281,7 +1281,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
 		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
-		fr_dbuff_memcpy_in(dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
+		fr_dbuff_in_memcpy(dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
 		break;
 
 	/*
@@ -1301,7 +1301,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
 
 		fr_value_box_hton(&tmp, value);
-		fr_dbuff_memcpy_in(dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
+		fr_dbuff_in_memcpy(dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
 	}
 		break;
 

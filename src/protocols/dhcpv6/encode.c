@@ -216,10 +216,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		slen = fr_dhcpv6_option_len(vp);
 
 		if (vp->vp_length < (size_t)slen) {
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), vp->vp_length);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), vp->vp_length);
 			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0x00, slen - vp->vp_length);
 		} else {
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), (size_t) slen);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), (size_t) slen);
 		}
 		break;
 
@@ -238,7 +238,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
 
 	/*
@@ -261,8 +261,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
 
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, prefix_len); /* Only copy the minimum address bytes required */
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, prefix_len); /* Only copy the minimum address bytes required */
 	}
 		break;
 
@@ -275,8 +275,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	{
 		size_t prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
 
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, prefix_len);	/* Only copy the minimum address bytes required */
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, prefix_len);	/* Only copy the minimum address bytes required */
 	}
 		break;
 

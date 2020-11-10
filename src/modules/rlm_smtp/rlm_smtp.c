@@ -583,7 +583,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 		return 0;
 	}
 	/* Copy the vp into the email. If it cannot all be loaded, return the amount of memory that was loaded and get called again */
-	if (fr_dbuff_memcpy_in_partial(&out, &uctx->vp_in, SIZE_MAX) < fr_dbuff_remaining(&uctx->vp_in)) {
+	if (fr_dbuff_in_memcpy_partial(&out, &uctx->vp_in, SIZE_MAX) < fr_dbuff_remaining(&uctx->vp_in)) {
 		RDEBUG2("%zu bytes used (partial copy)", fr_dbuff_used(&out));
 		return fr_dbuff_used(&out);
 	}

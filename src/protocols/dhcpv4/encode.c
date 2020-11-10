@@ -61,12 +61,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	switch (da_stack->da[depth]->type) {
 	case FR_TYPE_IPV6_PREFIX:
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, vp->vp_ip.prefix);
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
 
 	default:
@@ -191,7 +191,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	hdr = work_dbuff.p;
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -280,7 +280,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	start = hdr = dbuff->p;
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	Encode any sub TLVs or values
@@ -414,9 +414,9 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0x00);
+	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) da->attr, 0x00);
 	fr_dbuff_in(&work_dbuff, dv->attr);
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0x00);
+	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) 0x00);
 
 	/*
 	 *	https://tools.ietf.org/html/rfc3925#section-4

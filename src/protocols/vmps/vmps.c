@@ -279,13 +279,13 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Create the header
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, FR_VQP_VERSION,			/* Version */
+	fr_dbuff_in_bytes(&work_dbuff, FR_VQP_VERSION,			/* Version */
 					code,				/* Opcode */
 					FR_ERROR_CODE_VALUE_NO_ERROR,	/* Response Code */
 					0);				/* Data Count */
 
 	if (original) {
-		fr_dbuff_memcpy_in(&work_dbuff, original + 4, 4);
+		fr_dbuff_in_memcpy(&work_dbuff, original + 4, 4);
 	} else {
 		fr_dbuff_in(&work_dbuff, seq_no);
 	}
@@ -342,7 +342,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		 */
 
 		/* Type */
-		fr_dbuff_bytes_in(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
+		fr_dbuff_in_bytes(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
 
 		/* Length */
 		fr_dbuff_in(&work_dbuff, (uint16_t)len);
@@ -350,16 +350,16 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		/* Data */
 		switch (vp->vp_type) {
 		case FR_TYPE_IPV4_ADDR:
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t *)&vp->vp_ipv4addr, len);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t *)&vp->vp_ipv4addr, len);
 			break;
 
 		case FR_TYPE_ETHERNET:
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_ether, len);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_ether, len);
 			break;
 
 		case FR_TYPE_OCTETS:
 		case FR_TYPE_STRING:
-			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, len);
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, len);
 			break;
 
 		default:

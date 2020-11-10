@@ -57,7 +57,7 @@ ssize_t fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 			goto done;
 		}
 
-		FR_DBUFF_BYTES_IN_RETURN(&our_out, ((c1 - hextab) << 4) + (c2 - hextab));
+		FR_DBUFF_IN_BYTES_RETURN(&our_out, ((c1 - hextab) << 4) + (c2 - hextab));
 
 		fr_sbuff_advance(&our_in, 2);
 		total++;

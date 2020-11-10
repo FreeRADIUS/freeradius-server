@@ -170,25 +170,25 @@ static void test_dbuff_net_encode(void)
 	TEST_CASE("Generate wire format variable-width");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x12) == 1);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x12) == 1);
 	TEST_CHECK(buff[0] == 0x12);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x1234) == 2);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x1234) == 2);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456) == 3);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456) == 3);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x12345678) == 4);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x12345678) == 4);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -196,7 +196,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789a) == 5);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789a) == 5);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -205,7 +205,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abc) == 6);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abc) == 6);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -215,7 +215,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abcde) == 7);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abcde) == 7);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -226,7 +226,7 @@ static void test_dbuff_net_encode(void)
 
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_uint64v_in(&dbuff, 0x123456789abcdef0) == 8);
+	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abcdef0) == 8);
 	TEST_CHECK(buff[0] == 0x12);
 	TEST_CHECK(buff[1] == 0x34);
 	TEST_CHECK(buff[2] == 0x56);
@@ -254,7 +254,7 @@ static void test_dbuff_no_advance(void)
 
 	no_advance_dbuff = FR_DBUFF_NO_ADVANCE(&dbuff);
 	init_remaining = fr_dbuff_remaining(&dbuff);
-	fr_dbuff_bytes_in(&no_advance_dbuff, 0x11, 0x12, 0x13);
+	fr_dbuff_in_bytes(&no_advance_dbuff, 0x11, 0x12, 0x13);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
 	fr_dbuff_advance(&no_advance_dbuff, 2);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
@@ -437,28 +437,28 @@ static void test_dbuff_out(void)
 
 	TEST_CASE("Check variable length uint64_t read");
 	fr_dbuff_set_to_start(&dbuff1);
-	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 2) == 2);
+	TEST_CHECK(fr_dbuff_out_uint64v(&u64val, &dbuff1, 2) == 2);
 	TEST_CHECK(u64val == 0x0123);
-	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 4) == 4);
+	TEST_CHECK(fr_dbuff_out_uint64v(&u64val, &dbuff1, 4) == 4);
 	TEST_CHECK(u64val == 0x456789ab);
 	fr_dbuff_set_to_start(&dbuff1);
-	TEST_CHECK(fr_dbuff_uint64v_out(&u64val, &dbuff1, 8) == 8);
+	TEST_CHECK(fr_dbuff_out_uint64v(&u64val, &dbuff1, 8) == 8);
 	TEST_CHECK(u64val == 0x0123456789abcdef);
 
-	TEST_CASE("fr_dbuff_memcpy_out");
+	TEST_CASE("fr_dbuff_out_memcpy");
 	fr_dbuff_set_to_start(&dbuff1);
 	fr_dbuff_set_to_start(&dbuff2);
 	fr_dbuff_marker(&marker1, &dbuff1);
 	memset(buff3, 0, sizeof(buff3));
-	TEST_CHECK(fr_dbuff_memcpy_out(buff3, &dbuff1, 7) == 7);
+	TEST_CHECK(fr_dbuff_out_memcpy(buff3, &dbuff1, 7) == 7);
 	TEST_CHECK(memcmp(buff3, fr_dbuff_start(&dbuff1), 7) == 0 && buff3[7] == 0);
 	TEST_CHECK(fr_dbuff_current(&dbuff1) - fr_dbuff_current(&marker1) == 7);
 	fr_dbuff_set_to_start(&dbuff1);
-	TEST_CHECK(fr_dbuff_memcpy_out(&dbuff2, &dbuff1, 4) == 4);
+	TEST_CHECK(fr_dbuff_out_memcpy(&dbuff2, &dbuff1, 4) == 4);
 	fr_dbuff_set_to_start(&dbuff1);
 	fr_dbuff_advance(&dbuff1, 3);
 	fr_dbuff_advance(&dbuff2, 2);
-	TEST_CHECK(fr_dbuff_memcpy_out(&dbuff2, &dbuff1, 4) == 4);
+	TEST_CHECK(fr_dbuff_out_memcpy(&dbuff2, &dbuff1, 4) == 4);
 	TEST_CHECK(memcmp(fr_dbuff_start(&dbuff2), fr_dbuff_start(&dbuff1), 2) == 0 &&
 		   memcmp(fr_dbuff_start(&dbuff2) + 2, fr_dbuff_start(&dbuff1) + 3, 4) == 0);
 }

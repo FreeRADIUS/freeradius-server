@@ -129,7 +129,7 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, uint8_t const *input, size_t i
 	fr_md5_ctx_free(&md5_ctx);
 	fr_md5_ctx_free(&md5_ctx_old);
 
-	return fr_dbuff_memcpy_in(dbuff, passwd, len);
+	return fr_dbuff_in_memcpy(dbuff, passwd, len);
 }
 
 
@@ -232,7 +232,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, uint8_t const *in, size
 	fr_md5_ctx_free(&md5_ctx);
 	fr_md5_ctx_free(&md5_ctx_old);
 
-	FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, tpasswd, len);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, tpasswd, len);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -464,9 +464,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	if ((vp->da->type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
 		if (packet_ctx->tag) {
-			FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, packet_ctx->tag);
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, packet_ctx->tag);
 		} else if (TAG_VALID(vp->vp_strvalue[0])) {
-			FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0);
 		}
 	}
 
@@ -506,14 +506,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		FALL_THROUGH;
 
 	case FR_TYPE_OCTETS:
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, (uint8_t const *)(vp->vp_ptr), len);
+		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)(vp->vp_ptr), len);
 		break;
 
 	/*
 	 *	Common encoder might add scope byte
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
 
 	/*
@@ -521,17 +521,17 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 		len = vp->vp_ip.prefix >> 3;	/* Convert bits to whole bytes */
-		FR_DBUFF_BYTES_IN_RETURN(&value_dbuff, 0, vp->vp_ip.prefix);
+		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0, vp->vp_ip.prefix);
 		/* Only copy the minimum number of address bytes required */
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, (uint8_t const *)vp->vp_ipv6addr, len);
+		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)vp->vp_ipv6addr, len);
 		break;
 
 	/*
 	 *	Common encoder doesn't add reserved byte
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		FR_DBUFF_BYTES_IN_RETURN(&value_dbuff, 0, vp->vp_ip.prefix);
-		FR_DBUFF_MEMCPY_IN_RETURN(&value_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0, vp->vp_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
 		break;
 
 	/*
@@ -791,10 +791,10 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode which extended attribute it is.
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, 3 + extra);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
-	if (extra) FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);	/* flags start off at zero */
+	if (extra) FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0);	/* flags start off at zero */
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -805,7 +805,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 		depth++;
 
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) da_stack->da[depth++]->attr);
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
 		fr_dbuff_current(&hdr)[1] += 5;
 
@@ -881,14 +881,14 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 		fr_dbuff_marker_t	hdr;
 
 		fr_dbuff_marker(&hdr, &work_dbuff);
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, 2);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, 2);
 
 		left = slen;
 
 		/* no more than 253 octets */
 		if (left > 253) left = 253;
 
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, p, left);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, left);
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr) + 2, left, "concat value octets");
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 2, "concat header rfc");
@@ -943,7 +943,7 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 		break;
 	}
 
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 2);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 2);
 
 	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encoder_ctx);
 	if (slen <= 0) return slen;
@@ -1019,11 +1019,11 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 		break;
 
 	case 2:
-		fr_dbuff_bytes_in(&work_dbuff, 0, (uint8_t)(dv->flags.type_size + 2));
+		fr_dbuff_in_bytes(&work_dbuff, 0, (uint8_t)(dv->flags.type_size + 2));
 		break;
 
 	case 1:
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)(dv->flags.type_size + 1));
+		fr_dbuff_in_bytes(&work_dbuff, (uint8_t)(dv->flags.type_size + 1));
 		break;
 	}
 
@@ -1080,13 +1080,13 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 9);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 9);
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) fr_dict_vendor_num_by_da(vp->da));
 
 	/*
 	 *	Encode the first attribute
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 3, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 3, 0);
 
 	/*
 	 *	"outlen" can be larger than 255 because of the "continuation" byte.
@@ -1152,7 +1152,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 6);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 6);
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -1223,7 +1223,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	 *	Thank you, WiMAX!
 	 */
 	if ((vp->da == attr_chargeable_user_identity) && (vp->vp_length == 0)) {
-		fr_dbuff_bytes_in(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
+		fr_dbuff_in_bytes(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start), 2, "header rfc");
 
@@ -1236,7 +1236,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 	 *	Message-Authenticator is hard-coded.
 	 */
 	if (vp->da == attr_message_authenticator) {
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, 16);
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start) + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH,

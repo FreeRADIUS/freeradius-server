@@ -249,7 +249,7 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 	if (inlen > sizeof(digest)) inlen = sizeof(digest);
 	for (i = 0; i < inlen; i++) digest[i] ^= in[i];
 
-	fr_dbuff_memcpy_in(&work_dbuff, digest, sizeof(digest));
+	fr_dbuff_in_memcpy(&work_dbuff, digest, sizeof(digest));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -923,7 +923,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	 */
 	work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 65535);
 
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, code, id);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, code, id);
 	length_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
@@ -933,7 +933,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		/*
 		 * Callers in these cases have preloaded the buffer with the authentication vector.
 		 */
-		FR_DBUFF_MEMCPY_OUT_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
+		FR_DBUFF_OUT_MEMCPY_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
@@ -950,7 +950,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 			return -1;
 		}
 		memcpy(packet_ctx.vector, original + 4, sizeof(packet_ctx.vector));
-		FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
@@ -971,7 +971,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	later themselves, well, too bad.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 241, 7, 4 /* Original-Packet-Code */,
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 241, 7, 4 /* Original-Packet-Code */,
 					 0, 0, 0, original[0]);
 	}
 
@@ -1003,7 +1003,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 					continue;
 				}
 
-				FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
+				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 				fr_cursor_next(&cursor);
 				continue;
 			}

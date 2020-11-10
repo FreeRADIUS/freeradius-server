@@ -71,14 +71,14 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	/*
 	 *	Zero out first encoding byte
 	 */
-	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0);
 
 	switch (da->type) {
 	/*
 	 *	Only leaf attributes can be tainted
 	 */
 	case FR_TYPE_VALUE:
-		if (vp->vp_tainted) fr_dbuff_marker_current(&enc_field)[0] |= FR_INTERNAL_FLAG_TAINTED;
+		if (vp->vp_tainted) fr_dbuff_current(&enc_field)[0] |= FR_INTERNAL_FLAG_TAINTED;
 		break;
 
 	default:
@@ -89,17 +89,17 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Need to use the second encoding byte
 	 */
 	if (da->flags.is_unknown) {
-		fr_dbuff_marker_current(&enc_field)[0] |= FR_INTERNAL_FLAG_EXTENDED;
-		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
+		fr_dbuff_current(&enc_field)[0] |= FR_INTERNAL_FLAG_EXTENDED;
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
 	}
 
 	/*
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_dbuff_uint64v_in(&work_dbuff, da->attr);
+	flen = fr_dbuff_in_uint64v(&work_dbuff, da->attr);
 	if (flen <= 0) return flen;
-	fr_dbuff_marker_current(&enc_field)[0] |= ((flen - 1) << 5);
+	fr_dbuff_current(&enc_field)[0] |= ((flen - 1) << 5);
 
 	/*
 	 *	Leave one byte in hopes that the length will fit
@@ -115,7 +115,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		slen = fr_value_box_to_network_dbuff(NULL, &FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1),
 						     &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
-		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&value_field), slen, "value %s",
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&value_field), slen, "value %s",
 				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
 		fr_cursor_next(cursor);
 		break;
@@ -218,7 +218,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Already did length checks at the start of
 	 *	the function.
 	 */
-	slen = fr_dbuff_current(&work_dbuff) - fr_dbuff_marker_current(&value_field);
+	slen = fr_dbuff_current(&work_dbuff) - fr_dbuff_current(&value_field);
 	flen = (ssize_t) fr_net_from_uint64v(buff, slen);
 
 	/*
@@ -230,14 +230,14 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	if (flen > 1) {
 		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, flen - 1);
-		fr_dbuff_marker_advance(&value_dest, flen - 1);
+		fr_dbuff_advance(&value_dest, flen - 1);
 		fr_dbuff_move(&value_dest, &value_field, slen);
 	}
 
 	fr_dbuff_move(&len_field, &FR_DBUFF_TMP(buff, flen), flen);
-	fr_dbuff_marker_current(&enc_field)[0] |= ((flen - 1) << 2);
+	fr_dbuff_current(&enc_field)[0] |= ((flen - 1) << 2);
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&enc_field), fr_dbuff_used(&work_dbuff) - slen, "header");
+	FR_PROTO_HEX_DUMP(fr_dbuff_current(&enc_field), fr_dbuff_used(&work_dbuff) - slen, "header");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
