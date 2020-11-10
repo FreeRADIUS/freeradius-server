@@ -33,8 +33,8 @@ RCSID("$Id$")
 #include <string.h>
 
 fr_table_num_ordered_t const fr_tokens_table[] = {
-	{ L("=~"), T_OP_REG_EQ	}, /* order is important! */
-	{ L("!~"), T_OP_REG_NE	},
+	{ L("=~"), 	T_OP_REG_EQ	}, /* order is important! */
+	{ L("!~"),	 T_OP_REG_NE	},
 	{ L("{"),	T_LCBRACE	},
 	{ L("}"),	T_RCBRACE	},
 	{ L("("),	T_LBRACE	},
@@ -44,8 +44,7 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("+="),	T_OP_ADD	},
 	{ L("-="),	T_OP_SUB	},
 	{ L(":="),	T_OP_SET	},
-	{ L("=*"), T_OP_CMP_TRUE	},
-	{ L("!*"), T_OP_CMP_FALSE	},
+	{ L("=*"), 	T_OP_CMP_FALSE	},
 	{ L("=="),	T_OP_CMP_EQ	},
 	{ L("="),	T_OP_EQ		},
 	{ L("!="),	T_OP_NE		},
