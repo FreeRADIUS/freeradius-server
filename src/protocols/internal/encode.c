@@ -55,38 +55,30 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_cursor_t *cursor, void *encoder_ctx)
 {
-	uint8_t				*enc_field, *len_field, *value_field, *value_end;
-	fr_dict_attr_t const		*da = da_stack->da[depth];
-	fr_pair_t			*vp = fr_cursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	enc_field, value_field, len_field, value_dest;
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	fr_pair_t		*vp = fr_cursor_current(cursor);
 
-	uint8_t				flen;
-	ssize_t				slen = 0;
+	ssize_t			flen, slen;
 
-	uint8_t				buff[sizeof(uint64_t)];
+	uint8_t			buff[sizeof(uint64_t)];
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	enc_field = dbuff->p;
+	fr_dbuff_marker(&enc_field, &work_dbuff);
 
 	/*
 	 *	Zero out first encoding byte
 	 */
-	fr_dbuff_memset(dbuff, 0, 1);
-
-	/*
-	 *	Ensure we have at least enough space
-	 *	for the encode byte, two full width
-	 *	type and length fields, and one byte
-	 *	of data.
-	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, 0);
 
 	switch (da->type) {
 	/*
 	 *	Only leaf attributes can be tainted
 	 */
 	case FR_TYPE_VALUE:
-		if (vp->vp_tainted) enc_field[0] |= FR_INTERNAL_FLAG_TAINTED;
+		if (vp->vp_tainted) fr_dbuff_marker_current(&enc_field)[0] |= FR_INTERNAL_FLAG_TAINTED;
 		break;
 
 	default:
@@ -97,55 +89,36 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Need to use the second encoding byte
 	 */
 	if (da->flags.is_unknown) {
-		fr_dbuff_memset(dbuff, 0, 1);
-		FR_DBUFF_CHECK_REMAINING_RETURN(dbuff, (sizeof(uint64_t) * 2) + 2);	/* Check we still have room */
-
-		enc_field[0] |= FR_INTERNAL_FLAG_EXTENDED;
-		enc_field[1] |= FR_INTERNAL_FLAG_INTERNAL;
+		fr_dbuff_marker_current(&enc_field)[0] |= FR_INTERNAL_FLAG_EXTENDED;
+		FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
 	}
 
 	/*
 	 *	Encode the type and write the width of the
 	 *	integer to the encoding byte.
 	 */
-	flen = fr_dbuff_uint64v_in(dbuff, da->attr);
+	flen = fr_dbuff_uint64v_in(&work_dbuff, da->attr);
 	if (flen <= 0) return flen;
-	enc_field[0] |= ((flen - 1) << 5);
+	fr_dbuff_marker_current(&enc_field)[0] |= ((flen - 1) << 5);
 
 	/*
-	 *	Mark where the length field will be, and
-	 *	advance the pointer by one.
-	 *
-	 *	We assume most lengths will fit in one
-	 *	byte, but we lie to functions deeper in the
-	 *	stack about how much space there is left.
-	 *
-	 *	We've already done the checks for encoding
-	 *	two fields of the maximum size above.
+	 *	Leave one byte in hopes that the length will fit
+	 *	and remember where the encoded data starts.
 	 */
-	len_field = dbuff->p;
-	fr_dbuff_advance(dbuff, 1);
-	value_field = dbuff->p;
+	fr_dbuff_marker(&len_field, &work_dbuff);
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+	fr_dbuff_marker(&value_field, &work_dbuff);
+	fr_dbuff_marker(&value_dest, &work_dbuff);
 
 	switch (da->type) {
 	case FR_TYPE_VALUE:
-	{
-		size_t need = 0;
-
-		slen = fr_value_box_to_network_dbuff(&need, &FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), &vp->data);
-		if (slen < 0) switch (slen) {
-		case FR_VALUE_BOX_NET_ERROR:
-		default:
-			return PAIR_ENCODE_FATAL_ERROR;
-
-		case FR_VALUE_BOX_NET_OOM:
-			return (enc_field - dbuff->p) - need;
-		}
-		FR_PROTO_HEX_DUMP(value_field, slen, "value %s",
+		slen = fr_value_box_to_network_dbuff(NULL, &FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1),
+						     &vp->data);
+		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
+		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&value_field), slen, "value %s",
 				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
 		fr_cursor_next(cursor);
 		break;
-	}
 
 	/*
 	 *	This is the vendor container.
@@ -163,7 +136,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -191,7 +164,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 				fr_proto_da_stack_build_partial(da_stack, da_stack->da[depth], child->da);
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
-				slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
+				slen = internal_encode(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1),
 						       da_stack, depth + 1, &children, encoder_ctx);
 				if (slen < 0) return slen;
 			}
@@ -202,7 +175,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		/*
 		 *	Still encoding intermediary TLVs...
 		 */
-		slen = internal_encode(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
+		slen = internal_encode(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), da_stack, depth + 1,
 				       cursor, encoder_ctx);
 		if (slen < 0) return slen;
 		break;
@@ -217,7 +190,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t children;
+		fr_cursor_t	children;
 
 		for (vp = fr_cursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
 		     vp;
@@ -245,28 +218,28 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Already did length checks at the start of
 	 *	the function.
 	 */
-	{
-		value_end = dbuff->p;
-		flen = fr_net_from_uint64v(buff, value_end - value_field);
+	slen = fr_dbuff_current(&work_dbuff) - fr_dbuff_marker_current(&value_field);
+	flen = (ssize_t) fr_net_from_uint64v(buff, slen);
 
-		/*
-		 *	Ugh, it's a long one, need to memmove the
-		 *	data, good job we lied to all the encoding
-		 *      functions earlier, so we *must* have enough
-		 *	buffer space.
-		 */
-		if (flen > 1) {
-			fr_dbuff_advance(dbuff, flen - 1);
-			memmove(len_field + flen, value_field, value_end - value_field);
-			value_end += flen - 1;
-		}
-		memcpy(len_field, buff, flen);
-		enc_field[0] |= ((flen - 1) << 2);
+	/*
+	 *	Ugh, it's a long one, need to move the data.
+	 *	NOTE: fr_dbuff_move() advances its source and destination,
+	 *	but here, the destination is a marker--advancing it won't
+	 *	advance work_dbuff, so we advance it ourselves. Then the
+	 *	return will give the appropriate value.
+	 */
+	if (flen > 1) {
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, flen - 1);
+		fr_dbuff_marker_advance(&value_dest, flen - 1);
+		fr_dbuff_move(&value_dest, &value_field, slen);
 	}
 
-	FR_PROTO_HEX_DUMP(enc_field, (value_field + (flen - 1)) - enc_field, "header");
+	fr_dbuff_move(&len_field, &FR_DBUFF_TMP(buff, flen), flen);
+	fr_dbuff_marker_current(&enc_field)[0] |= ((flen - 1) << 2);
 
-	return value_end - enc_field;
+	FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&enc_field), fr_dbuff_used(&work_dbuff) - slen, "header");
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a data structure into an internal attribute
