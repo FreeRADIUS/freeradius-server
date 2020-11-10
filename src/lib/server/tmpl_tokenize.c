@@ -514,6 +514,7 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
 /** Initialise a tmpl using a format string to create the name
  *
  * @param[in] vpt	to initialise.
+ * @param[in] type	of tmpl to initialise.
  * @param[in] quote	Original quoting around the name.
  * @param[in] fmt	string.
  * @param[in] ...	format arguments.
@@ -560,6 +561,7 @@ tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char 
 /** Initialise a tmpl using a literal string to create the name
  *
  * @param[in] vpt	to initialise.
+ * @param[in] type	of tmpl to initialise.
  * @param[in] quote	Original quoting around the name.
  * @param[in] name	to set for the tmpl.
  * @param[in] len	Name length.  If < 0 strlen will be used
@@ -620,6 +622,7 @@ tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char con
 
 	return vpt;
 }
+/** @} */
 
 /** @name Create new #tmpl_t from a string
  *
@@ -961,6 +964,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 
 	return 0;
 }
+/** @} */
 
 /** @name Produce a #tmpl_t from a string or substring
  *
@@ -2366,6 +2370,9 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
  *
  * @param[in,out] ctx		To allocate #tmpl_t in.
  * @param[out] out		Where to write the pointer to the new #tmpl_t.
+ * @param[in] in		String to parse.
+ * @param[in] quote		Quoting around the tmpl.  Determines what we
+ *				attempt to parse the string as.
  * @param[in] p_rules		Formatting rules for the tmpl.
  * @param[in] t_rules		Validation rules for attribute references.
  * @return
@@ -3315,7 +3322,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 
 /** Print an attribute or list #tmpl_t to a string
  *
- * This function is the direct counterpart to #fr_tmpl_afrom_attr_substr.
+ * This function is the direct counterpart to #tmpl_afrom_attr_substr.
  *
  * @param[in] out		Where to write the presentation format #tmpl_t string.
  * @param[in] vpt		to print.
@@ -3488,7 +3495,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
  * of the #tmpl_t is changed programatically, or when the #tmpl_t is being serialized
  * in some non-standard way, i.e. as a value for a field in a database.
  *
- * This function is the direct counterpart to #fr_tmpl_afrom_substr.
+ * This function is the direct counterpart to #tmpl_afrom_substr.
  *
  * @note Does not print flags for regular expressions, as the quoting char is needed
  *	 to separate the elements of the expression.

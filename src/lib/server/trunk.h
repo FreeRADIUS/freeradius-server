@@ -543,7 +543,7 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   reused, then it should be kept, otherwise it should be freed.
  *   Any resources like ID allocations bound to that request should
  *   also be freed.
- *   #request_conn_release_t callback will not be called in this
+ *   #fr_trunk_request_conn_release_t callback will not be called in this
  *   instance and cannot be used as an alternative.
  * - FR_TRUNK_CANCEL_REASON_MOVE - If an encoded request can be reused
  *   it should be kept.  The trunk mux callback should be aware that
@@ -552,7 +552,7 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   If the encoded request cannot be reused it should be freed, and
  *   any fields in the preq that were modified during the last mux call
  *   (other than perhaps counters) should be reset to their initial values.
- *   Alternatively the #request_conn_release_t callback can be used for
+ *   Alternatively the #fr_trunk_request_conn_release_t callback can be used for
  *   the same purpose, as that will be called before the request is moved.
  * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
  *   request handled may be freed though that may (optionally) be left to

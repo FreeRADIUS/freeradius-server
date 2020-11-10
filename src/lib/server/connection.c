@@ -554,6 +554,7 @@ void fr_connection_watch_disable(fr_connection_watch_entry_t *entry)
 /** Enable a watcher and replace the uctx
  *
  * @param[in] entry	to enabled.
+ * @param[in] uctx	Opaque data to pass to the callback.
  */
 void fr_connection_watch_enable_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx)
 {
@@ -565,6 +566,7 @@ void fr_connection_watch_enable_set_uctx(fr_connection_watch_entry_t *entry, voi
 /** Change the uctx of an entry
  *
  * @param[in] entry	to enabled.
+ * @param[in] uctx	Opaque data to pass to the callback.
  */
 void fr_connection_watch_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx)
 {

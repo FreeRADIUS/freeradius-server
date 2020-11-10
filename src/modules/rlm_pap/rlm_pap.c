@@ -382,9 +382,16 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha
 
 /** Validates Crypt::PBKDF2 LDAP format strings
  *
- * @param[in] request	The current request.
- * @param[in] str	Raw PBKDF2 string.
- * @param[in] len	Length of string.
+ * @param[in] request		The current request.
+ * @param[in] str		Raw PBKDF2 string.
+ * @param[in] len		Length of string.
+ * @param[in] hash_names	Table containing valid hash names.
+ * @param[in] hash_names_len	How long the table is.
+ * @param[in] scheme_sep	Separation character between the scheme and the next component.
+ * @param[in] iter_sep		Separation character between the iterations and the next component.
+ * @param[in] salt_sep		Separation character between the salt and the next component.
+ * @param[in] iter_is_base64	Whether the iterations is are encoded as base64.
+ * @param[in] password		to validate.
  * @return
  *	- RLM_MODULE_REJECT
  *	- RLM_MODULE_OK

@@ -606,7 +606,7 @@ int dict_attr_init(fr_dict_attr_t **da_p,
  *
  * This is useful in some instances where we need to pre-allocate the attribute
  * for talloc hierarchy reasons, but want to finish initialising it
- * with #fr_dict_init later.
+ * with #dict_attr_init later.
  *
  * @param[in] ctx		to allocate attribute in.
  * @return

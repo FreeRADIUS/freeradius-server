@@ -199,7 +199,7 @@ typedef enum {
  my_child_encoder(&FR_DBUFF_RESERVE(dbuff, 5), vp);
  @endcode
  *
- * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ * @note Do not use to re-initialise the contents of _dbuff, i.e. to
  *	permanently shrink the exiting dbuff. The parent pointer will loop.
  *
  * @note Do not modify the "child" dbuff directly.  Use the functions
@@ -220,7 +220,7 @@ typedef enum {
  return fr_dbuff_advance(dbuff, fr_dbuff_used(tlv));
  @endcode
  *
- * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ * @note Do not use to re-initialise the contents of _dbuff, i.e. to
  *	permanently shrink the exiting dbuff. The parent pointer will loop.
  *
  * @note Do not modify the "child" dbuff directly.  Use the functions
@@ -237,7 +237,7 @@ typedef enum {
  my_child_encoder(&FR_DBUFF_MAX(dbuff, 253), vp);
  @endcode
  *
- * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ * @note Do not use to re-initialise the contents of _dbuff, i.e. to
  *	permanently shrink the exiting dbuff. The parent pointer will loop.
  *
  * @note Do not modify the "child" dbuff directly.  Use the functions
@@ -259,7 +259,7 @@ typedef enum {
  return fr_dbuff_advance(dbuff, fr_dbuff_used(tlv))
  @endcode
  *
- * @note Do not use to re-initialise the contents of #_dbuff, i.e. to
+ * @note Do not use to re-initialise the contents of _dbuff, i.e. to
  *	permanently shrink the exiting dbuff. The parent pointer will loop.
  *
  * @note Do not modify the "child" dbuff directly.  Use the functions
@@ -448,14 +448,14 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 
 /** Extend if we're below a specified low water mark
  *
- * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
+ * @param[out] _status		Should be initialised to FR_SBUFF_EXTENDABLE
  *				for the first call to this function if used
  *				as a loop condition.
  *				Will be filled with the result of the previous
  *				call, and can be used to determine if the buffer
  *				was extended.
  * @param[in] _dbuff_or_marker	to extend.
- * @param[in] lowat		If bytes remaining are below the amount, extend.
+ * @param[in] _lowat		If bytes remaining are below the amount, extend.
  * @return
  *	- 0 if there are no bytes left in the buffer and we couldn't extend.
  *	- >0 the number of bytes in the buffer after extending.
@@ -482,7 +482,7 @@ do { \
  * @note This is intended for internal use within the dbuff API only.
  *
  * @param[in,out] _pos_p	the position pointer to use.
- * @param[in] _dbuff		to extend.
+ * @param[in] _dbuff_or_marker	to extend.
  * @param[in] _len		The minimum amount the dbuff should be extended by.
  * @return The number of bytes we would need to satisfy _len as a negative integer.
  */
@@ -530,6 +530,8 @@ do { \
  *
  * These functions should only be used to pass dbuff pointers into 3rd party
  * APIs.
+ *
+ * @{
  */
 
 /** Return a pointer to the dbuff
@@ -696,14 +698,14 @@ _fr_dbuff_set(\
 /** Advance position in dbuff or marker by N bytes
  *
  * @param[in] _dbuff_or_marker	to advance.
- * @param[in] n			How much to advance dbuff by.
+ * @param[in] _len		How much to advance dbuff by.
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the dbuff or marker was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
-#define fr_dbuff_advance(_dbuff_or_marker, _n)  fr_dbuff_set(_dbuff_or_marker, (fr_dbuff_current(_dbuff_or_marker) + (_n)))
-#define FR_DBUFF_ADVANCE_RETURN(_dbuff, _inlen) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _inlen)
+#define fr_dbuff_advance(_dbuff_or_marker, _len)  fr_dbuff_set(_dbuff_or_marker, (fr_dbuff_current(_dbuff_or_marker) + (_len)))
+#define FR_DBUFF_ADVANCE_RETURN(_dbuff, _len) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff, _len)
 
 /** Reset the current position of the dbuff or marker to the start of the buffer
  *
@@ -874,9 +876,9 @@ static inline ssize_t _fr_dbuff_memcpy_in_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 
 /** Copy exactly n bytes into dbuff returning if there's insufficient space
  *
- * @param[in] dbuff	to copy data to.
- * @param[in] in	Data to copy to dbuff.
- * @param[in] inlen	How much data we need to copy.
+ * @param[in] _dbuff	to copy data to.
+ * @param[in] _in	Data to copy to dbuff.
+ * @param[in] _inlen	How much data we need to copy.
  * @return
  *	- 0	no data copied.
  *	- >0	the number of bytes copied to the dbuff.
@@ -1051,7 +1053,7 @@ FR_DBUFF_PARSE_INT_DEF(int64)
  *	- <0 the number of bytes we would have needed to complete the conversion.
  *	- >0 the number of bytes _in was advanced by.
  */
-#define FR_DBUFF_IN_RETURN(_dbuff, _in) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff, _in)
+#define FR_DBUFF_IN_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_in, _out, _in)
 
 /** Internal function - do not call directly
  */
@@ -1094,9 +1096,9 @@ size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, si
 
 /** Copy in as many bytes as possible from one dbuff or marker to another
  *
- * @param[in] out	to copy into.
- * @param[in] in	to copy from.
- * @param[in] len	The maximum length to copy.
+ * @param[in] _out	to copy into.
+ * @param[in] _in	to copy from.
+ * @param[in] _len	The maximum length to copy.
  * @return Number of bytes to copy.
  */
 #define fr_dbuff_move(_out, _in, _len) \

@@ -201,7 +201,7 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
  *	- An initialised fr_socket_t struct.
  */
 static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
-							     int proto, int ifindex, fr_ipaddr_t const *ipaddr, int port)
+							int proto, int ifindex, fr_ipaddr_t const *ipaddr, int port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
@@ -217,11 +217,24 @@ static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
 	return addr;
 }
 
+/** A variant of fr_socket_addr_init_inet_src will also allocates a #fr_socket_t
+ *
+ * @param[in] ctx		to allocate new #fr_socket_t struct in.
+ * @param[in] proto		one of the IPPROTO_* macros, i.e. IPPROTO_TCP, IPPROTO_UDP
+ * @param[in] ifindex		The interface to originate the packet from Pass <= 0 to
+ *				indicate an unknown or unspecified interface.
+ * @param[in] ipaddr		The IP address to bind to.  May be all zeros to bind to
+ *				all addresses, but the AF must still be specified.
+ * @param[in] port		The source port to bind to.
+ * @return
+ *	- NULL if invalid parameters are provided.
+ *	- An initialised fr_socket_t struct.
+ */
 static inline fr_socket_t *fr_socket_addr_alloc_inet_src(TALLOC_CTX *ctx, int proto,
-							      int ifindex, fr_ipaddr_t const *ipaddr, int port)
+							 int ifindex, fr_ipaddr_t const *ipaddr, int port)
 FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipaddr, port)
 
-/** Initialise a fr_socket_t for connecting to a remote host
+/** Initialise a #fr_socket_t for connecting to a remote host
  *
  * @param[out] addr		to initialise.
  * @param[in] proto		one of the IPPROTO_* macros, i.e. IPPROTO_TCP, IPPROTO_UDP
@@ -232,8 +245,7 @@ FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipad
  *	- NULL if invalid parameters are provided.
  *	- An initialised fr_socket_t struct.
  */
-static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr,
-							     int proto, fr_ipaddr_t const *ipaddr, int port)
+static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr, int proto, fr_ipaddr_t const *ipaddr, int port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
@@ -248,8 +260,19 @@ static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr,
 	return addr;
 }
 
+/** A variant of fr_socket_addr_alloc_inet_dst that will also allocates a #fr_socket_t
+ *
+ * @param[in] ctx		to allocate new #fr_socket_t struct in.
+ * @param[in] proto		one of the IPPROTO_* macros, i.e. IPPROTO_TCP, IPPROTO_UDP
+ * @param[in] ipaddr		The IP address to bind to.  May be all zeros to bind to
+ *				all addresses, but the AF must still be specified.
+ * @param[in] port		The source port to bind to.
+ * @return
+ *	- NULL if invalid parameters are provided.
+ *	- An initialised fr_socket_t struct.
+ */
 static inline fr_socket_t *fr_socket_addr_alloc_inet_dst(TALLOC_CTX *ctx, int proto,
-							      fr_ipaddr_t const *ipaddr, int port)
+							 fr_ipaddr_t const *ipaddr, int port)
 FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_dst, proto, ipaddr, port)
 
 int		fr_socket_client_unix(char const *path, bool async);

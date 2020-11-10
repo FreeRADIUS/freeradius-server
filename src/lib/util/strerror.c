@@ -226,6 +226,7 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
 /** Add a message to an existing stack of messages
  *
  * @param[in] fmt	printf style format string.
+ * @param[in] ap	Arguments for the error string.
  */
 static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 {

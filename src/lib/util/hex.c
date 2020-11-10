@@ -79,10 +79,10 @@ done:
  *
  * Ascii encoded hex string will not be prefixed with '0x'
  *
- * @warning If the output buffer isn't long enough, we have a buffer overflow.
- *
  * @param[out] out	Output buffer to write to.
  * @param[in] in	input.
+ * @param[in] len	how many bytes convert to hex.
+ *			Pass SIZE_MAX to copy all available data.
  * @return
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.

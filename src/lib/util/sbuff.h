@@ -170,8 +170,8 @@ typedef struct {
 							///< be passed off to a 3rd party library which will
 							///< need to interpret the same sequences.
 
-	bool		do_hex;				//!< Process hex sequences i.e. \x<hex><hex>.
-	bool		do_oct;				//!< Process oct sequences i.e. \<oct><oct><oct>.
+	bool		do_hex;				//!< Process hex sequences i.e. @verbatim\x<hex><hex>.@endverbatim
+	bool		do_oct;				//!< Process oct sequences i.e. @verbatim\<oct><oct><oct>.@endverbatim
 } fr_sbuff_unescape_rules_t;
 
 /** Set of parsing rules for *unescape_until functions
@@ -190,9 +190,9 @@ typedef struct {
 	bool		do_utf8;			//!< If true Don't apply escaping rules to valid UTF-8 sequences.
 
 	bool		do_hex;				//!< Represent escaped chars as hex sequences i.e.
-							///< \x<hex><hex>.
+							///< @verbatim\x<hex><hex>@endverbatim
 	bool		do_oct;				//!< Represent escapes chars as octal sequences i.e.
-							///< \<oct><oct><oct>.
+							///< @verbatim\<oct><oct><oct>@endvertbatim
 } fr_sbuff_escape_rules_t;
 
 /** A set of terminal sequences, and escape rules
@@ -492,6 +492,7 @@ _Generic((_start), \
  * @param[out] fctx	to initialise.  Must have a lifetime >= to the sbuff.
  * @param[in] buff	Temporary buffer to use for storing file contents.
  * @param[in] len	Length of the temporary buffer.
+ * @param[in] file	to read from.
  * @param[in] max	The maximum length of data to read from the file.
  * @return
  *	- The passed sbuff on success.
@@ -576,6 +577,8 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
  *
  * These functions should only be used to pass sbuff pointers into 3rd party
  * APIs.
+ *
+ * @{
  */
 
 /** Return a pointer to the sbuff
@@ -788,14 +791,14 @@ static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr
 
 /** Extend a buffer if we're below the low water mark
  *
- * @param[out] status		Should be initialised to FR_SBUFF_EXTENDABLE
+ * @param[out] _status		Should be initialised to FR_SBUFF_EXTENDABLE
  *				for the first call to this function if used
  *				as a loop condition.
  *				Will be filled with the result of the previous
  *				call, and can be used to determine if the buffer
  *				was extended.
  * @param[in] _sbuff_or_marker	to extend.
- * @param[in] lowat		If bytes remaining are below the amount, extend.
+ * @param[in] _lowat		If bytes remaining are below the amount, extend.
  * @return
  *	- 0 if there are no bytes left in the buffer and we couldn't extend.
  *	- >0 the number of bytes in the buffer after extending.
@@ -821,7 +824,7 @@ do { \
 
 /** Extend a buffer if no space remains
  *
- * @param[in] _sbuff	to extend.
+ * @param[in] _sbuff_or_marker	to extend.
  * @return
  *	- 0 if there are no bytes left in the buffer and we couldn't extend.
  *	- >0 the number of bytes in the buffer after extending.
@@ -903,15 +906,15 @@ _Generic((_src), \
 
 /** Advance position in sbuff by N bytes
  *
- * @param[in] sbuff	to advance.
- * @param[in] n		How much to advance sbuff by.
+ * @param[in] _sbuff_or_marker	to advance.
+ * @param[in] _len		How much to advance sbuff by.
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the sbuff was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
-#define fr_sbuff_advance(_sbuff_or_marker, _n)  fr_sbuff_set(_sbuff_or_marker, (fr_sbuff_current(_sbuff_or_marker) + (_n)))
-#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _n) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _n)
+#define fr_sbuff_advance(_sbuff_or_marker, _len)  fr_sbuff_set(_sbuff_or_marker, (fr_sbuff_current(_sbuff_or_marker) + (_len)))
+#define FR_SBUFF_ADVANCE_RETURN(_sbuff, _len) FR_SBUFF_RETURN(fr_sbuff_advance, _sbuff, _len)
 
 /** Reset the current position of the sbuff to the start of the string
  *
@@ -1049,13 +1052,12 @@ static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
 }
 /** @} */
 
-/** @name Copy/print partial input data to an sbuff
+/** @name Copy data between an sbuff/marker
  *
  * These functions are typically used for moving data between sbuffs
  *
  * @{
  */
-
 size_t _fr_sbuff_move_sbuff_to_sbuff(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 size_t _fr_sbuff_move_marker_to_sbuff(fr_sbuff_t *out, fr_sbuff_marker_t *in, size_t len);
@@ -1066,10 +1068,10 @@ size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, si
 
 /** Copy in as many bytes as possible from one sbuff or marker to another
  *
- * @param[in] out	to copy into.
- * @param[in] in	to copy from.
- * @param[in] len	The maximum length to copy.
- * @return Number of bytes to copy.
+ * @param[in] _out	to copy into.
+ * @param[in] _in	to copy from.
+ * @param[in] _len	The maximum length to copy.
+ * @return Number of bytes copied.
  */
 #define fr_sbuff_move(_out, _in, _len) \
       _Generic((_out), \
@@ -1084,6 +1086,7 @@ size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, si
 	       			fr_sbuff_marker_t *	: _fr_sbuff_move_marker_to_marker((fr_sbuff_marker_t *)_out, (fr_sbuff_marker_t *)_in, _len) \
 	       		) \
       )
+/** @} */
 
 /** @name Copy/print complete input data to an sbuff
  *
@@ -1122,7 +1125,8 @@ size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c);
 /** Lookup a string in a table using an integer value, and copy it to the sbuff
  *
  * @param[out] _slen	Where to write the return value.
- * @param[in] _table	to search for number in.
+ * @param[in] _sbuff	to search in.
+ * @param[in] _table	to search for number in.w
  * @param[in] _number	to search for.
  * @param[in] _def	Default string value.
  */
@@ -1338,6 +1342,7 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
  *
  * These functions are typically used for parsing when trying to locate
  * a sequence of characters in the sbuff.
+ *
  * @{
  */
 size_t	fr_sbuff_adv_past_str(fr_sbuff_t *sbuff, char const *needle, size_t need_len);

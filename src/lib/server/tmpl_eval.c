@@ -189,11 +189,6 @@ int radius_request(request_t **context, request_ref_t name)
 	return 0;
 }
 
-/** @name Resolve a #tmpl_t outputting the result in various formats
- *
- * @{
- */
-
 /** Return the native data type of the expression
  *
  * @param[in] vpt	to determine the type of.
@@ -782,6 +777,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 /** Traverse a TLV attribute
  *
+ * @param[in,out] prev	The previous pair in the list.
+ * @param[in] current	The pair to evaluate.
  * @param[in] ns	Tracks tree position between cursor calls.
  * @return the number of attributes matching ar.
  */
@@ -1637,6 +1634,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
  *
  * @param[out] leaf	List to add built out attributes to.
  * @param[in] interior	List to remove attributes from.
+ * @param[in] vpt	We are evaluating.
  * @return
  *	- 0 on success.
  *      - -1 on failure.

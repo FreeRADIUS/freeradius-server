@@ -172,6 +172,7 @@ static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da
 /** Allocate one fr_pair_t from a string, and add it to the pair_ctx cursor.
  *
  * @param[in,out] pair_ctx	the parsing context
+ * @param[in] start		Where to create relative error offsets in relation to.
  * @param in	String to parse
  * @param inlen	length of string to parse
  * @return

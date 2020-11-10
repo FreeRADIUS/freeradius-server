@@ -212,7 +212,6 @@ typedef enum tmpl_type_e {
 	/** A regular expression with unresolved xlat functions or attribute references
 	 */
 	TMPL_TYPE_REGEX_XLAT_UNRESOLVED = TMPL_TYPE_REGEX_XLAT | TMPL_FLAG_UNRESOLVED,
-	/** @} */
 
 	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
 } tmpl_type_t;

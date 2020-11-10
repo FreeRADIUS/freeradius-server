@@ -1063,6 +1063,7 @@ SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
  * @param[in] _max_char	Maximum digits that can be used to represent an integer.
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
+ * @param[in] _base	of the number being parsed, 8, 10, 18 etc...
  */
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
 size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
@@ -1699,6 +1700,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
  * as there's a large performance penalty.
  *
  * @param[in,out] sbuff		to search in.
+ * @param[in] len		the maximum number of characters to search in sbuff.
  * @param[in] chr		to search for.
  * @return
  *	- NULL, no instances found.
