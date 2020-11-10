@@ -1355,7 +1355,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 */
 	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1,
-				      u->code, id, request->request_pairs);
+				      u->code, id, &request->request_pairs);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
 

@@ -388,7 +388,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, request->reply_pairs);
+				    request->reply->code, request->reply->id, &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;

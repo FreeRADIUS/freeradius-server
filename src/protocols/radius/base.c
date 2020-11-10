@@ -900,13 +900,13 @@ void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
  *
  */
 ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, size_t secret_len, int code, int id, fr_pair_t *vps)
+			 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps)
 {
 	return fr_radius_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, secret, secret_len, code, id, vps);
 }
 
 ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_t *vps)
+			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
@@ -978,7 +978,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
+	fr_cursor_talloc_iter_init(&cursor, vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 

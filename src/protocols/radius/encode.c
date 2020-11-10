@@ -1469,7 +1469,7 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, ui
 	 *	can leverage a consistent random number generator.
 	 */
 	slen = fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
-				packet_type, 0, vps);
+				packet_type, 0, &vps);
 	if (slen <= 0) return slen;
 
 	if (fr_radius_sign(data, NULL, (uint8_t const *) test_ctx->secret, talloc_array_length(test_ctx->secret) - 1) < 0) {
