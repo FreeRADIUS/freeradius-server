@@ -65,7 +65,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_chbind_response_code);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_chbind_response_code);
 	if (vp) {
 		ptr[0] = vp->vp_uint32;
 	} else {
@@ -99,7 +99,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 		}
 		if (vp->da == attr_message_authenticator) goto next;
 
-		slen = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
+		slen = fr_radius_encode_pair(&FR_DBUFF_TMP(ptr, end), &cursor, NULL);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) goto next;
 
@@ -182,13 +182,13 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 
 	/* Set-up the fake request */
 	fake = request_alloc_fake(request, NULL);
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
 		vp = fr_pair_copy(fake->packet, chbind->username);
-		fr_pair_add(&fake->packet->vps, vp);
+		fr_pair_add(&fake->request_pairs, vp);
 	}
 
 	/*
@@ -202,7 +202,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 
 		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_cursor_init(&cursor, &fake->packet->vps);
+		fr_cursor_init(&cursor, &fake->request_pairs);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
@@ -301,7 +301,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps)
 	return packet;
 }
 
-fr_pair_t *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
+fr_pair_t *eap_chbind_packet2vp(fr_radius_packet_t *packet, chbind_packet_t *chbind)
 {
 	fr_pair_t	*vp;
 

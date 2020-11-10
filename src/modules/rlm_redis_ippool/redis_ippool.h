@@ -56,7 +56,7 @@ typedef enum {
 #define IPPOOL_MAX_KEY_PREFIX_SIZE	128
 #define IPPOOL_POOL_KEY			"pool"
 #define IPPOOL_ADDRESS_KEY		"ip"
-#define IPPOOL_DEVICE_KEY		"device"
+#define IPPOOL_OWNER_KEY		"device"
 
 /** {prefix}:pool
  */

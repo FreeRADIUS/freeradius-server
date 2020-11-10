@@ -294,7 +294,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 }
 
 
-static void print_packet(FILE *fp, RADIUS_PACKET *packet)
+static void print_packet(FILE *fp, fr_radius_packet_t *packet)
 {
 	fr_pair_t *vp;
 	fr_cursor_t cursor;
@@ -444,7 +444,7 @@ static bool do_xlats(char const *filename, FILE *fp)
  *	Verify the result of the map.
  */
 static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   tmpl_t const *src, UNUSED vp_map_t const *maps)
+			   tmpl_t const *src, UNUSED map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing source");
@@ -456,7 +456,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 }
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED request_t *request,
-			      	UNUSED fr_value_box_t **src, UNUSED vp_map_t const *maps)
+			      	UNUSED fr_value_box_t **src, UNUSED map_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }
@@ -551,7 +551,7 @@ static request_t *request_clone(request_t *old)
 	if (!request->reply) request->reply = fr_radius_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->request_pairs, old->packet->vps);
+	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->packet->vps);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 

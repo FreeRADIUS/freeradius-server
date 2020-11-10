@@ -32,7 +32,7 @@ RCSID("$Id$")
 /** When the chld is done, tell the parent that we've exited.
  *
  */
-static unlang_action_t unlang_parallel_child_done(request_t *request, UNUSED rlm_rcode_t *presult, UNUSED int *priority, void *uctx)
+static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	unlang_parallel_child_t *child = uctx;
 
@@ -65,7 +65,7 @@ static unlang_action_t unlang_parallel_child_done(request_t *request, UNUSED rlm
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -112,18 +112,18 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 				 *	the parent.
 				 */
 				if ((fr_pair_list_copy(child->packet,
-						       &child->packet->vps,
-						       request->request_pairs) < 0) ||
+						       &child->request_pairs,
+						       &request->request_pairs) < 0) ||
 				    (fr_pair_list_copy(child->reply,
-						       &child->reply->vps,
-						       request->reply_pairs) < 0) ||
+						       &child->reply_pairs,
+						       &request->reply_pairs) < 0) ||
 				    (fr_pair_list_copy(child,
 						       &child->control,
-						       request->control_pairs) < 0)) {
+						       &request->control_pairs) < 0)) {
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
 
-					*presult = RLM_MODULE_FAIL;
+					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_CALCULATE_RESULT;
 				}
 			}
@@ -134,13 +134,15 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 			 *	done, followed by the instruction to
 			 *	run in the child.
 			 */
-			unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
-					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-			unlang_interpret_push_function(child, NULL, unlang_parallel_child_done,
-						       &state->children[i]);
-			unlang_interpret_push(child,
-					      state->children[i].instruction, RLM_MODULE_FAIL,
-					      UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+			if ((unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
+						   UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) ||
+			    (unlang_interpret_push_function(child, unlang_parallel_child_done, NULL, &state->children[i]) < 0) ||
+			    (unlang_interpret_push(child,
+						   state->children[i].instruction, RLM_MODULE_FAIL,
+						   UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0)) {
+				*p_result = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_STOP_PROCESSING;
+			}
 
 			/*
 			 *	It is often useful to create detached
@@ -346,7 +348,7 @@ static unlang_action_t unlang_parallel_process(request_t *request, rlm_rcode_t *
 		}
 	}
 
-	*presult = state->result;
+	*p_result = state->result;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -380,25 +382,25 @@ static void unlang_parallel_signal(request_t *request, fr_state_signal_t action)
 	}
 }
 
-static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 
 	unlang_group_t			*g;
-	unlang_parallel_kctx_t		*kctx;
+	unlang_parallel_t		*gext;
 	unlang_parallel_state_t		*state;
 
 	int				i;
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	kctx = talloc_get_type_abort(g->kctx, unlang_parallel_kctx_t);
+	gext = unlang_group_to_parallel(g);
 
 	/*
 	 *	Allocate an array for the children.
@@ -408,15 +410,15 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 						sizeof(state->children[0]) *
 						g->num_children);
 	if (!state) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	};
 
 	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = RLM_MODULE_FAIL;
 	state->priority = -1;				/* as-yet unset */
-	state->detach = kctx->detach;
-	state->clone = kctx->clone;
+	state->detach = gext->detach;
+	state->clone = gext->clone;
 	state->num_children = g->num_children;
 
 	/*
@@ -427,8 +429,8 @@ static unlang_action_t unlang_parallel(request_t *request, rlm_rcode_t *presult)
 		state->children[i].instruction = instruction;
 	}
 
-	frame->interpret = unlang_parallel_process;
-	return unlang_parallel_process(request, presult);
+	frame->process = unlang_parallel_process;
+	return unlang_parallel_process(p_result, request);
 }
 
 void unlang_parallel_init(void)

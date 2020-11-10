@@ -81,7 +81,7 @@ static int split(char **input, char **output, bool syntax_string);
  */
 
 // our fixed string.  Any data type LESS than this must be a real data type
-#define FR_TYPE_FIXED		FR_TYPE_ABINARY
+#define FR_TYPE_FIXED		FR_TYPE_TIME_DELTA
 
 #define FR_TYPE_VARARGS		FR_TYPE_TLV
 #define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
@@ -244,7 +244,6 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 
 		type = fr_table_value_by_str(fr_value_box_type_table, argv->name, FR_TYPE_INVALID);
 		switch (type) {
-		case FR_TYPE_ABINARY:
 		case FR_TYPE_VALUE_BOX:
 		case FR_TYPE_BAD:
 		case FR_TYPE_STRUCTURAL:

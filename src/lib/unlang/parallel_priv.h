@@ -65,9 +65,26 @@ typedef struct {
 } unlang_parallel_state_t;
 
 typedef struct {
+	unlang_group_t		group;
 	bool			detach;			//!< are we creating the child detached
 	bool			clone;
-} unlang_parallel_kctx_t;
+} unlang_parallel_t;
+
+/** Cast a group structure to the parallel keyword extension
+ *
+ */
+static inline unlang_parallel_t *unlang_group_to_parallel(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_parallel_t);
+}
+
+/** Cast a parallel keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_parallel_to_group(unlang_parallel_t *parallel)
+{
+	return (unlang_group_t *)parallel;
+}
 
 #ifdef __cplusplus
 }

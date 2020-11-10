@@ -32,7 +32,7 @@ typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx);
  * A decoding function should decode a single top level packet from wire format.
  *
  * @param[in] ctx		to allocate new pairs in.
- * @param[in] vps		where new VPs will be added
+ * @param[in] list		where new VPs will be added
  * @param[in] data		to decode.
  * @param[in] data_len		The length of the incoming data.
  * @param[in] decoder_ctx	Any decode specific data such as secrets or configurable.
@@ -40,7 +40,7 @@ typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx);
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, fr_pair_t **vps,
+typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *list,
 					uint8_t const *data, size_t data_len, void *decoder_ctx);
 
 /** A generic interface for encoding fr_pair_ts to packets

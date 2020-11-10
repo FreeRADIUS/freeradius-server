@@ -102,6 +102,41 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 	}
 }
 
+static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, bool secret)
+{
+	if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
+		cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+
+	} else if (cp->rhs_quote == T_BARE_WORD) {
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+
+	} else {
+		/*
+		 *	Print the strings with the correct quotation character and escaping.
+		 */
+		char *tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
+		char quote;
+
+		switch (cp->rhs_quote) {
+		default:
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+		}
+
+		cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
+		talloc_free(tmp);
+	}
+}
+
 /** Parses a #CONF_PAIR into a C data type
  *
  * @copybrief cf_pair_value
@@ -120,7 +155,7 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
-	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
+	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists, nonblock;
 
 	ssize_t		slen;
 
@@ -135,6 +170,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
 	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
 	tmpl = (type & FR_TYPE_TMPL);
+	nonblock = (type & FR_TYPE_NON_BLOCKING);
 
 	fr_assert(cp);
 	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
@@ -180,14 +216,14 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 						.allow_foreign = true
 					};
 		fr_type_t		cast = FR_TYPE_INVALID;
-		fr_sbuff_t		sbuff = FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp)));
+		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
 		 *	Parse the cast operator for barewords
 		 */
-		if (cf_pair_value_quote(cp) == T_BARE_WORD) {
+		if (cp->rhs_quote == T_BARE_WORD) {
 			slen = tmpl_cast_from_substr(&cast, &sbuff);
 			if (slen < 0) {
 				char *spaces, *text;
@@ -208,9 +244,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 
-		slen = tmpl_afrom_substr(cp, &vpt, &sbuff,
-					 cf_pair_value_quote(cp),
-					 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
+		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
+					 tmpl_parse_rules_unquoted[cp->rhs_quote],
 					 &rules);
 		if (slen < 0) goto tmpl_error;
 
@@ -221,6 +256,22 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 
 		tmpl_cast_set(vpt, cast);
+
+		/*
+		 *	Non-blocking xlat's
+		 */
+		if (nonblock) {
+			if (vpt->type == TMPL_TYPE_EXEC) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking operation.", cp->attr);
+				return -1;
+			}
+
+			if ((vpt->type == TMPL_TYPE_XLAT) &&
+			    xlat_async_required(tmpl_xlat(vpt))) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking expansion.", cp->attr);
+				return -1;
+			}
+		}
 
 		*(tmpl_t **)out = vpt;
 
@@ -327,42 +378,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		char **str = out;
 
-		/*
-		 *	Hide secrets when using "radiusd -X".
-		 */
-		if (!cp->printed) {
-			if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
-				cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
-
-			} else if (cp->rhs_quote == T_BARE_WORD) {
-				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
-
-			} else {
-				/*
-				 *	Print the strings with the correct quotation character and escaping.
-				 */
-				char *tmp = fr_asprint(cs, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
-				char quote;
-
-				switch (cp->rhs_quote) {
-				default:
-				case T_DOUBLE_QUOTED_STRING:
-					quote = '"';
-					break;
-
-				case T_SINGLE_QUOTED_STRING:
-					quote = '\'';
-					break;
-
-				case T_BACK_QUOTED_STRING:
-					quote = '`';
-					break;
-				}
-
-				cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
-				talloc_free(tmp);
-			}
-		}
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
 		 *	If there's out AND it's an input file, check

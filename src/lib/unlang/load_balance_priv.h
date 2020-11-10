@@ -26,11 +26,37 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
 #include <freeradius-devel/server/tmpl.h>
 
 typedef struct {
+	unlang_group_t	group;
 	tmpl_t		*vpt;
-} unlang_load_balance_kctx_t;
+} unlang_load_balance_t;
+
+/** State of a redundant operation
+ *
+ */
+typedef struct {
+	unlang_t 		*child;
+	unlang_t		*found;
+} unlang_frame_state_redundant_t;
+
+/** Cast a group structure to the load_balance keyword extension
+ *
+ */
+static inline unlang_load_balance_t *unlang_group_to_load_balance(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_load_balance_t);
+}
+
+/** Cast a load_balance keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_load_balance_to_group(unlang_load_balance_t *load_balance)
+{
+	return (unlang_group_t *)load_balance;
+}
 
 #ifdef __cplusplus
 }

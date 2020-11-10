@@ -69,7 +69,7 @@ typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_error_t)(rad_listen_t *, int);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef void (*rad_listen_debug_t)(request_t *, RADIUS_PACKET *, bool received);
+typedef void (*rad_listen_debug_t)(request_t *, fr_radius_packet_t *, bool received);
 typedef int (*rad_listen_encode_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_decode_t)(rad_listen_t *, request_t *);
 
@@ -154,7 +154,7 @@ typedef struct {
 	struct listen_socket_t	*parent;
 	RADCLIENT		*client;
 
-	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
+	fr_radius_packet_t  	 	*packet; /* for reading partial packets */
 
 #if 0
 	fr_tls_session_t		*tls_session;

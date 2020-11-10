@@ -75,7 +75,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 	return 0;
 }
 
-static unlang_action_t unlang_foreach_next(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request)
 {
 	fr_pair_t			*vp;
 	unlang_stack_t			*stack = request->stack;
@@ -90,7 +90,7 @@ static unlang_action_t unlang_foreach_next(request_t *request, rlm_rcode_t *pres
 
 	vp = fr_cursor_current(&foreach->cursor);
 	if (!vp) {
-		*presult = frame->result;
+		*p_result = frame->result;
 #ifndef NDEBUG
 		fr_assert(foreach->indent == request->log.unlang_indent);
 #endif
@@ -115,14 +115,18 @@ static unlang_action_t unlang_foreach_next(request_t *request, rlm_rcode_t *pres
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	repeatable_set(frame);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
-static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -130,7 +134,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	unlang_frame_state_foreach_t	*foreach = NULL;
 
 	unlang_group_t			*g;
-	unlang_foreach_kctx_t		*kctx;
+	unlang_foreach_t		*gext;
 
 	int				i, foreach_depth = 0;
 	fr_pair_t			*vps;
@@ -138,7 +142,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);
-	kctx = talloc_get_type_abort(g->kctx, unlang_foreach_kctx_t);
+	gext = unlang_group_to_foreach(g);
 
 	/*
 	 *	Ensure any breaks terminate here...
@@ -157,7 +161,7 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 
 	if (foreach_depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
 		REDEBUG("foreach Nesting too deep!");
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -168,8 +172,8 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 	 *	behaviour if someone decides to add or remove VPs in the set we're
 	 *	iterating over.
 	 */
-	if (tmpl_copy_vps(frame->state, &vps, request, kctx->vpt) < 0) {	/* nothing to loop over */
-		*presult = RLM_MODULE_NOOP;
+	if (tmpl_copy_pairs(frame->state, &vps, request, gext->vpt) < 0) {	/* nothing to loop over */
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -184,11 +188,11 @@ static unlang_action_t unlang_foreach(request_t *request, rlm_rcode_t *presult)
 #endif
 	talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
 
-	frame->interpret = unlang_foreach_next;
-	return unlang_foreach_next(request, presult);
+	frame->process = unlang_foreach_next;
+	return unlang_foreach_next(p_result, request);
 }
 
-static unlang_action_t unlang_break(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -196,7 +200,7 @@ static unlang_action_t unlang_break(request_t *request, rlm_rcode_t *presult)
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
-	*presult = frame->result;
+	*p_result = frame->result;
 
 	/*
 	 *	Stop at the next break point, or if we hit

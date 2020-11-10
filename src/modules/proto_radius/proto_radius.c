@@ -463,7 +463,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-#ifdef WITH_UDPFROMTO
 	/*
 	 *	Overwrite the src ip address on the outbound packet
 	 *	with the one specified by the client.  This is useful
@@ -473,7 +472,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	if (client->src_ipaddr.af != AF_UNSPEC) {
 		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
-#endif
 
 	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,

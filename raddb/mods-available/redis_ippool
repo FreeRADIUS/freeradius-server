@@ -66,15 +66,15 @@ redis_ippool {
 #	gateway = &NAS-Identifier
 
 	#
-	#  device:: The unique device identifier to which an IP is assigned.
+	#  owner:: The unique owner identifier to which an IP is assigned.
 	#
 	#  This is used as the lookup key to determine the IP address that has
-	#  been allocated to a device. It MUST therefore be something unique to
-	#  each "device" to which an IP address may be assigned.
+	#  been allocated to a owner. It MUST therefore be something unique to
+	#  each "owner" to which an IP address may be assigned.
 	#
-	#  For DHCP it is often simply the MAC address of the device.
+	#  For DHCP it is often simply the MAC address of the owner.
 	#
-	device = &DHCP-Client-Hardware-Address
+	owner = &DHCP-Client-Hardware-Address
 
 	#
 	#  RFC 2132 specifies that the DHCP client may supply a unique
@@ -83,11 +83,11 @@ redis_ippool {
 	#  Otherwise the client hardware address must be used. To comply with
 	#  this requirement use the following:
 	#
-#	device = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+#	owner = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
 
 	#
 	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
-	#  attribute the "device" identifier could be a `User-Name` or a
+	#  attribute the "owner" identifier could be a `User-Name` or a
 	#  certificate serial number provided that the number of sessions is
 	#  limited to one per user/serial.
 	#
@@ -97,7 +97,7 @@ redis_ippool {
 	#  ADSL-Agent-Circuit-Id is trusted but that Calling-Station-Id is
 	#  formatted as a user-controlled MAC address:
 	#
-#	device = "%{ADSL-Agent-Circuit-Id} %{Calling-Station-Id}"
+#	owner = "%{ADSL-Agent-Circuit-Id} %{Calling-Station-Id}"
 
 	#
 	#  requested_address:: The IP address being renewed or released.

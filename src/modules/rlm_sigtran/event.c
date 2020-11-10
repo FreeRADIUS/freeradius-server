@@ -230,11 +230,11 @@ static int event_link_up(TALLOC_CTX *ctx, sigtran_conn_t **out, sigtran_conn_con
 	/*
 	 *	Setup SCTP src/dst address
 	 */
-	fr_ipaddr_to_sockaddr(&conf->sctp_dst_ipaddr, conf->sctp_dst_port,
-			      &m3ua_client->remote, &salen);
+	fr_ipaddr_to_sockaddr(&m3ua_client->remote, &salen,
+			      &conf->sctp_dst_ipaddr, conf->sctp_dst_port);
 	if (conf->sctp_src_ipaddr.af != AF_UNSPEC) {
-		fr_ipaddr_to_sockaddr(&conf->sctp_src_ipaddr, conf->sctp_src_port,
-				      &m3ua_client->local, &salen);
+		fr_ipaddr_to_sockaddr(&m3ua_client->local, &salen,
+				      &conf->sctp_src_ipaddr, conf->sctp_src_port);
 	}
 
 	/*

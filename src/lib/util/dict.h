@@ -115,7 +115,7 @@ extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
 /** Extension identifier
  *
- * @note New extension structures should also be added to the #fr_dict_attr_ext_info table in dict_ext.c
+ * @note New extension structures should also be added to the to the appropriate table in dict_ext.c
  */
 typedef enum {
 	FR_DICT_ATTR_EXT_NAME = 0,				//!< Name of the attribute.
@@ -153,7 +153,7 @@ struct dict_attr_s {
 
 /** Extension identifier
  *
- * @note New extension structures should also be added to the #fr_dict_ext_length_min table in dict_ext.c
+ * @note New extension structures should also be added to the appropriate table in dict_ext.c
  */
 typedef enum {
 	FR_DICT_ENUM_EXT_UNION_REF = 0,				//!< Reference to a union/subs-struct.
@@ -333,7 +333,7 @@ fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t c
 
 /** @name Attribute comparisons
  *
- * @ {
+ * @{
  */
 static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {

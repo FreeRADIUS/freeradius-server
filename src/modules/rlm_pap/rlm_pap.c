@@ -126,12 +126,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
 	fr_pair_t		*password;
 
-	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(&request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 	if (!password) {
 		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
 		return RLM_MODULE_NOOP;
@@ -382,9 +382,16 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha
 
 /** Validates Crypt::PBKDF2 LDAP format strings
  *
- * @param[in] request	The current request.
- * @param[in] str	Raw PBKDF2 string.
- * @param[in] len	Length of string.
+ * @param[in] request		The current request.
+ * @param[in] str		Raw PBKDF2 string.
+ * @param[in] len		Length of string.
+ * @param[in] hash_names	Table containing valid hash names.
+ * @param[in] hash_names_len	How long the table is.
+ * @param[in] scheme_sep	Separation character between the scheme and the next component.
+ * @param[in] iter_sep		Separation character between the iterations and the next component.
+ * @param[in] salt_sep		Separation character between the salt and the next component.
+ * @param[in] iter_is_base64	Whether the iterations is are encoded as base64.
+ * @param[in] password		to validate.
  * @return
  *	- RLM_MODULE_REJECT
  *	- RLM_MODULE_OK
@@ -854,7 +861,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;
 
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 	if (!password) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;

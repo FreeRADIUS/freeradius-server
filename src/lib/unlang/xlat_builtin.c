@@ -118,7 +118,7 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char 
 	if (tmpl_afrom_attr_str(request, NULL,
 				&vpt, name, &(tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
-	rcode = tmpl_copy_vps(ctx, out, request, vpt);
+	rcode = tmpl_copy_pairs(ctx, out, request, vpt);
 	talloc_free(vpt);
 
 	return rcode;
@@ -1370,7 +1370,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			     request_t *request, char const *fmt)
 {
-	vp_map_t	*map = NULL;
+	map_t	*map = NULL;
 	int		ret;
 
 	tmpl_rules_t	attr_rules = {

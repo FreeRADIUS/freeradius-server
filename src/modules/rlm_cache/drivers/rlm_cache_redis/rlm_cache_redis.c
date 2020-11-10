@@ -138,7 +138,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	redisReply			*reply = NULL;
 	int				s_ret;
 
-	vp_map_t			*head = NULL, **last = &head;
+	map_t			*head = NULL, **last = &head;
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
@@ -190,7 +190,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	We can get a pretty good idea of the required size of the pool
 	 */
 	for (i = 0; i < reply->elements; i += 3) {
-		pool_size += sizeof(vp_map_t) + (sizeof(tmpl_t) * 2);
+		pool_size += sizeof(map_t) + (sizeof(tmpl_t) * 2);
 		if (reply->element[i]->type == REDIS_REPLY_STRING) pool_size += reply->element[i]->len + 1;
 	}
 
@@ -221,7 +221,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	Pull out the cache created date
 	 */
 	if (tmpl_da(head->lhs) == attr_cache_created) {
-		vp_map_t *map;
+		map_t *map;
 
 		c->created = tmpl_value(head->rhs)->vb_date;
 
@@ -234,7 +234,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	Pull out the cache expires date
 	 */
 	if (tmpl_da(head->lhs) == attr_cache_expires) {
-		vp_map_t *map;
+		map_t *map;
 
 		c->expires = tmpl_value(head->rhs)->vb_date;
 
@@ -262,7 +262,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	rlm_cache_redis_t	*driver = instance;
 	TALLOC_CTX		*pool;
 
-	vp_map_t		*map;
+	map_t		*map;
 
 	fr_redis_conn_t		*conn;
 	fr_redis_cluster_state_t	state;
@@ -283,14 +283,14 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	int			cnt;
 
 	tmpl_t		expires_value;
-	vp_map_t		expires = {
+	map_t		expires = {
 					.op	= T_OP_SET,
 					.lhs	= driver->expires_attr,
 					.rhs	= &expires_value,
 				};
 
 	tmpl_t		created_value;
-	vp_map_t		created = {
+	map_t		created = {
 					.op	= T_OP_SET,
 					.lhs	= driver->created_attr,
 					.rhs	= &created_value,

@@ -326,7 +326,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	int			rcode;
 	CONF_SECTION		*cs;
 	char const		*name2;
-	vp_map_t		*head = NULL;
+	map_t		*head = NULL;
 
 	fr_assert(cf_item_is_section(ci));
 
@@ -419,8 +419,8 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 
 	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
 
-	if (fr_pair_find_by_da(request->request_pairs, attr_chap_password) &&
-	    !fr_pair_find_by_da(request->request_pairs, attr_chap_challenge)) {
+	if (fr_pair_find_by_da(&request->request_pairs, attr_chap_password) &&
+	    !fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge)) {
 	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);
 		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}

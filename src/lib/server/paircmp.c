@@ -128,8 +128,8 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 
 	if (!request) return -1;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_stripped_user_name);
-	if (!username) username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name);
+	if (!username) username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!username) return -1;
 
 	VP_VERIFY(check);
@@ -157,13 +157,13 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
-	vp = fr_pair_find_by_da(check_list, attr_strip_user_name);
+	vp = fr_pair_find_by_da(&check_list, attr_strip_user_name);
 	if (vp && !vp->vp_uint32) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
 	 */
-	vp = fr_pair_find_by_da(check_list, attr_stripped_user_name);
+	vp = fr_pair_find_by_da(&check_list, attr_stripped_user_name);
 	if (!vp) {
 		/*
 		 *	If "request" is NULL, then the memory will be
@@ -393,7 +393,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 	 *	Attributes must be of the same type.
 	 *
 	 *	FIXME: deal with type mismatch properly if one side contain
-	 *	ABINARY, OCTETS or STRING by converting the other side to
+	 *	OCTETS or STRING by converting the other side to
 	 *	a string
 	 *
 	 */
@@ -403,11 +403,6 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 	 *	Not a regular expression, compare the types.
 	 */
 	switch (check->vp_type) {
-		/*
-		 *	Ascend binary attributes can be treated
-		 *	as opaque objects, I guess...
-		 */
-		case FR_TYPE_ABINARY:
 		case FR_TYPE_OCTETS:
 			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */
@@ -600,7 +595,7 @@ int paircmp(request_t *request,
 				WARN("Are you sure you don't mean Cleartext-Password?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_num(request_list, 0, FR_USER_PASSWORD) == NULL) continue;
+			if (fr_pair_find_by_num(&request_list, 0, FR_USER_PASSWORD) == NULL) continue;
 		}
 
 		/*

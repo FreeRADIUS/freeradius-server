@@ -2,19 +2,20 @@
 #  PRE: update
 #
 call second {
-	#
-	#  Copy our reply to the parents reply.
-	#
-	update {
-		&parent.reply: += &reply
-	}
+        update reply {
+                &Reply-Message += 'call second post'
+        }
 }
 
 if (!&reply.Reply-Message) {
 	test_fail
 }
 
-if (&reply.Reply-Message != "call second") {
+if (&reply.Reply-Message[0] != "call second") {
+	test_fail
+}
+
+if (&reply.Reply-Message[1] != "call second post") {
 	test_fail
 }
 

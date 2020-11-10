@@ -75,7 +75,7 @@ static int process_file(char const *filename)
 	int		rcode;
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
-	vp_map_t	*head, *map;
+	map_t	*head, *map;
 	char		buffer[8192];
 
 	main_config_t	*config;

@@ -25,5 +25,5 @@
  */
 RCSIDH(tcp_h, "$Id$")
 
-int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma);
-RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags);
+int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma);
+fr_radius_packet_t *fr_tcp_recv(int sockfd, int flags);

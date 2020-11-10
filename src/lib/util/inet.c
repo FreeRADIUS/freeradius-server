@@ -318,7 +318,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 		return -1;
 	}
 
-	ret = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen, out, NULL);
+	ret = fr_ipaddr_from_sockaddr(out, NULL, (struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen);
 	freeaddrinfo(res);
 	if (ret < 0) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr");
@@ -349,7 +349,7 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 		return inet_ntop(src->af, &(src->addr), out, outlen);
 	}
 
-	if (fr_ipaddr_to_sockaddr(src, 0, &ss, &salen) < 0) return NULL;
+	if (fr_ipaddr_to_sockaddr(&ss, &salen, src, 0) < 0) return NULL;
 
 	if ((error = getnameinfo((struct sockaddr *)&ss, salen, out, outlen, NULL, 0,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
@@ -468,6 +468,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	char const	*end;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
+	int		ret;
 
 	/*
 	 *	Zero out output so we don't have invalid fields
@@ -542,7 +543,6 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	Copy the IP portion into a temporary buffer if we haven't already.
 	 */
 	if (inlen < 0) memcpy(buffer, value, p - value);
-	buffer[p - value] = '\0';
 
 	/*
 	 *	We need a special function here, as inet_pton doesn't like
@@ -552,7 +552,11 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *
 	 *	@todo we should allow hostnames to be parsed as prefixes.
 	 */
-	if (ip_prefix_addr_from_str(&out->addr.v4, buffer) <= 0) {
+	buffer[p - value] = '\0';
+	ret = ip_prefix_addr_from_str(&out->addr.v4, buffer);
+	buffer[p - value] = '/';	/* Set back to '/' to produce proper errors */
+
+	if (ret <= 0) {
 		fr_strerror_printf("Failed to parse IPv4 prefix string \"%s\"", value);
 		return -1;
 	}
@@ -601,6 +605,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	unsigned int	prefix;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
+	int		ret;
 
 	/*
 	 *	Zero out output so we don't have fields
@@ -658,14 +663,21 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *	Copy string to temporary buffer if we didn't do it earlier
 	 */
 	if (inlen < 0) memcpy(buffer, value, p - value);
-	buffer[p - value] = '\0';
 
 	if (!resolve) {
-		if (inet_pton(AF_INET6, buffer, out->addr.v6.s6_addr) <= 0) {
+		buffer[p - value] = '\0';
+		ret = inet_pton(AF_INET6, buffer, out->addr.v6.s6_addr);
+		buffer[p - value] = '/';
+		if (ret <= 0) {
 			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 			return -1;
 		}
-	} else if (fr_inet_hton(out, AF_INET6, buffer, fallback) < 0) return -1;
+	} else {
+		buffer[p - value] = '\0';
+		ret = fr_inet_hton(out, AF_INET6, buffer, fallback);
+		buffer[p - value] = '/';
+		if (ret < 0) return -1;
+	}
 
 	prefix = strtoul(p + 1, &eptr, 10);
 	if (prefix > 128) {
@@ -1130,8 +1142,9 @@ int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 	 *	sockaddr2ipaddr uses the address family anyway, so we should
 	 *	be OK.
 	 */
-	if (fr_ipaddr_from_sockaddr((struct sockaddr_storage *)&if_req.ifr_addr,
-				    sizeof(if_req.ifr_addr), &ipaddr, NULL) < 0) goto error;
+	if (fr_ipaddr_from_sockaddr(&ipaddr, NULL,
+				    (struct sockaddr_storage *)&if_req.ifr_addr,
+				    sizeof(if_req.ifr_addr)) < 0) goto error;
 	*out = ipaddr;
 
 	close(fd);
@@ -1257,8 +1270,9 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
 	 *	sockaddr2ipaddr uses the address family anyway, so we should
 	 *	be OK.
 	 */
-	if (fr_ipaddr_from_sockaddr((struct sockaddr_storage *)&if_req.ifr_addr,
-				    sizeof(if_req.ifr_addr), &ipaddr, NULL) < 0) return -1;
+	if (fr_ipaddr_from_sockaddr(&ipaddr, NULL,
+				    (struct sockaddr_storage *)&if_req.ifr_addr,
+				    sizeof(if_req.ifr_addr)) < 0) return -1;
 	*out = ipaddr;
 
 	return 0;
@@ -1292,8 +1306,21 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 	return -1;
 }
 
-int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
-		          struct sockaddr_storage *sa, socklen_t *salen)
+/** Convert our internal ip address representation to a sockaddr
+ *
+ * @param[out] sa	where to write out the sockaddr,
+ *			must be large enough to hold
+ *			sizeof(s6).
+ * @param[out] salen	Length of the sockaddr struct.
+ * @param[in] ipaddr	IP address to convert.
+ * @param[in] port	Port to convert.
+
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_ipaddr_to_sockaddr(struct sockaddr_storage *sa, socklen_t *salen,
+			  fr_ipaddr_t const *ipaddr, uint16_t port)
 {
 	memset(sa, 0, sizeof(*sa));
 
@@ -1331,8 +1358,18 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 	return 0;
 }
 
-int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
-			    fr_ipaddr_t *ipaddr, uint16_t *port)
+/** Convert sockaddr to our internal ip address representation
+ *
+ * @param[out] ipaddr	Where to write the ipaddr.
+ * @param[out] port	Where to write the port.
+ * @param[in] sa	struct to convert.
+ * @param[in] salen	Length of the sockaddr struct.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
+			    struct sockaddr_storage const *sa, socklen_t salen)
 {
 	memset(ipaddr, 0, sizeof(*ipaddr));
 
@@ -1393,7 +1430,8 @@ char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 
 		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
 
-		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
+		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
+					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
 
 		/*
 		 *	my_ipaddr will have a scope_id, but the input
@@ -1432,7 +1470,8 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 		if (!i->ifa_addr || !i->ifa_name || ((af != AF_UNSPEC) && (af != i->ifa_addr->sa_family))) continue;
 		if (strcmp(i->ifa_name, interface) != 0) continue;
 
-		fr_ipaddr_from_sockaddr((struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6), &my_ipaddr, NULL);
+		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
+					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
 
 		/*
 		 *	If they ask for a link local address, then give
@@ -1460,7 +1499,7 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 #define AF_LINK AF_PACKET
 #endif
 
-int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
+int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 {
 	struct ifaddrs *list = NULL;
 	struct ifaddrs *i;
@@ -1478,7 +1517,7 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 		ll = (struct sockaddr_ll *) i->ifa_addr;
 		if ((ll->sll_hatype != 1) || (ll->sll_halen != 6)) continue;
 
-		memcpy(ethernet, ll->sll_addr, 6);
+		memcpy(ethernet->addr, ll->sll_addr, 6);
 
 #else
 		struct sockaddr_dl *ll;
@@ -1486,7 +1525,7 @@ int fr_interface_to_ethernet(char const *interface, uint8_t ethernet[static 6])
 		ll = (struct sockaddr_dl *) i->ifa_addr;
 		if (ll->sdl_alen != 6) continue;
 
-		memcpy(ethernet, LLADDR(ll), 6);
+		memcpy(ethernet->addr, LLADDR(ll), 6);
 #endif
 		ret = 0;
 		break;

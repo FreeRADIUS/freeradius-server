@@ -37,7 +37,7 @@ extern "C" {
 #include <freeradius-devel/util/time.h>
 
 #ifdef WITH_VERIFY_PTR
-#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort_const(_x, RADIUS_PACKET)
+#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort_const(_x, fr_radius_packet_t)
 #else
 #  define PACKET_VERIFY(_x)	fr_cond_assert(_x)
 #endif
@@ -47,14 +47,14 @@ extern "C" {
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
- *			response RADIUS_PACKET as well before calling fr_radius_packet_send
+ *			response fr_radius_packet_t as well before calling fr_radius_packet_send
  *
  *	verified:	Filled in by rad_decode for accounting-request packets
  *
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct {
-	fr_socket_t	socket;			//!< This packet was received on.
+	fr_socket_t		socket;			//!< This packet was received on.
 
 	int			id;			//!< Packet ID (used to link requests/responses).
 	unsigned int		code;			//!< Packet code (type).
@@ -70,12 +70,11 @@ typedef struct {
 	uint32_t       		rounds;			//!< for State[0]
 
 	size_t			partial;
-} RADIUS_PACKET;
+} fr_radius_packet_t;
 
-RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
-RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
-RADIUS_PACKET	*fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
-void		fr_radius_packet_free(RADIUS_PACKET **);
+fr_radius_packet_t	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
+fr_radius_packet_t	*fr_radius_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *);
+void		fr_radius_packet_free(fr_radius_packet_t **);
 
 #ifdef __cplusplus
 }

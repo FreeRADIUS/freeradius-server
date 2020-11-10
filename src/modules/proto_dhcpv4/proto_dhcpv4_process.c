@@ -51,40 +51,13 @@ fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[] = {
-	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
-	[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
-	[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
-	[FR_DHCP_DECLINE]	= 0,
-	[FR_DHCP_ACK]		= FR_DHCP_ACK,
-	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= 0,
-	[FR_DHCP_INFORM]	= FR_DHCP_ACK,
-	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_ACTIVE, /* not really correct, but whatever */
-};
-
-static int reply_fail[] = {
-	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_DISCOVER]	= 0,
-	[FR_DHCP_OFFER]		= FR_DHCP_NAK,
-	[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
-	[FR_DHCP_DECLINE]	= 0,
-	[FR_DHCP_ACK]		= FR_DHCP_NAK,
-	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= 0,
-	[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
-	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
-};
-
-
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv4_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
 	int i;
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -92,7 +65,7 @@ static void dhcpv4_packet_debug(request_t *request, RADIUS_PACKET *packet, bool 
 	if (!RDEBUG_ENABLED) return;
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       "%s%s%s"
 #endif
 		       "",
@@ -107,7 +80,7 @@ static void dhcpv4_packet_debug(request_t *request, RADIUS_PACKET *packet, bool 
 		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
 		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->socket.inet.dst_port
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       , packet->socket.inet.ifindex ? "via " : "",
 		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 		       packet->socket.inet.ifindex ? " " : ""
@@ -123,7 +96,7 @@ static void dhcpv4_packet_debug(request_t *request, RADIUS_PACKET *packet, bool 
 
 		if (!*dhcp_header_attrs[i]) continue;
 
-		vp = fr_pair_find_by_da(packet->vps, *dhcp_header_attrs[i]);
+		vp = fr_pair_find_by_da(&packet->vps, *dhcp_header_attrs[i]);
 		if (!vp) continue;
 		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
 	}
@@ -142,6 +115,32 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
 	fr_pair_t *vp;
+
+	static int reply_ok[] = {
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
+		[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
+		[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
+		[FR_DHCP_DECLINE]	= 0,
+		[FR_DHCP_ACK]		= FR_DHCP_ACK,
+		[FR_DHCP_NAK]		= FR_DHCP_NAK,
+		[FR_DHCP_RELEASE]	= 0,
+		[FR_DHCP_INFORM]	= FR_DHCP_ACK,
+		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_ACTIVE, /* not really correct, but whatever */
+	};
+
+	static int reply_fail[] = {
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_DISCOVER]	= 0,
+		[FR_DHCP_OFFER]		= FR_DHCP_NAK,
+		[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
+		[FR_DHCP_DECLINE]	= 0,
+		[FR_DHCP_ACK]		= FR_DHCP_NAK,
+		[FR_DHCP_NAK]		= FR_DHCP_NAK,
+		[FR_DHCP_RELEASE]	= 0,
+		[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
+	};
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
@@ -167,7 +166,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -179,13 +180,11 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		/*
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_message_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_message_type);
 		if (vp) {
 			request->reply->code = vp->vp_uint8;
 		} else switch (rcode) {
@@ -217,7 +216,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	Offer and ACK MUST have YIADDR.
 		 */
 		if ((request->reply->code == FR_DHCP_OFFER) || (request->reply->code == FR_DHCP_ACK)) {
-			vp = fr_pair_find_by_da(request->reply_pairs, attr_yiaddr);
+			vp = fr_pair_find_by_da(&request->reply_pairs, attr_yiaddr);
 			if (!vp) {
 				REDEBUG("%s packet does not have YIADDR.  The client will not receive an IP address.",
 					dhcp_message_types[request->reply->code]);
@@ -232,7 +231,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -243,8 +244,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

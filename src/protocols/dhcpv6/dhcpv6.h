@@ -34,9 +34,22 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 
+#define DHCPV6_MSG_TYPE_LEN		1
+
+#define DHCPV6_TRANSACTION_ID_LEN	3
+
+#define DHCPV6_HOP_COUNT_LEN		1
+#define DHCPV6_LINK_ADDRESS_LEN		16
+#define DHCPV6_PEER_ADDRESS_LEN		16
+
+#define DHCPV6_HDR_LEN			(DHCPV6_MSG_TYPE_LEN + DHCPV6_TRANSACTION_ID_LEN)
+#define DHCPV6_RELAY_HDR_LEN		(DHCPV6_MSG_TYPE_LEN + DHCPV6_HOP_COUNT_LEN + DHCPV6_LINK_ADDRESS_LEN + DHCPV6_PEER_ADDRESS_LEN)
 #define DHCPV6_OPT_HDR_LEN		(sizeof(uint16_t) * 2)
+
 #define DHCPV6_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
 #define DHCPV6_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
+
+#define DHCPV6_MAX_RELAY_NESTING	10
 
 /*
  *	Defined addresses from RFC 8415 Section 7.1
@@ -113,9 +126,9 @@ typedef struct CC_HINT(__packed__) {
 #define DHCPV6_DATE_OFFSET (946684800)
 
 typedef struct {
-	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
-	uint8_t const		*original;			//!< original packet
-	size_t			original_length;		//!< length of the original packet
+	fr_dict_attr_t const	*root;			//!< Root attribute of the dictionary.
+	uint8_t const		*original;		//!< original packet
+	size_t			original_length;	//!< length of the original packet
 } fr_dhcpv6_encode_ctx_t;
 
 typedef struct {
@@ -138,13 +151,13 @@ bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
 bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
 				 bool from_server);
 
-ssize_t		fr_dhcpv6_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, size_t length,
+ssize_t		fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length,
 				 int msg_type, fr_pair_t *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 fr_cursor_t *cursor);
 
-int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t const *packet, size_t packet_len);
+int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_list_t *reply_list, uint8_t const *packet, size_t packet_len);
 
 int		fr_dhcpv6_global_init(void);
 
@@ -153,8 +166,7 @@ void		fr_dhcpv6_global_free(void);
 /*
  *	encode.c
  */
-ssize_t		fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
-ssize_t		fr_dhcpv6_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx);
+ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx);
 
 /*
  *	decode.c

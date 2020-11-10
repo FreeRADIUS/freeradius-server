@@ -46,16 +46,6 @@ fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
-	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
-	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
-};
-
-static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
-	[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
-	[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
-};
-
 static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
@@ -63,6 +53,16 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
 	fr_pair_t *vp;
+
+	static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
+		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
+		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
+	};
+
+	static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
+		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
+		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
+	};
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
@@ -91,7 +91,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -103,13 +105,11 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		/*
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_arp_operation);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_arp_operation);
 		if (vp) {
 			request->reply->code = vp->vp_uint8;
 		} else switch (rcode) {
@@ -145,7 +145,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -156,8 +158,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

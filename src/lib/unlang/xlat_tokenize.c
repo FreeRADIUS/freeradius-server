@@ -124,6 +124,7 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX 
  * @param[in] ctx	to allocate node in.
  * @param[in] type	of the node.
  * @param[in] in	original input string.
+ * @param[in] inlen	the length of the original input string.
  * @return A new xlat node.
  */
 static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type,
@@ -376,6 +377,7 @@ static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xla
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
 		node->call.func = func;
+		node->flags.needs_async = func->needs_async;
 	}
 
 	fr_sbuff_next(in);			/* Skip the ':' */
@@ -1140,6 +1142,8 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
  * @param[out] flags		Populated with parameters that control xlat
  *				evaluation and multi-pass parsing.
  * @param[in] in		the format string to expand.
+ * @param[in] p_rules		controlling how to parse the string outside of
+ *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
  * @return
  *	- <=0 on error.

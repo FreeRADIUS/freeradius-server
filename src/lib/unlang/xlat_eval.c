@@ -409,7 +409,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, req
  */
 static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, tmpl_t const *vpt)
 {
-	RADIUS_PACKET	*packet = NULL;
+	fr_radius_packet_t	*packet = NULL;
 	fr_value_box_t	*value;
 
 	/*
@@ -1279,7 +1279,10 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			 *	the async xlat up until the point
 			 *	that it needs to yield.
 			 */
-			unlang_xlat_push(pool, &result, request, node, true);
+			if (unlang_xlat_push(pool, &result, request, node, true) < 0) {
+				talloc_free(pool);
+				return NULL;
+			}
 
 			switch (unlang_interpret(request)) {
 			default:
@@ -1908,8 +1911,8 @@ void xlat_eval_free(void)
 
 /** Return whether or not async is required for this xlat.
  *
- *	If the xlat is needs_async, then it will never yield.
- *	If the xlat is not needs_async, then it may yield.
+ *	If the xlat is needs_async, then it MAY yield
+ *	If the xlat is not needs_async, then it will NOT yield
  *
  *	If the xlat yields, then async is required.
  */
@@ -1918,14 +1921,14 @@ bool xlat_async_required(xlat_exp_t const *xlat)
 	xlat_exp_t const *node;
 
 	if (xlat->type != XLAT_GROUP) {
-		return !xlat->flags.needs_async;
+		return xlat->flags.needs_async;
 	}
 
 	/*
 	 *	Set needs_async on the entire list.
 	 */
 	for (node = xlat; node != NULL; node = node->next) {
-		if (!node->flags.needs_async) return true;
+		if (node->flags.needs_async) return true;
 	}
 
 	return false;

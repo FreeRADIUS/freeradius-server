@@ -59,6 +59,12 @@ extern "C" {
 #endif
 
 /*
+ *	GCC will sometimes define "unix" as well as "__unix",
+ *	which gets confusing and is unnecessary.
+ */
+#undef unix
+
+/*
  *	The ubiquitous stringify macros
  */
 #define XSTRINGIFY(x) #x

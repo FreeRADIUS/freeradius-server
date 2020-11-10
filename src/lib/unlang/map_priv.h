@@ -26,11 +26,30 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
+
 typedef struct {
+	unlang_group_t		group;
 	tmpl_t			*vpt;
-	vp_map_t		*map;		//!< Head of the map list
+	map_t		*map;		//!< Head of the map list
 	map_proc_inst_t		*proc_inst;
-} unlang_map_kctx_t;
+} unlang_map_t;
+
+/** Cast a group structure to the map keyword extension
+ *
+ */
+static inline unlang_map_t *unlang_group_to_map(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_map_t);
+}
+
+/** Cast a map keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_map_to_group(unlang_map_t *map)
+{
+	return (unlang_group_t *)map;
+}
 
 #ifdef __cplusplus
 }

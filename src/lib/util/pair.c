@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/print.h>
@@ -102,7 +101,7 @@ fr_pair_t *fr_pair_alloc(TALLOC_CTX *ctx)
  *
  * @note Doesn't require qualification with a dictionary as fr_dict_attr_t are unique.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
  * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
  * @return
  *	- A new #fr_pair_t.
@@ -157,7 +156,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
  * @param[in] parent	of the attribute being allocated (usually a dictionary or vendor).
  * @param[in] attr	number.
  * @return
@@ -244,7 +243,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 */
 	switch (n->da->type) {
 	case FR_TYPE_STRUCTURAL:
-		if (fr_pair_list_copy(n, &n->vp_group, vp->vp_group) < 0) {
+		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
@@ -293,7 +292,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
  *
  * @todo TLV: needs to free all dependents of each VP freed.
  */
-void fr_pair_list_free(fr_pair_t **vps)
+void fr_pair_list_free(fr_pair_list_t *vps)
 {
 	fr_pair_t	*vp, *next;
 
@@ -395,18 +394,18 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
 /** Find the pair with the matching DAs
  *
  */
-fr_pair_t *fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
 {
 	fr_pair_t	*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
 	LIST_VERIFY(head);
 
 	if (!da) return NULL;
 
-	for (vp = head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
+	for (vp = *head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
 	return NULL;
 }
 
@@ -415,16 +414,16 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da)
  *
  * @todo should take DAs and do a pointer comparison.
  */
-fr_pair_t *fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned int attr)
+fr_pair_t *fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr)
 {
 	fr_pair_t	*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
 	LIST_VERIFY(head);
 
-	for (vp = head; vp != NULL; vp = vp->next) {
+	for (vp = *head; vp != NULL; vp = vp->next) {
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 	     	if (vendor > 0) {
@@ -445,20 +444,20 @@ fr_pair_t *fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned in
 /** Find the pair with the matching attribute
  *
  */
-fr_pair_t *fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr)
+fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!head) return NULL;
+	if (!*head) return NULL;
 
 	LIST_VERIFY(head);
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
 
-	for (vp = head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
+	for (vp = *head; vp != NULL; vp = vp->next) if (da == vp->da) return vp;
 
 	return NULL;
 }
@@ -469,7 +468,7 @@ static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp
 
 	switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
-		return (fr_pair_list_t *)&vp->vp_group;
+		return &vp->vp_group;
 
 	default:
 		return NULL;
@@ -489,107 +488,6 @@ fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 	return pair_children(vp);
 }
 
-/** Find the pair with the matching DAs in a group
- *
- * @param[in] parent	Which MUST be a structural type.
- * @param[in] da	to search for
- */
-fr_pair_t *fr_pair_child_by_da(fr_pair_t *parent, fr_dict_attr_t const *da)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return NULL;
-
-	return fr_pair_find_by_da(pl->slist, da);
-}
-
-/** Find the pair with the matching numbers in a group
- *
- * @param[in] parent	Which MUST be a structural type.
- * @param[in] vendor	to search for
- * @param[in] attr	to search for
- */
-fr_pair_t *fr_pair_child_by_num(fr_pair_t *parent, unsigned int vendor, unsigned int attr)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return NULL;
-
-	return fr_pair_find_by_num(pl->slist, vendor, attr);
-}
-
-/** Add a VP to the end of the FR_TYPE_GROUP.
- *
- * Locates the end of 'head', and links an additional VP 'add' at the end.
- *
- * @param[in] parent	Which MUST be a structural type.
- *			Will add new VP to the end of this list.
- * @param[in] add	to list.
- */
-void fr_pair_child_add(fr_pair_t *parent, fr_pair_t *add)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return;
-
-	fr_pair_add(&pl->slist, add);
-}
-
-/** Alloc a new fr_pair_list_t (and prepend)
- *
- * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
- *			care about manipulating the fr_pair_list_t.
- * @param[in] parent	Which MUST be a structural type.
- * @param[in] da	of attribute to update.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_child_add_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return -1;
-
-	return fr_pair_add_by_da(parent, out, &pl->slist, da);
-}
-
-/** Return the first fr_pair_list_t matching the #fr_dict_attr_t or alloc a new fr_pair_list_t (and prepend)
- *
- * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
- *			care about manipulating the fr_pair_list_t.
- * @param[in] parent	Which MUST be a structural type.
- * @param[in] da	of attribute to update.
- * @return
- *	- 1 if attribute already existed.
- *	- 0 if we allocated a new attribute.
- *	- -1 on failure.
- */
-int fr_pair_child_update_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return -1;
-
-	return fr_pair_add_by_da(parent, out, &pl->slist, da);
-}
-
-/** Delete matching pairs from the specified list
- *
- * @param[in] parent	Which MUST be a structural type.
- * @param[in] da	to match.
- * @return
- *	- >0 the number of pairs deleted.
- *	- 0 if no pairs were deleted.
- */
-int fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da)
-{
-	fr_pair_list_t *pl;
-
-	if (unlikely(!(pl = fr_pair_children(parent)))) return 0;
-
-	return fr_pair_delete_by_da(&pl->slist, da);
-}
 
 /** Add a VP to the end of the list.
  *
@@ -598,7 +496,7 @@ int fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da)
  * @param[in] head VP in linked list. Will add new VP to the end of this list.
  * @param[in] add VP to add to list.
  */
-void fr_pair_add(fr_pair_t **head, fr_pair_t *add)
+void fr_pair_add(fr_pair_list_t *head, fr_pair_t *add)
 {
 	fr_pair_t *i;
 
@@ -635,7 +533,7 @@ void fr_pair_add(fr_pair_t **head, fr_pair_t *add)
  * @param[in,out] head VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
  */
-void fr_pair_replace(fr_pair_t **head, fr_pair_t *replace)
+void fr_pair_replace(fr_pair_list_t *head, fr_pair_t *replace)
 {
 	fr_pair_t *i, *next;
 	fr_pair_t **prev = head;
@@ -692,7 +590,7 @@ void fr_pair_replace(fr_pair_t **head, fr_pair_t *replace)
  * @param[in] attr	to match.
  * @param[in] parent	to match.
  */
-void fr_pair_delete_by_child_num(fr_pair_t **head, fr_dict_attr_t const *parent, unsigned int attr)
+void fr_pair_delete_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_pair_t		*i, *next;
 	fr_pair_t		**last = head;
@@ -724,7 +622,7 @@ void fr_pair_delete_by_child_num(fr_pair_t **head, fr_dict_attr_t const *parent,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da)
+int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -754,7 +652,7 @@ int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dic
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da)
+int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -786,7 +684,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_
  *	- >0 the number of pairs deleted.
  *	- 0 if no pairs were deleted.
  */
-int fr_pair_delete_by_da(fr_pair_t **list, fr_dict_attr_t const *da)
+int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -804,7 +702,7 @@ int fr_pair_delete_by_da(fr_pair_t **list, fr_dict_attr_t const *da)
  * @param[in] list	of value pairs to remove VP from.
  * @param[in] vp	to remove
  */
-void fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp)
+void fr_pair_delete(fr_pair_list_t *list, fr_pair_t const *vp)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*cvp;
@@ -1000,12 +898,12 @@ int fr_pair_cmp(fr_pair_t *a, fr_pair_t *b)
  *	- 1 if a > b.
  *	- -2 on error.
  */
-int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
+int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 {
 	fr_cursor_t a_cursor, b_cursor;
 	fr_pair_t *a_p, *b_p;
 
-	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	for (a_p = fr_cursor_init(&a_cursor, a), b_p = fr_cursor_init(&b_cursor, b);
 	     a_p && b_p;
 	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
 		int ret;
@@ -1018,7 +916,7 @@ int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
 
 		switch (a_p->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			ret = fr_pair_list_cmp(a_p->vp_group, b_p->vp_group);
+			ret = fr_pair_list_cmp(&a_p->vp_group, &b_p->vp_group);
 			if (ret != 0) return ret;
 			break;
 
@@ -1039,7 +937,7 @@ int fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b)
 	return 1;
 }
 
-static void _pair_list_sort_split(fr_pair_t *source, fr_pair_t **front, fr_pair_t **back)
+static void _pair_list_sort_split(fr_pair_list_t *source, fr_pair_list_t *front, fr_pair_list_t *back)
 {
 	fr_pair_t *fast;
 	fr_pair_t *slow;
@@ -1047,8 +945,8 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_t **front, fr_pair_
 	/*
 	 *	Stopping condition - no more elements left to split
 	 */
-	if (!source || !source->next) {
-		*front = source;
+	if (!*source || !(*source)->next) {
+		*front = *source;
 		*back = NULL;
 
 		return;
@@ -1058,8 +956,8 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_t **front, fr_pair_
 	 *	Fast advances twice as fast as slow, so when it gets to the end,
 	 *	slow will point to the middle of the linked list.
 	 */
-	slow = source;
-	fast = source->next;
+	slow = *source;
+	fast = (*source)->next;
 
 	while (fast) {
 		fast = fast->next;
@@ -1069,27 +967,27 @@ static void _pair_list_sort_split(fr_pair_t *source, fr_pair_t **front, fr_pair_
 		}
 	}
 
-	*front = source;
+	*front = *source;
 	*back = slow->next;
 	slow->next = NULL;
 }
 
-static fr_pair_t *_pair_list_sort_merge(fr_pair_t *a, fr_pair_t *b, fr_cmp_t cmp)
+static fr_pair_t *_pair_list_sort_merge(fr_pair_list_t *a, fr_pair_list_t *b, fr_cmp_t cmp)
 {
 	fr_pair_t *result = NULL;
 
-	if (!a) return b;
-	if (!b) return a;
+	if (!*a) return *b;
+	if (!*b) return *a;
 
 	/*
 	 *	Compare the fr_dict_attr_ts and tags
 	 */
-	if (cmp(a, b) <= 0) {
-		result = a;
-		result->next = _pair_list_sort_merge(a->next, b, cmp);
+	if (cmp(*a, *b) <= 0) {
+		result = *a;
+		result->next = _pair_list_sort_merge(&(*a)->next, b, cmp);
 	} else {
-		result = b;
-		result->next = _pair_list_sort_merge(a, b->next, cmp);
+		result = *b;
+		result->next = _pair_list_sort_merge(a, &(*b)->next, cmp);
 	}
 
 	return result;
@@ -1105,7 +1003,7 @@ static fr_pair_t *_pair_list_sort_merge(fr_pair_t *a, fr_pair_t *b, fr_cmp_t cmp
  * @param[in,out] vps List of fr_pair_ts to sort.
  * @param[in] cmp to sort with
  */
-void fr_pair_list_sort(fr_pair_t **vps, fr_cmp_t cmp)
+void fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp)
 {
 	fr_pair_t *head = *vps;
 	fr_pair_t *a;
@@ -1116,14 +1014,14 @@ void fr_pair_list_sort(fr_pair_t **vps, fr_cmp_t cmp)
 	 */
 	if (!head || !head->next) return;
 
-	_pair_list_sort_split(head, &a, &b);	/* Split into sublists */
+	_pair_list_sort_split(&head, &a, &b);	/* Split into sublists */
 	fr_pair_list_sort(&a, cmp);		/* Traverse left */
 	fr_pair_list_sort(&b, cmp);		/* Traverse right */
 
 	/*
 	 *	merge the two sorted lists together
 	 */
-	*vps = _pair_list_sort_merge(a, b, cmp);
+	*vps = _pair_list_sort_merge(&a, &b, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
@@ -1178,7 +1076,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list)
+bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list)
 {
 	fr_cursor_t filter_cursor;
 	fr_cursor_t list_cursor;
@@ -1256,10 +1154,10 @@ mismatch:
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list)
+bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list)
 {
-	vp_cursor_t	filter_cursor;
-	vp_cursor_t	list_cursor;
+	fr_cursor_t	filter_cursor;
+	fr_cursor_t	list_cursor;
 
 	fr_pair_t *check, *last_check = NULL, *match = NULL;
 
@@ -1276,10 +1174,10 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr
 	fr_pair_list_sort(filter, fr_pair_cmp_by_da);
 	fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-	fr_pair_cursor_init(&list_cursor, list);
-	for (check = fr_pair_cursor_init(&filter_cursor, filter);
+	fr_cursor_init(&list_cursor, list);
+	for (check = fr_cursor_init(&filter_cursor, filter);
 	     check;
-	     check = fr_pair_cursor_next(&filter_cursor)) {
+	     check = fr_cursor_next(&filter_cursor)) {
 		/*
 		 *	Were processing check attributes of a new type.
 		 */
@@ -1288,22 +1186,22 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr
 			 *	Record the start of the matching attributes in the pair list
 			 *	For every other operator we require the match to be present
 			 */
-			match = fr_pair_cursor_next_by_da(&list_cursor, check->da);
+			match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, check->da);
 			if (!match) {
 				if (check->op == T_OP_CMP_FALSE) continue;
 				goto mismatch;
 			}
 
-			fr_pair_cursor_init(&list_cursor, &match);
+			fr_cursor_init(&list_cursor, &match);
 			last_check = check;
 		}
 
 		/*
 		 *	Now iterate over all attributes of the same type.
 		 */
-		for (match = fr_pair_cursor_head(&list_cursor);
+		for (match = fr_cursor_head(&list_cursor);
 		     ATTRIBUTE_EQ(match, check);
-		     match = fr_pair_cursor_next(&list_cursor)) {
+		     match = fr_cursor_next(&list_cursor)) {
 			switch (check->da->type) {
 			case FR_TYPE_STRUCTURAL:
 				if (!fr_pair_validate_relaxed(failed, &check->vp_group, &match->vp_group)) goto mismatch;
@@ -1341,7 +1239,7 @@ mismatch:
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
-int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from)
+int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from)
 {
 	fr_cursor_t	src, dst, tmp;
 
@@ -1350,7 +1248,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from)
 	int		cnt = 0;
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
-	for (vp = fr_cursor_talloc_init(&src, &from, fr_pair_t);
+	for (vp = fr_cursor_talloc_init(&src, from, fr_pair_t);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1386,8 +1284,8 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from)
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
-int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
-			    fr_pair_t *from, fr_dict_attr_t const *da)
+int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
+			    fr_pair_list_t *from, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	src, dst, tmp;
 
@@ -1401,7 +1299,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
 	}
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
-	for (vp = fr_cursor_iter_by_da_init(&src, &from, da);
+	for (vp = fr_cursor_iter_by_da_init(&src, from, da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1439,8 +1337,8 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
-int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
-				  fr_pair_t *from, fr_dict_attr_t const *parent_da)
+int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
+				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da)
 {
 	fr_cursor_t	src, dst, tmp;
 
@@ -1454,7 +1352,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
 	}
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
-	for (vp = fr_cursor_iter_by_ancestor_init(&src, &from, parent_da);
+	for (vp = fr_cursor_iter_by_ancestor_init(&src, from, parent_da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1483,45 +1381,24 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
  */
 void fr_pair_value_clear(fr_pair_t *vp)
 {
+	fr_pair_t *child;
+	fr_cursor_t cursor;
+
 	switch (vp->da->type) {
 	default:
 		fr_value_box_clear_value(&vp->data);
-		return;
+		break;
 
 	case FR_TYPE_STRUCTURAL:
-		/*
-		 *	Depth first freeing of children
-		 *
-		 *	This ensures orderly freeing, regardless
-		 *	of talloc hierarchy.
-		 */
-		switch (vp->children.type) {
-		case FR_PAIR_LIST_SINGLE:
-		{
-			fr_cursor_t	cursor;
-			fr_pair_t	*vpc;
+		if (!vp->vp_group) return;
 
-			for (vpc = fr_cursor_init(&cursor, &vp->children.slist);
-			     vpc;
-			     vpc = fr_cursor_next(&cursor)) {
-				fr_pair_value_clear(vpc);
-				talloc_free(vpc);
-			}
+		for (child = fr_cursor_init(&cursor, &vp->vp_group);
+		     child;
+		     child = fr_cursor_next(&cursor)) {
+			fr_pair_value_clear(child);
+			talloc_free(child);
 		}
-			break;
-
-		case FR_PAIR_LIST_DOUBLE:
-		{
-			fr_pair_t	*vpc = NULL;
-
-			while ((vpc = fr_dlist_next(&vp->children.dlist, vpc))) {
-				fr_pair_value_clear(vpc);
-				talloc_free(vpc);
-			}
-		}
-			break;
-		}
-		return;
+		break;
 	}
 }
 
@@ -2363,17 +2240,17 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 /*
  *	Verify a pair list
  */
-void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_t *vps)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *vps)
 {
 	fr_cursor_t		slow_cursor, fast_cursor;
 	fr_pair_t		*slow, *fast;
 	TALLOC_CTX		*parent;
 
-	if (!vps) return;	/* Fast path */
+	if (!*vps) return;	/* Fast path */
 
-	fr_cursor_init(&fast_cursor, &vps);
+	fr_cursor_init(&fast_cursor, vps);
 
-	for (slow = fr_cursor_init(&slow_cursor, &vps), fast = fr_cursor_init(&fast_cursor, &vps);
+	for (slow = fr_cursor_init(&slow_cursor, vps), fast = fr_cursor_init(&fast_cursor, vps);
 	     slow && fast;
 	     slow = fr_cursor_next(&fast_cursor), fast = fr_cursor_next(&fast_cursor)) {
 		VP_VERIFY(slow);
@@ -2405,21 +2282,21 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 /** Mark up a list of VPs as tainted.
  *
  */
-void fr_pair_list_tainted(fr_pair_t *vps)
+void fr_pair_list_tainted(fr_pair_list_t *vps)
 {
 	fr_pair_t	*vp;
 	fr_cursor_t	cursor;
 
-	if (!vps) return;
+	if (!*vps) return;
 
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			fr_pair_list_tainted(vp->vp_group);
+			fr_pair_list_tainted(&vp->vp_group);
 			break;
 
 		default:
@@ -2496,6 +2373,22 @@ fr_pair_t *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_val
 	/*
 	 *	Mark the attributes as tainted.
 	 */
-	fr_pair_list_tainted(vps);
+	fr_pair_list_tainted(&vps);
 	return vps;
+}
+
+/** Evaluation function for matching if vp matches a given da
+ *
+ * Can be used as a filter function for fr_cursor_filter_next()
+ *
+ * @param item	pointer to a fr_pair_t
+ * @param uctx	da to match
+ *
+ * @return true if the pair matches the da
+ */
+bool fr_pair_matches_da(void const *item, void const *uctx)
+{
+	fr_pair_t const		*vp = item;
+	fr_dict_attr_t const	*da = uctx;
+	return da == vp->da;
 }

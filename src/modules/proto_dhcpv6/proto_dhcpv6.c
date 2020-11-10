@@ -249,12 +249,12 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	RADCLIENT const *client;
-	RADIUS_PACKET *packet = request->packet;
-	fr_cursor_t cursor;
+	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const	*address = track->address;
+	RADCLIENT const		*client;
+	fr_radius_packet_t	*packet = request->packet;
+	fr_cursor_t		cursor;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -299,6 +299,14 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	request->config = main_config;
 	REQUEST_VERIFY(request);
 
+	/*
+	 *	Build out any nested replies based on nested relay packets in the request.
+	 *
+	 *	This function also copies over and initializes the
+	 *	various header fields necessary to build the reply packet.
+	 */
+	(void) fr_dhcpv6_reply_initialize(request->reply, &request->reply_pairs, packet->data, packet->data_len);
+
 	if (!inst->io.app_io->decode) return 0;
 
 	/*
@@ -309,13 +317,13 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	fr_dhcpv6_packet_t *reply = (fr_dhcpv6_packet_t *) buffer;
-	fr_dhcpv6_packet_t *original = (fr_dhcpv6_packet_t *) request->packet->data;
-	ssize_t data_len;
-	RADCLIENT const *client;
+	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const	*address = track->address;
+	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
+	fr_dhcpv6_packet_t	*original = (fr_dhcpv6_packet_t *) request->packet->data;
+	ssize_t			data_len;
+	RADCLIENT const		*client;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
@@ -383,7 +391,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-	data_len = fr_dhcpv6_encode(buffer, buffer_len, request->packet->data, request->packet->data_len,
+	data_len = fr_dhcpv6_encode(&FR_DBUFF_TMP(buffer, buffer_len),
+				    request->packet->data, request->packet->data_len,
 				    request->reply->code, request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPv6 reply");

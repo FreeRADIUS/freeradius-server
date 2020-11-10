@@ -468,7 +468,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 		 */
 		{
 			fr_value_box_t	tmp = { .type = FR_TYPE_INVALID };
-			vp_map_t	*map;
+			map_t	*map;
 
 			if (fr_json_object_to_value_box(ctx, &tmp, value_obj, da, true) < 0) {
 			bad_value:
@@ -627,7 +627,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp)) != NULL) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_event_timestamp)) != NULL) {
 		/* get seconds value from attribute */
 		ts = fr_time_to_sec(vp->vp_date);
 	} else {
@@ -641,7 +641,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_t *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time)) != NULL) {
+	if ((vp = fr_pair_find_by_da(&vps, attr_acct_session_time)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_uint32);
 		/* calculate start time */

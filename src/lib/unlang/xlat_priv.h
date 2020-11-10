@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file src/lib/server/xlat_priv.h
+ * @file src/lib/unlang/xlat_priv.h
  * @brief String expansion ("translation"). Implements %Attribute -> value
  *
  * Private structures for the xlat tokenizer and xlat eval code.
@@ -68,7 +68,7 @@ typedef struct xlat_s {
 	size_t			thread_inst_size;	//!< Size of the thread instance data to pre-allocate.
 	void			*thread_uctx;		//!< uctx to pass to instantiation functions.
 
-	bool			needs_async;		//!< If true, is async safe
+	bool			needs_async;		//!< If true, then it requires async operation
 
 	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	void			*mod_inst;		//!< Module instance passed to xlat

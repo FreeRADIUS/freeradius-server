@@ -576,7 +576,9 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  *
  * @note must be called without effective root permissions (fr_suid_down).
  *
- * @param path where domain socket should be created.
+ * @param[in] path 	where domain socket should be created.
+ * @param[in] uid	Owner of the socket.
+ * @param[in] gid	Group of the socket.
  * @return a file descriptor for the bound socket on success, -1 on failure.
  */
 static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)

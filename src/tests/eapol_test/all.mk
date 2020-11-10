@@ -2,7 +2,7 @@
 #   Only run EAP tests if we have a "test" target
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell test -e "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
+EAPOL_TEST = $(shell test -e "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip" || $(top_builddir)/scripts/ci/eapol_test-build.sh)
 endif
 
 #

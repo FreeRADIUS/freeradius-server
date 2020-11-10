@@ -104,7 +104,7 @@ int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int ifindex)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *packet)
+int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, fr_radius_packet_t *packet)
 {
 	uint8_t			dhcp_packet[1518] = { 0 };
 	ethernet_header_t	*eth_hdr = (ethernet_header_t *)dhcp_packet;
@@ -117,7 +117,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
-	if ((vp = fr_pair_find_by_da(packet->vps, attr_dhcp_client_hardware_address))) {
+	if ((vp = fr_pair_find_by_da(&packet->vps, attr_dhcp_client_hardware_address))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
@@ -171,10 +171,10 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
  *
  *	FIXME: split this into two, recv_raw_packet, and verify(packet, original)
  */
-RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *request)
+fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, fr_radius_packet_t *request)
 {
 	fr_pair_t		*vp;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	uint8_t const		*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
@@ -226,7 +226,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	 *	Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0) &&
-	    (vp = fr_pair_find_by_da(request->vps, attr_dhcp_client_hardware_address)) &&
+	    (vp = fr_pair_find_by_da(&request->vps, attr_dhcp_client_hardware_address)) &&
 	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0))) {
 
 		/* No match. */

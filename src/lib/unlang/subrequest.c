@@ -33,7 +33,7 @@ RCSID("$Id$")
  * State of one level of nesting within an xlat expansion.
  */
 typedef struct {
-	rlm_rcode_t			*presult;			//!< Where to store the result.
+	rlm_rcode_t			*p_result;			//!< Where to store the result.
 	request_t				*child;				//!< Pre-allocated child request.
 	bool				free_child;			//!< Whether we should free the child after
 									///< it completes.
@@ -96,7 +96,7 @@ static void unlang_subrequest_signal(request_t *request, fr_state_signal_t actio
 /** Process a subrequest until it either detaches, or is done.
  *
  */
-static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_process(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -121,15 +121,15 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 		 */
 
 	calculate_result:
-		if (child->reply && g->kctx) {		/* Only have kctx for keyword generated subrequests */
-			unlang_subrequest_kctx_t	*kctx;
+		if (child->reply) {
+			unlang_subrequest_t	*gext;
 
 			/*
 			 *	Copy reply attributes into the specified
 			 *      destination.
 			 */
-			kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
-			if (kctx->dst) {
+			gext = unlang_group_to_subrequest(g);
+			if (gext->dst) {
 				tmpl_attr_extent_t 	*extent = NULL;
 				fr_dlist_head_t		leaf;
 				fr_dlist_head_t		interior;
@@ -140,15 +140,15 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 				/*
 				 *	Find out what we need to build and build it
 				 */
-				if ((tmpl_extents_find(kctx, &leaf, &interior, request, kctx->dst) < 0) ||
-				    (tmpl_extents_build_to_leaf(&leaf, &interior, kctx->dst) < 0)) {
+				if ((tmpl_extents_find(gext, &leaf, &interior, request, gext->dst) < 0) ||
+				    (tmpl_extents_build_to_leaf(&leaf, &interior, gext->dst) < 0)) {
 					RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
 					fr_dlist_talloc_free(&leaf);
 					fr_dlist_talloc_free(&interior);
 					goto done;
 				}
 				while ((extent = fr_dlist_head(&leaf))) {
-					fr_pair_list_copy(extent->list_ctx, extent->list, child->reply->vps);
+					fr_pair_list_copy(extent->list_ctx, extent->list, &child->reply_pairs);
 					fr_dlist_talloc_free_head(&leaf);
 				}
 			}
@@ -167,9 +167,9 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 		 *	use it to modify the current section
 		 *	rcode.
 		 */
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
-		*presult = rcode;
+		*p_result = rcode;
 
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -193,12 +193,12 @@ static unlang_action_t unlang_subrequest_process(request_t *request, rlm_rcode_t
 }
 
 
-static unlang_action_t unlang_subrequest_start(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_start(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	request_t				*child = state->child;
+	request_t			*child = state->child;
 
 	/*
 	 *	Restore state from the parent to the
@@ -209,14 +209,14 @@ static unlang_action_t unlang_subrequest_start(request_t *request, rlm_rcode_t *
 							     state->session.unique_int);
 
 	RDEBUG2("Creating subrequest (%s)", child->name);
-	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, child->request_pairs, NULL);
 
-	frame->interpret = unlang_subrequest_process;
-	return unlang_subrequest_process(request, presult);
+	frame->process = unlang_subrequest_process;
+	return unlang_subrequest_process(p_result, request);
 }
 
 
-static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -228,20 +228,19 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	fr_pair_t			*vp;
 
 	unlang_group_t			*g;
-	unlang_subrequest_kctx_t	*kctx;
+	unlang_subrequest_t	*gext;
 
 	/*
 	 *	Initialize the state
 	 */
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	kctx = talloc_get_type_abort(g->kctx, unlang_subrequest_kctx_t);
-
-	child = state->child = unlang_io_subrequest_alloc(request, kctx->dict, UNLANG_DETACHABLE);
+	gext = unlang_group_to_subrequest(g);
+	child = state->child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
 		rcode = RLM_MODULE_FAIL;
@@ -252,29 +251,29 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 		 *	use it to modify the current section
 		 *	rcode.
 		 */
-		if (state->presult) *state->presult = rcode;
+		if (state->p_result) *state->p_result = rcode;
 
-		*presult = rcode;
+		*p_result = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 	/*
 	 *	Set the packet type.
 	 */
-	MEM(vp = fr_pair_afrom_da(child->packet, kctx->attr_packet_type));
+	MEM(vp = fr_pair_afrom_da(child->packet, gext->attr_packet_type));
 
-	if (kctx->type_enum) {
-		child->packet->code = vp->vp_uint32 = kctx->type_enum->value->vb_uint32;
+	if (gext->type_enum) {
+		child->packet->code = vp->vp_uint32 = gext->type_enum->value->vb_uint32;
 	} else {
 		fr_dict_enum_t const	*type_enum;
 		fr_pair_t		*attr;
 
-		if (tmpl_find_vp(&attr, request, kctx->vpt) < 0) {
-			RDEBUG("Failed finding attribute %s", kctx->vpt->name);
+		if (tmpl_find_vp(&attr, request, gext->vpt) < 0) {
+			RDEBUG("Failed finding attribute %s", gext->vpt->name);
 			goto fail;
 		}
 
-		if (tmpl_da(kctx->vpt)->type == FR_TYPE_STRING) {
-			type_enum = fr_dict_enum_by_name(kctx->attr_packet_type, attr->vp_strvalue, attr->vp_length);
+		if (tmpl_da(gext->vpt)->type == FR_TYPE_STRING) {
+			type_enum = fr_dict_enum_by_name(gext->attr_packet_type, attr->vp_strvalue, attr->vp_length);
 			if (!type_enum) {
 				RDEBUG("Unknown Packet-Type %pV", &attr->data);
 				goto fail;
@@ -297,7 +296,7 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 			 *	"recv foo" section for it and we can't
 			 *	do anything with this packet.
 			 */
-			type_enum = fr_dict_enum_by_value(kctx->attr_packet_type, &box);
+			type_enum = fr_dict_enum_by_value(gext->attr_packet_type, &box);
 			if (!type_enum) {
 				RDEBUG("Invalid value %pV for Packet-Type", &box);
 				goto fail;
@@ -307,12 +306,19 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 		}
 
 	}
-	fr_pair_add(&child->packet->vps, vp);
+	fr_pair_add(&child->request_pairs, vp);
 
-	if (kctx->src) {
-		if (tmpl_copy_vps(child->packet, &child->packet->vps, request, kctx->src) < -1) {
-			RPEDEBUG("Failed copying source attributes into subrequest");
-			goto fail;
+	if (gext->src) {
+		if (tmpl_is_list(gext->src)) {
+			if (tmpl_copy_pairs(child->packet, &child->request_pairs, request, gext->src) < -1) {
+				RPEDEBUG("Failed copying source attributes into subrequest");
+				goto fail;
+			}
+		} else {
+			if (tmpl_copy_pair_children(child->packet, &child->request_pairs, request, gext->src) < -1) {
+				RPEDEBUG("Failed copying source attributes into subrequest");
+				goto fail;
+			}
 		}
 	}
 
@@ -320,21 +326,21 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	unlang_interpret_push(child, g->children, frame->result,
-			      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+	if (unlang_interpret_push(child, g->children, frame->result,
+				  UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME) < 0) goto fail;
 
 	/*
-	 *	Probably not a great idea to set state->presult to
-	 *	presult, as it could be a pointer to an rlm_rcode_t
+	 *	Probably not a great idea to set state->p_result to
+	 *	p_result, as it could be a pointer to an rlm_rcode_t
 	 *	somewhere on the stack which could be invalidated
 	 *	between unlang_subrequest being called and
 	 *	unlang_subrequest_resume being called.
 	 *
 	 *	...so we just set it to NULL and interpret
-	 *	that as use the presult that was passed
+	 *	that as use the p_result that was passed
 	 *	in to the currently executing function.
 	 */
-	state->presult = NULL;
+	state->p_result = NULL;
 	state->free_child = true;
 	state->detachable = true;
 
@@ -346,8 +352,8 @@ static unlang_action_t unlang_subrequest_state_init(request_t *request, rlm_rcod
 	state->session.unique_ptr = instruction;
 	state->session.unique_int = 0;
 
-	frame->interpret = unlang_subrequest_start;
-	return unlang_subrequest_start(request, presult);
+	frame->process = unlang_subrequest_start;
+	return unlang_subrequest_start(p_result, request);
 }
 
 /** Initialize a detached child
@@ -367,7 +373,7 @@ int unlang_detached_child_init(request_t *request)
 	/*
 	 *	Set Request Lifetime
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_request_lifetime);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_request_lifetime);
 	if (!vp || (vp->vp_uint32 > 0)) {
 		fr_time_delta_t when = 0;
 		const fr_event_timer_t **ev_p;
@@ -405,7 +411,7 @@ int unlang_detached_child_init(request_t *request)
 	return 0;
 }
 
-static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -419,7 +425,7 @@ static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
 	 *	continue.
 	 */
 	if (!request->parent) {
-		*presult = state->rcode;
+		*p_result = state->rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -462,7 +468,7 @@ static unlang_action_t unlang_detach(request_t *request, rlm_rcode_t *presult)
 	 *	Pass through whatever the previous instruction had as
 	 *	the result.
 	 */
-	state->rcode = *presult;
+	state->rcode = *p_result;
 
 	/*
 	 *	Yield to the parent, who will discover that there's no
@@ -482,24 +488,7 @@ void unlang_subrequest_free(request_t **child)
 	*child = NULL;
 }
 
-static unlang_group_t subrequest_instruction = {
-	.self = {
-		.type = UNLANG_TYPE_SUBREQUEST,
-		.name = "subrequest",
-		.debug_name = "subrequest",
-		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
-		},
-	},
-};
+static unlang_group_t *subrequest_instruction;
 
 /** Push a pre-existing child back onto the stack as a subrequest
  *
@@ -515,9 +504,12 @@ static unlang_group_t subrequest_instruction = {
  * @param[in] session		control values.  Whether we restore/store session info.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
-			    unlang_subrequest_session_t const *session, bool top_frame)
+int unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
+			   unlang_subrequest_session_t const *session, bool top_frame)
 {
 	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
@@ -526,7 +518,9 @@ void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_interpret_push(child->parent, &subrequest_instruction.self, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(child->parent, &subrequest_instruction->self,
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -535,17 +529,21 @@ void unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 	 *      the subrequest instruction would alloc.
 	 */
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	state->presult = out;
+	state->p_result = out;
 	state->child = child;
 	state->free_child = false;
 	state->detachable = false;
 	if (session) state->session = *session;
 
-	frame->interpret = unlang_subrequest_start;
+	frame->process = unlang_subrequest_start;
+
+	return 0;
 }
 
 int unlang_subrequest_op_init(void)
 {
+	unlang_subrequest_t *gctx;
+
 	if (fr_dict_autoload(subrequest_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
@@ -554,6 +552,39 @@ int unlang_subrequest_op_init(void)
 		PERROR("%s", __FUNCTION__);
 		return -1;
 	}
+
+	/*
+	 *	Needs to be dynamically allocated
+	 *	so that talloc_get_type works
+	 *	correctly.
+	 */
+	gctx = talloc(NULL, unlang_subrequest_t);
+	if (!gctx) {
+		ERROR("%s: Out of memory", __FUNCTION__);
+		return -1;
+	}
+	*gctx = (unlang_subrequest_t){
+		.group = {
+			.self = {
+				.type = UNLANG_TYPE_SUBREQUEST,
+				.name = "subrequest",
+				.debug_name = "subrequest",
+				.actions = {
+					[RLM_MODULE_REJECT]	= 0,
+					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+					[RLM_MODULE_OK]		= 0,
+					[RLM_MODULE_HANDLED]	= 0,
+					[RLM_MODULE_INVALID]	= 0,
+					[RLM_MODULE_DISALLOW]	= 0,
+					[RLM_MODULE_NOTFOUND]	= 0,
+					[RLM_MODULE_NOOP]	= 0,
+					[RLM_MODULE_UPDATED]	= 0
+				}
+			}
+		}
+	};
+	talloc_set_memlimit(gctx, talloc_get_size(gctx));	/* Ensure where are no allocations */
+	subrequest_instruction = unlang_subrequest_to_group(gctx);
 
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			   &(unlang_op_t){
@@ -578,5 +609,6 @@ int unlang_subrequest_op_init(void)
 
 void unlang_subrequest_op_free(void)
 {
+	talloc_free(subrequest_instruction);
 	fr_dict_autofree(subrequest_dict);
 }

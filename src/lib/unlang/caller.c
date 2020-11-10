@@ -30,24 +30,24 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_caller(request_t *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_caller(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 
 	unlang_group_t			*g;
-	unlang_caller_kctx_t		*kctx;
+	unlang_caller_t		*gext;
 
 	g = unlang_generic_to_group(instruction);
-	kctx = talloc_get_type_abort(g->kctx, unlang_caller_kctx_t);
+	gext = unlang_group_to_caller(g);
 
 	fr_assert(g->num_children > 0); /* otherwise the compilation is broken */
 
 	/*
 	 *	No parent, or the dictionaries don't match.  Ignore it.
 	 */
-	if (!request->parent || (request->parent->dict != kctx->dict)) {
+	if (!request->parent || (request->parent->dict != gext->dict)) {
 		RDEBUG2("...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
@@ -55,7 +55,7 @@ static unlang_action_t unlang_caller(request_t *request, rlm_rcode_t *presult)
 	/*
 	 *	The dictionary matches.  Go recurse into its' children.
 	 */
-	return unlang_group(request, presult);
+	return unlang_group(p_result, request);
 }
 
 

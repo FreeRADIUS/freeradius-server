@@ -82,7 +82,6 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 
 	[FR_TYPE_DATE]		= {4, 4},
 	[FR_TYPE_TIME_DELTA]   	= {4, 4},
-	[FR_TYPE_ABINARY]	= {32, ~0},
 
 	[FR_TYPE_TLV]		= {2, ~0},
 	[FR_TYPE_STRUCT]	= {1, ~0},
@@ -607,7 +606,7 @@ int dict_attr_init(fr_dict_attr_t **da_p,
  *
  * This is useful in some instances where we need to pre-allocate the attribute
  * for talloc hierarchy reasons, but want to finish initialising it
- * with #fr_dict_init later.
+ * with #dict_attr_init later.
  *
  * @param[in] ctx		to allocate attribute in.
  * @return

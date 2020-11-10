@@ -51,7 +51,7 @@
  * Or for simplicity, there are functions which wrap the cursor functions, to copy or
  * return the #fr_pair_t that match the VPT.
  *
- * @see tmpl_copy_vps
+ * @see tmpl_copy_pairs
  * @see tmpl_find_vp
  *
  * If you just need the string value of whatever the VPT refers to, the tmpl_*expand
@@ -212,7 +212,6 @@ typedef enum tmpl_type_e {
 	/** A regular expression with unresolved xlat functions or attribute references
 	 */
 	TMPL_TYPE_REGEX_XLAT_UNRESOLVED = TMPL_TYPE_REGEX_XLAT | TMPL_FLAG_UNRESOLVED,
-	/** @} */
 
 	TMPL_TYPE_MAX			//!< Marker for the last tmpl type.
 } tmpl_type_t;
@@ -375,6 +374,17 @@ typedef struct {
 	request_ref_t		_CONST request;
 } tmpl_request_t;
 
+
+/** How many additional headers to allocate in a pool for a tmpl_t
+ *
+ */
+#define TMPL_POOL_DEF_HEADERS		4
+
+/** How many additional bytes to allocate in a pool for a tmpl_t
+ *
+ */
+#define TMPL_POOL_DEF_LEN		(sizeof(tmpl_t) + 64 + sizeof(tmpl_attr_t) + sizeof(tmpl_request_t))
+
 /** @name Field accessors for attribute references
  *
  * @{
@@ -392,7 +402,7 @@ typedef struct {
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
  *
- * @section update_maps Use in update vp_map_t
+ * @section update_maps Use in update map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
@@ -407,11 +417,11 @@ typedef struct {
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT (pre-parsed xlat)
  *
- * @section conditional_maps Use in conditional vp_map_t
+ * @section conditional_maps Use in conditional map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
  * - #TMPL_TYPE_REGEX (pre-parsed regex)
  *
- * @see vp_map_t
+ * @see map_t
  */
 struct tmpl_s {
 	tmpl_type_t	_CONST type;		//!< What type of value tmpl refers to.
@@ -507,7 +517,7 @@ struct tmpl_cursor_ctx_s {
 
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
-	request_t			*request;	//!< Result of following the request references.
+	request_t		*request;	//!< Result of following the request references.
 	fr_pair_t		**list;		//!< List within the request.
 
 	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
@@ -825,7 +835,7 @@ void			tmpl_debug(tmpl_t const *vpt);
 
 fr_pair_t		**radius_list(request_t *request, pair_list_t list);
 
-RADIUS_PACKET		*radius_packet(request_t *request, pair_list_t list_name);
+fr_radius_packet_t		*radius_packet(request_t *request, pair_list_t list_name);
 
 TALLOC_CTX		*radius_list_ctx(request_t *request, pair_list_t list_name);
 
@@ -964,8 +974,11 @@ fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
-int			tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				      tmpl_t const *vpt);
+int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out,
+					request_t *request, tmpl_t const *vpt);
+
+int			tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out,
+						request_t *request, tmpl_t const *vpt);
 
 int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
 

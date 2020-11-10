@@ -61,20 +61,5 @@ statements.
 | vsa		| Encapsulation of vendor-specific attributes
 |=====
 
-=== Protocol-Specific Data Types
-
-The following data types are used only in certain protocols.  These
-data types can be used only in the dictionaries.  They cannot be used
-in `unlang` statements.
-
-.Protocol Specific Data Types
-[options="header"]
-[cols="15%,15%,70%"]
-|=====
-| Data Type     | Protocol | Description
-| abinary       | RADIUS   | Ascend binary filters
-| extended      | RADIUS   | attributes which "extend" the number space
-|=====
-
 // Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS

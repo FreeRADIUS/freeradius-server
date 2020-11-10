@@ -53,12 +53,12 @@ rlm_rcode_t rad_virtual_server(request_t *request)
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
 
-	username = fr_pair_find_by_num(request->request_pairs, 0, FR_STRIPPED_USER_NAME);
-	if (!username) username = fr_pair_find_by_num(request->request_pairs, 0, FR_USER_NAME);
+	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
+	if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
 
 	if (request->parent) {
-		parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_STRIPPED_USER_NAME);
-		if (!parent_username) parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME);
+		parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
+		if (!parent_username) parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 	}
 
 	/*
@@ -69,7 +69,7 @@ rlm_rcode_t rad_virtual_server(request_t *request)
 		 *	Look at the full User-Name with realm.
 		 */
 		if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
-			vp = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME);
+			vp = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 			if (!vp) goto runit;
 		} else {
 			vp = parent_username;
@@ -183,9 +183,9 @@ runit:
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -194,7 +194,7 @@ void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool receive
 
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s code %u Id %i from %s%pV%s:%i to %s%pV%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       "%s%s%s"
 #endif
 		       "length %zu",
@@ -209,7 +209,7 @@ void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool receive
 		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
 		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->socket.inet.dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       packet->socket.inet.ifindex ? "via " : "",
 		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 		       packet->socket.inet.ifindex ? " " : "",
@@ -217,8 +217,8 @@ void common_packet_debug(request_t *request, RADIUS_PACKET *packet, bool receive
 		       packet->data_len);
 
 	if (received) {
-		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
 	}
 }

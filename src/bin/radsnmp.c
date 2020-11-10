@@ -159,9 +159,9 @@ static void rs_signal_stop(UNUSED int sig)
  * @param fd the request will be sent on.
  * @return new request.
  */
-static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
+static fr_radius_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
-	RADIUS_PACKET *packet;
+	fr_radius_packet_t *packet;
 
 	packet = fr_radius_alloc(conf, true);
 
@@ -588,7 +588,7 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_t *
 	struct iovec	io_vector[2];
 	char		newline[] = "\n";
 
-	vp = fr_pair_find_by_da(head, error);
+	vp = fr_pair_find_by_da(&head, error);
 	if (!vp) {
 		if (write(fd, "DONE\n", 5) < 0) {
 			fr_strerror_printf("Failed writing set response: %s", fr_syserror(errno));
@@ -646,7 +646,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 		fr_cursor_t		cursor;
 		fr_pair_t		*vp;
-		RADIUS_PACKET		*packet;
+		fr_radius_packet_t		*packet;
 
 		/*
 		 *	Alloc a new packet so we can start adding
@@ -763,7 +763,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Send the packet
 		 */
 		{
-			RADIUS_PACKET	*reply = NULL;
+			fr_radius_packet_t	*reply = NULL;
 			ssize_t		rcode;
 
 			fd_set		set;

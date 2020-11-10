@@ -420,7 +420,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 	 *	Type-Data field of the EAP-Response/Identity in the User-Name
 	 *	attribute in every subsequent Access-Request.
 	 */
-	user = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	user = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!user) {
 		/*
 		 *	NAS did not set the User-Name

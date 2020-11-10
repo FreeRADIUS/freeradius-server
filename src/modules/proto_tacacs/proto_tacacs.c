@@ -357,7 +357,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		if (client->active &&
 		    ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_UNENCRYPTED) == 0) &&
 		    RDEBUG_ENABLED2 &&
-		    ((vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_user_name)) != NULL) &&
+		    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_user_name)) != NULL) &&
 		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
 			RWDEBUG("Unprintable characters in the %s. "
 				"Double-check the shared secret on the server "
@@ -440,7 +440,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-	data_len = fr_tacacs_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
 				    request->reply_pairs);
 	if (data_len < 0) {

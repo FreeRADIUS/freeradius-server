@@ -514,6 +514,7 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
 /** Initialise a tmpl using a format string to create the name
  *
  * @param[in] vpt	to initialise.
+ * @param[in] type	of tmpl to initialise.
  * @param[in] quote	Original quoting around the name.
  * @param[in] fmt	string.
  * @param[in] ...	format arguments.
@@ -560,6 +561,7 @@ tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char 
 /** Initialise a tmpl using a literal string to create the name
  *
  * @param[in] vpt	to initialise.
+ * @param[in] type	of tmpl to initialise.
  * @param[in] quote	Original quoting around the name.
  * @param[in] name	to set for the tmpl.
  * @param[in] len	Name length.  If < 0 strlen will be used
@@ -620,6 +622,7 @@ tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char con
 
 	return vpt;
 }
+/** @} */
 
 /** @name Create new #tmpl_t from a string
  *
@@ -961,6 +964,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 
 	return 0;
 }
+/** @} */
 
 /** @name Produce a #tmpl_t from a string or substring
  *
@@ -2005,7 +2009,7 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	bool		a_bool;
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 
 	if (!fr_sbuff_out(NULL, &a_bool, &our_in)) {
 		fr_strerror_printf("Not a boolean value");
@@ -2042,7 +2046,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 					fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 	char		*hex;
 	size_t		binlen, len;
 	uint8_t		*bin;
@@ -2100,7 +2104,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 	uint8_t		octet;
 	fr_type_t	type;
@@ -2167,7 +2171,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
-	tmpl_t		*vpt;
+	tmpl_t			*vpt;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_sbuff_marker_t	m;
 	fr_type_t		type;
@@ -2273,6 +2277,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
  * @param[in] ctx	to allocate tmpl to.
  * @param[out] out	where to write tmpl.
  * @param[in] in	sbuff to parse.
+ * @param[in] p_rules	formatting rules.
  * @return
  *	- 0 sbuff does not contain an integer.
  *	- > 0 how many bytes were parsed.
@@ -2366,6 +2371,9 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
  *
  * @param[in,out] ctx		To allocate #tmpl_t in.
  * @param[out] out		Where to write the pointer to the new #tmpl_t.
+ * @param[in] in		String to parse.
+ * @param[in] quote		Quoting around the tmpl.  Determines what we
+ *				attempt to parse the string as.
  * @param[in] p_rules		Formatting rules for the tmpl.
  * @param[in] t_rules		Validation rules for attribute references.
  * @return
@@ -2737,8 +2745,6 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  *
  * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNRESOLVED to a #TMPL_TYPE_DATA of a
  * specified #fr_type_t.
- *
- * #tmpl_cast_from_substr_to_vp does the same as #tmpl_cast_in_place, but outputs a #fr_pair_t.
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
  * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main
@@ -3315,7 +3321,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 
 /** Print an attribute or list #tmpl_t to a string
  *
- * This function is the direct counterpart to #fr_tmpl_afrom_attr_substr.
+ * This function is the direct counterpart to #tmpl_afrom_attr_substr.
  *
  * @param[in] out		Where to write the presentation format #tmpl_t string.
  * @param[in] vpt		to print.
@@ -3488,7 +3494,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
  * of the #tmpl_t is changed programatically, or when the #tmpl_t is being serialized
  * in some non-standard way, i.e. as a value for a field in a database.
  *
- * This function is the direct counterpart to #fr_tmpl_afrom_substr.
+ * This function is the direct counterpart to #tmpl_afrom_substr.
  *
  * @note Does not print flags for regular expressions, as the quoting char is needed
  *	 to separate the elements of the expression.
@@ -3663,7 +3669,7 @@ do { \
 void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 {
 	tmpl_attr_t	*ar = NULL;
-	tmpl_attr_t  *slow = NULL, *fast = NULL;
+	tmpl_attr_t  	*slow = NULL, *fast = NULL;
 	tmpl_attr_t	*seen_unknown = NULL;
 	tmpl_attr_t	*seen_unresolved = NULL;
 
@@ -4439,8 +4445,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 /** Return whether or not async is required for this tmpl.
  *
- *	If the tmpl is needs_async, then it will never yield.
- *	If the tmpl is not needs_async, then it may yield.
+ *	If the tmpl is needs_async, then it is async
+ *	If the tmpl is not needs_async, then it will not yield
  *
  *	If the tmpl yields, then async is required.
  */

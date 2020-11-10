@@ -160,7 +160,7 @@ static char lua_release_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1";									/* 12 */
 
 /** Lua script for removing a lease
@@ -194,7 +194,7 @@ static char lua_remove_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1" EOL;									/* 12 */
 
 static void NEVER_RETURNS usage(int ret) {

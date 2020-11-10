@@ -1073,7 +1073,6 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	Only a few data types can have VALUEs defined.
 	 */
 	switch (da->type) {
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:

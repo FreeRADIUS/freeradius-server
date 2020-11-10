@@ -47,10 +47,9 @@ typedef struct {
 	rlm_sql_t const	*sql_inst;
 
 	char const	*pool_name;
-	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
-	char const	*attribute_name;	//!< name of the IP address attribute
-	fr_dict_attr_t const *req_framed_ip_address; //!< the attribute for requested IP address
-	char const	*req_attribute_name;	//!< name of the requested IP address attribute
+	fr_dict_attr_t const *allocated_address_da; //!< the attribute for IP address allocation
+	char const	*allocated_address_attr;	//!< name of the IP address attribute
+	tmpl_t		*requested_address;	//!< name of the requested IP address attribute
 
 						/* Alloc sequence */
 	char const	*alloc_begin;		//!< SQL query to begin.
@@ -111,9 +110,9 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name) },
 
-	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
+	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
-	{ FR_CONF_OFFSET("req_attribute_name", FR_TYPE_STRING, rlm_sqlippool_t, req_attribute_name) },
+	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL, rlm_sqlippool_t, requested_address) },
 
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
@@ -428,15 +427,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_dict_attr_by_qualified_name(&inst->framed_ip_address,
-					   dict_freeradius, inst->attribute_name, false) != FR_DICT_ATTR_OK) {
+	if (fr_dict_attr_by_qualified_name(&inst->allocated_address_da,
+					   dict_freeradius, inst->allocated_address_attr, false) != FR_DICT_ATTR_OK) {
 		cf_log_perr(conf, "Failed resolving attribute");
 		return -1;
 	}
 
-	switch (inst->framed_ip_address->type) {
+	switch (inst->allocated_address_da->type) {
 	default:
-		cf_log_err(conf, "Cannot use non-IP attributes for 'attribute_name = %s'", inst->attribute_name);
+		cf_log_err(conf, "Cannot use non-IP attributes for 'allocated_address_attr = %s'", inst->allocated_address_attr);
 		return -1;
 
 	case FR_TYPE_IPV4_ADDR:
@@ -446,23 +445,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 	}
 
-	if (inst->req_attribute_name) {
-		if (fr_dict_attr_by_qualified_name(&inst->req_framed_ip_address,
-						   dict_freeradius, inst->req_attribute_name, false) != FR_DICT_ATTR_OK) {
-			cf_log_perr(conf, "Failed resolving requested attribute");
-			return -1;
-		}
-
-		switch (inst->req_framed_ip_address->type) {
-		default:
-			cf_log_err(conf, "Cannot use non-IP attributes for 'req_attribute_name = %s'", inst->req_attribute_name);
-			return -1;
-
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_IPV6_PREFIX:
-			break;
+	if (inst->requested_address) {
+		if (!tmpl_is_xlat(inst->requested_address)) {
+			cf_log_err(conf, "requested_address must be a double quoted expansion, not %s",
+				   fr_table_str_by_value(tmpl_type_table, inst->requested_address->type, "<INVALID>"));
 		}
 	}
 
@@ -514,13 +500,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_da(request->reply_pairs, inst->framed_ip_address) != NULL) {
-		RDEBUG2("%s already exists", inst->framed_ip_address->name);
+	if (fr_pair_find_by_da(&request->reply_pairs, inst->allocated_address_da) != NULL) {
+		RDEBUG2("%s already exists", inst->allocated_address_da->name);
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_da(request->control_pairs, attr_pool_name) == NULL) {
+	if (fr_pair_find_by_da(&request->control_pairs, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -555,14 +541,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 	 *	If no existing IP was found and we have a requested IP address
 	 *	and a query to find whether it is available then try that
 	 */
-	if (allocation_len == 0 && inst->alloc_requested && *inst->alloc_requested &&
-	    fr_pair_find_by_da(request->request_pairs, inst->req_framed_ip_address) != NULL) {
-		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->alloc_requested, &handle,
-						  inst, request, (char *) NULL, 0);
-		if (!handle) return RLM_MODULE_FAIL;
-	}
+	if ((allocation_len == 0) && inst->alloc_requested && *inst->alloc_requested) {
+		char buffer[128];
+		char *ip = NULL;
+		ssize_t slen;
 
+		slen = tmpl_expand(&ip, buffer, sizeof(buffer), request, inst->requested_address, NULL, NULL);
+		if (slen < 0) return RLM_MODULE_FAIL;
+
+		if (slen > 0) {
+			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+							  inst->alloc_requested, &handle,
+							  inst, request, (char *) NULL, 0);
+			if (!handle) return RLM_MODULE_FAIL;
+		}
+	}
 
 	/*
 	 *	If no existing IP was found (or no query was run),
@@ -633,7 +626,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	MEM(vp = fr_pair_afrom_da(request->reply, inst->framed_ip_address));
+	MEM(vp = fr_pair_afrom_da(request->reply, inst->allocated_address_da));
 	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
 		DO_PART(alloc_commit);
 
@@ -817,7 +810,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 
 	int			acct_status_type;
 
-	vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

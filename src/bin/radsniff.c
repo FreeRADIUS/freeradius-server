@@ -79,12 +79,12 @@ static int rs_useful_codes[] = {
 };
 
 static fr_table_num_sorted_t const rs_events[] = {
-	{ L("error"),	RS_ERROR	},
-	{ L("noreq"),	RS_UNLINKED	},
-	{ L("norsp"),	RS_LOST		},
+	{ L("error"),		RS_ERROR	},
+	{ L("noreq"),		RS_UNLINKED	},
+	{ L("norsp"),		RS_LOST		},
 	{ L("received"),	RS_NORMAL	},
-	{ L("reused"),	RS_REUSED	},
-	{ L("rtx"),	RS_RTX		}
+	{ L("reused"),		RS_REUSED	},
+	{ L("rtx"),		RS_RTX		}
 };
 static size_t rs_events_len = NUM_ELEMENTS(rs_events);
 
@@ -304,7 +304,7 @@ static void rs_packet_print_csv_header(void)
 	fprintf(stdout , "%s\n", buffer);
 }
 
-static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
 				UNUSED struct timeval *elapsed, struct timeval *latency, UNUSED bool response,
 				bool body)
 {
@@ -346,7 +346,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		fr_pair_t *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = fr_pair_find_by_da(packet->vps, conf->list_da[i]);
+			vp = fr_pair_find_by_da(&packet->vps, conf->list_da[i]);
 			if (vp && (vp->vp_length > 0)) {
 				if (conf->list_da[i]->type == FR_TYPE_STRING) {
 					ssize_t slen;
@@ -377,7 +377,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	fprintf(stdout , "%s\n", buffer);
 }
 
-static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
 				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
 	char buffer[2048];
@@ -473,7 +473,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 }
 
 static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				   RADIUS_PACKET *packet, struct timeval *elapsed, struct timeval *latency,
+				   fr_radius_packet_t *packet, struct timeval *elapsed, struct timeval *latency,
 				   bool response, bool body)
 {
 	if (!conf->logger) return;
@@ -938,19 +938,19 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  */
 static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
 {
-	vp_cursor_t list_cursor, out_cursor;
+	fr_cursor_t list_cursor, out_cursor;
 	fr_pair_t *match, *last_match, *copy;
 	uint64_t count = 0;
 	int i;
 
 	last_match = vps;
 
-	fr_pair_cursor_init(&list_cursor, &last_match);
-	fr_pair_cursor_init(&out_cursor, out);
+	fr_cursor_init(&list_cursor, &last_match);
+	fr_cursor_init(&out_cursor, out);
 	for (i = 0; i < num; i++) {
-		match = fr_pair_cursor_next_by_da(&list_cursor, da[i]);
+		match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {
-			fr_pair_cursor_init(&list_cursor, &last_match);
+			fr_cursor_init(&list_cursor, &last_match);
 			continue;
 		}
 
@@ -960,11 +960,11 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dic
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_pair_cursor_append(&out_cursor, copy);
+			fr_cursor_append(&out_cursor, copy);
 			last_match = match;
 
 			count++;
-		} while ((match = fr_pair_cursor_next_by_da(&list_cursor, da[i])));
+		} while ((match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i])));
 	}
 
 	return count;
@@ -1008,7 +1008,7 @@ static int _request_free(rs_request_t *request)
 static void rs_packet_cleanup(rs_request_t *request)
 {
 
-	RADIUS_PACKET *packet = request->packet;
+	fr_radius_packet_t *packet = request->packet;
 	uint64_t count = request->id;
 
 	RS_ASSERT(request->stats_req);
@@ -1207,7 +1207,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	static uint64_t		captured = 0;
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
-	RADIUS_PACKET		*packet;		/* Current packet were processing */
+	fr_radius_packet_t		*packet;		/* Current packet were processing */
 	rs_request_t		*original = NULL;
 
 	rs_request_t		search;
@@ -1937,7 +1937,7 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (rcode != 0) return rcode;
 
-	return fr_pair_list_cmp(a->link_vps, b->link_vps);
+	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }
 
 static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)

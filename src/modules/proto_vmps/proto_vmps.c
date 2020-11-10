@@ -228,7 +228,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
 	RADCLIENT const *client;
-	RADIUS_PACKET *packet = request->packet;
+	fr_radius_packet_t *packet = request->packet;
 	fr_cursor_t cursor;
 
 	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
@@ -352,7 +352,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-#ifdef WITH_UDPFROMTO
 	/*
 	 *	Overwrite the src ip address on the outbound packet
 	 *	with the one specified by the client.  This is useful
@@ -362,11 +361,10 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	if (client->src_ipaddr.af != AF_UNSPEC) {
 		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
-#endif
 
 	fr_cursor_talloc_iter_init(&cursor, &request->reply_pairs, fr_proto_next_encodable, dict_vmps, fr_pair_t);
 
-	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_vmps_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				  request->reply->code, request->reply->id, &cursor);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");

@@ -33,36 +33,12 @@ RCSID("$Id$")
 #  define CHECK_DBUFF_INIT(_sbuff)
 #endif
 
-/** start/end flavored mem{cpy,move} wrapper with sanity checks
- */
-static inline CC_HINT(always_inline) ssize_t safecpy(uint8_t *o_start, uint8_t *o_end,
-						     uint8_t const *i_start, uint8_t const *i_end)
-{
-	ssize_t	diff;
-	size_t	i_len = i_end - i_start;
-
-	if (unlikely((o_end < o_start) || (i_end < i_start))) return 0;	/* sanity check */
-
-	diff = (o_end - o_start) - (i_len);
-	if (diff < 0) return diff;
-
-	if ((i_start > o_end) || (i_end < o_start)) {			/* no-overlap */
-		memcpy(o_start,  i_start, i_len);
-	} else {							/* overlap */
-		memmove(o_start, i_start, i_len);
-	}
-
-	return (i_len);
-}
-
 /** Move data from one dbuff to another
  *
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	dbuff to copy data from.
@@ -71,12 +47,16 @@ static inline CC_HINT(always_inline) ssize_t safecpy(uint8_t *o_start, uint8_t *
  */
 size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(fr_dbuff_current(out), fr_dbuff_end(out), fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
+
 	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
@@ -85,9 +65,7 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -96,14 +74,17 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
  */
 size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_remaining(out);
-	size_t i_remaining = fr_dbuff_marker_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(fr_dbuff_current(out), fr_dbuff_end(out), fr_dbuff_marker_current(in),
-	        fr_dbuff_marker_current(in) + to_copy);
-	return fr_dbuff_advance(out, fr_dbuff_marker_advance(in, to_copy));
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
+
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
 /** Move data from one marker to another
@@ -111,9 +92,7 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_marker_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -122,14 +101,17 @@ size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, si
  */
 size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_marker_remaining(out);
-	size_t i_remaining = fr_dbuff_marker_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(fr_dbuff_marker_current(out), fr_dbuff_marker_end(out), fr_dbuff_marker_current(in),
-		fr_dbuff_marker_current(in) + to_copy);
-	return fr_dbuff_marker_advance(out, fr_dbuff_marker_advance(in, to_copy));
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
+
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
 /** Move data from a dbuff to a marker
@@ -137,9 +119,7 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  * @note Do not call this function directly; use #fr_dbuff_move
  *
  * Both in and out will be advanced by
- * min {len, fr_dbuff_marker_remaining(out), fr_dbuff_marker_remaining(in)}; eventually,
- * we'll attempt to extend dbuffs where possible and needed to make len bytes
- * available in both in and out.
+ * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)};.
  *
  * @param[in] out	dbuff to copy data to.
  * @param[in] in	marker to copy data from.
@@ -148,17 +128,20 @@ size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t
  */
 size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len)
 {
-	size_t o_remaining = fr_dbuff_marker_remaining(out);
-	size_t i_remaining = fr_dbuff_remaining(in);
-	size_t to_copy = len;
-	if (to_copy > o_remaining) to_copy = o_remaining;
-	if (to_copy > i_remaining) to_copy = i_remaining;
-	safecpy(fr_dbuff_marker_current(out), fr_dbuff_marker_end(out), fr_dbuff_current(in),
-		fr_dbuff_current(in) + to_copy);
-	return fr_dbuff_marker_advance(out, fr_dbuff_advance(in, to_copy));
+	size_t ext_len, to_copy = len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
+	if (ext_len < to_copy) to_copy = ext_len;
+
+	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
+
+	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
 }
 
-static inline size_t	min(size_t x, size_t y)
+static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
 {
 	return x < y ? x : y;
 }

@@ -147,9 +147,9 @@ extern const char *section_type_value[MOD_COUNT];
  * in the same order, preferably using the macros above.
  */
 struct submodule_s {
-	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
+	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
 };
 
 /** Named methods exported by a module
@@ -169,13 +169,13 @@ struct module_method_names_s {
  * within the module to different sections.
  */
 struct module_s {
-	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
+	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
 
-	module_method_t	methods[MOD_COUNT];		//!< Pointers to the various section callbacks.
-	module_method_names_t const	*method_names;	//!< named methods
-	fr_dict_t const	 **dict;			//!< pointer to local fr_dict_t*
+	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	module_method_names_t const	*method_names;		//!< named methods
+	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t*
 };
 
 /** Per instance data
@@ -188,23 +188,38 @@ struct module_instance_s {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	dl_module_inst_t		*dl_inst;	//!< Structure containing the module's instance data,
-							//!< configuration, and dl handle.
-
-	module_t const			*module;	//!< Public module structure.  Cached for convenience.
-
-	pthread_mutex_t			*mutex;		//!< To prevent multiple threads entering a thread unsafe
+							//!< configuration, and dl handle.  This can be used
+							///< to access the parsed configuration data for the
 							///< module.
 
-	size_t				number;		//!< unique module number
+	module_t const			*module;	//!< Public module structure.  Cached for convenience.
+							///< This exports module methods, i.e. the functions
+							///< which allow the module to perform actions.
+
+	pthread_mutex_t			*mutex;		//!< Used prevent multiple threads entering a thread
+							///< unsafe simultaneously module.
+
+	uint32_t			number;		//!< unique module number.  Used as a lookup into the
+							///< thread instance array.
+
 	bool				instantiated;	//!< Whether the module has been instantiated yet.
 
+	/** @name Return code overrides
+	 * @{
+ 	 */
 	bool				force;		//!< Force the module to return a specific code.
 							//!< Usually set via an administrative interface.
 
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
+	/** @} */
+
+	/** @name Tree insertion tracking
+	 * @{
+ 	 */
 	bool				in_name_tree;	//!< Whether this is in the name lookup tree.
 	bool				in_data_tree;	//!< Whether this is in the data lookup tree.
+	/** @} */
 };
 
 /** Per thread per instance data

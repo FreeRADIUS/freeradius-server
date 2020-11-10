@@ -254,8 +254,8 @@ ATTRIBUTE	Lucent-Seconds-Of-History		238	integer
 ATTRIBUTE	Lucent-History-Weigh-Type		239	integer
 ATTRIBUTE	Lucent-Add-Seconds			240	integer
 ATTRIBUTE	Lucent-Remove-Seconds			241	integer
-ATTRIBUTE	Lucent-Data-Filter			242	abinary
-ATTRIBUTE	Lucent-Call-Filter			243	abinary
+ATTRIBUTE	Lucent-Data-Filter			242	string	abinary
+ATTRIBUTE	Lucent-Call-Filter			243	string	abinary
 ATTRIBUTE	Lucent-Idle-Limit			244	integer
 ATTRIBUTE	Lucent-Preempt-Limit			245	integer
 ATTRIBUTE	Lucent-Callback				246	integer

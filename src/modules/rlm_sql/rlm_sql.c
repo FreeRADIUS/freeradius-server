@@ -148,7 +148,7 @@ static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t out
 static sql_fall_through_t fall_through(fr_pair_t *vp)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -276,7 +276,7 @@ finish:
  *	- -1 on failure.
  */
 static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
-				   request_t *request, vp_map_t const *map, void *uctx)
+				   request_t *request, map_t const *map, void *uctx)
 {
 	fr_pair_t	*vp;
 	char const	*value = uctx;
@@ -306,7 +306,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
  *	Verify the result of the map.
  */
 static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			  tmpl_t const *src, UNUSED vp_map_t const *maps)
+			  tmpl_t const *src, UNUSED map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing SQL query");
@@ -330,7 +330,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **query, vp_map_t const *maps)
+				fr_value_box_t **query, map_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -340,7 +340,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
 
-	vp_map_t const		*map;
+	map_t const		*map;
 
 	rlm_sql_row_t		row;
 
@@ -1371,7 +1371,7 @@ skip_reply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_da(request->control_pairs, attr_user_profile);
+		user_profile = fr_pair_find_by_da(&request->control_pairs, attr_user_profile);
 
 		profile = user_profile ?
 				      user_profile->vp_strvalue :

@@ -42,7 +42,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 {
 	TALLOC_CTX	*value_pool = NULL;
 	char		attr[256];	/* Attr name buffer */
-	vp_map_t	*map;
+	map_t	*map;
 
 	char		*to_store = NULL;
 
@@ -102,7 +102,7 @@ finish:
  */
 int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
 {
-	vp_map_t	**last = &c->maps;
+	map_t	**last = &c->maps;
 	char		*p, *q;
 
 	if (inlen < 0) inlen = strlen(in);
@@ -110,7 +110,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 	p = in;
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
-		vp_map_t	*map = NULL;
+		map_t	*map = NULL;
 		tmpl_rules_t parse_rules = {
 					.dict_def = dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_NO

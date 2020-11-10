@@ -72,22 +72,13 @@ typedef enum value_type {
 
 typedef struct value_pair_s fr_pair_t;
 
-typedef enum {
-	FR_PAIR_LIST_SINGLE = 0,				//!< Singly linked list.
-	FR_PAIR_LIST_DOUBLE,					//!< Doubly linked list.
-} fr_pair_list_type_t;
-
-/** Placeholder structure to represent lists of pairs
- *
- * Should have additional fields added later.
- */
+#ifdef USE_DOUBLE_LIST
 typedef struct {
-	union {
-		fr_pair_t	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
-	};
-	fr_pair_list_type_t type;				//!< What type of list this is.
+        fr_dlist_head_t head;
 } fr_pair_list_t;
+#else
+typedef fr_pair_t* fr_pair_list_t;
+#endif
 
 /** Stores an attribute, a value and various bits of other data
  *
@@ -120,22 +111,6 @@ struct value_pair_s {
 		fr_pair_list_t		children;		//!< Nested attributes of this pair.
 	};
 };
-
-/** Abstraction to allow iterating over different configurations of fr_pair_ts
- *
- * This allows functions which do not care about the structure of collections of fr_pair_ts
- * to iterate over all members in a collection.
- *
- * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
- * manipulated with the pair* functions.
- */
-typedef struct {
-	fr_pair_t	**first;
-	fr_pair_t	*found;					//!< pairfind marker.
-	fr_pair_t	*last;					//!< Temporary only used for fr_pair_cursor_append
-	fr_pair_t	*current;				//!< The current attribute.
-	fr_pair_t	*next;					//!< Next attribute to process.
-} vp_cursor_t;
 
 /** A fr_pair_t in string format.
  *
@@ -177,7 +152,7 @@ typedef struct {
 
 #define vp_date			data.vb_date
 
-#define vp_group		children.slist
+#define vp_group		children
 
 #define vp_size			data.datum.size
 #define vp_filter		data.datum.filter
@@ -189,7 +164,7 @@ typedef struct {
 
 #  ifdef WITH_VERIFY_PTR
 void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp);
-void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_t *vps);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *vps);
 #  endif
 
 /* Allocation and management */
@@ -203,13 +178,21 @@ fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
 
 void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
-void		fr_pair_list_free(fr_pair_t **);
+void		fr_pair_list_free(fr_pair_list_t *list);
+
+/*
+ *  Temporary hack to (a) get type-checking in macros, and (b) be fast
+ */
+#define		fr_pair_list_init(_list) (*(_list) = _Generic((_list), \
+				fr_pair_list_t *  : NULL, \
+				default		  : (fr_pair_list_t *) NULL))
 
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp);
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
+bool		fr_pair_matches_da(void const *item, void const *uctx);
 
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
@@ -221,7 +204,7 @@ void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
  *	- NULL if no pairs match.
  */
 static inline fr_pair_t *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
-						    fr_pair_t **list, fr_dict_attr_t const *da)
+						    fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_da, da, fr_pair_t);
 }
@@ -236,45 +219,33 @@ static inline fr_pair_t *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
  *	- NULL if no pairs match.
  */
 static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
-							  fr_pair_t **list, fr_dict_attr_t const *da)
+							  fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
 
-fr_pair_t	*fr_pair_find_by_da(fr_pair_t *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-fr_pair_t	*fr_pair_find_by_num(fr_pair_t *head, unsigned int vendor, unsigned int attr);
+fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
 
-fr_pair_t	*fr_pair_find_by_child_num(fr_pair_t *head, fr_dict_attr_t const *parent, unsigned int attr);
+fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
-void		fr_pair_add(fr_pair_t **head, fr_pair_t *vp);
+void		fr_pair_add(fr_pair_list_t *head, fr_pair_t *vp);
 
-void		fr_pair_replace(fr_pair_t **head, fr_pair_t *add);
+void		fr_pair_replace(fr_pair_list_t *head, fr_pair_t *add);
 
-void		fr_pair_delete_by_child_num(fr_pair_t **head, fr_dict_attr_t const *parent, unsigned int attr);
+void		fr_pair_delete_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *parent, unsigned int attr);
 
-int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
+int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
-int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t **list, fr_dict_attr_t const *da);
+int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
-int		fr_pair_delete_by_da(fr_pair_t **head, fr_dict_attr_t const *da);
+int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-void		fr_pair_delete(fr_pair_t **list, fr_pair_t const *vp);
+void		fr_pair_delete(fr_pair_list_t *list, fr_pair_t const *vp);
 
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
-
-fr_pair_t	*fr_pair_child_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
-
-fr_pair_t	*fr_pair_child_by_num(fr_pair_t *parent, unsigned int vendor, unsigned int attr);
-
-void		fr_pair_child_add(fr_pair_t *parent, fr_pair_t *vp);
-
-int		fr_pair_child_add_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
-
-int		fr_pair_child_update_by_da(fr_pair_t **out, fr_pair_t *parent, fr_dict_attr_t const *da);
-
-int		fr_pair_child_delete_by_da(fr_pair_t *parent, fr_dict_attr_t const *da);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
@@ -290,20 +261,20 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
 int		fr_pair_cmp(fr_pair_t *a, fr_pair_t *b);
-int		fr_pair_list_cmp(fr_pair_t *a, fr_pair_t *b);
-void		fr_pair_list_sort(fr_pair_t **vps, fr_cmp_t cmp) CC_HINT(nonnull);
+int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b);
+void		fr_pair_list_sort(fr_pair_list_t *vps, fr_cmp_t cmp) CC_HINT(nonnull);
 
 /* Filtering */
 void		fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2]);
-bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
-bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_t **filter, fr_pair_t **list) CC_HINT(nonnull(2,3));
+bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list) CC_HINT(nonnull(2,3));
+bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list) CC_HINT(nonnull(2,3));
 
 /* Lists */
-int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_t **to, fr_pair_t *from);
-int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_t **to,
-					fr_pair_t *from, fr_dict_attr_t const *da);
-int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_t **to,
-					      fr_pair_t *from, fr_dict_attr_t const *parent_da);
+int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from);
+int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
+					fr_pair_list_t *from, fr_dict_attr_t const *da);
+int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
+					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da);
 
 /** @name Pair to pair copying
  *
@@ -396,9 +367,12 @@ void			fr_pair_fprint(FILE *, fr_pair_t const *vp);
 
 #define			fr_pair_list_log(_log, _vp) _fr_pair_list_log(_log, _vp, __FILE__, __LINE__);
 void			_fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *file, int line);
+
+void			fr_pair_list_debug(fr_pair_t const *vp);
+
 /** @} */
 
-void			fr_pair_list_tainted(fr_pair_t *vp);
+void			fr_pair_list_tainted(fr_pair_list_t *vps);
 fr_pair_t		*fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box);
 
 /* Tokenization */

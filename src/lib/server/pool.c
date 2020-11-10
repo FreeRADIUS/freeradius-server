@@ -910,7 +910,7 @@ void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, fr_pai
 
 	if (!trigger_args) return;
 
-	MEM(fr_pair_list_copy(pool, &pool->trigger_args, trigger_args) >= 0);
+	MEM(fr_pair_list_copy(pool, &pool->trigger_args, &trigger_args) >= 0);
 }
 
 /** Create a new connection pool

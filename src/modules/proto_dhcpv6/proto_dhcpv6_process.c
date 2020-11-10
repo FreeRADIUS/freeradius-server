@@ -48,36 +48,12 @@ fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[] = {
-	[0]				= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_ADVERTISE,
-	[FR_DHCPV6_REQUEST]		= FR_DHCPV6_CONFIRM,
-	[FR_DHCPV6_RENEW]		= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_REBIND]		= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_REPLY,
-	[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_RELAY_REPLY
-};
-
-static int reply_fail[] = {
-	[0]				= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_REQUEST]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_RENEW]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_REBIND]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_RELEASE]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_DECLINE]		= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
-	[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_DO_NOT_RESPOND
-};
-
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv6_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -85,7 +61,7 @@ static void dhcpv6_packet_debug(request_t *request, RADIUS_PACKET *packet, bool 
 	if (!RDEBUG_ENABLED) return;
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		    "%s%s%s"
 #endif
 		    "",
@@ -100,7 +76,7 @@ static void dhcpv6_packet_debug(request_t *request, RADIUS_PACKET *packet, bool 
 		    fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
 		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
 		    packet->socket.inet.dst_port
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		    , packet->socket.inet.ifindex ? "via " : "",
 		    packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
 		    packet->socket.inet.ifindex ? " " : ""
@@ -121,6 +97,30 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	fr_dict_enum_t const	*dv;
 	fr_pair_t		*vp;
 
+	static int reply_ok[] = {
+		[0]				= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_ADVERTISE,
+		[FR_DHCPV6_REQUEST]		= FR_DHCPV6_CONFIRM,
+		[FR_DHCPV6_RENEW]		= FR_DHCPV6_REPLY,
+		[FR_DHCPV6_REBIND]		= FR_DHCPV6_REPLY,
+		[FR_DHCPV6_RELEASE]		= FR_DHCPV6_REPLY,
+		[FR_DHCPV6_DECLINE]		= FR_DHCPV6_REPLY,
+		[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_REPLY,
+		[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_RELAY_REPLY
+	};
+
+	static int reply_fail[] = {
+		[0]				= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_REQUEST]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_RENEW]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_REBIND]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_RELEASE]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_DECLINE]		= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_INFORMATION_REQUEST]	= FR_DHCPV6_DO_NOT_RESPOND,
+		[FR_DHCPV6_RELAY_FORWARD]	= FR_DHCPV6_DO_NOT_RESPOND
+	};
+
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
 	fr_assert(request->packet->code <= FR_DHCPV6_MAX_CODE);
@@ -139,7 +139,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -151,13 +153,11 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
 
-		fr_assert(request->log.unlang_indent == 0);
-
 		/*
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) {
 			request->reply->code = vp->vp_uint32;
 		} else switch (rcode) {
@@ -193,7 +193,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -204,8 +206,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

@@ -106,6 +106,7 @@ static fr_dict_attr_t const *attr_radclient_test_name;
 static fr_dict_attr_t const *attr_request_authenticator;
 
 static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_password;
 
@@ -126,6 +127,7 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_request_authenticator, .name = "Request-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_chap_password, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
@@ -190,7 +192,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-static int mschapv1_encode(RADIUS_PACKET *packet, fr_pair_t **request,
+static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_t **request,
 			   char const *password)
 {
 	unsigned int		i;
@@ -834,20 +836,33 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			fr_pair_t *vp;
 
-			if ((vp = fr_pair_find_by_da(request->request_pairs, attr_user_password)) != NULL) {
+			if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password)) != NULL) {
 				fr_pair_value_strdup(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_da(request->request_pairs,
+			} else if ((vp = fr_pair_find_by_da(&request->request_pairs,
 							    attr_chap_password)) != NULL) {
-				uint8_t buffer[17];
+				uint8_t		buffer[17];
+				fr_pair_t	*challenge;
+				uint8_t	const	*vector;
 
-				fr_radius_encode_chap_password(buffer, request->packet,
-							       fr_rand() & 0xff,
+				/*
+				 *	Use Chap-Challenge pair if present,
+				 *	Request Authenticator otherwise.
+				 */
+				challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
+				if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+					vector = challenge->vp_octets;
+				} else {
+					vector = request->packet->vector;
+				}
+
+				fr_radius_encode_chap_password(buffer,
+							       fr_rand() & 0xff, vector,
 							       request->password->vp_strvalue,
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-			} else if (fr_pair_find_by_da(request->request_pairs, attr_ms_chap_password) != NULL) {
+			} else if (fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_password) != NULL) {
 				mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
 
 			} else {
@@ -942,7 +957,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	fd_set		set;
 	fr_time_delta_t our_wait_time;
 	rc_request_t	*request;
-	RADIUS_PACKET	*reply, **packet_p;
+	fr_radius_packet_t	*reply, **packet_p;
 	volatile int	max_fd;
 
 	/* And wait for reply, timing out as necessary */

@@ -79,6 +79,8 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 	fr_value_box_t	*vb;
+	fr_pair_t	*challenge;
+	uint8_t	const	*vector;
 
 	/*
 	 *	If there's no input, there's no output
@@ -90,7 +92,17 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_radius_encode_chap_password(chap_password, request->packet, (uint8_t)(fr_rand() & 0xff),
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector,
 				       (*in)->vb_strvalue, (*in)->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -105,7 +117,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	fr_pair_t		*vp;
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
 
-	if (fr_pair_find_by_da(request->control_pairs, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(&request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
@@ -114,7 +126,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	This case means the warnings below won't be printed
 	 *	unless there's a CHAP-Password in the request.
 	 */
-	if (!fr_pair_find_by_da(request->request_pairs, attr_chap_password)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_chap_password)) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.
@@ -122,7 +134,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	This is so that the rest of the code does not need to
 	 *	understand CHAP.
 	 */
-	vp = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
 	if (!vp) {
 		RDEBUG2("Creating &%s from request authenticator", attr_chap_challenge->name);
 
@@ -159,13 +171,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
+	fr_pair_t		*challenge;
+	uint8_t	const		*vector;
+
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!username) {
 		REDEBUG("&User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = fr_pair_find_by_da(request->request_pairs, attr_chap_password);
+	chap = fr_pair_find_by_da(&request->request_pairs, attr_chap_password);
 	if (!chap) {
 		REDEBUG("You set '&control.Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
@@ -199,7 +214,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *	Output is id + password hash
 	 */
-	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0],
+
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector,
 				       known_good->vp_strvalue, known_good->vp_length);
 
 	/*
@@ -212,7 +238,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		size_t		length;
 		fr_pair_t	*vp;
 
-		vp = fr_pair_find_by_da(request->request_pairs, attr_chap_challenge);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
 		if (vp) {
 			RDEBUG2("Using challenge from &request.CHAP-Challenge");
 			p = vp->vp_octets;

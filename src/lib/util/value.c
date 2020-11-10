@@ -133,8 +133,6 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
 	{ L("date"),		FR_TYPE_DATE		},
 
-	{ L("abinary"),		FR_TYPE_ABINARY		},
-
 	{ L("size"),		FR_TYPE_SIZE		},
 
 	{ L("tlv"),		FR_TYPE_TLV		},
@@ -197,7 +195,6 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
 
-	[FR_TYPE_ABINARY]			= {32, ~0},
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
 
@@ -238,8 +235,6 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
-	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
-
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
@@ -279,8 +274,6 @@ size_t const fr_value_box_offsets[] = {
 
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
-
-	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
 
 	[FR_TYPE_VALUE_BOX]			= 0,
 
@@ -1052,7 +1045,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
 		fr_value_box_copy(NULL, dst, src);
 		return 0;
 
@@ -1164,7 +1156,6 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  * - time_deltas are encoded as 16/32/64-bit signed integers.
  *
  * #FR_TYPE_SIZE is not encodable, as it is system specific.
- * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
  *
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
  * specific to the protocol anyway.
@@ -1205,7 +1196,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		/*
 		 *	Figure dst if we'd overflow
 		 */
-		if (value->vb_length > fr_dbuff_remaining(dbuff)) {
+		if (value->vb_length > fr_dbuff_extend_lowat(NULL, dbuff, value->vb_length)) {
 			if (need) *need = value->vb_length;
 			len = fr_dbuff_remaining(dbuff);
 		} else {
@@ -1247,7 +1238,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	/*
 	 *	Fixed type would overflow output buffer
 	 */
-	if (max > fr_dbuff_remaining(dbuff)) {
+	if (max > fr_dbuff_extend_lowat(NULL, dbuff, max)) {
 		if (need) *need = max;
 		return 0;
 	}
@@ -1441,7 +1432,6 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		goto unsupported;
 	}
@@ -1716,7 +1706,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;		/* Already dealt with */
 
 	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
@@ -2938,9 +2927,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_FLOAT64:
 		break;
 
-	case FR_TYPE_ABINARY:
-		break;
-
 	/*
 	 *	Invalid types for casting (should have been caught earlier)
 	 */
@@ -3449,20 +3435,24 @@ void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 	dst->vb_length = strlen(src);
 }
 
-/** Copy a nul terminated string to a #fr_value_box_t
+/** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
+ * @param[in] len	of buffer to allocate.
  * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			   size_t len, bool tainted)
 {
 	char	*str;
 
-	str = talloc_array(ctx, char, len + 1);
+	str = talloc_zero_array(ctx, char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed allocating string buffer");
 		return -1;
@@ -3485,6 +3475,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
  * @param[in] ctx	to realloc buffer in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
  * @return
  *	- 0 on success.
  *	 - -1 on failure.
@@ -3757,6 +3748,7 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
  * @param[in] ctx	to realloc buffer in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
  * @return
  *	- 0 on success.
  *	 - -1 on failure.
@@ -4219,18 +4211,6 @@ parse:
 		dst->vb_strvalue = buff;
 	}
 		goto finish;
-
-	case FR_TYPE_ABINARY:
-		if ((len > 1) && (in[0] != '0') && (tolower((int) in[1]) != 'x')) {
-			if (ascend_parse_filter(ctx, dst, in, len) < 0 ) {
-				/* Allow ascend_parse_filter's strerror to bubble up */
-				return -1;
-			}
-
-			ret = talloc_array_length(dst->datum.filter);
-			goto finish;
-		}
-		FALL_THROUGH;
 
 	/* raw octets: 0x01020304... */
 	case FR_TYPE_OCTETS:
@@ -4761,10 +4741,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		}
 		fr_sbuff_set(&our_out, q);
 	}
-		break;
-
-	case FR_TYPE_ABINARY:
-		(void) print_abinary(&our_out, data);
 		break;
 
 	case FR_TYPE_GROUP:

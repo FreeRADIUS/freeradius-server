@@ -18,18 +18,20 @@
 /**
  * $Id$
  *
- * @file unlang/method.h
+ * @file unlang/call.h
  *
- * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2020 The FreeRADIUS server project
  */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void		unlang_interpret_push_method(request_t *request, void *instance, module_method_t method);
+#include <freeradius-devel/server/module.h>
+
+int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
+		     void *instance, module_method_t entry_point, bool top_frame)
+		     CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus
 }
 #endif
-
-

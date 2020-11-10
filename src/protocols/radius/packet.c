@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file protocols/radius/packet.c
- * @brief Functions to deal with RADIUS_PACKET data structures.
+ * @brief Functions to deal with fr_radius_packet_t data structures.
  *
  * @copyright 2000-2017 The FreeRADIUS server project
  */
@@ -28,10 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
-
-#ifdef WITH_UDPFROMTO
 #include <freeradius-devel/util/udpfromto.h>
-#endif
 
 #include <fcntl.h>
 #include <ctype.h>
@@ -54,7 +51,7 @@ typedef struct {
 /** Encode a packet
  *
  */
-ssize_t fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret)
+ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t const *original, char const *secret)
 {
 	uint8_t const *original_data;
 	ssize_t slen;
@@ -110,7 +107,7 @@ ssize_t fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *orig
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_radius_packet_t *original,
 			    uint32_t max_attributes, bool tunnel_password_zeros, char const *secret)
 {
 	int			packet_length;
@@ -256,7 +253,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+bool fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
@@ -280,7 +277,7 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool re
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *original, char const *secret)
 {
 	uint8_t const	*original_data;
 	char		buffer[INET6_ADDRSTRLEN];
@@ -308,7 +305,7 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 /** Sign a previously encoded packet
  *
  */
-int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 			  char const *secret)
 {
 	int rcode;
@@ -342,7 +339,7 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 /** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
  *
  */
-static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
+static ssize_t rad_recvfrom(int sockfd, fr_radius_packet_t *packet, int flags)
 {
 	ssize_t			data_len;
 
@@ -359,20 +356,17 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 
 	packet->data_len = data_len;
 
-	return udp_recv(sockfd, packet->data, packet->data_len, flags,
-			&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port,
-			&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port,
-			&packet->socket.inet.ifindex, &packet->timestamp);
+	return udp_recv(sockfd, flags, &packet->socket, packet->data, packet->data_len, &packet->timestamp);
 }
 
 
-/** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
+/** Receive UDP client requests, and fill in the basics of a fr_radius_packet_t structure
  *
  */
-RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
+fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t			data_len;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 
 	/*
 	 *	Allocate the new request data structure
@@ -460,7 +454,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 			  char const *secret)
 {
 	/*
@@ -497,9 +491,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	/*
 	 *	If the socket is TCP, call write().  Calling sendto()
-	 *	is allowed on some platforms, but it's not nice.  Even
-	 *	worse, if UDPFROMTO is defined, we *can't* use it on
-	 *	TCP sockets.  So... just call write().
+	 *	is allowed on some platforms, but it's not nice.
 	 */
 	if (packet->socket.proto == IPPROTO_TCP) {
 		ssize_t rcode;
@@ -513,13 +505,14 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	/*
 	 *	And send it on it's way.
+	 *
+	 *	No need to call fr_socket_addr_swap as apparently
+	 *	the address is already inverted.
 	 */
-	return udp_send(packet->socket.fd, packet->data, packet->data_len, 0,
-			&packet->socket.inet.src_ipaddr, packet->socket.inet.src_port, packet->socket.inet.ifindex,
-			&packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
+	return udp_send(&packet->socket, 0, packet->data, packet->data_len);
 }
 
-void _fr_radius_packet_log_hex(fr_log_t const *log, RADIUS_PACKET const *packet, char const *file, int line)
+void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line)
 {
 	uint8_t const *attr, *end;
 	char buffer[256];

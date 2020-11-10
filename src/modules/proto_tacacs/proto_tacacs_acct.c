@@ -101,7 +101,7 @@ static void accounting_failed(request_t *request, char const *msg)
 	/*
 	 *	Set the server reply message.
 	 */
-	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Accounting failed");
 	}
@@ -161,7 +161,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(inst->recv_request), cf_filename(inst->recv_request));
-		unlang_interpret_push_instruction(request, inst->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, inst->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -195,7 +197,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Run accounting foo { ... }
 		 */
-		vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_accounting_flags);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_accounting_flags);
 		if (!vp) goto setup_send;
 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);
@@ -208,7 +210,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'accounting %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_PROCESS;
 		FALL_THROUGH;
@@ -219,8 +223,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		/*
@@ -247,7 +249,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 
 	setup_send:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(inst->send_reply), cf_filename(inst->send_reply));
-		unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -258,8 +262,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:

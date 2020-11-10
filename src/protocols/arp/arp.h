@@ -40,8 +40,8 @@
 int fr_arp_init(void);
 void fr_arp_free(void);
 
-ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *original, fr_pair_t *vps);
-ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_t **vps);
+ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps);
+ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_list_t *list);
 
 int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], uint8_t macaddr[static 6]);
 
