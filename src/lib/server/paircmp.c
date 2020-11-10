@@ -115,9 +115,9 @@ static paircmp_t *cmp;
  */
 static int prefix_suffix_cmp(UNUSED void *instance,
 			     request_t *request,
-			     fr_pair_t *req,
+			     fr_pair_list_t *request_list,
 			     fr_pair_t *check,
-			     fr_pair_t *check_list)
+			     fr_pair_list_t *check_list)
 {
 	fr_pair_t	*vp;
 	char const	*name;
@@ -157,20 +157,20 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
-	vp = fr_pair_find_by_da(&check_list, attr_strip_user_name);
+	vp = fr_pair_find_by_da(check_list, attr_strip_user_name);
 	if (vp && !vp->vp_uint32) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
 	 */
-	vp = fr_pair_find_by_da(&check_list, attr_stripped_user_name);
+	vp = fr_pair_find_by_da(check_list, attr_stripped_user_name);
 	if (!vp) {
 		/*
 		 *	If "request" is NULL, then the memory will be
 		 *	lost!
 		 */
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_stripped_user_name));
-		fr_pair_add(&req, vp);
+		fr_pair_add(request_list, vp);
 	}
 	fr_pair_value_strdup(vp, rest);
 
@@ -183,9 +183,9 @@ static int prefix_suffix_cmp(UNUSED void *instance,
  */
 static int packet_cmp(UNUSED void *instance,
 		      request_t *request,
-		      UNUSED fr_pair_t *req,
+		      UNUSED fr_pair_list_t *request_list,
 		      fr_pair_t *check,
-		      UNUSED fr_pair_t *check_list)
+		      UNUSED fr_pair_list_t *check_list)
 {
 	VP_VERIFY(check);
 
@@ -199,9 +199,9 @@ static int packet_cmp(UNUSED void *instance,
  */
 static int generic_cmp(UNUSED void *instance,
 		       request_t *request,
-		       fr_pair_t *req,
+		       fr_pair_list_t *request_list,
 		       fr_pair_t *check,
-		       UNUSED fr_pair_t *check_list)
+		       UNUSED fr_pair_list_t *check_list)
 {
 	VP_VERIFY(check);
 
@@ -215,7 +215,7 @@ static int generic_cmp(UNUSED void *instance,
 
 		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) return 0;
 
-		MEM(vp = fr_pair_afrom_da(req, check->da));
+		MEM(vp = fr_pair_afrom_da(*request_list, check->da));
 		vp->op = check->op;
 		fr_pair_value_from_str(vp, value, -1, '"', false);
 
@@ -504,9 +504,9 @@ finish:
  *	- 1 is vp value is more than check value.
  */
 static int paircmp_func(request_t *request,
-			fr_pair_t *request_list,
+			fr_pair_list_t *request_list,
 			fr_pair_t *check,
-			fr_pair_t *check_list)
+			fr_pair_list_t *check_list)
 {
 	paircmp_t *c;
 
@@ -531,7 +531,7 @@ static int paircmp_func(request_t *request,
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
-	return paircmp_pairs(request, check, request_list);
+	return paircmp_pairs(request, check, *request_list);
 }
 
 /** Compare two pair lists except for the password information.
@@ -644,7 +644,7 @@ int paircmp(request_t *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, auth_item, check_item, check);
+		compare = paircmp_func(request, &auth_item, check_item, &check);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:

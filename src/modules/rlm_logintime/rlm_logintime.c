@@ -78,8 +78,8 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_t *request, fr_pair_t *check,
-		   UNUSED fr_pair_t *check_list)
+static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t *check,
+		   UNUSED fr_pair_list_t *check_list)
 {
 	/*
 	 *      If there's a request, use that timestamp.
@@ -94,8 +94,8 @@ static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_t *requ
  *	Time-Of-Day support
  */
 static int time_of_day(UNUSED void *instance, request_t *request,
-		       UNUSED fr_pair_t *request_list, fr_pair_t *check,
-		       UNUSED fr_pair_t *check_list)
+		       UNUSED fr_pair_list_t *request_list, fr_pair_t *check,
+		       UNUSED fr_pair_list_t *check_list)
 {
 	int		scan;
 	int		hhmmss, when;
