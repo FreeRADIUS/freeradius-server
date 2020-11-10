@@ -3,7 +3,7 @@ name: Coverity
 on:
   push:
     branches:
-      - coverity-scan
+      - coverity_scan
 
 jobs:
 
