@@ -1,4 +1,5 @@
 #include <freeradius-devel/util/acutest.h>
+#include <float.h>
 
 #include "dbuff.h"
 
@@ -95,6 +96,8 @@ static void test_dbuff_net_encode(void)
 	int16_t		i16val = 0x1234;
 	int32_t		i32val = 0xd34d;
 	int64_t		i64val = 0x123456789abcdef0;
+	float		fval = 0;
+	double		dval = 0;
 
 	TEST_CASE("Generate wire format unsigned 16-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -235,6 +238,22 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(buff[5] == 0xbc);
 	TEST_CHECK(buff[6] == 0xde);
 	TEST_CHECK(buff[7] == 0xf0);
+
+	TEST_CASE("Generate wire-format float");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_in(&dbuff, 1.0f + FLT_EPSILON) == 4);
+	fr_dbuff_set_to_start(&dbuff);
+	TEST_CHECK(fr_dbuff_out(&fval, &dbuff) == 4);
+	TEST_CHECK(fval == 1.0f + FLT_EPSILON);
+
+	TEST_CASE("Generate wire-format double");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	TEST_CHECK(fr_dbuff_in(&dbuff, 1.0 + DBL_EPSILON) == 8);
+	fr_dbuff_set_to_start(&dbuff);
+	TEST_CHECK(fr_dbuff_out(&dval, &dbuff) == 8);
+	TEST_CHECK(dval == 1.0 + DBL_EPSILON);
 
 	TEST_CASE("Refuse to write to too-small space");
 	fr_dbuff_init(&dbuff, buff, sizeof(uint32_t));
