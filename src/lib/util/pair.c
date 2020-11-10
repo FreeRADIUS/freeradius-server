@@ -645,7 +645,7 @@ void fr_pair_delete_by_child_num(fr_pair_list_t *head, fr_dict_attr_t const *par
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da)
+int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -675,7 +675,7 @@ int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *list, fr_dict_attr_t const *da)
+int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
