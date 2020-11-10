@@ -309,9 +309,9 @@ static fr_pair_t *eap_peap_inner_to_pairs(UNUSED request_t *request, fr_radius_p
  *	Convert a list of fr_pair_t's to an EAP packet, through the
  *	simple expedient of dumping the EAP message
  */
-static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_session, fr_pair_t *vp)
+static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_session, fr_pair_list_t *vps)
 {
-	fr_assert(vp != NULL);
+	fr_assert(*vps != NULL);
 	fr_pair_t *this;
 	fr_cursor_t cursor;
 
@@ -319,13 +319,13 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
-	(tls_session->record_from_buff)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN,
-					vp->vp_length - EAP_HEADER_LEN);
+	this = fr_cursor_init(&cursor, vps);
+	(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
+					this->vp_length - EAP_HEADER_LEN);
 
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
 	 */
-	fr_cursor_init(&cursor, &vp);
 	for (this = fr_cursor_next(&cursor);
 	     this;
 	     this = fr_cursor_next(&cursor)) {
@@ -423,7 +423,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	VP's back to the client.
 		 */
 		if (vp) {
-			eap_peap_inner_from_pairs(request, tls_session, vp);
+			eap_peap_inner_from_pairs(request, tls_session, &vp);
 			fr_pair_list_free(&vp);
 		}
 
