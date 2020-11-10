@@ -148,7 +148,7 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  *	- The first item returned by the iterator.
  */
 #define fr_cursor_talloc_iter_init(_cursor, _head, _iter, _uctx, _type) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _uctx, #_type)
+	_fr_cursor_init(_cursor, (void * const *)_head, offsetof(__typeof__(**(_head)), next), _iter, _uctx, #_type)
 
 /** Initialise a cursor with a custom iterator
  *

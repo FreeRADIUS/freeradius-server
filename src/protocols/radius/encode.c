@@ -319,7 +319,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
+static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encoder_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
@@ -328,7 +328,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
 	/*
 	 *	Note that we skip tags inside of tags!
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
+	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 
@@ -1282,7 +1282,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 		fr_assert(packet_ctx->tag < 0x20);
 
 		// recurse to encode the children of this attribute
-		len = encode_tags(&work_dbuff, vp->vp_group, encoder_ctx);
+		len = encode_tags(&work_dbuff, &vp->vp_group, encoder_ctx);
 		packet_ctx->tag = 0;
 		if (len < 0) return len;
 
