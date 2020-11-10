@@ -411,7 +411,7 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
  *
  * @hidecallergraph
  */
-fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *head, fr_dict_attr_t const *da)
 {
 	fr_pair_t	*vp;
 
