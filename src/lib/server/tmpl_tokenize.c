@@ -2277,6 +2277,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
  * @param[in] ctx	to allocate tmpl to.
  * @param[out] out	where to write tmpl.
  * @param[in] in	sbuff to parse.
+ * @param[in] p_rules	formatting rules.
  * @return
  *	- 0 sbuff does not contain an integer.
  *	- > 0 how many bytes were parsed.
@@ -2744,8 +2745,6 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  *
  * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNRESOLVED to a #TMPL_TYPE_DATA of a
  * specified #fr_type_t.
- *
- * #tmpl_cast_from_substr_to_vp does the same as #tmpl_cast_in_place, but outputs a #fr_pair_t.
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
  * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main

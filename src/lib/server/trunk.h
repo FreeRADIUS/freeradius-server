@@ -556,7 +556,7 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   the same purpose, as that will be called before the request is moved.
  * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
  *   request handled may be freed though that may (optionally) be left to
- *   another callback like #request_conn_release_t, as that will be
+ *   another callback like #fr_trunk_request_conn_release_t, as that will be
  *   called as the treq is removed from the conn.
  *   Note that the #fr_trunk_request_complete_t and
  *   #fr_trunk_request_fail_t callbacks will not be called in this
