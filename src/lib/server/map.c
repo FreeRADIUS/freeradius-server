@@ -746,10 +746,10 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
  *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, map_t **out,
-		     char const *lhs, fr_token_t lhs_quote, tmpl_rules_t const *lhs_rules,
-		     fr_token_t op,
-		     char const *rhs, fr_token_t rhs_quote, tmpl_rules_t const *rhs_rules)
+static int map_afrom_fields(TALLOC_CTX *ctx, map_t **out,
+			    char const *lhs, fr_token_t lhs_quote, tmpl_rules_t const *lhs_rules,
+			    fr_token_t op,
+			    char const *rhs, fr_token_t rhs_quote, tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
 	map_t *map;
