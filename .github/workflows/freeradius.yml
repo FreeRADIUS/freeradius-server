@@ -153,7 +153,6 @@ jobs:
         libiodbc2 \
         libiodbc2-dev \
         libjson-c-dev \
-        libjson-c3 \
         libjson-perl \
         libkqueue-dev \
         libkrb5-dev \
@@ -184,11 +183,15 @@ jobs:
         python-dev \
         python3-pip \
         quilt
-        
+      
     - name: Install JSON build deps for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
-      run: sudo apt-get install -y --no-install-recommends 
+      run: sudo apt-get install -y --no-install-recommends libjson-c3
 
+    - name: Install JSON build deps for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' }}
+      run: sudo apt-get install -y --no-install-recommends libjson-c4
+      
     - name: Install compiler toolchain for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
       run: |
