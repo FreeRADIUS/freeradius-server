@@ -128,6 +128,10 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *raw,
 int		map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp,
 			     tmpl_rules_t const *rules);
 
+int		map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+				fr_table_num_sorted_t const *op_table, size_t op_table_len,
+				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
+
 void		map_sort(map_t **maps, fr_cmp_t cmp);
 
 int		map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
@@ -148,6 +152,12 @@ void		map_debug_log(request_t *request, map_t const *map,
 			      fr_pair_t const *vp) CC_HINT(nonnull(1, 2));
 
 bool		map_cast_from_hex(map_t *map, fr_token_t rhs_type, char const *rhs);
+
+extern fr_table_num_sorted_t const map_assignment_op_table[];
+extern size_t map_assignment_op_table_len;
+
+extern fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted;
+
 #ifdef __cplusplus
 }
 #endif

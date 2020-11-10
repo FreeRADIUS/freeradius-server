@@ -302,6 +302,241 @@ error:
 	return -1;
 }
 
+fr_table_num_sorted_t const map_assignment_op_table[] = {
+	{ L("+="),	T_OP_ADD		},
+	{ L(":="),	T_OP_SET		},
+	{ L("="),	T_OP_EQ			},
+};
+size_t map_assignment_op_table_len = NUM_ELEMENTS(map_assignment_op_table);
+
+fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted = {
+	.escapes = &(fr_sbuff_unescape_rules_t){
+		.chr = '\\',
+		/*
+		 *	Allow barewords to contain whitespace
+		 *	if they're escaped.
+		 */
+		.subs = {
+			['\t'] = '\t',
+			['\n'] = '\n',
+			[' '] = ' '
+		},
+		.do_hex = false,
+		.do_oct = false
+	},
+
+	/*
+	 *	We want to stop on _any_ terminal character, even if
+	 *	the token itself isn't valid here.  Doing so means
+	 *	that we don't have the parser accept things like:
+	 *
+	 *		User-Name,,,,=bob===
+	 */
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L(" "),
+		L("!*"),
+		L("!="),
+		L("!~"),
+		L("+="),
+		L(","),
+		L("-="),
+		L(":="),
+		L("<"),
+		L("<="),
+		L("=*"),
+		L("=="),
+		L("=~"),
+		L(">"),
+		L(">="),
+	)
+};
+
+fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
+	[T_BARE_WORD]			= &map_parse_rules_bareword_quoted,
+	[T_DOUBLE_QUOTED_STRING]	= &tmpl_parse_rules_double_quoted,
+	[T_SINGLE_QUOTED_STRING]	= &tmpl_parse_rules_single_quoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &tmpl_parse_rules_solidus_quoted,
+	[T_BACK_QUOTED_STRING]		= &tmpl_parse_rules_backtick_quoted
+};
+
+/** Parse sbuff into (which may contain refs) to map_t.
+ *
+ * Treats the left operand as an attribute reference
+ * @verbatim<request>.<list>.<attribute>@endverbatim
+ *
+ * Treatment of left operand depends on quotation, barewords are treated as
+ * attribute references, double quoted values are treated as expandable strings,
+ * single quoted values are treated as literal strings.
+ *
+ *  The op_table should be #cond_cmp_op_table for check items, and
+ *  #map_assignment_op_table for reply items.
+ *
+ * Return must be freed with talloc_free
+ *
+ * @param[in] ctx		for talloc.
+ * @param[in] out		Where to write the pointer to the new #map_t.
+ * @param[in] in		to convert to map.
+ * @param[in] op_table		for lhs OP rhs
+ * @param[in] op_table_len	length of op_table
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+		    fr_table_num_sorted_t const *op_table, size_t op_table_len,
+		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
+{
+	char		quote;
+	size_t		slen;
+	fr_token_t	token;
+	tmpl_t		*tmpl;
+	map_t		*map;
+	fr_sbuff_t	sbuff = FR_SBUFF_NO_ADVANCE(in);
+
+	*out = NULL;
+	MEM(map = talloc_zero(ctx, map_t));
+
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	if (slen < 0) return -1;
+
+	if (!fr_sbuff_remaining(in)) return 0;
+
+	quote = *fr_sbuff_current(&sbuff);
+	switch (quote) {
+	case '"':
+		token = T_DOUBLE_QUOTED_STRING;
+		goto parse_lhs;
+
+	case '\'':
+		token = T_SINGLE_QUOTED_STRING;
+		goto parse_lhs;
+
+	case '`':
+		token = T_BACK_QUOTED_STRING;
+	parse_lhs:
+		fr_sbuff_advance(&sbuff, 1); /* no need to check */
+
+		slen = tmpl_afrom_substr(map, &map->lhs, &sbuff, token,
+					 tmpl_parse_rules_quoted[token], lhs_rules);
+		break;
+
+	default:
+		token = T_BARE_WORD;
+
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &sbuff,
+					      &map_parse_rules_bareword_quoted, lhs_rules);
+		break;
+	}
+
+	if (slen <= 0) {
+	error:
+		talloc_free(map);
+		return -1;
+	}
+
+	/*
+	 *	Check for, and skip, the trailing quote if we had a leading quote.
+	 */
+	if (token != T_BARE_WORD) {
+		if (!fr_sbuff_is_char(&sbuff, quote)) {
+			fr_strerror_printf("Unexpected end of quoted string");
+			return -1;
+		}
+
+		fr_sbuff_advance(&sbuff, 1);
+	}
+
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	if (slen < 0) {
+		fr_strerror_printf("Unexpected end of string after parsing left side");
+		goto error;
+	}
+
+	/*
+	 *	Parse operator.
+	 */
+	fr_sbuff_out_by_longest_prefix(&slen, &map->op, op_table, &sbuff, 0);
+	if (slen == 0) {
+		fr_strerror_printf("Invalid operator");
+		goto error;
+	}
+
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	if (slen < 0) {
+		fr_strerror_printf("Unexpected end of string after operator");
+		goto error;
+	}
+
+	/*
+	 *	Copy LHS code above, except parsing in RHS, with some
+	 *	minor modifications.
+	 */
+	quote = *fr_sbuff_current(&sbuff);
+	switch (quote) {
+	case '"':
+		token = T_DOUBLE_QUOTED_STRING;
+		goto parse_rhs;
+
+	case '\'':
+		token = T_SINGLE_QUOTED_STRING;
+		goto parse_rhs;
+
+	case '`':
+		token = T_BACK_QUOTED_STRING;
+	parse_rhs:
+		fr_sbuff_advance(&sbuff, 1); /* no need to check */
+
+		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token,
+					 tmpl_parse_rules_quoted[token], rhs_rules);
+		break;
+
+	default:
+		token = T_BARE_WORD;
+
+		slen = tmpl_afrom_substr(map, &tmpl, &sbuff, token,
+					 tmpl_parse_rules_quoted[token], rhs_rules);
+		if (slen <= 0) goto error;
+
+		/*
+		 *	If LHS is a raw attribute, then try to parse
+		 *	the RHS as octets, and then try to convert it
+		 *	to the "correct" data type.
+		 *
+		 *	We have to parse the RHS as a tmpl first,
+		 *	because map_cast_from_hex() doesn't (yet) take
+		 *	sbuffs, and it also requires that map->rhs==NULL.
+		 */
+		if (tmpl_is_attr(map->lhs) &&
+		    tmpl_da(map->lhs)->flags.is_raw &&
+		    map_cast_from_hex(map, T_BARE_WORD, tmpl->name)) {
+			talloc_free(tmpl);
+		} else {
+			map->rhs = tmpl;
+		}
+		break;
+	}
+
+	/*
+	 *	Check for, and skip, the trailing quote if we had a leading quote.
+	 */
+	if (token != T_BARE_WORD) {
+		if (!fr_sbuff_is_char(&sbuff, quote)) {
+			fr_strerror_printf("Unexpected end of quoted string");
+			return -1;
+		}
+
+		fr_sbuff_advance(&sbuff, 1);
+	}
+
+	fr_sbuff_set(in, &sbuff);
+	return 0;
+} 
+
+
 /** Convert an 'update' config section into an attribute map.
  *
  * Uses 'name2' of section to set default request and lists.
