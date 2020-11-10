@@ -1023,6 +1023,26 @@ FR_DBUFF_PARSE_INT_DEF(int16)
 FR_DBUFF_PARSE_INT_DEF(int32)
 FR_DBUFF_PARSE_INT_DEF(int64)
 
+/*
+ * The fr_dbuff_in_<type>() functions take rvalues, so to implement float and
+ * double in terms of the same-sized integers, we need a layer that gives us an
+ * lvalue whose address we can cast.
+ */
+
+/** Internal function - do not call directly
+ */
+static inline ssize_t _fr_dbuff_in_float(uint8_t **pos_p, fr_dbuff_t *out, float num)
+{
+	return _fr_dbuff_in_uint32(pos_p, out, *(uint32_t *)(&num));
+}
+
+/** Internal function - do not call directly
+ */
+static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, double num)
+{
+	return _fr_dbuff_in_uint64(pos_p, out, *(uint64_t *)(&num));
+}
+
 /** Copy data from a fixed sized C type to a dbuff.
  *
  * @param[out] _out	dbuff to write to.  Integer types will be automatically
@@ -1042,8 +1062,8 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 		uint16_t	: _fr_dbuff_in_uint16(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint16_t)_in), \
 		uint32_t	: _fr_dbuff_in_uint32(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint32_t)_in), \
 		uint64_t	: _fr_dbuff_in_uint64(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint64_t)_in), \
-		float		: _fr_dbuff_in_uint32(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (float)_in), \
-		double		: _fr_dbuff_in_uint64(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (double)_in) \
+		float		: _fr_dbuff_in_float(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (float)_in), \
+		double		: _fr_dbuff_in_double(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (double)_in) \
 	)
 
 /** Copy data from a fixed sized C type to a dbuff, returning if there is insufficient space
