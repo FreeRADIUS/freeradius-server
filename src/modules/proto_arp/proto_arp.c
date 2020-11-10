@@ -127,7 +127,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		return 1;
 	}
 
-	slen = fr_arp_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data, request->reply_pairs);
+	slen = fr_arp_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data, &request->reply_pairs);
 	if (slen <= 0) {
 		RPEDEBUG("Failed encoding reply");
 		return -1;
