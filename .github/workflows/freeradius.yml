@@ -130,15 +130,64 @@ jobs:
 
     - name: Install common build dependencies
       run: |
-        sudo apt-get install -y --no-install-recommends libjson-perl autoconf build-essential debhelper devscripts dh-make dovecot-dev doxygen fakeroot firebird-dev freetds-dev \
-          graphviz ldap-utils libcollectdclient-dev libcap-dev libcurl4-openssl-dev libgdbm-dev libhiredis-dev libidn11-dev libiodbc2-dev libiodbc2 libkrb5-dev \
-          libkqueue-dev libldap2-dev libluajit-5.1-dev libmemcached-dev libmysqlclient-dev libnl-genl-3-dev libpam0g-dev libpcap-dev libpcre3-dev libperl-dev libpq-dev libpython-all-dev \
-          libreadline-dev libsnmp-dev libssl-dev libtalloc-dev libunbound-dev libwbclient-dev libykclient-dev libyubikey-dev lintian luajit lynx openssl \
-          pbuilder python-dev python3-pip quilt libgoogle-perftools-dev
-
+        sudo apt-get install -y --no-install-recommends \
+        autoconf \
+        build-essential \
+        debhelper \
+        devscripts \
+        dh-make \
+        dovecot-dev \
+        doxygen \
+        fakeroot \
+        firebird-dev \
+        freetds-dev \
+        graphviz \
+        ldap-utils \
+        libcap-dev \
+        libcollectdclient-dev \
+        libcurl4-openssl-dev \
+        libgdbm-dev \
+        libgoogle-perftools-dev \
+        libhiredis-dev \
+        libidn11-dev \
+        libiodbc2 \
+        libiodbc2-dev \
+        libjson-c-dev \
+        libjson-c3 \
+        libjson-perl \
+        libkqueue-dev \
+        libkrb5-dev \
+        libldap2-dev \
+        libluajit-5.1-dev \
+        libmemcached-dev \
+        libmysqlclient-dev \
+        libnl-genl-3-dev \
+        libpam0g-dev \
+        libpcap-dev \
+        libpcre3-dev \
+        libperl-dev \
+        libpq-dev \
+        libpython-all-dev \
+        libreadline-dev \
+        libsnmp-dev \
+        libssl-dev \
+        libtalloc-dev \
+        libunbound-dev \
+        libwbclient-dev \
+        libykclient-dev \
+        libyubikey-dev \
+        lintian \
+        luajit \
+        lynx \
+        openssl \
+        pbuilder \
+        python-dev \
+        python3-pip \
+        quilt
+        
     - name: Install JSON build deps for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c3 libjson-c-dev
+      run: sudo apt-get install -y --no-install-recommends 
 
     - name: Install compiler toolchain for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
