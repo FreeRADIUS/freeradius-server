@@ -107,12 +107,10 @@ static inline bool fr_socket_is_inet(int proto)
 }
 
 #define FR_SOCKET_ADDR_ALLOC_DEF_FUNC(_func, ...) \
-{ \
 	fr_socket_t *addr; \
 	addr = talloc(ctx, fr_socket_t); \
 	if (unlikely(!addr)) return NULL; \
-	return _func(addr, ##__VA_ARGS__); \
-}
+	return _func(addr, ##__VA_ARGS__);
 
 /** Swap src/dst information of a fr_socket_t
  *
@@ -184,8 +182,10 @@ static inline fr_socket_t *fr_socket_addr_init_inet(fr_socket_t *addr,
 static inline fr_socket_t *fr_socket_addr_alloc_inet(TALLOC_CTX *ctx, int proto,
 							  int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
 							  fr_ipaddr_t const *dst_ipaddr, int dst_port)
-FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
-			      proto, ifindex, src_ipaddr, src_port, dst_ipaddr, dst_port)
+{
+	FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet,
+				      proto, ifindex, src_ipaddr, src_port, dst_ipaddr, dst_port)
+}
 
 /** Initialise a fr_socket_t for binding to a local socket
  *
@@ -232,8 +232,9 @@ static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
  */
 static inline fr_socket_t *fr_socket_addr_alloc_inet_src(TALLOC_CTX *ctx, int proto,
 							 int ifindex, fr_ipaddr_t const *ipaddr, int port)
-FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipaddr, port)
-
+{
+	FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_src, proto, ifindex, ipaddr, port)
+}
 /** Initialise a #fr_socket_t for connecting to a remote host
  *
  * @param[out] addr		to initialise.
@@ -273,7 +274,9 @@ static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr, int p
  */
 static inline fr_socket_t *fr_socket_addr_alloc_inet_dst(TALLOC_CTX *ctx, int proto,
 							 fr_ipaddr_t const *ipaddr, int port)
-FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_dst, proto, ipaddr, port)
+{
+	FR_SOCKET_ADDR_ALLOC_DEF_FUNC(fr_socket_addr_init_inet_dst, proto, ipaddr, port)
+}
 
 int		fr_socket_client_unix(char const *path, bool async);
 

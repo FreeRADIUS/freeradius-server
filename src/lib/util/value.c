@@ -3452,7 +3452,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
 {
 	char	*str;
 
-	str = talloc_array_zero(ctx, char, len + 1);
+	str = talloc_zero_array(ctx, char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed allocating string buffer");
 		return -1;
