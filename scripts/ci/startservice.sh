@@ -47,10 +47,10 @@ function run-tests() {
         $CC --version
         make --version
         ## before_script
-        ./scripts/travis/build.sh
+        ./scripts/ci/build.sh
         ## script
         pwd
-        if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
+        if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make ci-test; fi
         if [ "${DO_BUILD}" = 'no' ]; then cd doc/doxygen; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi
 }
 

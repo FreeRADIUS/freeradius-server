@@ -27,7 +27,7 @@ def buildClosures(arg) {
                         [$class: 'CleanBeforeCheckout'],\
                         [$class: 'RelativeTargetDirectory', relativeTargetDir: dir]],\
                     submoduleCfg: [], userRemoteConfigs: [[url: scm.userRemoteConfigs[0].url]]])
-                    sh "cd $dir ; export ${testEnv} ; bash scripts/travis/startservice.sh"
+                    sh "cd $dir ; export ${testEnv} ; bash scripts/ci/startservice.sh"
                 }
             }
         }.curry(value)
@@ -47,7 +47,7 @@ node {
     checkout scm
     echo scm.userRemoteConfigs[0].url
     travis = readYaml(file: "./.travis.yml")
-    travisImage = docker.build("travis-image", "./scripts/travis/")
+    travisImage = docker.build("travis-image", "./scripts/ci/")
     stage("clang tests") {
         tmatrix = []
         c = "clang"

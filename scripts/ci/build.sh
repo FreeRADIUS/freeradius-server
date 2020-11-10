@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 #
-#  If this Travis matrix element does not require the build, we still need to run
+#  If this CI matrix element does not require the build, we still need to run
 #  configure to make sure any autoconf generated files (tls-h et al) are still
 #  produced. The top level Make.inc is required for building Debian packages too.
 #
@@ -55,7 +55,7 @@ make -j8
 #
 if [ "${COVERITY_SCAN_BRANCH}" != 1 -a "${CC}" = 'clang' ]; then
     echo "Starting clang scan"
-    # Travis only has two cores
+    # Restrict to two cores (provided by Travis) for now...
     make -j2 scan && [ "$(find build/plist/ -name *.html)" = '' ];
 fi
 
@@ -71,7 +71,7 @@ for i in \
     mysql-setup.sh \
     ldap-setup.sh \
     redis-setup.sh; do
-    script="./scripts/travis/$i"
+    script="./scripts/ci/$i"
 
     echo "Calling $i"
     $script

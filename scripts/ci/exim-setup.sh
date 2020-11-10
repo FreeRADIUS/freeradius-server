@@ -24,9 +24,6 @@ PASSWORD="whatever"
 # Important files for running dovecot
 CONF="${BUILDDIR}/exim.conf"
 
-# Used for supporting files
-TRAVISDIR="${BASEDIR}/scripts/travis"
-
 #
 # Prepare the directories and files needed for running exim
 #

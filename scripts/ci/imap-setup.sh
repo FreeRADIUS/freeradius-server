@@ -30,7 +30,7 @@ LOGPATH="${LOGDIR}/dovecot.log"
 LOGINFOPATH="${LOGDIR}/dovecot-info.log"
 
 # Used for creating `imap-stop.sh`
-TRAVISDIR="${BASEDIR}/scripts/travis"
+CIDIR="${BASEDIR}/scripts/ci"
 
 #
 # Create all the necessary files
@@ -80,8 +80,8 @@ user3:${USER3P}::::::
 #
 
 # Load the template config file for both dovecot instances
-cp "${TRAVISDIR}/dovecot/fr_dovecot.conf" "${CONF}"
-cp "${TRAVISDIR}/dovecot/fr_dovecot.conf" "${TLSCONF}"
+cp "${CIDIR}/dovecot/fr_dovecot.conf" "${CONF}"
+cp "${CIDIR}/dovecot/fr_dovecot.conf" "${TLSCONF}"
 
 # Configure the specifics for the non_tls dovecot server
 echo "
@@ -135,7 +135,7 @@ verbose_ssl = yes
 " >> "${TLSCONF}"
 
 # Make sure there is a clean imap-stop.sh file
-> ${TRAVISDIR}/imap-stop.sh
+> ${CIDIR}/imap-stop.sh
 
 #
 # Add system specific dovecot information
@@ -184,7 +184,7 @@ if ! dovecot -c ${CONFPATH}; then
 	cat ${LOGINFOPATH}
 fi
 
-echo "dovecot -c ${CONFPATH} stop" >> "${TRAVISDIR}/imap-stop.sh"
+echo "dovecot -c ${CONFPATH} stop" >> "${CIDIR}/imap-stop.sh"
 
 done
 

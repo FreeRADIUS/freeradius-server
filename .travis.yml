@@ -22,6 +22,7 @@ env:
   - REDIS_IPPOOL_TEST_SERVER="127.0.0.1"
   - ANALYZE_C_DUMP="1"
   - FR_GLOBAL_POOL=4M
+  - CI=1
   - TRAVIS=1
   - secure: H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY=
   matrix:
@@ -131,7 +132,7 @@ before_install:
 # Add IPv6 interfaces: https://github.com/travis-ci/travis-ci/issues/8361
 - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
 - sudo sysctl -w kernel.yama.ptrace_scope=0
-- sudo ./scripts/travis/cassandra-install.sh
+- sudo ./scripts/ci/cassandra-install.sh
 - rvm --install --default --binary use 2.4
 - gem install asciidoctor
 # Needed by scripts/tacacs/tacacs_client
@@ -147,11 +148,11 @@ before_install:
 - pandoc --version
 - doxygen --version
 before_script:
-- ./scripts/travis/build.sh
+- ./scripts/ci/build.sh
 script:
 - |
   if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-    make travis-test;
+    make ci-test;
   elif [ "${DO_BUILD}" = 'no' ]; then
     npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
     make doxygen;

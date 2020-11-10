@@ -11,8 +11,8 @@ TEST := test.modules
 FILES := $(sort $(patsubst $(DIR)/%.unlang,%,$(call FIND_FILES_SUFFIX,$(DIR),*.unlang)))
 
 #
-#  Remove things which are known to fail on travis.
-#  Or which are known to have long runtimes 
+#  Remove things which are known to fail in CI.
+#  Or which are known to have long runtimes...
 #
 #  Also don't run icmp tests on Linux, they require setcap, or root.
 #  @todo - on Linux, *check* for root, or use "getcap" to see if the

@@ -31,7 +31,7 @@ fi
 sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
 sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
-# Again, not needed by travis, but useful for local testing
+# Again, not needed for CI, but useful for local testing
 if [ -z "$1" ]; then
     create-cluster start
     create-cluster create
