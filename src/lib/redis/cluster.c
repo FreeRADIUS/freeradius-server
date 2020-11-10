@@ -325,7 +325,7 @@ static int _cluster_node_cmp(void const *a, void const *b)
  */
 static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 {
-	fr_pair_t	*args;
+	fr_pair_list_t	args;
 	fr_redis_cluster_node_t	*node = opaque;
 
 	node->addr = node->pending_addr;
@@ -372,7 +372,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 	 */
 	if (!node->pool) {
 		char		buffer[256];
-		fr_pair_t	*args;
+		fr_pair_list_t	args;
 		CONF_SECTION	*pool;
 
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
