@@ -159,9 +159,9 @@ static inline void fr_socket_addr_swap(fr_socket_t *dst, fr_socket_t const *src)
  *	- An initialised fr_socket_t struct.
  */
 static inline fr_socket_t *fr_socket_addr_init_inet(fr_socket_t *addr,
-							 int proto,
-							 int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
-							 fr_ipaddr_t const *dst_ipaddr, int dst_port)
+						    int proto,
+						    int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
+						    fr_ipaddr_t const *dst_ipaddr, int dst_port)
 {
 	if (!fr_socket_is_inet(proto)) return NULL;
 
