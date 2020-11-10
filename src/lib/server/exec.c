@@ -516,8 +516,9 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_t **o
 	 *	Parse the output, if any.
 	 */
 	if (output_pairs) {
-		fr_pair_t *vps = NULL;
+		fr_pair_list_t vps;
 
+		fr_pair_list_init(&vps);
 		/*
 		 *	HACK: Replace '\n' with ',' so that
 		 *	fr_pair_list_afrom_str() can parse the buffer in
