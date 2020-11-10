@@ -124,7 +124,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_name ? op->frame_state_name : __location__;
 
-	frame->interpret = op->interpret;
+	frame->process = op->interpret;
 	frame->signal = op->signal;
 
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
@@ -163,9 +163,12 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
  *				or to execute subsequent nodes.
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  *				Hands execution back to whatever called the interpreter.
+ * @return
+ *	- 0 on success.
+ *	- -1 on call stack too deep.
  */
-void unlang_interpret_push(request_t *request, unlang_t *instruction,
-			   rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
+int unlang_interpret_push(request_t *request, unlang_t *instruction,
+			  rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame;
@@ -179,10 +182,14 @@ void unlang_interpret_push(request_t *request, unlang_t *instruction,
 				    top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
 
+	/*
+	 *	This is not a cancellation point.
+	 *
+	 *	If we cancel here bad things happen inside the interpreter.
+	 */
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
-		RERROR("Internal sanity check failed: module stack is too deep");
-		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-		return;
+		RERROR("Call stack is too deep");
+		return - 1;
 	}
 
 	stack->depth++;
@@ -207,9 +214,11 @@ void unlang_interpret_push(request_t *request, unlang_t *instruction,
 	frame->result = default_rcode;
 	frame->priority = -1;
 
-	if (!instruction) return;
+	if (!instruction) return 0;
 
 	frame_state_init(stack, frame);
+
+	return 0;
 }
 
 /** Update the current result after each instruction, and after popping each stack frame
@@ -471,8 +480,8 @@ static inline unlang_frame_action_t frame_eval(request_t *request, unlang_stack_
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		fr_assert(frame->interpret != NULL);
-		action = frame->interpret(request, result);
+		fr_assert(frame->process != NULL);
+		action = frame->process(result, request);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);
@@ -799,7 +808,7 @@ static unlang_group_t empty_group = {
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-void unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
+int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
 
@@ -816,13 +825,13 @@ void unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rco
 	}
 
 
-	unlang_interpret_push_instruction(request, instruction, default_rcode, top_frame);
+	return unlang_interpret_push_instruction(request, instruction, default_rcode, top_frame);
 }
 
 /** Push an instruction onto the request stack for later interpretation.
  *
  */
-void unlang_interpret_push_instruction(request_t *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
+int unlang_interpret_push_instruction(request_t *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -834,13 +843,23 @@ void unlang_interpret_push_instruction(request_t *request, void *instruction, rl
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (top_frame) unlang_interpret_push(request, NULL, default_rcode, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-	if (instruction) unlang_interpret_push(request,
-					       instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (top_frame) {
+		if (unlang_interpret_push(request, NULL, default_rcode, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) {
+			return -1;
+		}
+	}
+	if (instruction) {
+		if (unlang_interpret_push(request,
+					  instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+			return -1;
+		}
+	}
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
 	DUMP_STACK;
+
+	return 0;
 }
 
 /** Call a module, iteratively, with a local stack, rather than recursively
@@ -853,7 +872,7 @@ rlm_rcode_t unlang_interpret_section(request_t *request, CONF_SECTION *subcs, rl
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
-	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME);
+	if (unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
 
 	return unlang_interpret(request);
 }
@@ -1036,7 +1055,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
  * The signaling stops at the "limit" frame.  This is so that keywords
  * such as "timeout" and "limit" can signal frames *lower* than theirs
@@ -1088,7 +1107,7 @@ static void frame_signal(request_t *request, fr_state_signal_t action, int limit
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.

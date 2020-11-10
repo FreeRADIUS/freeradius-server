@@ -81,7 +81,7 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 static int fall_through(fr_pair_t *vp)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -292,7 +292,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char const *filename, rbtree_t *tree,
-			       RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+			       fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
 	char const	*name;
 	fr_pair_t	*check_tmp = NULL;
@@ -343,7 +343,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
 			default_pl = default_pl->next;
 		}
 
-		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
+		MEM(fr_pair_list_copy(request, &check_tmp, &pl->check) >= 0);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -360,7 +360,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
 
 			/* ctx may be reply */
 			if (pl->reply) {
-				MEM(fr_pair_list_copy(reply, &reply_tmp, pl->reply) >= 0);
+				MEM(fr_pair_list_copy(reply, &reply_tmp, &pl->reply) >= 0);
 				radius_pairmove(request, &reply->vps, reply_tmp, true);
 			}
 			fr_pair_list_move(&request->control_pairs, &check_tmp);

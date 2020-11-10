@@ -93,7 +93,7 @@ src/include/features.h: src/include/features-h src/include/autoconf.h
 	@$(ECHO) HEADER $@
 	${Q}echo "#pragma once" > $@
 	${Q}cat $< >> $@
-	${Q}grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@
+	${Q}grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@ || true
 	${Q}grep "^#define[ ]*RADIUSD_VERSION" src/include/autoconf.h >> $@
 #
 #  Use the SED script we built earlier to make permanent substitutions

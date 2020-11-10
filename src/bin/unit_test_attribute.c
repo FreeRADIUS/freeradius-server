@@ -1675,7 +1675,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
 		     vp;
 		     vp = fr_cursor_current(&cursor)) {
-			slen = tp->func(enc_p, enc_end - enc_p, &cursor, encoder_ctx);
+			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encoder_ctx);
 			cc->last_ret = slen;
 
 			if (truncate) DEBUG("%s[%d]: Iteration %zu - Result %zd%s%s",

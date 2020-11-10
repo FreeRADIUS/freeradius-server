@@ -16,7 +16,7 @@
 
 /** Extensions to dictionary structures
  *
- * @file src/lib/util/dict_attr_ext.c
+ * @file src/lib/util/dict_ext.c
  *
  * @copyright 2020 The FreeRADIUS server project
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

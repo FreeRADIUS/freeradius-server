@@ -205,7 +205,7 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 		         fr_value_box_t const *lhs,
 		         fr_value_box_t const *rhs)
 {
-	vp_map_t const *map = c->data.map;
+	map_t const *map = c->data.map;
 
 	ssize_t		slen;
 	uint32_t	subcaptures;
@@ -311,7 +311,7 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
  */
 static int cond_cmp_values(request_t *request, fr_cond_t const *c, fr_value_box_t const *lhs, fr_value_box_t const *rhs)
 {
-	vp_map_t const *map = c->data.map;
+	map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
@@ -415,7 +415,7 @@ done:
  */
 static int cond_normalise_and_cmp(request_t *request, fr_cond_t const *c, fr_value_box_t const *lhs)
 {
-	vp_map_t const		*map = c->data.map;
+	map_t const		*map = c->data.map;
 
 	int			rcode;
 
@@ -632,7 +632,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
-	vp_map_t const *map = c->data.map;
+	map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),

@@ -10,106 +10,152 @@ In order to build the drivers, you MUST ALSO install the development
 versions of the database. That is, you must have the appropriate header
 files and client libraries for (say) MySQL. The rlm_sql_mysql driver is
 NOT a complete MySQL client implementation. Instead, it is a small
-`shim` between the FreeRADIUS rlm_sql module, and the MySQL client
+"shim" between the FreeRADIUS rlm_sql module, and the MySQL client
 libraries.
 
-In general, the SQL schemas mirror the layout of the `users` file. So
+In general, the SQL schemas mirror the layout of the "users" file. So
 for configuring check items and reply items, see `man 5 users`, and the
-examples in the `users` file.
+examples in the users file.
 
-.Schema and usage
+
+== Schema and usage
 
 The schemas are available in `raddb/sql/*`, where is the name of the
 database (mysql, postgresql, etc.)
 
 The SQL module employs two sets of check and reply item tables for
-processing in the authorization stage. One set of tables (radcheck and
+processing in the authorization stage: One set of tables (radcheck and
 radreply) are specific to a single user. The other set of tables
 (radgroupcheck and radgroupreply) is used to apply check and reply items
 to users that are members of a certain SQL group. The usergroup table
 provides the list of groups each user is a member of along with a
 priority field to control the order in which groups are processed.
 
-When a request comes into the server and is processed by the SQL module,
-the flow goes something like this:
+When a request comes into the server and is processed by the SQL module, first
+user attribute processing is performed:
 
-* Search the radcheck table for any check attributes specific to the
+. The radcheck table is searched for any "check" attributes specific to the
 user
+. If check attributes are found for the user, and they match the request:
+.. "Control" attributes from the radcheck table for this user are added to the control list, then
+.. "Reply" attributes from the radreply table for this user are added to the reply
 
-* If check attributes are found, and there’s a match, pull the reply
-items from the radreply table for this user and add them to the reply
-
-* Group processing then begins if any of the following conditions are
-met:
+Next, group attribute processing is performed if any of the following
+conditions are met:
 
 - The user IS NOT found in radcheck
-- The user IS found in radcheck, but the check items don’t match
+- The user IS found in radcheck, but the check items DO NOT match
 - The user IS found in radcheck, the check items DO match AND
 Fall-Through is set in the radreply table
-.. The user IS found in radcheck, the check items DO match AND the
-read_groups directive is set to `yes'
-. If groups are to be processed for this user, the first thing that is
+- The user IS found in radcheck, the check items DO match AND the
+read_groups configuration item for the sql module is set to `yes`
+
+If groups are to be processed for this user, the first thing that is
 done is the list of groups this user is a member of is pulled from the
-usergroup table ordered by the priority field. The priority field of the
-usergroup table allows us to control the order in which groups are
-processed, so that we can emulate the ordering in the users file. This
-can be important in many cases.
-. For each group this user is a member of, the corresponding check items
-are pulled from radgroupcheck table and compared with the request. If
-there is a match, the reply items for this group are pulled from the
-radgroupreply table and applied.
-. Processing continues to the next group IF:
-[loweralpha]
-.. There was not a match for the last group’s check items OR
-.. Fall-Through was set in the last group’s reply items (The above is
-exactly the same as in the users file)
-. Finally, if the user has a User-Profile attribute set or the Default
-Profile option is set in the sql.conf, then steps 4-6 are repeated for
-the groups that the profile is a member of.
+radusergroup table, ordered by the priority field. The priority field of the
+radusergroup table provides control over the order in which groups are
+processed, emulating the ordering in the layout of the users file.
+
+Considering the groups in order of priority:
+
+. The radgroupcheck table is searched for any check attributes specific to the group
+. If check attributes are found for the group, and they match the request:
+.. The control attributes from the radgroupcheck table for this group are added to the control list
+.. The reply attributes from the radgroupreply table for this group are
+added to the reply
+
+Processing continues to the next group if any of the following conditions are met:
+
+- There was not a match for the last group’s check items OR
+- Fall-Through was set in the last group’s reply items
+
+(The above is exactly the same as in the users file.)
+
+Finally, if the user has a User-Profile attribute set or the Default Profile
+configuration item is set for the sql module, then the above group
+processing steps are repeated for the groups that the profile is a member of.
+
+
+=== Example with groups
 
 For any fairly complex setup, it is likely that most of the actual
-processing will be done in the groups. In these cases, the user entry in
-radcheck will be of limited use except for things like setting the
-user’s password. So, one might have the following setup:
+processing will be done using groups. In these cases, the user entries
+in radcheck and radreply will be of limited use except for things like
+setting user-specific attributes such as the user’s password. So, one
+might have the following setup:
 
-radcheck table: joeuser Cleartext-Password := somepassword
+.radcheck table
+|===
+|UserName | Attribute          | Op | Value
 
-radreply table: joeuser Fall-Through = Yes
+|joeuser  | Cleartext-Password | := | somepassword
+|===
 
-radgroupcheck table: Check items for various connection scenarios
+.radreply table
+|===
+|UserName | Attribute          | Op | Value
 
-radgroupreply table: reply items for the groups
+|joeuser  | Fall-Through       | =  | Yes
+|===
 
-usergroup table: joeuser WLANgroup 1(this is the priority) joeuser
-PPPgroup 2
+.radusergroup table
+|===
+|UserName | GroupName    | Priority
 
-[arabic, start=2]
-. What NOT to do.
+|joeuser  | WLANgroup    | 1   (Applied first)
+|joeuser  | MeteredGroup | 2
+|===
 
-One of the fields of the SQL schema is named `op' This is for the
-`operator' used by the attributes. e.g.:
+.radgroupcheck table
+|===
+|GroupName    | Attribute          | Op | Value
 
-```
-Framed-IP-Address = 1.2.3.4 ^ ATTRIBUTE —-^ ^ OP ^ VALUE
-```
+|Check items for various connection scenarios... | | |
+|MeteredGroup | Simultaneous-Use   | := | 1
+|===
+
+.radgroupreply table
+|===
+|GroupName    | Attribute          | Op | Value
+
+|Reply items for the groups... | | |
+|WLANgroup    | Tunnel-Type             | := | VLAN
+|WLANgroup    | Tunnel-Medium-Type      | := | IEEE-802
+|WLANgroup    | Tunnel-Private-Group-ID | := | 20
+|MeteredGroup | Filter-Id          | := | 123
+|===
+
+
+== What NOT to do!
+
+One of the fields of the SQL schema is named "op". This is for the "operator"
+used when evaluating the attributes, e.g.
+
+[source,config]
+----
+Framed-IP-Address     :=      1.2.3.4
+^ ATTRIBUTE ^       ^ OP ^   ^ VALUE ^
+----
 
 If you want the server to be completely misconfigured, and to never do
 what you want, leave the `op' field blank. If you want to be rudely told
 to RTFM, then post questions on the mailing list, asking
 
-_why doesn’t my SQL configuration work when I leave the `op` field
+_Why doesn’t my SQL configuration work when I leave the `op` field
 empty?_
 
 The short answer is that with the op field empty, the server does not
-know what you want it to do with the attribute. Should it be added to
-the reply? Maybe you wanted to compare the operator to one in the
-request? The server simply doesn’t know.
+know what you want it to do with the attribute.
 
-So put a value in the field. The value is the string form of the
-operator: "=", ">=", etc. See Section 4, below, for more details.
+  * Is it a check item that should be compared against the request?
+  * Should it be added to the control or reply list?
 
-[arabic, start=3]
-. Authentication versus Authorization
+Without the operator, the server simply doesn’t know, so always put a
+value in the field. The value is the string form of the operator: "=",
+">=", etc. See below for more details.
+
+
+== Authentication versus Authorization
 
 Many people ask if they can "authenticate" users to their SQL
 database. The answer to this question is "You’re asking the wrong
@@ -123,22 +169,21 @@ which means that most users will not be able to "authenticate"
 themselves to the database.
 
 Instead, the users will have their authorization information (name,
-password, configuration) stored in the database. The configuration files
-for FreeRADIUS contain a username and password used to authenticate
-FreeRADIUS to the SQL server. (See raddb/sql.conf). Once the FreeRADIUS
-authentication server is connected to the SQL database server, then
-FreeRADIUS can pull user names and passwords out of the database, and
-use that information to perform the authentication.
+password, configuration) stored in the database's tables. The
+configuration files for FreeRADIUS contain a username and password used
+to authenticate FreeRADIUS to the SQL server. (See raddb/sql.conf). Once
+the FreeRADIUS authentication server is connected to the SQL database
+server, then FreeRADIUS can pull user names and passwords out of the
+database, and use that information to perform the authentication.
+
 
 == Operators
 
-The list of operators is given below.
-
-Op Example and documentation
+The list of operators is given here.
 
 === =
 
-_Attribute = Value_
+e.g.: `Attribute = Value`
 
 Not allowed as a check item for RADIUS protocol attributes.  It is
 allowed for server configuration attributes (Auth-Type, etc), and sets
@@ -150,9 +195,7 @@ only if there is no other item of the same attribute."
 
 === :=
 
-e.g:
-
-_Attribute := Value_
+e.g: `Attribute := Value`
 
 Always matches as a check item, and replaces in the
 configuration items any attribute of the same name.  If no
@@ -166,12 +209,10 @@ reply items, instead of the request items.
 
 e.g: `Attribute == Value`
 
-```
 As a check item, it matches if the named attribute is present
 in the request, AND has the given value.
 
 Not allowed as a reply item.
-```
 
 === +=
 
@@ -215,12 +256,10 @@ Not allowed as a reply item.
 
 e.g: `Attribute < Value`
 
-```
 As a check item, it matches if the request contains an
 attribute with a value less than the one given.
 
 Not allowed as a reply item.
-```
 
 === \<=
 
@@ -269,46 +308,49 @@ the named attribute, no matter what the value is.
 
 Not allowed as a reply item.
 
-[arabic, start=5]
-. Instances
 
-Just like any other module, multiple instances of the rlm_sql module can
+== Module instances
+
+As with other modules, multiple instances of the rlm_sql module can
 be defined and used wherever you like.
 
-The default .conf files for the different database types, contain 1
-instance without a name like so:
+The default module configuration files for the different database types,
+contain one instance without a name like so:
 
-```
+[source,config]
+----
 sql {
-	…
+    ...
 }
-```
+----
 
 You can create multiple named instances like so:
 
-```
+[source,config]
+----
 sql sql_instance1 {
-	…
+    ...
 }
 
 sql sql_instance2 {
-	…
+    ...
 }
-```
+----
 
 And then you can use a specific instance in radiusd.conf, like so:
 
-```
+[source,config]
+----
 recv Access-Request {
-	…
-	sql_instance1
-	…
+    ...
+    sql_instance1
+    ...
 }
 
 process Accounting-Request {
-	…
-	sql_instance1
-	sql_instance2
-	…
+    ...
+    sql_instance1
+    sql_instance2
+    ...
 }
-```
+----

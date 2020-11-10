@@ -220,8 +220,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	char const		*pam_auth_string = data->pam_auth_name;
 	fr_pair_t		*username, *password;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -258,7 +258,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 *	Let control list over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = fr_pair_find_by_da(request->control_pairs, attr_pam_auth);
+	pair = fr_pair_find_by_da(&request->control_pairs, attr_pam_auth);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, username->vp_strvalue, password->vp_strvalue, pam_auth_string);

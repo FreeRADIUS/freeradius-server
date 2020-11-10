@@ -813,8 +813,6 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
    fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_read);
  @endcode
  *
- * @param[in] file	This function is being called from.
- * @param[in] line	This function is being called on.
  * @param[in] el	to update descriptor in.
  * @param[in] fd	to update filters for.
  * @param[in] filter	The type of filter to update.
@@ -888,8 +886,6 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 
 /** Insert a filter for the specified fd
  *
- * @param[in] file	This function is being called from.
- * @param[in] line	This function is being called on.
  * @param[in] ctx	to bind lifetime of the event to.
  * @param[out] ef_out	Previously allocated ef, or NULL.
  * @param[in] el	to insert fd callback into.
@@ -1045,8 +1041,6 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 
 /** Associate I/O callbacks with a file descriptor
  *
- * @param[in] file	This function is being called from.
- * @param[in] line	This function is being called on.
  * @param[in] ctx	to bind lifetime of the event to.
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to install filters for.
@@ -1215,8 +1209,6 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	 this function should be called with the existing event pointed to by
  *	 ev_p.
  *
- * @param[in] file		This function is being called from.
- * @param[in] line		This function is being called on.
  * @param[in] ctx		to bind lifetime of the event to.
  * @param[in] el		to insert event into.
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
@@ -1354,8 +1346,6 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
  *	 this function should be called with the existing event pointed to by
  *	 ev_p.
  *
- * @param[in] file		This function is being called from.
- * @param[in] line		This function is being called on.
  * @param[in] ctx		to bind lifetime of the event to.
  * @param[in] el		to insert event into.
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent

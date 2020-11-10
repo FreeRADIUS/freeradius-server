@@ -1196,7 +1196,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		/*
 		 *	Figure dst if we'd overflow
 		 */
-		if (value->vb_length > fr_dbuff_remaining(dbuff)) {
+		if (value->vb_length > fr_dbuff_extend_lowat(NULL, dbuff, value->vb_length)) {
 			if (need) *need = value->vb_length;
 			len = fr_dbuff_remaining(dbuff);
 		} else {
@@ -1238,7 +1238,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	/*
 	 *	Fixed type would overflow output buffer
 	 */
-	if (max > fr_dbuff_remaining(dbuff)) {
+	if (max > fr_dbuff_extend_lowat(NULL, dbuff, max)) {
 		if (need) *need = max;
 		return 0;
 	}
@@ -3435,20 +3435,24 @@ void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 	dst->vb_length = strlen(src);
 }
 
-/** Copy a nul terminated string to a #fr_value_box_t
+/** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
+ * @param[in] len	of buffer to allocate.
  * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			   size_t len, bool tainted)
 {
 	char	*str;
 
-	str = talloc_array(ctx, char, len + 1);
+	str = talloc_zero_array(ctx, char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed allocating string buffer");
 		return -1;
@@ -3471,6 +3475,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
  * @param[in] ctx	to realloc buffer in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
  * @return
  *	- 0 on success.
  *	 - -1 on failure.
@@ -3743,6 +3748,7 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
  * @param[in] ctx	to realloc buffer in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
  * @return
  *	- 0 on success.
  *	 - -1 on failure.

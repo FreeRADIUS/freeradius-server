@@ -26,10 +26,57 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
+#include <freeradius-devel/unlang/unlang_priv.h>
+
+/** Entry point into a proto_ module.
+ *
+ */
 typedef struct {
-	CONF_SECTION		*server_cs;
-	fr_dict_attr_t const	*attr_packet_type;
-} unlang_call_kctx_t;
+	unlang_group_t			group;			//!< Generic field common to all group type
+								///< #unlang_t nodes.
+	CONF_SECTION			*server_cs;		//!< Config section of the virtual server being
+								///< executed.
+	fr_dict_attr_t const		*attr_packet_type;	//!< Attribute used to specify packet type and
+								///< sections run in the server_cs.
+} unlang_call_t;
+
+/** A call stack entry
+ *
+ * Represents a single call on the unlang stack.
+ */
+typedef struct {
+	void				*instance;		//!< Instance data.
+
+	module_method_t			process;		//!< Next state in the state machine.
+
+	request_state_t			prev_request_state;	//!< Record the previous request state.
+	CONF_SECTION			*prev_server_cs;	//!< Record the previous server cs.
+} unlang_frame_state_call_t;
+
+/** Cast a group structure to the call keyword extension
+ *
+ */
+static inline unlang_call_t *unlang_group_to_call(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_call_t);
+}
+
+/** Cast a call keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_call_to_group(unlang_call_t *call)
+{
+	return (unlang_group_t *)call;
+}
+
+/** Cast a call keyword extension to a unlang_t structure
+ *
+ */
+static inline unlang_t *unlang_call_to_generic(unlang_call_t *call)
+{
+	return (unlang_t *)call;
+}
 
 #ifdef __cplusplus
 }

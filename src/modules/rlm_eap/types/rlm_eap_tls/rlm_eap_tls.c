@@ -119,21 +119,21 @@ static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *e
 	return RLM_MODULE_OK;
 }
 
-static unlang_action_t eap_tls_virtual_server_result(request_t *request, rlm_rcode_t *presult,
-						     UNUSED int *priority, void *uctx)
+static unlang_action_t eap_tls_virtual_server_result(rlm_rcode_t *p_result, UNUSED int *priority,
+						     request_t *request, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 
-	switch (*presult) {
+	switch (*p_result) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		*presult = eap_tls_success_with_prf(request, eap_session);
+		*p_result = eap_tls_success_with_prf(request, eap_session);
 		break;
 
 	default:
 		REDEBUG2("Certificate rejected by the virtual server");
 		eap_tls_fail(request, eap_session);
-		*presult = RLM_MODULE_REJECT;
+		*p_result = RLM_MODULE_REJECT;
 		break;
 	}
 
@@ -147,7 +147,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 	fr_pair_t	*vp;
 
 	/* set the virtual server to use */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_virtual_server);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_virtual_server);
 	if (vp) {
 		server_cs = virtual_server_find(vp->vp_strvalue);
 		if (!server_cs) {
@@ -179,12 +179,16 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 	/*
 	 *	Catch the interpreter on the way back up the stack
 	 */
-	unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session);
+	if (unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Push unlang instructions for the virtual server section
 	 */
-	unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_YIELD;
 }
@@ -267,7 +271,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(request->control_pairs, attr_eap_tls_require_client_cert);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_tls_require_client_cert);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {

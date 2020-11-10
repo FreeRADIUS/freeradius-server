@@ -55,7 +55,7 @@ typedef struct {
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
-	uint8_t				ethernet[6];		//!< ethernet address associated with the interface
+	fr_ethernet_t			ethernet;		//!< ethernet address associated with the interface
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
@@ -131,7 +131,8 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 	{ NULL }
 };
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
+			size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_dhcpv6_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv6_udp_t);
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
@@ -149,7 +150,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Where the addresses should go.  This is a special case
 	 *	for proto_dhcpv6.
 	 */
-	address_p = (fr_io_address_t **) packet_ctx;
+	address_p = (fr_io_address_t **)packet_ctx;
 	address = *address_p;
 
 	/*
@@ -157,10 +158,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
-			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
-			     &address->socket.inet.ifindex, recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
 		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
@@ -218,7 +216,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_dhcpv6_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv6_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			address = {};
+	fr_socket_t			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -236,8 +234,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Send packets to the originator, EXCEPT that we always
 	 *	originate packets from our src_ipaddr.
 	 */
-	fr_socket_addr_swap(&address.socket, &track->address->socket);
-	address.socket.inet.src_ipaddr = inst->src_ipaddr;
+	fr_socket_addr_swap(&socket, &track->address->socket);
+	if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) socket.inet.src_ipaddr = inst->src_ipaddr;
 
 	/*
 	 *	Figure out which kind of packet we're sending.
@@ -249,10 +247,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	proto_dhcpv6 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address.socket.inet.src_ipaddr, address.socket.inet.src_port,
-			     address.socket.inet.ifindex,
-			     &address.socket.inet.dst_ipaddr, address.socket.inet.dst_port);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -554,7 +549,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	Get the MAC address associated with this interface.
 	 *	It can be used to create a server ID.
 	 */
-	(void) fr_interface_to_ethernet(inst->interface, inst->ethernet);
+	(void) fr_interface_to_ethernet(inst->interface, &inst->ethernet);
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);

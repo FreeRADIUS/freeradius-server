@@ -218,7 +218,6 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return slen;
 }
 
-
 /*
  *	Register the xlats
  */

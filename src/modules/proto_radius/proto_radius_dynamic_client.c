@@ -77,7 +77,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'new client' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -88,9 +90,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
-
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
@@ -113,7 +112,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	rerun_nak:
 		RDEBUG("Running '%s client' from file %s", cf_section_name1(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -124,8 +125,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -157,16 +156,16 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
 			fr_pair_t *vp;
 
-			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_address);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_address);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ip_prefix);
-			if (!vp) fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_ipv6_prefix);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_prefix);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_prefix);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
 			}
 
-			vp = fr_pair_find_by_da(request->control_pairs, attr_freeradius_client_secret);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_secret);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client-Secret attribute");
 				goto deny;

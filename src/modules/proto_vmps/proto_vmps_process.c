@@ -77,7 +77,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -88,8 +90,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -122,7 +122,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -133,8 +135,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -178,8 +178,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 			return RLM_MODULE_HANDLED;
 		}
 
-#if 0
-#ifdef WITH_UDPFROMTO
 		/*
 		 *	Overwrite the src ip address on the outbound packet
 		 *	with the one specified by the client.
@@ -187,10 +185,8 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	and other routing issues.
 		 */
 		if (request->client && (request->client->src_ipaddr.af != AF_UNSPEC)) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
+			request->reply->socket.inet.src_ipaddr = request->client->src_ipaddr;
 		}
-#endif
-#endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;

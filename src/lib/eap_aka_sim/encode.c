@@ -67,10 +67,10 @@ static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *e
  *
  * @return true if the underlying fr_pair_t is EAP_AKA encodable, false otherwise
  */
-static bool is_eap_aka_encodable(void *item, void *uctx)
+static bool is_eap_aka_encodable(void const *item, void const *uctx)
 {
-	fr_pair_t		*vp = item;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = uctx;
+	fr_pair_t const		*vp = item;
+	fr_aka_sim_encode_ctx_t	const *packet_ctx = uctx;
 
 	if (!vp) return false;
 	if (vp->da->flags.internal) return false;
@@ -781,12 +781,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-ssize_t fr_aka_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	return encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
-}
-
-static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t const		*vp;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -891,7 +886,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 *	It might be too big for putting into an
 	 *	EAP packet.
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SUBTYPE);
+	vp = fr_pair_find_by_child_num(&to_encode, packet_ctx->root, FR_SUBTYPE);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
 		return PAIR_ENCODE_FATAL_ERROR;
@@ -907,7 +902,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	/*
 	 *	Will we need to generate a HMAC?
 	 */
-	if (fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_MAC)) do_hmac = true;
+	if (fr_pair_find_by_child_num(&to_encode, packet_ctx->root, FR_MAC)) do_hmac = true;
 
 	/*
 	 *	Fast path, we just need to encode a subtype
@@ -946,7 +941,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 */
 	(void)fr_cursor_head(&cursor);
 	while (fr_cursor_current(&cursor)) {
-		slen = encode_pair_dbuff(&dbuff, &cursor, packet_ctx);
+		slen = fr_aka_sim_encode_pair(&FR_DBUFF_TMP(p, end), &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
 			talloc_free(fr_dbuff_buff(&dbuff));

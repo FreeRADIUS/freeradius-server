@@ -61,7 +61,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 		talloc_free(vp);
 		return slen;
 	}
-	fr_pair_add(&head->slist, vp);
+	fr_pair_add(head, vp);
 
 	return slen;
 }
@@ -78,9 +78,9 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	fr_cursor_t	cursor;
 	uint8_t	const	*p = start;
 
-	memset(&children, 0, sizeof(children));
-
 	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, end - start);
+
+	fr_pair_list_init(&children);
 
 	/*
 	 *	Decode all the children of this TLV
@@ -99,7 +99,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	we need to do an intermediary TLV
 	 *	VP to retain the nesting structure.
 	 */
-	if (fr_cursor_init(&cursor, &children.slist) && fr_cursor_next(&cursor)) {
+	if (fr_cursor_init(&cursor, &children) && fr_cursor_next(&cursor)) {
 		fr_pair_t	*tlv;
 
 		tlv = fr_pair_afrom_da(ctx, parent_da);
@@ -111,9 +111,9 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_cursor_remove(&cursor)));
 		}
 
-		fr_pair_add(&head->slist, tlv);
+		fr_pair_add(head, tlv);
 	} else {
-		fr_pair_add(&head->slist, fr_cursor_head(&cursor));
+		fr_pair_add(head, fr_cursor_head(&cursor));
 	}
 
 	return p - start;
@@ -140,7 +140,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 	while (p < end) {
 		FR_PROTO_HEX_MARKER(start, end - start, p - start, "Decoding child");
 
-		slen = internal_decode_pair(vp, &vp->children, parent_da, p, end, decoder_ctx);
+		slen = internal_decode_pair(vp, &vp->vp_group, parent_da, p, end, decoder_ctx);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return slen;
@@ -148,7 +148,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 
 		p += slen;
 	}
-	fr_pair_add(&head->slist, vp);
+	fr_pair_add(head, vp);
 
 	return p - start;
 }
@@ -330,16 +330,16 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 				uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	fr_pair_list_t	tmp;
+	fr_pair_list_t	list;
 	fr_cursor_t	tmp_cursor;
 	ssize_t		slen;
 
-	memset(&tmp, 0 , sizeof(tmp));
+	fr_pair_list_init(&list);
 
-	slen = internal_decode_pair(ctx, &tmp, fr_dict_root(dict), data, data + data_len, decoder_ctx);
+	slen = internal_decode_pair(ctx, &list, fr_dict_root(dict), data, data + data_len, decoder_ctx);
 	if (slen <= 0) return slen;
 
-	fr_cursor_init(&tmp_cursor, &tmp.slist);
+	fr_cursor_init(&tmp_cursor, &list);
 	fr_cursor_merge(cursor, &tmp_cursor);
 
 	return slen;

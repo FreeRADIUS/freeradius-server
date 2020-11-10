@@ -75,20 +75,20 @@ fr_pair_t **radius_list(request_t *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a list to the #RADIUS_PACKET holding the HEAD pointer for a #fr_pair_t list
+/** Resolve a list to the #fr_radius_packet_t holding the HEAD pointer for a #fr_pair_t list
  *
- * Returns a pointer to the #RADIUS_PACKET that holds the HEAD pointer of a given list,
+ * Returns a pointer to the #fr_radius_packet_t that holds the HEAD pointer of a given list,
  * for the current #request_t.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #pair_list_t value to resolve to #RADIUS_PACKET.
+ * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
  * @return
- *	- #RADIUS_PACKET on success.
+ *	- #fr_radius_packet_t on success.
  *	- NULL on failure.
  *
  * @see radius_list
  */
-RADIUS_PACKET *radius_packet(request_t *request, pair_list_t list)
+fr_radius_packet_t *radius_packet(request_t *request, pair_list_t list)
 {
 	switch (list) {
 	/* Don't add default */
@@ -110,8 +110,8 @@ RADIUS_PACKET *radius_packet(request_t *request, pair_list_t list)
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
  * Allocating new #fr_pair_t in the context of a #request_t is usually wrong.
- * #fr_pair_t should be allocated in the context of a #RADIUS_PACKET, so that if the
- * #RADIUS_PACKET is freed before the #request_t, the associated #fr_pair_t lists are
+ * #fr_pair_t should be allocated in the context of a #fr_radius_packet_t, so that if the
+ * #fr_radius_packet_t is freed before the #request_t, the associated #fr_pair_t lists are
  * freed too.
  *
  * @param[in] request containing the target lists.
@@ -188,11 +188,6 @@ int radius_request(request_t **context, request_ref_t name)
 
 	return 0;
 }
-
-/** @name Resolve a #tmpl_t outputting the result in various formats
- *
- * @{
- */
 
 /** Return the native data type of the expression
  *
@@ -782,6 +777,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 /** Traverse a TLV attribute
  *
+ * @param[in,out] prev	The previous pair in the list.
+ * @param[in] current	The pair to evaluate.
  * @param[in] ns	Tracks tree position between cursor calls.
  * @return the number of attributes matching ar.
  */
@@ -1304,7 +1301,7 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
  *	- -3 if context could not be found (no parent #request_t available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp;
 	fr_cursor_t		from, to;
@@ -1336,6 +1333,58 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t c
 
 	return err;
 }
+
+
+/** Copy children of pairs matching a #tmpl_t in the current #request_t
+ *
+ * @param ctx to allocate new #fr_pair_t in.
+ * @param out Where to write the copied #fr_pair_t (s).
+ * @param request The current #request_t.
+ * @param vpt specifying the #fr_pair_t type or list to copy.
+ *	Must be one of the following types:
+ *	- #TMPL_TYPE_LIST
+ *	- #TMPL_TYPE_ATTR
+ * @return
+ *	- -1 if no matching #fr_pair_t could be found.
+ *	- -2 if list could not be found (doesn't exist in current #request_t).
+ *	- -3 if context could not be found (no parent #request_t available).
+ *	- -4 on memory allocation error.
+ */
+int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, tmpl_t const *vpt)
+{
+	fr_pair_t		*vp;
+	fr_cursor_t		from;
+	tmpl_cursor_ctx_t	cc;
+
+	TMPL_VERIFY(vpt);
+
+	int err;
+
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+	*out = NULL;
+
+	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
+	     vp;
+	     vp = fr_cursor_next(&from)) {
+	     	switch (vp->da->type) {
+	     	case FR_TYPE_STRUCTURAL:
+	     		if (fr_pair_list_copy(ctx, out, &vp->vp_group) < 0) {
+	     			err = -4;
+	     			goto done;
+	     		}
+	     		break;
+
+		default:
+			continue;
+	     	}
+	}
+done:
+	tmpl_cursor_clear(&cc);
+
+	return err;
+}
+
 
 /** Returns the first VP matching a #tmpl_t
  *
@@ -1585,6 +1634,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
  *
  * @param[out] leaf	List to add built out attributes to.
  * @param[in] interior	List to remove attributes from.
+ * @param[in] vpt	We are evaluating.
  * @return
  *	- 0 on success.
  *      - -1 on failure.

@@ -91,8 +91,8 @@ rlm_rcode_t	process_authenticate(int type, request_t *request);
 
 rlm_rcode_t	virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
 					    rlm_rcode_t default_rcode,
-					    fr_unlang_module_resume_t resume,
-					    fr_unlang_module_signal_t signal, void *rctx);
+					    unlang_module_resume_t resume,
+					    unlang_module_signal_t signal, void *rctx);
 
 void		fr_request_async_bootstrap(request_t *request, fr_event_list_t *el); /* for unit_test_module */
 

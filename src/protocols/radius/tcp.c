@@ -28,9 +28,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/tcp.h>
 
-RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
+fr_radius_packet_t *fr_tcp_recv(int sockfd, int flags)
 {
-	RADIUS_PACKET *packet = fr_radius_alloc(NULL, false);
+	fr_radius_packet_t *packet = fr_radius_alloc(NULL, false);
 
 	if (!packet) return NULL;
 
@@ -45,7 +45,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 }
 
 /*
- *	Receives a packet, assuming that the RADIUS_PACKET structure
+ *	Receives a packet, assuming that the fr_radius_packet_t structure
  *	has been filled out already.
  *
  *	This ASSUMES that the packet is allocated && fields
@@ -57,7 +57,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
  *	Calling this function MAY change sockfd,
  *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma)
+int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t len;
 

@@ -93,15 +93,15 @@ struct request_s {
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
 	fr_heap_t		*backlog;	//!< thread-specific backlog
-	request_state_t	request_state;	//!< state for the various protocol handlers.
+	request_state_t		request_state;	//!< state for the various protocol handlers.
 
 	fr_dlist_head_t		data;		//!< Request metadata.
 
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
-	RADIUS_PACKET		*packet;	//!< Incoming request.
-	RADIUS_PACKET		*reply;		//!< Outgoing response.
+	fr_radius_packet_t		*packet;	//!< Incoming request.
+	fr_radius_packet_t		*reply;		//!< Outgoing response.
 
 	fr_pair_t		*control;	//!< #fr_pair_t (s) used to set per request parameters
 						//!< for modules and the server core at runtime.
@@ -116,10 +116,6 @@ struct request_s {
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
 
-	request_t			*proxy;		//!< proxied packet
-
-	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
-
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
 
@@ -128,7 +124,7 @@ struct request_s {
 
 	void			*stack;		//!< unlang interpreter stack.
 
-	request_t			*parent;
+	request_t		*parent;
 
 	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 

@@ -228,7 +228,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ NULL }
 };
 
-static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED fr_radius_packet_t *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
 	fr_assert(0 == 1);
@@ -300,7 +300,7 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  * @param[in] packet	containing attributes from the entry we received.
  * @param[in] received	Should always be true.
  */
-static void proto_ldap_packet_debug(request_t *request, RADIUS_PACKET *packet, bool received)
+static void proto_ldap_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
 {
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
@@ -321,6 +321,7 @@ static void proto_ldap_packet_debug(request_t *request, RADIUS_PACKET *packet, b
 	return;
 }
 
+#if 0
 /** Very simple state machine to process requests
  *
  * Unlike normal protocol requests which may have multiple distinct states,
@@ -411,7 +412,9 @@ static void request_running(request_t *request, fr_state_signal_t action)
 
 		RDEBUG("Running '%s %s' from file %s", cf_section_name1(unlang),
 		       cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -434,12 +437,13 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		default:
 			break;
 		}
-		fr_assert(request->log.unlang_indent == 0);
 		//request_delete(request);
 		break;
 	}
 }
+#endif
 
+#if 0
 /** Process events while the request is queued.
  *
  *  \dot
@@ -459,8 +463,8 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 
 	switch (action) {
 	case FR_SIGNAL_RUN:
-		request->process = request_running;
-		request->process(request, action);
+//		request->process = request_running;
+//		request->process(request, action);
 		break;
 
 	case FR_SIGNAL_CANCEL:
@@ -472,6 +476,7 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 		break;
 	}
 }
+#endif
 
 /** Setup an LDAP sync request
  *
@@ -490,7 +495,7 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
 {
 	TALLOC_CTX		*ctx;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	request_t			*request;
 
 	ctx = talloc_pool(NULL, main_config->talloc_pool_size);
@@ -510,7 +515,7 @@ static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst
 	request = request_setup(ctx, listen, packet, inst->client, NULL);
 	if (!request) return NULL;
 
-	request->process = request_queued;
+//	request->process = request_queued;
 
 	return request;
 }
@@ -840,7 +845,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	{
 		fr_pair_t *vp;
 
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_ldap_sync_cookie);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_ldap_sync_cookie);
 		if (!vp) {
 			if (config->allow_refresh) RDEBUG2("No &reply.Cookie attribute found.  All entries matching "
 							   "sync configuration will be returned");
@@ -1040,7 +1045,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
 		goto error;
 	}
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->src_ipaddr, &inst->src_port);
+	fr_ipaddr_from_sockaddr(&inst->src_ipaddr, &inst->src_port, &addr, len);
 
 	if (getpeername(listen->fd, (struct sockaddr *)&addr, &len) < 0) {
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
@@ -1050,7 +1055,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Allocate a fake client to use in requests
 	 */
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->dst_ipaddr, &inst->dst_port);
+	fr_ipaddr_from_sockaddr(&inst->dst_ipaddr, &inst->dst_port, &addr, len);
 	inst->client = proto_ldap_fake_client_alloc(inst);
 
 	DEBUG2("Starting sync(s)");

@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/print.h>
@@ -47,7 +46,7 @@ RCSID("$Id$")
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
+ * @param[in] ctx for allocated memory, usually a pointer to a #fr_radius_packet_t.
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return
@@ -201,7 +200,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] op	to assign to new #fr_pair_t.
  * @return a new #fr_pair_t.
  */
-fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **vps,
+fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *vps,
 			 char const *attribute, char const *value, fr_token_t op)
 {
 	fr_dict_attr_t const	*da;
@@ -315,7 +314,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **vps,
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list, fr_token_t *token, int depth)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list, fr_token_t *token, int depth)
 {
 	fr_pair_t	*vp, *head, **tail;
 	char const	*p, *next;
@@ -541,7 +540,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Now look for EOL, hash, etc.
 		 */
-		if (!*p || (*p == '#') || (*p == '\n')) {
+		if (!*p || (*p == '#') || (*p == '\n')) {			
 			last_token = T_EOL;
 			break;
 		}
@@ -589,7 +588,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_t **list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list)
 {
 	fr_token_t token;
 
@@ -600,23 +599,25 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **out, FILE *fp, bool *pfiledone)
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *out, FILE *fp, bool *pfiledone)
 {
-	char buf[8192];
-	fr_token_t last_token = T_EOL;
+	fr_token_t	last_token = T_EOL;
+	bool		found = false;
+	fr_cursor_t	cursor;
+	char		buf[8192];
 
-	fr_cursor_t cursor;
-
-	fr_pair_t *vp = NULL;
 	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
+		fr_cursor_t append;
+		fr_pair_t   *vp;
+
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP list.
 		 */
 		if (buf[0] == '\n') {
-			if (vp) {
+			if (found) {
 				*pfiledone = false;
 				return 0;
 			}
@@ -630,30 +631,34 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_t **
 
 		/*
 		 *	Read all of the attributes on the current line.
+		 *
+		 *	If we get nothing but an EOL, it's likely OK.
 		 */
 		vp = NULL;
 		last_token = fr_pair_list_afrom_str(ctx, dict, buf, &vp);
 		if (!vp) {
-			if (last_token != T_EOL) goto error;
-			break;
+			if (last_token == T_EOL) break;
+
+			/*
+			 *	Didn't read anything, but the previous
+			 *	line wasn't EOL.  The input file has a
+			 *	format error.
+			 */
+			*pfiledone = false;
+			vp = fr_cursor_head(&cursor);
+			if (vp) fr_pair_list_free(&vp);
+			*out = NULL;
+			return -1;
 		}
 
-		fr_cursor_append(&cursor, vp);
+		found = true;
+		fr_cursor_init(&append, &vp);
+		fr_cursor_merge(&cursor, &append);
 		(void) fr_cursor_tail(&cursor);
-
-		buf[0] = '\0';
 	}
+
 	*pfiledone = true;
-
 	return 0;
-
-error:
-	*pfiledone = false;
-	vp = fr_cursor_head(&cursor);
-	if (vp) fr_pair_list_free(&vp);
-	*out = NULL;
-
-	return -1;
 }
 
 
@@ -670,7 +675,7 @@ error:
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(fr_pair_t **to, fr_pair_t **from)
+void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from)
 {
 	fr_pair_t *i, *found;
 	fr_pair_t *head_new, **tail_new;
@@ -726,7 +731,7 @@ void fr_pair_list_move(fr_pair_t **to, fr_pair_t **from)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = fr_pair_find_by_da(*to, i->da);
+			found = fr_pair_find_by_da(to, i->da);
 			if (!found) goto do_add;
 
 			tail_from = &(i->next);
@@ -737,7 +742,7 @@ void fr_pair_list_move(fr_pair_t **to, fr_pair_t **from)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = fr_pair_find_by_da(*to, i->da);
+			found = fr_pair_find_by_da(to, i->da);
 			if (!found) goto do_add;
 
 			switch (found->vp_type) {

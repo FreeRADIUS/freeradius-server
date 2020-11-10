@@ -361,7 +361,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_da(request->state, attr_tls_session_data);
+	vp = fr_pair_find_by_da(&request->state, attr_tls_session_data);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -537,7 +537,7 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 	 */
 	if (!session->allow_session_resumption) goto disable;
 
-	vp = fr_pair_find_by_da(request->control_pairs, attr_allow_session_resumption);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_allow_session_resumption);
 	if (vp && (vp->vp_uint32 == 0)) {
 		RDEBUG2("&control.Allow-Session-Resumption == no, disabling session resumption");
 	disable:

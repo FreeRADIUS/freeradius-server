@@ -17,28 +17,23 @@
 --
 -- allocate_begin = ""
 -- allocate_find = "\
---      EXEC fr_allocate_previous_or_new_framedipaddress \
+--      EXEC fr_ippool_allocate_previous_or_new_address \
 --              @v_pool_name = '%{control.${pool_name}}', \
---              @v_username = '%{User-Name}', \
---              @v_callingstationid = '%{Calling-Station-Id}', \
---              @v_nasipaddress = '%{NAS-IP-Address}', \
---              @v_pool_key = '${pool_key}', \
---              @v_lease_duration = ${lease_duration} \
+--              @v_gateway = '${gateway}', \
+--              @v_owner = '${owner}', \
+--              @v_lease_duration = ${offer_duration}, \
+--              @v_requested_address = '%{${requested_address}:-0.0.0.0}' \
 --      "
 -- allocate_update = ""
 -- allocate_commit = ""
 --
 
-CREATE INDEX UserName_CallingStationId ON radippool(pool_name,UserName,CallingStationId)
-GO
-
-CREATE OR ALTER PROCEDURE fr_allocate_previous_or_new_framedipaddress
+CREATE OR ALTER PROCEDURE fr_ippool_allocate_previous_or_new_address
 	@v_pool_name VARCHAR(64),
-	@v_username VARCHAR(64),
-	@v_callingstationid VARCHAR(64),
-	@v_nasipaddress VARCHAR(15),
-	@v_pool_key VARCHAR(64),
-	@v_lease_duration INT
+	@v_gateway VARCHAR(128),
+	@v_owner VARCHAR(128),
+	@v_lease_duration INT,
+	@v_requested_address VARCHAR(15)
 AS
 	BEGIN
 
@@ -60,32 +55,60 @@ AS
 		-- Reissue an existing IP address lease when re-authenticating a session
 		--
 		WITH cte AS (
-			SELECT TOP(1) FramedIPAddress
-			FROM radippool
+			SELECT TOP(1) address
+			FROM fr_ippool
+			JOIN fr_ippool_status
+			ON fr_ippool_status.status_id = fr_ippool.status_id
 			WHERE pool_name = @v_pool_name
 				AND expiry_time > CURRENT_TIMESTAMP
-				AND UserName = @v_username
-				AND CallingStationId = @v_callingstationid
+				AND owner = @v_owner
+				AND fr_ippool_status.status IN ('dynamic', 'static')
 		)
 		UPDATE cte WITH (rowlock, readpast)
-		SET FramedIPAddress = FramedIPAddress
-		OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
+		SET address = address
+		OUTPUT INSERTED.address INTO @r_address_tab;
 		SELECT @r_address = id FROM @r_address_tab;
 
 		-- Reissue an user's previous IP address, provided that the lease is
 		-- available (i.e. enable sticky IPs)
 		--
+		-- When using this SELECT you should delete the one above. You must also
+		-- set allocate_clear = "" in queries.conf to persist the associations
+		-- for expired leases.
+		--
 		-- WITH cte AS (
-		-- 	SELECT TOP(1) FramedIPAddress
-		-- 	FROM radippool
+		-- 	SELECT TOP(1) address
+		-- 	FROM fr_ippool
+		--	JOIN fr_ippool_status
+		--	ON fr_ippool_status.status_id = fr_ippool.status_id
 		-- 	WHERE pool_name = @v_pool_name
-		-- 		AND UserName = @v_username
-		-- 		AND CallingStationId = @v_callingstationid
+		-- 		AND owner = @v_owner
+		--		AND fr_ippool_status.status IN ('dynamic', 'static')
 		-- )
 		-- UPDATE cte WITH (rowlock, readpast)
-		-- SET FramedIPAddress = FramedIPAddress
-		-- OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
+		-- SET address = address
+		-- OUTPUT INSERTED.address INTO @r_address_tab;
 		-- SELECT @r_address = id FROM @r_address_tab;
+
+		-- Issue the requested IP address if it is available
+		--
+		IF @r_address IS NULL AND @v_requested_address <> '0.0.0.0'
+		BEGIN
+			WITH cte AS (
+				SELECT TOP(1) address
+				FROM fr_ippool WITH (rowlock, readpast)
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
+				WHERE pool_name = @v_pool_name
+					AND address = @v_requested_address
+					AND fr_ippool_status.status = 'dynamic'
+					AND expiry_time < CURRENT_TIMESTAMP
+			)
+			UPDATE cte
+			SET address = address
+			OUTPUT INSERTED.address INTO @r_address_tab;
+			SELECT @r_address = id FROM @r_address_tab;
+		END
 
 		-- If we didn't reallocate a previous address then pick the least
 		-- recently used address from the pool which maximises the likelihood
@@ -94,16 +117,19 @@ AS
 		IF @r_address IS NULL
 		BEGIN
 			WITH cte AS (
-				SELECT TOP(1) FramedIPAddress
-				FROM radippool
+				SELECT TOP(1) address
+				FROM fr_ippool WITH (xlock rowlock readpast)
+				JOIN fr_ippool_status
+				ON fr_ippool_status.status_id = fr_ippool.status_id
 				WHERE pool_name = @v_pool_name
 					AND expiry_time < CURRENT_TIMESTAMP
+					AND fr_ippool_status.status = 'dynamic'
 				ORDER BY
 					expiry_time
 			)
-			UPDATE cte WITH (rowlock, readpast)
-			SET FramedIPAddress = FramedIPAddress
-			OUTPUT INSERTED.FramedIPAddress INTO @r_address_tab;
+			UPDATE cte
+			SET address = address
+			OUTPUT INSERTED.address INTO @r_address_tab;
 			SELECT @r_address = id FROM @r_address_tab;
 		END
 
@@ -117,14 +143,12 @@ AS
 
 		-- Update the pool having allocated an IP address
 		--
-		UPDATE radippool
+		UPDATE fr_ippool
 		SET
-			NASIPAddress = @v_nasipaddress,
-			pool_key = @v_pool_key,
-			CallingStationId = @v_callingstationid,
-			UserName = @v_username,
+			gateway = @v_gateway,
+			owner = @v_owner,
 			expiry_time = DATEADD(SECOND,@v_lease_duration,CURRENT_TIMESTAMP)
-		WHERE framedipaddress = @r_address;
+		WHERE address = @r_address;
 
 		COMMIT TRAN;
 

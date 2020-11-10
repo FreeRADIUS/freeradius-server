@@ -317,7 +317,7 @@ typedef struct {
  * Used to store the array of attributes we'll be querying for.
  */
 typedef struct {
-	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
 	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 							//!< and NULL termination.
 	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
@@ -469,11 +469,11 @@ char const	*fr_ldap_edir_errstr(int code);
  *	map.c - Attribute mapping code.
  */
 int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				     vp_map_t const *map, void *uctx);
+				     map_t const *map, void *uctx);
 
-int		fr_ldap_map_verify(vp_map_t *map, void *instance);
+int		fr_ldap_map_verify(map_t *map, void *instance);
 
-int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, vp_map_t const *maps);
+int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_t const *maps);
 
 int		fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);

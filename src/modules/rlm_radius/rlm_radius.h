@@ -69,7 +69,7 @@ struct rlm_radius_s {
 	uint32_t		proxy_state;  		//!< Unique ID (mostly) of this module.
 	uint32_t		*types;			//!< array of allowed packet types
 	uint32_t		status_check;  		//!< code of status-check type
-	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
+	map_t		*status_check_map;	//!< attributes for the status-server checks
 	uint32_t		num_answers_to_alive;		//!< How many status check responses we need to
 							///< mark the connection as alive.
 
@@ -94,6 +94,6 @@ struct rlm_radius_io_s {
 	FR_MODULE_THREADED_COMMON;
 
 	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a request_t with an IO submodule.
-	fr_unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
-	fr_unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
+	unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
+	unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
 };

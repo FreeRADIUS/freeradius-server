@@ -11,7 +11,7 @@ SECRET := testing123
 GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
 
 #
-#  To work around OpenSSL issues with travis.
+#  To work around OpenSSL issues encountered with old OpenSSL within CI.
 #
 raddb/test.conf:
 	${Q}echo 'security {' >> $@
@@ -67,9 +67,9 @@ test: \
 clean: clean.test
 .PHONY: clean.test
 
-#  Tests specifically for Travis. We do a LOT more than just
+#  Tests specifically for CI. We do a LOT more than just
 #  the above tests
-travis-test: raddb/test.conf test
+ci-test: raddb/test.conf test
 	${Q}FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -xxxv -n test
 	${Q}rm -f raddb/test.conf
 	${Q}$(MAKE) install

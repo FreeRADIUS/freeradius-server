@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/vmps/vmps.h>
 #include <freeradius-devel/io/test_point.h>
@@ -262,33 +263,32 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 };
 #endif
 
-ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		       int code, uint32_t seq_no, fr_cursor_t *cursor)
 {
-	uint8_t *attr;
-	fr_pair_t *vp;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_pair_t 		*vp;
+	fr_dbuff_marker_t	hdr;
+	uint32_t 		sequence;
 
-	if (buflen < 8) {
-		fr_strerror_printf("Output buffer is too small for VMPS header. (%zu < 8)", buflen);
-		return -1;
-	}
+	/*
+	 *	Let's keep reference for packet header.
+	 */
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	Create the header
 	 */
-	buffer[0] = FR_VQP_VERSION;	/* Version */
-	buffer[1] = code;		/* Opcode */
-	buffer[2] = FR_ERROR_CODE_VALUE_NO_ERROR;	/* Response Code */
-	buffer[3] = 0;			/* Data Count */
+	fr_dbuff_bytes_in(&work_dbuff, FR_VQP_VERSION,			/* Version */
+					code,				/* Opcode */
+					FR_ERROR_CODE_VALUE_NO_ERROR,	/* Response Code */
+					0);				/* Data Count */
 
 	if (original) {
-		memcpy(buffer + 4, original + 4, 4);
+		fr_dbuff_memcpy_in(&work_dbuff, original + 4, 4);
 	} else {
-		seq_no = htonl(seq_no);
-		memcpy(buffer + 4, &seq_no, 4);
+		fr_dbuff_in(&work_dbuff, seq_no);
 	}
-
-	attr = buffer + 8;
 
 	/*
 	 *	Encode the VP's.
@@ -296,26 +296,21 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 	while ((vp = fr_cursor_current(cursor))) {
 		size_t len;
 
-		if (attr >= (buffer + buflen)) break;
-
 		if (vp->da == attr_packet_type) {
-			buffer[1] = vp->vp_uint32;
+			fr_dbuff_current(&hdr)[1] = (uint8_t)vp->vp_uint32;
 			fr_cursor_next(cursor);
 			continue;
 		}
 
-
 		if (vp->da == attr_error_code) {
-			buffer[2] = vp->vp_uint8;
+			fr_dbuff_current(&hdr)[2] = vp->vp_uint8;
 			fr_cursor_next(cursor);
 			continue;
 		}
 
 		if (!original && (vp->da == attr_sequence_number)) {
-			uint32_t sequence;
-
 			sequence = htonl(vp->vp_uint32);
-			memcpy(buffer + 4, &sequence, 4);
+			memcpy(&fr_dbuff_current(&hdr)[4], &sequence, sizeof(sequence));
 			fr_cursor_next(cursor);
 			continue;
 		}
@@ -341,53 +336,41 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 		}
 
 		/*
-		 *	If the attribute overflows the buffer, stop.
-		 */
-		if ((attr + 6 + len) >= (buffer + buflen)) break;
-
-		/*
 		 *	Type.  Note that we look at only the lower 8
 		 *	bits, as the upper 8 bits have been hacked.
 		 *	See also dictionary.vmps
 		 */
-		attr[0] = 0;
-		attr[1] = 0;
-		attr[2] = 0x0c;
-		attr[3] = vp->da->attr & 0xff;
+
+		/* Type */
+		fr_dbuff_bytes_in(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
 
 		/* Length */
-		attr[4] = (len >> 8) & 0xff;
-		attr[5] = len & 0xff;
-
-		attr += 6;
+		fr_dbuff_in(&work_dbuff, (uint16_t)len);
 
 		/* Data */
 		switch (vp->vp_type) {
 		case FR_TYPE_IPV4_ADDR:
-			memcpy(attr, &vp->vp_ipv4addr, len);
-			attr += len;
+			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, (uint8_t *)&vp->vp_ipv4addr, len);
 			break;
 
 		case FR_TYPE_ETHERNET:
-			memcpy(attr, vp->vp_ether, len);
-			attr += len;
+			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_ether, len);
 			break;
 
 		case FR_TYPE_OCTETS:
 		case FR_TYPE_STRING:
-			memcpy(attr, vp->vp_octets, len);
-			attr += len;
+			FR_DBUFF_MEMCPY_IN_RETURN(&work_dbuff, vp->vp_octets, len);
 			break;
 
 		default:
 			return -1;
 		}
-		buffer[3]++;
+		fr_dbuff_current(&hdr)[3]++;	/* Update the Data Count */
 
 		fr_cursor_next(cursor);
 	}
 
-	return attr - buffer;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 
@@ -543,11 +526,12 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	fr_cursor_t cursor;
 
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	return fr_vmps_decode(ctx, data, data_len, &cursor, NULL);
 }
@@ -591,7 +575,7 @@ static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint
 
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
 
-	return fr_vmps_encode(data, data_len, NULL, -1, -1, &cursor);
+	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, -1, -1, &cursor);
 }
 
 static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)

@@ -409,7 +409,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, req
  */
 static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, tmpl_t const *vpt)
 {
-	RADIUS_PACKET	*packet = NULL;
+	fr_radius_packet_t	*packet = NULL;
 	fr_value_box_t	*value;
 
 	/*
@@ -1279,7 +1279,10 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			 *	the async xlat up until the point
 			 *	that it needs to yield.
 			 */
-			unlang_xlat_push(pool, &result, request, node, true);
+			if (unlang_xlat_push(pool, &result, request, node, true) < 0) {
+				talloc_free(pool);
+				return NULL;
+			}
 
 			switch (unlang_interpret(request)) {
 			default:

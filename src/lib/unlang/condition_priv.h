@@ -26,11 +26,29 @@
 extern "C" {
 #endif
 
+#include "unlang_priv.h"
 #include <freeradius-devel/server/cond.h>
 
 typedef struct {
+	unlang_group_t	group;
 	fr_cond_t	*cond;
-} unlang_cond_kctx_t;
+} unlang_cond_t;
+
+/** Cast a group structure to the cond keyword extension
+ *
+ */
+static inline unlang_cond_t *unlang_group_to_cond(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_cond_t);
+}
+
+/** Cast a cond keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_cond_to_group(unlang_cond_t *cond)
+{
+	return (unlang_group_t *)cond;
+}
 
 #ifdef __cplusplus
 }

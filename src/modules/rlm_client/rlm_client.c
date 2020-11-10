@@ -40,7 +40,7 @@ typedef struct {
 } client_get_vp_ctx_t;
 
 static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
-				   vp_map_t const *map, void *uctx)
+				   map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
 	fr_pair_t		*head = NULL, *vp;
@@ -115,10 +115,10 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				   fr_value_box_t **client_override, vp_map_t const *maps)
+				   fr_value_box_t **client_override, map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	vp_map_t const		*map;
+	map_t const		*map;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 

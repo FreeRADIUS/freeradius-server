@@ -184,8 +184,6 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	fr_pair_t		*vp = fr_cursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	if (fr_dbuff_remaining(&work_dbuff) < 3) return 0;	/* No space */
-
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -193,7 +191,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	hdr = work_dbuff.p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -272,10 +270,8 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	uint8_t			*hdr, *next_hdr, *start;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-
-	if (fr_dbuff_remaining(&work_dbuff) < 5) return 0;	/* No space */
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -284,12 +280,12 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	start = hdr = dbuff->p;
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t)da->attr, 0);
+	FR_DBUFF_BYTES_IN_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
 
 	/*
 	 *	Encode any sub TLVs or values
 	 */
-	while (fr_dbuff_remaining(&work_dbuff) >= 3) {
+	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, 3) >= 3) {
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
@@ -300,7 +296,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		}
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
-
 
 		/*
 		 *	If the newly added data fits within the
@@ -419,9 +414,9 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) da->attr, 0x00);
 	fr_dbuff_in(&work_dbuff, dv->attr);
-	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0);
+	fr_dbuff_bytes_in(&work_dbuff, (uint8_t) 0x00);
 
 	/*
 	 *	https://tools.ietf.org/html/rfc3925#section-4
@@ -479,8 +474,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 
 /** Encode a DHCP option and any sub-options.
  *
- * @param[out] out		Where to write encoded DHCP attributes.
- * @param[in] outlen		Length of out buffer.
+ * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
  * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
@@ -489,12 +483,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	return fr_dhcpv4_encode_option_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
-}
-
-ssize_t fr_dhcpv4_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;
@@ -542,6 +531,11 @@ ssize_t fr_dhcpv4_encode_option_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, vo
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
+}
+
 static int _encode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
 {
 	fr_dhcpv4_global_free();
@@ -572,4 +566,12 @@ extern fr_test_point_pair_encode_t dhcpv4_tp_encode_pair;
 fr_test_point_pair_encode_t dhcpv4_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_dhcpv4_encode_option
+};
+
+
+
+extern fr_test_point_proto_encode_t dhcpv4_tp_encode_proto;
+fr_test_point_proto_encode_t dhcpv4_tp_encode_proto = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_dhcpv4_encode_proto
 };

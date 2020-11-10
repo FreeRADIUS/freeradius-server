@@ -141,13 +141,14 @@ int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
 /** Encode VPS into a raw ARP packet.
  *
  */
-ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request, fr_pair_t *vps)
+ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps)
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
 	fr_arp_packet_t		*arp;
 	fr_cursor_t		cursor;
 	fr_da_stack_t		da_stack;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	if (!vps) {
 		fr_strerror_printf("Cannot encode empty packet");
@@ -178,7 +179,7 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	slen = fr_struct_to_network(packet, packet_len, &da_stack, 0, &cursor, NULL, NULL);
+	slen = fr_struct_to_network_dbuff(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL);
 	if (slen <= 0) return slen;
 
 	if (slen != FR_ARP_PACKET_SIZE) return slen;
@@ -186,7 +187,8 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 	/*
 	 *	Hard-code fields which can be omitted.
 	 */
-	arp = (fr_arp_packet_t *) packet;
+	arp = (fr_arp_packet_t *)fr_dbuff_start(&work_dbuff);
+
 	if ((arp->htype[0] == 0) && (arp->htype[1] == 0)) arp->htype[1] = FR_HARDWARE_FORMAT_VALUE_ETHERNET;
 	if ((arp->ptype[0] == 0) && (arp->ptype[1] == 0)) arp->ptype[0] = (FR_PROTOCOL_FORMAT_VALUE_IPV4 >> 8); /* 0x0800 */
 	if (arp->hlen == 0) arp->hlen = 6;
@@ -198,12 +200,12 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 	 *	queried MAC address.  Ensure that the admin doesn't
 	 *	have to fill out all of the fields.
 	 */
-	if (request) {
-		fr_arp_packet_t const *original = (fr_arp_packet_t const *) request;
+	if (original) {
+		fr_arp_packet_t const *our_original = (fr_arp_packet_t const *) original;
 
 #define COPY(_a, _b) do { \
 	if (memcmp(arp->_a, zeros, sizeof(arp->_a)) == 0) { \
-		memcpy(arp->_a, original->_b, sizeof(arp->_a)); \
+		memcpy(arp->_a, our_original->_b, sizeof(arp->_a)); \
 	} \
   } while (0)
 
@@ -212,13 +214,13 @@ ssize_t fr_arp_encode(uint8_t *packet, size_t packet_len, uint8_t const *request
 		COPY(tpa, spa);		/* answer is sent to the requestor protocol address */
 	}
 
-	return FR_ARP_PACKET_SIZE;
+	return fr_dbuff_set(dbuff, &work_dbuff);;
 }
 
 /** Decode a raw ARP packet into VPs
  *
  */
-ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_t **vps)
+ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_list_t *list)
 {
 	fr_arp_packet_t const *arp;
 	fr_cursor_t cursor;
@@ -256,7 +258,8 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	/*
 	 *	If the packet is too long, we discard any extra data.
 	 */
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, &child, NULL, NULL);
 }
 
@@ -329,7 +332,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
  */
 static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_encode(data, data_len, NULL, vps);
+	return fr_arp_encode(&FR_DBUFF_TMP(data, data_len), NULL, vps);
 }
 
 extern fr_test_point_proto_encode_t arp_tp_encode_proto;
@@ -338,9 +341,9 @@ fr_test_point_proto_encode_t arp_tp_encode_proto = {
 	.func		= fr_arp_encode_proto
 };
 
-static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_decode(ctx, data, data_len, vps);
+	return fr_arp_decode(ctx, data, data_len, list);
 }
 
 extern fr_test_point_proto_decode_t arp_tp_decode_proto;

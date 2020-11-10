@@ -1453,7 +1453,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
 
 	{
-		vp_map_t 	*map;
+		map_t 	*map;
 		tmpl_t	*rhs;
 
 		/*
@@ -1487,7 +1487,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			goto error;
 		}
 
-		MEM(c->data.map = map = talloc(c, vp_map_t));
+		MEM(c->data.map = map = talloc(c, map_t));
 
 		/*
 		 *	Grab the RHS
@@ -1505,7 +1505,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 */
 		if (cond_forbid_groups(rhs, &our_in, &m_rhs) < 0) goto error;
 
-		*map = (vp_map_t) {
+		*map = (map_t) {
 			.ci = cf_section_to_item(cs),
 			.lhs = lhs,
 			.op = op,

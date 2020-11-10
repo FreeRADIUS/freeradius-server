@@ -1187,7 +1187,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
-			fr_radius_ascend_secret(buffer, sizeof(buffer), p, data_len,
+			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,
 						packet_ctx->secret, packet_ctx->vector);
 			buffer[RADIUS_AUTH_VECTOR_LENGTH] = '\0';
 			data_len = strlen((char *) buffer);
@@ -1716,7 +1716,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	size_t packet_len = data_len;
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
@@ -1729,8 +1729,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t 
 		return -1;
 	}
 
-	*vps = NULL;
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	/*
 	 *	Decode the header

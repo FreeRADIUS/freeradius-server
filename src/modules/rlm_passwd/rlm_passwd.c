@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, req
 	fr_cursor_t		cursor;
 	int			found = 0;
 
-	key = fr_pair_find_by_da(request->request_pairs, inst->keyattr);
+	key = fr_pair_find_by_da(&request->request_pairs, inst->keyattr);
 	if (!key) return RLM_MODULE_NOTFOUND;
 
 	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);

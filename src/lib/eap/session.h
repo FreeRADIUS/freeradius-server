@@ -42,13 +42,13 @@ struct eap_session_s {
 
 	eap_session_t	*child;				//!< Session for tunneled EAP method.
 
-	request_t		*subrequest;			//!< Current subrequest being executed.
+	request_t	*subrequest;			//!< Current subrequest being executed.
 	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
 
 	void const	*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.
 
-	request_t		*request;			//!< Current request.  Only used by OpenSSL callbacks to
+	request_t	*request;			//!< Current request.  Only used by OpenSSL callbacks to
 							///< access the current request.  Must be NULL if eap_session
 							///< is not being processed by rlm_eap.
 

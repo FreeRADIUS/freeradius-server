@@ -1,0 +1,12 @@
+#
+#  PRE: update
+#
+
+# Doesn't yet pass because we need to stop processing
+# in the modules.
+# Doesn't explode either though... which is nice
+#call default {
+#
+#}
+
+success

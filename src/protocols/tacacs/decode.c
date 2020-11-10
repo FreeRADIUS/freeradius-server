@@ -665,13 +665,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 	fr_cursor_t cursor;
 
-	*vps = NULL;
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), &cursor);
 }

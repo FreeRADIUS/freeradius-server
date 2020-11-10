@@ -65,7 +65,7 @@ typedef struct {
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
 	uint32_t	counter;	       	//!< for pinging the same IP multiple times
-	request_t		*request;		//!< so it can be resumed when we get the echo reply
+	request_t	*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
 
 /** Wrapper around the module thread stuct for individual xlats
@@ -245,7 +245,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		.counter = echo->counter
 	};
 
-	(void) fr_ipaddr_to_sockaddr(&echo->ip->vb_ip, 0, &dst, &salen);
+	(void) fr_ipaddr_to_sockaddr(&dst, &salen, &echo->ip->vb_ip, 0);
 
 	/*
 	 *	Calculate the checksum
@@ -472,9 +472,23 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 		break;
 	}
 
+	/*
+	 *	Try and open with SOCK_DGRAM.
+	 *	If we get permission denied, fall back to SOCK_RAW.
+	 *	For some reason with docker, even if we have all
+	 *	the capabilities opening a SOCK_DGRAM/IPPROTO_ICMP
+	 *	socket fails.
+	 *
+	 *	We don't appear to need to specify the IP header
+	 *	and the xlat works fine.  Very strange.
+	 */
 	fd = socket(af, SOCK_DGRAM, proto);
+	if (fd < 0) fd = socket(af, SOCK_RAW, proto);
 	if (fd < 0) {
-		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed opening socket (%s, %s): %s",
+				   fr_table_str_by_value(fr_net_af_table, af, "<INVALID>"),
+				   fr_table_str_by_value(fr_net_ip_proto_table, proto, "<INVALID>"),
+				   fr_syserror(errno));
 		return -1;
 	}
 
@@ -535,12 +549,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 #ifdef __linux__
 #  ifndef HAVE_CAPABILITY_H
-	if ((getuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
+	if ((geteuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
 #  else
 	/*
 	 *	Request RAW capabilities on Linux.  On other systems this does nothing.
 	 */
-	if ((fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE) < 0) && (getuid() != 0)) {
+	if ((fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE) < 0) && (geteuid() != 0)) {
 		PERROR("Failed setting capabilities required to open ICMP socket");
 		return -1;
 	}

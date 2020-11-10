@@ -82,8 +82,8 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	re-authorization requests.
 		 */
 		if (request->packet->code == FR_CODE_COA_REQUEST) {
-			vp = fr_pair_find_by_da(request->reply_pairs, attr_service_type);
-			if (vp && !fr_pair_find_by_da(request->reply_pairs, attr_state)) {
+			vp = fr_pair_find_by_da(&request->reply_pairs, attr_service_type);
+			if (vp && !fr_pair_find_by_da(&request->reply_pairs, attr_state)) {
 				REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 				request->reply->code = FR_CODE_COA_NAK;
 				goto nak;
@@ -97,7 +97,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", dv->name, cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -108,8 +110,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -135,7 +135,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 	nak:
@@ -153,9 +153,9 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 */
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
-		fr_assert(request->log.unlang_indent == 0);
-
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
 
@@ -165,8 +165,6 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*

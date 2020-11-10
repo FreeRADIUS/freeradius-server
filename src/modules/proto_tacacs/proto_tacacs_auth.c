@@ -131,7 +131,7 @@ static void authentication_failed(request_t *request, char const *msg)
 	/*
 	 *	Set the server reply message.  Note that we do not tell the user *why* they failed authentication.
 	 */
-	if (!fr_pair_find_by_da(request->reply_pairs, attr_tacacs_server_message)) {
+	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, "Authentication failed");
 	}
@@ -204,7 +204,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(auth_ctx->recv_request), cf_filename(auth_ctx->recv_request));
-		unlang_interpret_push_instruction(request, auth_ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -254,7 +256,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	No Auth-Type, force it to reject.
 		 */
 		if (!auth_type) {
-			vp = fr_pair_find_by_da(request->request_pairs, attr_tacacs_authentication_type);
+			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_authentication_type);
 			if (!vp) {
 				authentication_failed(request, "No Auth-Type or TACACS-Authentication-Type configured: rejecting authentication.");
 				goto setup_send;
@@ -296,7 +298,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_PROCESS;
 		FALL_THROUGH;
@@ -335,7 +339,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 
 	setup_send:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(auth_ctx->send_reply), cf_filename(auth_ctx->send_reply));
-		unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -346,8 +352,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:

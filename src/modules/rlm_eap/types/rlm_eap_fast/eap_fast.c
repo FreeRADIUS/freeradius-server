@@ -474,7 +474,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
 						  fr_tls_session_t *tls_session,
-						  request_t *request, RADIUS_PACKET *reply)
+						  request_t *request, fr_radius_packet_t *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	fr_pair_t			*vp;
@@ -580,7 +580,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	 *	Allocate a fake request_t structure.
 	 */
 	fake = request_alloc_fake(request, NULL);
-	fr_assert(!fake->packet->vps);
+	fr_assert(!fake->request_pairs);
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -588,16 +588,16 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	 *	Add the tunneled attributes to the fake request.
 	 */
 
-	MEM(fake->packet->vps = vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
-	fr_pair_value_memdup(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
+	MEM(fake->request_pairs = vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
+	fr_pair_value_memdup(fake->request_pairs, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
-	log_request_pair_list(L_DBG_LVL_1, fake, fake->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, fake, fake->request_pairs, NULL);
 
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/*
@@ -631,7 +631,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->packet, t->username);
-		fr_pair_add(&fake->packet->vps, vp);
+		fr_pair_add(&fake->request_pairs, vp);
 	}
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
@@ -669,7 +669,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm);
+		vp = fr_pair_find_by_da(&fake->control, attr_proxy_to_realm);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -679,7 +679,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 			/*
 			 *	Tell the original request that it's going to be proxied.
 			 */
-			fr_pair_list_copy_by_da(request, &request->control_pairs, fake->control, attr_proxy_to_realm);
+			fr_pair_list_copy_by_da(request, &request->control_pairs, &fake->control, attr_proxy_to_realm);
 
 			/*
 			 *	Seed the proxy packet with the tunneled request.

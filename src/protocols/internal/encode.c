@@ -36,8 +36,6 @@
 
 #include <talloc.h>
 
-static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
-
 /** We use the same header for all types
  *
  */
@@ -184,7 +182,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			fr_cursor_t	children;
 			fr_pair_t	*child;
 
-			for (child = fr_cursor_talloc_init(&children, &vp->children.slist, fr_pair_t);
+			for (child = fr_cursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
 			     child;
 			     child = fr_cursor_current(&children)) {
 
@@ -221,13 +219,13 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	{
 		fr_cursor_t children;
 
-		for (vp = fr_cursor_talloc_init(&children, &vp->children.slist, fr_pair_t);
+		for (vp = fr_cursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
 		     vp;
 		     vp = fr_cursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
 
-			slen = fr_internal_encode_pair_dbuff(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
-							     &children, encoder_ctx);
+			slen = fr_internal_encode_pair(&FR_DBUFF_RESERVE(dbuff, sizeof(uint64_t) - 1),
+						       &children, encoder_ctx);
 			if (slen < 0) return slen;
 		}
 		fr_cursor_next(cursor);
@@ -283,7 +281,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t		*vp;
 	fr_da_stack_t		da_stack;
@@ -294,24 +292,6 @@ static ssize_t fr_internal_encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cur
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
 	return internal_encode(dbuff, &da_stack, 0, cursor, encoder_ctx);
-}
-
-/** Encode a data structure into an internal attribute
- *
- * This is the main entry point into the encoder.
- *
- * @param[out] out		Where to write encoded data.
- * @param[in] outlen		Length of the out buffer.
- * @param[in] cursor		Specifying attribute to encode.
- * @param[in] encoder_ctx	Additional data such as the shared secret to use.
- * @return
- *	- >0 The number of bytes written to out.
- *	- 0 Nothing to encode (or attribute skipped).
- *	- <0 an error occurred.
- */
-ssize_t fr_internal_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
-{
-	return fr_internal_encode_pair_dbuff(&FR_DBUFF_TMP(out, outlen), cursor, encoder_ctx);
 }
 
 /*

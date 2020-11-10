@@ -29,28 +29,22 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#ifdef WITH_UDPFROMTO
-#  include <freeradius-devel/util/udpfromto.h>
-#endif
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/udpfromto.h>
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)
 #define UDP_FLAGS_PEEK		(1 << 1)
 
-ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 fr_ipaddr_t const *src_ipaddr, uint16_t src_port, int ifindex,
-		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port);
+int udp_send(fr_socket_t const *socket, int flags, void *data, size_t data_len);
 
 int udp_recv_discard(int sockfd);
 
 ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipaddr_t *src_ipaddr, uint16_t *src_port);
 
-ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
-		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *ifindex,
-		 fr_time_t *when);
+ssize_t udp_recv(int sockfd, int flags,
+		 fr_socket_t *socket_out, void *data, size_t data_len, fr_time_t *when);
 
 #ifdef __cplusplus
 }

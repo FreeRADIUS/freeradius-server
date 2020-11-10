@@ -89,7 +89,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(head, da);
+	vp = fr_pair_find_by_da(&head, da);
 	if (!vp) {
 		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
 		return -1;
@@ -203,11 +203,11 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Bootstrap these for simpliciy.
 		 */
-		(void) fr_pair_list_copy(request->packet, &request->request_pairs, ctx->vps);
+		(void) fr_pair_list_copy(request->packet, &request->request_pairs, &ctx->vps);
 
-		unlang_interpret_push_instruction(request, NULL, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
-
-		unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true);
+		if (unlang_interpret_push_instruction(request, NULL,
+						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
+		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) return RLM_MODULE_FAIL;
 		ctx->expanded = true;
 
 		/*
@@ -395,7 +395,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 	if (request) {
 		if (request->request_pairs) {
-			(void) fr_pair_list_copy(ctx, &ctx->vps, request->request_pairs);
+			(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
 		}
 
 		fake->log = request->log;

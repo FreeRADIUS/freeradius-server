@@ -392,7 +392,7 @@ free_urldesc:
  *	Verify the result of the map.
  */
 static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   tmpl_t const *src, UNUSED vp_map_t const *maps)
+			   tmpl_t const *src, UNUSED map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing LDAP URI");
@@ -421,7 +421,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **url, vp_map_t const *maps)
+				fr_value_box_t **url, map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -431,7 +431,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 
 	LDAPMessage		*result = NULL;
 	LDAPMessage		*entry = NULL;
-	vp_map_t const		*map;
+	map_t const		*map;
 	char const 		*url_str;
 
 	fr_ldap_connection_t		*conn;
@@ -728,8 +728,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	fr_ldap_sasl_t		sasl;
 	fr_pair_t *username, *password;
 
-	username = fr_pair_find_by_da(request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -1020,7 +1020,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_da(request->control_pairs, attr_cleartext_password)) goto skip_edir;
+	if (fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory

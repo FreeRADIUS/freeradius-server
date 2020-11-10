@@ -167,3 +167,11 @@ void _fr_pair_list_log(fr_log_t const *log, fr_pair_t const *vp, char const *fil
 		fr_log(log, L_DBG, file, line, "\t%pP", vp);
 	}
 }
+
+/** Useful for calling from debuggers
+ *
+ */
+void fr_pair_list_debug(fr_pair_t const *vp)
+{
+	_fr_pair_list_log(&default_log, vp, "<internal>", 0);
+}

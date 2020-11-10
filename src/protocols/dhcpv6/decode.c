@@ -122,7 +122,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
-	ssize_t			rcode;
+	ssize_t			slen;
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*tlv;
 	uint8_t			prefix_len;
@@ -205,9 +205,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		break;
 
 	case FR_TYPE_STRUCT:
-		rcode = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv,
+		slen = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv,
 					       decode_value_trampoline, decoder_ctx);
-		if (rcode < 0) return rcode;
+		if (slen < 0) return slen;
 
 		if (tlv) {
 			fr_strerror_printf("decode children not implemented");
@@ -233,8 +233,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		 *	here.
 		 */
 		fr_cursor_init(&child_cursor, &head);
-		rcode = decode_tlvs(vp, &child_cursor, dict, fr_dict_root(dict_dhcpv6), data, data_len, decoder_ctx, false);
-		if (rcode < 0) {
+		slen = decode_tlvs(vp, &child_cursor, dict, fr_dict_root(dict_dhcpv6), data, data_len, decoder_ctx, false);
+		if (slen < 0) {
 			talloc_free(vp);
 			goto raw;
 		}
@@ -338,7 +338,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
-	ssize_t rcode;
+	ssize_t slen;
 	size_t total;
 	fr_pair_t *vp;
 	uint8_t const *next = data;
@@ -350,8 +350,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	 *	types.  It's just easier that way.
 	 */
 	if (!parent->flags.array) {
-		rcode = fr_dns_label_uncompressed_length(data, data_len, &next);
-		if (rcode <= 0) goto raw;
+		slen = fr_dns_label_uncompressed_length(data, data_len, &next);
+		if (slen <= 0) goto raw;
 
 		/*
 		 *	If the DNS label doesn't exactly fill the option, it's an error.
@@ -365,8 +365,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 		 *	If any one of the labels are invalid, then treat the
 		 *	entire set as invalid.
 		 */
-		rcode = fr_dns_labels_network_verify(data, data_len);
-		if (rcode < 0) {
+		slen = fr_dns_labels_network_verify(data, data_len);
+		if (slen < 0) {
 		raw:
 			return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
 		}
@@ -376,7 +376,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 	 *	Loop over the input buffer, decoding the labels one by
 	 *	one.
 	 */
-	for (total = 0; total < data_len; total += rcode) {
+	for (total = 0; total < data_len; total += slen) {
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
@@ -385,8 +385,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t
 		 *	function should never fail unless there's a
 		 *	bug in the code.
 		 */
-		rcode = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
-		if (rcode <= 0) {
+		slen = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
+		if (slen <= 0) {
 			talloc_free(vp);
 			goto raw;
 		}
@@ -486,7 +486,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 {
 	unsigned int   		option;
 	size_t			len;
-	ssize_t			rcode;
+	ssize_t			slen;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 
@@ -530,30 +530,30 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 
 		fr_cursor_init(&cursor_group, &vp->vp_group);
-		rcode = fr_dhcpv6_decode(vp, data + 4, len, &cursor_group);
-		if (rcode < 0) {
+		slen = fr_dhcpv6_decode(vp, data + 4, len, &cursor_group);
+		if (slen < 0) {
 			talloc_free(vp);
-			return rcode;
+			return slen;
 		}
 
 		fr_cursor_insert(cursor, vp);
 	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
-		rcode = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+		slen = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->flags.array) {
-		rcode = decode_array(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+		slen = decode_array(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		rcode = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+		slen = decode_vsa(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		rcode = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx, true);
+		slen = decode_tlvs(ctx, cursor, dict, da, data + 4, len, decoder_ctx, true);
 
 	} else {
-		rcode = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
+		slen = decode_value(ctx, cursor, dict, da, data + 4, len, decoder_ctx);
 	}
 
-	if (rcode < 0) return rcode;
+	if (slen < 0) return slen;
 
 	return len + 4;
 }
@@ -609,7 +609,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	size_t packet_len = data_len;
 	fr_cursor_t cursor;
@@ -617,8 +617,8 @@ static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, fr_pair_t **vps, uint8_t 
 
 	if (!fr_dhcpv6_ok(data, packet_len, 200)) return -1;
 
-	*vps = NULL;
-	fr_cursor_init(&cursor, vps);
+	fr_pair_list_init(list);
+	fr_cursor_init(&cursor, list);
 
 	return fr_dhcpv6_decode(ctx, data, packet_len, &cursor);
 }

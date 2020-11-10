@@ -169,7 +169,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common attr_filter checks
  */
 static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, request_t *request,
-							    RADIUS_PACKET *packet)
+							    fr_radius_packet_t *packet)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_pair_t	*vp;

@@ -289,7 +289,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
  * @note Called with the mutex held.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
-					    RADIUS_PACKET *packet, fr_state_entry_t *old)
+					    fr_radius_packet_t *packet, fr_state_entry_t *old)
 {
 	size_t			i;
 	uint32_t		x;
@@ -412,7 +412,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	int the reply, we use that in preference to the
 	 *	old state.
 	 */
-	vp = fr_pair_find_by_da(packet->vps, state->da);
+	vp = fr_pair_find_by_da(&packet->vps, state->da);
 	if (vp) {
 		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
@@ -558,7 +558,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	fr_state_entry_t	*entry;
 	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(request->request_pairs, state->da);
+	vp = fr_pair_find_by_da(&request->request_pairs, state->da);
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
@@ -614,7 +614,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	No State, don't do anything.
 	 */
-	vp = fr_pair_find_by_da(request->request_pairs, state->da);
+	vp = fr_pair_find_by_da(&request->request_pairs, state->da);
 	if (!vp) {
 		RDEBUG3("No &request.State attribute, can't restore &session-state");
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
@@ -685,7 +685,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state.");
 	}
 
-	vp = fr_pair_find_by_da(request->request_pairs, state->da);
+	vp = fr_pair_find_by_da(&request->request_pairs, state->da);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	if (vp) old = state_entry_find(state, request, &vp->data);
@@ -830,7 +830,7 @@ void fr_state_detach(request_t *request, bool will_free)
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
 
-	(void) fr_pair_list_copy(new_state_ctx, &vps, request->state);
+	(void) fr_pair_list_copy(new_state_ctx, &vps, &request->state);
 	fr_pair_list_free(&request->state);
 
 	request->state_pairs = vps;

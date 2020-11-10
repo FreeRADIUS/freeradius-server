@@ -85,19 +85,19 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = fr_pair_find_by_da(request->request_pairs, attr_soh_supported);
+	vp[0] = fr_pair_find_by_da(&request->request_pairs, attr_soh_supported);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_os_vendor);
-		vp[1] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_os_version);
-		vp[2] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_os_release);
-		vp[3] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_os_build);
-		vp[4] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_sp_version);
-		vp[5] = fr_pair_find_by_da(request->request_pairs, attr_soh_ms_machine_sp_release);
+		vp[0] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_vendor);
+		vp[1] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_version);
+		vp[2] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_release);
+		vp[3] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_build);
+		vp[4] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_sp_version);
+		vp[5] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_sp_release);
 
 		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
@@ -150,7 +150,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
-	vp = fr_pair_find_by_da(request->request_pairs, attr_dhcp_vendor);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_dhcp_vendor);
 	if (vp) {
 		/*
 		 * vendor-specific options contain
@@ -211,7 +211,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_da(request->request_pairs, attr_ms_quarantine_soh);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_ms_quarantine_soh);
 	if (!vp) {
 		RDEBUG2("SoH radius VP not found");
 		return RLM_MODULE_NOOP;

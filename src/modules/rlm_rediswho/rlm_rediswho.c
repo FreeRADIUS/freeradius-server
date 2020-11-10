@@ -205,7 +205,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_da(request->request_pairs, attr_acct_status_type);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

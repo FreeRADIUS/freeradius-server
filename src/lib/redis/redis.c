@@ -262,10 +262,10 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, request_t *request,
+int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_t **out, request_t *request,
 			  redisReply *key, redisReply *op, redisReply *value)
 {
-	vp_map_t	*map = NULL;
+	map_t	*map = NULL;
 	ssize_t		slen;
 
 	*out = NULL;
@@ -288,7 +288,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, request_t *request,
 	RDEBUG3("Got op    : %s", op->str);
 	RDEBUG3("Got value : %pV", fr_box_strvalue_len(value->str, value->len));
 
-	MEM(map = talloc_zero(ctx, vp_map_t));
+	MEM(map = talloc_zero(ctx, map_t));
 	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str, &(tmpl_rules_t){ .dict_def = request->dict });
 	if (slen < 0) {
 		REMARKER(key->str, -slen, "%s", fr_strerror());
@@ -351,7 +351,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, request_t *request,
  *	0 on success.
  *	-1 on failure.
  */
-int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map)
+int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map)
 {
 	char		*new;
 

@@ -72,7 +72,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		}
 
 		RDEBUG("Running 'recv' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -83,8 +85,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		/*
@@ -134,7 +134,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply_pairs, inst->attr_packet_type);
+		vp = fr_pair_find_by_da(&request->reply_pairs, inst->attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
@@ -144,7 +144,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -155,8 +157,6 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
 
 		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		fr_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

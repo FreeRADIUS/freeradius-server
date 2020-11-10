@@ -108,7 +108,8 @@ static const CONF_PARSER udp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
+			size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
@@ -125,7 +126,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Where the addresses should go.  This is a special case
 	 *	for proto_radius.
 	 */
-	address_p = (fr_io_address_t **) packet_ctx;
+	address_p = (fr_io_address_t **)packet_ctx;
 	address = *address_p;
 
 	/*
@@ -133,10 +134,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.src_ipaddr, &address->socket.inet.src_port,
-			     &address->socket.inet.dst_ipaddr, &address->socket.inet.dst_port,
-			     &address->socket.inet.ifindex, recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_radius_udp got read error");
 		return data_size;
@@ -201,7 +199,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t const  		*address = track->address;
+	fr_socket_t  			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -214,6 +212,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	thread->stats.total_responses++;
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
+
+	/*
+	 *	Swap src/dst address so we send the response to
+	 *	the client, not ourselves.
+	 */
+	fr_socket_addr_swap(&socket, &track->address->socket);
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -231,10 +235,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
-					&address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
-					address->socket.inet.ifindex,
-					&address->socket.inet.src_ipaddr, address->socket.inet.src_port);
+			(void) udp_send(&socket, flags, packet, track->reply_len);
 		}
 
 		return buffer_len;
@@ -249,10 +250,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address->socket.inet.dst_ipaddr, address->socket.inet.dst_port,
-			     address->socket.inet.ifindex,
-			     &address->socket.inet.src_ipaddr, address->socket.inet.src_port);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...

@@ -97,7 +97,7 @@ void radius_pairmove(request_t *request, fr_pair_t **to, fr_pair_t *from, bool d
 
 	to_count = 0;
 	ctx = talloc_parent(*to);
-	MEM(fr_pair_list_copy(ctx, &to_copy, *to) >= 0);
+	MEM(fr_pair_list_copy(ctx, &to_copy, to) >= 0);
 	for (vp = to_copy; vp != NULL; vp = next) {
 		next = vp->next;
 		to_list[to_count++] = vp;

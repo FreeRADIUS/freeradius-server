@@ -79,10 +79,10 @@ done:
  *
  * Ascii encoded hex string will not be prefixed with '0x'
  *
- * @warning If the output buffer isn't long enough, we have a buffer overflow.
- *
  * @param[out] out	Output buffer to write to.
  * @param[in] in	input.
+ * @param[in] len	how many bytes convert to hex.
+ *			Pass SIZE_MAX to copy all available data.
  * @return
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.
@@ -91,7 +91,7 @@ ssize_t fr_bin2hex(fr_sbuff_t *out, fr_dbuff_t *in, size_t len)
 {
 	size_t	total = 0;
 
-	while ((fr_dbuff_remaining(in) > 0) && (total < len)) {	/* Fixme to be extension check */
+	while ((fr_dbuff_extend_lowat(NULL, in, 2) > 0) && (total < len)) {
 		FR_SBUFF_IN_CHAR_RETURN(out, hextab[((*in->p) >> 4) & 0x0f], hextab[*in->p & 0x0f]);
 
 		fr_dbuff_advance(in, 1);

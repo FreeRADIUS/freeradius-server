@@ -246,7 +246,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] packet associated with the request (request, reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, fr_radius_packet_t *packet, bool compat)
 {
 	fr_pair_t *vp;
 	char timestamp[256];
@@ -368,7 +368,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
  *	Do detail, compatible with old accounting
  */
 static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, request_t *request,
-					      RADIUS_PACKET *packet, bool compat)
+					      fr_radius_packet_t *packet, bool compat)
 {
 	int		outfd, dupfd;
 	char		buffer[DIRLEN];

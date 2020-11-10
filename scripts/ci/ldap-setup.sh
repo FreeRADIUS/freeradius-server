@@ -29,7 +29,7 @@ else
 fi
 
 # Start slapd
-slapd -h "ldap://127.0.0.1:3890/" -f scripts/travis/ldap/slapd.conf &
+slapd -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf &
 
 # Wait for LDAP to start
 sleep 1

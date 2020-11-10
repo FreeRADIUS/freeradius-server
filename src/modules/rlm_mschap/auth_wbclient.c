@@ -182,13 +182,13 @@ int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 			fr_box_strvalue_buffer(normalised_username));
 
 		/* Recalculate hash */
-		vp_challenge = fr_pair_find_by_da(request->request_pairs, attr_ms_chap_challenge);
+		vp_challenge = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_challenge);
 		if (!vp_challenge) {
 			RERROR("Unable to get MS-CHAP-Challenge");
 			goto release;
 		}
 
-		vp_response = fr_pair_find_by_da(request->request_pairs, attr_ms_chap2_response);
+		vp_response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response);
 		if (!vp_response) {
 			RERROR("Unable to get MS-CHAP2-Response");
 			goto release;

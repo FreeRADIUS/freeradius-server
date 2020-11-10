@@ -181,7 +181,9 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		return RLM_MODULE_OK;
 	}
 
-	unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
+	if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	eap_session->process = mod_process_auth_type;
 

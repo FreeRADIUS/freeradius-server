@@ -72,7 +72,7 @@ typedef struct {
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 	char const		*name;			//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;
-	vp_map_t		*header_maps;		//!< Attribute map used to process header elements
+	map_t		*header_maps;		//!< Attribute map used to process header elements
 	CONF_SECTION		*cs;
 	bool 			set_date;
 } rlm_smtp_t;
@@ -201,7 +201,7 @@ static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict
 	int 				elems_added = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
-	vp = fr_cursor_iter_by_da_init(&uctx->cursor, &uctx->request->packet->vps, dict_attr);
+	vp = fr_cursor_iter_by_da_init(&uctx->cursor, &uctx->request->request_pairs, dict_attr);
 	while (vp) {
 		*out = curl_slist_append(*out, vp->vp_strvalue);
 		elems_added++;
@@ -509,7 +509,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, UNUSED rlm_smt
 	request_t				*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
-	vp_map_t			*conf_map;
+	map_t			*conf_map;
 
 	char 				*expanded_rhs;
 
@@ -614,7 +614,7 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 	mime_body = curl_mime_init(uctx->randle->candle);
 
 	/* initialize the cursor used by the body_source function*/
-	vp = fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->packet->vps, attr_smtp_body);
+	vp = fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
 	fr_dbuff_init(&uctx->vp_in, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 
 	/* Add a mime part to mime_body for every body element */
@@ -628,7 +628,7 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 	RDEBUG2("initialized %d body element part(s)", body_elements);
 
 	/* Re-initialize the cursor for use when uploading the data to curl */
-	fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->packet->vps, attr_smtp_body);
+	fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
 
 	/* Add body_mime as a subpart of the mime request with a local content-disposition*/
 	part = curl_mime_addpart(mime);
@@ -742,15 +742,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 
 	fr_pair_t const 		*smtp_body, *username, *password;
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(&request->control, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		return RLM_MODULE_NOOP;
 	}
 
 	/* Elements provided by the request */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
-	smtp_body = fr_pair_find_by_da(request->packet->vps, attr_smtp_body);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	smtp_body = fr_pair_find_by_da(&request->request_pairs, attr_smtp_body);
 
 	/* Make sure all of the essential email components are present and possible*/
 	if(!smtp_body) {
@@ -907,8 +907,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 		return RLM_MODULE_FAIL;
 	}
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/* Make sure we have a user-name and user-password, and that they are possible */
 	if (!username) {
@@ -958,7 +958,7 @@ static void mod_unload(void)
 /** Verify that a map in the header section makes sense
  *
  */
-static int smtp_verify(vp_map_t *map, void *ctx)
+static int smtp_verify(map_t *map, void *ctx)
 {
 	if (unlang_fixup_update(map, ctx) < 0) return -1;
 
