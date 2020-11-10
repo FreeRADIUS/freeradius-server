@@ -67,7 +67,8 @@ struct exfile_s {
 static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
-	fr_pair_t		*vp, *args;
+	fr_pair_t		*vp;
+	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
 	fr_cursor_t		cursor;
 
