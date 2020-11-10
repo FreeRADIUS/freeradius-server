@@ -145,10 +145,10 @@ static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t out
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static sql_fall_through_t fall_through(fr_pair_t *vp)
+static sql_fall_through_t fall_through(fr_pair_list_t *vps)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(vps, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -940,7 +940,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			}
 
 			fr_assert(reply_tmp != NULL); /* coverity, among others */
-			*do_fall_through = fall_through(reply_tmp);
+			*do_fall_through = fall_through(&reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
 			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
@@ -1314,7 +1314,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		if (rows == 0) goto skip_reply;
 
-		do_fall_through = fall_through(reply_tmp);
+		do_fall_through = fall_through(&reply_tmp);
 
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
