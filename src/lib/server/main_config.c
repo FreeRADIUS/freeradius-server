@@ -899,6 +899,7 @@ int main_config_init(main_config_t *config)
 	char const		*p = NULL;
 	CONF_SECTION		*cs = NULL, *subcs;
 	struct stat		statbuf;
+	bool			can_colourise = false;
 	char			buffer[1024];
 
 	if (stat(config->raddb_dir, &statbuf) < 0) {
@@ -964,9 +965,9 @@ do {\
 	 */
 	p = getenv("TERM");
 	if (p && isatty(default_log.fd) && strstr(p, "xterm") && fr_debug_lvl) {
-		default_log.colourise = true;
+		can_colourise = default_log.colourise = true;
 	} else {
-		default_log.colourise = false;
+		can_colourise = default_log.colourise = false;
 	}
 	default_log.line_number = config->log_line_number;
 
@@ -1190,9 +1191,15 @@ do {\
 	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*
-	 *	Reset the colourisation state.
+	 *	Reset the colourisation state.  The configuration
+	 *	files can disable colourisation if the terminal
+	 *	supports it.  The configation files *cannot* enable
+	 *	colourisation if the terminal window doesn't support
+	 *	it.
 	 */
-	default_log.colourise = config->do_colourise;
+	if (can_colourise && !config->do_colourise) {
+		default_log.colourise = false;
+	}
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the
