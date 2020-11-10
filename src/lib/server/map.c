@@ -391,7 +391,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	char		quote;
-	size_t		slen;
+	ssize_t		slen;
 	fr_token_t	token;
 	tmpl_t		*tmpl;
 	map_t		*map;
@@ -533,6 +533,9 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	}
 
 	fr_sbuff_set(in, &sbuff);
+	MAP_VERIFY(map);
+	*out = map;
+
 	return 0;
 } 
 
