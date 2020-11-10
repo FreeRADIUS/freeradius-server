@@ -330,9 +330,9 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
  *	Because ARP has no TLVs, we don't have test points for pair
  *	encode / decode.
  */
-static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_encode(&FR_DBUFF_TMP(data, data_len), NULL, &vps);
+	return fr_arp_encode(&FR_DBUFF_TMP(data, data_len), NULL, vps);
 }
 
 extern fr_test_point_proto_encode_t arp_tp_encode_proto;

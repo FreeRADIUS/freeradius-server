@@ -1796,7 +1796,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = tp->func(cc->tmp_ctx, head, cc->buffer_start, cc->buffer_end - cc->buffer_start, encoder_ctx);
+	slen = tp->func(cc->tmp_ctx, &head, cc->buffer_start, cc->buffer_end - cc->buffer_start, encoder_ctx);
 	fr_pair_list_free(&head);
 	cc->last_ret = slen;
 	if (slen < 0) {

@@ -1441,18 +1441,18 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 	int packet_type = FR_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
 
-	vp = fr_pair_find_by_da(&vps, attr_packet_type);
+	vp = fr_pair_find_by_da(vps, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {
-		vp = fr_pair_find_by_da(&vps, attr_packet_authentication_vector);
+		vp = fr_pair_find_by_da(vps, attr_packet_authentication_vector);
 		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
 			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);
 		} else {
@@ -1469,7 +1469,7 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, ui
 	 *	can leverage a consistent random number generator.
 	 */
 	slen = fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
-				packet_type, 0, &vps);
+				packet_type, 0, vps);
 	if (slen <= 0) return slen;
 
 	if (fr_radius_sign(data, NULL, (uint8_t const *) test_ctx->secret, talloc_array_length(test_ctx->secret) - 1) < 0) {

@@ -56,7 +56,7 @@ typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *list,
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were encoded
  */
-typedef ssize_t (*fr_tp_proto_encode_t)(TALLOC_CTX *ctx, fr_pair_t *vps,
+typedef ssize_t (*fr_tp_proto_encode_t)(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 					uint8_t *data, size_t data_len, void *encoder_ctx);
 
 /** Entry point for protocol decoders
