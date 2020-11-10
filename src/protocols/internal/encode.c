@@ -71,7 +71,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	/*
 	 *	Zero out first encoding byte
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);
 
 	switch (da->type) {
 	/*

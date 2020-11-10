@@ -971,8 +971,8 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	later themselves, well, too bad.
 	 */
 	if (code == FR_CODE_PROTOCOL_ERROR) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 241, 7, 4 /* Original-Packet-Code */,
-					 0, 0, 0, original[0]);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_EXTENDED_ATTRIBUTE_1, 0x07, 0x04 /* Original-Packet-Code */,
+					 0x00, 0x00, 0x00, original[0]);
 	}
 
 	/*

@@ -759,7 +759,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		return -1;
 	}
 
-	FR_DBUFF_IN_BYTES_RETURN(dbuff, (uint8_t) msg_type);
+	FR_DBUFF_IN_RETURN(dbuff, (uint8_t)msg_type);
 
 	switch (msg_type) {
 	case FR_DHCPV6_RELAY_REPLY:

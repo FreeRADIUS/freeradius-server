@@ -119,7 +119,7 @@ static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encoder_ctx)
 
 	memcpy(packet_ctx->iv, (uint8_t *)&iv[0], sizeof(packet_ctx->iv));	/* ensures alignment */
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_IV, (4 + AKA_SIM_IV_SIZE) >> 2, 0, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_IV, (4 + AKA_SIM_IV_SIZE) >> 2, 0x00, 0x00);
 	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx->iv, sizeof(packet_ctx->iv));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Initialisation vector");
@@ -366,7 +366,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_CHECKCODE:
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);	/* Reserved */
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00, 0x00);	/* Reserved */
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 		goto done;
 
@@ -460,7 +460,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	+---------------+---------------+-------------------------------+
 	 */
 	case FR_TYPE_BOOL:
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00, 0x00);	/* reserved bytes */
 		break;
 
 	/*
@@ -666,7 +666,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0, 0);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00, 0x00);
 
 	value_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
 	fr_dbuff_marker(&value_start, &value_dbuff);
@@ -924,13 +924,13 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 
 	fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, 1024);
 
-	fr_dbuff_in_bytes(&dbuff, subtype, 0, 0);
+	fr_dbuff_in_bytes(&dbuff, subtype, 0x00, 0x00);
 
 	/*
 	 *	Add space in the packet for AT_MAC
 	 */
 	if (do_hmac) {
-		FR_DBUFF_IN_BYTES_RETURN(&dbuff, FR_MAC, AKA_SIM_MAC_SIZE >> 2, 0, 0);
+		FR_DBUFF_IN_BYTES_RETURN(&dbuff, FR_MAC, AKA_SIM_MAC_SIZE >> 2, 0x00, 0x00);
 		fr_dbuff_marker(&hmac, &dbuff);
 		FR_DBUFF_MEMSET_RETURN(&dbuff, 0, 16);
 	}

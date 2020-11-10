@@ -282,7 +282,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	fr_dbuff_in_bytes(&work_dbuff, FR_VQP_VERSION,			/* Version */
 					code,				/* Opcode */
 					FR_ERROR_CODE_VALUE_NO_ERROR,	/* Response Code */
-					0);				/* Data Count */
+					0x00);				/* Data Count */
 
 	if (original) {
 		fr_dbuff_in_memcpy(&work_dbuff, original + 4, 4);
