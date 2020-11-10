@@ -58,7 +58,6 @@ RCSID("$Id$")
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
-static ssize_t encode_pair_dbuff(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
 /** Evaluation function for EAP-AKA-encodability
  *
@@ -712,7 +711,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	if (!da->flags.extra && da->flags.subtype) {
 		ssize_t	value_len = fr_dbuff_used(&work_dbuff) - 2;
 
-		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_marker_current(&value_start),
+		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_current(&value_start),
 					      value_len, encoder_ctx);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
@@ -781,7 +780,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-static ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t const		*vp;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -941,7 +940,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 */
 	(void)fr_cursor_head(&cursor);
 	while (fr_cursor_current(&cursor)) {
-		slen = fr_aka_sim_encode_pair(&FR_DBUFF_TMP(p, end), &cursor, packet_ctx);
+		slen = fr_aka_sim_encode_pair(&dbuff, &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
 			talloc_free(fr_dbuff_buff(&dbuff));
@@ -957,12 +956,12 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode
 	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
-		slen = fr_aka_sim_crypto_sign_packet(fr_dbuff_marker_current(&hmac), eap_packet, false,
+		slen = fr_aka_sim_crypto_sign_packet(fr_dbuff_current(&hmac), eap_packet, false,
 						 packet_ctx->hmac_md,
 						 packet_ctx->keys->k_aut, packet_ctx->keys->k_aut_len,
 						 packet_ctx->hmac_extra, packet_ctx->hmac_extra_len);
 		if (slen < 0) goto error;
-		FR_PROTO_HEX_DUMP(fr_dbuff_marker_current(&hmac) - 4, AKA_SIM_MAC_SIZE, "hmac attribute");
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hmac) - 4, AKA_SIM_MAC_SIZE, "hmac attribute");
 	}
 	FR_PROTO_HEX_DUMP(eap_packet->type.data, eap_packet->type.length, "sim packet");
 
