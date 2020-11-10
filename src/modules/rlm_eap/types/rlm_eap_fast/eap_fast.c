@@ -795,7 +795,7 @@ static FR_CODE eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t 
 }
 
 static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
-				     fr_tls_session_t *tls_session, fr_pair_t *fast_vps)
+				     fr_tls_session_t *tls_session, fr_pair_list_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	fr_pair_t			*vp;
@@ -804,7 +804,7 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 
 	memset(&my_binding, 0, sizeof(my_binding));
 
-	for (vp = fr_cursor_init(&cursor, &fast_vps);
+	for (vp = fr_cursor_init(&cursor, fast_vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
@@ -956,7 +956,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 
 	RDEBUG2("Got Tunneled FAST TLVs");
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &fast_vps, NULL);
-	code = eap_fast_process_tlvs(request, eap_session, tls_session, fast_vps);
+	code = eap_fast_process_tlvs(request, eap_session, tls_session, &fast_vps);
 	fr_pair_list_free(&fast_vps);
 
 	if (code == FR_CODE_ACCESS_REJECT) return FR_CODE_ACCESS_REJECT;
