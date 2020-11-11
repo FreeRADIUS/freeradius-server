@@ -939,7 +939,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			*result = value;
 		}
 
-		value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));
 		value->vb_group = *result;
 		*result = NULL;
 		xlat_debug_log_expansion(request, *in, NULL);
