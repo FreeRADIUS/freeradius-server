@@ -2999,7 +2999,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	Parse '<subject>'
 	 */
-	vb = fr_value_box_alloc_null(ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
 	vb_str = talloc_bstrndup(vb, "", 0);
 
 	while (p < end) {
@@ -3019,7 +3019,8 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
-	fr_assert(vb->type != FR_TYPE_INVALID);
+
+	fr_assert(vb && (vb->type != FR_TYPE_INVALID));
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
