@@ -1,4 +1,4 @@
-name: GitHub Actions CI
+name: CI
 
 on:
   push:
@@ -58,12 +58,10 @@ jobs:
           - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
           - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
-          - { CC: gcc, DO_BUILD: no }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
-          - { CC: clang, DO_BUILD: no }
 
     env: ${{ matrix.env }}
 
@@ -79,16 +77,6 @@ jobs:
       run: git lfs checkout
 
     - uses: actions/setup-ruby@v1
-
-    - name: Install asciidoctor and pandoc
-      run: |
-        gem install asciidoctor
-        wget -q -O /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-1-amd64.deb
-        sudo dpkg -i /tmp/pandoc.deb
-
-    - name: Install tacacs_plus
-      run: |
-        pip3 install tacacs_plus
 
     - name: Configure LLVM 10 repositories for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
@@ -139,11 +127,9 @@ jobs:
         devscripts \
         dh-make \
         dovecot-dev \
-        doxygen \
         fakeroot \
         firebird-dev \
         freetds-dev \
-        graphviz \
         ldap-utils \
         libcap-dev \
         libcollectdclient-dev \
@@ -179,7 +165,6 @@ jobs:
         libyubikey-dev \
         lintian \
         luajit \
-        lynx \
         openssl \
         pbuilder \
         python-dev \
@@ -194,7 +179,11 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-20.04' }}
       run: sudo apt-get install -y --no-install-recommends libjson-c4
       
-    - name: Install compiler toolchain for 18.04
+    - name: Install tacacs_plus
+      run: |
+        pip3 install tacacs_plus
+        
+    - name: Setup compiler toolchain for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
       run: |
         sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
@@ -202,7 +191,7 @@ jobs:
         if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10; fi
         if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10; fi
 
-    - name: Install compiler toolchain for 20.04
+    - name: Setup compiler toolchain for 20.04
       if: ${{ matrix.os == 'ubuntu-20.04' }}
       run: |
         sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
@@ -214,9 +203,6 @@ jobs:
       run: |
         $CC --version
         make --version
-        asciidoctor --version
-        pandoc --version
-        doxygen --version
 
     - name: Build
       run: |
@@ -226,10 +212,4 @@ jobs:
         mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e "GRANT ALL on radius.* TO radius@'%'"
 
     - name: Test
-      run: |
-        if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-          make ci-test;
-        elif [ "${DO_BUILD}" = 'no' ]; then
-          sudo npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
-          make doxygen;
-        fi
+      run: make ci-test
