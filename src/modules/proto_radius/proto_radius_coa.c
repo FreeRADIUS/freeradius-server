@@ -50,7 +50,7 @@ fr_dict_attr_autoload_t proto_radius_coa_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 	rlm_rcode_t rcode;
@@ -74,7 +74,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request.Packet-Type");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		/*
@@ -93,12 +93,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv %s' section", dv->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", dv->name, cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_RECV;
@@ -107,9 +107,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -154,7 +157,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		request->request_state = REQUEST_SEND;
 		FALL_THROUGH;
@@ -162,9 +165,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 			/*
@@ -229,10 +235,10 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static const virtual_server_compile_t compile_list[] = {

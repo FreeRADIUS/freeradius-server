@@ -217,7 +217,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return -1;
 
 	return 0;
 }
@@ -277,7 +277,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -302,53 +302,53 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int mod_detach(UNUSED void *instance)

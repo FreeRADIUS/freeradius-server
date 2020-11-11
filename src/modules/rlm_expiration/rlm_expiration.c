@@ -55,7 +55,7 @@ fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp, *check_item = NULL;
 
@@ -73,7 +73,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 		if (check_item->vp_date <= fr_time_to_unix_time(request->packet->timestamp)) {
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
-			return RLM_MODULE_DISALLOW;
+			RETURN_MODULE_DISALLOW;
 		}
 		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 
@@ -101,10 +101,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 			MEM(NULL);
 		}
 	} else {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*

@@ -175,15 +175,15 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 {
 	fr_io_pending_packet_t const *a = talloc_get_type_abort_const(one, fr_io_pending_packet_t);
 	fr_io_pending_packet_t const *b = talloc_get_type_abort_const(two, fr_io_pending_packet_t);
-	int rcode;
+	int ret;
 
 	/*
 	 *	Higher priority elements are larger than lower
 	 *	priority elements.  So if "a" is larger than "b", we
 	 *	wish to prefer "a".
 	 */
-	rcode = COMPARE_PREFER_LARGER(a->priority, b->priority);
-	if (rcode != 0) return rcode;
+	ret = COMPARE_PREFER_LARGER(a->priority, b->priority);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller numbers mean packets were received earlier.
@@ -221,21 +221,21 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 
 static int8_t address_cmp(void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
 
-	rcode = STABLE_COMPARE(a->socket.inet.src_port, b->socket.inet.src_port);
-	if (rcode != 0) return rcode;
+	ret = STABLE_COMPARE(a->socket.inet.src_port, b->socket.inet.src_port);
+	if (ret != 0) return ret;
 
-	rcode = STABLE_COMPARE(a->socket.inet.dst_port, b->socket.inet.dst_port);
-	if (rcode != 0) return rcode;
+	ret = STABLE_COMPARE(a->socket.inet.dst_port, b->socket.inet.dst_port);
+	if (ret != 0) return ret;
 
-	rcode = STABLE_COMPARE(a->socket.inet.ifindex, b->socket.inet.ifindex);
-	if (rcode != 0) return rcode;
+	ret = STABLE_COMPARE(a->socket.inet.ifindex, b->socket.inet.ifindex);
+	if (ret != 0) return ret;
 
-	rcode = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
+	if (ret != 0) return ret;
 
 	return fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 }
@@ -267,7 +267,7 @@ static int track_cmp(void const *one, void const *two)
 {
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
-	int rcode;
+	int ret;
 
 	fr_assert(a->client != NULL);
 	fr_assert(b->client != NULL);
@@ -279,8 +279,8 @@ static int track_cmp(void const *one, void const *two)
 	/*
 	 *	Unconnected sockets must check src/dst ip/port.
 	 */
-	rcode = address_cmp(a->address, b->address);
-	if (rcode != 0) return rcode;
+	ret = address_cmp(a->address, b->address);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Call the per-protocol comparison function.
@@ -460,7 +460,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 						  fr_io_address_t *address,
 						  fr_io_connection_t *nak)
 {
-	int rcode;
+	int ret;
 	fr_io_connection_t *connection;
 	dl_module_inst_t *dl_inst = NULL;
 	fr_listen_t *li;
@@ -746,11 +746,11 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 */
 	pthread_mutex_lock(&client->mutex);
 	if (nak) (void) fr_hash_table_delete(client->ht, nak);
-	rcode = fr_hash_table_insert(client->ht, connection);
+	ret = fr_hash_table_insert(client->ht, connection);
 	client->ready_to_delete = false;
 	pthread_mutex_unlock(&client->mutex);
 
-	if (rcode < 0) {
+	if (ret < 0) {
 		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
 		goto cleanup;
 	}
@@ -2504,10 +2504,10 @@ static int mod_close(fr_listen_t *li)
 	get_inst(li, &inst, NULL, &connection, &child);
 
 	if (inst->app_io->close) {
-		int rcode;
+		int ret;
 
-		rcode = inst->app_io->close(child);
-		if (rcode < 0) return rcode;
+		ret = inst->app_io->close(child);
+		if (ret < 0) return ret;
 	} else {
 		close(child->fd);
 //		child->fd = -1;

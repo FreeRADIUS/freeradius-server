@@ -632,7 +632,10 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 		fr_pair_value_bstr_realloc(check, NULL, len);
 	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
-		switch (rlm_ldap_check_cached(inst, request, check)) {
+		rlm_rcode_t our_rcode;
+
+		rlm_ldap_check_cached(&our_rcode, inst, request, check);
+		switch (our_rcode) {
 		case RLM_MODULE_NOTFOUND:
 			found = false;
 			goto finish;
@@ -668,7 +671,10 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	 *	Check groupobj user membership
 	 */
 	if (inst->groupobj_membership_filter) {
-		switch (rlm_ldap_check_groupobj_dynamic(inst, request, &conn, check)) {
+		rlm_rcode_t our_rcode;
+
+		rlm_ldap_check_groupobj_dynamic(&our_rcode, inst, request, &conn, check);
+		switch (our_rcode) {
 		case RLM_MODULE_NOTFOUND:
 			break;
 
@@ -687,7 +693,10 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	 *	Check userobj group membership
 	 */
 	if (inst->userobj_membership_attr) {
-		switch (rlm_ldap_check_userobj_dynamic(inst, request, &conn, user_dn, check)) {
+		rlm_rcode_t our_rcode;
+
+		rlm_ldap_check_userobj_dynamic(&our_rcode, inst, request, &conn, user_dn, check);
+		switch (our_rcode) {
 		case RLM_MODULE_NOTFOUND:
 			break;
 
@@ -714,7 +723,7 @@ finish:
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;
@@ -737,7 +746,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
@@ -749,7 +758,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 		RWDEBUG("*********************************************");
 
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -757,7 +766,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -770,7 +779,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	}
 
 	conn = mod_conn_get(inst, request);
-	if (!conn) return RLM_MODULE_FAIL;
+	if (!conn) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Expand dynamic SASL fields
@@ -813,7 +822,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	if (!dn) {
 		ldap_mod_conn_release(inst, request, conn);
 
-		return rcode;
+		RETURN_MODULE_RCODE(rcode);
 	}
 	conn->rebound = true;
 	status = fr_ldap_bind(request,
@@ -852,7 +861,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 finish:
 	ldap_mod_conn_release(inst, request, conn);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Search for and apply an LDAP profile
@@ -860,16 +869,18 @@ finish:
  * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common
  * sets of attributes to the request.
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] dn of profile object to apply.
- * @param[in] expanded Structure containing a list of xlat expanded attribute names and mapping
-information.
+ * @param[out] p_result		the result of applying the profile.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn		of profile object to apply.
+ * @param[in] expanded		Structure containing a list of xlat
+ *				expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
-					char const *dn, fr_ldap_map_exp_t const *expanded)
+static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+					    request_t *request, fr_ldap_connection_t **pconn,
+					    char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
@@ -881,13 +892,13 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *reque
 
 	fr_assert(inst->profile_filter); 	/* We always have a default filter set */
 
-	if (!dn || !*dn) return RLM_MODULE_OK;
+	if (!dn || !*dn) RETURN_MODULE_OK;
 
 	if (tmpl_expand(&filter, filter_buff, sizeof(filter_buff), request,
 			inst->profile_filter, fr_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating profile filter");
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	status = fr_ldap_search(&result, request, pconn, dn,
@@ -899,10 +910,10 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *reque
 	case LDAP_PROC_BAD_DN:
 	case LDAP_PROC_NO_RESULT:
 		RDEBUG2("Profile object \"%s\" not found", dn);
-		return RLM_MODULE_NOTFOUND;
+		RETURN_MODULE_NOTFOUND;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	fr_assert(*pconn);
@@ -926,10 +937,10 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *reque
 free_result:
 	ldap_msgfree(result);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -950,10 +961,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) return RLM_MODULE_FAIL;
+	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) RETURN_MODULE_FAIL;
 
 	conn = mod_conn_get(inst, request);
-	if (!conn) return RLM_MODULE_FAIL;
+	if (!conn) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
@@ -1004,13 +1015,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 */
 	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
 		if (inst->userobj_membership_attr) {
-			rcode = rlm_ldap_cacheable_userobj(inst, request, &conn, entry, inst->userobj_membership_attr);
+			rlm_ldap_cacheable_userobj(&rcode, inst, request, &conn, entry, inst->userobj_membership_attr);
 			if (rcode != RLM_MODULE_OK) {
 				goto finish;
 			}
 		}
 
-		rcode = rlm_ldap_cacheable_groupobj(inst, request, &conn);
+		rlm_ldap_cacheable_groupobj(&rcode, inst, request, &conn);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1097,8 +1108,9 @@ skip_edir:
 	 *	Apply ONE user profile, or a default user profile.
 	 */
 	if (inst->default_profile) {
-		char const *profile;
-		char profile_buff[1024];
+		char const	*profile;
+		char		profile_buff[1024];
+		rlm_rcode_t	ret;
 
 		if (tmpl_expand(&profile, profile_buff, sizeof(profile_buff),
 				request, inst->default_profile, NULL, NULL) < 0) {
@@ -1108,7 +1120,8 @@ skip_edir:
 			goto finish;
 		}
 
-		switch (rlm_ldap_map_profile(inst, request, &conn, profile, &expanded)) {
+		rlm_ldap_map_profile(&ret, inst, request, &conn, profile, &expanded);
+		switch (ret) {
 		case RLM_MODULE_INVALID:
 			rcode = RLM_MODULE_INVALID;
 			goto finish;
@@ -1136,7 +1149,7 @@ skip_edir:
 				char *value;
 
 				value = fr_ldap_berval_to_string(request, values[i]);
-				ret = rlm_ldap_map_profile(inst, request, &conn, value, &expanded);
+				rlm_ldap_map_profile(&ret, inst, request, &conn, value, &expanded);
 				talloc_free(value);
 				if (ret == RLM_MODULE_FAIL) {
 					ldap_value_free_len(values);
@@ -1163,19 +1176,21 @@ finish:
 	if (result) ldap_msgfree(result);
 	ldap_mod_conn_release(inst, request, conn);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Modify user's object in LDAP
  *
  * Process a modifcation map to update a user object in the LDAP directory.
  *
- * @param inst rlm_ldap instance.
- * @param request Current request.
- * @param section that holds the map to process.
+ * @param[out] p_result		the result of the modification.
+ * @param[in] inst		rlm_ldap instance.
+ * @param[in] request		Current request.
+ * @param[in] section		that holds the map to process.
  * @return one of the RLM_MODULE_* values.
  */
-static rlm_rcode_t user_modify(rlm_ldap_t const *inst, request_t *request, ldap_acct_section_t *section)
+static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+				   request_t *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
@@ -1361,7 +1376,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, request_t *request, ldap_
 	mod_p[total] = NULL;
 
 	conn = mod_conn_get(inst, request);
-	if (!conn) return RLM_MODULE_FAIL;
+	if (!conn) RETURN_MODULE_FAIL;
 
 
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
@@ -1393,25 +1408,25 @@ error:
 
 	ldap_mod_conn_release(inst, request, conn);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 
-	if (inst->accounting) return user_modify(inst, request, inst->accounting);
+	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting);
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 
-	if (inst->postauth) return user_modify(inst, request, inst->postauth);
+	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth);
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 

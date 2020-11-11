@@ -72,7 +72,8 @@ static const CONF_PARSER module_config[] = {
  *	It checks if the response was CURLE_OK
  *	If it wasn't we returns REJECT, if it was we returns OK
 */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+								request_t *request, void *rctx)
 {
 	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
 	fr_curl_io_request_t     	*randle = rctx;
@@ -91,13 +92,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
 
 	if (randle->result != CURLE_OK) {
 		talloc_free(randle);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
 	talloc_free(randle);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -111,7 +112,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
 	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
@@ -123,7 +124,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
 	error:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
@@ -131,17 +132,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (password->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
@@ -154,9 +155,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) return RLM_MODULE_INVALID;
+	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) return RLM_MODULE_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
 }

@@ -532,7 +532,7 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *req
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_passwd_t);
 
@@ -543,7 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, req
 	int			found = 0;
 
 	key = fr_pair_find_by_da(&request->request_pairs, inst->keyattr);
-	if (!key) return RLM_MODULE_NOTFOUND;
+	if (!key) RETURN_MODULE_NOTFOUND;
 
 	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
 	     i;
@@ -573,9 +573,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(module_ctx_t const *mctx, req
 		if (!inst->allow_multiple) break;
 	}
 
-	if (!found) return RLM_MODULE_NOTFOUND;
+	if (!found) RETURN_MODULE_NOTFOUND;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 extern module_t rlm_passwd;

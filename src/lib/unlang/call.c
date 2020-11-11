@@ -39,6 +39,7 @@ static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *req
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
 
 	rlm_rcode_t			rcode;
+	unlang_action_t			ua;
 
 	request->request_state = REQUEST_INIT;
 	request->server_cs = state->prev_server_cs;	/* So we get correct debug info */
@@ -48,8 +49,16 @@ static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *req
 	 *
 	 *	This is a function in the virtual server's state machine.
 	 */
-	rcode = state->process(&(module_ctx_t){ .instance = state->instance }, request);
-	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+	ua = state->process(&rcode, &(module_ctx_t){ .instance = state->instance }, request);
+	switch (ua) {
+	case UNLANG_ACTION_YIELD:
+	case UNLANG_ACTION_STOP_PROCESSING:
+	case UNLANG_ACTION_PUSHED_CHILD:	/* Wants to do more processing */
+		return ua;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	Record the rcode and restore the previous virtual server

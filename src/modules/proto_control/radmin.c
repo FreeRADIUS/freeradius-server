@@ -794,7 +794,7 @@ static fr_cmd_info_t local_info;
 
 static int local_command(char *line)
 {
-	int argc, rcode;
+	int argc, ret;
 
 	argc = fr_command_str_to_argv(local_cmds, &local_info, line);
 	if (argc < 0) {
@@ -806,7 +806,7 @@ static int local_command(char *line)
 		return 0;
 	}
 
-	rcode = fr_command_run(stderr, stdout, &local_info, false);
+	ret = fr_command_run(stderr, stdout, &local_info, false);
 	fflush(stdout);
 	fflush(stderr);
 
@@ -815,7 +815,7 @@ static int local_command(char *line)
 	 */
 	(void) fr_command_clear(0, &local_info);
 
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	return 1;
 

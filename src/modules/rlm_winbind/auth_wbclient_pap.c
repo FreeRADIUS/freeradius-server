@@ -49,7 +49,7 @@ RCSID("$Id$")
  */
 int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_t *password)
 {
-	int rcode = -1;
+	int ret = -1;
 	struct wbcContext *wb_ctx;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
@@ -130,7 +130,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_
 	 */
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		rcode = 0;
+		ret = 0;
 		RDEBUG2("Authenticated successfully");
 		break;
 
@@ -151,11 +151,11 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_
 		}
 
 		/*
-		 * The password needs to be changed, set rcode appropriately.
+		 * The password needs to be changed, set ret appropriately.
 		 */
 		if (error->nt_status == NT_STATUS_PASSWORD_EXPIRED ||
 		    error->nt_status == NT_STATUS_PASSWORD_MUST_CHANGE) {
-			rcode = -648;
+			ret = -648;
 		}
 
 		/*
@@ -188,6 +188,6 @@ done:
 	if (info) wbcFreeMemory(info);
 	if (error) wbcFreeMemory(error);
 
-	return rcode;
+	return ret;
 }
 

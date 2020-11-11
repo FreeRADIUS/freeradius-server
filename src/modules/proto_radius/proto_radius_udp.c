@@ -387,7 +387,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, UNUSED siz
 static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
 
 	uint8_t const *a = one;
@@ -397,16 +397,16 @@ static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSE
 	 *	Do a better job of deduping input packet.
 	 */
 	if (inst->dedup_authenticator) {
-		rcode = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
-		if (rcode != 0) return rcode;
+		ret = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
+		if (ret != 0) return ret;
 	}
 
 	/*
 	 *	The tree is ordered by IDs, which are (hopefully)
 	 *	pseudo-randomly distributed.
 	 */
-	rcode = (a[1] < b[1]) - (a[1] > b[1]);
-	if (rcode != 0) return rcode;
+	ret = (a[1] < b[1]) - (a[1] > b[1]);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Then ordered by code, which is usually the same.

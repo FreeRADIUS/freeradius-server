@@ -94,15 +94,15 @@ static int socket_port_from_service(int proto, char const *port_name)
 #ifdef FD_CLOEXEC
 static int socket_dont_inherit(int sockfd)
 {
-	int rcode;
+	int ret;
 
 	/*
 	 *	We don't want child processes inheriting these
 	 *	file descriptors.
 	 */
-	rcode = fcntl(sockfd, F_GETFD);
-	if (rcode >= 0) {
-		if (fcntl(sockfd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+	ret = fcntl(sockfd, F_GETFD);
+	if (ret >= 0) {
+		if (fcntl(sockfd, F_SETFD, ret | FD_CLOEXEC) < 0) {
 			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -829,7 +829,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
  */
 int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char const *interface)
 {
-	int				rcode;
+	int				ret;
 	uint16_t			my_port = 0;
 	fr_ipaddr_t			my_ipaddr;
 	struct sockaddr_storage		salocal;
@@ -895,8 +895,8 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 *	and set the scope_id.
 		 */
 		if (!my_ipaddr.scope_id) {
-			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
-			if (rcode < 0) {
+			ret = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
+			if (ret < 0) {
 				fr_strerror_printf_push("Bind failed on interface %s: %s",
 							interface, fr_syserror(errno));
 				return -1;
@@ -991,14 +991,14 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 */
 	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my_ipaddr, my_port) < 0) return -1;
 
-	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
-	if (rcode < 0) {
+	ret = bind(sockfd, (struct sockaddr *) &salocal, salen);
+	if (ret < 0) {
 		fr_strerror_printf_push("Bind failed with source address %pV:%pV on interface %s: %s",
 					src_ipaddr ? fr_box_ipaddr(*src_ipaddr) : fr_box_strvalue("*"),
 					src_port ? fr_box_int16(*src_port) : fr_box_strvalue("*"),
 					interface ? interface : "*",
 					fr_syserror(errno));
-		return rcode;
+		return ret;
 	}
 
 	if (!src_port) goto done;

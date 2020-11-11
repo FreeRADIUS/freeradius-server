@@ -255,7 +255,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /** Resume a request after xlat expansion.
  *
  */
-static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					      request_t *request, void *rctx)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
@@ -269,7 +270,7 @@ static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, request_t *r
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 
 		env_pairs = *input_pairs;
@@ -277,10 +278,10 @@ static rlm_rcode_t mod_exec_nowait_resume(module_ctx_t const *mctx, request_t *r
 
 	if (fr_exec_nowait(request, box, env_pairs) < 0) {
 		RPEDEBUG("Failed executing program");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 typedef struct {
@@ -313,9 +314,7 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 {
 	rlm_rcode_t rcode;
 
-	if (status < 0) {
-		return RLM_MODULE_FAIL;
-	}
+	if (status < 0) return RLM_MODULE_FAIL;
 
 	/*
 	 *	Exec'd programs are meant to return exit statuses that correspond
@@ -348,7 +347,8 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 	return rcode;
 }
 
-static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
 	int			status;
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
@@ -375,20 +375,20 @@ static rlm_rcode_t mod_exec_wait_resume(module_ctx_t const *mctx, request_t *req
 
 	if (status < 0) {
 		REDEBUG("Program exited with signal %d", -status);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	The status rcodes aren't quite the same as the rcode
 	 *	enumeration.
 	 */
-	return rlm_exec_status2rcode(request, m->box, status);
+	RETURN_MODULE_RCODE(rlm_exec_status2rcode(request, m->box, status));
 }
 
 /*
  *  Dispatch an async exec method
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	rlm_exec_ctx_t		*m;
@@ -397,7 +397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, 
 
 	if (!inst->tmpl) {
 		RDEBUG("This module requires 'program' to be set.");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -423,14 +423,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(module_ctx_t const *mctx, 
 		fr_pair_t **input_pairs;
 
 		input_pairs = radius_list(request, inst->input_list);
-		if (!input_pairs) return RLM_MODULE_INVALID;
+		if (!input_pairs) RETURN_MODULE_INVALID;
 
 		env_pairs = *input_pairs;
 	}
 
 	if (inst->output) {
 		if (!radius_list(request, inst->output_list)) {
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	}
 

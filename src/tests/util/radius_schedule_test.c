@@ -64,7 +64,7 @@ static fr_test_packet_ctx_t	tpc;
 static rlm_rcode_t test_process(UNUSED void const *instance, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int test_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)

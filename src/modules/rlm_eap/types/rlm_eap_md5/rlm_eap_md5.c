@@ -47,7 +47,7 @@ fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	MD5_PACKET		*packet;
@@ -66,7 +66,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -75,7 +75,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	packet = eap_md5_extract(eap_session->this_round);
 	if (!packet) {
 		if (ephemeral) talloc_list_free(&known_good);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -104,13 +104,13 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 	if (ephemeral) talloc_list_free(&known_good);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	MD5_PACKET	*reply;
@@ -161,7 +161,7 @@ static rlm_rcode_t mod_session_init(UNUSED module_ctx_t const *mctx, request_t *
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

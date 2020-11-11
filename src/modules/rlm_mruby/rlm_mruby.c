@@ -430,22 +430,22 @@ DIAG_ON(class-varargs)
 			/* Must have exactly three items */
 			if (RARRAY_LEN(mruby_result) != 3) {
 				ERROR("Expected array to have exactly three values, got %" PRId64 " instead", RARRAY_LEN(mruby_result));
-				return RLM_MODULE_FAIL;
+				RETURN_MODULE_FAIL;
 			}
 
 			/* First item must be a Fixnum, this will be the return type */
 			if (mrb_type(mrb_ary_entry(mruby_result, 0)) != MRB_TT_FIXNUM) {
 				ERROR("Expected first array element to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 0))));
-				return RLM_MODULE_FAIL;
+				RETURN_MODULE_FAIL;
 			}
 
 			/* Second and third items must be Arrays, these will be the updates for reply and control */
 			if (mrb_type(mrb_ary_entry(mruby_result, 1)) != MRB_TT_ARRAY) {
 				ERROR("Expected second array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 1))));
-				return  RLM_MODULE_FAIL;
+				RETURN_MODULE_FAIL;
 			} else if (mrb_type(mrb_ary_entry(mruby_result, 2)) != MRB_TT_ARRAY) {
 				ERROR("Expected third array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 2))));
-				return RLM_MODULE_FAIL;
+				RETURN_MODULE_FAIL;
 			}
 
 			add_vp_tuple(request->reply, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), function_name);
@@ -455,12 +455,12 @@ DIAG_ON(class-varargs)
 		default:
 			/* Invalid return type */
 			ERROR("Expected return to be a Fixnum or an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 	}
 }
 
 
-#define RLM_MRUBY_FUNC(foo) static rlm_rcode_t CC_HINT(nonnull) mod_##foo(module_ctx_t const *mctx, request_t *request) \
+#define RLM_MRUBY_FUNC(foo) static unlang_action_t CC_HINT(nonnull) mod_##foo(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
 		return do_mruby(request,	\
 			       (rlm_mruby_t const *)mctx->instance, \

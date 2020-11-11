@@ -468,16 +468,16 @@ static char const *peap_state(peap_tunnel_t *t)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
+				 eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
-	request_t		*fake = NULL;
+	request_t	*fake = NULL;
 	fr_pair_t	*vp;
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
 	size_t		data_len;
-
-	eap_round_t *eap_round = eap_session->this_round;
+	eap_round_t	*eap_round = eap_session->this_round;
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -491,7 +491,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 
 	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) && (eap_peap_verify(request, t, data, data_len) < 0)) {
 		REDEBUG("Tunneled data is invalid");
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	switch (t->status) {
@@ -559,7 +559,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 
 		RDEBUG2("Sending SoH request to server %s",
 		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
-		rad_virtual_server(fake);
+		rad_virtual_server(&rcode, fake);
 
 		if (fake->reply->code != FR_CODE_ACCESS_ACCEPT) {
 			RDEBUG2("SoH was rejected");
@@ -636,7 +636,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 		RIDEBUG("what went wrong, and how to fix the problem");
 		REXDENT();
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 
 		case PEAP_STATUS_PHASE2_INIT:
 			RDEBUG2("In state machine in phase2 init?");
@@ -744,7 +744,7 @@ rlm_rcode_t eap_peap_process(request_t *request, eap_session_t *eap_session, fr_
 finish:
 	talloc_free(fake);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t) {

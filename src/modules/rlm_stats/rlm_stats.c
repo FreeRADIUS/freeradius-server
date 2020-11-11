@@ -144,7 +144,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_
 /*
  *	Do the statistics
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->instance, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
@@ -216,7 +216,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 		 */
 
 		if ((t->last_global_update + NSEC) > request->async->recv_time) {
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 		}
 
 		t->last_global_update = request->async->recv_time;
@@ -228,7 +228,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 		}
 		pthread_mutex_unlock(&inst->mutex);
 
-		return RLM_MODULE_UPDATED;
+		RETURN_MODULE_UPDATED;
 	}
 
 	/*
@@ -236,7 +236,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 	 */
 	if ((request->request_state != REQUEST_RECV) ||
 	    (request->packet->code != FR_CODE_STATUS_SERVER)) {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_type);
@@ -275,7 +275,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 	case FR_FREERADIUS_STATS4_TYPE_VALUE_CLIENT:			/* src */
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
-		if (!vp) return RLM_MODULE_NOOP;
+		if (!vp) RETURN_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 	case FR_FREERADIUS_STATS4_TYPE_VALUE_LISTENER:			/* dst */
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
-		if (!vp) return RLM_MODULE_NOOP;
+		if (!vp) RETURN_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, dst), &mydata);
@@ -292,7 +292,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 
 	default:
 		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (vp ) {
@@ -321,7 +321,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(module_ctx_t const *mctx, request_
 		(void) fr_cursor_tail(&cursor);
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

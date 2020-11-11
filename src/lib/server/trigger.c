@@ -192,7 +192,7 @@ typedef struct {
 	bool		expanded;
 } fr_trigger_t;
 
-static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
 	rlm_rcode_t	rcode;
@@ -206,8 +206,12 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 		(void) fr_pair_list_copy(request->packet, &request->request_pairs, &ctx->vps);
 
 		if (unlang_interpret_push_instruction(request, NULL,
-						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
-		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) return RLM_MODULE_FAIL;
+						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
+		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 		ctx->expanded = true;
 
 		/*
@@ -215,9 +219,14 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 		 */
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			RETURN_MODULE_HANDLED;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) {
+			*p_result = RLM_MODULE_YIELD;
+			return UNLANG_ACTION_YIELD;
+		}
 
 		/*
 		 *	Always fall through, no matter what the return code is.
@@ -226,7 +235,7 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 
 	if (!ctx->box) {
 		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -234,10 +243,10 @@ static rlm_rcode_t trigger_process(module_ctx_t const *mctx, request_t *request)
 	 */
 	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
 		RPERROR("Failed trigger %s", ctx->name);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

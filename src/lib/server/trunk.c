@@ -1402,15 +1402,15 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 {
 	fr_trunk_t		*trunk = treq->pub.trunk;
 	fr_trunk_connection_t	*tconn = NULL;
-	fr_trunk_enqueue_t	rcode;
+	fr_trunk_enqueue_t	ret;
 
 	/*
 	 *	Must *NOT* still be assigned to another connection
 	 */
 	fr_assert(!treq->pub.tconn);
 
-	rcode = trunk_request_check_enqueue(&tconn, trunk, treq->pub.request);
-	switch (rcode) {
+	ret = trunk_request_check_enqueue(&tconn, trunk, treq->pub.request);
+	switch (ret) {
 	case FR_TRUNK_ENQUEUE_OK:
 		if (trunk->conf.always_writable) {
 			fr_connection_signals_pause(tconn->pub.conn);
@@ -1438,7 +1438,7 @@ static fr_trunk_enqueue_t trunk_request_enqueue_existing(fr_trunk_request_t *tre
 		break;
 	}
 
-	return rcode;
+	return ret;
 }
 
 /** Shift requests in the specified states onto new connections
@@ -2269,7 +2269,7 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 {
 	fr_trunk_connection_t	*tconn = NULL;
 	fr_trunk_request_t	*treq;
-	fr_trunk_enqueue_t	rcode;
+	fr_trunk_enqueue_t	ret;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return FR_TRUNK_ENQUEUE_FAIL;
@@ -2285,8 +2285,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (fr_trunk_start(trunk) < 0) return FR_TRUNK_ENQUEUE_FAIL;
 	}
 
-	rcode = trunk_request_check_enqueue(&tconn, trunk, request);
-	switch (rcode) {
+	ret = trunk_request_check_enqueue(&tconn, trunk, request);
+	switch (ret) {
 	case FR_TRUNK_ENQUEUE_OK:
 		if (*treq_out) {
 			treq = *treq_out;
@@ -2329,10 +2329,10 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 			treq->pub.preq = preq;
 			treq->pub.rctx = rctx;
 		}
-		return rcode;
+		return ret;
 	}
 
-	return rcode;
+	return ret;
 }
 
 /** Re-enqueue a request on the same connection

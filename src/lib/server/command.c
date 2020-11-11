@@ -548,7 +548,7 @@ static int split(char **input, char **output, bool syntax_string)
 
 static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head, bool allow_varargs)
 {
-	int i, rcode;
+	int i, ret;
 	char *name, *p;
 	fr_cmd_argv_t **last, *prev;
 
@@ -560,10 +560,10 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 	for (i = 0; i < CMD_MAX_ARGV; i++) {
 		fr_cmd_argv_t *argv;
 
-		rcode = split(&p, &name, true);
-		if (rcode < 0) return rcode;
+		ret = split(&p, &name, true);
+		if (ret < 0) return ret;
 
-		if (rcode == 0) return i;
+		if (ret == 0) return i;
 
 		/*
 		 *	Check for varargs.  Which MUST NOT be
@@ -615,8 +615,8 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			/*
 			 *	varargs can't be inside an optional block
 			 */
-			rcode = fr_command_add_syntax(option, option, &child, false);
-			if (rcode < 0) return rcode;
+			ret = fr_command_add_syntax(option, option, &child, false);
+			if (ret < 0) return ret;
 
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
 			argv->name = name;
@@ -651,17 +651,17 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			while (true) {
 				fr_cmd_argv_t *choice, *sub;
 
-				rcode = split_alternation(&q, &word);
-				if (rcode < 0) return rcode;
-				if (rcode == 0) break;
+				ret = split_alternation(&q, &word);
+				if (ret < 0) return ret;
+				if (ret == 0) break;
 
 				sub = NULL;
 
 				/*
 				 *	varargs can't be inside an alternation block
 				 */
-				rcode = fr_command_add_syntax(option, word, &sub, false);
-				if (rcode < 0) return rcode;
+				ret = fr_command_add_syntax(option, word, &sub, false);
+				if (ret < 0) return ret;
 
 				choice = talloc_zero(option, fr_cmd_argv_t);
 				choice->name = word;
@@ -756,16 +756,16 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	does not yet exist.
 	 */
 	if (table->parent) {
-		int i, rcode;
+		int i, ret;
 		char *p;
 		char *parents[CMD_MAX_ARGV];
 
 		p = talloc_strdup(talloc_ctx, table->parent);
 
 		for (i = 0; i < CMD_MAX_ARGV; i++) {
-			rcode = split(&p, &parents[i], true);
-			if (rcode < 0) return -1;
-			if (rcode == 0) break;
+			ret = split(&p, &parents[i], true);
+			if (ret < 0) return -1;
+			if (ret == 0) break;
 
 			if (!fr_command_valid_name(parents[i])) {
 				fr_strerror_printf("Invalid command name '%s'", parents[i]);
@@ -1014,7 +1014,7 @@ typedef struct {
  */
 int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t callback)
 {
-	int rcode;
+	int ret;
 	fr_cmd_stack_t *stack;
 	fr_cmd_t *cmd = NULL;
 	fr_cmd_walk_info_t info;
@@ -1076,11 +1076,11 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 	/*
 	 *	Run the callback, but only for user-defined commands.
 	 */
-	rcode = callback(ctx, &info);
-	if (rcode <= 0) {
+	ret = callback(ctx, &info);
+	if (ret <= 0) {
 		talloc_free(stack);
 		*walk_ctx = NULL;
-		return rcode;
+		return ret;
 	}
 
 	/*
@@ -1182,15 +1182,15 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 	 *	"foo" and "bar".
 	 */
 	if (argv->type == FR_TYPE_ALTERNATE) {
-		int count, rcode;
+		int count, ret;
 		fr_cmd_argv_t *child;
 
 		count = 0;
 		for (child = argv->child; child != NULL; child = child->next) {
 			if (count >= max_expansions) return count;
 
-			rcode = fr_command_tab_expand_argv(ctx, cmd, info, name, child, max_expansions - count, &expansions[count]);
-			if (!rcode) continue;
+			ret = fr_command_tab_expand_argv(ctx, cmd, info, name, child, max_expansions - count, &expansions[count]);
+			if (!ret) continue;
 
 			count++;
 		}
@@ -1258,16 +1258,16 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
 					int max_expansions, char const **expansions)
 {
-	int rcode;
+	int ret;
 	fr_cmd_argv_t *argv = cmd->syntax_argv;
 
-	rcode = fr_command_verify_argv(info, syntax_offset, info->argc - 1, info->argc - 1, &argv, false);
-	if (rcode < 0) return -1;
+	ret = fr_command_verify_argv(info, syntax_offset, info->argc - 1, info->argc - 1, &argv, false);
+	if (ret < 0) return -1;
 
 	/*
 	 *	We've found the last argv.  See if we need to expand it.
 	 */
-	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[syntax_offset + rcode], argv, max_expansions, expansions);
+	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[syntax_offset + ret], argv, max_expansions, expansions);
 }
 
 
@@ -1363,7 +1363,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 
 static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only, int offset, fr_cmd_t *head)
 {
-	int i, rcode;
+	int i, ret;
 	fr_cmd_t *start, *cmd = NULL;
 	fr_cmd_info_t my_info;
 
@@ -1446,9 +1446,9 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
 	my_info.runnable = true;
 	my_info.argv = &info->argv[i + 1];
 	my_info.box = &info->box[i + 1];
-	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+	ret = cmd->func(fp, fp_err, cmd->ctx, &my_info);
 
-	return rcode;
+	return ret;
 }
 
 
@@ -1468,7 +1468,7 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
  */
 int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 {
-	int i, rcode;
+	int i, ret;
 	fr_cmd_t *cmd;
 	fr_cmd_info_t my_info;
 
@@ -1491,8 +1491,8 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 
 				fprintf(fp, "%s %s\n", info->argv[i - 1], cmd->name);
 				info->argv[i] = cmd->name;
-				rcode = fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
-				if (rcode < 0) return rcode;
+				ret = fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
+				if (ret < 0) return ret;
 			}
 
 			return 0;
@@ -1531,9 +1531,9 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 	my_info.runnable = true;
 	my_info.argv = &info->argv[i + 1];
 	my_info.box = &info->box[i + 1];
-	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+	ret = cmd->func(fp, fp_err, cmd->ctx, &my_info);
 
-	return rcode;
+	return ret;
 }
 
 
@@ -1668,7 +1668,7 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options)
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional)
 {
 	char quote;
-	int used = 0, rcode;
+	int used = 0, ret;
 	fr_type_t type;
 	fr_value_box_t *box, my_box;
 	char const *name;
@@ -1732,20 +1732,20 @@ redo:
 	if (type == FR_TYPE_OPTIONAL) {
 		child = argv->child;
 
-		rcode = fr_command_verify_argv(info, start + used, verify, argc, &child, true);
-		if (rcode < 0) return rcode;
+		ret = fr_command_verify_argv(info, start + used, verify, argc, &child, true);
+		if (ret < 0) return ret;
 
 		/*
 		 *	No match, that's OK.  Skip it.
 		 */
-		if (rcode == 0) {
+		if (ret == 0) {
 			goto next;
 		}
 
 		/*
 		 *	We've used SOME of the input.
 		 */
-		used += rcode;
+		used += ret;
 
 		/*
 		 *	But perhaps not all of it.  If so, remember
@@ -1775,18 +1775,18 @@ redo:
 			fr_assert(child->child != NULL);
 			sub = child->child;
 
-			rcode = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
-			if (rcode <= 0) continue;
+			ret = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
+			if (ret <= 0) continue;
 
 			/*
 			 *	Only a partial match.  Return that.
 			 */
 			if (sub) {
 				*argv_p = argv;
-				return used + rcode;
+				return used + ret;
 			}
 
-			used += rcode;
+			used += ret;
 			goto next;
 		}
 
@@ -1899,7 +1899,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			      char const **text, bool *runnable)
 {
 	int argc = start_argc;
-	int rcode;
+	int ret;
 	bool child_done;
 	char const *word, *my_word, *p, *q;
 	fr_cmd_argv_t *argv = start;
@@ -1965,10 +1965,10 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 				info->box[argc] = talloc_zero(info->box, fr_value_box_t);
 			}
 
-			rcode = fr_value_box_from_str(info->box[argc], info->box[argc],
+			ret = fr_value_box_from_str(info->box[argc], info->box[argc],
 						      &type, NULL,
 						      word + offset, len - (offset << 1), quote, false);
-			if (rcode < 0) return -1;
+			if (ret < 0) return -1;
 
 			/*
 			 *	Note that argv[i] is the *input* string.
@@ -2041,8 +2041,8 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 				 *	"192.168.0.1" is not a valid
 				 *	INTEGER, but it is a valid IPADDR.
 				 */
-				rcode = syntax_str_to_argv(argc, sub, info, &my_word, &child_done);
-				if (rcode <= 0) continue;
+				ret = syntax_str_to_argv(argc, sub, info, &my_word, &child_done);
+				if (ret <= 0) continue;
 
 				goto skip_child;
 			}
@@ -2063,19 +2063,19 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			child = argv->child;
 			my_word = word;
 
-			rcode = syntax_str_to_argv(argc, child, info, &my_word, &child_done);
-			if (rcode < 0) return rcode;
+			ret = syntax_str_to_argv(argc, child, info, &my_word, &child_done);
+			if (ret < 0) return ret;
 
 			/*
 			 *	Didn't match anything, skip it.
 			 */
-			if (rcode == 0) goto next;
+			if (ret == 0) goto next;
 
 		skip_child:
 			/*
 			 *	We've eaten more input, remember that,
 			 */
-			argc += rcode;
+			argc += ret;
 			word = my_word;
 
 			/*
@@ -2133,7 +2133,7 @@ done:
  */
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text)
 {
-	int argc, rcode;
+	int argc, ret;
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 
@@ -2336,10 +2336,10 @@ check_syntax:
 	/*
 	 *	Do recursive checks on the input string.
 	 */
-	rcode = syntax_str_to_argv(argc, cmd->syntax_argv, info, &word, &info->runnable);
-	if (rcode < 0) return rcode;
+	ret = syntax_str_to_argv(argc, cmd->syntax_argv, info, &word, &info->runnable);
+	if (ret < 0) return ret;
 
-	argc += rcode;
+	argc += ret;
 
 	/*
 	 *	Run out of options to parse, but there's still more
@@ -2443,17 +2443,17 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 	}
 
 	if ((argv->type < FR_TYPE_FIXED) && cmd->tab_expand) {
-		int rcode;
+		int ret;
 
 		info->argv[info->argc] = "";
 		info->box[info->argc] = NULL;
 		info->argc++;
 
 		fr_assert(count == 0);
-		rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
-		if (rcode < 0) return rcode;
+		ret = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+		if (ret < 0) return ret;
 
-		return count + rcode;
+		return count + ret;
 	}
 
 	expansions[count] = strdup(argv->name);
@@ -2523,7 +2523,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		 *	Check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
-			int rcode;
+			int ret;
 			size_t len, offset;
 			char quote, *my_word;
 			fr_type_t type = argv->type;
@@ -2560,9 +2560,9 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				 *	Expand this thing.
 				 */
 				fr_assert(count == 0);
-				rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
-				if (rcode < 0) return rcode;
-				return count + rcode;
+				ret = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+				if (ret < 0) return ret;
+				return count + ret;
 			}
 
 			len = p - word;
@@ -2583,10 +2583,10 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				offset = 0;
 			}
 
-			rcode = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
+			ret = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
 						      &type, NULL,
 						      word + offset, len - (offset << 1), quote, false);
-			if (rcode < 0) return -1;
+			if (ret < 0) return -1;
 			info->argc++;
 			*word_p = word = p;
 			continue;

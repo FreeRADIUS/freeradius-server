@@ -205,7 +205,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		      char const *fmt, va_list ap, void *uctx)
 		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
-static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Connection errored
  *
@@ -522,7 +522,7 @@ finish:
  *	- #RLM_MODULE_NOOP	if log destination already exists.
  *	- #RLM_MODULE_OK	if we added a new destination.
  */
-static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_cursor_t	cursor;
 	log_dst_t	*dst;
@@ -532,7 +532,7 @@ static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *reques
 		if (dst->uctx == mctx->thread) exists = true;
 	}
 
-	if (exists) return RLM_MODULE_NOOP;
+	if (exists) RETURN_MODULE_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
@@ -540,7 +540,7 @@ static rlm_rcode_t mod_insert_logtee(module_ctx_t const *mctx, request_t *reques
 
 	fr_cursor_append(&cursor, dst);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Create thread-specific connections and buffers

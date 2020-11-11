@@ -552,7 +552,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
  */
 static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 {
-	int rcode;
+	int slen;
 	int token;
 	int flags = 0;
 
@@ -578,23 +578,23 @@ duplicate:
 				fr_strerror_printf("Duplicate field when parsing 'abinary' IPX type");
 				return -1;
 			}
-			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
+			slen = ascend_parse_ipx_net(argc - 1, argv + 1,
 						     &(filter->src),
 						     &(filter->srcSocComp));
-			if (rcode < 0) return -1;
-			argc -= (rcode + 1);
-			argv += rcode + 1;
+			if (slen < 0) return -1;
+			argc -= (slen + 1);
+			argv += slen + 1;
 			flags |= 0x01;
 			break;
 
 		case FILTER_IPX_DST_IPXNET:
 			if (flags & 0x02) goto duplicate;
-			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
+			slen = ascend_parse_ipx_net(argc - 1, argv + 1,
 						     &(filter->dst),
 						     &(filter->dstSocComp));
-			if (rcode < 0) return -1;
-			argc -= (rcode + 1);
-			argv += rcode + 1;
+			if (slen < 0) return -1;
+			argc -= (slen + 1);
+			argv += slen + 1;
 			flags |= 0x02;
 			break;
 
@@ -736,15 +736,15 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
  */
 static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 {
-	int rcode, token;
+	int slen, token;
 
 	/*
 	 *	There MUST be a comparison string.
 	 */
-	rcode = fr_table_value_by_str(filterCompare, compare, -1);
-	if (rcode < 0) {
+	slen = fr_table_value_by_str(filterCompare, compare, -1);
+	if (slen < 0) {
 		fr_strerror_printf("Unknown comparison operator '%s'", str);
-		return rcode;
+		return slen;
 	}
 
 	if (strspn(str, "0123456789") == strlen(str)) {
@@ -761,7 +761,7 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 	*port = token;
 	*port = htons(*port);
 
-	return rcode;
+	return slen;
 }
 
 
@@ -809,7 +809,7 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
  */
 static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 {
-	int rcode;
+	int slen;
 	int token;
 	int flags;
 
@@ -837,10 +837,10 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 				return -1;
 			}
 
-			rcode = ascend_parse_ipaddr(&filter->srcip, argv[1]);
-			if (rcode < 0) return rcode;
+			slen = ascend_parse_ipaddr(&filter->srcip, argv[1]);
+			if (slen < 0) return slen;
 
-			filter->srcmask = rcode;
+			filter->srcmask = slen;
 			flags |= IP_SRC_ADDR_FLAG;
 			argv += 2;
 			argc -= 2;
@@ -850,10 +850,10 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			if (flags & IP_DEST_ADDR_FLAG) goto duplicate;
 			if (argc < 2) goto insufficient;
 
-			rcode = ascend_parse_ipaddr(&filter->dstip, argv[1]);
-			if (rcode < 0) return rcode;
+			slen = ascend_parse_ipaddr(&filter->dstip, argv[1]);
+			if (slen < 0) return slen;
 
-			filter->dstmask = rcode;
+			filter->dstmask = slen;
 			flags |= IP_DEST_ADDR_FLAG;
 			argv += 2;
 			argc -= 2;
@@ -863,10 +863,10 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			if (flags & IP_SRC_PORT_FLAG) goto duplicate;
 			if (argc < 3) goto insufficient;
 
-			rcode = ascend_parse_port(&filter->srcport,
+			slen = ascend_parse_port(&filter->srcport,
 						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->srcPortComp = rcode;
+			if (slen < 0) return slen;
+			filter->srcPortComp = slen;
 
 			flags |= IP_SRC_PORT_FLAG;
 			argv += 3;
@@ -877,10 +877,10 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			if (flags & IP_DEST_PORT_FLAG) goto duplicate;
 			if (argc < 3) goto insufficient;
 
-			rcode = ascend_parse_port(&filter->dstport,
+			slen = ascend_parse_port(&filter->dstport,
 						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->dstPortComp = rcode;
+			if (slen < 0) return slen;
+			filter->dstPortComp = slen;
 
 			flags |= IP_DEST_PORT_FLAG;
 			argv += 3;
@@ -937,7 +937,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
  */
 static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter)
 {
-	int rcode;
+	ssize_t slen;
 	int token;
 	int flags;
 
@@ -993,10 +993,10 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			if (flags & IP_SRC_PORT_FLAG) goto duplicate;
 			if (argc < 3) goto insufficient;
 
-			rcode = ascend_parse_port(&filter->srcport,
+			slen = ascend_parse_port(&filter->srcport,
 						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->srcPortComp = rcode;
+			if (slen < 0) return slen;
+			filter->srcPortComp = slen;
 
 			flags |= IP_SRC_PORT_FLAG;
 			argv += 3;
@@ -1007,10 +1007,10 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 			if (flags & IP_DEST_PORT_FLAG) goto duplicate;
 			if (argc < 3) goto insufficient;
 
-			rcode = ascend_parse_port(&filter->dstport,
+			slen = ascend_parse_port(&filter->dstport,
 						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->dstPortComp = rcode;
+			if (slen < 0) return slen;
+			filter->dstPortComp = slen;
 
 			flags |= IP_DEST_PORT_FLAG;
 			argv += 3;
@@ -1085,7 +1085,7 @@ static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter
 static int ascend_parse_generic(int argc, char **argv,
 				ascend_generic_filter_t *filter)
 {
-	int rcode;
+	int slen;
 	int token;
 	int flags;
 
@@ -1119,18 +1119,18 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	rcode = atoi(argv[0]);
-	if (rcode > 65535) goto invalid;
+	slen = atoi(argv[0]);
+	if (slen > 65535) goto invalid;
 
-	filter->offset = rcode;
+	filter->offset = slen;
 	filter->offset = htons(filter->offset);
 
-	rcode = fr_hex2bin(NULL,
+	slen = fr_hex2bin(NULL,
 			   &FR_DBUFF_TMP(filter->mask, sizeof(filter->mask)),
 			   &FR_SBUFF_IN(argv[1], strlen(argv[1])), false);
-	if (rcode != sizeof(filter->mask)) {
+	if (slen != sizeof(filter->mask)) {
 		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
-		return -1;	
+		return -1;
 	}
 
 	token = fr_hex2bin(NULL,
@@ -1141,7 +1141,7 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	filter->len = rcode;
+	filter->len = slen;
 	filter->len = htons(filter->len);
 
 	/*
@@ -1206,7 +1206,7 @@ static int ascend_parse_generic(int argc, char **argv,
 ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen)
 {
 	int		token, type;
-	int		rcode;
+	int		slen;
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;
@@ -1289,27 +1289,27 @@ ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outle
 
 	switch (type) {
 	case ASCEND_FILTER_GENERIC:
-		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.generic);
+		slen = ascend_parse_generic(argc - 3, &argv[3], &filter.generic);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IP:
-		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.ip);
+		slen = ascend_parse_ip(argc - 3, &argv[3], &filter.ip);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IPX:
-		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.ipx);
+		slen = ascend_parse_ipx(argc - 3, &argv[3], &filter.ipx);
 		size = 32;
 		break;
 
 	case ASCEND_FILTER_IPV6:
-		rcode = ascend_parse_ipv6(argc - 3, &argv[3], &filter.ipv6);
+		slen = ascend_parse_ipv6(argc - 3, &argv[3], &filter.ipv6);
 		size = sizeof(filter);
 		break;
 	}
 
-	if (rcode < 0) goto fail;
+	if (slen < 0) goto fail;
 
 	talloc_free(p);
 

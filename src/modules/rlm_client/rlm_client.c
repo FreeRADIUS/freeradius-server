@@ -271,7 +271,7 @@ static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t length;
 	char const *value;
@@ -287,30 +287,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	if ((request->packet->socket.inet.src_port != 0) || (request->request_pairs != NULL) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	if (!request->client || !request->client->cs) {
 		REDEBUG("Unknown client definition");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	cp = cf_pair_find(request->client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	value = cf_pair_value(cp);
 	if (!value) {
 		REDEBUG("No value given for the directory entry in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	length = strlen(value);
 	if (length > (sizeof(buffer) - 256)) {
 		REDEBUG("Directory name too long");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	memcpy(buffer, value, length + 1);
@@ -325,11 +325,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	} else if (request->listener) {
 		server_cs = request->listener->server_cs;
 	} else {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	c = client_read(buffer, server_cs, true);
-	if (!c) return RLM_MODULE_FAIL;
+	if (!c) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
@@ -337,7 +337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 */
 	request->client = c;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*

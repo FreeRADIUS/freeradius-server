@@ -78,15 +78,15 @@ static SD_CHAR empty_pin[] = "";
 /* comparison function to find session in the tree */
 static int securid_session_cmp(void const *a, void const *b)
 {
-	int rcode;
+	int ret;
 	SECURID_SESSION const *one = a;
 	SECURID_SESSION const *two = b;
 
 	fr_assert(one != NULL);
 	fr_assert(two != NULL);
 
-	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
+	if (ret != 0) return ret;
 
 	return memcmp(one->state, two->state, sizeof(one->state));
 }
@@ -465,7 +465,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
 	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_securid_t);
@@ -482,12 +482,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -495,7 +495,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("Password should not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (RDEBUG_ENABLED3) {
@@ -537,7 +537,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
 		fr_pair_value_strdup(vp, buffer);
 	}
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 

@@ -45,7 +45,7 @@ RCSID("$Id$")
  *	Run a virtual server auth and postauth
  *
  */
-rlm_rcode_t rad_virtual_server(request_t *request)
+unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 {
 	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
@@ -154,7 +154,7 @@ rlm_rcode_t rad_virtual_server(request_t *request)
 runit:
 	if (!request->async) {
 #ifdef __clang_analyzer__
-		if (!request->parent) return RLM_MODULE_FAIL;
+		if (!request->parent) RETURN_MODULE_FAIL;
 #endif
 		fr_assert(request->parent != NULL);
 
@@ -163,21 +163,21 @@ runit:
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(&(module_ctx_t){ .instance = request->async->process_inst }, request);
+	request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == RLM_MODULE_OK);
 
 	if (!request->reply->code ||
 	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*

@@ -284,7 +284,7 @@ static void sigtran_client_signal(UNUSED module_ctx_t const *mctx, UNUSED reques
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static rlm_rcode_t sigtran_client_map_resume(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
@@ -401,7 +401,7 @@ static rlm_rcode_t sigtran_client_map_resume(UNUSED module_ctx_t const *mctx, re
 	}
 	talloc_free(txn);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Create a MAP_SEND_AUTH_INFO request
@@ -434,7 +434,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, request
 		ERROR("Failed retrieving version");
 	error:
 		talloc_free(txn);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	switch (req->version) {

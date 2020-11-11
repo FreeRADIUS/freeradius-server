@@ -361,15 +361,15 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, UNUSED siz
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	proto_tacacs_track_t const *a = talloc_get_type_abort_const(one, proto_tacacs_track_t);
 	proto_tacacs_track_t const *b = talloc_get_type_abort_const(two, proto_tacacs_track_t);
 
 	/*
 	 *	Session IDs SHOULD be random 32-bit integers.
 	 */
-	rcode = (a->session_id < b->session_id) - (a->session_id > b->session_id);
-	if (rcode != 0) return rcode;
+	ret = (a->session_id < b->session_id) - (a->session_id > b->session_id);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Then ordered by our synthetic packet type.

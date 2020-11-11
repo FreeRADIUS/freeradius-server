@@ -31,6 +31,7 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
@@ -55,7 +56,7 @@ typedef struct module_ctx_s			module_ctx_t;
  * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*module_method_t)(module_ctx_t const *mctx, request_t *request);
+typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Module instantiation callback
  *

@@ -383,13 +383,13 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 {
 	proto_vmps_track_t const *a = talloc_get_type_abort_const(one, proto_vmps_track_t);
 	proto_vmps_track_t const *b = talloc_get_type_abort_const(two, proto_vmps_track_t);
-	int rcode;
+	int ret;
 
 	/*
 	 *	Order by transaction ID
 	 */
-	rcode = (a->transaction_id < b->transaction_id) - (a->transaction_id > b->transaction_id);
-	if (rcode != 0) return rcode;
+	ret = (a->transaction_id < b->transaction_id) - (a->transaction_id > b->transaction_id);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Then ordered by opcode, which is usally the same.

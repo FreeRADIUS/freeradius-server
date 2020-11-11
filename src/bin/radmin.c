@@ -1133,7 +1133,7 @@ int fr_radmin_register(UNUSED TALLOC_CTX *talloc_ctx, char const *name, void *ct
  */
 int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool read_only)
 {
-	int argc, rcode;
+	int argc, ret;
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
 	if (argc < 0) {
@@ -1145,7 +1145,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 		return 0;
 	}
 
-	rcode = fr_command_run(fp, fp_err, info, read_only);
+	ret = fr_command_run(fp, fp_err, info, read_only);
 	fflush(fp);
 	fflush(fp_err);
 
@@ -1154,7 +1154,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	 */
 	(void) fr_command_clear(0, info);
 
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	return 1;
 }

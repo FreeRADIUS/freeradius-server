@@ -1046,7 +1046,7 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 	return slen;
 }
 
-static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request, ippool_action_t action)
+static unlang_action_t mod_action(rlm_rcode_t *p_result, rlm_redis_ippool_t const *inst, request_t *request, ippool_action_t action)
 {
 	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], owner_buff[256], gateway_id_buff[256];
 	uint8_t const	*key_prefix, *owner = NULL, *gateway_id = NULL;
@@ -1059,8 +1059,8 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 	char		*q;
 
 	slen = ippool_pool_name(&key_prefix, (uint8_t *)&key_prefix_buff, sizeof(key_prefix_len), inst, request);
-	if (slen < 0) return RLM_MODULE_FAIL;
-	if (slen == 0) return RLM_MODULE_NOOP;
+	if (slen < 0) RETURN_MODULE_FAIL;
+	if (slen == 0) RETURN_MODULE_NOOP;
 
 	key_prefix_len = (size_t)slen;
 
@@ -1070,7 +1070,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 				   request, inst->owner, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG("Failed expanding device (%s)", inst->owner->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		owner_len = (size_t)slen;
 	}
@@ -1081,7 +1081,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 				   request, inst->gateway_id, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG("Failed expanding gateway (%s)", inst->gateway_id->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		gateway_id_len = (size_t)slen;
 	}
@@ -1091,13 +1091,13 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		if (tmpl_expand(&expires_str, expires_buff, sizeof(expires_buff),
 				request, inst->offer_time, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding offer_time (%s)", inst->offer_time->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		expires = strtoul(expires_str, &q, 10);
 		if (q != (expires_str + strlen(expires_str))) {
 			REDEBUG("Invalid offer_time.  Must be an integer value");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len, NULL,
@@ -1107,14 +1107,14 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 					      gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address lease allocated");
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		case IPPOOL_RCODE_POOL_EMPTY:
 			RWDEBUG("Pool contains no free addresses");
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 	case POOL_ACTION_UPDATE:
@@ -1125,23 +1125,23 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		if (tmpl_expand(&expires_str, expires_buff, sizeof(expires_buff),
 				request, inst->lease_time, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding lease_time (%s)", inst->lease_time->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		expires = strtoul(expires_str, &q, 10);
 		if (q != (expires_str + strlen(expires_str))) {
 			REDEBUG("Invalid expires.  Must be an integer value");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			RPEDEBUG("Failed parsing address");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
@@ -1169,9 +1169,9 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 
 				fr_value_box_strdup_shallow(&ip_rhs.data.literal, NULL, ip_str, false);
 
-				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;
+				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
 			}
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		/*
 		 *	It's useful to be able to identify the 'not found' case
@@ -1180,18 +1180,18 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_EXPIRED:
 			REDEBUG("Requested IP address' \"%s\" lease already expired at time of renewal", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
@@ -1202,12 +1202,12 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 
 		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			RPEDEBUG("Failed parsing address");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
@@ -1216,7 +1216,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 					     &ip, owner, owner_len)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address \"%s\" released", ip_str);
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		/*
 		 *	It's useful to be able to identify the 'not found' case
@@ -1225,28 +1225,28 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, request_t *request
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
 	case POOL_ACTION_BULK_RELEASE:
 		RDEBUG2("Bulk release not yet implemented");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	default:
 		fr_assert(0);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1255,7 +1255,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 *	Pool-Action override
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
-	if (vp) return mod_action(inst, request, vp->vp_uint32);
+	if (vp) return mod_action(p_result, inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
@@ -1263,27 +1263,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.Pool-Action, doing nothing...");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	switch (vp->vp_uint32) {
 	case FR_STATUS_START:
 	case FR_STATUS_ALIVE:
-		return mod_action(inst, request, POOL_ACTION_UPDATE);
+		return mod_action(p_result, inst, request, POOL_ACTION_UPDATE);
 
 	case FR_STATUS_STOP:
-		return mod_action(inst, request, POOL_ACTION_RELEASE);
+		return mod_action(p_result, inst, request, POOL_ACTION_RELEASE);
 
 	case FR_STATUS_ACCOUNTING_OFF:
 	case FR_STATUS_ACCOUNTING_ON:
-		return mod_action(inst, request, POOL_ACTION_BULK_RELEASE);
+		return mod_action(p_result, inst, request, POOL_ACTION_BULK_RELEASE);
 
 	default:
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1293,10 +1293,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	when called in Post-Auth.
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
-	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1313,7 +1313,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 
 		} else {
 			RWDEBUG("Ignoring invalid action %d", vp->vp_uint32);
-			return RLM_MODULE_NOOP;
+			RETURN_MODULE_NOOP;
 		}
 
 	} else if (request->dict == dict_dhcpv4) {
@@ -1324,10 +1324,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 	}
 
 run:
-	return mod_action(inst, request, action);
+	return mod_action(p_result, inst, request, action);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_request(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1338,7 +1338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_request(module_ctx_t const *mctx, reques
 	 */
 
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
-	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
 }
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)

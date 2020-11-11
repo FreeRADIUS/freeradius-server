@@ -66,7 +66,7 @@ typedef struct {
 
 /* lua.c */
 int		fr_lua_init(lua_State **out, rlm_lua_t const *instance);
-int		fr_lua_run(module_ctx_t const *mctx, request_t *request, char const *funcname);
+unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname);
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
 

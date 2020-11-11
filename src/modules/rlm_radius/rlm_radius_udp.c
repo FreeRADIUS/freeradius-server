@@ -1137,21 +1137,21 @@ static int8_t request_prioritise(void const *one, void const *two)
 {
 	udp_request_t const *a = one;
 	udp_request_t const *b = two;
-	int8_t rcode;
+	int8_t ret;
 
 	// @todo - prioritize packets if there's a state?
 
 	/*
 	 *	Prioritise status check packets
 	 */
-	rcode = (b->status_check - a->status_check);;
-	if (rcode != 0) return rcode;
+	ret = (b->status_check - a->status_check);;
+	if (ret != 0) return ret;
 
 	/*
 	 *	Larger priority is more important.
 	 */
-	rcode = (a->priority < b->priority) - (a->priority > b->priority);
-	if (rcode != 0) return rcode;
+	ret = (a->priority < b->priority) - (a->priority > b->priority);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller timestamp (i.e. earlier) is more important.
@@ -2590,14 +2590,14 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static rlm_rcode_t mod_resume(UNUSED module_ctx_t const *mctx, UNUSED request_t *request, void *rctx)
+static unlang_action_t mod_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request, void *rctx)
 {
 	udp_result_t	*r = talloc_get_type_abort(rctx, udp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
 
 	talloc_free(rctx);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
@@ -2664,7 +2664,7 @@ static int _udp_request_free(udp_request_t *u)
 	return 0;
 }
 
-static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, request_t *request)
+static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void *instance, void *thread, request_t *request)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
@@ -2677,11 +2677,11 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, re
 
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	treq = fr_trunk_request_alloc(t->trunk, request);
-	if (!treq) return RLM_MODULE_FAIL;
+	if (!treq) RETURN_MODULE_FAIL;
 
 	MEM(r = talloc_zero(request, udp_result_t));
 	MEM(u = talloc(treq, udp_request_t));
@@ -2714,7 +2714,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, re
 		fr_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
 		fr_trunk_request_free(&treq);		/* Return to the free list */
 		talloc_free(r);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
@@ -2722,7 +2722,7 @@ static rlm_rcode_t mod_enqueue(void **rctx_out, void *instance, void *thread, re
 
 	*rctx_out = r;
 
-	return RLM_MODULE_YIELD;
+	return UNLANG_ACTION_YIELD;
 }
 
 /** Instantiate thread data for the submodule.

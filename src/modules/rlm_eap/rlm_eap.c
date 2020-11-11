@@ -104,8 +104,8 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Wrapper around dl_instance which loads submodules based on type = foo pairs
  *
@@ -374,8 +374,8 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *
  *	- RLM_MODULE_HANDLED	if we're done with this round.
  *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
-static rlm_rcode_t mod_authenticate_result(request_t *request, UNUSED module_ctx_t const *mctx,
-					   eap_session_t *eap_session, rlm_rcode_t result)
+static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					       request_t *request, eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_rcode_t	rcode;
 
@@ -457,21 +457,23 @@ static rlm_rcode_t mod_authenticate_result(request_t *request, UNUSED module_ctx
 	eap_session_freeze(&eap_session);
 
 finish:
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Call mod_authenticate_result asynchronously from the unlang interpreter
  *
- * @param[in] request	The current request.
+ * @param[out] p_result	The result of the operation.
  * @param[in] mctx	module calling ctx.
+ * @param[in] request	the current request.
  * @param[in] rctx	the eap_session_t.
  * @return The result of this round of authentication.
  */
-static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_authenticate_result_async(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						     request_t *request, void *rctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
-	return mod_authenticate_result(request, mctx, eap_session, eap_session->submodule_rcode);
+	return mod_authenticate_result(p_result, mctx, request, eap_session, eap_session->submodule_rcode);
 }
 
 /** Select the correct callback based on a response
@@ -481,6 +483,7 @@ static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, reque
  *
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
  *
+ * @param[out] p_result		the result of the operation.
  * @param[in] mctx		module calling ctx.
  * @param[in] eap_session	State data that persists over multiple rounds of EAP.
  * @return
@@ -488,7 +491,7 @@ static rlm_rcode_t mod_authenticate_result_async(module_ctx_t const *mctx, reque
  *	- RLM_MODULE_YIELD	Yield control back to the interpreter so it can
  *				call the submodule.
  */
-static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *eap_session)
+static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t const *mctx, eap_session_t *eap_session)
 {
 	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
@@ -511,7 +514,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		REDEBUG("Peer sent EAP type number %d, which is outside known range", type->num);
 
 	is_invalid:
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -575,7 +578,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 		 */
 		TALLOC_FREE(eap_session->opaque);
 		next = eap_process_nak(mctx, eap_session->request, eap_session->type, type);
-		if (!next) return RLM_MODULE_REJECT;
+		if (!next) RETURN_MODULE_REJECT;
 
 		/*
 		 *	Initialise the state machine for the next submodule
@@ -620,7 +623,7 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 			RERROR("Failed copying parent's attribute list");
 		fail:
 			TALLOC_FREE(eap_session->subrequest);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (fr_pair_list_copy(eap_session->subrequest->packet,
@@ -666,16 +669,16 @@ static rlm_rcode_t eap_method_select(module_ctx_t const *mctx, eap_session_t *ea
 						 eap_session);
 }
 
-static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
-	rlm_rcode_t		rcode;
+	unlang_action_t		ua;
 
 	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -686,7 +689,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request
 	eap_packet = eap_packet_from_vp(request, request->request_pairs);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -696,21 +699,21 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request
 	 *	data.
 	 */
 	eap_session = eap_session_continue(inst, &eap_packet, request);
-	if (!eap_session) return RLM_MODULE_INVALID;	/* Don't emit error here, it will mask the real issue */
+	if (!eap_session) RETURN_MODULE_INVALID;	/* Don't emit error here, it will mask the real issue */
 
 	/*
 	 *	Call an EAP submodule to process the request,
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	rcode = eap_method_select(mctx, eap_session);
-	switch (rcode) {
+	ua = eap_method_select(p_result, mctx, eap_session);
+	switch (*p_result) {
  	/*
  	 *	Leave the session thawed, next state
  	 *	func will need to re-freeze.
  	 */
 	case RLM_MODULE_YIELD:
-		return rcode;
+		return ua;
 
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
@@ -730,7 +733,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request
 		break;
 	}
 
-	return rcode;
+	return ua;
 }
 
 /*
@@ -738,7 +741,7 @@ static rlm_rcode_t mod_authenticate(module_ctx_t const *mctx, request_t *request
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initialization.
  */
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	int			status;
@@ -749,13 +752,13 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 	 *	proxy reply (or the proxied packet)
 	 */
 	if (request->proxy != NULL)
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 #endif
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
 		     inst->name, inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -779,11 +782,11 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 		break;
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
 
-	if (status == RLM_MODULE_OK) return RLM_MODULE_OK;
+	if (status == RLM_MODULE_OK) RETURN_MODULE_OK;
 
-	return RLM_MODULE_UPDATED;
+	RETURN_MODULE_UPDATED;
 }
 
 #if 0
@@ -791,7 +794,7 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_post_proxy(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance->mctx, rlm_eap_t);
 	size_t			i;
@@ -823,7 +826,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, request_t *request)
 		if (!data) {
 			RERROR("Failed to retrieve callback for tunneled session!");
 			eap_session_destroy(&eap_session);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		/*
@@ -880,7 +883,7 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, request_t *request)
 
 		eap_session_freeze(&eap_session);
 
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	} else {
 		RDEBUG2("No pre-existing eap_session found");
 	}
@@ -888,11 +891,11 @@ static rlm_rcode_t mod_post_proxy(module_ctx_t const *mctx, request_t *request)
 	/*
 	 *	This is allowed.
 	 */
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 #endif
 
-static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	fr_pair_t		*vp;
@@ -932,16 +935,16 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, request_t *request)
 	 *	Only synthesize a failure message if something
 	 *	previously rejected the request.
 	 */
-	if (request->reply->code != FR_CODE_ACCESS_REJECT) return RLM_MODULE_NOOP;
+	if (request->reply->code != FR_CODE_ACCESS_REJECT) RETURN_MODULE_NOOP;
 
 	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	if (fr_pair_find_by_da(&request->reply_pairs, attr_eap_message)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -952,14 +955,14 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, request_t *request)
 	eap_session = eap_session_thaw(request);
 	if (!eap_session) {
 		RDEBUG3("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Already set to failure, assume something else
 	 *	added EAP-Message with a failure code, do nothing.
 	 */
-	if (eap_session->this_round->request->code == FR_EAP_CODE_FAILURE) return RLM_MODULE_NOOP;
+	if (eap_session->this_round->request->code == FR_EAP_CODE_FAILURE) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Was *NOT* an EAP-Failure, so we now need to turn it into one.
@@ -976,7 +979,7 @@ static rlm_rcode_t mod_post_auth(module_ctx_t const *mctx, request_t *request)
 	MEM(pair_update_reply(&vp, attr_message_authenticator) >= 0);
 	MEM(fr_pair_value_mem_alloc(vp, NULL, RADIUS_AUTH_VECTOR_LENGTH, false) == 0);
 
-	return RLM_MODULE_UPDATED;
+	RETURN_MODULE_UPDATED;
 }
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)

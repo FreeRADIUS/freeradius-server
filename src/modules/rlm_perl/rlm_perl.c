@@ -821,7 +821,7 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static int do_perl(void *instance, request_t *request, char const *function_name)
+static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t *request, char const *function_name)
 {
 
 	rlm_perl_t		*inst = instance;
@@ -838,7 +838,7 @@ static int do_perl(void *instance, request_t *request, char const *function_name
 	 *	Radius has told us to call this function, but none
 	 *	is defined.
 	 */
-	if (!function_name) return RLM_MODULE_FAIL;
+	if (!function_name) RETURN_MODULE_FAIL;
 
 #ifdef USE_ITHREADS
 	pthread_mutex_lock(&inst->clone_mutex);
@@ -934,14 +934,14 @@ static int do_perl(void *instance, request_t *request, char const *function_name
 			vp = NULL;
 		}
 	}
-	return exitstatus;
+	RETURN_MODULE_RCODE(exitstatus);
 }
 
 #define RLM_PERL_FUNC(_x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, request_t *request) \
+static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_perl_t *inst = talloc_get_type_abort(mctx->instance, rlm_perl_t); \
-	return do_perl(inst, request, inst->func_##_x); \
+	return do_perl(p_result, inst, request, inst->func_##_x); \
 }
 
 RLM_PERL_FUNC(authorize)
@@ -952,7 +952,7 @@ RLM_PERL_FUNC(preacct)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
 	fr_pair_t		*pair;
@@ -963,26 +963,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 		acct_status_type = pair->vp_uint32;
 	} else {
 		REDEBUG("Invalid Accounting Packet");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	switch (acct_status_type) {
 	case FR_STATUS_START:
 		if (inst->func_start_accounting) {
-			return do_perl(inst, request, inst->func_start_accounting);
+			return do_perl(p_result, inst, request, inst->func_start_accounting);
 		} else {
-			return do_perl(inst, request, inst->func_accounting);
+			return do_perl(p_result, inst, request, inst->func_accounting);
 		}
 
 	case FR_STATUS_STOP:
 		if (inst->func_stop_accounting) {
-			return do_perl(inst, request, inst->func_stop_accounting);
+			return do_perl(p_result, inst, request, inst->func_stop_accounting);
 		} else {
-			return do_perl(inst, request, inst->func_accounting);
+			return do_perl(p_result, inst, request, inst->func_accounting);
 		}
 
 	default:
-		return do_perl(inst, request, inst->func_accounting);
+		return do_perl(p_result, inst, request, inst->func_accounting);
 	}
 }
 

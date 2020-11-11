@@ -244,7 +244,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	char const		*passcode;
@@ -267,7 +267,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	passcode = password->vp_strvalue;
@@ -283,7 +283,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
 		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
 			inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
@@ -295,7 +295,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 		} else {
 			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
 		}
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* May be a concatenation, check the last 32 bytes are modhex */
@@ -343,19 +343,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Yubikey authentication",
 		     inst->name, inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
@@ -373,7 +373,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 		if (!vp) {
 			REDEBUG("No User-Password in the request. Can't do Yubikey authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	}
 
@@ -389,7 +389,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	if (len != (inst->id_len + YUBIKEY_TOKEN_LEN)) {
 		REDEBUG("%s value is not the correct length, expected bytes %u, got bytes %zu",
 			vp->da->name, inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
@@ -399,25 +399,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 		} else {
 			RERROR("Passcode (aes-block) value contains non modhex chars");
 		}
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		rcode = rlm_yubikey_decrypt(inst, request, passcode);
-		if (rcode != RLM_MODULE_OK) {
-			return rcode;
-		}
+
+		rlm_yubikey_decrypt(&rcode, inst, request, passcode);
+		if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 		/* Fall-Through to doing ykclient auth in addition to local auth */
 	}
 #endif
 
 #ifdef HAVE_YKCLIENT
-	if (inst->validate) {
-		return rlm_yubikey_validate(inst, request, passcode);
-	}
+	if (inst->validate) return rlm_yubikey_validate(p_result, inst, request, passcode);
 #endif
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*

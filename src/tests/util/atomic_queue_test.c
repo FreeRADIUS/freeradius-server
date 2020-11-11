@@ -74,7 +74,7 @@ static void NEVER_RETURNS usage(void)
 
 int main(int argc, char *argv[])
 {
-	int			c, i, rcode = 0;
+	int			c, i, ret = 0;
 	int			size;
 	intptr_t		val;
 	void			*data;
@@ -190,6 +190,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	return rcode;
+	return ret;
 }
 

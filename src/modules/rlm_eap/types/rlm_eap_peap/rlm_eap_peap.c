@@ -124,7 +124,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type(mctx->instance, rlm_eap_peap_t);
 
@@ -176,7 +176,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 		 *	and EAP id from the inner tunnel, and update it with
 		 *	the expected EAP id!
 		 */
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -189,7 +189,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	 *	Anything else: fail.
 	 */
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -207,7 +207,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eap_peap_process(request, eap_session, tls_session);
+	eap_peap_process(&rcode, request, eap_session, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(request, eap_session);
@@ -244,13 +244,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 		break;
 	}
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_peap_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -273,7 +273,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return RLM_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	/*
 	 *	As it is a poorly designed protocol, PEAP uses
@@ -299,12 +299,12 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 */
 	if (eap_tls_start(request, eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

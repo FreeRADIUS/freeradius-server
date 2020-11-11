@@ -33,7 +33,7 @@ RCSID("$Id$")
  *
  * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
  */
-rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, request_t *request)
+unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 
@@ -46,7 +46,8 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, request
 	 */
 	if ((rcode == RLM_MODULE_YIELD) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
-		return RLM_MODULE_YIELD;
+		*p_result = RLM_MODULE_YIELD;
+		return UNLANG_ACTION_YIELD;
 	}
 
 	/*
@@ -60,7 +61,7 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED module_ctx_t const *mctx, request
 	/*
 	 *	Don't bother setting request->reply->code.
 	 */
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /** Allocate a child request based on the parent.

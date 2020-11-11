@@ -116,7 +116,7 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 
@@ -144,24 +144,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 		}
 
 		DEBUG2("Fixing WiMAX binary Calling-Station-Id to %pV", &vp->data);
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return mod_authorize(mctx, request);
+	return mod_authorize(p_result, mctx, request);
 }
 
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;
@@ -177,7 +177,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 	emsk = fr_pair_find_by_da(&request->reply_pairs, attr_eap_emsk);
 	if (!msk || !emsk) {
 		REDEBUG2("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -430,7 +430,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 	 */
 	HMAC_CTX_free(hmac);
 
-	return RLM_MODULE_UPDATED;
+	RETURN_MODULE_UPDATED;
 }
 
 /*

@@ -354,7 +354,7 @@ static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -362,12 +362,12 @@ static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
@@ -386,7 +386,7 @@ static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;
@@ -414,14 +414,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
 		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* First, expand %k, %b and %e in query */
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -429,12 +429,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	if (len >= (sizeof(query) - 1)) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	talloc_free(expanded);
 
@@ -460,7 +460,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_attr->name, limit->vp_uint64, counter);
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	res = limit->vp_uint64 - counter;
@@ -501,25 +501,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 			if (reply_item->vp_uint64 <= res) {
 				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
 					reply_item->vp_uint64);
-				return RLM_MODULE_OK;
+				RETURN_MODULE_OK;
 			}
 			break;
 
 		case -1:	/* alloc failed */
 			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 
 		default:	/* request or list unavailable */
 			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-			return RLM_MODULE_OK;
+			RETURN_MODULE_OK;
 		}
 		reply_item->vp_uint64 = res;
 		RDEBUG2("&%pP", reply_item);
 
-		return RLM_MODULE_UPDATED;
+		RETURN_MODULE_UPDATED;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*

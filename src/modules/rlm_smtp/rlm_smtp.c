@@ -105,12 +105,12 @@ typedef struct {
 static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	int 				rcode = 0;
-	ssize_t				slen;
-	int				type = rule->type;
-	bool 				tmpl = (type & FR_TYPE_TMPL);
-	CONF_PAIR			*cp = cf_item_to_pair(ci);
-	tmpl_t				*vpt;
+	int 			ret = 0;
+	ssize_t			slen;
+	int			type = rule->type;
+	bool 			tmpl = (type & FR_TYPE_TMPL);
+	CONF_PAIR		*cp = cf_item_to_pair(ci);
+	tmpl_t			*vpt;
 
 	static tmpl_rules_t	rules = {
 					.allow_unknown = true,
@@ -120,7 +120,7 @@ static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *p
 
 	if (!tmpl) {
 		cf_log_err(cp, "Failed parsing attribute reference");
-		rcode = -1;
+		ret = -1;
 		goto finish;
 	}
 
@@ -142,19 +142,19 @@ static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *p
 		talloc_free(spaces);
 		talloc_free(text);
 		/* Return error */
-		rcode = -1;
+		ret = -1;
 		goto finish;
 	}
 
 	if(tmpl_is_list(vpt)) {
-		rcode = -1;
+		ret = -1;
 		goto finish;
 	}
 
 	/* Only string values should be used for SMTP components */
 	if(tmpl_expanded_type(vpt) != FR_TYPE_STRING) {
 		cf_log_err(cp, "Attribute reference must be a string");
-		rcode = -1;
+		ret = -1;
 		goto finish;
 	}
 
@@ -163,7 +163,7 @@ static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *p
 	cp->parsed = true;
 
 finish:
-	return rcode;
+	return ret;
 }
 
 /*
@@ -690,7 +690,7 @@ static int _free_mail_ctx(fr_mail_ctx *uctx)
 /*
  * 	Check if the email was successfully sent, and if the certificate information was extracted
  */
-static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	fr_mail_ctx 			*mail_ctx = rctx;
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
@@ -709,13 +709,13 @@ static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, request_t *req
 
 	if (randle->result != CURLE_OK) {
 		talloc_free(randle);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 	talloc_free(randle);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -732,7 +732,7 @@ static rlm_rcode_t mod_authorize_result(module_ctx_t const *mctx, request_t *req
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authorize_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
@@ -744,7 +744,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 
 	if (fr_pair_find_by_da(&request->control, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* Elements provided by the request */
@@ -755,18 +755,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	/* Make sure all of the essential email components are present and possible*/
 	if(!smtp_body) {
 		RDEBUG2("Attribute \"smtp-body\" is required for smtp");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	if (!inst->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/* allocate the handle and set the curl options */
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
 		RDEBUG2("A handle could not be allocated for the request");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Initialize the uctx to perform the email */
@@ -839,13 +839,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
 
 	/* Initialize tls if it has been set up */
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) return RLM_MODULE_INVALID;
+	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) return RLM_MODULE_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authorize_result, NULL, mail_ctx);
 error:
-	return RLM_MODULE_INVALID;
+	RETURN_MODULE_INVALID;
 }
 
 /*
@@ -855,7 +855,8 @@ error:
  * 	If the response was not OK, we REJECT the request
  * 	This does not confirm an email may be sent, only that the provided login credentials are valid for the server
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result,
+								module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	fr_curl_io_request_t     	*randle = rctx;
@@ -874,13 +875,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
 
 	if (randle->result != CURLE_OK) {
 		talloc_free(randle);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
 	talloc_free(randle);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -894,7 +895,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate_resume(module_ctx_t const *
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
@@ -904,7 +905,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 	randle = fr_curl_io_request_alloc(request);
 	if (!randle){
 	error:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
@@ -913,15 +914,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 	/* Make sure we have a user-name and user-password, and that they are possible */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	if (username->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	if (!password) {
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
@@ -931,9 +932,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) mod_authenticate(module_ctx_t const *mc
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) return RLM_MODULE_INVALID;
+	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) return RLM_MODULE_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
 }

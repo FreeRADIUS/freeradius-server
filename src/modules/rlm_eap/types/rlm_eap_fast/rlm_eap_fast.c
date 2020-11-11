@@ -447,7 +447,7 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_tls_status_t	status;
@@ -491,7 +491,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -504,7 +504,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	 *	Anything else: fail.
 	 */
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -519,7 +519,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	switch (eap_fast_process(request, eap_session, tls_session)) {
 	case FR_CODE_ACCESS_REJECT:
 		eap_tls_fail(request, eap_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
@@ -527,14 +527,14 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	case FR_CODE_ACCESS_CHALLENGE:
 		fr_tls_session_send(request, tls_session);
 		eap_tls_request(request, eap_session);
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) return RLM_MODULE_FAIL;
-		return RLM_MODULE_OK;
+		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) RETURN_MODULE_FAIL;
+		RETURN_MODULE_OK;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -543,7 +543,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
 	case FR_CODE_STATUS_CLIENT:
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 
 	default:
 		break;
@@ -553,13 +553,13 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	 *	Something we don't understand: Reject it.
 	 */
 	eap_tls_fail(request, eap_session);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -583,7 +583,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return RLM_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
 
@@ -621,7 +621,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 			    &tls_session->clean_in, tls_session->clean_in.used,
 			    tls_session->clean_in.used) < 0) {
 		talloc_free(tls_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	tls_session->record_init(&tls_session->clean_in);
@@ -629,10 +629,10 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 

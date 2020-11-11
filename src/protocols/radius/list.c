@@ -41,7 +41,7 @@ RCSID("$Id$")
  */
 int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b)
 {
-	int rcode;
+	int ret;
 
 	/*
 	 *	256-way fanout.
@@ -55,22 +55,22 @@ int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b)
 	/*
 	 *	Source ports are pretty much random.
 	 */
-	rcode = (int) a->socket.inet.src_port - (int) b->socket.inet.src_port;
-	if (rcode != 0) return rcode;
+	ret = (int) a->socket.inet.src_port - (int) b->socket.inet.src_port;
+	if (ret != 0) return ret;
 
 	/*
 	 *	Usually many client IPs, and few server IPs
 	 */
-	rcode = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
+	if (ret != 0) return ret;
 
 	/*
 	 *	One socket can receive packets for multiple
 	 *	destination IPs, so we check that before checking the
 	 *	file descriptor.
 	 */
-	rcode = fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
+	if (ret != 0) return ret;
 
 	/*
 	 *	At this point, the order of comparing socket FDs
@@ -78,8 +78,8 @@ int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b)
 	 *	fields will make the socket unique, and the other is
 	 *	pretty much redundant.
 	 */
-	rcode = (int) a->socket.inet.dst_port - (int) b->socket.inet.dst_port;
-	return rcode;
+	ret = (int) a->socket.inet.dst_port - (int) b->socket.inet.dst_port;
+	return ret;
 }
 
 /*

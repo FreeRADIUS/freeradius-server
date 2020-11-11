@@ -142,13 +142,13 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
 	fr_pair_t		*vp;
 	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_soh_t);
 
-	if (!inst->dhcp) return RLM_MODULE_NOOP;
+	if (!inst->dhcp) RETURN_MODULE_NOOP;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_dhcp_vendor);
 	if (vp) {
@@ -188,7 +188,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 					/* SoH payload */
 					rcode = soh_verify(request, data, vlen);
 					if (rcode < 0) {
-						return RLM_MODULE_FAIL;
+						RETURN_MODULE_FAIL;
 					}
 				}
 				break;
@@ -199,13 +199,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, requ
 			}
 			data += vlen;
 		}
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 	int rv;
@@ -214,17 +214,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_ms_quarantine_soh);
 	if (!vp) {
 		RDEBUG2("SoH radius VP not found");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	RDEBUG2("SoH radius VP found");
 	/* decode it */
 	rv = soh_verify(request, vp->vp_octets, vp->vp_length);
 	if (rv < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)

@@ -468,28 +468,29 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(UNUSED rlm_sqlippool_t const *inst, request_t *request, char const *str, int rcode)
+static unlang_action_t do_logging(rlm_rcode_t *p_result, UNUSED rlm_sqlippool_t const *inst, request_t *request,
+				  char const *str, rlm_rcode_t rcode)
 {
 	char		*expanded = NULL;
 	fr_pair_t	*vp;
 
-	if (!str || !*str) return rcode;
+	if (!str || !*str) RETURN_MODULE_RCODE(rcode);
 
 	MEM(pair_add_request(&vp, attr_module_success_message) == 0);
 	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
 		pair_delete_request(vp);
-		return rcode;
+		RETURN_MODULE_RCODE(rcode);
 	}
 	fr_pair_value_bstrdup_buffer_shallow(vp, expanded, true);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
@@ -503,23 +504,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 	if (fr_pair_find_by_da(&request->reply_pairs, inst->allocated_address_da) != NULL) {
 		RDEBUG2("%s already exists", inst->allocated_address_da->name);
 
-		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
+		return do_logging(p_result, inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
 	if (fr_pair_find_by_da(&request->control_pairs, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
-		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
+		return do_logging(p_result, inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(alloc_begin);
@@ -532,7 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_existing, &handle,
 						  inst, request, (char *) NULL, 0);
-		if (!handle) return RLM_MODULE_FAIL;
+		if (!handle) RETURN_MODULE_FAIL;
 	} else {
 		allocation_len = 0;
 	}
@@ -547,13 +548,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 		ssize_t slen;
 
 		slen = tmpl_expand(&ip, buffer, sizeof(buffer), request, inst->requested_address, NULL, NULL);
-		if (slen < 0) return RLM_MODULE_FAIL;
+		if (slen < 0) RETURN_MODULE_FAIL;
 
 		if (slen > 0) {
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 							  inst->alloc_requested, &handle,
 							  inst, request, (char *) NULL, 0);
-			if (!handle) return RLM_MODULE_FAIL;
+			if (!handle) RETURN_MODULE_FAIL;
 		}
 	}
 
@@ -565,7 +566,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_find, &handle,
 						  inst, request, (char *) NULL, 0);
-		if (!handle) return RLM_MODULE_FAIL;
+		if (!handle) RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -586,7 +587,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 							  inst->pool_check, &handle, inst, request,
 							  (char *) NULL, 0);
-			if (!handle) return RLM_MODULE_FAIL;
+			if (!handle) RETURN_MODULE_FAIL;
 
 			fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
@@ -601,8 +602,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 				 *	NOTFOUND
 				 */
 				RDEBUG2("pool appears to be full");
-				return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
-
+				return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 			}
 
 			/*
@@ -612,14 +612,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 			 *	allocation failure and return NOOP
 			 */
 			RDEBUG2("IP address could not be allocated as no pool exists with that name");
-			return RLM_MODULE_NOOP;
+			RETURN_MODULE_NOOP;
 
 		}
 
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 		RDEBUG2("IP address could not be allocated");
-		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	/*
@@ -632,7 +632,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 
 		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	RDEBUG2("Allocated IP %s", allocation);
@@ -645,20 +645,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_alloc(module_ctx_t const *mctx, request_
 			      allocation, allocation_len) < 0) {
 	error:
 		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(alloc_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
-	return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
+	return do_logging(p_result, inst, request, inst->log_success, RLM_MODULE_OK);
 }
 
 /*
  *	Update a lease.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -667,11 +667,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, request
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(update_begin);
@@ -688,7 +688,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, request
 	if (affected < 0) {
 	error:
 		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(update_commit);
@@ -699,19 +699,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_update(module_ctx_t const *mctx, request
 		/*
 		 * The lease has been updated - return OK
 		 */
-		return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
+		return do_logging(p_result, inst, request, inst->log_success, RLM_MODULE_OK);
 	} else {
 		/*
 		 * The lease could not be updated - return notfound
 		 */
-		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
+		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 	}
 }
 
 /*
  *	Release a lease.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -719,11 +719,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, reques
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(release_begin);
@@ -731,17 +731,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_release(module_ctx_t const *mctx, reques
 	DO_PART(release_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 	error:
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
 /*
  *	Release a collection of leases.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -749,11 +749,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, r
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(bulk_release_begin);
@@ -761,18 +761,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_bulk_release(module_ctx_t const *mctx, r
 	DO_PART(bulk_release_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 	error:
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
 /*
  *	Mark a lease.  Typically for DHCP Decline where IPs need to be marked
  *	as invalid
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->instance, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
@@ -780,11 +780,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, request_t
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(mark_begin);
@@ -792,20 +792,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_mark(module_ctx_t const *mctx, request_t
 	DO_PART(mark_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 	error:
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
 /*
  *	Check Accounting packets for their accoutning status
  *	Call the relevant module based on the status
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	int			rcode = RLM_MODULE_NOOP;
 	fr_pair_t		*vp;
 
 	int			acct_status_type;
@@ -813,7 +812,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 	acct_status_type = vp->vp_uint32;
 
@@ -821,24 +820,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	switch (acct_status_type) {
 	case FR_STATUS_START:
 	case FR_STATUS_ALIVE:
-		rcode = mod_update(mctx, request);
-		break;
+		return mod_update(p_result, mctx, request);
 
 	case FR_STATUS_STOP:
-		rcode = mod_release(mctx, request);
-		break;
+		return mod_release(p_result, mctx, request);
 
 	case FR_STATUS_ACCOUNTING_ON:
 	case FR_STATUS_ACCOUNTING_OFF:
-		rcode = mod_bulk_release(mctx, request);
-		break;
+		return mod_bulk_release(p_result, mctx, request);
 
         default:
 		/* We don't care about any other accounting packet */
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
-
-	return rcode;
 }
 
 /*

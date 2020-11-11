@@ -291,23 +291,25 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char const *filename, rbtree_t *tree,
-			       fr_radius_packet_t *packet, fr_radius_packet_t *reply)
+static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
+				   request_t *request, char const *filename, rbtree_t *tree,
+				   fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
-	char const	*name;
-	fr_pair_t	*check_tmp = NULL;
-	fr_pair_t	*reply_tmp = NULL;
-	PAIR_LIST const *user_pl, *default_pl;
-	bool		found = false;
-	PAIR_LIST	my_pl;
-	char		buffer[256];
+	char const		*name;
+	fr_pair_t		*check_tmp = NULL;
+	fr_pair_t		*reply_tmp = NULL;
+	PAIR_LIST const 	*user_pl, *default_pl;
+	bool			found = false;
+	PAIR_LIST		my_pl;
+	char			buffer[256];
+
 
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
 		REDEBUG("Failed expanding key %s", inst->key->name);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	if (!tree) return RLM_MODULE_NOOP;
+	if (!tree) RETURN_MODULE_NOOP;
 
 	my_pl.name = name;
 	user_pl = rbtree_finddata(tree, &my_pl);
@@ -387,9 +389,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
 	 *	See if we succeeded.
 	 */
 	if (!found)
-		return RLM_MODULE_NOOP; /* on to the next module */
+		RETURN_MODULE_NOOP; /* on to the next module */
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 }
 
@@ -400,11 +402,11 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, request_t *request, char
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->filename,
+	return file_common(p_result, inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
 			   request->packet, request->reply);
 }
@@ -415,29 +417,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->acct_usersfile,
+	return file_common(p_result, inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->auth_usersfile,
+	return file_common(p_result, inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->postauth_usersfile,
+	return file_common(p_result, inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,
 			   request->packet, request->reply);
 }

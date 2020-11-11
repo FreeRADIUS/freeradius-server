@@ -257,7 +257,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_FAIL;
 	}
 
 	ret = krb5_parse_name(context, username->vp_strvalue, client);
@@ -290,7 +290,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
 	fr_assert(ret != 0);
 
 	if (!fr_cond_assert(inst)) return RLM_MODULE_FAIL;
-	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */
+	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;;	/* Silences warnings */
 
 	switch (ret) {
 	case KRB5_LIBOS_BADPWDMATCH:
@@ -319,7 +319,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
 /*
  *	Validate user/pass (Heimdal)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
 	rlm_rcode_t		rcode;
@@ -332,7 +332,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -340,7 +340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -354,7 +354,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_pool_connection_get(inst->pool, request);
-	if (!conn) return RLM_MODULE_FAIL;
+	if (!conn) RETURN_MODULE_FAIL;
 #  else
 	conn = inst->conn;
 #  endif
@@ -402,7 +402,7 @@ cleanup:
 #  ifdef KRB5_IS_THREAD_SAFE
 	fr_pool_connection_release(inst->pool, request, conn);
 #  endif
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 #else  /* HEIMDAL_KRB5 */
@@ -410,7 +410,7 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
 	rlm_rcode_t		rcode;
@@ -427,7 +427,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -435,7 +435,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -449,7 +449,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_pool_connection_get(inst->pool, request);
-	if (!conn) return RLM_MODULE_FAIL;
+	if (!conn) RETURN_MODULE_FAIL;
 #  else
 	conn = inst->conn;
 #  endif
@@ -489,7 +489,7 @@ cleanup:
 #  ifdef KRB5_IS_THREAD_SAFE
 	fr_pool_connection_release(inst->pool, request, conn);
 #  endif
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 #endif /* MIT_KRB5 */

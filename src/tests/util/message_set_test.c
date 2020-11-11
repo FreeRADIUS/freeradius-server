@@ -152,7 +152,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 
 	for (i = 0; i < my_alloc_size; i++) {
 		int index;
-		int rcode;
+		int ret;
 		fr_message_t *m;
 
 		index = (*start + i) & (MY_ARRAY_SIZE - 1);
@@ -161,11 +161,11 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 
 		fr_assert(m->status == FR_MESSAGE_USED);
 
-		rcode = fr_message_done(m);
+		ret = fr_message_done(m);
 #ifndef NDEBUG
-		fr_assert(rcode == 0);
+		fr_assert(ret == 0);
 #else
-		if (rcode != 0) fr_exit_now(EXIT_FAILURE);
+		if (ret != 0) fr_exit_now(EXIT_FAILURE);
 #endif
 
 		used -= array[index];
@@ -196,7 +196,7 @@ static void NEVER_RETURNS usage(void)
 int main(int argc, char *argv[])
 {
 	int			c;
-	int			i, start, end, rcode;
+	int			i, start, end, ret;
 	fr_message_set_t	*ms;
 	uint32_t		seed;
 
@@ -409,9 +409,9 @@ int main(int argc, char *argv[])
 	/*
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".
 	 */
-	rcode = fr_message_set_messages_used(ms);
-	fr_assert(rcode == 0);
+	ret = fr_message_set_messages_used(ms);
+	fr_assert(ret == 0);
 
-	return rcode;
+	return ret;
 }
 

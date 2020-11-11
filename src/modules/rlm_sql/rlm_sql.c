@@ -795,8 +795,9 @@ static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *re
 	return 1;
 }
 
-static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-					  sql_fall_through_t *do_fall_through)
+static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
+					      rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+					      sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	fr_pair_t		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
@@ -817,7 +818,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, request_t *requ
 		 *	Didn't add group attributes or allocate
 		 *	memory, so don't do anything else.
 		 */
-		return RLM_MODULE_NOTFOUND;
+		RETURN_MODULE_NOTFOUND;
 	}
 
 	/*
@@ -827,7 +828,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, request_t *requ
 	if (rows < 0) {
 		REDEBUG("Error retrieving group list");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
@@ -958,7 +959,7 @@ finish:
 	talloc_free(head);
 	pair_delete_request(inst->group_da);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 
@@ -1175,10 +1176,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->pool = module_connection_pool_init(inst->cs, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
-	return RLM_MODULE_OK;
+	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
@@ -1204,13 +1205,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	    !inst->config->read_groups && !inst->config->read_profiles) {
 		RWDEBUG("No authorization checks configured, returning noop");
 
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, NULL) < 0) return RLM_MODULE_FAIL;
+	if (sql_set_user(inst, request, NULL) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Reserve a socket
@@ -1221,7 +1222,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		sql_unset_user(inst, request);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -1243,7 +1244,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 
 			fr_pool_connection_release(inst->pool, request, handle);
 
-			return rcode;
+			RETURN_MODULE_RCODE(rcode);
 		}
 
 		fr_cursor_init(&cursor, &check_tmp);
@@ -1332,7 +1333,7 @@ skip_reply:
 		rlm_rcode_t ret;
 
 		RDEBUG3("... falling-through to group processing");
-		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
+		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
 		switch (ret) {
 
 		/*
@@ -1387,7 +1388,7 @@ skip_reply:
 			goto error;
 		}
 
-		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
+		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
 		switch (ret) {
 		/*
 		 *	Nothing bad happened, continue...
@@ -1423,7 +1424,7 @@ release:
 	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
@@ -1436,7 +1437,7 @@ release:
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static int acct_redundant(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section)
+static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -1591,35 +1592,35 @@ finish:
 	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->accounting.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->accounting);
+		return acct_redundant(p_result, inst, request, &inst->config->accounting);
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->postauth);
+		return acct_redundant(p_result, inst, request, &inst->config->postauth);
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 /*

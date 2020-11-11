@@ -3288,14 +3288,14 @@ static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callbac
 
 	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
-		int rcode;
+		int ret;
 		fr_dict_attr_t const *bin;
 
 		if (!children[i]) continue;
 
 		for (bin = children[i]; bin; bin = bin->next) {
-			rcode = dict_walk(bin, ctx, callback, depth);
-			if (rcode < 0) return rcode;
+			ret = dict_walk(bin, ctx, callback, depth);
+			if (ret < 0) return ret;
 		}
 	}
 

@@ -354,24 +354,29 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 	fr_time_t	start;
 	fr_pair_t	*vp;
 
-	if (conf->cache_server) switch (fr_tls_cache_process(request, conf->cache.load)) {
-	case RLM_MODULE_REJECT:
-		REDEBUG("Told to force OCSP validation failure from cached response");
-		return OCSP_STATUS_FAILED;
+	if (conf->cache_server) {
+		rlm_rcode_t rcode;
 
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	/*
-	 *	These are fine for OCSP too, we don't *expect* to always
-	 *	have a cached OCSP status.
-	 */
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_NOOP:
-		break;
+		fr_tls_cache_process(&rcode, request, conf->cache.load);
+		switch (rcode) {
+		case RLM_MODULE_REJECT:
+			REDEBUG("Told to force OCSP validation failure from cached response");
+			return OCSP_STATUS_FAILED;
 
-	default:
-		RWDEBUG("Failed retrieving cached OCSP status");
-		break;
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+		/*
+		 *	These are fine for OCSP too, we don't *expect* to always
+		 *	have a cached OCSP status.
+		 */
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_NOOP:
+			break;
+
+		default:
+			RWDEBUG("Failed retrieving cached OCSP status");
+			break;
+		}
 	}
 
 	/*
@@ -716,16 +721,20 @@ finish:
 		break;
 	}
 
-	if (conf->cache_server) switch (fr_tls_cache_process(request, conf->cache.store)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		break;
+	if (conf->cache_server) {
+		rlm_rcode_t rcode;
 
-	default:
-		RWDEBUG("Failed writing cached OCSP status");
-		break;
+		fr_tls_cache_process(&rcode, request, conf->cache.store);
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+
+		default:
+			RWDEBUG("Failed writing cached OCSP status");
+			break;
+		}
 	}
-
 	/* Free OCSP Stuff */
 	OCSP_REQUEST_free(req);
 	OCSP_BASICRESP_free(bresp);

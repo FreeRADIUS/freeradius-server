@@ -622,7 +622,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	proto_dhcpv4_track_t const *a = one;
 	proto_dhcpv4_track_t const *b = two;
 
@@ -630,20 +630,20 @@ static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance
 	 *	The tree is ordered by XIDs, which are (hopefully)
 	 *	pseudo-randomly distributed.
 	 */
-	rcode = memcmp(&a->xid, &b->xid, sizeof(a->xid));
-	if (rcode != 0) return rcode;
+	ret = memcmp(&a->xid, &b->xid, sizeof(a->xid));
+	if (ret != 0) return ret;
 
 	/*
 	 *	Hardware addresses should also be randomly distributed.
 	 */
-	rcode = memcmp(&a->chaddr, &b->chaddr, sizeof(a->chaddr));
-	if (rcode != 0) return rcode;
+	ret = memcmp(&a->chaddr, &b->chaddr, sizeof(a->chaddr));
+	if (ret != 0) return ret;
 
 	/*
 	 *	Compare giaddr, but not ciaddr
 	 */
-	rcode = memcmp(&a->giaddr, &b->giaddr, sizeof(a->giaddr));
-	if (rcode != 0) return rcode;
+	ret = memcmp(&a->giaddr, &b->giaddr, sizeof(a->giaddr));
+	if (ret != 0) return ret;
 
 	return (a->message_type < b->message_type) - (a->message_type > b->message_type);
 }

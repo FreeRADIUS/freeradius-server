@@ -64,12 +64,12 @@ static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 #ifndef WITH_TRIE
 static int client_cmp(void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	RADCLIENT const *a = one;
 	RADCLIENT const *b = two;
 
-	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	if (ret != 0) return ret;
 
 	/*
 	 *	0 is "wildcard", or "both" protocols

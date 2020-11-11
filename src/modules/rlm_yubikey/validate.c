@@ -147,14 +147,14 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 	return 0;
 }
 
-rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t const *inst, request_t *request, char const *passcode)
+unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ykclient_rc status;
 	ykclient_handle_t *yandle;
 
 	yandle = fr_pool_connection_get(inst->pool, request);
-	if (!yandle) return RLM_MODULE_FAIL;
+	if (!yandle) RETURN_MODULE_FAIL;
 
 	/*
 	 *	The libcurl multi-handle interface will tear down the TCP sockets for any partially completed
@@ -192,6 +192,6 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t const *inst, request_t *request, 
 
 	fr_pool_connection_release(inst->pool, request, yandle);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 #endif

@@ -872,7 +872,7 @@ rlm_rcode_t unlang_interpret_section(request_t *request, CONF_SECTION *subcs, rl
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
-	if (unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME) < 0) return RLM_MODULE_FAIL;
+	if (unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME) < 0)return RLM_MODULE_FAIL;
 
 	return unlang_interpret(request);
 }
@@ -939,8 +939,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, r
 		num_events = fr_event_corral(request->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
 			RPERROR("Failed retrieving events");
-			rcode = RLM_MODULE_FAIL;
-			break;
+			return RLM_MODULE_FAIL;
 		}
 
 		DEBUG3("%u event(s) pending%s",

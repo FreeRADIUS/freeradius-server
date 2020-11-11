@@ -97,7 +97,7 @@ static void authorization_failed(request_t *request, char const *msg)
 }
 
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	proto_tacacs_autz_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_autz_t);
 	rlm_rcode_t			rcode;
@@ -118,7 +118,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		 */
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(inst->recv_request), cf_filename(inst->recv_request));
 		if (unlang_interpret_push_instruction(request, inst->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_RECV;
@@ -127,9 +127,12 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -152,7 +155,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(inst->send_reply), cf_filename(inst->send_reply));
 		if (unlang_interpret_push_instruction(request, inst->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_SEND;
@@ -161,9 +164,12 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
@@ -194,10 +200,10 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static virtual_server_compile_t compile_list[] = {

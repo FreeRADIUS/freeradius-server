@@ -68,7 +68,7 @@ fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request);
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Translate a string auth_type into an enumeration value
  *
@@ -98,7 +98,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  request_t *request)
+static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_rcode_t	rcode;
 
@@ -107,23 +107,23 @@ static rlm_rcode_t mod_process_auth_type(UNUSED module_ctx_t const *mctx,  reque
 
 	rcode = unlang_interpret(request);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_REJECT;
+	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	if (rcode == RLM_MODULE_YIELD) return rcode;
+	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return rcode;
+		RETURN_MODULE_RCODE(rcode);
 	}
 
 	eap_round->request->code = FR_EAP_CODE_SUCCESS;
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
 	rlm_rcode_t		rcode;
@@ -145,7 +145,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	if (eap_round->response->length <= 4) {
 		REDEBUG("Corrupted data");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -155,7 +155,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	if (eap_round->response->type.length > 128) {
 		REDEBUG("Response is too large to understand");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -171,30 +171,30 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		/*
 		 *	Call the authenticate section of the *current* virtual server.
 		 */
-		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
+		process_authenticate(&rcode, inst->auth_type->value->vb_uint32, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_round->request->code = FR_EAP_CODE_FAILURE;
-			return rcode;
+			RETURN_MODULE_RCODE(rcode);
 		}
 
 		eap_round->request->code = FR_EAP_CODE_SUCCESS;
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
 	if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process_auth_type;
 
-	return eap_session->process(mctx, request);
+	return eap_session->process(p_result, mctx, request);
 }
 
 
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	char		challenge_str[1024];
@@ -203,7 +203,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
 
 	if (xlat_eval(challenge_str, sizeof(challenge_str), request, inst->challenge, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	length = strlen(challenge_str);
@@ -214,7 +214,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	eap_round->request->code = FR_EAP_CODE_REQUEST;
 
 	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
-	if (!eap_round->request->type.data) return RLM_MODULE_FAIL;
+	if (!eap_round->request->type.data) RETURN_MODULE_FAIL;
 
 	memcpy(eap_round->request->type.data, challenge_str, length);
 	eap_round->request->type.length = length;
@@ -228,7 +228,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

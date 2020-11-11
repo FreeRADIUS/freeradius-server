@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_digest_t);
 	fr_cursor_t		cursor;
@@ -102,26 +102,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	For simplicity, we allow the caller to omit things
 	 *	that they don't care about.
 	 */
-	if (!vp) return RLM_MODULE_NOOP;
+	if (!vp) RETURN_MODULE_NOOP;
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Digest authentication",
 		     inst->name, inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Everything's OK, add a digest authentication type.
 	 */
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Perform all of the wondrous variants of digest authentication.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t a1_len, a2_len, kd_len;
 	uint8_t a1[(FR_MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
@@ -139,14 +139,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	if (passwd) {
 		if (passwd->vp_length != 32) {
 			REDEBUG("Digest-HA1 has invalid length, authentication failed");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	} else {
 		passwd = fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password);
 	}
 	if (!passwd) {
 		REDEBUG("Cleartext-Password or Digest-HA1 is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -155,7 +155,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	nonce = fr_pair_find_by_da(&request->request_pairs, attr_digest_nonce);
 	if (!nonce) {
 		REDEBUG("No Digest-Nonce: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -164,7 +164,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_user_name);
 	if (!vp) {
 		REDEBUG("No Digest-User-Name: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a1[0], vp->vp_octets, vp->vp_length);
 	a1_len = vp->vp_length;
@@ -175,7 +175,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_realm);
 	if (!vp) {
 		REDEBUG("No Digest-Realm: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a1[a1_len], vp->vp_octets, vp->vp_length);
 	a1_len += vp->vp_length;
@@ -208,7 +208,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 			if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&a1[0], sizeof(a1)),
 				       &FR_SBUFF_IN(passwd->vp_strvalue, passwd->vp_length), false) != 16) {
 				RDEBUG2("Invalid text in Digest-HA1");
-				return RLM_MODULE_INVALID;
+				RETURN_MODULE_INVALID;
 			}
 		}
 
@@ -235,7 +235,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		 */
 		if ((nonce->vp_length & 1) != 0) {
 			REDEBUG("Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], nonce->vp_octets, nonce->vp_length);
 		a1_len += nonce->vp_length;
@@ -246,7 +246,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_cnonce);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 
 		/*
@@ -254,7 +254,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		 */
 		if ((vp->vp_length & 1) != 0) {
 			REDEBUG("Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], vp->vp_octets, vp->vp_length);
 		a1_len += vp->vp_length;
@@ -265,7 +265,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		 *	Anything else is an error.
 		 */
 		REDEBUG("%pP - Unknown Digest-Algorithm: Cannot perform Digest authentication", vp);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -274,7 +274,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_method);
 	if (!vp) {
 		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a2[0], vp->vp_octets, vp->vp_length);
 	a2_len = vp->vp_length;
@@ -285,7 +285,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_uri);
 	if (!vp) {
 		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a2[a2_len], vp->vp_octets, vp->vp_length);
 	a2_len += vp->vp_length;
@@ -310,12 +310,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 			body = fr_pair_find_by_da(&request->request_pairs, attr_digest_body_digest);
 			if (!body) {
 				REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
-				return RLM_MODULE_INVALID;
+				RETURN_MODULE_INVALID;
 			}
 
 			if ((a2_len + body->vp_length) > sizeof(a2)) {
 				REDEBUG("Digest-Body-Digest is too long");
-				return RLM_MODULE_INVALID;
+				RETURN_MODULE_INVALID;
 			}
 
 			memcpy(a2 + a2_len, body->vp_octets, body->vp_length);
@@ -323,7 +323,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 
 		} else if (strcasecmp(qop->vp_strvalue, "auth") != 0) {
 			REDEBUG("%pP - Unknown value: Cannot perform Digest authentication", qop);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	}
 
@@ -373,7 +373,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_nonce_count);
 		if (!vp) {
 			REDEBUG("No Digest-Nonce-Count: Cannot perform Digest authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], vp->vp_octets, vp->vp_length);
 		kd_len += vp->vp_length;
@@ -384,7 +384,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_cnonce);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], vp->vp_octets, vp->vp_length);
 		kd_len += vp->vp_length;
@@ -426,13 +426,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_response);
 	if (!vp) {
 		REDEBUG("No Digest-Response attribute in the request.  Cannot perform digest authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&hash[0], sizeof(hash)),
 		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (ssize_t)(vp->vp_length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	RDEBUG3("Comparing hashes, received: %pV, calculated: %pH", &vp->data, fr_box_octets(kd, 16));
@@ -440,10 +440,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	/*
 	 *  And finally, compare the digest in the packet with KD.
 	 */
-	if (memcmp(&kd[0], &hash[0], 16) == 0) return RLM_MODULE_OK;
+	if (memcmp(&kd[0], &hash[0], 16) == 0) RETURN_MODULE_OK;
 
 	REDEBUG("FAILED authentication");
-	return RLM_MODULE_REJECT;
+	RETURN_MODULE_REJECT;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)

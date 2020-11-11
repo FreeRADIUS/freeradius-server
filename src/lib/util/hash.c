@@ -621,7 +621,7 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 		       fr_hash_table_walk_t callback,
 		       void *context)
 {
-	int i, rcode;
+	int i, ret;
 
 	if (!ht || !callback) return 0;
 
@@ -636,9 +636,9 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
 			next = node->next;
 
-			rcode = callback(context, node->data);
+			ret = callback(context, node->data);
 
-			if (rcode != 0) return rcode;
+			if (ret != 0) return ret;
 		}
 	}
 

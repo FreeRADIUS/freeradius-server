@@ -972,7 +972,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dic
 
 static int _request_free(rs_request_t *request)
 {
-	bool ret;
+	int ret;
 
 	/*
 	 *	If we're attempting to cleanup the request, and it's no longer in the request_tree
@@ -989,10 +989,8 @@ static int _request_free(rs_request_t *request)
 	}
 
 	if (request->event) {
-		int rcode;
-
-		rcode = fr_event_timer_delete(&request->event);
-		if (rcode < 0) {
+		ret = fr_event_timer_delete(&request->event);
+		if (ret < 0) {
 			fr_perror("Failed deleting timer");
 			RS_ASSERT(0 == 1);
 		}
@@ -1920,22 +1918,22 @@ static int  _rs_event_status(UNUSED void *ctx, fr_time_delta_t wake_t)
  */
 static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 {
-	int rcode;
+	int ret;
 
 	RS_ASSERT(a->link_vps);
 	RS_ASSERT(b->link_vps);
 
-	rcode = (int) a->expect->code - (int) b->expect->code;
-	if (rcode != 0) return rcode;
+	ret = (int) a->expect->code - (int) b->expect->code;
+	if (ret != 0) return ret;
 
-	rcode = a->expect->socket.fd - b->expect->socket.fd;
-	if (rcode != 0) return rcode;
+	ret = a->expect->socket.fd - b->expect->socket.fd;
+	if (ret != 0) return ret;
 
-	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.src_ipaddr, &b->expect->socket.inet.src_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->expect->socket.inet.src_ipaddr, &b->expect->socket.inet.src_ipaddr);
+	if (ret != 0) return ret;
 
-	rcode = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
+	if (ret != 0) return ret;
 
 	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
 }

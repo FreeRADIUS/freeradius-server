@@ -736,12 +736,12 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 	lua_setfield(L, -2, "request");
 }
 
-int fr_lua_run(module_ctx_t const *mctx, request_t *request, char const *funcname)
+unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname)
 {
 	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);
 	rlm_lua_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
 	lua_State		*L = thread->interpreter;
-	int			ret = RLM_MODULE_OK;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
 	fr_lua_util_set_inst(inst);
 	fr_lua_util_set_request(request);
@@ -758,7 +758,7 @@ error:
 		fr_lua_util_set_inst(NULL);
 		fr_lua_util_set_request(NULL);
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (!lua_isfunction(L, -1)) {
@@ -776,26 +776,26 @@ error:
 	}
 
 	/*
-	 *	functions without return or returning none/nil will be RLM_MODULE_OK
+	 *	functions without rcodeurn or rcodeurning none/nil will be RLM_MODULE_OK
 	 */
 	if (!lua_isnoneornil(L, -1)) {
 		/*
-		 *	e.g: return 2, return "2", return fr.handled, fr.fail, ...
+		 *	e.g: rcodeurn 2, rcodeurn "2", rcodeurn fr.handled, fr.fail, ...
 		 */
 		if (lua_isnumber(L, -1)) {
-			ret = lua_tointeger(L, -1);
-			if (fr_table_str_by_value(rcode_table, ret, NULL) != NULL) goto done;
+			rcode = lua_tointeger(L, -1);
+			if (fr_table_str_by_value(rcode_table, rcode, NULL) != NULL) goto done;
 		}
 
 		/*
-		 *	e.g: return "handled", "ok", "fail", ...
+		 *	e.g: rcodeurn "handled", "ok", "fail", ...
 		 */
 		if (lua_isstring(L, -1)) {
-			ret = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
-			if (ret != -1) goto done;
+			rcode = fr_table_value_by_str(rcode_table, lua_tostring(L, -1), -1);
+			if ((int)rcode != -1) goto done;
 		}
 
-		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() returned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
+		ROPTIONAL(RDEBUG2, DEBUG2, "Lua function %s() rcodeurned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
 		goto error;
 	}
 
@@ -803,7 +803,7 @@ done:
 	fr_lua_util_set_inst(NULL);
 	fr_lua_util_set_request(NULL);
 
-	return ret;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*

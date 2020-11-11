@@ -31,7 +31,7 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/rcode.h>
 
-rlm_rcode_t    	rad_virtual_server(request_t *);
+unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request);
 
 #ifdef __cplusplus
 }

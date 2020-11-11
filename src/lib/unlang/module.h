@@ -69,13 +69,15 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
  *
  * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
  *
+ * @param[out] p_result		result of the operation.
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the current request.
  * @param[in] rctx		a local context for the callback.
- * @return a normal rlm_rcode_t.
+ * @return an instruction for the interpreter.
  */
-typedef rlm_rcode_t (*unlang_module_resume_t)(module_ctx_t const *mctx,  request_t *request, void *rctx);
+typedef unlang_action_t (*unlang_module_resume_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						  request_t *request, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -112,29 +114,30 @@ int		unlang_module_push(rlm_rcode_t *out, request_t *request,
 
 request_t	*unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *namespace);
 
-rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child,
+unlang_action_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child,
 						  unlang_module_resume_t resume,
 						  unlang_module_signal_t signal,
 						  unlang_subrequest_session_t const *session,
 						  void *rctx);
 
-rlm_rcode_t	unlang_module_yield_to_section(request_t *request, CONF_SECTION *subcs,
+unlang_action_t	unlang_module_yield_to_section(rlm_rcode_t *p_result,
+					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
 					       unlang_module_resume_t resume,
 					       unlang_module_signal_t signal, void *rctx);
 
-rlm_rcode_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					    request_t *request, xlat_exp_t const *xlat,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx);
 
-rlm_rcode_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
+unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
 					    request_t *request, tmpl_t const *exp,
 					    fr_pair_t *vps,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx);
 
-rlm_rcode_t	unlang_module_yield(request_t *request,
+unlang_action_t	unlang_module_yield(request_t *request,
 				    unlang_module_resume_t resume,
 				    unlang_module_signal_t signal, void *rctx);
 

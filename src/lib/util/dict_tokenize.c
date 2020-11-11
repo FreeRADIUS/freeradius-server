@@ -139,7 +139,7 @@ int fr_dict_str_to_argv(char *str, char **argv, int max_argc)
 
 static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 {
-	int rcode = 0;
+	int ret = 0;
 	int base = 10;
 	static char const *tab = "0123456789";
 
@@ -159,12 +159,12 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 		c = memchr(tab, tolower((int)*str), base);
 		if (!c) return 0;
 
-		rcode *= base;
-		rcode += (c - tab);
+		ret *= base;
+		ret += (c - tab);
 		str++;
 	}
 
-	*pvalue = rcode;
+	*pvalue = ret;
 	return 1;
 }
 
@@ -2001,7 +2001,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 *	See if we need to import another dictionary.
 		 */
 		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
-			int rcode;
+			int ret;
 			int stack_depth = ctx->stack_depth;
 
 			/*
@@ -2021,13 +2021,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	parent.
 			 */
 
-			rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
-			if ((rcode == -2) && (argv[0][8] == '-')) {
+			ret = _dict_from_file(ctx, dir, argv[1], fn, line);
+			if ((ret == -2) && (argv[0][8] == '-')) {
 				fr_strerror_printf(NULL); /* delete all errors */
-				rcode = 0;
+				ret = 0;
 			}
 
-			if (rcode < 0) {
+			if (ret < 0) {
 				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
 				fclose(fp);
 				return -1;
@@ -2454,7 +2454,7 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *dir_name, char const *filename,
 			  char const *src_file, int src_line)
 {
-	int rcode;
+	int ret;
 	dict_tokenize_ctx_t ctx;
 
 	memset(&ctx, 0, sizeof(ctx));
@@ -2464,11 +2464,11 @@ static int dict_from_file(fr_dict_t *dict,
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
-	rcode = _dict_from_file(&ctx,
+	ret = _dict_from_file(&ctx,
 				dir_name, filename, src_file, src_line);
-	if (rcode < 0) {
+	if (ret < 0) {
 		talloc_free(ctx.fixup_pool);
-		return rcode;
+		return ret;
 	}
 
 	/*

@@ -88,7 +88,7 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 			     UNUSED fr_pair_t *check_list)
 {
 	rlm_winbind_t		*inst = instance;
-	rlm_rcode_t		rcode = 1;
+	int			ret = 1;
 	struct wbcContext	*wb_ctx;
 	wbcErr			err;
 	uint32_t		num_groups, i;
@@ -175,7 +175,7 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		rcode = 0;
+		ret = 0;
 		REDEBUG2("Successfully retrieved user's groups");
 		break;
 
@@ -199,8 +199,8 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 
 	if (!num_groups) REDEBUG2("No groups returned");
 
-	if (rcode) goto finish;
-	rcode = 1;
+	if (ret) goto finish;
+	ret = 1;
 
 	/*
 	 *	See if any of the groups match
@@ -250,7 +250,7 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 		if (!strcasecmp(group_name, check->vp_strvalue)) {
 			REDEBUG2("Found matching group: %s", group_name);
 			found = true;
-			rcode = 0;
+			ret = 0;
 		}
 		wbcFreeMemory(group);
 
@@ -258,7 +258,7 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 		if (found) break;
 	}
 
-	if (rcode) REDEBUG2("No groups found that match");
+	if (ret) REDEBUG2("No groups found that match");
 
 finish:
 	wbcFreeMemory(wb_groups);
@@ -270,7 +270,7 @@ error:
 	talloc_const_free(domain);
 	REXDENT();
 
-	return rcode;
+	return ret;
 }
 
 
@@ -464,7 +464,7 @@ static int mod_detach(void *instance)
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*vp;
@@ -472,18 +472,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 	if (!vp) {
 		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
 		     inst->name, inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
@@ -494,7 +494,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
  *
  * @return One of the RLM_MODULE_* values
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*username, *password;
@@ -508,12 +508,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -521,7 +521,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -540,10 +540,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (do_auth_wbclient_pap(inst, request, password) == 0) {
 		REDEBUG2("User authenticated successfully using winbind");
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
-	return RLM_MODULE_REJECT;
+	RETURN_MODULE_REJECT;
 }
 
 

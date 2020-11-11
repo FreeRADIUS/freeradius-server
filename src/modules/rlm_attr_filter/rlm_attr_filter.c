@@ -168,8 +168,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, request_t *request,
-							    fr_radius_packet_t *packet)
+static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
+								void const *instance, request_t *request,
+								fr_radius_packet_t *packet)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_pair_t	*vp;
@@ -182,13 +183,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	char		buffer[256];
 	ssize_t		slen;
 
-	if (!packet) return RLM_MODULE_NOOP;
+	if (!packet) {
+		RETURN_MODULE_NOOP;
+	}
 
 	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
-	if (slen < 0) return RLM_MODULE_FAIL;
+	if (slen < 0) {
+		RETURN_MODULE_FAIL;
+	}
 	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
 		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -306,7 +311,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 */
 	if (!found) {
 		fr_assert(!output);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -315,16 +320,16 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	fr_pair_list_free(&packet->vps);
 	packet->vps = output;
 
-	return RLM_MODULE_UPDATED;
+	RETURN_MODULE_UPDATED;
 
 error:
 	fr_pair_list_free(&output);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(module_ctx_t const *mctx, request_t *request) \
+#define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(mctx->instance, request, request->_y); \
+		return attr_filter_common(p_result, mctx->instance, request, request->_y); \
 	}
 
 RLM_AF_FUNC(authorize, packet)

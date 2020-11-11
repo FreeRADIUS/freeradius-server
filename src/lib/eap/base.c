@@ -426,8 +426,7 @@ rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, c
 					eap_session_t, eap_session->child, false, false, false);
 	}
 
-	rcode = rad_virtual_server(request);
-
+	rad_virtual_server(&rcode, request);
 	eap_session_inner = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 	if (eap_session_inner) {
 		/*

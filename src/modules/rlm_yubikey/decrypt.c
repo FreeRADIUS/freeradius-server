@@ -23,7 +23,7 @@ extern fr_dict_attr_t const *attr_yubikey_counter;
  * @param passcode string to decrypt.
  * @return one of the RLM_RCODE_* constants.
  */
-rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, request_t *request, char const *passcode)
+unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode)
 {
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
@@ -33,12 +33,12 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, request_t *request, c
 	key = fr_pair_find_by_da(&request->control_pairs, attr_yubikey_key);
 	if (!key) {
 		REDEBUG("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (key->vp_length != YUBIKEY_KEY_SIZE) {
 		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->vp_length);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	yubikey_parse((uint8_t const *) passcode + inst->id_len, key->vp_octets, &token);
@@ -48,7 +48,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, request_t *request, c
 	 */
 	if (!yubikey_crc_ok_p((uint8_t *) &token)) {
 		REDEBUG("Decrypting OTP token data failed, rejecting");
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	RDEBUG2("Token data decrypted successfully");
@@ -95,15 +95,15 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, request_t *request, c
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_yubikey_counter);
 	if (!vp) {
 		RWDEBUG("Yubikey-Counter not found in control list, skipping replay attack checks");
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
 	if (counter <= vp->vp_uint32) {
 		REDEBUG("Replay attack detected! Counter value %u, is lt or eq to last known counter value %u",
 			counter, vp->vp_uint32);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 #endif

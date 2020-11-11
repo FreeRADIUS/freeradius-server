@@ -82,7 +82,7 @@ struct rlm_radius_s {
 /** Enqueue a request_t to an IO submodule
  *
  */
-typedef rlm_rcode_t (*rlm_radius_io_enqueue_t)(void **rctx, void *instance, void *thread, request_t *request);
+typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void **rctx, void *instance, void *thread, request_t *request);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *

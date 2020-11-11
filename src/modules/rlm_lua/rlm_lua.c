@@ -57,11 +57,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(module_ctx_t const *mctx, request_t *request) \
+static unlang_action_t mod_##_s(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 {\
 	rlm_lua_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);\
-	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
-	return fr_lua_run(mctx, request, inst->func_##_s);\
+	if (!inst->func_##_s) RETURN_MODULE_NOOP;\
+	return fr_lua_run(p_result, mctx, request, inst->func_##_s);\
 }
 
 DO_LUA(authorize)
@@ -112,20 +112,21 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 static int mod_detach(void *instance)
 {
 	rlm_lua_t *inst = instance;
-	int ret = 0;
+	rlm_rcode_t ret = 0;
 
 	/*
 	 *	May be NULL if fr_lua_init failed
 	 */
 	if (inst->interpreter) {
-		if (inst->func_detach) ret = fr_lua_run(&(module_ctx_t){
-								.instance = inst,
-								.thread = &(rlm_lua_thread_t){
-									.interpreter = inst->interpreter
-								}
-							},
-							NULL, inst->func_detach);
-
+		if (inst->func_detach) {
+			fr_lua_run(&ret, &(module_ctx_t){
+						.instance = inst,
+						.thread = &(rlm_lua_thread_t){
+							.interpreter = inst->interpreter
+						}
+					},
+					NULL, inst->func_detach);
+		}
 		lua_close(inst->interpreter);
 	}
 
@@ -135,6 +136,7 @@ static int mod_detach(void *instance)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_lua_t *inst = instance;
+	rlm_rcode_t rcode;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
@@ -148,13 +150,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
 
-	if (inst->func_instantiate) return fr_lua_run(&(module_ctx_t){
-								.instance = inst,
-								.thread = &(rlm_lua_thread_t){
-									.interpreter = inst->interpreter
-								}
-						      },
-						      NULL, inst->func_instantiate);
+	if (inst->func_instantiate) {
+		fr_lua_run(&rcode, &(module_ctx_t){
+					.instance = inst,
+					.thread = &(rlm_lua_thread_t){
+				   		.interpreter = inst->interpreter
+					}
+				    },
+			  NULL, inst->func_instantiate);
+	}
 
 	return 0;
 }

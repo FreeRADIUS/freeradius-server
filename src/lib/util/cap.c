@@ -104,7 +104,7 @@ done:
  */
 int fr_cap_enable(cap_value_t cap, cap_flag_t set)
 {
-	int			rcode = -1;
+	int			ret = -1;
 	cap_t			caps = NULL;
 	cap_flag_value_t	state;
 
@@ -191,12 +191,12 @@ int fr_cap_enable(cap_value_t cap, cap_flag_t set)
 			goto done;
 		}
 
-		rcode = 0;
+		ret = 0;
 	/*
 	 *	It's already in the effective set
 	 */
 	} else if (state == CAP_SET) {
-		rcode = 0;
+		ret = 0;
 	}
 
 done:
@@ -204,7 +204,7 @@ done:
 
 	if (caps) cap_free(caps);
 
-	return rcode;
+	return ret;
 }
 
 /** Remove a CAP_* from the permitted, effective or inheritable set
@@ -220,7 +220,7 @@ done:
  */
 int fr_cap_disable(cap_value_t cap, cap_flag_t set)
 {
-	int			rcode = -1;
+	int			ret = -1;
 	cap_t			caps;
 	cap_flag_value_t	state;
 
@@ -271,9 +271,9 @@ int fr_cap_disable(cap_value_t cap, cap_flag_t set)
 			goto done;
 		}
 
-		rcode = 0;
+		ret = 0;
 	} else {
-		rcode = 0;
+		ret = 0;
 	}
 
 done:
@@ -281,6 +281,6 @@ done:
 
 	if (caps) cap_free(caps);
 
-	return rcode;
+	return ret;
 }
 #endif	/* HAVE_CAPABILITY_H */

@@ -77,7 +77,7 @@ static fr_sbuff_parse_rules_t const xlat_arg_parse_rules = {
  */
 int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 {
-	int rcode;
+	int ret;
 	tmpl_t *vpt;
 
 	*out = NULL;
@@ -88,10 +88,10 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) return -4;
 
-	rcode = tmpl_find_vp(out, request, vpt);
+	ret = tmpl_find_vp(out, request, vpt);
 	talloc_free(vpt);
 
-	return rcode;
+	return ret;
 }
 
 
@@ -110,7 +110,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
  */
 int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char const *name)
 {
-	int rcode;
+	int ret;
 	tmpl_t *vpt;
 
 	*out = NULL;
@@ -118,10 +118,10 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char 
 	if (tmpl_afrom_attr_str(request, NULL,
 				&vpt, name, &(tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
-	rcode = tmpl_copy_pairs(ctx, out, request, vpt);
+	ret = tmpl_copy_pairs(ctx, out, request, vpt);
 	talloc_free(vpt);
 
-	return rcode;
+	return ret;
 }
 
 
@@ -565,7 +565,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	for (ci = cf_item_next(xr->cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(xr->cs, ci)) {
-		ssize_t rcode;
+		ssize_t ret;
 
 		if (!cf_item_is_pair(ci)) continue;
 
@@ -582,12 +582,12 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 			*out = NULL;
 		}
 
-		rcode = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
-		if (rcode <= 0) {
+		ret = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
+		if (ret <= 0) {
 			TALLOC_FREE(*out);
 			continue;
 		}
-		return rcode;
+		return ret;
 	}
 
 	/*
@@ -672,7 +672,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 
 		xlat = xlat_func_find(name, -1);
 		if (xlat) {
-			ssize_t rcode;
+			ssize_t ret;
 
 			if (xlat->buf_len > 0) {
 				*out = talloc_array(ctx, char, xlat->buf_len);
@@ -680,8 +680,8 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 			} else {
 				*out = NULL;
 			}
-			rcode = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
-			if (rcode > 0) return rcode;
+			ret = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
+			if (ret > 0) return ret;
 			TALLOC_FREE(*out);
 		}
 

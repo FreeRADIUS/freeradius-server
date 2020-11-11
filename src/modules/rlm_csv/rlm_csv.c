@@ -1002,14 +1002,14 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_csv_t);
 	rlm_rcode_t rcode;
 	ssize_t slen;
 	fr_value_box_t *key;
 
-	if (!inst->map || !inst->key) return RLM_MODULE_NOOP;
+	if (!inst->map || !inst->key) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Expand the key to whatever it is.  For attributes,
@@ -1018,7 +1018,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key, NULL, NULL);
 	if (slen < 0) {
 		DEBUG("Failed expanding key '%s'", inst->key->name);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -1036,7 +1036,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 			talloc_free(key);
 			DEBUG("Failed casting %pV to data type '%s'",
 			      &key, fr_table_str_by_value(tmpl_type_table, inst->key_data_type, "<INVALID>"));
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
@@ -1046,7 +1046,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	REXDENT();
 
 	talloc_free(key);
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 extern module_t rlm_csv;

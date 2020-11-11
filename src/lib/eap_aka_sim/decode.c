@@ -305,7 +305,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	uint16_t	actual_len;
 	int		elements, i;
 	size_t		element_len;
-	ssize_t		rcode;
+	ssize_t		ret;
 
 	FR_PROTO_TRACE("Array attribute");
 
@@ -343,10 +343,10 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	if (elements < 0) return elements;
 
 	for (i = 0; i < elements; i++) {
-		rcode = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decoder_ctx);
-		if (rcode < 0) return rcode;
+		ret = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decoder_ctx);
+		if (ret < 0) return ret;
 
-		p += rcode;
+		p += ret;
 
 		if (!fr_cond_assert(p <= end)) break;
 	}
@@ -378,7 +378,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	fr_pair_t		*head = NULL;
 	fr_cursor_t		tlv_cursor;
-	ssize_t			rcode;
+	ssize_t			ret;
 
 	if (data_len < 2) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
@@ -499,9 +499,9 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		}
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
-		rcode = sim_decode_pair_value(ctx, &tlv_cursor, child, p + 2, sim_at_len - 2, (end - p) - 2,
+		ret = sim_decode_pair_value(ctx, &tlv_cursor, child, p + 2, sim_at_len - 2, (end - p) - 2,
 					      decoder_ctx);
-		if (rcode < 0) goto error;
+		if (ret < 0) goto error;
 		p += sim_at_len;
 	}
 	fr_cursor_head(&tlv_cursor);
@@ -855,7 +855,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr
 	uint8_t			sim_at;
 	size_t			sim_at_len;
 
-	ssize_t			rcode;
+	ssize_t			ret;
 	fr_dict_attr_t const	*da;
 
 
@@ -904,13 +904,13 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
 	if (da->flags.array) {
-		rcode = sim_decode_array(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+		ret = sim_decode_array(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
 	} else {
-		rcode = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+		ret = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
 	}
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
-	return 2 + rcode;
+	return 2 + ret;
 }
 
 /** Decode SIM/AKA/AKA' attributes
@@ -963,7 +963,7 @@ ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t c
 int fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const *dict,
 		  uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *decoder_ctx)
 {
-	ssize_t			rcode;
+	ssize_t			ret;
 	uint8_t	const		*p = data;
 	uint8_t const		*end = p + data_len;
 
@@ -995,15 +995,15 @@ int fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const 
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		rcode = fr_aka_sim_decode_pair(request->packet, decoded, dict, p, end - p, decoder_ctx);
-		if (rcode <= 0) {
+		ret = fr_aka_sim_decode_pair(request->packet, decoded, dict, p, end - p, decoder_ctx);
+		if (ret <= 0) {
 			RPEDEBUG("Failed decoding AT");
 		error:
 			fr_cursor_free_list(decoded);	/* Free any attributes we added */
 			return -1;
 		}
 
-		p += rcode;
+		p += ret;
 		fr_assert(p <= end);
 	}
 

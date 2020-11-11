@@ -93,7 +93,7 @@ static void NEVER_RETURNS usage(void)
 static rlm_rcode_t test_process(UNUSED void const *instance, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

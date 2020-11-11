@@ -183,7 +183,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	char const	*name;
 	char const	*encrypted_pass;
@@ -202,13 +202,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 *	a User-Name attribute.
 	 */
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	if (!username) return RLM_MODULE_NOOP;
+	if (!username) RETURN_MODULE_NOOP;
 
 	name = username->vp_strvalue;
 	encrypted_pass = NULL;
 
 	if ((pwd = getpwnam(name)) == NULL) {
-		return RLM_MODULE_NOTFOUND;
+		RETURN_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
 
@@ -224,7 +224,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 */
 	if ((!encrypted_pass) || (strlen(encrypted_pass) < 10)) {
 		if ((spwd = getspnam(name)) == NULL) {
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 		}
 		encrypted_pass = spwd->sp_pwdp;
 	}
@@ -236,7 +236,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
 		REDEBUG("Invalid shell", name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 #endif
 
@@ -254,7 +254,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	endusershell();
 	if (!shell) {
 		REDEBUG("[%s]: invalid shell [%s]", name, pwd->pw_shell);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 #endif
 
@@ -265,7 +265,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
 	    (fr_time_to_sec(request->packet->timestamp) / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
 		REDEBUG("[%s]: password has expired", name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 	/*
 	 *      Check if account has expired.
@@ -273,7 +273,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	if (spwd && spwd->sp_expire > 0 &&
 	    (fr_time_to_sec(request->packet->timestamp) / 86400) > spwd->sp_expire) {
 		REDEBUG("[%s]: account has expired", name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 #endif
 
@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	if ((pwd->pw_expire > 0) &&
 	    (fr_time_to_sec(request->packet->timestamp) > pwd->pw_expire)) {
 		REDEBUG("[%s]: password has expired", name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 #endif
 
@@ -294,12 +294,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED module_ctx_t const *mct
 	 *	FIXME: Maybe add Auth-Type := Accept?
 	 */
 	if (encrypted_pass[0] == 0)
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
 	fr_pair_value_strdup(vp, encrypted_pass);
 
-	return RLM_MODULE_UPDATED;
+	RETURN_MODULE_UPDATED;
 }
 
 
@@ -335,7 +335,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
 	fr_pair_t		*vp;
@@ -361,12 +361,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	if (!inst->radwtmp) {
 		RDEBUG2("No radwtmp file configured.  Ignoring accounting request");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 is not supported!");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -374,7 +374,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
 		RDEBUG2("no Accounting-Status-Type attribute in request");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 	status = vp->vp_uint32;
 
@@ -383,14 +383,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	if (status != FR_STATUS_START &&
 	    status != FR_STATUS_STOP)
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	/*
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
 	if (fr_pair_find_by_da(&request->request_pairs, attr_user_name) == NULL)
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	t = fr_time_to_sec(request->packet->timestamp);
 	memset(&ut, 0, sizeof(ut));
@@ -433,7 +433,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 *	where we didn't see a NAS-Port attribute.
 	 */
 	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	/*
 	 *	If we didn't find out the NAS address, use the
@@ -498,13 +498,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	if ((fp = fopen(inst->radwtmp, "a")) != NULL) {
 		if ((fwrite(&ut, sizeof(ut), 1, fp)) != 1) {
 			fclose(fp);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		fclose(fp);
 	} else
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /* globally exported name */

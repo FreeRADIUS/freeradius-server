@@ -211,7 +211,7 @@ static int do_pam(request_t *request, char const *username, char const *passwd, 
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->instance, rlm_pam_t);
 	int			ret;
@@ -229,12 +229,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -242,7 +242,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -262,9 +262,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(module_ctx_t const *mctx, r
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, username->vp_strvalue, password->vp_strvalue, pam_auth_string);
-	if (ret < 0) return RLM_MODULE_REJECT;
+	if (ret < 0) RETURN_MODULE_REJECT;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 extern module_t rlm_pam;

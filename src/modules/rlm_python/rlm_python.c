@@ -488,7 +488,8 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
+static unlang_action_t do_python_single(rlm_rcode_t *p_result,
+					rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
 {
 	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
@@ -614,38 +615,38 @@ finish:
 	Py_XDECREF(p_arg);
 	Py_XDECREF(p_ret);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
  */
-static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
-			     request_t *request, PyObject *p_func, char const *funcname)
+static unlang_action_t do_python(rlm_rcode_t *p_result, rlm_python_t const *inst, rlm_python_thread_t *this_thread,
+			     	 request_t *request, PyObject *p_func, char const *funcname)
 {
 	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
-	if (!p_func) return RLM_MODULE_NOOP;
+	if (!p_func) RETURN_MODULE_NOOP;
 
 	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	rcode = do_python_single(inst, request, p_func, funcname);
+	do_python_single(&rcode, inst, request, p_func, funcname);
 	(void)fr_cond_assert(PyEval_SaveThread() == this_thread->state);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(module_ctx_t const *mctx, request_t *request) \
+static unlang_action_t CC_HINT(nonnull) mod_##x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_python_t); \
 	rlm_python_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_python_thread_t); \
-	return do_python(inst, thread, request, inst->x.function, #x);\
+	return do_python(p_result, inst, thread, request, inst->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)
@@ -1110,7 +1111,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (inst->instantiate.function) {
 		rlm_rcode_t rcode;
 
-		rcode = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
+		do_python_single(&rcode, inst, NULL, inst->instantiate.function, "instantiate");
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
@@ -1152,7 +1153,11 @@ static int mod_detach(void *instance)
 	/*
 	 *	We don't care if this fails.
 	 */
-	if (inst->detach.function) (void)do_python_single(inst, NULL, inst->detach.function, "detach");
+	if (inst->detach.function) {
+		rlm_rcode_t rcode;
+
+		(void)do_python_single(&rcode, inst, NULL, inst->detach.function, "detach");
+	}
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);

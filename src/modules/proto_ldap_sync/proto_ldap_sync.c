@@ -1205,32 +1205,32 @@ static int ldap_compile_section(CONF_SECTION *server_cs, char const *name1, char
  */
 static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
-	int rcode;
+	int ret;
 	int found = 0;
 
-	rcode = ldap_compile_section(server_cs, "load", "Cookie", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "load", "Cookie", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "store", "Cookie", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "store", "Cookie", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Add", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Add", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Present", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Present", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Delete", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Delete", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Modify", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Modify", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
 	if (found == 0) {
 		cf_log_err(server_cs, "At least one of 'recv [Present|Add|Delete|Modify] { ... }' "

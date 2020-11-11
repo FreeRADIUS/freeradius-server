@@ -463,12 +463,12 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 
 static void request_run(fr_event_list_t *el, request_t *request)
 {
-	rlm_rcode_t rcode;
-	module_method_t process;
-	void *inst;
-	fr_dict_enum_t *dv;
-	fr_heap_t *backlog;
-	request_t *child;
+	rlm_rcode_t	rcode;
+	module_method_t	process;
+	void		*inst;
+	fr_dict_enum_t	*dv;
+	fr_heap_t	*backlog;
+	request_t	*child;
 
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
@@ -482,8 +482,7 @@ static void request_run(fr_event_list_t *el, request_t *request)
 	request->backlog = backlog;
 	request->el = el;
 
-	rcode = process(&(module_ctx_t){ .instance = inst }, request);
-	if (rcode != RLM_MODULE_YIELD) goto done;
+	if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) goto done;
 
 	while (true) {
 		bool wait_for_event;
@@ -521,8 +520,7 @@ static void request_run(fr_event_list_t *el, request_t *request)
 		 */
 		(void) fr_heap_extract(backlog, request);
 
-		rcode = process(&(module_ctx_t){ .instance = inst }, request);
-		if (rcode != RLM_MODULE_YIELD) break;
+		if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) break;
 	}
 
 done:

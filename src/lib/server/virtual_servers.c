@@ -1019,7 +1019,7 @@ int virtual_servers_free(void)
 
 /**
  */
-rlm_rcode_t process_authenticate(int auth_type, request_t *request)
+unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request)
 {
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*cs, *server_cs;
@@ -1047,7 +1047,7 @@ rlm_rcode_t process_authenticate(int auth_type, request_t *request)
 		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
 			cf_section_name2(request->server_cs),
 			fr_table_str_by_value(rcode_table, RLM_MODULE_REJECT, "<invalid>"));
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	/*
@@ -1055,21 +1055,21 @@ rlm_rcode_t process_authenticate(int auth_type, request_t *request)
 	 */
 	if (!auth_type) {
 		RERROR("An 'Auth-Type' MUST be specified");
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	dict_internal = fr_dict_internal();
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict_internal), FR_AUTH_TYPE);
-	if (!da) return RLM_MODULE_FAIL;
+	if (!da) RETURN_MODULE_FAIL;
 
 	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
-	if (!dv) return RLM_MODULE_FAIL;
+	if (!dv) RETURN_MODULE_FAIL;
 
 	subcs = cf_section_find(cs, da->name, dv->name);
 	if (!subcs) {
 		RDEBUG2("%s %s sub-section not found.  Using default return values.",
 			da->name, dv->name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	RDEBUG("Running %s %s from file %s",
@@ -1092,7 +1092,7 @@ rlm_rcode_t process_authenticate(int auth_type, request_t *request)
 	request->module = module;
 	request->server_cs = server_cs;
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
@@ -1103,13 +1103,15 @@ rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
 	fr_pair_t	*vp;
 	CONF_SECTION	*auth_cs = NULL;
 	char const	*auth_name;
+	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
 
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type);
 	if (!vp) {
 		RDEBUG2("No &control.Auth-Type found");
 	fail:
 		request->rcode = RLM_MODULE_FAIL;
-		return unlang_module_yield_to_section(request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);
+		unlang_module_yield_to_section(&rcode, request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);
+		return rcode;
 	}
 
 	auth_name = fr_dict_enum_name_by_value(attr_auth_type, &vp->data);
@@ -1125,7 +1127,8 @@ rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
 		goto fail;
 	}
 
-	return unlang_module_yield_to_section(request, auth_cs, default_rcode, resume, signal, rctx);
+	unlang_module_yield_to_section(&rcode, request, auth_cs, default_rcode, resume, signal, rctx);
+	return rcode;
 }
 
 /*

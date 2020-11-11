@@ -434,15 +434,15 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	proto_dhcpv6_track_t const *a = one;
 	proto_dhcpv6_track_t const *b = two;
 
-	rcode = memcmp(&a->header, &b->header, sizeof(a->header));
-	if (rcode != 0) return rcode;
+	ret = memcmp(&a->header, &b->header, sizeof(a->header));
+	if (ret != 0) return ret;
 
-	rcode = (a->client_id_len < b->client_id_len) - (a->client_id_len > b->client_id_len);
-	if (rcode != 0) return rcode;
+	ret = (a->client_id_len < b->client_id_len) - (a->client_id_len > b->client_id_len);
+	if (ret != 0) return ret;
 
 	return memcmp(a->client_id, b->client_id, a->client_id_len);
 }

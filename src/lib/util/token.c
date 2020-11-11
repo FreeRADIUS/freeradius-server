@@ -263,7 +263,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 	char			quote;
 	unsigned int		x;
 	size_t			i;
-	fr_token_t rcode;
+	fr_token_t 		token;
 
 	buf[0] = '\0';
 
@@ -286,7 +286,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 				strcpy(buf, tokenlist[i].name.str);
 				p += tokenlist[i].name.len;
 
-				rcode = tokenlist[i].value;
+				token = tokenlist[i].value;
 				goto done;
 			}
 		}
@@ -296,23 +296,23 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 	quote = '\0';
 	switch (*p) {
 	default:
-		rcode = T_BARE_WORD;
+		token = T_BARE_WORD;
 		break;
 
 	case '\'':
-		rcode = T_SINGLE_QUOTED_STRING;
+		token = T_SINGLE_QUOTED_STRING;
 		break;
 
 	case '"':
-		rcode = T_DOUBLE_QUOTED_STRING;
+		token = T_DOUBLE_QUOTED_STRING;
 		break;
 
 	case '`':
-		rcode = T_BACK_QUOTED_STRING;
+		token = T_BACK_QUOTED_STRING;
 		break;
 	}
 
-	if (rcode != T_BARE_WORD) {
+	if (token != T_BARE_WORD) {
 		quote = *p;
 		p++;
 	}
@@ -427,7 +427,7 @@ done:
 
 	*ptr = p;
 
-	return rcode;
+	return token;
 }
 
 /*
@@ -454,14 +454,14 @@ fr_token_t gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 fr_token_t getop(char const **ptr)
 {
 	char op[3];
-	fr_token_t rcode;
+	fr_token_t token;
 
-	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
-	if (!fr_assignment_op[rcode] && !fr_equality_op[rcode]) {
+	token = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
+	if (!fr_assignment_op[token] && !fr_equality_op[token]) {
 		fr_strerror_printf("Expected operator");
 		return T_INVALID;
 	}
-	return rcode;
+	return token;
 }
 
 /*

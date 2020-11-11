@@ -174,18 +174,23 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_co
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
-				       LDAPMessage *entry, char const *attr);
+unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+					   request_t *request, fr_ldap_connection_t **pconn,
+					   LDAPMessage *entry, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn);
+unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result,
+					    rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
-					    fr_pair_t *check);
+unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result,
+						rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
+						fr_pair_t *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
-					   char const *dn, fr_pair_t *check);
+unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
+					       rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
+					       char const *dn, fr_pair_t *check);
 
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, request_t *request, fr_pair_t *check);
+unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+				      rlm_ldap_t const *inst, request_t *request, fr_pair_t *check);
 
 /*
  *	conn.c - Connection wrappers.

@@ -109,7 +109,7 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 	}
 }
 
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -155,7 +155,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request.DHCP-Message-Type");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
@@ -167,7 +167,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_RECV;
@@ -176,9 +176,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		/*
 		 *	Allow the admin to explicitly set the reply
@@ -209,7 +212,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 *	DHCP-Release / Decline doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
 		 */
 		if (!request->reply->code) {
-			return RLM_MODULE_HANDLED;
+			RETURN_MODULE_HANDLED;
 		}
 
 		/*
@@ -232,7 +235,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_SEND;
@@ -241,9 +244,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -282,17 +288,17 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		 */
 		if (request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client");
-			return RLM_MODULE_HANDLED;
+			RETURN_MODULE_HANDLED;
 		}
 
 		if (RDEBUG_ENABLED) dhcpv4_packet_debug(request, request->reply, false);
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static const virtual_server_compile_t compile_list[] = {

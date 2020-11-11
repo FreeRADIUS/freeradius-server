@@ -46,7 +46,7 @@ fr_dict_attr_autoload_t proto_radius_status_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -73,7 +73,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 
 		RDEBUG("Running 'recv Status-Server' from file %s", cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		request->request_state = REQUEST_RECV;
 		FALL_THROUGH;
@@ -81,9 +81,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_OK:
@@ -117,7 +120,7 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_SEND;
@@ -126,9 +129,12 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -179,10 +185,10 @@ static rlm_rcode_t mod_process(UNUSED module_ctx_t const *mctx, request_t *reque
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

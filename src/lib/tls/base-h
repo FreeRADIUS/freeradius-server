@@ -389,7 +389,7 @@ do { \
 /*
  *	tls/cache.c
  */
-int		fr_tls_cache_process(request_t *request, CONF_SECTION *action);
+unlang_action_t	fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, CONF_SECTION *action);
 
 int		fr_tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 

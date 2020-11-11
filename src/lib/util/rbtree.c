@@ -618,23 +618,23 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
  */
 static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 	rbnode_t *left, *right;
 
 	left = x->left;
 	right = x->right;
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	if (left != NIL) {
-		rcode = walk_node_pre_order(left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_pre_order(left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	if (right != NIL) {
-		rcode = walk_node_pre_order(right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_pre_order(right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	return 0;		/* we know everything returned zero */
@@ -645,22 +645,22 @@ static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *uctx)
  */
 static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 	rbnode_t *right;
 
 	if (x->left != NIL) {
-		rcode = walk_node_in_order(x->left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_in_order(x->left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	right = x->right;
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	if (right != NIL) {
-		rcode = walk_node_in_order(right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_in_order(right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	return 0;		/* we know everything returned zero */
@@ -672,20 +672,20 @@ static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *uctx)
  */
 static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 
 	if (x->left != NIL) {
-		rcode = walk_node_post_order(x->left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_post_order(x->left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	if (x->right != NIL) {
-		rcode = walk_node_post_order(x->right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_post_order(x->right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	return 0;		/* we know everything returned zero */
 }
@@ -707,7 +707,7 @@ static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 {
 	rbnode_t *solid, *x;
-	int rcode = 0;
+	int ret = 0;
 
 	/* Keep track of last node that refused deletion. */
 	solid = NIL;
@@ -719,14 +719,14 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 			x = x->left;
 		}
 	visit:
-		rcode = compare(x->data, uctx);
-		if (rcode < 0) {
-			return rcode;
+		ret = compare(x->data, uctx);
+		if (ret < 0) {
+			return ret;
 		}
-		if (rcode) {
+		if (ret) {
 			rbtree_delete_internal(tree, x, true);
-			if (rcode != 2) {
-				return rcode;
+			if (ret != 2) {
+				return ret;
 			}
 		} else {
 			solid = x;
@@ -746,7 +746,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 			x = x->parent;
 		}
 	}
-	return rcode;
+	return ret;
 }
 
 
@@ -759,7 +759,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
  */
 int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 
 	if (tree->root == NIL) return 0;
 
@@ -767,28 +767,28 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uct
 
 	switch (order) {
 	case RBTREE_PRE_ORDER:
-		rcode = walk_node_pre_order(tree->root, compare, uctx);
+		ret = walk_node_pre_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_IN_ORDER:
-		rcode = walk_node_in_order(tree->root, compare, uctx);
+		ret = walk_node_in_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_POST_ORDER:
-		rcode = walk_node_post_order(tree->root, compare, uctx);
+		ret = walk_node_post_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_DELETE_ORDER:
-		rcode = walk_delete_order(tree, compare, uctx);
+		ret = walk_delete_order(tree, compare, uctx);
 		break;
 
 	default:
-		rcode = -1;
+		ret = -1;
 		break;
 	}
 
 	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
-	return rcode;
+	return ret;
 }
 
 uint32_t rbtree_num_elements(rbtree_t *tree)

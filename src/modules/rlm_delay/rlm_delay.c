@@ -117,7 +117,8 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					request_t *request, void *rctx)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -127,7 +128,7 @@ static rlm_rcode_t mod_delay_return(UNUSED module_ctx_t const *mctx, request_t *
 	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time() - *yielded));
 	talloc_free(yielded);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
@@ -140,7 +141,7 @@ static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, request_t *request
 	(void) unlang_module_timeout_delete(request, rctx);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_delay_t);
 	fr_time_delta_t		delay;
@@ -148,7 +149,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, request_
 
 	if (inst->delay) {
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
-				      request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+				      request, inst->delay, NULL, NULL) < 0) RETURN_MODULE_FAIL;
 	} else {
 		delay = 0;
 	}
@@ -164,7 +165,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, request_
 	 */
 	if (delay_add(request, &resume_at, *yielded_at, delay,
 		      inst->force_reschedule, inst->delay) != 0) {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -175,7 +176,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(module_ctx_t const *mctx, request_
 
 	if (unlang_module_timeout_add(request, _delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_delay_return, mod_delay_cancel, yielded_at);

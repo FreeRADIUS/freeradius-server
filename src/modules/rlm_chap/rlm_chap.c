@@ -112,21 +112,23 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t		*vp;
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
 
 	if (fr_pair_find_by_da(&request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	This case means the warnings below won't be printed
 	 *	unless there's a CHAP-Password in the request.
 	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, attr_chap_password)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_chap_password)) {
+		RETURN_MODULE_NOOP;
+	}
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.
@@ -146,12 +148,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup CHAP authentication",
 		     inst->name, inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) {
+		RETURN_MODULE_NOOP;
+	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -160,7 +164,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t		*known_good;
 	fr_pair_t		*chap, *username;
@@ -177,24 +181,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!username) {
 		REDEBUG("&User-Name attribute is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	chap = fr_pair_find_by_da(&request->request_pairs, attr_chap_password);
 	if (!chap) {
 		REDEBUG("You set '&control.Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (chap->vp_length == 0) {
 		REDEBUG("&request.CHAP-Password is empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (chap->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH + 1) {
 		REDEBUG("&request.CHAP-Password has invalid length");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -208,7 +212,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -265,12 +269,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED module_ctx_t const *
 	if (ret != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &username->data);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)

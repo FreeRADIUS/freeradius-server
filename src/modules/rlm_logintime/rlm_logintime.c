@@ -151,14 +151,14 @@ static int time_of_day(UNUSED void *instance, request_t *request,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
 	fr_pair_t		*ends, *vp;
 	int32_t			left;
 
 	ends = fr_pair_find_by_da(&request->control_pairs, attr_login_time);
-	if (!ends) return RLM_MODULE_NOOP;
+	if (!ends) RETURN_MODULE_NOOP;
 
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
@@ -169,12 +169,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
-	if (left < 0) return RLM_MODULE_DISALLOW; /* outside of the allowed time */
+	if (left < 0) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
 
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
 	 */
-	if (left == 0) return RLM_MODULE_OK;
+	if (left == 0) RETURN_MODULE_OK;
 
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
@@ -186,7 +186,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 
-		return RLM_MODULE_DISALLOW;
+		RETURN_MODULE_DISALLOW;
 	}
 
 	/* else left > inst->min_time */
@@ -215,7 +215,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(module_ctx_t const *mctx, requ
 		MEM(NULL);
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

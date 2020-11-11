@@ -71,13 +71,13 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request);
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
-static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *eap_session)
+static unlang_action_t eap_tls_success_with_prf(rlm_rcode_t *p_result, request_t *request, eap_session_t *eap_session)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	Set the PRF label based on the TLS version negotiated
@@ -87,7 +87,7 @@ static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *e
 	case SSL2_VERSION:			/* Should never happen */
 	case SSL3_VERSION:			/* Should never happen */
 		fr_assert(0);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 
 	case TLS1_VERSION:
 	case TLS1_1_VERSION:
@@ -98,7 +98,7 @@ static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *e
 
 		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) return RLM_MODULE_FAIL;
+				    NULL, 0) < 0) RETURN_MODULE_FAIL;
 	}
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		break;
@@ -111,12 +111,12 @@ static rlm_rcode_t eap_tls_success_with_prf(request_t *request, eap_session_t *e
 
 		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) return RLM_MODULE_FAIL;
+				    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) RETURN_MODULE_FAIL;
 	}
 		break;
 	}
 #endif
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static unlang_action_t eap_tls_virtual_server_result(rlm_rcode_t *p_result, UNUSED int *priority,
@@ -127,20 +127,17 @@ static unlang_action_t eap_tls_virtual_server_result(rlm_rcode_t *p_result, UNUS
 	switch (*p_result) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		*p_result = eap_tls_success_with_prf(request, eap_session);
-		break;
+		return eap_tls_success_with_prf(p_result, request, eap_session);
 
 	default:
 		REDEBUG2("Certificate rejected by the virtual server");
 		eap_tls_fail(request, eap_session);
-		*p_result = RLM_MODULE_REJECT;
-		break;
+		RETURN_MODULE_REJECT;
 	}
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *request, eap_session_t *eap_session)
+static unlang_action_t eap_tls_virtual_server(rlm_rcode_t *p_result, rlm_eap_tls_t *inst, request_t *request,
+					      eap_session_t *eap_session)
 {
 	CONF_SECTION	*server_cs;
 	CONF_SECTION	*section;
@@ -154,7 +151,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 			REDEBUG2("Virtual server \"%pV\" not found", &vp->data);
 		error:
 			eap_tls_fail(request, eap_session);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	} else {
 		server_cs = virtual_server_find(inst->virtual_server);
@@ -180,20 +177,22 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, request_t *reques
 	 *	Catch the interpreter on the way back up the stack
 	 */
 	if (unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	Push unlang instructions for the virtual server section
 	 */
 	if (unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_YIELD;
+	*p_result = RLM_MODULE_YIELD;
+
+	return UNLANG_ACTION_YIELD;
 }
 
-static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_tls_status_t	status;
@@ -218,8 +217,8 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	 *	it accepts the certificates, too.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		if (inst->virtual_server) return eap_tls_virtual_server(inst, request, eap_session);
-		return eap_tls_success_with_prf(request, eap_session);
+		if (inst->virtual_server) return eap_tls_virtual_server(p_result, inst, request, eap_session);
+		return eap_tls_success_with_prf(p_result, request, eap_session);
 
 
 	/*
@@ -228,7 +227,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -238,7 +237,7 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 		REDEBUG("Received unexpected tunneled data after successful handshake");
 		eap_tls_fail(request, eap_session);
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 
 	/*
 	 *	Anything else: fail.
@@ -249,14 +248,14 @@ static rlm_rcode_t mod_process(module_ctx_t const *mctx, request_t *request)
 	default:
 		fr_tls_cache_deny(tls_session);
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -282,7 +281,7 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 *	EAP-TLS always requires a client certificate.
 	 */
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return RLM_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	eap_tls_session->include_length = inst->include_length;
 
@@ -292,12 +291,12 @@ static rlm_rcode_t mod_session_init(module_ctx_t const *mctx, request_t *request
 	 */
 	if (eap_tls_start(request, eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

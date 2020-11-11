@@ -446,7 +446,7 @@ static size_t linelog_escape_func(UNUSED request_t *request,
  *	- #RLM_MODULE_FAIL if we failed writing the message.
  *	- #RLM_MODULE_OK on success.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
 	linelog_conn_t			*conn;
@@ -480,7 +480,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, req
 
 		if (tmpl_expand(&path, buff + 1, sizeof(buff) - 1,
 				request, inst->log_ref, linelog_escape_func, NULL) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (path != buff + 1) strlcpy(buff + 1, path, sizeof(buff) - 1);
@@ -492,7 +492,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, req
 		 */
 		if (buff[2] == '.') {
 			REDEBUG("Invalid path \"%s\"", p);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ci = cf_reference_item(NULL, inst->cs, p);
@@ -503,7 +503,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, req
 
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Path \"%s\" resolves to a section (should be a pair)", p);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		cp = cf_item_to_pair(ci);
@@ -532,7 +532,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, req
 					 });
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		vpt_p = vpt;
 	} else {
@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(module_ctx_t const *mctx, req
 		 */
 		if (!inst->log_src) {
 			RDEBUG2("No default message configured");
-			return RLM_MODULE_NOOP;
+			RETURN_MODULE_NOOP;
 		}
 		/*
 		 *	Use the pre-parsed format template
@@ -647,7 +647,7 @@ build_vector:
 		char path[2048];
 
 		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		/* check path and eventually create subdirs */
@@ -680,7 +680,7 @@ build_vector:
 			/* Assert on the extra fatal errors */
 			fr_assert((errno != EINVAL) && (errno != EFAULT));
 
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		exfile_close(inst->file.ef, request, fd);
@@ -782,7 +782,7 @@ finish:
 	talloc_free(vector);
 
 	/* coverity[missing_unlock] */
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 

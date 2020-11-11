@@ -97,7 +97,7 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  * @param request	The authorization request.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);		/* our module instance */
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
@@ -112,17 +112,17 @@ static rlm_rcode_t mod_authorize(module_ctx_t const *mctx, request_t *request)
 
 	/* attempt to build document key */
 	slen = tmpl_expand(&dockey, buffer, sizeof(buffer), request, inst->user_key, NULL, NULL);
-	if (slen < 0) return RLM_MODULE_FAIL;
+	if (slen < 0) RETURN_MODULE_FAIL;
 	if ((dockey == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
 		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* get handle */
 	handle = fr_pool_connection_get(inst->pool, request);
 
 	/* check handle */
-	if (!handle) return RLM_MODULE_FAIL;
+	if (!handle) RETURN_MODULE_FAIL;
 
 	/* set couchbase instance */
 	lcb_t cb_inst = handle->handle;
@@ -217,7 +217,7 @@ finish:
 	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	/* return */
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Write accounting data to Couchbase documents
@@ -233,7 +233,7 @@ finish:
  * @param request	The accounting request object.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
@@ -258,7 +258,7 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 		/* log debug */
 		RDEBUG2("could not find status type in packet");
 		/* return */
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* set status */
@@ -269,14 +269,14 @@ static rlm_rcode_t mod_accounting(module_ctx_t const *mctx, request_t *request)
 		/* log debug */
 		RDEBUG2("handling accounting on/off request without action");
 		/* return */
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
 	/* get handle */
 	handle = fr_pool_connection_get(inst->pool, request);
 
 	/* check handle */
-	if (!handle) return RLM_MODULE_FAIL;
+	if (!handle) RETURN_MODULE_FAIL;
 
 	/* set couchbase instance */
 	lcb_t cb_inst = handle->handle;
@@ -413,7 +413,7 @@ finish:
 	}
 
 	/* return */
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 

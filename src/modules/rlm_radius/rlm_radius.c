@@ -384,12 +384,12 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, void
 /** Continue after unlang_interpret_resumable()
  *
  */
-static rlm_rcode_t mod_radius_resume(module_ctx_t const *mctx, request_t *request, void *ctx)
+static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *ctx)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
-	return inst->io->resume(&(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, ctx);
+	return inst->io->resume(p_result, &(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, ctx);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
@@ -430,7 +430,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 /** Send packets outbound.
  *
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
 	rlm_radius_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
@@ -440,7 +440,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -449,24 +449,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	 */
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		REDEBUG("Cannot proxy Status-Server packets");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if ((request->packet->code >= FR_RADIUS_MAX_PACKET_CODE) ||
 	    !inst->retry[request->packet->code].irt) { /* can't be zero */
 		REDEBUG("Invalid packet code %d", request->packet->code);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_packet_codes[request->packet->code]);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (request->client->dynamic && !request->client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -483,10 +483,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(module_ctx_t const *mctx, reques
 	 *	return another code which indicates what happened to
 	 *	the request...b
 	 */
-	rcode = inst->io->enqueue(&rctx, inst->io_instance, t->io_thread, request);
+	inst->io->enqueue(&rcode, &rctx, inst->io_instance, t->io_thread, request);
 	if (rcode != RLM_MODULE_YIELD) {
 		fr_assert(rctx == NULL);
-		return rcode;
+		RETURN_MODULE_RCODE(rcode);
 	}
 
 	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, rctx);

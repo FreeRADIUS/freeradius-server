@@ -229,8 +229,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 	fake->server_cs = virtual_server_find("channel_bindings");
 	fake->packet->code = FR_CODE_ACCESS_REQUEST;
 
-	rcode = rad_virtual_server(fake);
-
+	rad_virtual_server(&rcode, fake);
 	switch (rcode) {
 		/* If the virtual server succeeded, build a reply */
 	case RLM_MODULE_OK:

@@ -312,7 +312,7 @@ void		unlang_op_free(void);
  *
  * @{
  */
-rlm_rcode_t	unlang_io_process_interpret(module_ctx_t const *mctx, request_t *request);
+unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable);
 

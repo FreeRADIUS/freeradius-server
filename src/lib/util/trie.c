@@ -3238,7 +3238,7 @@ static fr_trie_command_t commands[] = {
 int main(int argc, char **argv)
 {
 	int lineno = 0;
-	int rcode = 0;
+	int ret = 0;
 	fr_trie_t *ft;
 	FILE *fp;
 	int my_argc;
@@ -3310,7 +3310,7 @@ int main(int argc, char **argv)
 		if (cmd < 0) {
 			fprintf(stderr, "Unknown command '%s' at line %d\n",
 				my_argv[0], lineno);
-			rcode = 1;
+			ret = 1;
 			break;
 		}
 
@@ -3354,6 +3354,6 @@ int main(int argc, char **argv)
 	talloc_report_full(NULL, stdout);	/* Print details of any leaked memory */
 	talloc_disable_null_tracking();		/* Cleanup talloc null tracking context */
 
-	return rcode;
+	return ret;
 }
 #endif

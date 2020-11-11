@@ -308,7 +308,7 @@ int fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *orig
 int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
 			  char const *secret)
 {
-	int rcode;
+	int ret;
 	uint8_t const *original_data;
 
 	if (original) {
@@ -327,9 +327,9 @@ int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *
 		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
-	rcode = fr_radius_sign(packet->data, original_data,
+	ret = fr_radius_sign(packet->data, original_data,
 			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);
 	return 0;
@@ -494,10 +494,10 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *
 	 *	is allowed on some platforms, but it's not nice.
 	 */
 	if (packet->socket.proto == IPPROTO_TCP) {
-		ssize_t rcode;
+		ssize_t ret;
 
-		rcode = write(packet->socket.fd, packet->data, packet->data_len);
-		if (rcode >= 0) return rcode;
+		ret = write(packet->socket.fd, packet->data, packet->data_len);
+		if (ret >= 0) return ret;
 
 		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
 		return -1;

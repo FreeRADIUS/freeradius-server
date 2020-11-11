@@ -77,18 +77,18 @@ static int fr_tls_cache_session_id_to_vp(request_t *request, uint8_t const *key,
 
 /** Execute the virtual server configured to perform cache actions
  *
+ * @param[out] p_result		from the virtual server.
  * @param[in] request		The current request.
  * @param[in] action		to execute.
- * @return the rcode from the virtual server.
  */
-int fr_tls_cache_process(request_t *request, CONF_SECTION *action)
+unlang_action_t fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, CONF_SECTION *action)
 {
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*server_cs;
 	char const	*module;
 	char const	*component;
 
-	if (!action) return RLM_MODULE_NOOP;
+	if (!action) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Save the current status of the request.
@@ -112,7 +112,7 @@ int fr_tls_cache_process(request_t *request, CONF_SECTION *action)
 	request->module = module;
 	request->component = component;
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Pre-compile unlang cache sections and store pointers to them
@@ -265,6 +265,7 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 	fr_tls_conf_t	*conf;
 	int		ret = 0;
 	fr_pair_t	*vp;
+	rlm_rcode_t	rcode;
 
 	conf = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
 
@@ -292,7 +293,8 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 	/*
 	 *	Call the virtual server to write the session
 	 */
-	switch (fr_tls_cache_process(request, conf->session_cache.store)) {
+	fr_tls_cache_process(&rcode, request, conf->session_cache.store);
+	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
@@ -337,6 +339,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 	uint8_t const		*q;
 	fr_pair_t		*vp;
 	SSL_SESSION		*sess;
+	rlm_rcode_t		rcode;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
@@ -351,7 +354,8 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 	/*
 	 *	Call the virtual server to read the session
 	 */
-	switch (fr_tls_cache_process(request, conf->session_cache.load)) {
+	fr_tls_cache_process(&rcode, request, conf->session_cache.load);
+	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
@@ -420,10 +424,12 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 static void fr_tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	fr_tls_conf_t		*conf;
-	fr_tls_session_t		*tls_session;
-	request_t			*request;
+	fr_tls_session_t	*tls_session;
+	request_t		*request;
 	uint8_t	const		*key;
 	ssize_t			key_len;
+
+	rlm_rcode_t		rcode;
 
 	conf = talloc_get_type_abort(SSL_CTX_get_app_data(ctx), fr_tls_conf_t);
 	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
@@ -451,7 +457,8 @@ static void fr_tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to delete the session
 	 */
-	switch (fr_tls_cache_process(request, conf->session_cache.clear)) {
+	fr_tls_cache_process(&rcode, request, conf->session_cache.clear);
+	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOTFOUND:

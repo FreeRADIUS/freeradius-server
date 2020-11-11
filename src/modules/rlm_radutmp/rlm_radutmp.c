@@ -104,7 +104,7 @@ fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static rlm_rcode_t radutmp_zap(request_t *request, char const *filename, uint32_t nasaddr, time_t t)
+static unlang_action_t radutmp_zap(rlm_rcode_t *p_result, request_t *request, char const *filename, uint32_t nasaddr, time_t t)
 {
 	struct radutmp	u;
 	int		fd;
@@ -114,7 +114,7 @@ static rlm_rcode_t radutmp_zap(request_t *request, char const *filename, uint32_
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
 		REDEBUG("Error accessing file %s: %s", filename, fr_syserror(errno));
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -123,7 +123,7 @@ static rlm_rcode_t radutmp_zap(request_t *request, char const *filename, uint32_
 	if (rad_lockfd(fd, LOCK_LEN) < 0) {
 		REDEBUG("Failed to acquire lock on file %s: %s", filename, fr_syserror(errno));
 		close(fd);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -147,12 +147,12 @@ static rlm_rcode_t radutmp_zap(request_t *request, char const *filename, uint32_
 			REDEBUG("Failed writing: %s", fr_syserror(errno));
 
 			close(fd);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 	close(fd);	/* and implicitely release the locks */
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -175,7 +175,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->instance, rlm_radutmp_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -198,7 +198,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 
 	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 not supported!");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -206,7 +206,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 	status = vp->vp_uint32;
 
@@ -325,7 +325,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	filename = NULL;
 	if (xlat_aeval(request, &filename, request, inst->filename, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -336,14 +336,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 	 */
 	if (status == FR_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
-		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
 
 		goto finish;
 	}
 
 	if (status == FR_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);
-		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
 
 		goto finish;
 	}
@@ -544,7 +544,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(module_ctx_t const *mctx, req
 		close(fd);	/* and implicitely release the locks */
 	}
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /* globally exported name */
