@@ -33,113 +33,31 @@ RCSID("$Id$")
 #  define CHECK_DBUFF_INIT(_sbuff)
 #endif
 
-/** Move data from one dbuff to another
- *
- * @note Do not call this function directly; use #fr_dbuff_move
- *
- * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
- *
- * @param[in] out	dbuff to copy data to.
- * @param[in] in	dbuff to copy data from.
- * @param[in] len	Maximum number of bytes to copy.
- * @return The amount of data copied.
+/** Internal macro for defining dbuff move functions
  */
-size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len)
-{
-	size_t ext_len, to_copy = len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
-
-	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
+#define FR_DBUFF_MOVE_DEF(_out_type, _in_type) \
+size_t _fr_dbuff_move_##_in_type##_to_##_out_type(fr_##_out_type##_t *out, fr_##_in_type##_t *in, size_t len) \
+{ \
+	size_t ext_len, to_copy, remaining = len; \
+	while (remaining > 0) { \
+		to_copy = remaining; \
+		ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy); \
+		if (ext_len < to_copy) to_copy = ext_len; \
+		ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy); \
+		if (ext_len < to_copy) to_copy = ext_len; \
+		if (to_copy == 0) break; \
+		to_copy = _fr_dbuff_safecpy(fr_dbuff_current(out), fr_dbuff_end(out), \
+					    fr_dbuff_current(in), fr_dbuff_current(in) + to_copy); \
+		fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy)); \
+		remaining -= to_copy; \
+	} \
+	return len - remaining; \
 }
 
-/** Move data from a marker to a dbuff
- *
- * @note Do not call this function directly; use #fr_dbuff_move
- *
- * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
- *
- * @param[in] out	dbuff to copy data to.
- * @param[in] in	marker to copy data from.
- * @param[in] len	Maximum number of bytes to copy.
- * @return The amount of data copied.
- */
-size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len)
-{
-	size_t ext_len, to_copy = len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	to_copy = _fr_dbuff_safecpy(out->p, out->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
-
-	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
-}
-
-/** Move data from one marker to another
- *
- * @note Do not call this function directly; use #fr_dbuff_move
- *
- * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)}.
- *
- * @param[in] out	dbuff to copy data to.
- * @param[in] in	marker to copy data from.
- * @param[in] len	Maximum number of bytes to copy.
- * @return The amount of data copied.
- */
-size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len)
-{
-	size_t ext_len, to_copy = len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
-
-	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
-}
-
-/** Move data from a dbuff to a marker
- *
- * @note Do not call this function directly; use #fr_dbuff_move
- *
- * Both in and out will be advanced by
- * min {len, fr_dbuff_remaining(out), fr_dbuff_remaining(in)};.
- *
- * @param[in] out	dbuff to copy data to.
- * @param[in] in	marker to copy data from.
- * @param[in] len	Maximum number of bytes to copy.
- * @return The amount of data copied.
- */
-size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len)
-{
-	size_t ext_len, to_copy = len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, in, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	ext_len = fr_dbuff_extend_lowat(NULL, out, to_copy);
-	if (ext_len < to_copy) to_copy = ext_len;
-
-	to_copy = _fr_dbuff_safecpy(out->p, out->parent->end, fr_dbuff_current(in), fr_dbuff_current(in) + to_copy);
-
-	return fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy));
-}
+FR_DBUFF_MOVE_DEF(dbuff, dbuff)
+FR_DBUFF_MOVE_DEF(dbuff, dbuff_marker)
+FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff)
+FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff_marker)
 
 static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
 {

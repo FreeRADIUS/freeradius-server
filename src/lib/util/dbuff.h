@@ -1106,15 +1106,15 @@ size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len
 
 /** Internal function - do not call directly
  */
-size_t _fr_dbuff_move_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len);
+size_t _fr_dbuff_move_dbuff_to_dbuff_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len);
 
 /** Internal function - do not call directly
  */
-size_t _fr_dbuff_move_marker_to_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len);
+size_t _fr_dbuff_move_dbuff_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len);
 
 /** Internal function - do not call directly
  */
-size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len);
+size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len);
 
 /** Copy in as many bytes as possible from one dbuff or marker to another
  *
@@ -1126,19 +1126,23 @@ size_t _fr_dbuff_move_dbuff_to_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, si
 #define fr_dbuff_move(_out, _in, _len) \
 	_Generic((_out), \
 		fr_dbuff_t *		: \
-			_Generic((_in), \
-				fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_dbuff((fr_dbuff_t *)_out, \
-											(fr_dbuff_t *)_in, _len), \
-				fr_dbuff_marker_t *	: _fr_dbuff_move_marker_to_dbuff((fr_dbuff_t *)_out, \
-											(fr_dbuff_marker_t *)_in, _len) \
-			), \
-	       fr_dbuff_marker_t *	: \
-			_Generic((_in), \
-				fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_marker((fr_dbuff_marker_t *)_out, \
-											 (fr_dbuff_t *)_in, _len), \
-				fr_dbuff_marker_t *	: _fr_dbuff_move_marker_to_marker((fr_dbuff_marker_t *)_out, \
-											  (fr_dbuff_marker_t *)_in, _len) \
-			) \
+		_Generic((_in), \
+			fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_dbuff((fr_dbuff_t *)_out, \
+										(fr_dbuff_t *)_in, \
+										_len), \
+			fr_dbuff_marker_t *	: _fr_dbuff_move_dbuff_marker_to_dbuff((fr_dbuff_t *)_out, \
+										       (fr_dbuff_marker_t *)_in, \
+										       _len) \
+		), \
+		fr_dbuff_marker_t *	: \
+		_Generic((_in), \
+			fr_dbuff_t *		: _fr_dbuff_move_dbuff_to_dbuff_marker((fr_dbuff_marker_t *)_out, \
+										       (fr_dbuff_t *)_in, \
+										       _len), \
+			fr_dbuff_marker_t *	: _fr_dbuff_move_dbuff_marker_to_dbuff_marker((fr_dbuff_marker_t *)_out, \
+											      (fr_dbuff_marker_t *)_in, \
+											      _len) \
+		) \
 	)
 /** @} */
 
