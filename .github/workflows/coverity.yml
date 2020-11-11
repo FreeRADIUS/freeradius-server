@@ -76,11 +76,9 @@ jobs:
 
       - name: Download Coverity
         run: |
-          curl \
-            -o coverity_tool.tar.gz \
-            --form token="$TOKEN" \
-            --form project="freeradius/freeradius-server" \
-            https://scan.coverity.com/download/linux64
+          wget https://scan.coverity.com/download/linux64 \
+            --post-data "token=${TOKEN}&project=FreeRADIUS%2Ffreeradius-server" \
+            -O coverity_tool.tgz
           mkdir coverity_tool
           tar xzf coverity_tool.tar.gz --strip 1 -C coverity_tool
         env:
