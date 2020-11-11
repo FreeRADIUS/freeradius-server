@@ -45,7 +45,7 @@ RCSID("$Id$")
  *
  * @see tmpl_cursor_init
  */
-fr_pair_t **radius_list(request_t *request, pair_list_t list)
+fr_pair_list_t *radius_list(request_t *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -1103,7 +1103,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 	tmpl_t const		*vpt = cc->vpt;
 
 	fr_pair_t		*vp;
-	fr_pair_t		**list_head;
+	fr_pair_list_t		*list_head;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
@@ -1188,7 +1188,8 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *uctx)
 fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 			     fr_cursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
-	fr_pair_t		*vp = NULL, **list_head;
+	fr_pair_t		*vp = NULL;
+	fr_pair_list_t		*list_head;
 	tmpl_request_t		*rr = NULL;
 	TALLOC_CTX		*list_ctx;
 
@@ -1452,7 +1453,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 	case -1:
 	{
 		TALLOC_CTX	*ctx;
-		fr_pair_t	**head;
+		fr_pair_list_t	*head;
 
 		RADIUS_LIST_AND_CTX(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
 
@@ -1498,7 +1499,8 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		      fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 		      request_t *request, tmpl_t const *vpt)
 {
-	fr_pair_t		*curr = NULL, **list_head;
+	fr_pair_t		*curr = NULL;
+	fr_pair_list_t		*list_head;
 	fr_pair_t		*prev = NULL;	/* not used */
 
 	TALLOC_CTX		*list_ctx = NULL;
@@ -1664,7 +1666,7 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 
 	while ((extent = fr_dlist_head(interior))) {
 		fr_pair_t		*vp;
-		fr_pair_t		**list;
+		fr_pair_list_t		*list;
 		tmpl_attr_t const	*ar;
 		TALLOC_CTX		*list_ctx = extent->list_ctx;
 
