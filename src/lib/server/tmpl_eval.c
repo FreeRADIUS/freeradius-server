@@ -1481,9 +1481,9 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
  * @param[in] ctx		to allocate.  It's recommended to pass a pool with space
  *				for at least five extent structures.
  * @param[out] leaf		List of extents we discovered by evaluating all
- *				attribute references.
+ *				attribute references. May be NULL.
  * @param[out] interior 	List of extents that need building out, i.e. references
- *				extend beyond pairs.
+ *				extend beyond pairs. May be NULL.
  * @param[in] request		The current #request_t.
  * @param[in] vpt		specifying the #fr_pair_t type to retrieve or create.
  *				Must be #TMPL_TYPE_ATTR.
@@ -1551,7 +1551,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	 *	If it's a list, just return the list head
 	 */
 	if (vpt->type == TMPL_TYPE_LIST) {
-		EXTENT_ADD(leaf, NULL, list_ctx, list_head);
+		if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
 		return 0;
 	}
 
@@ -1592,7 +1592,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			 *	References extend beyond current
 			 *	pair tree.
 			 */
-			if (!ar->resolve_only) EXTENT_ADD(interior, ar, list_ctx, list_head);
+			if (!ar->resolve_only && interior) EXTENT_ADD(interior, ar, list_ctx, list_head);
 			continue;	/* Rely on _tmpl_cursor_eval popping the stack */
 		}
 
@@ -1617,7 +1617,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		 */
 		switch (ar->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			EXTENT_ADD(leaf, NULL, curr, list_head);
+			if (leaf) EXTENT_ADD(leaf, NULL, curr, list_head);
 			continue;
 
 		default:

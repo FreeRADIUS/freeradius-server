@@ -989,7 +989,7 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 					  request_t *request, tmpl_t const *vpt);
 
 int			tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
-					      tmpl_t const *vpt);
+						   tmpl_t const *vpt);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
