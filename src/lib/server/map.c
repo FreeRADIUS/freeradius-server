@@ -710,70 +710,6 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 
 }
 
-/** Convert strings to #map_t
- *
- * Treatment of operands depends on quotation, barewords are treated
- * as attribute references, double quoted values are treated as
- * expandable strings, single quoted values are treated as literal
- * strings.
- *
- * Return must be freed with talloc_free
- *
- * @param[in] ctx		for talloc.
- * @param[out] out		Where to store the head of the map.
- * @param[in] lhs		of the tuple.
- * @param[in] lhs_quote		type of quoting around the LHS string
- * @param[in] lhs_rules		rules that control parsing of the LHS string.
- * @param[in] op		the operation to perform
- * @param[in] rhs		of the tuple.
- * @param[in] rhs_quote		type of quoting aounrd the RHS string.
- * @param[in] rhs_rules		rules that control parsing of the RHS string.
- * @return
- *	- #map_t if successful.
- *	- NULL on error.
- */
-static int map_afrom_fields(TALLOC_CTX *ctx, map_t **out,
-			    char const *lhs, fr_token_t lhs_quote, tmpl_rules_t const *lhs_rules,
-			    fr_token_t op,
-			    char const *rhs, fr_token_t rhs_quote, tmpl_rules_t const *rhs_rules)
-{
-	ssize_t slen;
-	map_t *map;
-
-	map = talloc_zero(ctx, map_t);
-	slen = tmpl_afrom_substr(map, &map->lhs,
-				 &FR_SBUFF_IN(lhs, strlen(lhs)),
-				 lhs_quote,
-				 NULL,
-				 lhs_rules);
-	if (slen < 0) {
-	error:
-		talloc_free(map);
-		return -1;
-	}
-
-	map->op = op;
-
-	if (tmpl_is_attr(map->lhs) &&
-	    tmpl_da(map->lhs)->flags.is_raw &&
-	    map_cast_from_hex(map, rhs_quote, rhs)) {
-		return 0;
-	}
-
-	slen = tmpl_afrom_substr(map, &map->rhs,
-				 &FR_SBUFF_IN(rhs, strlen(rhs)),
-				 rhs_quote,
-				 NULL,
-				 rhs_rules);
-	if (slen < 0) goto error;
-
-	MAP_VERIFY(map);
-
-	*out = map;
-
-	return 0;
-}
-
 /** Convert a value box to a map
  *
  * This is mainly used in IO modules, where another function is used to convert
@@ -846,46 +782,20 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 		       tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
-	char const *p = vp_str;
-	fr_token_t quote;
+	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
-	fr_pair_t_RAW raw;
-	map_t *map = NULL;
-
-	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
-	switch (quote) {
-	case T_BARE_WORD:
-		break;
-
-	case T_INVALID:
-	error:
+	if (map_afrom_sbuff(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+			    lhs_rules, rhs_rules) < 0) {
 		return -1;
+	}
 
-	default:
+	if (!fr_cond_assert(*out != NULL)) return -1;
+
+	if (!tmpl_is_attr((*out)->lhs)) {
+		TALLOC_FREE(*out);
 		fr_strerror_printf("Left operand must be an attribute");
 		return -1;
 	}
-
-	raw.op = getop(&p);
-	if (raw.op == T_INVALID) goto error;
-
-	raw.quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
-	if (raw.quote == T_INVALID) goto error;
-	if (!fr_str_tok[raw.quote]) {
-		fr_strerror_printf("Right operand must be an attribute or string");
-		return -1;
-	}
-
-	if ((map_afrom_fields(ctx, &map,
-			      raw.l_opand, T_BARE_WORD, lhs_rules,
-			      raw.op,
-			      raw.r_opand, raw.quote, rhs_rules) < 0) || !map) {
-		return -1;
-	}
-
-	*out = map;
-
-	MAP_VERIFY(map);
 
 	return 0;
 }
