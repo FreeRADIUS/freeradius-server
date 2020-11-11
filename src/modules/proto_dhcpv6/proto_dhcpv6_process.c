@@ -123,7 +123,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 	REQUEST_VERIFY(request);
 	fr_assert(request->packet->code > 0);
-	fr_assert(request->packet->code <= FR_DHCPV6_MAX_CODE);
+	fr_assert(request->packet->code <= FR_DHCPV6_RELAY_FORWARD);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
