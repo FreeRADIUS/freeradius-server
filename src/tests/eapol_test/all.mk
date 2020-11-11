@@ -101,4 +101,7 @@ endif
 
 $(TEST):
 	@echo "eapol_test build previously failed, skipping... retry with: $(MAKE) clean.$@ && $(MAKE) $@"
+
+test.eap.clean:
+	${Q}rm -f "$(BUILD_DIR)/tests/eapol_test"
 endif
