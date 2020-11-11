@@ -88,6 +88,11 @@ jobs:
     - name: Git LFS pull
       run: git lfs pull
 
+    - name: Package manager performance improvements
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
 
     - uses: actions/setup-ruby@v1
 
