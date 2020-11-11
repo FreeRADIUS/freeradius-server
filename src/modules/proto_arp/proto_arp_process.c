@@ -65,8 +65,12 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	};
 
 	REQUEST_VERIFY(request);
+
+#define REPLY_OK(_code, _default)	((_code < NUM_ELEMENTS(reply_ok)) ? reply_ok[_code] : _default)
+#define REPLY_FAIL(_code, _default)	((_code < NUM_ELEMENTS(reply_fail)) ? reply_fail[_code] : _default)
+
 	fr_assert(request->packet->code > 0);
-	fr_assert(request->packet->code < FR_ARP_MAX_PACKET_CODE);
+	fr_assert(request->packet->code < NUM_ELEMENTS(reply_ok));
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -119,13 +123,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = reply_ok[request->packet->code];
+			request->reply->code = REPLY_OK(request->packet->code, FR_ARP_CODE_DO_NOT_RESPOND);
 			break;
 
 		default:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_FAIL:
-			request->reply->code = reply_fail[request->packet->code];
+			request->reply->code = REPLY_FAIL(request->packet->code, FR_ARP_CODE_DO_NOT_RESPOND);
 			break;
 
 		case RLM_MODULE_HANDLED:
