@@ -4,15 +4,13 @@ on:
   push:
     branches:
       - coverity_scan
+  schedule:
+    - cron: '0 0 20 ? * * *'
 
 jobs:
-
   coverity:
-
     runs-on: ubuntu-20.04
-
     steps:
-
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -73,14 +71,12 @@ jobs:
           python-dev \
           python3-pip \
           quilt
-
-      - name: Restore coverity tool from cache
+      - name: Cache coverity tool
         uses: actions/cache@v2
         id: cache-coverity
         with:
           key: coverity-tool-cache-${{ runner.os }}
           path: coverity_tool.tar.gz
-
       - name: Download coverity tool
         if: steps.cache-coverity.outputs.cache-hit != 'true'
         run: |
@@ -89,7 +85,6 @@ jobs:
             -O coverity_tool.tar.gz
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
-
       - name: Extract coverity tool
         run: |
           mkdir coverity_tool
@@ -99,7 +94,6 @@ jobs:
           export PATH=`pwd`/coverity_tool/bin:$PATH
           ./configure -with-rlm-python-bin=/usr/bin/python2.7
           cov-build --dir cov-int make
-
       - name: Submit result
         run: |
           tar czf cov-int.tar.gz cov-int
