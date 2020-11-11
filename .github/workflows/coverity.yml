@@ -5,7 +5,7 @@ on:
     branches:
       - coverity_scan
   schedule:
-    - cron: '0 0 20 ? * * *'
+    - cron: '0 20 * * *'
 
 jobs:
   coverity:
