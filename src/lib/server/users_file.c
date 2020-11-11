@@ -89,8 +89,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	char entry[256];
 	char buffer[8192];
 	char const *ptr;
-	fr_pair_t *check_tmp = NULL;
-	fr_pair_t *reply_tmp = NULL;
+	fr_pair_list_t check_tmp;
+	fr_pair_list_t reply_tmp;
 	PAIR_LIST *pl = NULL, *t;
 	PAIR_LIST **last = &pl;
 	int order = 0;
@@ -103,6 +103,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 #endif
 	char newfile[8192];
 
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
 	DEBUG2("Reading file %s", file);
 
 	/*
@@ -315,8 +317,8 @@ parse_again:
 		t->reply = reply_tmp;
 		t->lineno = entry_lineno;
 		t->order = order++;
-		check_tmp = NULL;
-		reply_tmp = NULL;
+		fr_pair_list_init(&check_tmp);
+		fr_pair_list_init(&reply_tmp);
 
 		t->name = talloc_typed_strdup(t, entry);
 
