@@ -139,7 +139,7 @@ are available from [Network RADIUS](https://networkradius.com).
 
 [CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg?flat=1 "Coverity Status"
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
-[BuildStatus]: https://github.com/FreeRADIUS/freeradius-server/workflows/GitHub%20Actions%20CI/badge.svg?branch=master "CI status"
-[BuildStatusLink]: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3A%22GitHub+Actions+CI%22
+[BuildStatus]: https://github.com/FreeRADIUS/freeradius-server/workflows/CI/badge.svg?branch=master "CI status"
+[BuildStatusLink]: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3ACI
 [LGTMStatus]: https://img.shields.io/lgtm/alerts/g/FreeRADIUS/freeradius-server.svg?logo=lgtm&logoWidth=18
 [LGTMStatusLink]: https://lgtm.com/projects/g/FreeRADIUS/freeradius-server/alerts/
