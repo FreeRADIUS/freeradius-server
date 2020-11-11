@@ -189,6 +189,8 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 {
 	rlm_csv_entry_t *old;
 
+	fr_assert(e != NULL);
+
 	old = find_entry(inst, e->key);
 	if (old) {
 		if (!inst->allow_multiple_keys && !inst->multiple_index_fields) {
@@ -202,7 +204,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		 */
 		while (old->next) old = old->next;
 		old->next = e;
-		return e;
+		return true;
 	}
 
 	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
