@@ -921,7 +921,8 @@ static ssize_t snmp_process(fr_cursor_t *out, request_t *request,
 int fr_snmp_process(request_t *request)
 {
 	fr_cursor_t		request_cursor, op_cursor, out_cursor, reply_cursor;
-	fr_pair_t		*head = NULL, *vp;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp;
 
 	char			oid_str[FR_DICT_MAX_TLV_STACK * 4];	/* .<num>{1,3} */
 	size_t			oid_len, len;
@@ -932,6 +933,7 @@ int fr_snmp_process(request_t *request)
 
 	fr_pair_t		*op;
 
+	fr_pair_list_init(&head);
 	fr_cursor_init(&request_cursor, &request->request_pairs);
 	fr_cursor_iter_by_da_init(&op_cursor, &request->request_pairs, attr_snmp_operation);
 	fr_cursor_init(&reply_cursor, &request->reply_pairs);
