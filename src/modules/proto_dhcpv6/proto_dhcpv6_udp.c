@@ -422,7 +422,6 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 	talloc_set_name_const(track, "proto_dhcpv6_track_t");
 
 	memcpy(&track->header, packet, 4); /* packet code + 24-bit transaction ID */
-	if (!option) return track;
 
 	memcpy(&track->client_id[0], option + 4, option_len);
 	track->client_id_len = option_len;
