@@ -29,8 +29,6 @@ jobs:
     - name: Show versions
       run: |
         make --version
-        asciidoctor --version
-        pandoc --version
         doxygen --version
 
     - name: Build doxygen content
