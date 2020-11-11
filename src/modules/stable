@@ -26,6 +26,7 @@ rlm_python
 rlm_radutmp
 rlm_redis
 rlm_rest
+rlm_simulchk
 rlm_soh
 rlm_sql
 rlm_sqlcounter
