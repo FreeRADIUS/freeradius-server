@@ -1,0 +1,40 @@
+name: Documentation
+
+on:
+  push:
+    branches-ignore: 
+      - coverity_scan
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+        
+    - name: Install common build dependencies
+      run: |
+        sudo apt-get install -y --no-install-recommends \
+        doxygen \
+        graphviz
+        
+    - name: Install Antora
+      run: |
+        sudo npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
+        
+    - name: Show versions
+      run: |
+        make --version
+        asciidoctor --version
+        pandoc --version
+        doxygen --version
+
+    - name: Build doxygen content
+      run: make doxygen
+   
+    - name: Build Antora docsite
+      run: make docsite
