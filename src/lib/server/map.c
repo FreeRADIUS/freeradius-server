@@ -499,26 +499,9 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 
 		slen = tmpl_afrom_substr(map, &tmpl, &sbuff, token,
 					 tmpl_parse_rules_quoted[token], rhs_rules);
-		if (slen <= 0) goto error;
-
-		/*
-		 *	If LHS is a raw attribute, then try to parse
-		 *	the RHS as octets, and then try to convert it
-		 *	to the "correct" data type.
-		 *
-		 *	We have to parse the RHS as a tmpl first,
-		 *	because map_cast_from_hex() doesn't (yet) take
-		 *	sbuffs, and it also requires that map->rhs==NULL.
-		 */
-		if (tmpl_is_attr(map->lhs) &&
-		    tmpl_da(map->lhs)->flags.is_raw &&
-		    map_cast_from_hex(map, T_BARE_WORD, tmpl->name)) {
-			talloc_free(tmpl);
-		} else {
-			map->rhs = tmpl;
-		}
 		break;
 	}
+	if (slen <= 0) goto error;
 
 	/*
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
