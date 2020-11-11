@@ -1213,10 +1213,11 @@ done:
 
 static char *next_word(char **in)
 {
-	char *out = *in;
-	char *p = out;
+	char *p;
 
 	if (!in || !*in) return NULL;
+
+	p = *in;
 
 	while (*p && !isspace((int) *p)) p++;
 	if (!*p) {
@@ -1226,7 +1227,7 @@ static char *next_word(char **in)
 		*in = p;
 	}
 
-	return out;
+	return *in;
 }
 
 static char *make_ad_check_headers(char const *nm, unsigned int argc, char **argv)
