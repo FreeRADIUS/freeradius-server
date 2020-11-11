@@ -146,8 +146,6 @@ ssize_t		map_print(fr_sbuff_t *out, map_t const *map);
 void		map_debug_log(request_t *request, map_t const *map,
 			      fr_pair_t const *vp) CC_HINT(nonnull(1, 2));
 
-bool		map_cast_from_hex(map_t *map, fr_token_t rhs_type, char const *rhs);
-
 extern fr_table_num_sorted_t const map_assignment_op_table[];
 extern size_t map_assignment_op_table_len;
 
