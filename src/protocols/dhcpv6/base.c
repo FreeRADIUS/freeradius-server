@@ -28,6 +28,7 @@
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 #include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
+#include <freeradius-devel/protocol/dhcpv6/rfc5007.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
@@ -437,7 +438,22 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		}
 		return verify_to_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
 
-	case FR_PACKET_TYPE_VALUE_SOLICIT:
+	case FR_DHCPV6_LEASE_QUERY_REPLY:
+		transaction_id = fr_net_to_uint24(&packet[1]);
+		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
+
+		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
+
+		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
+		if (!option) goto fail_cid;
+
+		/*
+		 *	The DUID MUST exist.
+		 */
+		if (!packet_ctx->duid) goto fail_duid;
+		if (!duid_match(option, packet_ctx)) goto fail_match;
+		break;
+
 	case FR_PACKET_TYPE_VALUE_REQUEST:
 	case FR_PACKET_TYPE_VALUE_CONFIRM:
 	case FR_PACKET_TYPE_VALUE_RENEW:
@@ -541,6 +557,23 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		}
 
 		return verify_from_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
+
+	case FR_PACKET_TYPE_VALUE_LEASE_QUERY:
+		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
+
+		/*
+		 *	Server-ID is a SHOULD, but if it exists, it
+		 *	MUST match.
+		 */
+		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
+		if (option && !duid_match(option, packet_ctx)) goto fail_match;
+
+		option = fr_dhcpv6_option_find(options, end, FR_LEASE_QUERY);
+		if (!option) {
+			fr_strerror_printf("Packet does not contain a Lease-Query option");
+			return false;
+		}
+		break;
 
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
 	case FR_PACKET_TYPE_VALUE_REPLY:
