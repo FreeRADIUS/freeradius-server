@@ -62,10 +62,11 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 		     request_t *request, char const *fmt)
 {
-	fr_pair_t		*head;
+	fr_pair_list_t		head;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
 
+	fr_pair_list_init(&head);
 	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
 		return -1;
@@ -462,9 +463,11 @@ fr_pair_t *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	fr_pair_t		*out = NULL, *vp;
+	fr_pair_list_t		out;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 
+	fr_pair_list_init(&out);
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
