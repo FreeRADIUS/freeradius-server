@@ -102,29 +102,29 @@ struct fr_dbuff_s {
 	/** @private
 	 */
 	union {
-		uint8_t const *buff_i;			//!< Immutable buffer pointer.
-		uint8_t *buff;				//!< Mutable buffer pointer.
+		uint8_t const *buff_i;			//!< Immutable 'buffer' pointer.
+		uint8_t *buff;				//!< Mutable 'buffer' pointer.
 	};
 
 	/** @private
 	 */
 	union {
-		uint8_t const *start_i;			//!< Immutable start pointer.
-		uint8_t *start;				//!< Mutable start pointer.
+		uint8_t const *start_i;			//!< Immutable 'start' pointer.
+		uint8_t *start;				//!< Mutable 'start' pointer.
 	};
 
 	/** @private
 	 */
 	union {
-		uint8_t const *end_i;			//!< Immutable end pointer.
-		uint8_t *end;				//!< Mutable end pointer.
+		uint8_t const *end_i;			//!< Immutable 'end' pointer.
+		uint8_t *end;				//!< Mutable 'end' pointer.
 	};
 
 	/** @private
 	 */
 	union {
-		uint8_t const *p_i;			//!< Immutable position pointer.
-		uint8_t *p;				//!< Mutable position pointer.
+		uint8_t const *p_i;			//!< Immutable 'current' pointer.
+		uint8_t *p;				//!< Mutable 'current' pointer.
 	};
 
 	uint8_t			is_const:1;	//!< The buffer this dbuff wraps is const.
@@ -359,7 +359,7 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 	 *	We always allocate a buffer so we don't trigger ubsan
 	 *	errors by performing arithmetic on NULL pointers.
 	 *
-	 *	Note that unlike dbuffs, we don't need space for a trailing '\0'.
+	 *	Note that unlike sbuffs, we don't need space for a trailing '\0'.
 	 */
 	buff = talloc_zero_array(ctx, uint8_t, init);
 	if (!buff) {
@@ -484,12 +484,16 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 
 /** Extend if we're below _lowat
  *
- * @param[out] _status		Should be initialised to FR_SBUFF_EXTENDABLE
- *				for the first call to this function if used
- *				as a loop condition.
- *				Will be filled with the result of the previous
- *				call, and can be used to determine if the buffer
- *				was extended.
+ * @param[out] _status		May be NULL.  If fr_dbuff_extend_lowat is used
+ *				in a copy loop, the caller should pass a pointer
+ *      			to a #fr_dbuff_extend_status_t.  The initial
+ *				value of the #fr_dbuff_extend_status_t variable
+ *      			should be #FR_SBUFF_EXTENDABLE, and will be updated
+ *				to indicate whether the dbuff is extensible,
+ *				whether it was extended, and whether it may be
+ *				extended again.  This information
+ *				is used the loop condition to prevent spurious
+ *				extension calls.
  * @param[in] _dbuff_or_marker	to extend.
  * @param[in] _lowat		If bytes remaining are below the amount, extend.
  * @return
