@@ -717,7 +717,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
 		tmpl_t		*dst;
 		request_t			*current;
-		fr_pair_t		**vps;
+		fr_pair_list_t		*vps;
 		TALLOC_CTX		*ctx;
 		fr_dict_attr_t const	*da;
 		fr_pair_t		*vp;
@@ -1018,7 +1018,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		};
 
 		request_t		*current = request;
-		fr_pair_t	**vps, *vp = NULL;
+		fr_pair_list_t		*vps;
+		fr_pair_t		*vp = NULL;
 
 		TALLOC_FREE(dst);
 
