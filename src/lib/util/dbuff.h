@@ -152,6 +152,7 @@ do { \
 	.parent 	= (_dbuff) \
 }
 
+/** @cond */
 /** Reserve N bytes in the dbuff when passing it to another function
  * @private
  */
@@ -169,6 +170,7 @@ do { \
 	.uctx		= NULL, \
 	.parent		= (_dbuff) \
 }
+/* @endcond */
 
 /** Reserve N bytes in the dbuff when passing it to another function
  *
