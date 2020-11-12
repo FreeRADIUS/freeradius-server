@@ -266,9 +266,11 @@ static fr_pair_t *eap_peap_inner_to_pairs(UNUSED request_t *request, fr_radius_p
 {
 	size_t 		total;
 	uint8_t		*p;
-	fr_pair_t	*vp = NULL, *head = NULL;
+	fr_pair_t	*vp = NULL;
+	fr_pair_list_t	head;
 	fr_cursor_t	cursor;
 
+	fr_pair_list_init(&head);
 	if (data_len > 65535) return NULL; /* paranoia */
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
