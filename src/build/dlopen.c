@@ -577,6 +577,8 @@ static void ad_have_feature(char const *symbol)
 	ad_define_t *def, **last;
 	size_t len;
 
+	if (!symbol) return;
+
 	len = strlen(symbol);
 
 	def = malloc(sizeof(ad_define_t) + len + 5 + 2 + 1);
