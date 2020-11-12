@@ -896,12 +896,13 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	FR_CODE			code;
-	fr_pair_t		*fast_vps = NULL;
+	fr_pair_list_t		fast_vps;
 	fr_cursor_t		cursor;
 	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
 
+	fr_pair_list_init(&fast_vps);
 	/*
 	 * Just look at the buffer directly, without doing
 	 * record_to_buff.
