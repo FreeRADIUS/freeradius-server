@@ -44,19 +44,16 @@ typedef struct fr_dbuff_s fr_dbuff_t;
 
 /** A position marker associated with a dbuff
  *
- * Markers are used whenever the caller needs to access part
- * of the underlying buffer other than the start, current
- * position, or end.
+ * Markers are used whenever the caller needs to access part of the underlying
+ * buffer other than the 'start', 'current' or 'end' positions.
  *
- * Markers are needed because if a dbuff is extended, pointers
- * into the underlying buffer may be invalidated by a realloc
- * or memmove.
+ * Markers are needed because if a #fr_dbuff_t is extended, pointers into the
+ * underlying buffer may be invalidated by a realloc or memmove.
  *
- * Markers are intended to be allocated on the stack and
- * associated with a stack specific `fr_dbuff_t`.  Using a
- * stack frame specific dbuff ensures markers are automatically
- * released when the stack frame is popped, so that markers
- * are not leaked.
+ * Markers are intended to be allocated on the stack and associated with a
+ * stack specific `fr_dbuff_t`.  Using a stack frame specific dbuff ensures
+ * markers are automatically released when the stack frame is popped so that
+ * markers are not leaked.
  */
 typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
 
@@ -319,6 +316,8 @@ _fr_dbuff_init(_out, \
 			char const *	: true \
 	       ))
 
+size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
+
 /** Talloc extension structure use by #fr_dbuff_init_talloc
  * @private
  *
@@ -549,14 +548,12 @@ do { \
  * @{
  */
 void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
-
-size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 /** @} */
 
 /** @name Length check macros
  *
- * These macros return the amount of data used/remaining relative to
- * the dbuff or marker's start, p, and end pointers.
+ * These macros return the amount of data used/remaining relative to the dbuff
+ * or marker's 'start', 'current', and 'end' pointers.
  *
  * In the majority of cases these macros should not be used and the extension
  * request functions should be used instead.  The only exception to this is if
@@ -596,7 +593,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  *	- -0 we're at the end of the buffer.
  */
 #define FR_DBUFF_REMAINING_RETURN(_dbuff_or_marker, _len) \
-	if ((_len) > fr_dbuff_remaining(_dbuff_or_marker)) return -((_len) - fr_dbuff_remaining(_dbuff))
+	if ((_len) > fr_dbuff_remaining(_dbuff_or_marker)) return -((_len) - fr_dbuff_remaining(_dbuff_or_marker))
 
 /** Return the number of bytes remaining between the start of the dbuff or marker and the current position
  *
@@ -617,8 +614,8 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 /** @name Accessors
  *
  * Caching the pointers returned by the accessors is strongly discouraged.
- * Cached pointers can become invalidated if the dbuff is extended, as the
- * extensions callback may use realloc or memmove on the underlying buffer.
+ * Cached pointers can become invalidated if the #fr_dbuff_t is extended, as
+ * the extensions callback may use realloc or memmove on the underlying buffer.
  *
  @code{.c}
  fr_dbuff_t dbuff;
@@ -634,9 +631,9 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  						// SEGV as p may now be invalid.
  @endcode
  *
- * If offsets of a dbuff need to be accessed, markers should be used.  If a dbuff
- * is extended all markers associated with it will be updated so that the data they
- * point to remains constant.
+ * If offsets of a #fr_dbuff_t need to be accessed, markers should be used.
+ * If a dbuff is extended all markers associated with it will be updated so that the
+ * data they point to remains constant.
  *
  @code{.c}
  fr_dbuff_t dbuff;
@@ -801,7 +798,7 @@ static inline ssize_t _fr_dbuff_set(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t 
 	return p - c;
 }
 
-/** Set the position in a dbuff or marker using another dbuff or marker, a char pointer, or a length value
+/** Set the 'current' position in a dbuff or marker using another dbuff or marker, a char pointer, or a length value
  *
  * @param[in] _dst	dbuff or marker to set the position for.
  * @param[in] _src	Variable to glean new position from.  Behaviour here
@@ -829,13 +826,13 @@ _fr_dbuff_set(\
 	) \
 )
 
-/** Set the position in a dbuff or marker returning if _src is out of range
+/** Set the 'current' position in a dbuff or marker returning if _src is out of range
  *
  * @copydetails fr_dbuff_set
  */
 #define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
 
-/** Advance position in dbuff or marker by _len bytes
+/** Advance 'current' position in dbuff or marker by _len bytes
  *
  * @param[in] _dbuff_or_marker	to advance.
  * @param[in] _len		How much to advance dbuff by.
@@ -846,19 +843,19 @@ _fr_dbuff_set(\
  */
 #define fr_dbuff_advance(_dbuff_or_marker, _len)  fr_dbuff_set(_dbuff_or_marker, (fr_dbuff_current(_dbuff_or_marker) + (_len)))
 
-/** Advance position in dbuff or marker by _len bytes returning if _len is out of range
+/** Advance the 'current' position in dbuff or marker by _len bytes returning if _len is out of range
  *
  * @copydetails fr_dbuff_advance
  */
 #define FR_DBUFF_ADVANCE_RETURN(_dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff_or_marker, _len)
 
-/** Reset the current position of the dbuff or marker to the start of the buffer
+/** Reset the 'current' position of the dbuff or marker to the 'start' of the buffer
  *
  */
 #define fr_dbuff_set_to_start(_dbuff_or_marker) \
 	fr_dbuff_set(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker))
 
-/** Reset the current position of the dbuff or marker to the end of the buffer
+/** Reset the 'current' position of the dbuff or marker to the 'end' of the buffer
  *
  */
 #define fr_dbuff_set_to_end(_dbuff_or_marker) \
@@ -867,19 +864,26 @@ _fr_dbuff_set(\
 
 /** @name Add and release dbuff markers
  *
- * Markers are used to indicate an area of the code is working at a particular
- * point in a dbuff.
+ * Markers serve two purposes:
  *
- * If the dbuff is performing stream decoding, then markers are used to update
- * any pointers to the buffe as the data in the buffer is shifted to make
- * room for new data from the stream.
+ * - Markers allow the caller to track content in a dbuff as the dbuff is extended.
+ *   If the caller referred to content using a pointer into the underlying buffer,
+ *   that pointer may be invalidated if the buffer were extended.
  *
- * If the dbuff is being dynamically expanded the markers are updated if the
- * buffer is re-allocated.
+ * - Markers prevent content being shifted out of the buffer during an extension.
+ *
+ * Most operations that can be performed on an #fr_dbuff_t can also be performed
+ * on a #fr_dbuff_marker_t.
+ *
+ * It is recommended that markers be created against a stack-frame-local dbuff so
+ * that they are automatically released when the framed is popped.
+ *
+ * @see fr_dbuff_marker_t
+ *
  * @{
  */
 
-/** Initialises a new marker pointing to the current position of the dbuff
+/** Initialises a new marker pointing to the 'current' position of the dbuff
  *
  * @param[out] m	to initialise.
  * @param[in] dbuff	to associate marker with.
@@ -988,19 +992,17 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 
 /** Copy exactly _inlen bytes into a dbuff or marker
  *
- * If _in is a dbuff and _inlen is greater than the
- * number of bytes available in _in, then the copy operation will
- * be truncated, so that we don't read off the end of the buffer.
+ * If _in is a dbuff and _inlen is greater than the number of bytes available
+ * in that dbuff, the copy operation will fail.
  *
- * @note If _in is a dbuff _in will not be advanced.
- *	 If this is required #fr_dbuff_move should be used.
+ * @note _in will not be advanced.  If this is required #fr_dbuff_move should be used.
  *
  * @param[in] _out	Where to copy data to.  May be a dbuff or marker.
  * @param[in] _in	Data to copy to dbuff or marker.
  * @param[in] _inlen	How much data we need to copy.
- *			If _in is a char * or dbuff * and SIZE_MAX
+ *			If _in is a `char *` or `dbuff *` and SIZE_MAX
  *			is passed, then _inlen will be substituted
- *			for the length of the buffer.
+ *			for the length of the data in the dbuff.
  * @return
  *	- 0	no data copied.
  *	- >0	the number of bytes copied to the dbuff.
@@ -1064,11 +1066,10 @@ static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff
  * Use this variant when writing data to a streaming buffer where
  * partial writes will be tracked.
  *
- * If _in is a #fr_dbuff_t and _inlen is greater than the
- * number of bytes available in _in, then the copy operation will
- * be truncated, so that we don't read off the end of the buffer.
+ * If _in is a #fr_dbuff_t and _inlen is greater than the number of bytes
+ * available in that dbuff, the copy operation will truncated.
  *
- * @note _in will not be advanced.  If this is required fr_dbuff_move() should be used.
+ * @note _in will not be advanced.  If this is required #fr_dbuff_move should be used.
  *
  * @param[in] _out	to copy data to.
  * @param[in] _in	Data to copy to dbuff.
@@ -1330,26 +1331,31 @@ static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbu
  *
  * @private
  */
-static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t *out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
+static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t **out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(out, outlen);
+	size_t ext_len;
 
-	return _fr_dbuff_out_memcpy(out_p, pos_p, in, outlen);
+	if (outlen == SIZE_MAX) {
+		ext_len = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*out_p), outlen);
+		if (ext_len < outlen) outlen = ext_len;
+	} else {
+		_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(out_p, out, outlen);		/* Extend out or return */
+	}
+
+	return _fr_dbuff_out_memcpy(*out_p, pos_p, in, outlen);
 }
 
 /** Copy exactly _outlen bytes from the dbuff
  *
- * If _out is a dbuff and _outlen is greater than the
- * number of bytes available in _out, then the copy operation will
- * fail.
+ * If _out is a dbuff and _outlen is greater than the number of bytes
+ * available in that dbuff, the copy operation will fail.
  *
- * @note If _out is a dbuff it will not be advanced.
- *	 If this is required fr_dbuff_move() should be used.
+ * @note _out will not be advanced.  If this is required #fr_dbuff_move should be used.
  *
  * @param[in] _out	to copy data to.
  * @param[in] _in	Data to copy to dbuff.
  * @param[in] _outlen	How much data we need to copy.
- *			If _out is a char * or dbuff * and SIZE_MAX
+ *			If _out is `fr_dbuff_t *` and SIZE_MAX
  *			is passed, then _inlen will be substituted
  *			for the length of the buffer.
  * @return
@@ -1361,8 +1367,8 @@ static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t *out_p, fr_dbuff_t *out
 #define fr_dbuff_out_memcpy(_out, _in, _outlen) \
 	_Generic((_out), \
 		 uint8_t *		: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), _in, _outlen), \
-		 fr_dbuff_t *		: _fr_dbuff_out_memcpy_dbuff(((fr_dbuff_t *)(_out))->p, fr_dbuff_ptr((fr_dbuff_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen), \
-		 fr_dbuff_marker_t *	: _fr_dbuff_out_memcpy_dbuff(((fr_dbuff_marker_t *)(_out))->p, fr_dbuff_ptr((fr_dbuff_marker_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen) \
+		 fr_dbuff_t *		: _fr_dbuff_out_memcpy_dbuff(_fr_dbuff_current_ptr((fr_dbuff_t *)_out), fr_dbuff_ptr((fr_dbuff_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen), \
+		 fr_dbuff_marker_t *	: _fr_dbuff_out_memcpy_dbuff(_fr_dbuff_current_ptr((fr_dbuff_marker_t *)_out), fr_dbuff_ptr((fr_dbuff_marker_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen) \
 	)
 
 /** Copy outlen bytes from the dbuff returning if there's insufficient data in the dbuff
