@@ -38,9 +38,11 @@
 ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote)
 {
 	fr_sbuff_t	our_out;
-	fr_pair_t	*child, *head;
+	fr_pair_t	*child;
+	fr_pair_list_t	head;
 	fr_cursor_t	cursor;
 
+	fr_pair_list_init(&head);
 	VP_VERIFY(vp);
 
 	/*
