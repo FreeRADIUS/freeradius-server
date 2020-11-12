@@ -194,7 +194,7 @@ struct rlm_isc_dhcp_info_s {
 	 */
 	fr_hash_table_t		*hosts_by_ether;  //!< by MAC address
 	fr_hash_table_t		*hosts_by_uid;	//!< by client identifier
-	fr_pair_t		*options;	//!< DHCP options
+	fr_pair_list_t		options;	//!< DHCP options
 	fr_trie_t		*subnets;
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
@@ -1284,6 +1284,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
 
 	info = talloc_zero(parent, rlm_isc_dhcp_info_t);
+	fr_pair_list_init(&info->options);
 	if (tokens[half].max_argc) {
 		info->argv = talloc_zero_array(info, fr_value_box_t *, tokens[half].max_argc);
 	}
@@ -2204,6 +2205,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
+	fr_pair_list_init(&info->options);
 	info->last = &(info->child);
 
 	inst->hosts_by_ether = fr_hash_table_create(inst, host_ether_hash, host_ether_cmp, NULL);
