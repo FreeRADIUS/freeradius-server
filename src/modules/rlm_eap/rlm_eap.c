@@ -706,15 +706,8 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	ua = eap_method_select(p_result, mctx, eap_session);
+	if ((ua = eap_method_select(p_result, mctx, eap_session)) != UNLANG_ACTION_CALCULATE_RESULT) return ua;
 	switch (*p_result) {
- 	/*
- 	 *	Leave the session thawed, next state
- 	 *	func will need to re-freeze.
- 	 */
-	case RLM_MODULE_YIELD:
-		return ua;
-
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		eap_session_freeze(&eap_session);
