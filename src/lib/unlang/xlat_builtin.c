@@ -984,12 +984,13 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	fr_pair_t		*vp;
 	fr_cursor_t		cursor, to_merge;
 	tmpl_cursor_ctx_t	cc;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	ssize_t			slen;
 	int			count = 0;
 	char const		*p = fmt;
 	char			delim;
 
+	fr_pair_list_init(&head);
 	/*
 	 *  Trim whitespace
 	 */
