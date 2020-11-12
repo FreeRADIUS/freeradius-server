@@ -43,13 +43,15 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *
 				   map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
-	fr_pair_t		*head = NULL, *vp;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
 
 	fr_assert(ctx != NULL);
 
+	fr_pair_list_init(&head);
 	fr_cursor_init(&cursor, &head);
 
 	/*
