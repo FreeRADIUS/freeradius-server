@@ -457,12 +457,11 @@ static int mod_detach(void *instance)
  * Checks there is a password available so we can authenticate
  * against winbind and, if so, sets Auth-Type to ourself.
  *
- * @param[in] mctx	Module instance data.
- * @param[in] request	The current request.
- *
- * @return
- *	- #RLM_MODULE_NOOP unable to use winbind authentication
- *	- #RLM_MODULE_OK Auth-Type has been set to winbind
+ * @param[out] p_result		The result of the module call:
+ *				- #RLM_MODULE_NOOP unable to use winbind authentication
+ *				- #RLM_MODULE_OK Auth-Type has been set to winbind
+ * @param[in] mctx		Module instance data.
+ * @param[in] request		The current request.
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -489,10 +488,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 /** Authenticate the user via libwbclient and winbind
  *
- * @param[in] mctx	Module instance data.
- * @param[in] request	The current request
- *
- * @return One of the RLM_MODULE_* values
+ * @param[out] p_result		The result of the module call.
+ * @param[in] mctx		Module instance data.
+ * @param[in] request		The current request
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {

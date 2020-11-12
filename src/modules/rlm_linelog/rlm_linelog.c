@@ -439,12 +439,12 @@ static size_t linelog_escape_func(UNUSED request_t *request,
  *
  * Write a log message to syslog or a flat file.
  *
+ * @param[in] p_result	the result of the module call:
+ *			- #RLM_MODULE_NOOP if no message to log.
+ *			- #RLM_MODULE_FAIL if we failed writing the message.
+ *			- #RLM_MODULE_OK on success.
  * @param[in] mctx	module calling context.
  * @param[in] request	The current request.
- * @return
- *	- #RLM_MODULE_NOOP if no message to log.
- *	- #RLM_MODULE_FAIL if we failed writing the message.
- *	- #RLM_MODULE_OK on success.
  */
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {

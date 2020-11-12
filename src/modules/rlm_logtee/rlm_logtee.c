@@ -516,11 +516,11 @@ finish:
 
 /** Add our logging destination to the linked list of logging destinations (if it doesn't already exist)
  *
+ * @param[in] p_result	the result of the module call:
+ *			- #RLM_MODULE_NOOP	if log destination already exists.
+ *			- #RLM_MODULE_OK	if we added a new destination.
  * @param[in] mctx	Module calling ctx.
  * @param[in] request	request to add our log destination to.
- * @return
- *	- #RLM_MODULE_NOOP	if log destination already exists.
- *	- #RLM_MODULE_OK	if we added a new destination.
  */
 static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
