@@ -44,7 +44,7 @@ extern fr_ext_t const fr_dict_enum_ext_def;
  */
 static inline void *dict_attr_ext_alloc_size(fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext, size_t ext_len)
 {
-	if (unlikely((*da_p)->dict && fr_dict_is_read_only((*da_p)->dict))) {
+	if (!(*da_p)->flags.is_unknown && unlikely((*da_p)->dict && fr_dict_is_read_only((*da_p)->dict))) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root((*da_p)->dict)->name);
 		return NULL;
 	}
@@ -57,7 +57,7 @@ static inline void *dict_attr_ext_alloc_size(fr_dict_attr_t **da_p, fr_dict_attr
  */
 static inline void *dict_attr_ext_alloc(fr_dict_attr_t **da_p, fr_dict_attr_ext_t ext)
 {
-	if (unlikely((*da_p)->dict && fr_dict_is_read_only((*da_p)->dict))) {
+	if (!(*da_p)->flags.is_unknown && unlikely((*da_p)->dict && fr_dict_is_read_only((*da_p)->dict))) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root((*da_p)->dict)->name);
 		return NULL;
 	}
