@@ -331,13 +331,31 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
+	 *	Load proto_arp_process.  We don't have "type = ...",
+	 *	because there's only one allowed type.  As a result,
+	 *	we can't call fr_app_process_type_parse(), unless we
+	 *	butcher that function to almost meaninglessness.
 	 */
 	if (dl_module_instance(inst->cs, &inst->app_process, inst->cs,
 			       parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
 		cf_log_perr(inst->cs, "Failed to load proto_arp_process");
 		return -1;
 	}
+
+	/*
+	 *	Check for "recv", and add the app_process library to
+	 *	the virtual server.  These re the only two steps done
+	 *	by fr_app_process_type_parse(), which we need.
+	 *
+	 *	If at some point proto_arp_process takes instance data,
+	 *	we will need to go add that, too
+	 */
+	if (!cf_section_find(inst->server_cs, "recv", "Request")) {
+		cf_log_err(inst->server_cs, "Failed finding 'recv Request {...} section of virtual server %s",
+			   cf_section_name2(inst->server_cs));
+		return -1;
+	}
+	cf_data_add_static(inst->server_cs, inst->app_process, "app_process", false);
 
 	/*
 	 *	Bootstrap the I/O module
