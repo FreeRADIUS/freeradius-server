@@ -96,10 +96,12 @@ fr_dict_autoload_t proto_dhcpv4_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_message_type;
+static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -145,7 +147,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_name(attr_message_type, type_str, -1);
+	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
