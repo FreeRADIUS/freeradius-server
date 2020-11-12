@@ -123,6 +123,15 @@ struct fr_dbuff_s {
 						///< buffer changes.
 };
 
+/** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the dbuff
+ *
+ */
+#define FR_DBUFF_RETURN(_func, ...) \
+do { \
+	ssize_t _slen = _func(__VA_ARGS__ ); \
+	if (_slen < 0) return _slen; \
+} while (0)
+
 /** @name Initialisers
  * @{
  */
@@ -883,15 +892,6 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
  * @{
  */
 
-/** Generic wrapper macro to return if there's insufficient memory to satisfy the request on the dbuff
- *
- */
-#define FR_DBUFF_RETURN(_func, ...) \
-do { \
-	ssize_t _slen = _func(__VA_ARGS__ ); \
-	if (_slen < 0) return _slen; \
-} while (0)
-
 /** Internal copy function to switch between memcpy and memmove - do not call directly
  * @private
  *
@@ -1185,6 +1185,7 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 	)
 
 /** Copy data from a fixed sized C type to a dbuff returning if there is insufficient space
+ *
  * @copydetails fr_dbuff_in
  */
 #define FR_DBUFF_IN_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_in, _out, _in)
@@ -1212,6 +1213,12 @@ static inline ssize_t _fr_dbuff_in_uint64v(uint8_t **pos_p, fr_dbuff_t *dbuff, u
  */
 #define fr_dbuff_in_uint64v(_dbuff_or_marker, _num) \
 	_fr_dbuff_in_uint64v(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _num)
+
+/** Copy an integer value into a dbuff or marker using our internal variable length encoding returning if there is insufficient space
+ *
+ * @copydetails fr_dbuff_in_uint64v
+ */
+#define FR_DBUFF_IN_UINT64V(_dbuff_or_marker, _num) FR_DBUFF_RETURN(fr_dbuff_in_uint64v, _dbuff_or_marker, _num)
 /** @} */
 
 /** @name "move" functions (copy data between dbuffs and markers)
