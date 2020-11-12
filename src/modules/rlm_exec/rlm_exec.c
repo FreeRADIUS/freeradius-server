@@ -104,7 +104,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 {
 	int			result;
 	rlm_exec_t const	*inst = mod_inst;
-	fr_pair_t		**input_pairs = NULL;
+	fr_pair_list_t		*input_pairs = NULL;
 	char *p;
 
 	if (!inst->wait) {
@@ -260,13 +260,14 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
-	fr_pair_t		*env_pairs = NULL;
+	fr_pair_list_t		env_pairs;
 
+	fr_pair_list_init(&env_pairs);
 	/*
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		fr_pair_t **input_pairs;
+		fr_pair_list_t *input_pairs;
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
@@ -356,7 +357,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 	if (inst->output && m->box) {
 		TALLOC_CTX *ctx;
-		fr_pair_t *vps, **output_pairs;
+		fr_pair_list_t vps, *output_pairs;
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
@@ -392,9 +393,10 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 {
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 	rlm_exec_ctx_t		*m;
-	fr_pair_t		*env_pairs = NULL;
+	fr_pair_list_t		env_pairs;
 	TALLOC_CTX		*ctx;
 
+	fr_pair_list_init(&env_pairs);
 	if (!inst->tmpl) {
 		RDEBUG("This module requires 'program' to be set.");
 		RETURN_MODULE_FAIL;
@@ -420,7 +422,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		fr_pair_t **input_pairs;
+		fr_pair_list_t *input_pairs;
 
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) RETURN_MODULE_INVALID;
