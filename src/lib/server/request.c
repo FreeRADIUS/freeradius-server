@@ -104,6 +104,12 @@ static void request_init(char const *file, int line, request_t *request)
 	request->alloc_line = line;
 
 	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
+
+	/*
+	 *	Initialise pair value lists
+	 */
+	fr_pair_list_init(&request->control);
+	fr_pair_list_init(&request->state);
 }
 
 /** Callback for freeing a request struct
