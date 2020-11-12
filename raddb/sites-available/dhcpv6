@@ -24,7 +24,7 @@ server dhcpv6 {
 	#  all_dhcp_servers_and_relays:: Predefined multicast address
 	#  for DHCPv6 servers and relays.
 	#
-	#  This configuration item is here for convenience.  It alloss
+	#  This configuration item is here for convenience.  It allows
 	#  each `listen` section below to use this definition, so that
 	#  those sections do not need to list magic numbers.
 	#
