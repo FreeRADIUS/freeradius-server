@@ -145,7 +145,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Verify space for the packet...
 	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_t));
+	FR_DBUFF_REMAINING_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_t));
 
 	/*
 	 * 3.4. The TACACS+ Packet Header

@@ -395,7 +395,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	enterprise-number, plus the data length, plus at least
 	 *	one option header.
 	 */
-	FR_DBUFF_CHECK_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN + sizeof(uint32_t) + 3);
+	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN + sizeof(uint32_t) + 3);
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
