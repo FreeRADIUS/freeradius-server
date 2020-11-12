@@ -503,7 +503,7 @@ struct tmpl_cursor_nested_s {
 		} group;
 
 		struct {
-			fr_pair_t		**list_head;		//!< Head of the list we're currently
+			fr_pair_list_t		*list_head;		//!< Head of the list we're currently
 									///< iterating over.
 		} leaf;
 	};
@@ -518,7 +518,7 @@ struct tmpl_cursor_ctx_s {
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
 	request_t		*request;	//!< Result of following the request references.
-	fr_pair_t		**list;		//!< List within the request.
+	fr_pair_list_t		*list;		//!< List within the request.
 
 	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
 						///< one of these so it doesn't make sense to
@@ -544,7 +544,7 @@ typedef struct {
 
 	TALLOC_CTX		*list_ctx;	//!< Where to allocate new attributes if building
 						///< out from the current extents of the tree.X
-	fr_pair_t		**list;		//!< List that we tried to evaluate ar in and failed.
+	fr_pair_list_t		*list;		//!< List that we tried to evaluate ar in and failed.
 						///< Or if ar is NULL, the list that represents the
 						///< deepest grouping or TLV attribute the chain of
 						///< ars referenced.
@@ -741,7 +741,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  * Example:
  @code{.c}
    TALLOC_CTX *ctx;
-   fr_pair_t **head;
+   fr_pair_list_t *head;
    fr_value_box_t value;
 
    RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
