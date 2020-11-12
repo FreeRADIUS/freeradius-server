@@ -1076,6 +1076,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 static void _rs_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
+
 	request->event = NULL;
 	rs_packet_cleanup(request);
 }
@@ -1212,6 +1213,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	rs_request_t		search;
 
 	memset(&search, 0, sizeof(search));
+	fr_pair_list_init(&search.link_vps);
 
 	if (!start_pcap.tv_sec) {
 		start_pcap = header->ts;
@@ -1656,6 +1658,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		} else {
 			original = talloc_zero(conf, rs_request_t);
 			talloc_set_destructor(original, _request_free);
+			fr_pair_list_init(&original->link_vps);
 
 			original->id = count;
 			original->in = event->in;

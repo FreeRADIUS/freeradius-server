@@ -208,7 +208,7 @@ typedef struct {
 	bool			silent_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
 
-	fr_pair_t		*link_vps;		//!< fr_pair_ts used to link retransmissions.
+	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
 
 	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
 	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
