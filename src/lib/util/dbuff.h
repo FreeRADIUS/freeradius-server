@@ -60,7 +60,7 @@ typedef struct fr_dbuff_s fr_dbuff_t;
  */
 typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
 
-/** A position marker, associated with a dbuff
+/** A position marker associated with a dbuff
  * @private
  */
 struct fr_dbuff_marker_s {
