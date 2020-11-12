@@ -616,10 +616,9 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
 /** @name Accessors
  *
- * Caching the values of pointers returned by the accessors, the pointer values
- * take directly from the dbuff directly is strongly discouraged, as the pointers
- * can become invalidated during stream reading or writing to/from an
- * extensible buffer.
+ * Caching the pointers returned by the accessors is strongly discouraged.
+ * Cached pointers can become invalidated if the dbuff is extended, as the
+ * extensions callback may use realloc or memmove on the underlying buffer.
  *
  @code{.c}
  fr_dbuff_t dbuff;
@@ -636,8 +635,8 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  @endcode
  *
  * If offsets of a dbuff need to be accessed, markers should be used.  If a dbuff
- * is extended, all markers associated with it will be updated so that their values
- * remain valid.
+ * is extended all markers associated with it will be updated so that the data they
+ * point to remains constant.
  *
  @code{.c}
  fr_dbuff_t dbuff;
