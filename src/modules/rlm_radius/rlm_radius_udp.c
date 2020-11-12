@@ -532,9 +532,10 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	rlm_radius_t const 	*inst = h->inst->parent;
 	udp_request_t		*u = h->status_u;
 	ssize_t			slen;
-	fr_pair_t		*reply = NULL;
+	fr_pair_list_t		reply;
 	uint8_t			code = 0;
 
+	fr_pair_list_init(&reply);
 	slen = read(h->fd, h->buffer, h->buflen);
 	if (slen == 0) return;
 
@@ -2325,10 +2326,11 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		radius_track_entry_t	*rr;
 		decode_fail_t		reason;
 		uint8_t			code = 0;
-		fr_pair_t		*reply = NULL;
+		fr_pair_list_t		reply;
 
 		fr_time_t		now;
 
+		fr_pair_list_init(&reply);
 		/*
 		 *	Drain the socket of all packets.  If we're busy, this
 		 *	saves a round through the event loop.  If we're not
