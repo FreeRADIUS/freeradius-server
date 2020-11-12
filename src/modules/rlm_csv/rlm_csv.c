@@ -844,11 +844,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, void *uctx)
 {
 	char const		*str = uctx;
-	fr_pair_t		*head = NULL, *vp;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	fr_dict_attr_t		const *da;
 
 	fr_assert(ctx != NULL);
+	fr_pair_list_init(&head);
 	fr_cursor_init(&cursor, &head);
 
 	if (tmpl_is_attr(map->lhs)) {
