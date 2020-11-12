@@ -627,7 +627,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  fr_dbuff_extend_lowat(&dbuff, 1024);		// Extension call triggers realloc
 
  printf("%s", fr_dbuff_current(&m));		// Marker was updated when the dbuff
- 						// was extended, as all is well.
+ 						// was extended.  All is well.
  @endcode
  *
  * Using offsets of these pointers returned by accessor functions is also strongly
