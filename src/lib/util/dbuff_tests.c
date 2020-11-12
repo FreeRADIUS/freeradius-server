@@ -1,5 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <float.h>
+#include <unistd.h>
 
 #include "dbuff.h"
 
@@ -383,6 +384,36 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff2, (uint64_t) 0x123456789abcdef0) == -8);
 }
 
+static void test_dbuff_file(void)
+{
+	uint8_t const		data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+					  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+	int			fd[2];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_file_t	fctx;
+	uint8_t			buff[4];
+	uint8_t			u8val = 0;
+	uint16_t		u16val = 0;
+	uint32_t		u32val = 0;
+	uint64_t		u64val = 0;
+
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(pipe(fd) == 0);
+	TEST_CHECK(write(fd[1], data, sizeof(data)) == sizeof(data));
+	close(fd[1]);
+	TEST_CHECK(fr_dbuff_init_file(&dbuff, &fctx, buff, sizeof(buff), fd[0], 0) == &dbuff);
+	TEST_CHECK_LEN(fr_dbuff_out(&u8val, &dbuff), 1);
+	TEST_CHECK(u8val == 0x01);
+	TEST_CHECK_LEN(fr_dbuff_out(&u16val, &dbuff), 2);
+	TEST_CHECK(u16val == 0x2345);
+	TEST_CHECK_LEN(fr_dbuff_out(&u32val, &dbuff), 4);
+	TEST_CHECK(u32val == 0x6789abcd);
+	TEST_CHECK_LEN(fr_dbuff_out(&u64val, &dbuff), 8);
+	TEST_CHECK(u64val == 0xef0123456789abcd);
+	TEST_CHECK(fr_dbuff_out(&u32val, &dbuff) == -3);
+	close(fd[0]);
+}
+
 /** Test functions that read from dbuffs.
  *
  */
@@ -494,7 +525,8 @@ TEST_LIST = {
 	{ "fr_dbuff_move",				test_dbuff_move },
 	{ "fr_dbuff_talloc_extend",			test_dbuff_talloc_extend },
 	{ "fr_dbuff_talloc_extend_multi_level",		test_dbuff_talloc_extend_multi_level },
-	{ "fr_dbff_out",				test_dbuff_out },
+	{ "fr_dbuff_file",				test_dbuff_file },
+	{ "fr_dbuff_out",				test_dbuff_out },
 
 
 	{ NULL }

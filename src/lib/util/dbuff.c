@@ -98,6 +98,111 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 	}
 }
 
+/** Shift the contents of the sbuff, returning the number of bytes we managed to shift
+ *
+ * @param[in] dbuff	to shift.
+ * @param[in] shift	the number of bytes to shift
+ * 			(not necessarily the amount actually shifted, because
+ * 			one can't move pointers outside the buffer)
+ *
+ * @return
+ *	- 0 the shift failed due to constraining pointers.
+ *	- >0 the number of bytes we managed to shift pointers
+ *	  in the dbuff.
+ */
+size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
+{
+	uint8_t	*buff;		/* Current start */
+
+	CHECK_DBUFF_INIT(dbuff);
+
+	buff = dbuff->buff;
+
+	/*
+	 *	First pass: find the maximum shift, which is the minimum
+	 *	of the distances from buff to any of the current pointers
+	 *	or current pointers of markers of dbuff and its ancestors.
+	 *	(We're also constrained by the requested shift count.)
+	 */
+	for (fr_dbuff_t *d = dbuff; d && shift; d = d->parent) {
+		shift = min(shift, d->p - buff);
+		for (fr_dbuff_marker_t *m = d->m; m; m = m->next) shift = min(shift, m->p - buff);
+	}
+
+	if (!shift) return 0;
+
+	/*
+	 *	Second pass: adjust pointers.
+	 *	The first pass means we need only subtract shift from current pointers.
+	 *	Start pointers can't constrain shift, or we'd never free any space, so
+	 *	they require the added check.
+	 *	For d->end, d->buff <= d->p - shift, and d->p shouldn't exceed d->end,
+	 *	so d->p - shift <= d->end - shift, hence d->buff <= d->end - shift.
+	 */
+	for (fr_dbuff_t *d = dbuff; d; d = d->parent) {
+		uint8_t	*start = d->start;
+
+		d->start -= min(shift, d->start - buff);
+		d->p -= shift;
+		d->end -= shift;
+		d->shifted += (shift - (start - d->start));
+		for (fr_dbuff_marker_t *m = d->m; m; m = m->next) m->p -= shift;
+	}
+
+	/*
+	 *	Move data to track moved pointers.
+	 */
+	memmove(buff, buff + shift, ((fr_dbuff_uctx_file_t *)(dbuff->uctx))->buff_end - (buff + shift));
+
+	return shift;
+}
+
+/** Refresh the buffer with more data from the file
+ *
+ */
+size_t _fr_dbuff_extend_file(fr_dbuff_t *dbuff, size_t extension)
+{
+	ssize_t			bytes_read;
+	size_t			available;
+	fr_dbuff_uctx_file_t	*fctx;
+
+	CHECK_DBUFF_INIT(dbuff);
+
+	fctx = dbuff->uctx;
+
+	if (extension == SIZE_MAX) extension = 0;
+
+	if (fr_dbuff_used(dbuff)) {
+		/*
+		 *	Try and shift as much as we can out
+		 *	of the buffer to make space.
+		 *
+		 *	Note: p and markers are constraints here.
+		 */
+		fr_dbuff_shift(dbuff, fr_dbuff_used(dbuff));
+	}
+
+	available = fctx->buff_end - dbuff->end;
+	if (available < extension) {
+		fr_strerror_printf("Can't satisfy extension request for %zu bytes", extension);
+		return 0;	/* There's no way we could satisfy the extension request */
+	}
+
+	bytes_read = read(fctx->fd, dbuff->end, available);
+
+	/** Check for errors
+	 */
+	if (bytes_read < 0) {
+		fr_strerror_printf("Error extending buffer: %s", fr_syserror(errno));
+		return 0;
+	}
+
+	/* Question: should extensible ancestors have their ends adjusted? */
+	dbuff->end += bytes_read;	/* Advance end, which increases fr_dbuff_remaining() */
+
+	return bytes_read;
+}
+
 /** Reallocate the current buffer
  *
  * @private

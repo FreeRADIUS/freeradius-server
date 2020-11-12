@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/syserror.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -157,6 +158,9 @@ struct fr_dbuff_s {
 	uint8_t			adv_parent:1;	//!< Whether we advance the parent
 						///< of this dbuff.
 
+	size_t			shifted;	//!< How many bytes this sbuff has been
+						///< shifted since its creation.
+
 	fr_dbuff_extend_t	extend;		//!< Function to re-populate or extend
 						///< the buffer.
 	void			*uctx;		//!< Extend uctx data.
@@ -245,9 +249,7 @@ do { \
  *
  @code{.c}
  fr_dbuff_t tlv = FR_DBUFF_RESERVE_NO_ADVANCE(dbuff, UINT8_MAX);
-
  if (my_child_encoder(&tlv, vp) < 0) return -1;
-
  return fr_dbuff_advance(dbuff, fr_dbuff_used(tlv));
  @endcode
  *
@@ -284,9 +286,7 @@ do { \
  *
  @code{.c}
  fr_dbuff_t tlv = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
-
  if (my_child_encoder(&tlv, vp) < 0) return -1;
-
  return fr_dbuff_advance(dbuff, fr_dbuff_used(tlv))
  @endcode
  *
@@ -408,6 +408,54 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 	return dbuff;
 }
 
+size_t	_fr_dbuff_extend_file(fr_dbuff_t *dbuff, size_t extension);
+
+/** File sbuff extension structure use by #fr_dbuff_init_file
+ * @private
+ *
+ * Holds the data necessary for creating dynamically
+ * extensible file buffers.
+ */
+typedef struct {
+	int			fd;			//!< fd of file we're reading from.
+	uint8_t			*buff_end;		//!< The true end of the buffer.
+	size_t			max;			//!< Maximum number of bytes to read.
+} fr_dbuff_uctx_file_t;
+
+
+/** Initialise a special dbuff which automatically reads in more data as the buffer is exhausted
+ *
+ * @param[out] dbuff	to initialise.
+ * @param[out] fctx	to initialise.  Must have a lifetime >= to the dbuff.
+ * @param[in] buff	Temporary buffer to use for storing file contents.
+ * @param[in] len	Length of the temporary buffer.
+ * @param[in] fd	descriptor of an open file to read from.
+ * @param[in] max	The maximum length of data to read from the file.
+ * @return
+ *	- The passed dbuff on success.
+ *	- NULL on failure.
+ */
+static inline fr_dbuff_t *fr_dbuff_init_file(fr_dbuff_t *dbuff, fr_dbuff_uctx_file_t *fctx,
+					     uint8_t *buff, size_t len, int fd, size_t max)
+{
+	*fctx = (fr_dbuff_uctx_file_t){
+		.fd = fd,
+		.max = max,
+		.buff_end = buff + len		//!< Store the real end
+	};
+
+	*dbuff = (fr_dbuff_t){
+		.buff = buff,
+		.start = buff,
+		.p = buff,
+		.end = buff,			//!< Starts with 0 bytes available
+		.extend = _fr_dbuff_extend_file,
+		.uctx = fctx
+	};
+
+	return dbuff;
+}
+
 /** Creates a compound literal to pass into functions which accept a dbuff
  *
  * @note The return value of the function should be used to determine how much
@@ -490,7 +538,7 @@ typedef enum {
 static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr_dbuff_t *in,
 					    size_t remaining, size_t lowat)
 {
-	size_t extended;
+	size_t extended = 0;
 
 	if (status && !fr_dbuff_is_extendable(*status)) {
 	not_extendable:
@@ -583,6 +631,8 @@ do { \
  * @{
  */
 void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
+
+size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
 /** @} */
 
 /** @name Length checks
@@ -677,12 +727,9 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  fr_dbuff_t dbuff;
  fr_dbuff_uctx_talloc_t tctx;
  uint8_t *p;
-
  fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, SIZE_MAX);
-
  p = fr_dbuff_current(&dbuff);			// Cache the start pointer
  fr_dbuff_extend_lowat(&dbuff, 1024);		// Extension call triggers realloc
-
  printf("%s", p);				// Should print an empty string but may
  						// SEGV as p may now be invalid.
  @endcode
@@ -695,12 +742,9 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  fr_dbuff_t dbuff;
  fr_dbuff_uctx_talloc_t tctx;
  fr_dbuff_marker_t m;
-
  fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, SIZE_MAX);
  fr_dbuff_marker(&m, &dbuff);
-
  fr_dbuff_extend_lowat(&dbuff, 1024);		// Extension call triggers realloc
-
  printf("%s", fr_dbuff_current(&m));		// Marker was updated when the dbuff
  						// was extended.  All is well.
  @endcode
@@ -711,7 +755,6 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  @code{.c}
  uint8_t buff[2];
  fr_dbuff_t dbuff;
-
  fr_dbuff_init(&dbuff, buff, sizeof(buff));
  fr_dbuff_current(&dbuff)[2] = 0x00;		// Write to invalid memory
  @endcode
@@ -1267,7 +1310,6 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 /** @endcond */
 
 /*
-
  */
 
 /** Internal function - do not call directly
@@ -1417,9 +1459,18 @@ size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_db
  */
 static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(in, outlen);
+	size_t	ext_len, to_copy, remaining;
 
-	return _fr_dbuff_set(pos_p, in, (*pos_p) + _fr_dbuff_safecpy(out, out + outlen, (*pos_p), (*pos_p) + outlen));
+	for (remaining = outlen; remaining > 0; remaining -= to_copy) {
+		to_copy = remaining;
+		ext_len = _fr_dbuff_extend_lowat(NULL, in, fr_dbuff_end(in) - (*pos_p), 1);
+		if (ext_len == 0) return -remaining;
+		if (ext_len < to_copy) to_copy = ext_len;
+		out += _fr_dbuff_set(pos_p, in,
+				     (*pos_p) + _fr_dbuff_safecpy(out, out + to_copy, (*pos_p), (*pos_p) + to_copy));
+	}
+
+	return outlen;
 }
 /** Internal function - do not call directly
  *
@@ -1427,16 +1478,9 @@ static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbu
  */
 static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t **out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
-	size_t ext_len;
+	if (outlen == SIZE_MAX) outlen = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*out_p), outlen);
 
-	if (outlen == SIZE_MAX) {
-		ext_len = _fr_dbuff_extend_lowat(NULL, out, fr_dbuff_end(out) - (*out_p), outlen);
-		if (ext_len < outlen) outlen = ext_len;
-	} else {
-		_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(out_p, out, outlen);		/* Extend out or return */
-	}
-
-	return _fr_dbuff_out_memcpy(*out_p, pos_p, in, outlen);
+	return _fr_dbuff_out_memcpy((*out_p), pos_p, in, outlen);
 }
 
 /** Copy exactly _outlen bytes from the dbuff
@@ -1479,9 +1523,16 @@ static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t **out_p, fr_dbuff_t *ou
 static inline ssize_t _fr_dbuff_out_##_type(_type##_t *out, uint8_t **pos_p, fr_dbuff_t *in) \
 { \
 	fr_assert(out); \
-	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(in, sizeof(_type##_t)); \
-	*out = fr_net_to_##_type((*pos_p)); \
-	return _fr_dbuff_set(pos_p, in, (*pos_p) + sizeof(_type##_t)); \
+	if (fr_dbuff_extend_lowat(NULL, in, sizeof(_type##_t)) >= sizeof(_type##_t)) { \
+		*out = fr_net_to_##_type((*pos_p)); \
+		return _fr_dbuff_set(pos_p, in, (*pos_p) + sizeof(_type##_t)); \
+	} else { \
+		uint8_t	holder[sizeof(_type##_t)] = {0}; \
+		ssize_t slen = _fr_dbuff_out_memcpy(holder, pos_p, in, sizeof(_type##_t)); \
+		if (slen < (ssize_t)sizeof(_type##_t)) return slen; \
+		*out = fr_net_to_##_type(holder); \
+		return slen; \
+	} \
 }
 
 FR_DBUFF_OUT_DEF(uint16)
