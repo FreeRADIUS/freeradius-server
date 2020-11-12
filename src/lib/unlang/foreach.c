@@ -137,8 +137,9 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	unlang_foreach_t		*gext;
 
 	int				i, foreach_depth = 0;
-	fr_pair_t			*vps;
+	fr_pair_list_t			vps;
 
+	fr_pair_list_init(&vps);
 	frame = &stack->frame[stack->depth];
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);
