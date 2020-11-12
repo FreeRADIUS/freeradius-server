@@ -829,14 +829,16 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	data = talloc_zero(eap_session, mschapv2_opaque_t);
 	fr_assert(data != NULL);
+	fr_pair_list_init(&data->mppe_keys);
+	fr_pair_list_init(&data->reply);
 
 	/*
 	 *	We're at the stage where we're challenging the user.
 	 */
 	data->code = FR_EAP_MSCHAPV2_CHALLENGE;
 	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
-	data->mppe_keys = NULL;
-	data->reply = NULL;
+	fr_pair_list_init(&data->mppe_keys);
+	fr_pair_list_init(&data->reply);
 
 	if (peer_challenge) {
 		data->has_peer_challenge = true;
