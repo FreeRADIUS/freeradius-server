@@ -37,6 +37,16 @@ jobs:
       run: |
          cd doc/doxygen;
          doxygen Doxyfile;
-   
+         
+    - name: Deploy doxygen content to GitHub pages
+      uses: appleboy/gh-pages-action@v0.0.2
+      with:
+        username: ${{ secrets.CI_DOCUMENTATION_DEPLOY_USER }}
+        password: ${{ secrets.CI_DOCUMENTATION_DEPLOY_TOKEN }}
+        remote_url: https://github.com/FreeRADIUS/freeradius.github.io.git
+        target_branch: main
+        pages_directory: doc/doxygen/html
+        target_directory : doxygen
+        
     - name: Build Antora docsite
       run: antora site.yml 
