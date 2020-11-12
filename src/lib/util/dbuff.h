@@ -668,7 +668,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 		 fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent \
 	)
 
-/** Return a pointer to the start of the underlying buffer in a dbuff or one of its markers
+/** Return the underlying buffer in a dbuff or one of marker
  *
  * @param[in] _dbuff_or_marker	to return the buffer for.
  * @return A pointer to the start of the buffer.
@@ -681,7 +681,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 		 fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->buff \
 	)
 
-/** Return a pointer to the 'start' position of a dbuff or one of its markers
+/** Return the 'start' position of a dbuff or marker
  *
  * The start position is not necessarily the start of the buffer, and is
  * advanced every time a dbuff is copied.
@@ -697,7 +697,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start \
 	))
 
-/** Return a pointer to the 'current' position of a dbuff or one of its markers
+/** Return the 'current' position of a dbuff or marker
  *
  * @param[in] _dbuff_or_marker	to return the current position of.
  * @return A pointer to the current position of the buffer or marker.
@@ -711,7 +711,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 	))
 
 /** @cond */
-/** Return a pointer to the position ptr for a dbuff or marker
+/** Return a pointer to the 'current' position in a dbuff or marker
  * @private
  *
  * @param[in] _dbuff_or_marker	to return a pointer to the position pointer for.
@@ -724,7 +724,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 	))
 /** @endcond */
 
-/** Return a pointer to the 'end' position of a dbuff or one of its markers
+/** Return the current 'end' position of a dbuff or marker
  *
  * @param[in] _dbuff_or_marker	to return the end position of.
  * @return A pointer to the end position of the buffer or marker.
@@ -740,11 +740,11 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
 /** @name Position modification (recursive)
  *
- * Change the current position of pointers in the dbuff and their children.
+ * Modify the 'current' position pointer of a dbuff or marker.
  * @{
  */
 
-/** Update the position of p in a list of dbuffs
+/** Set a new 'current' position in a dbuff or marker
  * @private
  */
 static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
@@ -753,7 +753,7 @@ static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
 	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, p);
 }
 
-/** Set a new position for 'p' in an dbuff or marker
+/** Set a new 'current' position in a dbuff or marker
  * @private
  *
  * @param[in,out] pos_p		position pointer to modify.
@@ -779,7 +779,7 @@ static inline ssize_t _fr_dbuff_set(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t 
 	return p - c;
 }
 
-/** Set the position in a dbuff or marker using another dbuff or marker, a char pointer, or a length
+/** Set the position in a dbuff or marker using another dbuff or marker, a char pointer, or a length value
  *
  * @param[in] _dst	dbuff or marker to set the position for.
  * @param[in] _src	Variable to glean new position from.  Behaviour here
