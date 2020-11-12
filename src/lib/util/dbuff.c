@@ -34,6 +34,7 @@ RCSID("$Id$")
 #endif
 
 /** Internal macro for defining dbuff move functions
+ * @private
  */
 #define FR_DBUFF_MOVE_DEF(_out_type, _in_type) \
 size_t _fr_dbuff_move_##_in_type##_to_##_out_type(fr_##_out_type##_t *out, fr_##_in_type##_t *in, size_t len) \

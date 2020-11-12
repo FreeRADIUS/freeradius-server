@@ -55,6 +55,8 @@ typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
  * associated with a stack specific `fr_dbuff_t`.  Using a
  * stack frame specific dbuff ensures markers are automatically
  * released when the stack frame is popped.
+ *
+ * @private
  */
 struct fr_dbuff_marker_s {
 	union {
@@ -65,7 +67,7 @@ struct fr_dbuff_marker_s {
 	fr_dbuff_t		*parent;	//!< Owner of the marker.
 };
 
-/** dbuff extension function
+/** Dbuff extension function
  *
  * This callback is used to extend the underlying buffer.
  *
@@ -89,6 +91,10 @@ struct fr_dbuff_marker_s {
  */
 typedef size_t(*fr_dbuff_extend_t)(fr_dbuff_t *dbuff, size_t req_extension);
 
+/** Primary dbuff structure
+ *
+ * @private
+ */
 struct fr_dbuff_s {
 	union {
 		uint8_t const *buff_i;			//!< Immutable buffer pointer.
@@ -131,6 +137,8 @@ struct fr_dbuff_s {
  *
  * Holds the data necessary for creating dynamically
  * extensible buffers.
+ *
+ * @private
  */
 typedef struct {
 	TALLOC_CTX		*ctx;			//!< Context to alloc new buffers in.
@@ -272,7 +280,7 @@ typedef enum {
 	_FR_DBUFF_RESERVE(_dbuff, (fr_dbuff_remaining(_dbuff) > (_max)) ? (fr_dbuff_remaining(_dbuff) - (_max)) : 0, false)
 
 /** Does the actual work of initialising a dbuff
- *
+ * @private
  */
 static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t const *end, bool is_const)
 {
@@ -422,6 +430,7 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 	if ((_len) > fr_dbuff_remaining(_dbuff)) return -((_len) - fr_dbuff_remaining(_dbuff))
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr_dbuff_t *in,
 					    size_t remaining, size_t lowat)
@@ -605,6 +614,7 @@ do { \
  * @note This is intended for internal use within the dbuff API only.
  *
  * @param[in] _dbuff_or_marker	to return a pointer to the position pointer for.
+ * @private
  */
 #define _fr_dbuff_current_ptr(_dbuff_or_marker) \
 	(_Generic((_dbuff_or_marker), \
@@ -633,8 +643,7 @@ do { \
  */
 
 /** Update the position of p in a list of dbuffs
- *
- * @note Do not call directly.
+ * @private
  */
 static inline void _fr_dbuff_set_recurse(fr_dbuff_t *dbuff, uint8_t const *p)
 {
@@ -811,6 +820,7 @@ static inline CC_HINT(always_inline) size_t _fr_dbuff_safecpy(uint8_t *o_start, 
 }
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_in_memcpy(uint8_t **pos_p, fr_dbuff_t *out,
 					  uint8_t const *in, size_t inlen)
@@ -823,6 +833,7 @@ static inline ssize_t _fr_dbuff_in_memcpy(uint8_t **pos_p, fr_dbuff_t *out,
 }
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
 					        uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
@@ -887,6 +898,7 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 #define FR_DBUFF_IN_MEMCPY_RETURN(_dbuff, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_in_memcpy, _dbuff, _in, _inlen)
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline size_t _fr_dbuff_in_memcpy_partial(uint8_t **pos_p, fr_dbuff_t *out,
 						 uint8_t const *in, size_t inlen)
@@ -902,6 +914,7 @@ static inline size_t _fr_dbuff_in_memcpy_partial(uint8_t **pos_p, fr_dbuff_t *ou
 }
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
 						       uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
@@ -972,6 +985,9 @@ static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff
 #define FR_DBUFF_IN_BYTES_RETURN(_dbuff, ...) \
 	FR_DBUFF_IN_MEMCPY_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
+/** Internal function - do not call directly
+ * @private
+ */
 static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
 {
 	fr_assert(!dbuff->is_const);
@@ -1008,6 +1024,9 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
  */
 #define FR_DBUFF_MEMSET_RETURN(_dbuff_or_marker, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff_or_marker, _c, _inlen)
 
+/** Define integer parsing functions
+ * @private
+ */
 #define FR_DBUFF_PARSE_INT_DEF(_type) \
 static inline ssize_t _fr_dbuff_in_##_type(uint8_t **pos_p, fr_dbuff_t *out, _type##_t num) \
 { \
@@ -1030,6 +1049,7 @@ FR_DBUFF_PARSE_INT_DEF(int64)
  */
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_in_float(uint8_t **pos_p, fr_dbuff_t *out, float num)
 {
@@ -1037,6 +1057,7 @@ static inline ssize_t _fr_dbuff_in_float(uint8_t **pos_p, fr_dbuff_t *out, float
 }
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, double num)
 {
@@ -1078,6 +1099,7 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 #define FR_DBUFF_IN_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_in, _out, _in)
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_in_uint64v(uint8_t **pos_p, fr_dbuff_t *dbuff, uint64_t num)
 {
@@ -1101,18 +1123,22 @@ static inline ssize_t _fr_dbuff_in_uint64v(uint8_t **pos_p, fr_dbuff_t *dbuff, u
 	_fr_dbuff_in_uint64v(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _num)
 
 /** Internal function - do not call directly
+ * @private
  */
 size_t _fr_dbuff_move_dbuff_to_dbuff(fr_dbuff_t *out, fr_dbuff_t *in, size_t len);
 
 /** Internal function - do not call directly
+ * @private
  */
 size_t _fr_dbuff_move_dbuff_to_dbuff_marker(fr_dbuff_marker_t *out, fr_dbuff_t *in, size_t len);
 
 /** Internal function - do not call directly
+ * @private
  */
 size_t _fr_dbuff_move_dbuff_marker_to_dbuff(fr_dbuff_t *out, fr_dbuff_marker_t *in, size_t len);
 
 /** Internal function - do not call directly
+ * @private
  */
 size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_dbuff_marker_t *in, size_t len);
 
@@ -1151,6 +1177,7 @@ size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_db
  */
 
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
@@ -1159,6 +1186,7 @@ static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbu
 	return _fr_dbuff_set(pos_p, in, (*pos_p) + _fr_dbuff_safecpy(out, out + outlen, (*pos_p), (*pos_p) + outlen));
 }
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t *out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
 {
@@ -1241,21 +1269,8 @@ FR_DBUFF_OUT_DEF(int64)
 	)
 #define FR_DBUFF_OUT_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_out, _out, _in)
 
-/** Read bytes from a dbuff or marker and interpret them as a network order unsigned integer
- * @param[in] _num		points to a uint64_t to store the integer in
- * @param[in] _dbuff_or_marker	data to copy bytes from
- * @param[in] _length		number of bytes to read (must be positive and less than eight)
- *
- * @return
- *	- 0	no data read.
- *	- >0	the number of bytes read.
- *	- <0	the number of bytes we would have needed
- *		to complete the read operation.
- */
-#define fr_dbuff_out_uint64v(_num, _dbuff_or_marker, _length) \
-	_fr_dbuff_out_uint64v(_num, _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _length)
-
 /** Internal function - do not call directly
+ * @private
  */
 static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_dbuff_t *dbuff, size_t length)
 {
@@ -1271,6 +1286,19 @@ static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_d
 	return length;
 }
 
+/** Read bytes from a dbuff or marker and interpret them as a network order unsigned integer
+ * @param[in] _num		points to a uint64_t to store the integer in
+ * @param[in] _dbuff_or_marker	data to copy bytes from
+ * @param[in] _length		number of bytes to read (must be positive and less than eight)
+ *
+ * @return
+ *	- 0	no data read.
+ *	- >0	the number of bytes read.
+ *	- <0	the number of bytes we would have needed
+ *		to complete the read operation.
+ */
+#define fr_dbuff_out_uint64v(_num, _dbuff_or_marker, _length) \
+	_fr_dbuff_out_uint64v(_num, _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _length)
 #define FR_DBUFF_UINT64V_OUT_RETURN(_num, _dbuff, _length) FR_DBUFF_RETURN(fr_dbuff_out_uint64v, _num, _dbuff, _length)
 
 /** @} */
