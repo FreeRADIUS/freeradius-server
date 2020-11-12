@@ -93,9 +93,9 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  * document is found it will be parsed and the containing value pairs will be
  * injected into the request.
  *
- * @param mctx		module calling context.
- * @param request	The authorization request.
- * @return Operation status (#rlm_rcode_t).
+ * @param[out] p_result		Operation status (#rlm_rcode_t).
+ * @param[in] mctx		module calling context.
+ * @param[in] request		The authorization request.
  */
 static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -229,9 +229,9 @@ finish:
  * will be merged with the currently existing data.  When conflicts arrise the new attribute
  * value will replace or be added to the existing value.
  *
- * @param mctx		module calling context.
- * @param request	The accounting request object.
- * @return Operation status (#rlm_rcode_t).
+ * @param[out] p_result		Result of calling the module.
+ * @param mctx			module calling context.
+ * @param request		The accounting request object.
  */
 static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {

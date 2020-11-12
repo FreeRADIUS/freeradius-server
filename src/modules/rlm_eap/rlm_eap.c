@@ -364,15 +364,15 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *
 
 /** Process the result of calling a submodule
  *
+ * @param[out] p_result		Result of calling the module, one of:
+ *				- RLM_MODULE_INVALID	if the request or EAP session state is invalid.
+ *				- RLM_MODULE_OK		if this round succeeded.
+ *				- RLM_MODULE_HANDLED	if we're done with this round.
+ *				- RLM_MODULE_REJECT	if the user should be rejected.
  * @param[in] request	The current request.
  * @param[in] mctx	module calling ctx.
  * @param[in] eap_session the EAP session
  * @param[in] result	the input result from the submodule
- * @return
- *	- RLM_MODULE_INVALID	if the request or EAP session state is invalid.
- *	- RLM_MODULE_OK		if this round succeeded.
- *	- RLM_MODULE_HANDLED	if we're done with this round.
- *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
 					       request_t *request, eap_session_t *eap_session, rlm_rcode_t result)

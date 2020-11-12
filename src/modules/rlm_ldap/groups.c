@@ -539,11 +539,11 @@ finish:
 
 /** Query the LDAP directory to check if a group object includes a user object as a member
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] check vp containing the group value (name or dn).
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
 					    	fr_ldap_connection_t **pconn, fr_pair_t *check)
@@ -639,12 +639,12 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_
 
 /** Query the LDAP directory to check if a user object is a member of a group
  *
- * @param[in] inst	rlm_ldap configuration.
- * @param[in] request	Current request.
- * @param[in,out] pconn	to use. May change as this function calls functions which auto re-connect.
- * @param[in] dn	of user object.
- * @param[in] check	vp containing the group value (name or dn).
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn		of user object.
+ * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
 					       fr_ldap_connection_t **pconn,
@@ -828,11 +828,10 @@ finish:
 
 /** Check group membership attributes to see if a user is a member.
  *
- * @param[in] inst	rlm_ldap configuration.
- * @param[in] request	Current request.
- * @param[in] check	vp containing the group value (name or dn).
- *
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_pair_t *check)

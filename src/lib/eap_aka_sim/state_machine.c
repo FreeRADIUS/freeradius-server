@@ -623,13 +623,13 @@ done:
  *
  * Call the appropriate sections to persist those values.
  *
+ * @param[out] p_result		Result of calling the module.
  * @param[in] mctx		Module calling ctx.
  * @param[in] request		the current request.
  * @param[in] eap_session	the EAP session
  * @param[in] state_enter	state entry function for the
  *				state to transition to *after* the current
  *				state.
- * @return RLM_MODULE_HANDLED.
  */
 static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					       request_t *request, eap_session_t *eap_session,
@@ -754,13 +754,13 @@ static unlang_action_t pseudonym_clear_resume(rlm_rcode_t *p_result, module_ctx_
  * any identities that were provided during those rounds, as the supplicant
  * will have discarded them.
  *
+ * @param[out] p_result		Result of calling the module.
  * @param[in] mctx		module calling ctx.
  * @param[in] request		the current request.
  * @param[in] eap_session	the current EAP session
  * @param[in] state_enter	state entry function for the
  *				state to transition to *after* the current
  *				state.
- * @return RLM_MODULE_HANDLED.
  */
 static unlang_action_t session_and_pseudonym_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					       request_t *request, eap_session_t *eap_session,
@@ -1611,12 +1611,12 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
+ * @param[out] p_result		Result of calling the module, one of:
+ *				- RLM_MODULE_HANDLED on success.
+ *				- anything else on failure.
  * @param[in] mctx		module calling ctx.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
- * @return
- *	- RLM_MODULE_HANDLED on success.
- *	- anything else on failure.
  */
 static unlang_action_t aka_identity_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					     request_t *request, eap_session_t *eap_session)
@@ -1692,12 +1692,12 @@ static unlang_action_t aka_identity_request_send(rlm_rcode_t *p_result, module_c
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
+ * @param[out] p_result		Result of calling the module, one of:
+ *				- RLM_MODULE_HANDLED on success.
+ *				- anything else on failure.
  * @param[in] mctx		module calling context.
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to continue.
- * @return
- *	- RLM_MODULE_HANDLED on success.
- *	- anything else on failure.
  */
 static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					  request_t *request, eap_session_t *eap_session)
