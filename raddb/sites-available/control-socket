@@ -103,15 +103,4 @@ server control {
 
 		#  @todo - add "limit" section
 	}
-
-	#
-	#  These don't do anything for now
-	#
-	recv {
-		ok
-	}
-
-	send {
-		ok
-	}
 }
