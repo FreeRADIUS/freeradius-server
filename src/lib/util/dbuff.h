@@ -637,7 +637,7 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  uint8_t buff[2];
  fr_dbuff_t dbuff;
 
- fr_dbuff_init(&buff, sizeof(buff));
+ fr_dbuff_init(&dbuff, buff, sizeof(buff));
  fr_dbuff_current(&dbuff)[2] = 0x00;		// Write to invalid memory
  @endcode
  *
