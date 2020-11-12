@@ -1280,6 +1280,107 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 	return 0;
 }
 
+int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
+			      CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
+			      char const **type_table, size_t type_table_len,
+			      char const *proto_name)
+{
+	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
+	CONF_SECTION		*process_app_cs;
+	dl_module_inst_t	*parent_module;
+	char const		*name;
+	fr_dict_enum_t const	*type_enum;
+	uint32_t		code;
+
+	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+
+	/*
+	 *	Allow the process module to be specified by
+	 *	packet type.  Or, by a name in the table.
+	 */
+	type_enum = fr_dict_enum_by_name(packet_type, type_str, -1);
+	if (!type_enum) {
+		size_t i;
+
+		for (i = 0; i < type_table_len; i++) {
+			name = type_table[i];
+			if (name && (strcmp(name, type_str) == 0)) {
+				type_enum = fr_dict_enum_by_value(packet_type, fr_box_uint32(i));
+				break;
+			}
+		}
+
+		if (!type_enum) {
+			cf_log_err(ci, "Invalid type \"%s\"", type_str);
+			return -1;
+		}
+	}
+
+	cf_data_add(ci, type_enum, NULL, false);
+
+	code = type_enum->value->vb_uint32;
+	if (type_table) {
+		if (!code || (code >= type_table_len)) {
+			cf_log_err(ci, "Unsupported 'type = %s'", type_str);
+			return -1;
+		}
+
+		name = type_table[code];
+		if (!name) {
+			cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
+			return -1;
+		}
+
+		/*
+		 *	Setting 'type = foo' means you MUST have at least a
+		 *	'recv foo' section.
+		 */
+		if (!cf_section_find(server, "recv", type_enum->name)) {
+			cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
+				   type_enum->name, cf_section_name2(server));
+			return -1;
+		}
+	} else {
+		name = "process"; /* mainly for the detail reader */
+
+		if (!cf_section_find(server, "recv", NULL)) {
+			cf_log_err(ci, "Failed finding 'recv {...} section of virtual server %s",
+				   type_enum->name, cf_section_name2(server));
+			return -1;
+		}
+	}
+
+	parent_module = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, proto_name));
+	fr_assert(parent_module);
+
+	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!process_app_cs) {
+		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
+	}
+
+	/*
+	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
+	 */
+	if (dl_module_instance(ctx, module_inst, process_app_cs, parent_module, name, DL_MODULE_TYPE_SUBMODULE) < 0) {
+		return -1;
+	}
+
+	/*
+	 *	Add the module instance to the virtual server, so that
+	 *	it knows which app_process functions to call.
+	 */
+	cf_data_add_static(server, module_inst, "app_process", false);
+
+	return code;
+}
+
 
 /** Compile sections for a virtual server.
  *
