@@ -2249,7 +2249,7 @@ static unlang_action_t aka_challenge_enter_resume(rlm_rcode_t *p_result, module_
  *
  */
 static unlang_action_t aka_challenge_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				       request_t *request, eap_session_t *eap_session)
+					   request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);

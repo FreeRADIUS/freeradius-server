@@ -658,7 +658,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
 	char const 			*caller;
-	rlm_rcode_t			rcode;
+	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
 	int				stack_depth = stack->depth;
 	unlang_action_t			ua;
 
