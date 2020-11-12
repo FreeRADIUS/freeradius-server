@@ -1009,7 +1009,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	size_t			data_len;
 	ssize_t			ret;
 	uint32_t		vendor;
-	fr_dict_attr_t const	*child;
+	fr_dict_attr_t const	*child, *unknown;
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
@@ -1464,13 +1464,15 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		parent = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent->parent,
+		unknown = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent->parent,
 						      fr_dict_vendor_num_by_da(parent), parent->attr);
-		if (!parent) {
-			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+		if (!unknown) {
+			fr_strerror_printf("decoder failed creating unknown attribute from %s: %s",
+					   parent->name, fr_strerror());
 			return -1;
 		}
 		tag = 0;
+		parent = unknown;
 #ifndef NDEBUG
 		/*
 		 *	Fix for Coverity.
