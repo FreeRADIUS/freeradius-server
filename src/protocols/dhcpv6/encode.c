@@ -314,7 +314,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	case FR_TYPE_GROUP:
 	{
-		fr_pair_t *child;
+		fr_pair_list_t child;
 		fr_cursor_t child_cursor;
 
 		/*
