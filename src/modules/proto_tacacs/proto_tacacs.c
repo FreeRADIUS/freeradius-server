@@ -39,7 +39,7 @@
 
 extern fr_app_t proto_tacacs;
 
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static const CONF_PARSER priority_config[] = {
@@ -99,7 +99,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[FR_PACKET_TYPE_MAX] = {
 		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "auth",
@@ -107,69 +107,19 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
  		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
  		[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "acct",
 	};
+	int			code;
+	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
 
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	dl_module_inst_t	*parent_inst;
-	char const		*name = NULL;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
-
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_tacacs");
+	if (code < 0) return -1;
 
 	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
+	 *	Set the allowed codes so that the IO functions can
+	 *	filter them as necessary.
 	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		cf_log_err(ci, "Invalid type \"%s\"", type_str);
-		return -1;
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-	if (!code || (code >= FR_PACKET_TYPE_MAX)) {
-		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	/*
-	 *	Setting 'type = foo' means you MUST have at least a
-	 *	'recv foo' section.
-	 */
-	if (!cf_section_find(server, "recv", type_enum->name)) {
-		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->name, cf_section_name2(server));
-		return -1;
-	}
-
-	name = type_lib_table[code];
-	if (!name) {
-		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_tacacs"));
-	fr_assert(parent_inst);
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	inst->code_allowed[code] = true;
+	return 0;
 }
 
 /** Wrapper around dl_instance

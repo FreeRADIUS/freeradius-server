@@ -33,7 +33,7 @@
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -105,77 +105,26 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	proto_vmps_t		*inst;
-	dl_module_inst_t		*parent_inst;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
+	static char const *type_lib_table[FR_VQP_MAX_CODE] = {
+		[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "process",
+		[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "process",
+	};
+	int			code;
+	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
 
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		cf_log_err(ci, "Invalid type \"%s\"", type_str);
-		return -1;
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-
-	if ((code != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
-	    (code != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
-		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-		return -1;
-	}
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_vmps");
+	if (code < 0) return -1;
 
 	/*
-	 *	Setting 'type = foo' means you MUST have at least a
-	 *	'recv foo' section.
+	 *	Set the allowed codes so that the IO functions can
+	 *	filter them as necessary.
 	 */
-	if (!cf_section_find(server, "recv", type_enum->name)) {
-		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->name, cf_section_name2(server));
-		return -1;
-	}
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_vmps"));
-	fr_assert(parent_inst);
-
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_vmps_t);
-
 	inst->code_allowed[code] = true;
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 *
-	 *	We allow "type = foo", but we just load proto_vmps_process.a
-	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, "process", DL_MODULE_TYPE_SUBMODULE);
+	return 0;
 }
 
 /** Wrapper around dl_instance

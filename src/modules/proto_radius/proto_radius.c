@@ -121,7 +121,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[FR_RADIUS_MAX_PACKET_CODE] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -131,99 +131,19 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 		[FR_CODE_STATUS_SERVER]		= "status",
 	};
 
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	proto_radius_t		*inst;
-	dl_module_inst_t		*parent_inst;
-	char const		*name = NULL;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
+	int			code;
+	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
 
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		size_t i;
-
-		for (i = 0; i < (NUM_ELEMENTS(type_lib_table)); i++) {
-			name = type_lib_table[i];
-			if (name && (strcmp(name, type_str) == 0)) {
-				type_enum = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(i));
-				break;
-			}
-		}
-
-		if (!type_enum) {
-			cf_log_err(ci, "Invalid type \"%s\"", type_str);
-			return -1;
-		}
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-	if (code >= FR_RADIUS_MAX_PACKET_CODE) {
-	invalid_type:
-		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	if (!fr_request_packets[code]) {
-		cf_log_err(ci, "Cannot listen for 'type = %s'.  The packet MUST be a request.", type_str);
-		return -1;
-	}
-
-	/*
-	 *	Setting 'type = foo' means you MUST have at least a
-	 *	'recv foo' section.
-	 */
-	if (!cf_section_find(server, "recv", type_enum->name)) {
-		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->name, cf_section_name2(server));
-		return -1;
-	}
-
-	name = type_lib_table[code];
-	if (!name) goto invalid_type;
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	fr_assert(parent_inst);
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_radius");
+	if (code < 0) return -1;
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
 	 *	necessary.
 	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
 	inst->code_allowed[code] = true;
-
-	/*
-	 *	Hacks for CoA, which also means Disconnect.  And
-	 *	they're both processed by the same handler.
-	 */
-	if (code == FR_CODE_COA_REQUEST) {
-		inst->code_allowed[FR_CODE_DISCONNECT_REQUEST] = true;
-	}
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	return 0;
 }
 
 /** Wrapper around dl_instance

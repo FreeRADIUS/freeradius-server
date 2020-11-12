@@ -210,7 +210,7 @@ static const virtual_server_compile_t compile_list[] = {
 };
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_process_t *inst = talloc_get_type_abort(instance, proto_detail_process_t);
 	CONF_SECTION		*server_cs;
@@ -224,9 +224,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = inst->dict;
 
-	fr_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	/*
+	 *	We are passed a CONF_SECTION for our configuration.
+	 *	The parent is the listener, and it's parent is the
+	 *	virtual server.
+	 */
+	server_cs = cf_item_to_section(cf_parent(cf_parent(conf)));
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules, inst);

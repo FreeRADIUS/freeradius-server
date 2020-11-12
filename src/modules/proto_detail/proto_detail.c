@@ -146,16 +146,11 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	dl_module_inst_t		*parent_inst;
-	fr_dict_enum_t const	*type_enum;
-	dl_module_inst_t		*process_dl;
+	dl_module_inst_t	*process_dl;
 	proto_detail_process_t	*process_inst;
 	fr_dict_attr_t const	*attr_packet_type;
-	proto_detail_t		*inst = parent;
-
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	proto_detail_t		*inst = talloc_get_type_abort(parent, proto_detail_t);
+	int			code;
 
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'dictionary' BEFORE 'type'");
@@ -168,30 +163,18 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 		return -1;
 	}
 
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		cf_log_err(ci, "Invalid type \"%s\"", type_str);
-		return -1;
-	}
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 NULL, 0, "proto_detail");
+	if (code < 0) return -1;
 
-	inst->code = type_enum->value->vb_uint32;
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
-	fr_assert(parent_inst);
+	inst->code = code;
 
 	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
+	 *	Find the process module, and tell it what dictionary
+	 *	and packet type to use.
 	 */
-	if (dl_module_instance(ctx, out, listen_cs, parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
-		return -1;
-	}
-
 	process_dl = *(dl_module_inst_t **) out;
-	process_inst = inst->process_instance = process_dl->data;
+	process_inst = inst->process_instance = talloc_get_type_abort(process_dl->data, proto_detail_process_t);
 
 	process_inst->dict = inst->dict;
 	process_inst->attr_packet_type = attr_packet_type;
