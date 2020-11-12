@@ -46,7 +46,7 @@ jobs:
         remote_url: https://github.com/FreeRADIUS/freeradius.github.io.git
         target_branch: main
         pages_directory: doc/doxygen/html
-        target_directory : doxygen
+        target_directory : docs
         
     - name: Build Antora docsite
       run: antora site.yml 
