@@ -60,6 +60,30 @@ typedef struct fr_dbuff_s fr_dbuff_t;
  */
 typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
 
+/** dbuff extension callback
+ *
+ * @ingroup Extension callback structures and helpers
+ *
+ * This callback is used to extend the underlying buffer.
+ *
+ * - Where the buffer is being used to aggregate data, this function will
+ * usually call realloc to extend the buffer.
+ *
+ * - Where the buffer is being used for stream decoding, this function will
+ * usually shift the existing data in the buffer to the left, and read in more
+ * data from the stream.
+ *
+ * Generally the caller will request the minimum amount the buffer should be
+ * extended by.  This callback may choose to ignore the request and extend the
+ * buffer by more than the requested amount.
+ *
+ * @param[in] dbuff		to extend.
+ * @param[in] req_extension	How much the caller wants to extend the buffer
+ *				by.
+ * @return How much the buffer was extended by.
+ */
+typedef size_t(*fr_dbuff_extend_t)(fr_dbuff_t *dbuff, size_t req_extension);
+
 /** A position marker associated with a dbuff
  * @private
  */
@@ -135,7 +159,8 @@ do { \
 /** @name Initialisers
  * @{
  */
-/** Prevent an dbuff being advanced as it's passed into a decoding function
+
+/** Prevent an dbuff being advanced by operations on its child
  * @private
  * @param[in] _dbuff	to make an ephemeral copy of.
  */
@@ -153,7 +178,9 @@ do { \
 }
 
 /** @cond */
-/** Reserve N bytes in the dbuff when passing it to another function
+
+/** Reserve _reserve bytes in the dbuff when passing it to another function
+ *
  * @private
  */
 #define _FR_DBUFF_RESERVE(_dbuff, _reserve, _adv_parent) \
@@ -172,7 +199,7 @@ do { \
 }
 /* @endcond */
 
-/** Reserve N bytes in the dbuff when passing it to another function
+/** Reserve _reserve bytes in the dbuff when passing it to another function
  *
  @code{.c}
  my_child_encoder(&FR_DBUFF_RESERVE(dbuff, 5), vp);
@@ -189,7 +216,7 @@ do { \
  */
 #define FR_DBUFF_RESERVE(_dbuff, _reserve) _FR_DBUFF_RESERVE(_dbuff, _reserve, true)
 
-/** Reserve N bytes in the dbuff when passing it to another function
+/** Reserve _reserve bytes in the dbuff when passing it to another function
  *
  @code{.c}
  fr_dbuff_t tlv = FR_DBUFF_RESERVE_NO_ADVANCE(dbuff, UINT8_MAX);
@@ -330,9 +357,8 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 	/*
 	 *	Allocate the initial buffer
 	 *
-	 *	We always allocate a buffer so we don't
-	 *	trigger ubsan errors by performing
-	 *	arithmetic on NULL pointers.
+	 *	We always allocate a buffer so we don't trigger ubsan
+	 *	errors by performing arithmetic on NULL pointers.
 	 *
 	 *	Note that unlike dbuffs, we don't need space for a trailing '\0'.
 	 */
@@ -388,26 +414,47 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 
 /** @name Extension request functions
  *
- * These functions may be used to request that the underlying buffer
- * is either extended to accomodate more data, or that data is shifted
- * out of the buffer, and that the buffer is refilled.
+ * These functions may be used to request that the underlying buffer is either
+ * extended to accomodate more data, or that data is shifted out of the buffer,
+ * and that the buffer is refilled.
  *
  * @{
  */
+
+/** Flag indicating a dbuff is extendable
+ */
 #define FR_DBUFF_FLAG_EXTENDABLE		0x01
+
+/** Flag indicating that during the last extend call the dbuff was extended
+ */
 #define FR_DBUFF_FLAG_EXTENDED			0x02
 
 /** Whether the buffer is currently extendable and whether it was extended
- *
  */
 typedef enum {
+	/** dbuff cannot be extended
+	 */
 	FR_DBUFF_NOT_EXTENDABLE			= 0x00,
+
+	/** dbuff can be extended
+	 */
 	FR_DBUFF_EXTENDABLE			= FR_DBUFF_FLAG_EXTENDABLE,
+
+	/** dbuff was extended in the last extend call and may be extended again
+	 */
 	FR_DBUFF_EXTENDABLE_EXTENDED		= FR_DBUFF_FLAG_EXTENDABLE | FR_DBUFF_FLAG_EXTENDED,
+
+	/** dbuff was extended in the last extend call but cannot be extended again
+	 */
 	FR_DBUFF_EXTENDED			= FR_DBUFF_FLAG_EXTENDED
 } fr_dbuff_extend_status_t;
 
+/** Check if a dbuff can be extended again
+ */
 #define fr_dbuff_is_extendable(_status)		((_status) & FR_DBUFF_FLAG_EXTENDABLE)
+
+/** Check if the dbuff was extended during the last extend call
+ */
 #define fr_dbuff_was_extended(_status)		((_status) & FR_DBUFF_FLAG_EXTENDED)
 
 /** Internal function - do not call directly
@@ -436,7 +483,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 	return remaining + extended;
 }
 
-/** Extend if we're below a specified low water mark
+/** Extend if we're below _lowat
  *
  * @param[out] _status		Should be initialised to FR_SBUFF_EXTENDABLE
  *				for the first call to this function if used
@@ -455,7 +502,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
 			       fr_dbuff_ptr(_dbuff_or_marker), \
 			       fr_dbuff_remaining(_dbuff_or_marker), _lowat)
 
-/** Extend if we're below a specified low water mark and return if we can't extend above the low water mark
+/** Extend if we're below _lowat and return if we can't extend above _lowat
  *
  * @param[in] _dbuff_or_marker	to extend.
  * @param[in] _lowat		If bytes remaining are below the amount, extend.
@@ -470,7 +517,9 @@ do { \
 } while (0)
 
 /** @cond */
-/** Extend if we're below a specified low water mark and return if we can't extend above the low water mark
+/** Extend if we're below _lowat and return if we can't extend above _lowat
+ *
+ * @private
  *
  * @param[in,out] _pos_p	the position pointer to use.
  * @param[in] _dbuff_or_marker	to extend.
@@ -499,31 +548,6 @@ do { \
 /** @name Extension callback structures and helpers
  * @{
  */
-
-/** dbuff extension callback
- *
- * This callback is used to extend the underlying buffer.
- *
- * - Where the buffer is being used to aggregate data, this
- * function will usually call realloc to extend the buffer.
- *
- * - Where the buffer is being used for stream decoding, this
- * function will usually shift the existing data in the
- * buffer to the left, and read in more data from the
- * stream.
- *
- * Generally the caller will request the minimum amount the
- * buffer should be extended by.  This callback may choose
- * to ignore the request and extend the buffer by more than
- * the requested amount.
- *
- * @param[in] dbuff		to extend.
- * @param[in] req_extension	How much the caller wants
- *				to extend the buffer by.
- * @return How much the buffer was extended by.
- */
-typedef size_t(*fr_dbuff_extend_t)(fr_dbuff_t *dbuff, size_t req_extension);
-
 void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
 
 size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
@@ -534,10 +558,9 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  * These macros return the amount of data used/remaining relative to
  * the dbuff or marker's start, p, and end pointers.
  *
- * In the majority of cases these macros should not be used and the
- * extension request functions should be used instead.  The only
- * exception to this is if the caller is certain the #fr_dbuff_t
- * is not extensible.
+ * In the majority of cases these macros should not be used and the extension
+ * request functions should be used instead.  The only exception to this is if
+ * the caller is certain the #fr_dbuff_t is not extensible.
  *
  * @{
  */
@@ -813,7 +836,7 @@ _fr_dbuff_set(\
  */
 #define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
 
-/** Advance position in dbuff or marker by N bytes
+/** Advance position in dbuff or marker by _len bytes
  *
  * @param[in] _dbuff_or_marker	to advance.
  * @param[in] _len		How much to advance dbuff by.
@@ -856,7 +879,8 @@ _fr_dbuff_set(\
  * buffer is re-allocated.
  * @{
  */
-/** Adds a new pointer to the beginning of the list of pointers to update
+
+/** Initialises a new marker pointing to the current position of the dbuff
  *
  * @param[out] m	to initialise.
  * @param[in] dbuff	to associate marker with.
@@ -874,7 +898,7 @@ static inline uint8_t *fr_dbuff_marker(fr_dbuff_marker_t *m, fr_dbuff_t *dbuff)
 	return dbuff->p;
 }
 
-/** Trims the linked list backed to the specified pointer
+/** Releases the specified marker and any markers added before it
  *
  * Pointers should be released in the inverse order to allocation.
  *
@@ -895,6 +919,7 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
  */
 
 /** Internal copy function to switch between memcpy and memmove - do not call directly
+ *
  * @private
  *
  * @param[out] o_start		Where to copy data to.
@@ -904,7 +929,6 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
  * @return
  *	- 0 on sanity check error.
  *	- >0 the number of bytes copied.
- *
  */
 static inline CC_HINT(always_inline) size_t _fr_dbuff_safecpy(uint8_t *o_start, uint8_t *o_end,
 							      uint8_t const *i_start, uint8_t const *i_end)
@@ -927,6 +951,7 @@ static inline CC_HINT(always_inline) size_t _fr_dbuff_safecpy(uint8_t *o_start, 
 }
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_in_memcpy(uint8_t **pos_p, fr_dbuff_t *out,
@@ -940,6 +965,7 @@ static inline ssize_t _fr_dbuff_in_memcpy(uint8_t **pos_p, fr_dbuff_t *out,
 }
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
@@ -961,7 +987,7 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 	return _fr_dbuff_in_memcpy(pos_p, out, *our_in_p, inlen);			/* Copy _in to _out */
 }
 
-/** Copy inlen bytes into the dbuff
+/** Copy exactly _inlen inlen bytes into a dbuff or marker
  *
  * If _in is a dbuff and _inlen is greater than the
  * number of bytes available in _in, then the copy operation will
@@ -992,12 +1018,13 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 		fr_dbuff_marker_t *	: _fr_dbuff_in_memcpy_dbuff(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), &((fr_dbuff_marker_t const *)(_in))->p, ((fr_dbuff_marker_t const *)(_in))->parent, _inlen) \
 	)
 
-/** Copy exactly n bytes into dbuff returning if there's insufficient space
+/** Copy exactly _inlen bytes into dbuff or marker returning if there's insufficient space
  * @copydetails fr_dbuff_in_memcpy
  */
 #define FR_DBUFF_IN_MEMCPY_RETURN(_out, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_in_memcpy, _out, _in, _inlen)
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline size_t _fr_dbuff_in_memcpy_partial(uint8_t **pos_p, fr_dbuff_t *out,
@@ -1014,6 +1041,7 @@ static inline size_t _fr_dbuff_in_memcpy_partial(uint8_t **pos_p, fr_dbuff_t *ou
 }
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
@@ -1032,12 +1060,12 @@ static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff
 	return _fr_dbuff_in_memcpy_partial(pos_p, out, (*our_in_p), inlen);
 }
 
-/** Copy at most inlen bytes into the dbuff
+/** Copy at most _inlen bytes into the dbuff
  *
  * Use this variant when writing data to a streaming buffer where
  * partial writes will be tracked.
  *
- * If _in is a dbuff and _inlen is greater than the
+ * If _in is a #fr_dbuff_t and _inlen is greater than the
  * number of bytes available in _in, then the copy operation will
  * be truncated, so that we don't read off the end of the buffer.
  *
@@ -1084,12 +1112,14 @@ static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff
 	fr_dbuff_in_memcpy(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** Copy a byte sequence into a dbuff returning if there's insufficient space
+ *
  * @copydetails fr_dbuff_in_bytes
  */
 #define FR_DBUFF_IN_BYTES_RETURN(_dbuff, ...) \
 	FR_DBUFF_IN_MEMCPY_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t c, size_t inlen)
@@ -1103,7 +1133,7 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
 	return _fr_dbuff_set(pos_p, dbuff, (*pos_p) + inlen);
 }
 
-/** Set n bytes of a buffer to the provided value
+/** Set _inlen bytes of a dbuff or marker to _c
  *
  * @param[in] _dbuff_or_marker	to copy data to.
  * @param[in] _c		Value to set.
@@ -1116,7 +1146,8 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
 #define fr_dbuff_memset(_dbuff_or_marker, _c, _inlen) \
 	_fr_dbuff_memset(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _c, _inlen)
 
-/** Set n bytes of a dbuff or marker to the provided value returning if there is insufficient space
+/** Set _inlen bytes of a dbuff or marker to _c returning if there is insufficient space
+ *
  * @copydetails fr_dbuff_memset
  */
 #define FR_DBUFF_MEMSET_RETURN(_dbuff_or_marker, _c, _inlen) FR_DBUFF_RETURN(fr_dbuff_memset, _dbuff_or_marker, _c, _inlen)
@@ -1142,12 +1173,15 @@ FR_DBUFF_PARSE_INT_DEF(int64)
 /** @endcond */
 
 /*
- * The fr_dbuff_in_<type>() functions take rvalues, so to implement float and
- * double in terms of the same-sized integers, we need a layer that gives us an
- * lvalue whose address we can cast.
+
  */
 
 /** Internal function - do not call directly
+ *
+ * The fr_dbuff_in_<type>() functions take rvalues, so to implement float and
+ * double in terms of the same-sized integers, we need a layer that gives us an
+ * lvalue whose address we can cast.
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_in_float(uint8_t **pos_p, fr_dbuff_t *out, float num)
@@ -1156,6 +1190,9 @@ static inline ssize_t _fr_dbuff_in_float(uint8_t **pos_p, fr_dbuff_t *out, float
 }
 
 /** Internal function - do not call directly
+ *
+ * @copydetails _fr_dbuff_in_float
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, double num)
@@ -1163,7 +1200,7 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 	return _fr_dbuff_in_uint64(pos_p, out, *(uint64_t *)(&num));
 }
 
-/** Copy data from a fixed sized C type to a dbuff.
+/** Copy data from a fixed sized C type into a dbuff
  *
  * @param[out] _out	dbuff to write to.  Integer types will be automatically
  *			converted to big endian byte order.
@@ -1186,7 +1223,7 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 		double		: _fr_dbuff_in_double(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (double)_in) \
 	)
 
-/** Copy data from a fixed sized C type to a dbuff returning if there is insufficient space
+/** Copy data from a fixed sized C type into a dbuff returning if there is insufficient space
  *
  * @copydetails fr_dbuff_in
  */
@@ -1281,6 +1318,7 @@ size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_db
  */
 
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
@@ -1290,6 +1328,7 @@ static inline ssize_t _fr_dbuff_out_memcpy(uint8_t *out, uint8_t **pos_p, fr_dbu
 	return _fr_dbuff_set(pos_p, in, (*pos_p) + _fr_dbuff_safecpy(out, out + outlen, (*pos_p), (*pos_p) + outlen));
 }
 /** Internal function - do not call directly
+ *
  * @private
  */
 static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t *out_p, fr_dbuff_t *out, uint8_t **pos_p, fr_dbuff_t *in, size_t outlen)
@@ -1299,11 +1338,11 @@ static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t *out_p, fr_dbuff_t *out
 	return _fr_dbuff_out_memcpy(out_p, pos_p, in, outlen);
 }
 
-/** Copy outlen bytes from the dbuff
+/** Copy exactly _outlen bytes from the dbuff
  *
  * If _out is a dbuff and _outlen is greater than the
  * number of bytes available in _out, then the copy operation will
- * be truncated, so that we don't write off the end of the buffer.
+ * fail.
  *
  * @note If _out is a dbuff it will not be advanced.
  *	 If this is required fr_dbuff_move() should be used.
@@ -1357,8 +1396,8 @@ FR_DBUFF_OUT_DEF(int64)
 /** Copy data from a dbuff or marker to a fixed sized C type
  *
  * @param[out] _out	Where to write the data.  If out is an integer type
- *			the endianess of the data copied from _in will be
- *			converted from bigendian to local endianess.
+ *			a byteswap will be performed if native endianess
+ *      		is not big endian.
  * @param[in] _in	A dbuff or marker to copy data from.  The dbuff or
  *			marker will be advanced by the number of bytes
  *			consumed.
@@ -1380,7 +1419,7 @@ FR_DBUFF_OUT_DEF(int64)
 		double *	: _fr_dbuff_out_uint64((uint64_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)) \
 	)
 
-/** Copy data from a dbuff or marker returning if there's insufficient data
+/** Copy data from a dbuff or marker to a fixed sized C type returning if there is insufficient data
  *
  * @copydetails fr_dbuff_out
  */
