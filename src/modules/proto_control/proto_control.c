@@ -29,7 +29,6 @@
 #include "proto_control.h"
 
 extern fr_app_t proto_control;
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
@@ -53,8 +52,6 @@ static CONF_PARSER const limit_config[] = {
  *
  */
 static CONF_PARSER const proto_control_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_control_t,
-			  type_submodule), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_control_t, io.submodule),
 	  .func = transport_parse },
 
@@ -69,53 +66,6 @@ fr_dict_autoload_t proto_control_dict[] = {
 	{ .out = &dict_control, .proto = "freeradius" },
 	{ NULL }
 };
-
-#if 0
-static fr_dict_attr_t const *attr_control_packet_type;
-
-extern fr_dict_attr_autoload_t proto_control_dict_attr[];
-fr_dict_attr_autoload_t proto_control_dict_attr[] = {
-	{ .out = &attr_control_packet_type, .name = "CONTROL-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_control},
-	{ NULL }
-};
-#endif
-
-/** Wrapper around dl_instance which translates the packet-type into a submodule name
- *
- * @param[in] ctx	to allocate data in (instance of proto_control).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-//	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-//	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-//	proto_control_t		*inst;
-	dl_module_inst_t		*parent_inst;
-//	fr_dict_enum_t const	*type_enum;
-
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_control"));
-	fr_assert(parent_inst);
-
-//	inst = talloc_get_type_abort(parent_inst->data, proto_control_t);
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 *
-	 *	We just load proto_control_all.a
-	 *
-	 *	Future changes may allow different types of control access?
-	 */
-	return dl_module_instance(ctx, out, listen_cs,	parent_inst, "all", DL_MODULE_TYPE_SUBMODULE);
-}
 
 /** Wrapper around dl_instance
  *
@@ -157,166 +107,6 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
 
-/** Decode the packet
- *
- */
-static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
-{
-	proto_control_t const *inst = talloc_get_type_abort_const(instance, proto_control_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	RADCLIENT const *client;
-
-	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_control;
-
-	client = address->radclient;
-
-	/*
-	 *	Hacks for now until we have a lower-level decode routine.
-	 */
-	request->packet->code = data[0];
-	request->packet->id = data[1];
-	request->reply->id = data[1];
-	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
-
-	request->packet->data = talloc_memdup(request->packet, data, data_len);
-	request->packet->data_len = data_len;
-
-	/*
-	 *	Note that we don't set a limit on max_attributes here.
-	 *	That MUST be set and checked in the underlying
-	 *	transport.
-	 *
-	 *	@todo - decode the input control packet, instead of
-	 *	this temporary hack.
-	 */
-	if (data_len > 0) {
-		RPEDEBUG("Failed decoding packet");
-		return -1;
-	}
-
-	/*
-	 *	Set the rest of the fields.
-	 */
-	memcpy(&request->client, &client, sizeof(client)); /* const issues */
-
-	request->packet->socket = address->socket;
-	fr_socket_addr_swap(&request->reply->socket, &address->socket);
-
-	request->config = main_config;
-	REQUEST_VERIFY(request);
-
-	if (!inst->io.app_io->decode) return 0;
-
-	/*
-	 *	Let the app_io do anything it needs to do.
-	 */
-	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
-}
-
-static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
-{
-	proto_control_t const *inst = talloc_get_type_abort_const(instance, proto_control_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const *address = track->address;
-	RADCLIENT const *client;
-
-	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
-	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
-		*buffer = false;
-		return 1;
-	}
-
-	client = address->radclient;
-	fr_assert(client);
-
-	/*
-	 *	Dynamic client stuff
-	 */
-	if (client->dynamic && !client->active) {
-		RADCLIENT *new_client;
-
-		fr_assert(buffer_len >= sizeof(client));
-
-		/*
-		 *	Allocate the client.  If that fails, send back a NAK.
-		 *
-		 *	@todo - deal with NUMA zones?  Or just deal with this
-		 *	client being in different memory.
-		 *
-		 *	Maybe we should create a CONF_SECTION from the client,
-		 *	and pass *that* back to mod_write(), which can then
-		 *	parse it to create the actual client....
-		 */
-		new_client = client_afrom_request(NULL, request);
-		if (!new_client) {
-			PERROR("Failed creating new client");
-			buffer[0] = true;
-			return 1;
-		}
-
-		memcpy(buffer, &new_client, sizeof(new_client));
-		return sizeof(new_client);
-	}
-
-	/*
-	 *	If the app_io encodes the packet, then we don't need
-	 *	to do that.
-	 */
-	if (!inst->io.app_io->encode) {
-		return -1;
-	}
-
-	return inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
-}
-
-static void mod_entry_point_set(void const *instance, request_t *request)
-{
-	proto_control_t const *inst = talloc_get_type_abort_const(instance, proto_control_t);
-	fr_io_track_t *track = request->async->packet_ctx;
-
-	request->server_cs = inst->io.server_cs;
-
-	/*
-	 *	'track' can be NULL when there's no network listener.
-	 */
-	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
-		fr_app_worker_t const	*app_process;
-
-		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
-
-		request->async->process = app_process->entry_point;
-		track->dynamic = 0;
-		return;
-	}
-
-	fr_assert(inst->process != NULL);
-	request->async->process = inst->process;
-}
-
-
-static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
-{
-	return PRIORITY_NOW;
-}
 
 /** Open listen sockets/connect to external event source
  *
@@ -351,92 +141,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_control_t		*inst = talloc_get_type_abort(instance, proto_control_t);
-	size_t			i;
 
-	CONF_ITEM		*ci;
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
-
-	/*
-	 *	Compile each "send/recv + CONTROL packet type" section.
-	 *	This is so that the submodules don't need to do this.
-	 */
-	i = 0;
-	for (ci = cf_item_next(server, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(server, ci)) {
-		char const *name, *packet_type;
-		CONF_SECTION *subcs;
-		rlm_components_t component = MOD_AUTHORIZE;
-
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-		name = cf_section_name1(subcs);
-
-		/*
-		 *	We only process recv/send sections.
-		 *	proto_control_auth will handle the
-		 *	"authenticate" sections.
-		 */
-		if ((strcmp(name, "recv") != 0) &&
-		    (strcmp(name, "send") != 0)) {
-			continue;
-		}
-
-		/*
-		 *	One more "recv" or "send" section has been
-		 *	found.
-		 */
-		i++;
-
-		/*
-		 *	Skip a section if it was already compiled.
-		 */
-		if (cf_data_find(subcs, unlang_group_t, NULL) != NULL) continue;
-
-		/*
-		 *	Check that the packet type is known.
-		 */
-		packet_type = cf_section_name2(subcs);
-		if (packet_type) {
-			cf_log_err(subcs, "Invalid control packet type in '%s %s {...}'",
-				   name, packet_type);
-			return -1;
-		}
-
-		/*
-		 *	Try to compile it, and fail if it doesn't work.
-		 */
-		cf_log_debug(subcs, "compiling - %s {...}", name);
-
-		if (strcmp(name, "send") == 0) component = MOD_POST_AUTH;
-
-		if (unlang_compile(subcs, component, NULL, NULL) < 0) {
-			cf_log_err(subcs, "Failed compiling '%s { ... }' section", name);
-			return -1;
-		}
-	}
-
-	/*
-	 *	No 'recv' or 'send' sections.  That's an error.
-	 */
-	if (!i) {
-		cf_log_err(server, "Virtual servers cannot be empty.");
-		return -1;
-	}
-
-	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, NULL, 0,
-				       conf) < 0) {
-		return -1;
-	}
-
-	/*
-	 *	No IO module, it's an empty listener.
-	 */
-	if (!inst->io.submodule) return 0;
+	fr_assert(inst->io.submodule != NULL);
 
 	/*
 	 *	These configuration items are not printed by default,
@@ -479,14 +185,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
-	if (!inst->io.submodule) return 0;
+	if (!inst->io.submodule) {
+		cf_log_err(conf, "The control server MUST have a 'listener' section.");
+		return -1;
+	}
 
 	/*
 	 *	These timers are usually protocol specific.
@@ -515,31 +219,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return fr_master_app_io.bootstrap(&inst->io, conf);
 }
 
-static int mod_load(void)
-{
-	// load stuff?
-
-	return 0;
-}
-
-static void mod_unload(void)
-{
-	// unload stuff?
-}
-
 fr_app_t proto_control = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "control",
 	.config			= proto_control_config,
 	.inst_size		= sizeof(proto_control_t),
 
-	.onload			= mod_load,
-	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.open			= mod_open,
-	.decode			= mod_decode,
-	.encode			= mod_encode,
-	.entry_point_set	= mod_entry_point_set,
-	.priority		= mod_priority_set
 };
