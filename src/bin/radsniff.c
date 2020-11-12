@@ -2240,6 +2240,8 @@ int main(int argc, char *argv[])
 
 	conf = talloc_zero(autofree, rs_t);
 	RS_ASSERT(conf);
+	fr_pair_list_init(&conf->filter_request_vps);
+	fr_pair_list_init(&conf->filter_response_vps);
 
 	stats = talloc_zero(conf, rs_stats_t);
 

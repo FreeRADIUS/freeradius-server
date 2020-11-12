@@ -287,8 +287,8 @@ struct rs {
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.
 
-	fr_pair_t 		*filter_request_vps;	//!< Sorted filter vps.
-	fr_pair_t 		*filter_response_vps;	//!< Sorted filter vps.
+	fr_pair_list_t 		filter_request_vps;	//!< Sorted filter vps.
+	fr_pair_list_t 		filter_response_vps;	//!< Sorted filter vps.
 	FR_CODE			filter_request_code;	//!< Filter request packets by code.
 	FR_CODE			filter_response_code;	//!< Filter response packets by code.
 
