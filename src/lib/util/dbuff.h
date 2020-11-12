@@ -986,7 +986,7 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 	return _fr_dbuff_in_memcpy(pos_p, out, *our_in_p, inlen);			/* Copy _in to _out */
 }
 
-/** Copy exactly _inlen inlen bytes into a dbuff or marker
+/** Copy exactly _inlen bytes into a dbuff or marker
  *
  * If _in is a dbuff and _inlen is greater than the
  * number of bytes available in _in, then the copy operation will
