@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches-ignore: 
+    branches-ignore:
       - coverity_scan
   pull_request:
 
@@ -65,7 +65,7 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "${{ matrix.os}} ${{ matrix.env.CC }} ${{ toJson(matrix.env) }}"
+    name: "${{ matrix.os }} ${{ matrix.env.CC }} ${{ toJson(matrix.env) }}"
 
     steps:
 
@@ -96,18 +96,8 @@ jobs:
 
     - uses: actions/setup-ruby@v1
 
-    - name: Configure LLVM 10 repositories for 18.04
-      if: ${{ matrix.os == 'ubuntu-18.04' }}
+    - name: Freshen APT repo metadata
       run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-        sudo apt-get update
-
-    - name: Configure LLVM 10 repositories for 20.04
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
-      run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
         sudo apt-get update
 
     - name: Install fixture (redis)
@@ -188,7 +178,7 @@ jobs:
         python-dev \
         python3-pip \
         quilt
-      
+
     - name: Install JSON build deps for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' }}
       run: sudo apt-get install -y --no-install-recommends libjson-c3
@@ -196,26 +186,42 @@ jobs:
     - name: Install JSON build deps for 20.04
       if: ${{ matrix.os == 'ubuntu-20.04' }}
       run: sudo apt-get install -y --no-install-recommends libjson-c4
-      
+
     - name: Install tacacs_plus
       run: |
         pip3 install tacacs_plus
-        
-    - name: Setup compiler toolchain for 18.04
-      if: ${{ matrix.os == 'ubuntu-18.04' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
-        if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10; fi
 
-    - name: Setup compiler toolchain for 20.04
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
+    - name: Install LLVM 10 for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
       run: |
-        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb clang-10 llvm-10
-        if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10; fi
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+
+    - name: Install GCC 10 for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'gcc' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
+
+    - name: Install LLVM 10 for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' && matrix.env.CC == 'clang' }}
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+
+    - name: Install GCC 10 for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' && matrix.env.CC == 'gcc' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
 
     - name: Show versions
       run: |
