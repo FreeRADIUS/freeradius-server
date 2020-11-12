@@ -292,6 +292,18 @@ _fr_dbuff_init(_out, \
 			char const *	: true \
 	       ))
 
+/** Talloc extension structure use by #fr_dbuff_init_talloc
+ * @private
+ *
+ * Holds the data necessary for creating dynamically
+ * extensible buffers.
+ */
+typedef struct {
+	TALLOC_CTX		*ctx;			//!< Context to alloc new buffers in.
+	size_t			init;			//!< How much to allocate initially.
+	size_t			max;			//!< Maximum size of the buffer.
+} fr_dbuff_uctx_talloc_t;
+
 /** Initialise a special dbuff which automatically extends as additional data is written
  *
  * @param[in] ctx	to allocate buffer in.
@@ -488,18 +500,6 @@ do { \
  * @{
  */
 
-/** Talloc tbuff extension structure
- * @private
- *
- * Holds the data necessary for creating dynamically
- * extensible buffers.
- */
-typedef struct {
-	TALLOC_CTX		*ctx;			//!< Context to alloc new buffers in.
-	size_t			init;			//!< How much to allocate initially.
-	size_t			max;			//!< Maximum size of the buffer.
-} fr_dbuff_uctx_talloc_t;
-
 /** dbuff extension callback
  *
  * This callback is used to extend the underlying buffer.
@@ -599,9 +599,9 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  * extensible buffer.
  *
  @code{.c}
- fr_dbuff_t 			dbuff;
- fr_dbuff_uctx_talloc_t		tctx;
- uint8_t			*p;
+ fr_dbuff_t dbuff;
+ fr_dbuff_uctx_talloc_t tctx;
+ uint8_t *p;
 
  fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, SIZE_MAX);
 
@@ -617,9 +617,9 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  * remain valid.
  *
  @code{.c}
- fr_dbuff_t 			dbuff;
- fr_dbuff_uctx_talloc_t		tctx;
- fr_dbuff_marker_t		m;
+ fr_dbuff_t dbuff;
+ fr_dbuff_uctx_talloc_t tctx;
+ fr_dbuff_marker_t m;
 
  fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, SIZE_MAX);
  fr_dbuff_marker(&m, &dbuff);
@@ -634,8 +634,8 @@ size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
  * discouraged as it invalidates many of the protections dbuffs give.
  *
  @code{.c}
- uint8_t			buff[2];
- fr_dbuff_t			dbuff;
+ uint8_t buff[2];
+ fr_dbuff_t dbuff;
 
  fr_dbuff_init(&buff, sizeof(buff));
  fr_dbuff_current(&dbuff)[2] = 0x00;		// Write to invalid memory
