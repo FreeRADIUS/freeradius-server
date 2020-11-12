@@ -28,22 +28,27 @@ env:
 jobs:
   ci:
 
-    services:
-      mysql:
-        image: mysql
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+#
+#  Launching these containers takes the best part of a minute, so we configure
+#  the pre-installed, local instances of these services instead.
+#
+#    services:
+#      mysql:
+#        image: mysql
+#        env:
+#          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+#        ports:
+#          - 3306:3306
+#        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+#
+#      postgres:
+#        image: postgres
+#        env:
+#          POSTGRES_HOST_AUTH_METHOD: trust
+#        ports:
+#          - 5432:5432
+#        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+#
 
     runs-on: ${{ matrix.os }}
 
@@ -121,6 +126,18 @@ jobs:
       run: |
         sudo apt-get install -y --no-install-recommends exim4
         sudo systemctl stop exim4
+
+    - name: Configure fixture (PostgreSQL)
+      run: |
+        export PG_VER=13
+        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo systemctl start postgresql
+
+    - name: Configure fixture (MySQL)
+      run: |
+        sudo systemctl start mysql
+        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
     - name: Install cassandra driver (not yet available on 20.04)
       if: ${{ matrix.os != 'ubuntu-20.04' }}
