@@ -467,12 +467,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 						  request_t *request, fr_radius_packet_t *reply)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
-	fr_pair_t	*vp, *tunnel_vps = NULL;
+	fr_pair_t	*vp;
+	fr_pair_list_t	tunnel_vps;
 	fr_cursor_t	cursor;
 	fr_cursor_t	to_tunnel;
 
 	ttls_tunnel_t	*t = tls_session->opaque;
 
+	fr_pair_list_init(&tunnel_vps);
 	fr_assert(eap_session->request == request);
 
 	/*
