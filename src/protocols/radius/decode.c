@@ -417,10 +417,11 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 {
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	fr_cursor_t		tlv_cursor;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
+	fr_pair_list_init(&head);
 	if (data_len < 3) return -1; /* type, length, value */
 
 #ifdef __clang_analyzer__
@@ -845,12 +846,13 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	ssize_t			ret;
 	uint32_t		vendor;
 	fr_dict_vendor_t const	*dv;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
 	fr_cursor_t		tlv_cursor;
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
+	fr_pair_list_init(&head);
 #ifdef __clang_analyzer__
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
 #endif
