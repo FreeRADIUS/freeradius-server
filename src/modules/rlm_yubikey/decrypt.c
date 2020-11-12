@@ -18,10 +18,10 @@ extern fr_dict_attr_t const *attr_yubikey_counter;
 
 /** Decrypt a Yubikey OTP AES block
  *
- * @param inst Module configuration.
- * @param request The current request.
- * @param passcode string to decrypt.
- * @return one of the RLM_RCODE_* constants.
+ * @param[out] p_result		The result of attempt to decrypt the token.
+ * @param[in] inst		Module configuration.
+ * @param[in] request		The current request.
+ * @param[in] passcode		string to decrypt.
  */
 unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode)
 {
