@@ -159,7 +159,7 @@ typedef struct {
 #if 0
 	fr_tls_session_t		*tls_session;
 	request_t			*request; /* horrible hacks */
-	fr_pair_t		*cert_vps;
+	fr_pair_list_t		cert_vps;
 	pthread_mutex_t		mutex;
 	uint8_t			*data;
 	size_t			partial;
