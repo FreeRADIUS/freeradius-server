@@ -52,6 +52,7 @@ listen {
 	#	auth	  = only Access-Request
 	#	acct	  = only Accounting-Request
 	#	auth+acct = both
+	*	coa	  = only CoA / Disconnect requests
 	#
 	type = auth+acct
 
@@ -440,6 +441,9 @@ clients radsec {
 home_server tls {
 	ipaddr = 127.0.0.1
 	port = 2083
+
+	# type can be the same types as for the "listen" section/
+	# e.g. auth, acct, auth+acct, coa
 	type = auth
 	secret = radsec
 	proto = tcp
