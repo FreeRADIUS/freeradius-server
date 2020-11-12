@@ -59,16 +59,18 @@ typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
 
 /** dbuff extension callback
  *
- * @ingroup Extension callback structures and helpers
- *
  * This callback is used to extend the underlying buffer.
  *
- * - Where the buffer is being used to aggregate data, this function will
+ * - Where the buffer is being used to aggregate data, this callback will
  * usually call realloc to extend the buffer.
  *
- * - Where the buffer is being used for stream decoding, this function will
+ * - Where the buffer is being used for stream decoding, this callback will
  * usually shift the existing data in the buffer to the left, and read in more
  * data from the stream.
+ *
+ * After performing an operation on the underlying buffer, this callback should
+ * call #fr_dbuff_update to fix position pointers in the current dbuff and its
+ * parents and markers.
  *
  * Generally the caller will request the minimum amount the buffer should be
  * extended by.  This callback may choose to ignore the request and extend the
@@ -78,6 +80,7 @@ typedef struct fr_dbuff_marker_s fr_dbuff_marker_t;
  * @param[in] req_extension	How much the caller wants to extend the buffer
  *				by.
  * @return How much the buffer was extended by.
+ * @see fr_dbuff_update
  */
 typedef size_t(*fr_dbuff_extend_t)(fr_dbuff_t *dbuff, size_t req_extension);
 
