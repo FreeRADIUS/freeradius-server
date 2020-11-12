@@ -1350,6 +1350,8 @@ int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 				   type_enum->name, cf_section_name2(server));
 			return -1;
 		}
+
+		code = 0;
 	}
 
 	parent_module = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, proto_name));
