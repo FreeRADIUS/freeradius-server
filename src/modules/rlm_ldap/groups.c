@@ -288,7 +288,8 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 
 	char *name;
 
-	fr_pair_t *vp, **list, *groups = NULL;
+	fr_pair_t *vp;
+	fr_pair_list_t *list, groups;
 	TALLOC_CTX *list_ctx, *value_ctx;
 	fr_cursor_t list_cursor, groups_cursor;
 
@@ -296,6 +297,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 
 	fr_assert(entry);
 	fr_assert(attr);
+	fr_pair_list_init(&groups);
 
 	/*
 	 *	Parse the membership information we got in the initial user query.
