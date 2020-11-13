@@ -167,8 +167,17 @@ void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp);
 void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *vps);
 #  endif
 
+/*
+ *  Temporary hack to (a) get type-checking in macros, and (b) be fast
+ */
+#define		fr_pair_list_init(_list) (*(_list) = _Generic((_list), \
+				fr_pair_list_t *  : NULL, \
+				default		  : (fr_pair_list_t *) NULL))
+
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc(TALLOC_CTX *ctx);
+
+fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx);
 
 /**
  *
@@ -184,13 +193,6 @@ void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
 /** @hidecallergraph */
 void		fr_pair_list_free(fr_pair_list_t *list);
-
-/*
- *  Temporary hack to (a) get type-checking in macros, and (b) be fast
- */
-#define		fr_pair_list_init(_list) (*(_list) = _Generic((_list), \
-				fr_pair_list_t *  : NULL, \
-				default		  : (fr_pair_list_t *) NULL))
 
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp);
@@ -280,9 +282,9 @@ bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filt
 /* Lists */
 int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from);
 int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
-					fr_pair_list_t *from, fr_dict_attr_t const *da);
+					fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count);
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da);
+					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count);
 
 /** @name Pair to pair copying
  *

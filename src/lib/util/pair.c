@@ -70,9 +70,28 @@ static int _fr_pair_free(fr_pair_t *vp)
 	return 0;
 }
 
+/** Allocate a new pair list on the heap
+ *
+ * @param[in] ctx	to allocate the pair list in.
+ * @return
+ *	- A new #fr_pair_list_t.
+ *	- NULL if an error occurred.
+ */
+fr_pair_list_t *fr_pair_list_alloc(TALLOC_CTX *ctx)
+{
+	fr_pair_list_t *pl;
+
+	pl = talloc(ctx, fr_pair_list_t);
+	if (unlikely(!pl)) return NULL;
+
+	fr_pair_list_init(pl);
+
+	return pl;
+}
+
 /** Dynamically allocate a new attribute
  *
- * @param[in] ctx	Talloc ctx to allocate the pair in.
+ * @param[in] ctx	to allocate the pair list in.
  * @return
  *	- A new #fr_pair_t.
  *	- NULL if an error occurred.
@@ -1280,23 +1299,27 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
  *
  * Copy all pairs from 'from' matching the specified da.
  *
- * @param[in] ctx	for new #fr_pair_t (s) to be allocated in.
- * @param[in] to	where to copy attributes to.
- * @param[in] from	whence to copy #fr_pair_t (s).
- * @param[in] da	to match.
+ * @param[in] ctx		for new #fr_pair_t (s) to be allocated in.
+ * @param[in] to		where to copy attributes to.
+ * @param[in] from		whence to copy #fr_pair_t (s).
+ * @param[in] da		to match.
+ * @param[in] count		How many instances to copy.
+ *				Use 0 for all attributes.
  * @return
  *	- >0 the number of attributes copied.
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
-			    fr_pair_list_t *from, fr_dict_attr_t const *da)
+			    fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count)
 {
 	fr_cursor_t	src, dst, tmp;
 
 	fr_pair_t	*head = NULL;
 	fr_pair_t	*vp;
-	int		cnt = 0;
+	unsigned int	cnt = 0;
+
+	if (count == 0) count = UINT_MAX;
 
 	if (unlikely(!da)) {
 		fr_strerror_printf("No search attribute provided");
@@ -1305,7 +1328,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
 	for (vp = fr_cursor_iter_by_da_init(&src, from, da);
-	     vp;
+	     vp && (cnt < count);
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
 		vp = fr_pair_copy(ctx, vp);
@@ -1333,23 +1356,27 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
  * This is particularly useful for copying attributes of a particular vendor, where the vendor
  * da is passed as parent_da.
  *
- * @param[in] ctx	for new #fr_pair_t (s) to be allocated in.
- * @param[in] to	where to copy attributes to.
- * @param[in] from	whence to copy #fr_pair_t (s).
- * @param[in] parent_da	to match.
+ * @param[in] ctx		for new #fr_pair_t (s) to be allocated in.
+ * @param[in] to		where to copy attributes to.
+ * @param[in] from		whence to copy #fr_pair_t (s).
+ * @param[in] parent_da		to match.
+ * @param[in] count		How many instances to copy.
+ *				Use 0 for all attributes.
  * @return
  *	- >0 the number of attributes copied.
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da)
+				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count)
 {
 	fr_cursor_t	src, dst, tmp;
 
 	fr_pair_t	*head = NULL;
 	fr_pair_t	*vp;
-	int		cnt = 0;
+	unsigned int	cnt = 0;
+
+	if (count == 0) count = UINT_MAX;
 
 	if (unlikely(!parent_da)) {
 		fr_strerror_printf("No search attribute provided");
@@ -1358,7 +1385,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 
 	fr_cursor_talloc_init(&tmp, &head, fr_pair_t);
 	for (vp = fr_cursor_iter_by_ancestor_init(&src, from, parent_da);
-	     vp;
+	     vp && (cnt < count);
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
 		vp = fr_pair_copy(ctx, vp);

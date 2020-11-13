@@ -679,7 +679,8 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 			/*
 			 *	Tell the original request that it's going to be proxied.
 			 */
-			fr_pair_list_copy_by_da(request, &request->control_pairs, &fake->control, attr_proxy_to_realm);
+			fr_pair_list_copy_by_da(request, &request->control_pairs,
+						&fake->control, attr_proxy_to_realm, 0);
 
 			/*
 			 *	Seed the proxy packet with the tunneled request.
