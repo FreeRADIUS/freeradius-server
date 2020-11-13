@@ -1194,7 +1194,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
 
-	tmp_ctx = talloc_new(request);
+	tmp_ctx = talloc_pool(request, 1024);
 	fr_cursor_init(&src_list, &head);
 
 	/*
@@ -1473,43 +1473,150 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	= - Set only if not already set
 	 */
 	case T_OP_EQ:
+	{
+		tmpl_attr_extent_t 	*extent = NULL;
+		fr_dlist_head_t		leaf;
+		fr_dlist_head_t		interior;
+		fr_pair_t 		*src_vp;
+
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
 			fr_pair_list_free(&head);
 			goto finish;
 		}
 
-		/* Insert first instance (if multiple) */
-		fr_cursor_head(&src_list);
-		fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
+		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
+		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
+
+		/*
+		 *	Find out what we need to build and build it
+		 */
+		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
+		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+			fr_dlist_talloc_free(&leaf);
+			fr_dlist_talloc_free(&interior);
+			rcode = -1;
+		    	goto finish;
+		}
+
+		/*
+		 *	Need to copy src to all dsts
+		 */
+		src_vp = fr_cursor_head(&src_list);
+		if (!src_vp) {
+			fr_dlist_talloc_free(&leaf);
+			rcode = -1;
+			goto finish;
+		}
+
+		if (fr_dlist_num_elements(&leaf) > 1) {
+			while ((extent = fr_dlist_head(&leaf))) {
+				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+				fr_dlist_talloc_free_head(&leaf);
+			}
+		} else {
+			extent = fr_dlist_head(&leaf);
+			fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+			fr_dlist_talloc_free_head(&leaf);
+		}
+
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
+		fr_assert(fr_dlist_num_elements(&interior) == 0);
+		fr_assert(fr_dlist_num_elements(&leaf) == 0);
+	}
 		break;
 
 	/*
 	 *	:= - Overwrite existing attribute with last src_list attribute
 	 */
 	case T_OP_SET:
-		/* Wind to last instance */
-		fr_cursor_tail(&src_list);
-		if (dst) {
-			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
-			talloc_free(dst);
-		} else {
-			fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
+	{
+		tmpl_attr_extent_t 	*extent = NULL;
+		fr_dlist_head_t		leaf;
+		fr_dlist_head_t		interior;
+		fr_pair_t 		*src_vp;
+
+		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
+		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
+
+		/*
+		 *	Find out what we need to build and build it
+		 */
+		src_vp = fr_cursor_tail(&src_list);
+		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
+		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+		    op_set_error:
+			fr_dlist_talloc_free(&leaf);
+			fr_dlist_talloc_free(&interior);
+			rcode = -1;
+		    	goto finish;
 		}
+
+		if (fr_dlist_num_elements(&leaf) > 1) {
+			ERROR("Not yet supported");
+
+			goto op_set_error;
+		} else {
+			if (dst) {
+				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
+				dst = fr_cursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
+				talloc_free(dst);
+			} else {
+				extent = fr_dlist_head(&leaf);
+				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+			}
+		}
+
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
+		fr_assert(fr_dlist_num_elements(&interior) == 0);
+		fr_dlist_talloc_free(&leaf);
+	}
 		break;
 
 	/*
 	 *	+= - Add all src_list attributes to the destination
 	 */
 	case T_OP_ADD:
-		/* Insert all the instances! (if multiple) */
-		fr_pair_add(list, head);
-		head = NULL;
+	{
+		tmpl_attr_extent_t 	*extent = NULL;
+		fr_dlist_head_t		leaf;
+		fr_dlist_head_t		interior;
+		fr_pair_t 		*src_vp;
+
+		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
+		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
+
+		/*
+		 *	Find out what we need to build and build it
+		 */
+		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
+		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+			fr_dlist_talloc_free(&leaf);
+			fr_dlist_talloc_free(&interior);
+			rcode = -1;
+		    	goto finish;
+		}
+
+		if (fr_dlist_num_elements(&leaf) > 1) {
+			while ((extent = fr_dlist_remove(&leaf, NULL))) {
+				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+				fr_pair_list_copy(extent->list_ctx, extent->list, &head);
+				fr_dlist_talloc_free_head(&leaf);
+			}
+			/* Free all the src vps */
+			fr_pair_list_free(&head);
+		} else {
+			extent = fr_dlist_head(&leaf);
+			fr_pair_list_copy(extent->list_ctx, extent->list, &head);
+			fr_dlist_talloc_free_head(&leaf);
+		}
+
+		fr_pair_list_free(&head);
+		fr_assert(fr_dlist_num_elements(&interior) == 0);
+		fr_assert(fr_dlist_num_elements(&leaf) == 0);
+	}
 		break;
 
 	/*

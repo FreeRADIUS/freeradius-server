@@ -1551,8 +1551,27 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	 *	If it's a list, just return the list head
 	 */
 	if (vpt->type == TMPL_TYPE_LIST) {
+	do_list:
 		if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
 		return 0;
+	}
+
+	/*
+	 *	If it's a leaf skip all the expensive
+	 *      initialisation and just return the list
+	 *	it's part of.
+	 *
+	 *	This is only needed because lists are
+	 *	treated specially.  Once lists are groups
+	 *	this can be removed.
+	 */
+	ar = fr_dlist_head(&vpt->data.attribute.ar);
+	switch (ar->ar_da->type) {
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		goto do_list;
 	}
 
 	/*
@@ -1661,6 +1680,17 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 			switch (ar->type) {
 			case TMPL_ATTR_TYPE_NORMAL:
 			case TMPL_ATTR_TYPE_UNKNOWN:
+				/*
+				 *	Don't build leaf attributes
+				 */
+				switch (ar->ar_da->type) {
+				case FR_TYPE_STRUCTURAL:
+					break;
+
+				default:
+					continue;
+				}
+
 				MEM(vp = fr_pair_afrom_da(list_ctx, ar->ar_da));	/* Copies unknowns */
 				fr_pair_add(list, vp);
 				list = &vp->vp_group;
