@@ -1271,7 +1271,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 	return 0;
 }
 
-int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
+int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **dl_module,
 			      CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
 			      char const *proto_name,
 			      char const **type_table, size_t type_table_len,			      
@@ -1362,22 +1362,16 @@ int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 	/*
 	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
 	 */
-	if (dl_module_instance(ctx, module_inst, process_app_cs, parent_module, name, DL_MODULE_TYPE_SUBMODULE) < 0) {
+	if (dl_module_instance(ctx, dl_module, process_app_cs, parent_module, name, DL_MODULE_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
-
-	/*
-	 *	Add the module instance to the virtual server, so that
-	 *	it knows which app_process functions to call.
-	 */
-	cf_data_add_static(server, module_inst, "app_process", false);
 
 	/*
 	 *	Set the table which looks up the function by packet
 	 *	code.
 	 */
 	if (type_submodule_by_code && (code < code_max)) {
-		type_submodule_by_code[code] = *module_inst;
+		type_submodule_by_code[code] = *dl_module;
 	}
 
 	return code;
