@@ -130,20 +130,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		[FR_DHCPV6_INFORMATION_REQUEST]	= "process",
 		[FR_DHCPV6_RELAY_FORWARD] = "process"
 	};
-	int			code;
 	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_dhcpv6",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 "proto_dhcpv6",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
-	if (code < 0) return -1;
-
-	/*
-	 *	Set the allowed codes so that the IO functions can
-	 *	filter them as necessary.
-	 */
-	inst->code_allowed[code] = true;
-	return 0;
 }
 
 /** Wrapper around dl_instance

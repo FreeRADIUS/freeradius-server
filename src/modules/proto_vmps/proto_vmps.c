@@ -112,20 +112,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "process",
 		[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "process",
 	};
-	int			code;
 	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_vmps",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 "proto_vmps",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
-	if (code < 0) return -1;
-
-	/*
-	 *	Set the allowed codes so that the IO functions can
-	 *	filter them as necessary.
-	 */
-	inst->code_allowed[code] = true;
-	return 0;
 }
 
 /** Wrapper around dl_instance

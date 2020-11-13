@@ -131,20 +131,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 		[FR_CODE_STATUS_SERVER]		= "status",
 	};
 
-	int			code;
 	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_radius",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 "proto_radius",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
-	if (code < 0) return -1;
-
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-	inst->code_allowed[code] = true;
-	return 0;
 }
 
 /** Wrapper around dl_instance
@@ -603,7 +595,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No Access-Request packets, then no cleanup delay.
 	 */
-	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
+	if (!inst->type_submodule_by_code[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay = 0;
 	}
 #endif

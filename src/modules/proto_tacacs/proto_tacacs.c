@@ -107,20 +107,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
  		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
  		[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "acct",
 	};
-	int			code;
 	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_tacacs",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 "proto_tacacs",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
-	if (code < 0) return -1;
-
-	/*
-	 *	Set the allowed codes so that the IO functions can
-	 *	filter them as necessary.
-	 */
-	inst->code_allowed[code] = true;
-	return 0;
 }
 
 /** Wrapper around dl_instance

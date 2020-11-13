@@ -38,8 +38,6 @@ typedef struct {
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
-	bool				code_allowed[FR_VQP_MAX_CODE];	//!< Allowed packet codes.
-
 	uint32_t			priorities[FR_VQP_MAX_CODE];	//!< priorities for individual packets
 } proto_vmps_t;
 

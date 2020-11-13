@@ -41,7 +41,6 @@ typedef struct {
 	uint32_t		max_packet_size;		//!< for message ring buffer.
 	uint32_t		num_messages;			//!< for message ring buffer.
 
-	bool			code_allowed[FR_PACKET_TYPE_MAX];	//!< Allowed packet codes.
 	uint32_t		priorities[FR_PACKET_TYPE_MAX];	//!< priorities for individual packets
 } proto_tacacs_t;
 
