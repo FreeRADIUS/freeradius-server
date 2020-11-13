@@ -1558,12 +1558,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 			goto op_set_error;
 		} else {
+			extent = fr_dlist_head(&leaf);
 			if (dst) {
 				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
 				dst = fr_cursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
 				talloc_free(dst);
 			} else {
-				extent = fr_dlist_head(&leaf);
 				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 			}
 		}
