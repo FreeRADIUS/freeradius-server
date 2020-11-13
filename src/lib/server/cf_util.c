@@ -581,6 +581,8 @@ bool cf_item_is_data(CONF_ITEM const *ci)
  * @return
  *	- #CONF_PAIR.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 {
@@ -602,6 +604,8 @@ CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
  * @return
  *	- #CONF_SECTION.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 {
@@ -623,6 +627,8 @@ CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
  * @return
  *	- #CONF_DATA.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
 {
@@ -642,6 +648,8 @@ CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cp was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
 {
@@ -659,6 +667,8 @@ CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cs was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
 {
@@ -676,6 +686,8 @@ CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cd was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 {
@@ -915,6 +927,8 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
  *
  * @param[in] parent	section we're adding to.
  * @param[in] cs	we're adding.
+ *
+ * @hidecallergraph
  */
 void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
 {
@@ -944,6 +958,8 @@ CONF_SECTION *cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev)
  * @return
  *	- The first matching subsection.
  *	- NULL if no subsections match.
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_section_find(CONF_SECTION const *cs,
 			      char const *name1, char const *name2)
@@ -963,6 +979,8 @@ CONF_SECTION *cf_section_find(CONF_SECTION const *cs,
  * @return
  *	- The next CONF_SECTION.
  *	- NULL if there are no more CONF_SECTIONs
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *prev,
 				   char const *name1, char const *name2)
@@ -1020,6 +1038,8 @@ char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
  * @return
  *	- The first identifier.
  *	- NULL if cs was NULL or no name1 set.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name1(CONF_SECTION const *cs)
 {
@@ -1032,6 +1052,8 @@ char const *cf_section_name1(CONF_SECTION const *cs)
  * @return
  *	- The second identifier.
  *	- NULL if cs was NULL or no name2 set.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name2(CONF_SECTION const *cs)
 {
@@ -1042,6 +1064,8 @@ char const *cf_section_name2(CONF_SECTION const *cs)
  *
  * @param[in] cs	to return identifiers for.
  * @return name1 or name2 identifier.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name(CONF_SECTION const *cs)
 {
@@ -1330,6 +1354,8 @@ int cf_pair_count(CONF_SECTION const *cs)
  * @return
  *	- NULL if the pair was NULL.
  *	- The attribute name of the pair.
+ *
+ * @hidecallergraph
  */
 char const *cf_pair_attr(CONF_PAIR const *pair)
 {
@@ -1344,6 +1370,8 @@ char const *cf_pair_attr(CONF_PAIR const *pair)
  * @return
  *	- NULL if pair was NULL or the pair has no value.
  *	- The string value of the pair.
+ *
+ * @hidecallergraph
  */
 char const *cf_pair_value(CONF_PAIR const *pair)
 {
@@ -1356,6 +1384,8 @@ char const *cf_pair_value(CONF_PAIR const *pair)
  * @return
  *	- T_INVALID if pair was NULL.
  *	- T_OP_* (one of the operator constants).
+ *
+ * @hidecallergraph
  */
 fr_token_t cf_pair_operator(CONF_PAIR const *pair)
 {

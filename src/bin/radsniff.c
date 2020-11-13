@@ -2190,6 +2190,10 @@ static void NEVER_RETURNS usage(int status)
 	fr_exit_now(status);
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	fr_pcap_t	*in = NULL, *in_p;

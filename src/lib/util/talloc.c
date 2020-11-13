@@ -304,6 +304,8 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
  * @return
  *	- Duplicated string.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 {

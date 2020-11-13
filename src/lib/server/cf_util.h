@@ -105,12 +105,18 @@ bool		cf_item_is_section(CONF_ITEM const *ci);
 bool		cf_item_is_pair(CONF_ITEM const *ci);
 bool		cf_item_is_data(CONF_ITEM const *ci);
 
+/** @hidecallergraph */
 CONF_PAIR	*cf_item_to_pair(CONF_ITEM const *ci);
+/** @hidecallergraph */
 CONF_SECTION	*cf_item_to_section(CONF_ITEM const *ci);
+/** @hidecallergraph */
 CONF_DATA	*cf_item_to_data(CONF_ITEM const *ci);
 
+/** @hidecallergraph */
 CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
+/** @hidecallergraph */
 CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
+/** @hidecallergraph */
 CONF_ITEM	*cf_data_to_item(CONF_DATA const *cs);
 
 #define		cf_filename_set(_ci, _filename) _cf_filename_set(CF_TO_ITEM(_ci), _filename)
@@ -135,8 +141,11 @@ CONF_SECTION	*_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_find(CONF_SECTION const *cs, char const *name1, char const *name2);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *subcs,
 				      char const *name1, char const *name2);
 CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
@@ -144,8 +153,11 @@ CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
+/** @hidecallergraph */
 char const	*cf_section_name1(CONF_SECTION const *cs);
+/** @hidecallergraph */
 char const	*cf_section_name2(CONF_SECTION const *cs);
+/** @hidecallergraph */
 char const	*cf_section_name(CONF_SECTION const *cs);
 char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
 fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
@@ -166,8 +178,11 @@ CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char
 CONF_PAIR	*cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr);
 int		cf_pair_count(CONF_SECTION const *cs);
 
+/** @hidecallergraph */
 char const	*cf_pair_attr(CONF_PAIR const *pair);
+/** @hidecallergraph */
 char const	*cf_pair_value(CONF_PAIR const *pair);
+/** @hidecallergraph */
 fr_token_t	cf_pair_operator(CONF_PAIR const *pair);
 
 fr_token_t	cf_pair_attr_quote(CONF_PAIR const *pair);

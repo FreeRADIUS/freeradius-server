@@ -96,6 +96,7 @@ fr_pair_t *fr_pair_alloc(TALLOC_CTX *ctx)
 }
 
 /** Dynamically allocate a new attribute and fill in the da field
+ * @hidecallergraph
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
@@ -291,6 +292,8 @@ void fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
 /** Free memory used by a valuepair list.
  *
  * @todo TLV: needs to free all dependents of each VP freed.
+ *
+ * @hidecallergraph
  */
 void fr_pair_list_free(fr_pair_list_t *vps)
 {
@@ -393,6 +396,7 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
 
 /** Find the pair with the matching DAs
  *
+ * @hidecallergraph
  */
 fr_pair_t *fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da)
 {

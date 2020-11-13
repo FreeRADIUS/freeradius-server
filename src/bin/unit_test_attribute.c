@@ -2843,6 +2843,10 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	return 0;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	int			c;

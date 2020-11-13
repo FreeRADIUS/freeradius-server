@@ -151,6 +151,10 @@ static int process_file(char const *filename)
 	return EXIT_SUCCESS;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	int			c, ret = EXIT_SUCCESS;

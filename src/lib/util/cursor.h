@@ -75,44 +75,64 @@ typedef struct {
 	fr_cursor_t		cursor[];	//!< Stack of cursors.
 } fr_cursor_stack_t;
 
+/** @hidecallergraph */
 void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void *fr_cursor_head(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_tail(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_next(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_next_peek(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_list_next_peek(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void *fr_cursor_current(fr_cursor_t *cursor);
 
+/** @hidecallergraph */
 void fr_cursor_prepend(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void fr_cursor_append(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void fr_cursor_insert(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
+/** @hidecallergraph */
 void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
+/** @hidecallergraph */
 void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx);
 
+/** @hidecallergraph */
 void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void *fr_cursor_remove(fr_cursor_t *cursor) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void *fr_cursor_replace(fr_cursor_t *cursor, void *r) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 /** Initialise a cursor with runtime talloc type safety checks and a custom iterator

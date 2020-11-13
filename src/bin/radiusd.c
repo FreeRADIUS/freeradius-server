@@ -194,8 +194,9 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 }
 #endif
 
-/*
- *	The main guy.
+/** Entry point for the daemon
+ *
+ * @hidecallgraph
  */
 int main(int argc, char *argv[])
 {

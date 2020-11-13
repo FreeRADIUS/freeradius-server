@@ -170,6 +170,10 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc(TALLOC_CTX *ctx);
 
+/**
+ *
+ * @hidecallergraph
+ */
 fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
 fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
@@ -178,6 +182,7 @@ fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
 
 void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
+/** @hidecallergraph */
 void		fr_pair_list_free(fr_pair_list_t *list);
 
 /*
@@ -224,6 +229,9 @@ static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
 	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
 
+/**
+ * @hidecallergraph
+ */
 fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
 fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);

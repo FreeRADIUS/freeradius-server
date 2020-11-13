@@ -157,6 +157,7 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 		talloc(_ctx, _type)
 #endif
 
+/** @hidecallergraph */
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
 char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));

@@ -125,6 +125,8 @@ static inline void *cursor_tail(void **prev, fr_cursor_t *cursor, void *current)
  *
  * @param[out] out	Where to copy the cursor to.
  * @param[in] in	cursor to copy.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
 {
@@ -135,6 +137,8 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
  *
  * @param[in] cursor	to operate on.
  * @return item at the start of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
@@ -162,6 +166,8 @@ void *fr_cursor_head(fr_cursor_t *cursor)
  *
  * @param[in] cursor	to operate on.
  * @return item at the end of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_tail(fr_cursor_t *cursor)
 {
@@ -179,6 +185,8 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
  * @return
  *	- Next item.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
 {
@@ -195,6 +203,8 @@ void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
  * @return
  *	- Next item.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_next_peek(fr_cursor_t *cursor)
 {
@@ -211,6 +221,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  * @return
  *	- Next item in list.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
  void *fr_cursor_list_next_peek(fr_cursor_t *cursor)
 {
@@ -228,6 +240,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  * @return
  *	- Previous item.
  *	- NULL if no previous item available.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 {
@@ -242,6 +256,8 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  * @return
  *	- The item the cursor currently points to.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
@@ -259,6 +275,8 @@ void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
  *
  * @param cursor to operate on.
  * @param v to insert.
+ *
+ * @hidecallergraph
  */
 void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 {
@@ -294,6 +312,8 @@ void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor to operate on.
  * @param[in] v to insert.
+ *
+ * @hidecallergraph
  */
 void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
 {
@@ -337,6 +357,8 @@ void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor	to operate on.
  * @param[in] v		Item to insert.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_insert(fr_cursor_t *cursor, void *v)
 {
@@ -368,6 +390,8 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor		to operate on.
  * @param[in] to_append		Items to append.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
@@ -408,6 +432,8 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
  * @param[in] eval	evaluation function
  * @param[in] uctx	context for the evaluation function
  * @return the first item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
@@ -425,6 +451,8 @@ void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void con
  * @param[in] eval	evaluation function
  * @param[in] uctx	context for the evaluation function
  * @return the next item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
@@ -443,6 +471,8 @@ void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void con
  * @param[in] eval      evaluation function
  * @param[in] uctx	context for the evaluation function
  * @return the next item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
 {
@@ -466,6 +496,8 @@ void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void 
  * @param[in] a		First cursor.
  * @param[in] b		Second cursor.
  * @return item at the start of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
 {
@@ -491,6 +523,8 @@ void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
  * @param[in] a		First cursor.
  * @param[in] b		Second cursor.
  * @return next item in the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
 {
@@ -588,6 +622,8 @@ void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
  * @return
  *	- item we just removed.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 {
@@ -646,6 +682,8 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
  * @return
  *	- item we just replaced.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 {
@@ -716,6 +754,8 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
  * Current should be the item *after* the one freed.
  *
  * @param[in] cursor to free items in.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_free_list(fr_cursor_t *cursor)
 {
@@ -738,6 +778,8 @@ void fr_cursor_free_list(fr_cursor_t *cursor)
  * @param[in] uctx	to pass to iterator function.
  * @param[in] type	if iterating over talloced memory.
  * @return the attribute pointed to by v.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 				    fr_cursor_iter_t iter, void const *uctx, char const *type)

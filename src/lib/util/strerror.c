@@ -123,6 +123,10 @@ static inline fr_log_buffer_t *fr_strerror_init(void)
 	return buffer;
 }
 
+/**
+ *
+ * @hidecallergraph
+ */
 static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
@@ -190,6 +194,8 @@ static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
  * @param[in] fmt	printf style format string.
  *			If NULL clears any existing messages.
  * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
  */
 void fr_strerror_printf(char const *fmt, ...)
 {
@@ -207,6 +213,8 @@ void fr_strerror_printf(char const *fmt, ...)
  *			should be positioned.
  * @param[in] fmt	Error string.
  * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
  */
 void fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...)
 {
@@ -227,6 +235,8 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
  *
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the error string.
+ *
+ * @hidecallergraph
  */
 static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 {
@@ -269,6 +279,8 @@ static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
  * @param[in] fmt	printf style format string.
  *			If NULL clears any existing messages.
  * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
  */
 void fr_strerror_printf_push(char const *fmt, ...)
 {
@@ -286,6 +298,8 @@ void fr_strerror_printf_push(char const *fmt, ...)
  *			should be positioned.
  * @param[in] fmt	Error string.
  * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
  */
 void fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...)
 {
@@ -308,6 +322,8 @@ void fr_strerror_marker_printf_push(char const *subject, size_t offset, char con
  * If there are additional messages on the log stack they will be discarded.
  *
  * @return library error or zero length string.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror(void)
 {
@@ -337,6 +353,8 @@ char const *fr_strerror(void)
  * @return
  *	- NULL if there are no pending errors.
  *	- The error message if there was an error.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror_marker(char const **subject, size_t *offset)
 {
@@ -365,6 +383,8 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 /** Get the last library error
  *
  * @return library error or zero length string.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror_peek(void)
 {
@@ -387,6 +407,8 @@ char const *fr_strerror_peek(void)
  * @return
  *	- NULL if there are no pending errors.
  *	- The error message if there was an error.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
 {
@@ -415,6 +437,8 @@ char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
  * @return
  *	- A library error.
  *	- NULL if no errors are pending.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror_pop(void)
 {
@@ -439,6 +463,8 @@ char const *fr_strerror_pop(void)
  * @return
  *	- A library error.
  *	- NULL if no errors are pending.
+ *
+ * @hidecallergraph
  */
 char const *fr_strerror_marker_pop(char const **subject, size_t *offset)
 {
@@ -461,6 +487,8 @@ char const *fr_strerror_marker_pop(char const **subject, size_t *offset)
 /** Print the current error to stderr with a prefix
  *
  * Used by utility functions lacking their own logging infrastructure
+ *
+ * @hidecallergraph
  */
 void fr_perror(char const *fmt, ...)
 {
@@ -490,7 +518,3 @@ void fr_perror(char const *fmt, ...)
 	}
 	talloc_free(prefix);
 }
-
-#ifdef TESTING_STRERROR
-
-#endif

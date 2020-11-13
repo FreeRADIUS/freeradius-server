@@ -89,6 +89,8 @@ typedef struct {
 
 int fr_time_start(void);
 int fr_time_sync(void);
+
+/** @hidecallergraph */
 fr_time_t fr_time(void);
 
 /*

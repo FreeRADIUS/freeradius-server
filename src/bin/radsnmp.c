@@ -884,6 +884,10 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 	return EXIT_SUCCESS;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char **argv)
 {
 	int		c;

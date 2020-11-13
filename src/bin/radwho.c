@@ -170,9 +170,9 @@ static void NEVER_RETURNS usage(int status)
 	fr_exit_now(status);
 }
 
-
-/*
- *	Main program
+/**
+ *
+ * @hidecallgraph
  */
 int main(int argc, char **argv)
 {

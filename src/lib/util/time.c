@@ -172,6 +172,8 @@ int fr_time_start(void)
  *  Human (i.e. printable) time is something else.
  *
  * @returns fr_time_t time in nanoseconds since the server our_epoch.
+ *
+ * @hidecallergraph
  */
 fr_time_t fr_time(void)
 {

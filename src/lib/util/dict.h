@@ -388,6 +388,8 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **pare
  *
  * @{
  */
+
+/** @hidecallergraph */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
 bool			fr_dict_is_read_only(fr_dict_t const *dict);

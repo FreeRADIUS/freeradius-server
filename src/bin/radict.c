@@ -195,6 +195,10 @@ static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_
 	_fr_dict_export(dict, count, low, high, fr_dict_root(dict), 0);
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	char const	*dict_dir = DICTDIR;

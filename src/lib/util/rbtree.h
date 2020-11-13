@@ -115,6 +115,7 @@ bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
 
 rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
 
+/** @hidecallergraph */
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
 
 uint32_t	rbtree_num_elements(rbtree_t *tree);

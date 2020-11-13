@@ -1112,6 +1112,10 @@ packet_done:
 	return 0;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char **argv)
 {
 	int		c;

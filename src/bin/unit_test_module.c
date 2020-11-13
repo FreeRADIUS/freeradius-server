@@ -556,8 +556,9 @@ static request_t *request_clone(request_t *old)
 	return request;
 }
 
-/*
- *	The main guy.
+/**
+ *
+ * @hidecallgraph
  */
 int main(int argc, char *argv[])
 {

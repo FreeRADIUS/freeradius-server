@@ -598,6 +598,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 
 /** Find an element in the tree, returning the data, not the node
  *
+ * @hidecallergraph
  */
 void *rbtree_finddata(rbtree_t *tree, void const *data)
 {

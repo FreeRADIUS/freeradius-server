@@ -166,6 +166,8 @@ static char const *fr_syserror_macro_names[] = {
  *
  * @param num errno as returned by function or from global errno.
  * @return local specific error string relating to errno.
+ *
+ * @hidecallergraph
  */
 char const *fr_syserror(int num)
 {

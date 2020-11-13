@@ -35,6 +35,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+/** @hidecallergraph */
 char const	*fr_syserror(int num);
 
 #ifdef __cplusplus

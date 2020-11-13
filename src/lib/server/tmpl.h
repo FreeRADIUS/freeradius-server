@@ -595,6 +595,10 @@ static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 	return fr_dlist_num_elements(&vpt->data.attribute.rr);
 }
 
+/**
+ *
+ * @hidecallergraph
+ */
 static inline fr_dict_attr_t const *tmpl_da(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));

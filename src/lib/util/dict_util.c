@@ -1616,6 +1616,8 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
  *
  * @param dict			to return root for.
  * @return the root attribute of the dictionary.
+ *
+ * @hidecallergraph
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
