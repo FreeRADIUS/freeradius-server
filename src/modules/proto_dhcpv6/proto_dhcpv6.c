@@ -452,13 +452,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_dhcpv6_t		*inst = talloc_get_type_abort(instance, proto_dhcpv6_t);
 
 	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, conf) < 0) {
-		return -1;
-	}
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -505,11 +498,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	fr_assert(dict_dhcpv6 != NULL);
 	fr_assert(attr_packet_type != NULL);
-
-	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
 
 	/*
 	 *	No IO module, it's an empty listener.

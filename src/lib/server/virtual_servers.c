@@ -100,6 +100,9 @@ static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_
 static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
+static int fr_app_process_bootstrap(CONF_SECTION *server);
+static int fr_app_process_instantiate(CONF_SECTION *server);
+
 static const CONF_PARSER listen_on_read_config[] = {
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ,
 			 fr_virtual_server_t, listener), \
@@ -573,12 +576,6 @@ int virtual_servers_instantiate(void)
 			}
 		}
 
-		/*
-		 *	Not all virtual servers have listeners,
-		 *	some are just used to wrap unlang logic.
-		 */
-		if (listen_cnt == 0) continue;
-
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
@@ -593,6 +590,8 @@ int virtual_servers_instantiate(void)
 				return -1;
 			}
 		}
+
+		if (fr_app_process_instantiate(server_cs) < 0) return -1;
 
 		/*
 		 *	Print out warnings for unused "recv" and
@@ -693,7 +692,9 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_servers[i] || !virtual_servers[i]->listener) continue;
+		fr_assert(virtual_servers[i] != NULL);
+
+		if (!virtual_servers[i]->listener) goto bootstrap;
 
  		listener = talloc_get_type_abort(virtual_servers[i]->listener, fr_virtual_listen_t *);
  		listen_cnt = talloc_array_length(listener);
@@ -715,6 +716,9 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 		}
+
+	bootstrap:
+		if (fr_app_process_bootstrap(virtual_servers[i]->server_cs) < 0) return -1;
 	}
 
 	return 0;
@@ -1159,21 +1163,21 @@ void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
 	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
 }
 
-int fr_app_process_bootstrap(UNUSED CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
+static int fr_app_process_bootstrap(CONF_SECTION *server)
 {
-	int i = 0;
-	CONF_PAIR *cp = NULL;
+	CONF_DATA const *cd = NULL;
 
 	/*
 	 *	Bootstrap the process modules
 	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_module_t const	*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_module_t);
+	while ((cd = cf_data_find_next(server, cd, dl_module_inst_t *, CF_IDENT_ANY))) {
+		dl_module_inst_t	*dl_module = *(dl_module_inst_t **) cf_data_value(cd);
+		dl_module_t const	*module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
 		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
 
-		if (app_process->bootstrap && (app_process->bootstrap(type_submodule[i]->data,
-								      type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
+		if (app_process->bootstrap && (app_process->bootstrap(dl_module->data,
+								      dl_module->conf) < 0)) {
+			cf_log_err(dl_module->conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
 
@@ -1189,44 +1193,39 @@ int fr_app_process_bootstrap(UNUSED CONF_SECTION *server, dl_module_inst_t **typ
 				if (list[j].name == CF_IDENT_ANY) continue;
 
 				if (virtual_server_section_register(&list[j]) < 0) {
-					cf_log_err(conf, "Failed registering section name for %s",
+					cf_log_err(dl_module->conf, "Failed registering section name for %s",
 						app_process->name);
 					return -1;
 				}
 
 			}
 		}
-
-
-		i++;
 	}
 
-	return i;
+	return 0;
 }
 
 
-int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
+static int fr_app_process_instantiate(CONF_SECTION *server)
 {
-	int i;
-	CONF_PAIR *cp = NULL;
-	tmpl_rules_t		parse_rules;
-
-	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
-	fr_assert(parse_rules.dict_def != NULL);
+	CONF_DATA const *cd = NULL;
 
 	/*
-	 *	Instantiate the process modules
+	 *	Bootstrap the process modules
 	 */
-	i = 0;
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_worker_t const	*app_process;
-		fr_dict_enum_t const	*enumv;
+	while ((cd = cf_data_find_next(server, cd, dl_module_inst_t *, CF_IDENT_ANY))) {
+		dl_module_inst_t	*dl_module = *(dl_module_inst_t **) cf_data_value(cd);
+		dl_module_t const	*module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
+		tmpl_rules_t		parse_rules;
 
-		app_process = (fr_app_worker_t const *)type_submodule[i]->module->common;
+		memset(&parse_rules, 0, sizeof(parse_rules));
+		parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
+		fr_assert(parse_rules.dict_def != NULL);
+
 		if (app_process->instantiate &&
-		    (app_process->instantiate(type_submodule[i]->data, type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+		    (app_process->instantiate(dl_module->data, dl_module->conf) < 0)) {
+			cf_log_err(dl_module->conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
 
@@ -1234,16 +1233,9 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 		 *	Compile the processing sections.
 		 */
 		if (app_process->compile_list &&
-		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules, type_submodule[i]->data) < 0)) {
+		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules, dl_module->data) < 0)) {
 			return -1;
 		}
-
-		/*
-		 *	We've already done bounds checking in the type_parse function
-		 */
-		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
-		if (!fr_cond_assert(enumv)) return -1;
-		i++;
 	}
 
 	return 0;

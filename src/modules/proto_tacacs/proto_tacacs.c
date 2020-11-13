@@ -506,13 +506,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_tacacs_t		*inst = talloc_get_type_abort(instance, proto_tacacs_t);
 
 	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, conf)) {
-		return -1;
-	}
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -558,11 +551,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	fr_assert(dict_tacacs != NULL);
-
-	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
 
 	/*
 	 *	No IO module, it's an empty listener.

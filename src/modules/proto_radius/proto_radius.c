@@ -517,13 +517,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
 
 	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, conf) < 0) {
-		return -1;
-	}
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -567,11 +560,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
-
-	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
 
 	/*
 	 *	No IO module, it's an empty listener.

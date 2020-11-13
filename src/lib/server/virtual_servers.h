@@ -105,12 +105,6 @@ int		fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 					  char const **type_table, size_t type_table_len,
 					  dl_module_inst_t **type_submodule_by_code, uint32_t code_max);
 
-int		fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule,
-					 CONF_SECTION *conf);
-int		fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule,
-					   CONF_SECTION *conf);
-
-
 /** Module methods which are allowed in virtual servers.
  *
  */
