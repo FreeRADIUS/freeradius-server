@@ -116,7 +116,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
 
 	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_vmps");
+					 type_lib_table, NUM_ELEMENTS(type_lib_table), "proto_vmps",
+					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 	if (code < 0) return -1;
 
 	/*
@@ -420,9 +421,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process modules
 	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, inst->type_submodule_by_code,
-				       NUM_ELEMENTS(inst->type_submodule_by_code),
-				       conf) < 0) {
+	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, conf) < 0) {
 		return -1;
 	}
 

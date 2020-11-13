@@ -102,11 +102,12 @@ bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 int		fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 					  CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
 					  char const **type_table, size_t type_table_len,
-					  char const *proto_name);
+					  char const *proto_name,
+					  dl_module_inst_t **type_submodule_by_code, uint32_t code_max);
+
 int		fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule,
 					 CONF_SECTION *conf);
 int		fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule,
-					   dl_module_inst_t **type_submodule_by_code, int code_max,
 					   CONF_SECTION *conf);
 
 

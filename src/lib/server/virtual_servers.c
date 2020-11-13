@@ -1227,7 +1227,7 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submo
 }
 
 
-int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, dl_module_inst_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
+int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
 {
 	int i;
 	CONF_PAIR *cp = NULL;
@@ -1244,7 +1244,6 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_worker_t const	*app_process;
 		fr_dict_enum_t const	*enumv;
-		int			code;
 
 		app_process = (fr_app_worker_t const *)type_submodule[i]->module->common;
 		if (app_process->instantiate &&
@@ -1266,14 +1265,6 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 		 */
 		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
 		if (!fr_cond_assert(enumv)) return -1;
-
-		code = enumv->value->vb_uint32;
-		if (code >= code_max) {
-			cf_log_err(conf, "Invalid type code \"%s\" for \"%s\"", enumv->name, app_process->name);
-			return -1;
-		}
-
-		type_submodule_by_code[code] = type_submodule[i];	/* Store the process function */
 		i++;
 	}
 
@@ -1283,7 +1274,8 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
 int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 			      CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
 			      char const **type_table, size_t type_table_len,
-			      char const *proto_name)
+			      char const *proto_name,
+			      dl_module_inst_t **type_submodule_by_code, uint32_t code_max)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
@@ -1379,6 +1371,14 @@ int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
 	 *	it knows which app_process functions to call.
 	 */
 	cf_data_add_static(server, module_inst, "app_process", false);
+
+	/*
+	 *	Set the table which looks up the function by packet
+	 *	code.
+	 */
+	if (type_submodule_by_code && (code < code_max)) {
+		type_submodule_by_code[code] = *module_inst;
+	}
 
 	return code;
 }
