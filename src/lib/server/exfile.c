@@ -51,7 +51,7 @@ struct exfile_s {
 	bool			locking;
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
-	fr_pair_t		*trigger_args;		//!< Arguments to pass to trigger.
+	fr_pair_list_t		trigger_args;		//!< Arguments to pass to trigger.
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -151,6 +151,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 
 	ef = talloc_zero(NULL, exfile_t);
 	if (!ef) return NULL;
+	fr_pair_list_init(&ef->trigger_args);
 
 	talloc_link_ctx(ctx, ef);
 
