@@ -100,6 +100,8 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 
 /** Reallocate the current buffer
  *
+ * @private
+ *
  * @param[in] dbuff		to be extended.
  * @param[in] extension		How many additional bytes should be allocated
  *				in the buffer.
@@ -107,7 +109,7 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
  *	- 0 the extension operation failed.
  *	- >0 the number of bytes the buffer was extended by.
  */
-size_t fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
+size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 {
 	fr_dbuff_uctx_talloc_t	*tctx = dbuff->uctx;
 	size_t			clen, nlen, elen = extension;

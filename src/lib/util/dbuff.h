@@ -401,7 +401,7 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 		.start = buff,
 		.p = buff,
 		.end = buff + init,
-		.extend = fr_dbuff_extend_talloc,
+		.extend = _fr_dbuff_extend_talloc,
 		.uctx = tctx
 	};
 
