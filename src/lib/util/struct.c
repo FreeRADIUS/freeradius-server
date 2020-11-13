@@ -429,7 +429,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 	unsigned int		child_num = 1;
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const   	*key_da, *parent;
 
 	if (!vp) {
