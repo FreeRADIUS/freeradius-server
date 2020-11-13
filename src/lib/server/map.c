@@ -410,7 +410,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	*out = map;
 
 	return 0;
-} 
+}
 
 
 /** Convert an 'update' config section into an attribute map.
@@ -1370,7 +1370,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	the dst_list and vp pointing to the attribute or the VP
 	 *	being NULL (no attribute at that index).
 	 */
-	dst = tmpl_cursor_init(NULL, NULL, &cc, &dst_list, request, map->lhs);
+	dst = tmpl_cursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
 	/*
 	 *	The destination is an attribute
 	 */
