@@ -764,7 +764,8 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
-		if (vp->da->flags.internal) continue;
+
+		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
 
 		/*
 		 *	Recursively print grouped attributes.
@@ -772,7 +773,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t
 		if (vp->da->type == FR_TYPE_GROUP) {
 			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
 			log_request_proto_pair_list(lvl, request, (fr_pair_t *) vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
+			RDEBUGX(lvl, "%s}", prefix ? prefix : "");
 			continue;
 		}
 
