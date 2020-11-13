@@ -684,7 +684,7 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  						// was extended.  All is well.
  @endcode
  *
- * Using offsets of these pointers returned by accessor functions is also strongly
+ * Using offsets of the pointers returned by accessor functions is also strongly
  * discouraged as it invalidates many of the protections dbuffs give.
  *
  @code{.c}
