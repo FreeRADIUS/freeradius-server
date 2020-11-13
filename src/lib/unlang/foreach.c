@@ -47,10 +47,10 @@ static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 f
  *
  */
 typedef struct {
-	request_t			*request;			//!< The current request.
+	request_t		*request;			//!< The current request.
 	fr_cursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
-	fr_pair_t 		*vps;				//!< List containing the attribute(s) we're
+	fr_pair_list_t 		vps;				//!< List containing the attribute(s) we're
 								///< iterating over.
 	fr_pair_t		*variable;			//!< Attribute we update the value of.
 	int			depth;				//!< Level of nesting of this foreach loop.
@@ -167,6 +167,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	}
 
 	MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
+	fr_pair_list_init(&foreach->vps);
 
 	/*
 	 *	Copy the VPs from the original request, this ensures deterministic
