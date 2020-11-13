@@ -114,9 +114,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	};
 	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_vmps",
 					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 "proto_vmps",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 

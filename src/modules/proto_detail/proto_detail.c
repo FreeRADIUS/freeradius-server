@@ -163,8 +163,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 		return -1;
 	}
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 NULL, 0, "proto_detail", NULL, 0);
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_detail",
+					 NULL, 0, NULL, 0);
 	if (code < 0) return -1;
 
 	inst->code = code;

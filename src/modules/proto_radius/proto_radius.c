@@ -133,9 +133,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 
 	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 "proto_radius",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_radius",
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),					 
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 

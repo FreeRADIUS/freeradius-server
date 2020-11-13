@@ -109,9 +109,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	};
 	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_tacacs",
 					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 "proto_tacacs",
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 

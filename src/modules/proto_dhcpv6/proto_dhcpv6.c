@@ -132,9 +132,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	};
 	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type,
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 "proto_dhcpv6",
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_dhcpv6",
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),					 
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
