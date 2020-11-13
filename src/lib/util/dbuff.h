@@ -344,7 +344,7 @@ _fr_dbuff_init(_out, \
 			char const *	: true \
 	       ))
 
-size_t	fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
+size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
 /** Talloc extension structure use by #fr_dbuff_init_talloc
  * @private
