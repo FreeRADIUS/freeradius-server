@@ -1583,7 +1583,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		tmpl_attr_extent_t 	*extent = NULL;
 		fr_dlist_head_t		leaf;
 		fr_dlist_head_t		interior;
-		fr_pair_t 		*src_vp;
 
 		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
 		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
@@ -1601,7 +1600,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			while ((extent = fr_dlist_remove(&leaf, NULL))) {
-				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 				fr_pair_list_copy(extent->list_ctx, extent->list, &head);
 				fr_dlist_talloc_free_head(&leaf);
 			}

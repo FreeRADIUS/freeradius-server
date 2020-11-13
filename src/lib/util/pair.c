@@ -1269,6 +1269,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 	} else {
 		fr_cursor_talloc_init(&dst, to, fr_pair_t);
 		fr_cursor_head(&tmp);
+		fr_cursor_tail(&dst);
 		fr_cursor_merge(&dst, &tmp);
 	}
 
