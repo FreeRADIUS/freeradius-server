@@ -238,7 +238,7 @@ struct fr_redis_cluster_key_slot_s {
 struct fr_redis_cluster {
 	char const		*log_prefix;		//!< What to prepend to log messages.
 	char const		*trigger_prefix;	//!< Trigger path.
-	fr_pair_t		*trigger_args;		//!< Arguments to pass to triggers.
+	fr_pair_list_t		trigger_args;		//!< Arguments to pass to triggers.
 	bool			triggers_enabled;	//!< Whether triggers are enabled.
 
 	bool			remapping;		//!< True when cluster is being remapped.
@@ -2273,6 +2273,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		ERROR("%s - Out of memory", log_prefix);
 		return NULL;
 	}
+	fr_pair_list_init(&cluster->trigger_args);
 
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);
