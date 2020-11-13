@@ -107,12 +107,77 @@ static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 
 static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
 
-void tmpl_attr_debug(tmpl_t const *vpt)
+void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
+{
+	char buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
+
+	snprintf(buffer, sizeof(buffer), "%i", ar->num);
+
+	switch (ar->type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		if (!ar->da) {
+			FR_FAULT_LOG("\t[%u] %s null%s%s%s",
+				     i,
+				     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+				     ar->num != NUM_ANY ? "[" : "",
+				     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+				     ar->num != NUM_ANY ? "]" : "");
+			return;
+		}
+
+		FR_FAULT_LOG("\t[%u] %s %s %s%s%s%s (%u)",
+			     i,
+			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
+			      ar->da->name,
+			     ar->num != NUM_ANY ? "[" : "",
+			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_ANY ? "]" : "",
+			     ar->da->attr
+		);
+		if (ar->da->parent) FR_FAULT_LOG("\t    parent     : %s", ar->da->parent->name);
+		FR_FAULT_LOG("\t    is_raw     : %pV", fr_box_bool(ar->da->flags.is_raw));
+		FR_FAULT_LOG("\t    is_unknown : %pV", fr_box_bool(ar->da->flags.is_unknown));
+		break;
+
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		FR_FAULT_LOG("\t[%u] %s %s%s%s%s - unresolved",
+			     i,
+			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+			     ar->ar_unresolved,
+			     ar->num != NUM_ANY ? "[" : "",
+			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_ANY ? "]" : "");
+		break;
+
+	default:
+		FR_FAULT_LOG("\t[%u] Bad type %s(%u)",
+			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
+		break;
+	}
+}
+
+void tmpl_attr_ref_list_debug(fr_dlist_head_t const *ar_head)
 {
 	tmpl_attr_t		*ar = NULL;
+	unsigned int		i = 0;
+
+	FR_FAULT_LOG("attribute references:");
+	/*
+	 *	Print all the attribute references
+	 */
+	while ((ar = fr_dlist_next(ar_head, ar))) {
+		tmpl_attr_ref_debug(ar, i);
+		i++;
+	}
+}
+
+void tmpl_attr_debug(tmpl_t const *vpt)
+{
 	tmpl_request_t		*rr = NULL;
 	unsigned int		i = 0;
-	char			buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
@@ -121,87 +186,31 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		break;
 
 	default:
-		INFO("%s can't print tmpls of type %s", __FUNCTION__,
-		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+		FR_FAULT_LOG("%s can't print tmpls of type %s", __FUNCTION__,
+			     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
 		return;
 	}
 
-	INFO("tmpl_t %s (%.8x) \"%pV\" (%p)",
-	     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
-	     vpt->type,
-	     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
+	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pV\" (%p)",
+		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
+		     vpt->type,
+		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
-	INFO("\tquote  : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
+	FR_FAULT_LOG("\tquote  : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 
-	INFO("request references:");
+	FR_FAULT_LOG("request references:");
 
 	/*
 	 *	Print all the request references
 	 */
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
-		INFO("\t[%u] %s (%u)", i,
-		     fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"), rr->request);
+		FR_FAULT_LOG("\t[%u] %s (%u)", i,
+			     fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"), rr->request);
 		i++;
 	}
-	i = 0;
 
-	INFO("list: %s", fr_table_str_by_value(pair_list_table, vpt->data.attribute.list, "<INVALID>"));
-
-	INFO("attribute references:");
-	/*
-	 *	Print all the attribute references
-	 */
-	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		snprintf(buffer, sizeof(buffer), "%i", ar->num);
-
-		switch (ar->type) {
-		case TMPL_ATTR_TYPE_NORMAL:
-		case TMPL_ATTR_TYPE_UNKNOWN:
-			if (!ar->da) {
-				INFO("\t[%u] %s null%s%s%s",
-				     i,
-				     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-				     ar->num != NUM_ANY ? "[" : "",
-			     	     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-			     	     ar->num != NUM_ANY ? "]" : "");
-				goto next;
-			}
-
-			INFO("\t[%u] %s %s %s%s%s%s (%u)",
-			     i,
-			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
-			     ar->da->name,
-			     ar->num != NUM_ANY ? "[" : "",
-			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-			     ar->num != NUM_ANY ? "]" : "",
-			     ar->da->attr
-			);
-			if (ar->da->parent) INFO("\t    parent     : %s", ar->da->parent->name);
-			INFO("\t    is_raw     : %pV", fr_box_bool(ar->da->flags.is_raw));
-			INFO("\t    is_unknown : %pV", fr_box_bool(ar->da->flags.is_unknown));
-			break;
-
-
-		case TMPL_ATTR_TYPE_UNRESOLVED:
-			INFO("\t[%u] %s %s%s%s%s - unresolved",
-			     i,
-			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-			     ar->ar_unresolved,
-			     ar->num != NUM_ANY ? "[" : "",
-			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-			     ar->num != NUM_ANY ? "]" : "");
-			break;
-
-		default:
-			INFO("\t[%u] Bad type %s(%u)",
-			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
-			break;
-		}
-
-	next:
-		i++;
-	}
+	FR_FAULT_LOG("list: %s", fr_table_str_by_value(pair_list_table, vpt->data.attribute.list, "<INVALID>"));
+	tmpl_attr_ref_list_debug(&vpt->data.attribute.ar);
 }
 
 void tmpl_debug(tmpl_t const *vpt)
@@ -217,24 +226,24 @@ void tmpl_debug(tmpl_t const *vpt)
 		break;
 	}
 
-	INFO("tmpl_t %s (%.8x) \"%pR\" (%p)",
-	     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
-	     vpt->type,
-	     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
+	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pR\" (%p)",
+		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
+		     vpt->type,
+		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
-	INFO("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
+	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 	switch (vpt->type) {
 	case TMPL_TYPE_NULL:
 		return;
 
 	case TMPL_TYPE_DATA:
-		INFO("\ttype       : %s", fr_table_str_by_value(fr_value_box_type_table,
+		FR_FAULT_LOG("\ttype       : %s", fr_table_str_by_value(fr_value_box_type_table,
 							    tmpl_value_type(vpt), "<INVALID>"));
-		INFO("\tlen        : %zu", tmpl_value_length(vpt));
-		INFO("\tvalue      : %pV", tmpl_value(vpt));
+		FR_FAULT_LOG("\tlen        : %zu", tmpl_value_length(vpt));
+		FR_FAULT_LOG("\tvalue      : %pV", tmpl_value(vpt));
 
-		if (tmpl_value_enumv(vpt)) INFO("\tenumv      : %s (%p)",
-						tmpl_value_enumv(vpt)->name, tmpl_value_enumv(vpt));
+		if (tmpl_value_enumv(vpt)) FR_FAULT_LOG("\tenumv      : %s (%p)",
+							tmpl_value_enumv(vpt)->name, tmpl_value_enumv(vpt));
 		return;
 
 	case TMPL_TYPE_XLAT:
@@ -245,7 +254,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 		xlat_aprint(NULL, &str, tmpl_xlat(vpt), NULL);
 
-		INFO("\texpansion  : %pR", fr_box_strvalue_buffer(str));
+		FR_FAULT_LOG("\texpansion  : %pR", fr_box_strvalue_buffer(str));
 
 		talloc_free(str);
 	}
@@ -253,21 +262,21 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX:
 	{
-		INFO("\tpattern    : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+		FR_FAULT_LOG("\tpattern    : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
 	}
 		break;
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
 			if (tmpl_is_unresolved(vpt)) {
-				INFO("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
-				INFO("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
+				FR_FAULT_LOG("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
+				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
-				INFO("\tunresolved : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
-				INFO("\tlen        : %zu", vpt->len);
+				FR_FAULT_LOG("\tunresolved : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+				FR_FAULT_LOG("\tlen        : %zu", vpt->len);
 			}
 		} else {
-			INFO("debug nyi");
+			FR_FAULT_LOG("debug nyi");
 		}
 		break;
 	}

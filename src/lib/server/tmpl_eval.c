@@ -1683,3 +1683,33 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 
 	return 0;
 }
+
+void tmpl_extents_debug(fr_dlist_head_t *head)
+{
+	tmpl_attr_extent_t const *extent = NULL;
+
+	for (extent = fr_dlist_head(head);
+	     extent;
+	     extent = fr_dlist_next(head, extent)) {
+	     	tmpl_attr_t const *ar = extent->ar;
+	     	char const *ctx_name;
+
+	     	if (ar) {
+			FR_FAULT_LOG("extent-interior-attr");
+			tmpl_attr_ref_debug(extent->ar, 0);
+		} else {
+			FR_FAULT_LOG("extent-leaf");
+		}
+
+		ctx_name = talloc_get_name(extent->list_ctx);
+		if (strcmp(ctx_name, "fr_pair_t") == 0) {
+			FR_FAULT_LOG("list_ctx     : %p (%s, %s)", extent->list_ctx, ctx_name,
+				     ((fr_pair_t *)extent->list_ctx)->da->name);
+		} else {
+			FR_FAULT_LOG("list_ctx     : %p (%s)", extent->list_ctx, ctx_name);
+		}
+		FR_FAULT_LOG("list         : %p", extent->list);
+		FR_FAULT_LOG("list (first) : %s (%p)", *extent->list ? (*extent->list)->da->name : "none", *extent->list);
+	}
+
+}

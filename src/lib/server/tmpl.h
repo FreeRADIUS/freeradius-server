@@ -866,6 +866,10 @@ void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t le
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal);
 
+void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx);
+
+void			tmpl_attr_ref_list_debug(fr_dlist_head_t const *ar_head) CC_HINT(nonnull);
+
 void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
@@ -994,6 +998,8 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 
 int			tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 						   tmpl_t const *vpt);
+
+void			tmpl_extents_debug(fr_dlist_head_t *head);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
