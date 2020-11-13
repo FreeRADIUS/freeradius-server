@@ -248,15 +248,27 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		}
 
 	send_reply:
-		/*
-		 *	Check for "do not respond".
-		 */
-		if (request->reply->code == FR_DHCPV6_DO_NOT_RESPOND) {
-			RDEBUG("Not sending reply to client");
-			RETURN_MODULE_HANDLED;
-		}
+		{
+			fr_pair_t *reply_packet_type;
 
-		if (RDEBUG_ENABLED) dhcpv6_packet_debug(request, request->reply, false);
+			/*
+			 *	Add reply->packet-type in case we're
+			 *	being called via the `call {}` keyword.
+			 */
+			MEM(fr_pair_update_by_da(request->reply, &reply_packet_type,
+						 &request->reply->vps, attr_packet_type) >= 0);
+			reply_packet_type->vp_uint32 = request->reply->code;
+
+			/*
+			 *	Check for "do not respond".
+			 */
+			if (request->reply->code == FR_DHCPV6_DO_NOT_RESPOND) {
+				RDEBUG("Not sending reply to client");
+				RETURN_MODULE_HANDLED;
+			}
+
+			if (RDEBUG_ENABLED) dhcpv6_packet_debug(request, request->reply, false);
+		}
 		break;
 
 	default:
