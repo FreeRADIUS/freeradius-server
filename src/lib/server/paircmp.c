@@ -199,8 +199,8 @@ static int packet_cmp(UNUSED void *instance,
  */
 static int generic_cmp(UNUSED void *instance,
 		       request_t *request,
-		       fr_pair_list_t *request_list,
-		       fr_pair_t *check,
+		       UNUSED fr_pair_list_t *request_list,
+		       fr_pair_t *check_item,
 		       UNUSED fr_pair_list_t *check_list)
 {
 	VP_VERIFY(check);
@@ -215,8 +215,8 @@ static int generic_cmp(UNUSED void *instance,
 
 		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) return 0;
 
-		MEM(vp = fr_pair_afrom_da(*request_list, check->da));
-		vp->op = check->op;
+		MEM(vp = fr_pair_afrom_da(request, check_item->da));
+		vp->op = check_item->op;
 		fr_pair_value_from_str(vp, value, -1, '"', false);
 
 		/*
@@ -242,7 +242,7 @@ static int generic_cmp(UNUSED void *instance,
 		 *	returns 0 for matched, and 1 for didn't match.
 		 */
 		rcode = !rcode;
-		fr_pair_list_free(&vp);
+		talloc_free(vp);
 
 		return rcode;
 	}
@@ -492,9 +492,12 @@ finish:
 /** Compare check and vp. May call the attribute comparison function.
  *
  * Unlike paircmp_pairs() this function will call any attribute-specific
- * comparison functions registered.
+ * comparison functions registered.  vp to be matched is request_item or
+ * found in check_list or looked up from external sources depending on the
+ * comparison function called.
  *
  * @param[in] request		Current request.
+ * @param[in] request_item	item to compare.
  * @param[in] request_list	list pairs.
  * @param[in] check		item to compare.
  * @param[in] check_list	list.
@@ -504,6 +507,7 @@ finish:
  *	- 1 is vp value is more than check value.
  */
 static int paircmp_func(request_t *request,
+			fr_pair_t *request_item,
 			fr_pair_list_t *request_list,
 			fr_pair_t *check,
 			fr_pair_list_t *check_list)
@@ -531,7 +535,7 @@ static int paircmp_func(request_t *request,
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
-	return paircmp_pairs(request, check, *request_list);
+	return paircmp_pairs(request, check, request_item);
 }
 
 /** Compare two pair lists except for the password information.
@@ -541,14 +545,15 @@ static int paircmp_func(request_t *request,
  *
  * @param[in] request		Current request.
  * @param[in] request_list	request valuepairs.
- * @param[in] check		Check/control valuepairs.
+ * @param[in] check_list	Check/control valuepairs.
  * @return 0 on match.
  */
 int paircmp(request_t *request,
-	    fr_pair_t *request_list,
-	    fr_pair_t *check)
+	    fr_pair_list_t *request_list,
+	    fr_pair_list_t *check_list)
 {
 	fr_cursor_t		cursor;
+	fr_cursor_t		request_cursor;
 	fr_pair_t		*check_item;
 	fr_pair_t		*auth_item;
 	fr_dict_attr_t const	*from;
@@ -557,7 +562,7 @@ int paircmp(request_t *request,
 	int			compare;
 	bool			first_only;
 
-	for (check_item = fr_cursor_init(&cursor, &check);
+	for (check_item = fr_cursor_init(&cursor, check_list);
 	     check_item;
 	     check_item = fr_cursor_next(&cursor)) {
 		/*
@@ -595,7 +600,7 @@ int paircmp(request_t *request,
 				WARN("Are you sure you don't mean Password.Cleartext?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_num(&request_list, 0, FR_USER_PASSWORD) == NULL) continue;
+			if (fr_pair_find_by_num(request_list, 0, FR_USER_PASSWORD) == NULL) continue;
 		}
 
 		/*
@@ -603,14 +608,14 @@ int paircmp(request_t *request,
 		 */
 		first_only = other_attr(check_item->da, &from);
 
-		auth_item = request_list;
+		auth_item = fr_cursor_init(&request_cursor, request_list);
 
 	try_again:
 		if (!first_only) {
 			while (auth_item != NULL) {
 				if ((auth_item->da == from) || (!from)) break;
 
-				auth_item = auth_item->next;
+				auth_item = fr_cursor_next(&request_cursor);
 			}
 		}
 
@@ -644,7 +649,7 @@ int paircmp(request_t *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, &auth_item, check_item, &check);
+		compare = paircmp_func(request, auth_item, request_list, check_item, check_list);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
@@ -690,7 +695,7 @@ int paircmp(request_t *request,
 		 *	another of the same attribute, which DOES match.
 		 */
 		if ((result != 0) && (!first_only)) {
-			auth_item = auth_item->next;
+			auth_item = fr_cursor_next(&request_cursor);
 			result = 0;
 			goto try_again;
 		}

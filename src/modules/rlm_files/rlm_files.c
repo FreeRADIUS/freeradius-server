@@ -359,7 +359,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			}
 		}
 
-		if (paircmp(request, packet->vps, check_tmp) == 0) {
+		if (paircmp(request, &packet->vps, &check_tmp) == 0) {
 			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
