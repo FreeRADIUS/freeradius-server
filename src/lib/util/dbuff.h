@@ -39,19 +39,42 @@ extern "C" {
 #include <errno.h>
 
 /** A dbuff
+ *
+ * dbuffs wrap an underlying buffer, maintaining 'start', 'current', and 'end'
+ * position pointers.
+ *
+ * dbuffs also contain information on if and how the underlying buffer can be
+ * extended.
+ *
+ * For encoding extending means reallocing the underlying buffer so that there's
+ * addition space to write data to.
+ *
+ * For stream decoding extending means shifting out existing data and refilling
+ * the underlying buffer from a data source.
+ *
+ * dbuffs are intended to be organised into hierarchies, with one dbuff per stack
+ * frame, initialised from a parent in a higher stack frame.
+ *
+ * Each time a dbuff is copied (using one of the provided FR_DBUFF_COPY_* macros),
+ * the copy's 'start' position is updated to be the 'current' position of its
+ * parent.  This ensures length macros report only spaced used/available in the
+ * new dbuff and not its parent.
+ * Other copy macros may move the 'end' position, to artificially limit the
+ * amount of data available.
  */
 typedef struct fr_dbuff_s fr_dbuff_t;
 
 /** A position marker associated with a dbuff
  *
  * Markers are used whenever the caller needs to access part of the underlying
- * buffer other than the 'start', 'current' or 'end' positions.
+ * buffer other than the 'start', 'current' or 'end' positions described by
+ * the a #fr_dbuff_t.
  *
  * Markers are needed because if a #fr_dbuff_t is extended, pointers into the
  * underlying buffer may be invalidated by a realloc or memmove.
  *
  * Markers are intended to be allocated on the stack and associated with a
- * stack specific `fr_dbuff_t`.  Using a stack frame specific dbuff ensures
+ * stack-frame-local `fr_dbuff_t`.  Using a stack-frame-local dbuff ensures
  * markers are automatically released when the stack frame is popped so that
  * markers are not leaked.
  */
@@ -161,7 +184,9 @@ do { \
  */
 
 /** Prevent an dbuff being advanced by operations on its child
+ *
  * @private
+ *
  * @param[in] _dbuff	to make an ephemeral copy of.
  */
 #define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t) \
@@ -491,7 +516,7 @@ static inline size_t _fr_dbuff_extend_lowat(fr_dbuff_extend_status_t *status, fr
  *				in a copy loop, the caller should pass a pointer
  *      			to a #fr_dbuff_extend_status_t.  The initial
  *				value of the #fr_dbuff_extend_status_t variable
- *      			should be #FR_SBUFF_EXTENDABLE, and will be updated
+ *      			should be #FR_DBUFF_EXTENDABLE, and will be updated
  *				to indicate whether the dbuff is extensible,
  *				whether it was extended, and whether it may be
  *				extended again.  This information
@@ -551,7 +576,10 @@ do { \
 #define fr_dbuff_extend(_dbuff) fr_dbuff_extend_lowat(NULL, _dbuff, 1)
 /** @} */
 
-/** @name Extension callback structures and helpers
+/** @name Extension callback helpers
+ *
+ * These public functions are intended to be called by extension callbacks
+ * to fixup dbuffs after the underlying buffer or its contents has been altered.
  * @{
  */
 void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
@@ -640,7 +668,7 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  *
  * If offsets of a #fr_dbuff_t need to be accessed, markers should be used.
  * If a dbuff is extended all markers associated with it will be updated so that the
- * data they point to remains constant.
+ * content they point to remains constant.
  *
  @code{.c}
  fr_dbuff_t dbuff;
@@ -869,7 +897,7 @@ _fr_dbuff_set(\
 	fr_dbuff_set(_dbuff_or_marker, fr_dbuff_end(_dbuff_or_marker))
 /** @} */
 
-/** @name Add and release dbuff markers
+/** @name Marker management
  *
  * Markers serve two purposes:
  *
