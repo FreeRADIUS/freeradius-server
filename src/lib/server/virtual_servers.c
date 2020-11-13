@@ -1309,7 +1309,7 @@ int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **dl_module,
 
 		if (!cf_section_find(server, "recv", NULL)) {
 			cf_log_err(ci, "Failed finding 'recv {...} section of virtual server %s",
-				   type_enum->name, cf_section_name2(server));
+				   cf_section_name2(server));
 			return -1;
 		}
 
