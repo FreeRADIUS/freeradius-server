@@ -1159,7 +1159,7 @@ void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
 	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
 }
 
-int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
+int fr_app_process_bootstrap(UNUSED CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
 {
 	int i = 0;
 	CONF_PAIR *cp = NULL;
@@ -1168,7 +1168,6 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submo
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		char const		*value;
 		dl_module_t const	*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_module_t);
 		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
 
@@ -1176,27 +1175,6 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submo
 								      type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
-		}
-
-		value = cf_pair_value(cp);
-
-		/*
-		 *	Save the process / instance data
-		 *
-		 *	This is so that when one virtual server wants
-		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to root
-		 *	through all of the listeners.
-		 */
-		if (!cf_data_find(server, module_method_t, value)) {
-			module_method_t *process_p = talloc(server, module_method_t);
-			*process_p = app_process->entry_point;
-
-			(void) cf_data_add(server, process_p, value, NULL);
-
-			if (type_submodule[i]->data) {
-				(void) cf_data_add(server, type_submodule[i]->data, value, NULL);
-			}
 		}
 
 		/*
@@ -1372,6 +1350,18 @@ int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **dl_module,
 	 */
 	if (type_submodule_by_code && (code < code_max)) {
 		type_submodule_by_code[code] = *dl_module;
+	}
+
+	/*
+	 *	Cache the pointer to the loaded dl_module, by packet
+	 *	name.  This lets us call it later for bootstrap,
+	 *	instantiate, or entry_point.
+	 */
+	if (!cf_data_find(server, dl_module_inst_t, type_enum->name)) {
+		dl_module_inst_t **ptr = talloc(server, dl_module_inst_t *);
+
+		*ptr = *dl_module;
+		(void) cf_data_add(server, ptr, type_enum->name, NULL);
 	}
 
 	return code;
@@ -1632,30 +1622,25 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 
 int virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t *method_p, void **ctx)
 {
-	CONF_DATA const *cd;
+	CONF_DATA const		*cd;
+	dl_module_inst_t const	*dl_module;
+	dl_module_t const	*module;
+	fr_app_worker_t const	*app_process;
 
-	cd = cf_data_find(server, module_method_t, type);
+	cd = cf_data_find(server, dl_module_inst_t *, type);
 	if (!cd) {
 		fr_strerror_printf("No processing section found for '%s'", type);
 		return -1;
 	}
 
-	*method_p = *(module_method_t *) cf_data_value(cd);
-	if (!method_p) {
-		fr_strerror_printf("No processing section found for '%s'", type);
-		return -1;
-	}
+	dl_module = *(dl_module_inst_t **) cf_data_value(cd);
+	fr_assert(dl_module != NULL);
 
-	/*
-	 *	We MUST use _cd_data_find() so that we don't try to
-	 *	find the "value" with talloc type "CF_IDENT_ANY".
-	 */
-	cd = _cf_data_find_next(cf_section_to_item(server), cf_data_to_item(cd), CF_IDENT_ANY, type);
-	if (!cd) {
-		*ctx = NULL;
-	} else {
-		*ctx = cf_data_value(cd);
-	}
+	module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
+	app_process = (fr_app_worker_t const *)(module->common);
+
+	*method_p = app_process->entry_point;
+	*ctx = dl_module->data;
 
 	return 0;
 }
