@@ -1444,7 +1444,7 @@ fr_dict_attr_t const *fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dic
 
 	if (!a || !b) return NULL;
 
-	if (is_ancestor && (b->depth <= a->depth)) return NULL;
+	if (is_ancestor && (b->depth <= a->depth)) return NULL;	/* fast_path */
 
 	/*
 	 *	Find a common depth to work back from
@@ -1452,9 +1452,11 @@ fr_dict_attr_t const *fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dic
 	if (a->depth > b->depth) {
 		p_b = b;
 		for (p_a = a, i = a->depth - b->depth; p_a && (i > 0); p_a = p_a->parent, i--);
+		if (is_ancestor && (p_a != p_b)) return NULL;
 	} else if (a->depth < b->depth) {
 		p_a = a;
 		for (p_b = b, i = b->depth - a->depth; p_b && (i > 0); p_b = p_b->parent, i--);
+		if (is_ancestor && (p_a != p_b)) return NULL;
 	} else {
 		p_a = a;
 		p_b = b;
