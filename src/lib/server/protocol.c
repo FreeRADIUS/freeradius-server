@@ -70,7 +70,7 @@ void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool re
 #endif
 		       packet->data_len);
 
-	if (received) {
+	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
 	} else {
 		log_request_proto_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
