@@ -439,11 +439,11 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 }
 /** @} */
 
-/** @name Extension request functions
+/** @name Extension requests
  *
- * These functions may be used to request that the underlying buffer is either
- * extended to accomodate more data, or that data is shifted out of the buffer,
- * and that the buffer is refilled.
+ * These functions/macros may be used to request that the underlying buffer is
+ * either extended to accomodate more data, or that data is shifted out of the
+ * buffer, and that the buffer is refilled.
  *
  * @{
  */
@@ -585,7 +585,7 @@ do { \
 void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
 /** @} */
 
-/** @name Length check macros
+/** @name Length checks
  *
  * These macros return the amount of data used/remaining relative to the dbuff
  * or marker's 'start', 'current', and 'end' pointers.
