@@ -133,7 +133,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
 
 	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_dhcpv6",
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),					 
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
@@ -232,14 +232,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	request->config = main_config;
 	REQUEST_VERIFY(request);
-
-	/*
-	 *	Build out any nested replies based on nested relay packets in the request.
-	 *
-	 *	This function also copies over and initializes the
-	 *	various header fields necessary to build the reply packet.
-	 */
-	(void) fr_dhcpv6_reply_initialize(request->reply, &request->reply_pairs, packet->data, packet->data_len);
 
 	if (!inst->io.app_io->decode) return 0;
 

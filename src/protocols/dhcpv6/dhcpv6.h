@@ -157,8 +157,6 @@ ssize_t		fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t len
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 fr_cursor_t *cursor);
 
-int		fr_dhcpv6_reply_initialize(TALLOC_CTX *ctx, fr_pair_list_t *reply_list, uint8_t const *packet, size_t packet_len);
-
 int		fr_dhcpv6_global_init(void);
 
 void		fr_dhcpv6_global_free(void);

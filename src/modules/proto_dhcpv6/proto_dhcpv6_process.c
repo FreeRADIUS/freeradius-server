@@ -40,11 +40,23 @@ fr_dict_autoload_t proto_dhcpv6_process_dict[] = {
 	{ NULL }
 };
 
+static fr_dict_attr_t const *attr_client_id;
+static fr_dict_attr_t const *attr_hop_count;
+static fr_dict_attr_t const *attr_interface_id;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_relay_link_address;
+static fr_dict_attr_t const *attr_relay_peer_address;
+static fr_dict_attr_t const *attr_transaction_id;
 
 extern fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
+	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
+	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
+	{ .out = &attr_interface_id, .name = "Interface-ID", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
 
@@ -90,6 +102,47 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 	}
 }
 
+/** Generate a reply using the attributes we received in the request
+ *
+ * This should be called before the user has the opportunity to mangle
+ * the request so that we get the original values.
+ */
+static inline CC_HINT(always_inline) void dhcpv6_reply_initialise(request_t *request)
+{
+	fr_cursor_t	cursor;
+	fr_pair_t	*vp;
+
+	switch (request->packet->code) {
+	case FR_DHCPV6_RELAY_FORWARD:
+		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+		     	if (vp->da == attr_hop_count) {
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		continue;
+		     	}
+		     	if (vp->da == attr_relay_link_address) {
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		continue;
+		     	}
+		     	if (vp->da == attr_relay_peer_address) {
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		continue;
+		     	}
+		     	if (vp->da == attr_interface_id) {
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		continue;
+		     	}
+		}
+		break;
+
+	default:
+		fr_pair_list_copy_by_da(request->reply, &request->reply_pairs, &request->request_pairs, attr_transaction_id, 1);
+		fr_pair_list_copy_by_ancestor(request->reply, &request->reply_pairs, &request->request_pairs, attr_client_id, 0);
+		break;
+	}
+}
+
 static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode;
@@ -130,7 +183,10 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
+	{
 		dhcpv6_packet_debug(request, request->packet, true);
+
+		dhcpv6_reply_initialise(request);
 
 		request->component = "dhcpv6";
 
@@ -147,6 +203,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		}
 
 		request->request_state = REQUEST_RECV;
+	}
 		FALL_THROUGH;
 
 	case REQUEST_RECV:
