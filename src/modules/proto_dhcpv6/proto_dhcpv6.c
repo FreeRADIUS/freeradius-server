@@ -87,7 +87,6 @@ static CONF_PARSER const proto_dhcpv6_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 static fr_dict_t const *dict_dhcpv6;
 
 extern fr_dict_autoload_t proto_dhcpv6_dict[];
@@ -381,7 +380,6 @@ static void mod_entry_point_set(void const *instance, request_t *request)
 	request->async->process_inst = type_submodule->data;
 }
 
-
 static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
@@ -467,7 +465,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	return fr_master_app_io.instantiate(&inst->io, conf);
 }
-
 
 /** Bootstrap the application
  *
