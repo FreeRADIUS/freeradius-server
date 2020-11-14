@@ -245,7 +245,7 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 
 static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	request_t				*request = uctx;
+	request_t			*request = uctx;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
@@ -253,7 +253,25 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
 
 	fr_assert(state->pid > 0);
 
-	REDEBUG("Timeout running program - killing it and failing the request");
+#ifdef __linux__
+	int status;
+
+	/*
+	 *	libkqueue on Linux isn't quite there yet.  Maybe the
+	 *	program has exited, and we haven't noticed.  In which
+	 *	case, do a graceful cleanup.
+	 */
+	if (waitpid(state->pid, &status, WNOHANG) == state->pid) {
+		unlang_tmpl_exec_waitpid(el, state->pid, status, request);
+		return;
+	}
+#endif
+
+	if (state->fd < 0) {
+		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
+	} else {
+		REDEBUG("Timeout running program - killing it and failing the request");
+	}
 	kill(state->pid, SIGKILL);
 	state->failed = true;
 
