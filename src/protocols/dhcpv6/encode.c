@@ -187,11 +187,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 			fr_dbuff_marker(&p, &work_dbuff);
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data);
-
-			/*
-			 *	@todo - check for free space, etc.
-			 */
-			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
+			if (slen < 0) return slen;
 
 			/*
 			 *	RFC 4704 says "FQDN", unless it's a
