@@ -806,14 +806,25 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, 1 + 32);
 
 		vp = fr_pair_find_by_da(&vps, attr_hop_count);
-		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
+		if (vp) {
+			(void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
+		} else {
+			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 1);
+		}
 
 		vp = fr_pair_find_by_da(&vps, attr_relay_link_address);
-		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
+		if (vp) {
+			(void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
+		} else {
+			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 16);
+		}
 
 		vp = fr_pair_find_by_da(&vps, attr_relay_peer_address);
-		if (vp) (void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
-
+		if (vp) {
+			(void) fr_value_box_to_network_dbuff(NULL, dbuff, &vp->data);
+		} else {
+			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 16);
+		}
 		break;
 
 	default:
