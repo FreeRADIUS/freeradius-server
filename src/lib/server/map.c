@@ -1510,9 +1510,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
-			while ((extent = fr_dlist_head(&leaf))) {
+			while ((extent = fr_dlist_tail(&leaf))) {
 				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
-				fr_dlist_talloc_free_head(&leaf);
+				fr_dlist_talloc_free_tail(&leaf);
 			}
 		} else {
 			extent = fr_dlist_head(&leaf);
@@ -1599,9 +1599,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
-			while ((extent = fr_dlist_remove(&leaf, NULL))) {
+			while ((extent = fr_dlist_tail(&leaf, NULL))) {
 				fr_pair_list_copy(extent->list_ctx, extent->list, &head);
-				fr_dlist_talloc_free_head(&leaf);
+				fr_dlist_talloc_free_tail(&leaf);
 			}
 			/* Free all the src vps */
 			fr_pair_list_free(&head);

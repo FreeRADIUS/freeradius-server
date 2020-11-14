@@ -147,9 +147,9 @@ static unlang_action_t unlang_subrequest_process(rlm_rcode_t *p_result, request_
 					fr_dlist_talloc_free(&interior);
 					goto done;
 				}
-				while ((extent = fr_dlist_head(&leaf))) {
+				while ((extent = fr_dlist_tail(&leaf))) {
 					fr_pair_list_copy(extent->list_ctx, extent->list, &child->reply_pairs);
-					fr_dlist_talloc_free_head(&leaf);
+					fr_dlist_talloc_free_tail(&leaf);
 				}
 			}
 		}
