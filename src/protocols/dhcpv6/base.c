@@ -796,10 +796,11 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 
 	switch (msg_type) {
 	case FR_DHCPV6_RELAY_REPLY:
-		if (!original) return -1;
-
-		FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 1 + 32);
-		break;
+		if (original) {
+			FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 1 + 32);
+			break;
+		}
+		FALL_THROUGH;
 
 	case FR_DHCPV6_RELAY_FORWARD:
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, 1 + 32);
