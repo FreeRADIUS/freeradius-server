@@ -878,6 +878,106 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	return fr_dbuff_used(dbuff);
 }
 
+
+static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+static void print_hex_data(FILE *fp, uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fp, "\n");
+	}
+	if ((i & 0x0f) != 0) fprintf(fp, "\n");
+}
+
+static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len, int depth)
+{
+	uint8_t const *option, *end = packet + packet_len;
+
+	if (packet_len < 4) {
+		fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "???:\t");
+		print_hex_data(fp, packet, packet_len, depth + 1);
+		return;
+	}
+
+	fprintf(fp, "%.*s", depth, tabs);
+	if ((packet[0] > 0) && (packet[0] < FR_DHCPV6_MAX_CODE)) {
+		fprintf(fp, "packet: %s\n", fr_dhcpv6_packet_types[packet[0]]);
+	} else {
+		fprintf(fp, "packet: %02x\n", packet[0]);
+	}
+
+	if ((packet[0] == FR_PACKET_TYPE_VALUE_RELAY_FORWARD) ||
+	    (packet[0] == FR_PACKET_TYPE_VALUE_RELAY_REPLY)) {
+		if (packet_len < 34) {
+			fprintf(fp, "%.*s", depth, tabs);
+			fprintf(fp, "???:\t");
+			print_hex_data(fp, packet + 1, packet_len - 1, depth + 1);
+			return;
+		}
+
+		fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "hops: %02x\n", packet[1]);
+		fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "relay link address: ");
+		print_hex_data(fp, packet + 2, 16, depth + 1);
+
+		fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "peer address:       ");
+		print_hex_data(fp, packet + 18, 16, depth + 1);
+		option = packet + 34;
+	} else {
+		fprintf(fp, "%.*s", depth, tabs);
+		fprintf(fp, "transaction id: ");
+		print_hex_data(fp, packet + 1, 3, depth + 1);
+		option = packet + 4;
+	}
+
+	fprintf(fp, "%.*s", depth, tabs);
+	fprintf(fp, "options\n");
+	while (option < end) {
+		uint16_t length;
+
+		if ((end - option) < 4) {
+			fprintf(fp, "%.*s", depth + 1, tabs);
+			fprintf(fp, "???:\t");
+			print_hex_data(fp, option, end - option, depth + 2);
+			break;
+		}
+
+		length = fr_net_to_uint16(option + 2);
+		fprintf(fp, "%.*s", depth + 1, tabs);
+		fprintf(fp, "%04x %04x\t", fr_net_to_uint16(option), length);
+
+		if ((option + 4 + length) > end) {
+			print_hex_data(fp, option + 4, end - (option + 4), depth + 2);
+			break;
+		}
+
+		print_hex_data(fp, option + 4, length, depth + 3);
+		if ((option[0] == 0) && (option[1] == attr_relay_message->attr)) {
+			dhcpv6_print_hex(fp, option + 4, length, depth + 2);
+		}
+
+		option += 4 + length;
+	}
+
+	fprintf(fp, "\n");
+}
+
+/** Print a raw DHCP packet as hex.
+ *
+ */
+void fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+{
+	dhcpv6_print_hex(fp, packet, packet_len, 0);
+}
+
 int fr_dhcpv6_global_init(void)
 {
 	fr_dict_attr_t const *child;
