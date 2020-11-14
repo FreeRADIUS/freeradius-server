@@ -112,8 +112,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 
 	switch (da->type) {
 	case FR_TYPE_VALUE:
-		slen = fr_value_box_to_network_dbuff(NULL, &FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1),
-						     &vp->data);
+		slen = fr_value_box_to_network(&FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1), &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&value_field), slen, "value %s",
 				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));

@@ -601,7 +601,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 				/*
 				 *	Determine the nested type and call the appropriate encoder
 				 */
-				if (fr_value_box_to_network_dbuff(NULL, &work_dbuff, &vp->data) <= 0) return -1;
+				if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
 			}
 
 			do {
@@ -645,7 +645,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 		 */
 		if ((vp->da->parent == key_da) &&
 		    (vp->da->type != FR_TYPE_TLV)) {
-			if (fr_value_box_to_network_dbuff(NULL, &work_dbuff, &vp->data) <= 0) return -1;
+			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
 			(void) fr_cursor_next(cursor);
 			goto done;
 		}

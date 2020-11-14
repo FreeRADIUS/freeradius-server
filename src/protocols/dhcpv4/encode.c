@@ -54,7 +54,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 {
 	fr_pair_t	*vp = fr_cursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	size_t		need = 0;
+	ssize_t		slen;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	FR_PROTO_TRACE("%zu byte(s) available for value", fr_dbuff_remaining(dbuff));
@@ -70,8 +70,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	default:
-		if (fr_value_box_to_network_dbuff(&need, &work_dbuff, &vp->data) < 0) return -2;
-		if (need > 0) return -((ssize_t) need);
+		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
+		if (slen < 0) return slen;
 		break;
 	}
 	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */

@@ -475,22 +475,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
 	 *	+---------------+---------------+-------------------------------+
 	 */
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT32:
+	default:
 	{
-		ssize_t len = fr_value_box_to_network_dbuff(NULL, &work_dbuff, &vp->data);
+		ssize_t len = fr_value_box_to_network(&work_dbuff, &vp->data);
 		if (len < 0) return len;
 		break;
 	}
-
-	default:
-		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
-		return PAIR_ENCODE_FATAL_ERROR;
 	}
-
 done:
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute

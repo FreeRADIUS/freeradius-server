@@ -372,7 +372,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_UINT32:
 	default:
-		slen = fr_value_box_to_network_dbuff(NULL, &work_dbuff, &vp->data);
+		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		break;
 	}

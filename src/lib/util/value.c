@@ -1160,29 +1160,17 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
  * specific to the protocol anyway.
  *
- * @param[out] need	if not NULL, how many bytes are required to serialize
- *			the remainder of the boxed data.
- *			Note: Only variable length types will be partially
- *			encoded. Fixed length types will not be partially encoded.
- * @param[out] dst	Where to write serialized data.
- * @param[in] dst_len	The length of the output buffer, or maximum value fragment
- *			size.
+ * @param[out] dbuff	Where to write serialized data.
  * @param[in] value	to encode.
  * @return
- *	- 0 no bytes were written, see need value to determine if it was because
- *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
- *	  NULL (which is unfortunately valid)
+ *	- 0 no bytes were written.
  *	- >0 the number of bytes written to out.
- *	- <0 on error.
+ *	- <0 the number of bytes we'd need in dbuff to complete the operation.
  */
-ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
+ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 {
-	return fr_value_box_to_network_dbuff(need, &FR_DBUFF_TMP(dst, dst_len), value);
-}
-
-ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_box_t const *value)
-{
-	size_t min, max;
+	size_t		min, max;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	/*
 	 *	Variable length types
@@ -1190,24 +1178,8 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	switch (value->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	{
-		size_t len;
-
-		/*
-		 *	Figure dst if we'd overflow
-		 */
-		if (value->vb_length > fr_dbuff_extend_lowat(NULL, dbuff, value->vb_length)) {
-			if (need) *need = value->vb_length;
-			len = fr_dbuff_remaining(dbuff);
-		} else {
-			if (need) *need = 0;
-			len = value->vb_length;
-		}
-
-		if (value->vb_length > 0) fr_dbuff_in_memcpy(dbuff, (uint8_t const *)value->datum.ptr, len);
-
-		return len;
-	}
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, value->vb_length);
+		return fr_dbuff_set(dbuff, &work_dbuff);
 
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
@@ -1235,53 +1207,45 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		return FR_VALUE_BOX_NET_ERROR;
 	}
 
-	/*
-	 *	Fixed type would overflow output buffer
-	 */
-	if (max > fr_dbuff_extend_lowat(NULL, dbuff, max)) {
-		if (need) *need = max;
-		return 0;
-	}
-
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
-		fr_dbuff_in_memcpy(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
-				   sizeof(value->vb_ip.addr.v4.s_addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+					  sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 	/*
 	 *	Needs special mangling
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		fr_dbuff_in_memcpy(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
-		fr_dbuff_in_memcpy(dbuff, (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
-				   sizeof(value->vb_ip.addr.v4.s_addr));
+		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+					  sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		if (value->vb_ip.scope_id > 0) fr_dbuff_in_bytes(dbuff, value->vb_ip.scope_id);
-		fr_dbuff_in_memcpy(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (value->vb_ip.scope_id > 0) fr_dbuff_in_bytes(dbuff, value->vb_ip.scope_id);
-		fr_dbuff_in_memcpy(dbuff, &value->vb_ip.prefix, sizeof(value->vb_ip.prefix));
-		fr_dbuff_in_memcpy(dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_BOOL:
-		fr_dbuff_in_bytes(dbuff, value->datum.boolean);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, value->datum.boolean);
 		break;
 
 	/*
 	 *	Already in network byte-order
 	 */
-
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
-		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
-		fr_dbuff_in_memcpy(dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
 		break;
 
 	/*
@@ -1298,19 +1262,17 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 	{
 		fr_value_box_t tmp;
 
-		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
-
 		fr_value_box_hton(&tmp, value);
-		fr_dbuff_in_memcpy(dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
 	}
 		break;
 
-		/*
-		 *	Dates and deltas are stored internally as
-		 *	64-bit nanoseconds.  We have to convert to the
-		 *	network format.  First by resolution (ns, us,
-		 *	ms, s), and then by size (16/32/64-bit).
-		 */
+	/*
+	 *	Dates and deltas are stored internally as
+	 *	64-bit nanoseconds.  We have to convert to the
+	 *	network format.  First by resolution (ns, us,
+	 *	ms, s), and then by size (16/32/64-bit).
+	 */
 	case FR_TYPE_DATE:
 	{
 		uint64_t date;
@@ -1346,17 +1308,17 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		} else switch (value->enumv->flags.length) {
 		case 2:
 			if (date > UINT16_MAX) date = UINT16_MAX;
-			fr_dbuff_in(dbuff, (int16_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t) date);
 			break;
 
 		date_size4:
 		case 4:
 			if (date > UINT32_MAX) date = UINT32_MAX;
-			fr_dbuff_in(dbuff, (int32_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t) date);
 			break;
 
 		case 8:
-			fr_dbuff_in(dbuff, date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, date);
 			break;
 
 		default:
@@ -1405,7 +1367,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			} else if (date > INT16_MAX) {
 				date = INT16_MAX;
 			}
-			fr_dbuff_in(dbuff, (int16_t)date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t)date);
 			break;
 
 		delta_size4:
@@ -1415,11 +1377,11 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 			} else if (date > INT32_MAX) {
 				date = INT32_MAX;
 			}
-			fr_dbuff_in(dbuff, (int32_t)date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t)date);
 			break;
 
 		case 8:
-			fr_dbuff_in(dbuff, (int64_t)date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int64_t)date);
 			break;
 
 		default:
@@ -1436,9 +1398,7 @@ ssize_t fr_value_box_to_network_dbuff(size_t *need, fr_dbuff_t *dbuff, fr_value_
 		goto unsupported;
 	}
 
-	if (need) *need = 0;
-
-	return min;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Decode a #fr_value_box_t from serialized binary data

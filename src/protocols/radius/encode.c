@@ -538,7 +538,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Simple data types use the common encoder.
 	 */
 	default:
-		slen = fr_value_box_to_network_dbuff(NULL, &value_dbuff, &vp->data);
+		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		break;
 	}
