@@ -781,6 +781,8 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * e
 	vp = fr_cursor_current(cursor);
 	if (!vp) return 0;
 
+	FR_PROTO_TRACE("encoding option %s", vp->da->name);
+
 	if (vp->da->flags.internal) {
 		fr_strerror_printf("Attribute \"%s\" is not a DHCPv6 option", vp->da->name);
 		fr_cursor_next(cursor);
