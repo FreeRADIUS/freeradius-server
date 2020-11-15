@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file radict.c
- * @brief Utility to print attribute data in CSV format
+ * @brief Utility to print attribute data in tab delimited format
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <assert.h>
 
 static fr_dict_t *dicts[255];
+static bool print_values = false;
 static fr_dict_t **dict_end = dicts;
 
 DIAG_OFF(unused-macros)
@@ -53,6 +54,7 @@ static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
+	fprintf(stderr, "  -V               Write out all attribute values.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "\n");
@@ -135,16 +137,46 @@ static int load_dicts(char const *dict_dir)
 
 static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
-	char oid_str[512];
-	char flags[256];
+	char 			oid_str[512];
+	char			flags[256];
+	fr_hash_iter_t		iter;
+	fr_dict_enum_t		*enumv;
 
 	(void)fr_dict_print_attr_oid(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da);
 
 	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
-	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
-	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), flags);
+	printf("%s\t%s\t%s\t%s\t%s\n",
+	       fr_dict_root(dict)->name,
+	       oid_str,
+	       da->name,
+	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       flags);
+
+	if (print_values) {
+		fr_dict_attr_ext_enumv_t	*ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+		if (!ext || !ext->value_by_name) return;
+
+		for (enumv = fr_hash_table_iter_init(ext->value_by_name, &iter);
+		     enumv;
+		     enumv = fr_hash_table_iter_next(ext->value_by_name, &iter)) {
+		     	char *str;
+
+			str = fr_asprintf(NULL, "%s\t%s\t%s\t%s\t%s\t%s\t%pV",
+					 fr_dict_root(dict)->name,
+					 oid_str,
+					 da->name,
+	       			    	 fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       			    	 flags,
+	       			    	 enumv->name,
+	       			    	 enumv->value);
+			printf("%s\n", str);
+			talloc_free(str);
+		}
+	}
 }
 
 static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
@@ -227,13 +259,17 @@ int main(int argc, char *argv[])
 
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "ED:xh")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "ED:Vxh")) != -1) switch (c) {
 		case 'E':
 			export = true;
 			break;
 
 		case 'D':
 			dict_dir = optarg;
+			break;
+
+		case 'V':
+			print_values = true;
 			break;
 
 		case 'x':
