@@ -157,9 +157,11 @@ $ openssl speed rsa2048
 
   to test 2048 bit keys.
 
-  A 1GHz system will likely do 30 calculations/s.  A 2GHz system may
-  do 50 calculations/s, or more.  That number is also the number of
-  authentications/s that can be done for EAP-TLS (or TTLS, or PEAP).
+  The number that is printed is the MAXIMUM number of
+  authentications/s which can be done for EAP-TLS (or TTLS, or PEAP).
+  In practice, you will see results much lower than this number.
+  The reason is that EAP requires many round-trip packets, whereas
+  "openssl speed rsa2028" only does RSA calculations, and nothing else.
 
 
 		COMPATIBILITY
