@@ -301,7 +301,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_DATE:
 	{
-		uint64_t date = fr_time_to_sec(vp->vp_date);
+		uint64_t date = fr_unix_time_to_sec(vp->vp_date);
 
 		if (date < DHCPV6_DATE_OFFSET) {	/* 30 years */
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) 0);
