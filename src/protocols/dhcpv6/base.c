@@ -774,11 +774,12 @@ void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx)
  */
 ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length, int msg_type, fr_pair_t *vps)
 {
-	fr_pair_t *vp;
-	fr_dict_attr_t const *root;
-	ssize_t slen;
-	fr_cursor_t cursor;
-	fr_dhcpv6_encode_ctx_t packet_ctx;
+	fr_dbuff_t		frame_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*root;
+	ssize_t			slen;
+	fr_cursor_t		cursor;
+	fr_dhcpv6_encode_ctx_t	packet_ctx;
 
 	root = fr_dict_root(dict_dhcpv6);
 
@@ -787,65 +788,49 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		if (vp) msg_type = vp->vp_uint32;
 	}
 
-	if ((msg_type <= 0) || (msg_type > 255)) {
+	if ((msg_type <= 0) || (msg_type > UINT8_MAX)) {
 		fr_strerror_printf("Invalid message type %d", msg_type);
 		return -1;
 	}
 
-	FR_DBUFF_IN_RETURN(dbuff, (uint8_t)msg_type);
+	FR_DBUFF_IN_RETURN(&frame_dbuff, (uint8_t)msg_type);
 
 	switch (msg_type) {
 	case FR_DHCPV6_RELAY_REPLY:
-		if (original) {
-			FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 1 + 32);
-			break;
-		}
-		FALL_THROUGH;
-
 	case FR_DHCPV6_RELAY_FORWARD:
-		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, 1 + 32);
-
 		vp = fr_pair_find_by_da(&vps, attr_hop_count);
-		if (vp) {
-			(void) fr_value_box_to_network(dbuff, &vp->data);
+		if (likely(vp != NULL)) {
+			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
-			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 1);
+			FR_DBUFF_MEMSET_RETURN(&frame_dbuff, 0, DHCPV6_HOP_COUNT_LEN);
 		}
 
 		vp = fr_pair_find_by_da(&vps, attr_relay_link_address);
-		if (vp) {
-			(void) fr_value_box_to_network(dbuff, &vp->data);
+		if (likely(vp != NULL)) {
+			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
-			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 16);
+			FR_DBUFF_MEMSET_RETURN(&frame_dbuff, 0, DHCPV6_LINK_ADDRESS_LEN);
 		}
 
 		vp = fr_pair_find_by_da(&vps, attr_relay_peer_address);
-		if (vp) {
-			(void) fr_value_box_to_network(dbuff, &vp->data);
+		if (likely(vp != NULL)) {
+			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
-			FR_DBUFF_MEMSET_RETURN(dbuff, 0, 16);
+			FR_DBUFF_MEMSET_RETURN(&frame_dbuff, 0, DHCPV6_PEER_ADDRESS_LEN);
 		}
 		break;
 
 	default:
 		/*
-		 *	Copy over original transaction ID if we have it.
+		 *	We can set an XID, or we can pick a random one.
 		 */
-		if (original) {
-			FR_DBUFF_IN_MEMCPY_RETURN(dbuff, original + 1, 3);
+		vp = fr_pair_find_by_da(&vps, attr_transaction_id);
+		if (vp && (vp->vp_length >= DHCPV6_TRANSACTION_ID_LEN)) {
+			FR_DBUFF_IN_MEMCPY_RETURN(&frame_dbuff, vp->vp_octets, DHCPV6_TRANSACTION_ID_LEN);
 		} else {
-			/*
-			 *	We can set an XID, or we can pick a random one.
-			 */
-			vp = fr_pair_find_by_da(&vps, attr_transaction_id);
-			if (vp && (vp->vp_length >= 3)) {
-				FR_DBUFF_IN_MEMCPY_RETURN(dbuff, vp->vp_octets, 3);
-			} else {
-				uint8_t id[sizeof(uint32_t)];
-
-				fr_net_from_uint32(id, fr_rand());
-				FR_DBUFF_IN_MEMCPY_RETURN(dbuff, &id[1], 3);
-			}
+			uint8_t id[DHCPV6_TRANSACTION_ID_LEN];
+			fr_net_from_uint24(id, fr_rand());
+			FR_DBUFF_IN_MEMCPY_RETURN(&frame_dbuff, id, sizeof(id)); /* Need 24 bits of the 32bit integer */
 		}
 		break;
 	}
@@ -858,8 +843,8 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	packet_ctx.original_length = length;
 
 	fr_cursor_talloc_iter_init(&cursor, &vps, fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
-	while ((fr_dbuff_extend(dbuff) > 0) && (fr_cursor_current(&cursor) != NULL)) {
-		slen = fr_dhcpv6_encode_option(dbuff, &cursor, &packet_ctx);
+	while ((fr_dbuff_extend(&frame_dbuff) > 0) && (fr_cursor_current(&cursor) != NULL)) {
+		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);
 		switch (slen) {
 		case PAIR_ENCODE_SKIPPED:
 			continue;
@@ -869,13 +854,12 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 
 		default:
 			break;
-
 		}
 
-		if (slen < 0) return slen - fr_dbuff_used(dbuff);
+		if (slen < 0) return slen - fr_dbuff_used(&frame_dbuff);
 	}
 
-	return fr_dbuff_used(dbuff);
+	return fr_dbuff_set(dbuff, &frame_dbuff);
 }
 
 
