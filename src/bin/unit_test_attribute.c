@@ -2883,6 +2883,17 @@ int main(int argc, char *argv[])
 #else
 	fr_disable_null_tracking_on_free(autofree);
 #endif
+
+	/*
+	 *	Sync wallclock and cpu time so that we can find
+	 *	uses of fr_time_[to|from]_* where
+	 *	fr_unix_time_[to|from]_* should be used.
+	 *
+	 *	If the wallclock/cpu offset is 0, then both sets
+	 *	of macros produce the same result.
+	 */
+	fr_time_start();
+
 	/*
 	 *	Allocate a root config section so we can write
 	 *	out features and versions.

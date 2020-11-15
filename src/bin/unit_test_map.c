@@ -181,6 +181,16 @@ int main(int argc, char *argv[])
 	fr_disable_null_tracking_on_free(autofree);
 #endif
 
+	/*
+	 *	Sync wallclock and cpu time so that we can find
+	 *	uses of fr_time_[to|from]_* where
+	 *	fr_unix_time_[to|from]_* should be used.
+	 *
+	 *	If the wallclock/cpu offset is 0, then both sets
+	 *	of macros produce the same result.
+	 */
+	fr_time_start();
+
 	while ((c = getopt(argc, argv, "d:D:xMhr:")) != -1) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
