@@ -939,7 +939,7 @@ static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len,
 		fprintf(fp, "%04x %04x\t", fr_net_to_uint16(option), length);
 
 		if ((option + 4 + length) > end) {
-			print_hex_data(fp, option + 4, end - (option + 4), depth + 2);
+			print_hex_data(fp, option + 4, end - (option + 4), depth + 3);
 			break;
 		}
 
