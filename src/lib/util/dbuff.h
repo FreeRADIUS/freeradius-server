@@ -644,6 +644,27 @@ void	fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len);
  */
 #define fr_dbuff_len(_dbuff_or_marker) \
 	((size_t)(fr_dbuff_end(_dbuff_or_marker) - fr_dbuff_start(_dbuff_or_marker)))
+
+/** How many bytes the dbuff or marker is behind its parent
+ *
+ * @param[in] _dbuff_or_marker
+ * @return
+ *	- 0 the dbuff or marker is ahead of its parent.
+ *	- >0 the number of bytes the marker is behind its parent.
+ */
+#define fr_dbuff_behind(_dbuff_or_marker) \
+	(fr_dbuff_current(_dbuff_or_marker) > fr_dbuff_current((_dbuff_or_marker)->parent) ? \
+		0 : fr_dbuff_current((_dbuff_or_marker)->parent) - fr_dbuff_current(_dbuff_or_marker))
+
+/** How many bytes the dbuff or marker is ahead of its parent
+ *
+ * @return
+ *	- 0 the dbuff or marker is behind its parent.
+ *	- >0 the number of bytes the marker is ahead of its parent.
+ */
+#define fr_dbuff_ahead(_dbuff_or_marker) \
+	(fr_dbuff_current((_dbuff_or_marker)->parent) > fr_dbuff_current(_dbuff_or_marker) ? \
+		0 : fr_dbuff_current(_dbuff_or_marker) - fr_dbuff_current((_dbuff_or_marker)->parent))
 /** @} */
 
 /** @name Accessors
@@ -949,6 +970,44 @@ static inline void fr_dbuff_marker_release(fr_dbuff_marker_t *m)
 #ifndef NDEBUG
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
+}
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was behind p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p.
+ */
+static inline size_t fr_dbuff_marker_release_behind(fr_dbuff_marker_t *m)
+{
+	size_t len = fr_dbuff_behind(m);
+	fr_dbuff_marker_release(m);
+	return len;
+}
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was ahead of p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p.
+ */
+static inline size_t fr_dbuff_marker_release_ahead(fr_dbuff_marker_t *m)
+{
+	size_t len = fr_dbuff_ahead(m);
+	fr_dbuff_marker_release(m);
+	return len;
 }
 /** @} */
 
