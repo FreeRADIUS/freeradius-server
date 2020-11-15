@@ -724,7 +724,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	vp = fr_cursor_current(cursor);
 	slen = fr_dhcpv6_encode(dbuff, NULL, 0, 0, vp->vp_group);
 	if (slen <= 0) {
-		fr_sbuff_marker_release(&start_m);
+		fr_dbuff_marker_release(&start_m);
 		return slen;
 	}
 
