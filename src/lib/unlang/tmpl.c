@@ -112,7 +112,7 @@ static void unlang_tmpl_signal(request_t *request, fr_state_signal_t action)
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  * @param[out] status		where the status of exited programs will be stored.
  */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
+int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_list_t *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -423,7 +423,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	state->fd = -1;
 	if (state->out) fd_p = &state->fd;
 
-	if (fr_exec_wait_start(request, state->box, &state->vps, &pid, NULL, fd_p) < 0) {
+	if (fr_exec_wait_start(request, state->box, state->vps, &pid, NULL, fd_p) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		*p_result = RLM_MODULE_FAIL;
@@ -486,7 +486,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (fr_exec_nowait(request, state->box, &state->vps) < 0) {
+	if (fr_exec_nowait(request, state->box, state->vps) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 
