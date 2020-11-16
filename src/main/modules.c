@@ -1045,6 +1045,8 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 		return 1;
 	}
 
+	ERROR("Compiling %s %s for attr %s", cf_section_name1(cs), name2, da->name);
+
 	/*
 	 *	Compile the group.
 	 */
@@ -1374,6 +1376,36 @@ static int load_byserver(CONF_SECTION *cs)
 		}
 #endif
 
+#ifdef WITH_TLS
+		/*
+		 *	It's OK to not have TLS cache sections.
+		 */
+		da = dict_attrbyname("TLS-Cache-Method");
+		subcs = cf_section_sub_find_name2(cs, "cache", "load");
+		if (subcs && !load_subcomponent_section(subcs,
+							components,
+							da,
+							MOD_POST_AUTH)) {
+			goto error; /* FIXME: memleak? */
+		}
+
+		subcs = cf_section_sub_find_name2(cs, "cache", "save");
+		if (subcs && !load_subcomponent_section(subcs,
+							components,
+							da,
+							MOD_POST_AUTH)) {
+			goto error; /* FIXME: memleak? */
+		}
+
+		subcs = cf_section_sub_find_name2(cs, "cache", "clear");
+		if (subcs && !load_subcomponent_section(subcs,
+							components,
+							da,
+							MOD_POST_AUTH)) {
+			goto error; /* FIXME: memleak? */
+		}
+#endif
+
 #ifdef WITH_DHCP
 		/*
 		 *	It's OK to not have DHCP.
@@ -1407,6 +1439,8 @@ static int load_byserver(CONF_SECTION *cs)
 			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
 #endif
+
+
 	} while (0);
 
 	if (name) {

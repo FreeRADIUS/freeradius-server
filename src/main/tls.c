@@ -27,6 +27,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_STAT_H
@@ -1283,6 +1284,7 @@ static CONF_PARSER cache_config[] = {
 
 	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
 	{ "persist_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_path), NULL },
+	{ "cache_server", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1822,6 +1824,307 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 error:
 	if (sess_data) talloc_free(sess_data);
 	if (pairlist) pairlist_free(&pairlist);
+
+	return sess;
+}
+
+static size_t tls_session_id_binary(SSL_SESSION *ssn, uint8_t *buffer, size_t bufsize)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+	size_t size;
+
+	size = ssn->session_id_length;
+	if (size > bufsize) size = bufsize;
+
+	memcpy(buffer, ssn->session_id, size);
+	return size;
+#else
+	unsigned int size;
+	uint8_t const *p;
+
+	p = SSL_SESSION_get_id(ssn, &size);
+	if (size > bufsize) size = bufsize;
+
+	memcpy(buffer, p, size);
+	return size;
+#endif
+}
+
+/*
+ *	From TLS-Cache-Method
+ *
+ *	All of the save / clear / load callbacks are done with any
+ *	OpenSSL locks *unlocked*.  So says the OpenSSL code.
+ */
+#define CACHE_SAVE (1)
+#define CACHE_LOAD (2)
+#define CACHE_CLEAR (3)
+
+static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SESSION *sess, SSL *ssl,
+					uint8_t const *data, size_t size)
+{
+	VALUE_PAIR		*vp;
+	REQUEST			*fake, *request = NULL;
+	uint8_t			buffer[MAX_SESSION_SIZE];
+
+	if (sess) {
+		size = tls_session_id_binary(sess, buffer, sizeof(buffer));
+		data = buffer;
+	}
+
+	/*
+	 *	We get called essentially at random by OpenSSL, with
+	 *	no information other than the session ID.  As a
+	 *	result, we have to manually set up our own request.
+	 */
+	if (ssl) request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+
+	if (request) {
+		fake = request_alloc_fake(request);
+	} else {
+		fake = request_alloc(NULL);
+		fake->packet = rad_alloc(fake, false);
+		fake->reply = rad_alloc(fake, false);
+	}
+
+	vp = fr_pair_afrom_num(fake->packet, PW_TLS_SESSION_ID, 0);
+	if (!vp) {
+		talloc_free(fake);
+		return NULL;
+	}
+
+	fr_pair_value_memcpy(vp, data, size);
+	fr_pair_add(&fake->packet->vps, vp);
+
+	fake->server = conf->session_cache_server;
+
+	return fake;
+}
+
+/*
+ *	Clear cached data
+ */
+static void cbtls_cache_clear(SSL_CTX *ctx, SSL_SESSION *sess)
+{
+	fr_tls_server_conf_t	*conf;
+	REQUEST			*fake;
+
+	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
+	if (!conf) {
+		DEBUG(LOG_PREFIX ": Failed to find TLS configuration in session");
+		return;
+	}
+
+	/*
+	 *	Find the SSL ID from the session, and delete it.
+	 *
+	 *	Don't bother with any parent request.  We're in a
+	 *	timer callback, and there is no request available.
+	 */
+	fake = cache_init_fake_request(conf, sess, NULL, NULL, 0);
+	if (!fake) return;
+
+	/*
+	 *	Use &request:TLS-Session-Id to clear the cache entry.
+	 */
+	(void) process_post_auth(CACHE_CLEAR, fake);
+	talloc_free(fake);
+	return;
+}
+
+static int cbtls_cache_save(SSL *ssl, SSL_SESSION *sess)
+{
+	fr_tls_server_conf_t	*conf;
+	VALUE_PAIR		*vp;
+	REQUEST			*fake = NULL;
+	size_t			size, rv;
+	uint8_t			*p, *sess_blob = NULL;
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	if (!conf) return 0;
+
+	/*
+	 *	Find the SSL ID from the session, and save it.
+	 *
+	 *	Save anything from the parent request.
+	 */
+	fake = cache_init_fake_request(conf, sess, ssl, NULL, 0);
+	if (!fake) return 0;
+
+	/* find out what length data we need */
+	size = i2d_SSL_SESSION(sess, NULL);
+	if (size < 1) return 0;
+
+	/* Do not convert to TALLOC - it's passed to OpenSSL */
+	/* alloc and convert to ASN.1 */
+	MEM(sess_blob = malloc(size));
+
+	/* openssl mutates &p */
+	p = sess_blob;
+	rv = i2d_SSL_SESSION(sess, &p);
+	if (rv != size) goto error;
+
+	vp = fr_pair_afrom_num(fake->state_ctx, PW_TLS_SESSION_DATA, 0);
+	if (!vp) goto error;
+
+	fr_pair_value_memcpy(vp, sess_blob, size);
+	fr_pair_add(&fake->state, vp);
+
+	/*
+	 *	Use &request:TLS-Session-Id to save the
+	 *	&session-state:TLS-Session-Data values.
+	 *
+	 *	Any attributes which need to be saved should be read
+	 *	from the &outer.reply: list.
+	 */
+	(void) process_post_auth(CACHE_SAVE, fake);
+
+error:
+	if (fake) talloc_free(fake);
+	free(sess_blob);
+
+	return 0;
+}
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+static SSL_SESSION *cbtls_cache_load(SSL *ssl, unsigned char *data, int len, int *copy)
+#else
+static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int len, int *copy)
+#endif
+{
+	fr_tls_server_conf_t	*conf;
+	size_t			size;
+	uint8_t const  		*p;
+	VALUE_PAIR		*vp, *vps;
+	TALLOC_CTX		*talloc_ctx;
+	SSL_SESSION		*sess = NULL;
+	REQUEST			*fake = NULL;
+	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	char			buffer[2 * MAX_SESSION_SIZE + 1];
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	if (!conf) return NULL;
+
+	fr_assert(request != NULL);
+
+	size = len;
+	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	if (fr_debug_lvl > 1) {
+		fr_bin2hex(buffer, data, size);
+		RDEBUG2("Peer requested cached session: %s", buffer);
+	}
+
+	*copy = 0;
+
+	/*
+	 *	Take the given SSL ID, and create a fake request.
+	 *
+	 *	Don't bother parenting it from another request.  We do
+	 *	this for a number of reasons.
+	 *
+	 *	One is that rest of the code expects that the VPs will
+	 *	be added to fr_tls_ex_index_vps.  So we don't want to
+	 *	be poking the request directly, as that will result in
+	 *	a change of behavior.
+	 *
+	 *	The larger reason is that we do _not_ want to actually
+	 *	update the reply, until such time as we know that the
+	 *	user has been authenticated.
+	 */
+	fake = cache_init_fake_request(conf, NULL, NULL, data, size);
+	if (!fake) return 0;
+
+	/*
+	 *	Use &request:TLS-Session-Id to load the cached
+	 *	session.
+	 *
+	 *	The "cache load { ...}" section should put the reply
+	 *	attributes into the &reply: list, and the
+	 *	&session-state:TLS-Session-Data attribute.
+	 *
+	 *	Why?  Because v4 does it that way, and there aren't
+	 *	really good reasons for doing it differently.
+	 */
+	(void) process_post_auth(CACHE_LOAD, fake);
+
+	/*
+	 *	Enforce client certificate expiration.
+	 */
+	vp = fr_pair_find_by_num(fake->reply->vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
+	if (vp) {
+		time_t expires;
+
+		if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
+			RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s - %s", buffer, fr_strerror());
+			SSL_SESSION_free(sess);
+			sess = NULL;
+			goto error;
+		}
+
+		if (expires <= request->timestamp) {
+			RDEBUG2("Certificate has expired, removing cache entry for session %s", buffer);
+			SSL_SESSION_free(sess);
+			sess = NULL;
+			goto error;
+		}
+
+		/*
+		 *	Account for Session-Timeout, if it's available.
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+		if (vp) {
+			if ((request->timestamp + vp->vp_integer) > expires) {
+				vp->vp_integer = expires - request->timestamp;
+				RWDEBUG2("Updating Session-Timeout to %u, due to impending certificate expiration",
+					 vp->vp_integer);
+			}
+		}
+	}
+
+	/*
+	 *	Try to de-serialize the session data.
+	 */
+	vp = fr_pair_find_by_num(fake->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	if (!vp) {
+		RWDEBUG("Failed to find TLS-Session-Data in 'session-state' list for session %s", buffer);
+		goto error;
+	}
+
+	/*
+	 *	OpenSSL mutates what's passed in, so we assign sess_data to q,
+	 *	so the value of q gets mutated, and not the value of sess_data.
+	 *
+	 *	We then need a pointer to hold &q, but it can't be const, because
+	 *	clang complains about lack of consting in nested pointer types.
+	 *
+	 *	So we memcpy the value of that pointer, to one that
+	 *	does have a const, which we then pass into d2i_SSL_SESSION *sigh*.
+	 */
+	p = vp->vp_octets;
+	sess = d2i_SSL_SESSION(NULL, &p, vp->vp_length);
+	if (!sess) {
+		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+		goto error;
+	}
+
+	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
+	vps = NULL;
+
+	/* move the cached VPs into the session */
+	fr_pair_list_mcopy_by_num(talloc_ctx, &vps, &fake->reply->vps, 0, 0, TAG_ANY);
+
+	SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
+	RDEBUG("Successfully restored session %s", buffer);
+	rdebug_pair_list(L_DBG_LVL_2, request, vps, "reply:");
+
+	/*
+	 *	The "restore VPs from OpenSSL cache" code is
+	 *	now in eaptls_process()
+	 */
+
+error:
+	if (fake) talloc_free(fake);
 
 	return sess;
 }
@@ -3467,10 +3770,19 @@ post_ca:
 		/*
 		 *	Cache sessions on disk if requested.
 		 */
-		if (conf->session_cache_path) {
+		if (conf->session_cache_path && *conf->session_cache_path) {
 			SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
 			SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
 			SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
+		}
+
+		/*
+		 *	Or run the cache through a virtual server.
+		 */
+		if (conf->session_cache_server && *conf->session_cache_server) {
+			SSL_CTX_sess_set_new_cb(ctx, cbtls_cache_save);
+			SSL_CTX_sess_set_get_cb(ctx, cbtls_cache_load);
+			SSL_CTX_sess_set_remove_cb(ctx, cbtls_cache_clear);
 		}
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);

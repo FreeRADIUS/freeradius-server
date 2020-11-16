@@ -385,6 +385,7 @@ struct fr_tls_server_conf_t {
 	uint32_t     	session_cache_size;
 	char const	*session_id_name;
 	char const	*session_cache_path;
+	char const	*session_cache_server;
 	fr_hash_table_t *cache_ht;
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 
