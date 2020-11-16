@@ -134,11 +134,27 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	 *	Address MAY be shorter than 16 bytes.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		if ((data_len == 0) || (data_len > 17)) {
+		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
 		raw:
 			return decode_raw(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
 
 		};
+
+		/*
+		 *	Structs used fixed length fields
+		 */
+		if (parent->parent->type == FR_TYPE_STRUCT) {
+			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) goto raw;
+
+			vp = fr_pair_afrom_da(ctx, parent);
+			if (!vp) return PAIR_DECODE_OOM;
+
+			vp->vp_ip.af = AF_INET6;
+			vp->vp_ip.scope_id = 0;
+			vp->vp_ip.prefix = data[0];
+			memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+			break;
+		}
 
 		/*
 		 *	No address, the prefix length MUST be zero.

@@ -255,7 +255,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	{
 		size_t	prefix_len;
 
-		prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+		/*
+		 *	Structs have fixed length value fields.
+		 */
+		if (da->parent->type == FR_TYPE_STRUCT) {
+			prefix_len = sizeof(vp->vp_ipv6addr);
+		} else {
+			prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+		}
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, prefix_len); /* Only copy the minimum address bytes required */
@@ -269,7 +276,16 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		size_t prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+		size_t prefix_len;
+
+		/*
+		 *	Structs have fixed length value fields.
+		 */
+		if (da->parent->type == FR_TYPE_STRUCT) {
+			prefix_len = sizeof(vp->vp_ipv4addr);
+		} else {
+			prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+		}
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, prefix_len);	/* Only copy the minimum address bytes required */

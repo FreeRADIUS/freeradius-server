@@ -19,7 +19,6 @@ MEMBER		IA-PD-Options				group # of IA-PD-Prefix and other options
 ATTRIBUTE	IA-PD-Prefix				26	struct
 MEMBER		IA-PD-Prefix-Preferred-Lifetime		time_delta  # time delta from "now" in seconds
 MEMBER		IA-PD-Prefix-Valid-Lifetime		time_delta  # time delta from "now" in seconds
-MEMBER		IA-PD-Prefix-IPv6-Prefix-Length		uint8
-MEMBER		IA-PD-Prefix-IPv6-Prefix		ipv6addr # MUST be 16 bytes
+MEMBER		IA-PD-Prefix-IPv6-Prefix		ipv6prefix
 MEMBER		IA-PD-Prefix-Options			group 	# of other options associated with this prefix
 
