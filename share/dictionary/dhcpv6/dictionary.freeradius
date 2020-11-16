@@ -1,0 +1,22 @@
+# -*- text -*-
+# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary.
+#
+# Version:	$Id$
+#
+#	For a complete list of Private Enterprise Codes, see:
+#
+#	http://www.isi.edu/in-notes/iana/assignments/enterprise-numbers
+#
+
+VENDOR		FreeRADIUS			11344
+
+BEGIN-VENDOR	FreeRADIUS
+
+# Humanly readable error message to be used in policies
+ATTRIBUTE	Error-Message				1	string
+
+END-VENDOR	FreeRADIUS
