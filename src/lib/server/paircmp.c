@@ -116,7 +116,7 @@ static paircmp_t *cmp;
 static int prefix_suffix_cmp(UNUSED void *instance,
 			     request_t *request,
 			     fr_pair_list_t *request_list,
-			     fr_pair_t *check,
+			     fr_pair_t *check_item,
 			     fr_pair_list_t *check_list)
 {
 	fr_pair_t	*vp;
@@ -132,22 +132,22 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 	if (!username) username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!username) return -1;
 
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
 	name = username->vp_strvalue;
 
-	RDEBUG3("Comparing name \"%s\" and check value \"%pV\"", name, &check->data);
+	RDEBUG3("Comparing name \"%s\" and check value \"%pV\"", name, &check_item->data);
 
-	len = strlen(check->vp_strvalue);
+	len = strlen(check_item->vp_strvalue);
 
-	if (check->da == attr_prefix) {
-		ret = strncmp(name, check->vp_strvalue, len);
+	if (check_item->da == attr_prefix) {
+		ret = strncmp(name, check_item->vp_strvalue, len);
 		if (ret == 0)
 			strlcpy(rest, name + len, sizeof(rest));
-	} else if (check->da == attr_suffix) {
+	} else if (check_item->da == attr_suffix) {
 		namelen = strlen(name);
 		if (namelen >= len) {
-			ret = strcmp(name + namelen - len, check->vp_strvalue);
+			ret = strcmp(name + namelen - len, check_item->vp_strvalue);
 			if (ret == 0) strlcpy(rest, name, namelen - len + 1);
 		}
 	}
@@ -184,12 +184,12 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 static int packet_cmp(UNUSED void *instance,
 		      request_t *request,
 		      UNUSED fr_pair_list_t *request_list,
-		      fr_pair_t *check,
+		      fr_pair_t *check_item,
 		      UNUSED fr_pair_list_t *check_list)
 {
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
-	if (request->packet->code == check->vp_uint32) return 0;
+	if (request->packet->code == check_item->vp_uint32) return 0;
 
 	return 1;
 }
@@ -203,15 +203,15 @@ static int generic_cmp(UNUSED void *instance,
 		       fr_pair_t *check_item,
 		       UNUSED fr_pair_list_t *check_list)
 {
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
-	if ((check->op != T_OP_REG_EQ) && (check->op != T_OP_REG_NE)) {
+	if ((check_item->op != T_OP_REG_EQ) && (check_item->op != T_OP_REG_NE)) {
 		int rcode;
 		char name[1024];
 		char value[1024];
 		fr_pair_t *vp;
 
-		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
+		snprintf(name, sizeof(name), "%%{%s}", check_item->da->name);
 
 		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) return 0;
 
@@ -222,7 +222,7 @@ static int generic_cmp(UNUSED void *instance,
 		/*
 		 *	Paircmp returns 0 for failed comparison, 1 for succeeded -1 for error.
 		 */
-		rcode = fr_pair_cmp(check, vp);
+		rcode = fr_pair_cmp(check_item, vp);
 
 		/*
 		 *	We're being called from paircmp_func,
@@ -250,7 +250,7 @@ static int generic_cmp(UNUSED void *instance,
 	/*
 	 *	Will do the xlat for us
 	 */
-	return paircmp_pairs(request, check, NULL);
+	return paircmp_pairs(request, check_item, NULL);
 }
 
 /** See what attribute we want to compare with.
@@ -489,7 +489,7 @@ finish:
 	return 0;
 }
 
-/** Compare check and vp. May call the attribute comparison function.
+/** Compare check_item and vp. May call the attribute comparison function.
  *
  * Unlike paircmp_pairs() this function will call any attribute-specific
  * comparison functions registered.  vp to be matched is request_item or
@@ -499,28 +499,28 @@ finish:
  * @param[in] request		Current request.
  * @param[in] request_item	item to compare.
  * @param[in] request_list	list pairs.
- * @param[in] check		item to compare.
+ * @param[in] check_item	item to compare.
  * @param[in] check_list	list.
  * @return
- *	- 0 if check and vp are equal.
- *	- -1 if vp value is less than check value.
- *	- 1 is vp value is more than check value.
+ *	- 0 if check_item and vp are equal.
+ *	- -1 if vp value is less than check_item value.
+ *	- 1 is vp value is more than check_item value.
  */
 static int paircmp_func(request_t *request,
 			fr_pair_t *request_item,
 			fr_pair_list_t *request_list,
-			fr_pair_t *check,
+			fr_pair_t *check_item,
 			fr_pair_list_t *check_list)
 {
 	paircmp_t *c;
 
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if (check->op == T_OP_CMP_TRUE)  return 0;
-	if (check->op == T_OP_CMP_FALSE) return 1;
+	if (check_item->op == T_OP_CMP_TRUE)  return 0;
+	if (check_item->op == T_OP_CMP_FALSE) return 1;
 
 	/*
 	 *	See if there is a special compare function.
@@ -528,20 +528,20 @@ static int paircmp_func(request_t *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if (c->da == check->da) {
-			return (c->compare)(c->instance, request, request_list, check, check_list);
+		if (c->da == check_item->da) {
+			return (c->compare)(c->instance, request, request_list, check_item, check_list);
 		}
 	}
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
-	return paircmp_pairs(request, check, request_item);
+	return paircmp_pairs(request, check_item, request_item);
 }
 
 /** Compare two pair lists except for the password information.
  *
- * For every element in "check" at least one matching copy must be present
- * in "reply".
+ * For every element in "check_list" at least one matching copy must be present
+ * in "request_list".
  *
  * @param[in] request		Current request.
  * @param[in] request_list	request valuepairs.

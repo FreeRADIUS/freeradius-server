@@ -39,7 +39,7 @@ typedef int (*RAD_COMPARE_FUNC)(void *instance, request_t *,fr_pair_list_t *, fr
 
 int		paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp);
 
-int		paircmp(request_t *request, fr_pair_list_t *req_list, fr_pair_list_t *check);
+int		paircmp(request_t *request, fr_pair_list_t *request_list, fr_pair_list_t *check_list);
 
 int		paircmp_find(fr_dict_attr_t const *da);
 
