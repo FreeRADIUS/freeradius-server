@@ -22,7 +22,7 @@ typedef struct {
 	uint64_t		freed;			//!< Count of tests in this run that were freed.
 } test_proto_stats_t;
 
-#define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
+#define DEBUG_LVL_SET if (test_verbose_level_ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
 static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
@@ -44,7 +44,7 @@ static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, f
 			break;
 		}
 
-		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
+		if (test_verbose_level_ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
 
 		slen = write(fd, &preq, sizeof(preq));
 		if (slen < 0) return;
@@ -79,7 +79,7 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 			break;
 		}
 
-		if (test_verbose_level__ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
+		if (test_verbose_level_ >= 3) printf("%s - Wrote %p\n", __FUNCTION__, preq);
 		slen = write(fd, &preq, sizeof(preq));
 		if (slen < 0) {
 			fr_perror("%s - %s", __FUNCTION__, fr_syserror(errno));
@@ -104,7 +104,7 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 		slen = read(fd, &preq, sizeof(preq));
 		if (slen <= 0) return;
 
-		if (test_verbose_level__ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
+		if (test_verbose_level_ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
 		TEST_CHECK(slen == sizeof(preq));
 		talloc_get_type_abort(preq, test_proto_request_t);
 
@@ -248,18 +248,18 @@ static void _conn_io_loopback(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 
 		to_write = (size_t)slen;
 
-		if (test_verbose_level__ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, slen);
+		if (test_verbose_level_ >= 3) printf("%s - Read %zu bytes of data\n", __FUNCTION__, slen);
 		slen = write(our_h[1], buff, (size_t)to_write);
 		if (slen < 0) return;
 
 		if (slen < (ssize_t)to_write) {
 			to_write -= slen;
-			if (test_verbose_level__ >= 3) {
+			if (test_verbose_level_ >= 3) {
 				printf("%s - Partial write %zu bytes left\n", __FUNCTION__, to_write);
 			}
 			return;
 		} else {
-			if (test_verbose_level__ >= 3) printf("%s - Wrote %zu bytes of data\n", __FUNCTION__, slen);
+			if (test_verbose_level_ >= 3) printf("%s - Wrote %zu bytes of data\n", __FUNCTION__, slen);
 		}
 	}
 }
@@ -1788,7 +1788,7 @@ static void test_enqueue_and_io_speed(void)
 	}
 	enqueue_stop = fr_time();
 	enqueue_time = enqueue_stop - enqueue_start;
-	if (test_verbose_level__ >= 1) {
+	if (test_verbose_level_ >= 1) {
 		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
 		     fr_box_time_delta(enqueue_time),
 		     (uint32_t)(requests / ((float)enqueue_time / NSEC)),
@@ -1805,13 +1805,13 @@ static void test_enqueue_and_io_speed(void)
 	io_stop = fr_time();
 	io_time = io_stop - io_start;
 
-	if (test_verbose_level__ >= 1) {
+	if (test_verbose_level_ >= 1) {
 		INFO("I/O time %pV (%u rps)",
 		     fr_box_time_delta(io_time),
 		     (uint32_t)(requests / ((float)io_time / NSEC)));
 	}
 
-	if (test_verbose_level__ >= 1) {
+	if (test_verbose_level_ >= 1) {
 		total_time = io_stop - enqueue_start;
 		INFO("Total time %pV (%u rps)",
 		     fr_box_time_delta(total_time),

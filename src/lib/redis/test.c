@@ -6,7 +6,7 @@
 #include "io.h"
 #include "pipeline.h"
 
-#define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
+#define DEBUG_LVL_SET if (test_verbose_level_ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
 
 typedef struct {
