@@ -406,16 +406,14 @@ static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED m
 
 /** Create a MAP_SEND_AUTH_INFO request
  *
+ * @param p_result 	Where to write the result.
  * @param inst		of rlm_sigtran.
  * @param request	The current request.
  * @param conn		current connection.
  * @param fd		file descriptor on which the transaction is done
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, request_t *request,
-					      sigtran_conn_t const *conn, int fd)
+unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sigtran_t const *inst, request_t *request,
+				  		  sigtran_conn_t const *conn, int fd)
 {
 	sigtran_transaction_t			*txn;
 	sigtran_map_send_auth_info_req_t	*req;

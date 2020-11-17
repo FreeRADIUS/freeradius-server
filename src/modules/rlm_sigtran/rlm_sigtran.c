@@ -203,7 +203,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sigtran_t);
 	rlm_sigtran_thread_t const	*t = talloc_get_type_abort_const(mctx->thread, rlm_sigtran_thread_t);
 
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn, t->fd);
+	return sigtran_client_map_send_auth_info(p_result, inst, request, inst->conn, t->fd);
 }
 
 /** Convert our sccp address config structure into sockaddr_sccp
