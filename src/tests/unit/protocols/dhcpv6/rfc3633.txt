@@ -1,0 +1,24 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+
+encode-pair IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { Preference = 1 }
+match 00 19 00 11 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 01 01
+
+decode-pair -
+match IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { Preference = 1 }
+
+encode-pair IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { IA-PD-Prefix-Preferred-Lifetime = 4500, IA-PD-Prefix-Valid-Lifetime = 7200, IA-PD-Prefix-IPv6-Prefix = 2a00:1:1:100::/56 }
+match 00 19 00 29 00 00 00 00 00 00 00 00 00 00 00 00 00 1a 00 19 00 00 11 94 00 00 1c 20 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { IA-PD-Prefix-Preferred-Lifetime = 4500, IA-PD-Prefix-Valid-Lifetime = 7200, IA-PD-Prefix-IPv6-Prefix = 2a00:1:1:100::/56 }
+
+count
+match 10
