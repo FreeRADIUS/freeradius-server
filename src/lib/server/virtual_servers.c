@@ -187,6 +187,7 @@ void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, boo
 		return;
 	}
 
+	fr_dict_reference(fr_dict_unconst(dict));
 	p = talloc_zero(server_cs, virtual_server_dict_t);
 	p->do_free = do_free;
 	p->dict = dict;
@@ -1244,7 +1245,7 @@ static int fr_app_process_instantiate(CONF_SECTION *server)
 int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **dl_module,
 			      CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
 			      char const *proto_name,
-			      char const **type_table, size_t type_table_len,			      
+			      char const **type_table, size_t type_table_len,
 			      dl_module_inst_t **type_submodule_by_code, uint32_t code_max)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));

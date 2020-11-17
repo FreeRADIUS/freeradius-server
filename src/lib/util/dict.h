@@ -488,6 +488,8 @@ int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx)
  *
  * @{
  */
+void			fr_dict_reference(fr_dict_t *dict);
+
 int			fr_dict_free(fr_dict_t **dict);
 
 int			fr_dict_const_free(fr_dict_t const **dict);

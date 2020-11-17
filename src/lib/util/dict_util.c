@@ -2651,6 +2651,18 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
+/** Manually increase the reference count for a dictionary
+ *
+ * This is useful if a previously loaded dictionary needs to
+ * be bound to the lifetime of an additional object.
+ *
+ * @param[in] dict	to increase the reference count for.
+ */
+void fr_dict_reference(fr_dict_t *dict)
+{
+	talloc_increase_ref_count(dict);
+}
+
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.
