@@ -37,8 +37,9 @@ jobs:
       run: |
          cd doc/doxygen;
          doxygen Doxyfile;
-         
+
     - name: Deploy doxygen content to GitHub pages
+      if: ${{ github.ref == 'refs/heads/main' }}
       uses: appleboy/gh-pages-action@v0.0.2
       with:
         username: ${{ secrets.CI_DOCUMENTATION_DEPLOY_USER }}
