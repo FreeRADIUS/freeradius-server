@@ -206,6 +206,7 @@ BuildRequires: openldap-ltb
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
 
+%if 0%{?rhel} >= 8
 %package libfreeradius-curl
 Summary: curl wrapper library for FreeRADIUS
 Requires: %{name}%{?_isa} = %{version}-%{release}
@@ -215,6 +216,7 @@ Requires: freeradius-libfreeradius-util = %{version}-%{release}
 Integrates libcurl with FreeRADIUS' internal event loop.
 Requires: libcurl >= 7.45.0
 BuildRequires: libcurl-devel >= 7.45.0
+%endif
 
 %package libfreeradius-util
 Summary: Utility library used by all other FreeRADIUS libraries
@@ -359,6 +361,7 @@ Requires: freeradius-libfreeradius-redis = %{version}
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
 
+%if 0%{?rhel} >= 8
 %package rest
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
@@ -368,6 +371,7 @@ Requires: freeradius-libfreeradius-curl = %{version}
 
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
+%endif
 
 %if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
 %package ruby
@@ -478,8 +482,8 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
-	--with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
-	--with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
+        --with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
+        --with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -868,9 +872,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_json.so
 
+%if 0%{?rhel} >= 8
 %files libfreeradius-curl
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-curl.so
+%endif
 
 %files libfreeradius-util
 %defattr(-,root,root)
@@ -933,9 +939,11 @@ fi
 %{_libdir}/freeradius/rlm_cache_redis.so
 %{_libdir}/freeradius/rlm_redis_ippool.so
 
+%if 0%{?rhel} >= 8
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
+%endif
 
 %if %{?_with_rlm_sigtran:1}%{!?_with_rlm_sigtran:0}
 %files sigtran
