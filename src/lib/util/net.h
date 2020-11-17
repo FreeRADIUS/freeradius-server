@@ -318,6 +318,17 @@ static inline uint64_t fr_net_to_uint64v(uint8_t const *data, size_t data_len)
 	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
 	return ntohll(num);
 }
+
+/** Convert bits (as in prefix length) to bytes, rounding up.
+ *
+ * @param bits number of bits in the prefix
+ * @return number of bytes taken to store the prefix
+ */
+static inline unsigned int fr_bytes_from_bits(unsigned int bits)
+{
+	return (bits + 7) >> 3;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -520,7 +520,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Common encoder doesn't add reserved byte
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		len = vp->vp_ip.prefix >> 3;	/* Convert bits to whole bytes */
+		len = fr_bytes_from_bits(vp->vp_ip.prefix);
 		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
 		/* Only copy the minimum number of address bytes required */
 		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)vp->vp_ipv6addr, len);

@@ -261,7 +261,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (da->parent->type == FR_TYPE_STRUCT) {
 			prefix_len = sizeof(vp->vp_ipv6addr);
 		} else {
-			prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+			prefix_len = fr_bytes_from_bits(vp->vp_ip.prefix);
 		}
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
@@ -284,7 +284,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (da->parent->type == FR_TYPE_STRUCT) {
 			prefix_len = sizeof(vp->vp_ipv4addr);
 		} else {
-			prefix_len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+			prefix_len = fr_bytes_from_bits(vp->vp_ip.prefix);
 		}
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);

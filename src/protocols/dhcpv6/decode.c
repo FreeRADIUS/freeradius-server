@@ -178,7 +178,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		 *	If we have a /64 prefix but only 7 bytes of
 		 *	address, that's an error.
 		 */
-		if ((prefix_len >> 3) > (data_len - 1)) goto raw;
+		if (fr_bytes_from_bits(prefix_len) > (data_len - 1)) goto raw;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;

@@ -1552,11 +1552,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	Convert prefix bits to bytes to check that
 		 *	we have sufficient data.
 		 */
-		if ((p[1] >> 3) > (data_len - 2)) goto raw;
+		if (fr_bytes_from_bits(p[1]) > (data_len - 2)) goto raw;
 
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[1] >> 3;
+		vp->vp_ip.prefix = p[1];
 
 		memcpy((uint8_t *)&vp->vp_ipv6addr, p + 2, data_len - 2);
 		fr_ipaddr_mask(&vp->vp_ip, p[1]);

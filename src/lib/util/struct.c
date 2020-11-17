@@ -129,10 +129,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			uint64_t value;
 
 			num_bits = offset + child->flags.length;
-			if ((end - p) < ((num_bits + 7) >> 3)) goto unknown;
+			if ((end - p) < fr_bytes_from_bits(num_bits)) goto unknown;
 
 			memset(array, 0, sizeof(array));
-			memcpy(&array[0], p, ((num_bits + 7) >> 3)); /* round up to nearest byte */
+			memcpy(&array[0], p, fr_bytes_from_bits(num_bits));
 
 			if (offset > 0) array[0] &= (1 << (8 - offset)) - 1; /* mask off bits we don't care about */
 
@@ -175,7 +175,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			vp->type = VT_DATA;
 			vp->vp_tainted = true;
 			fr_cursor_append(&child_cursor, vp);
-			p += (num_bits >> 3);
+			p += (num_bits >> 3); /* go to the LAST bit, not the byte AFTER the last bit */
 			offset = num_bits & 0x07;
 			child_num++;
 			continue;
