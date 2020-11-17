@@ -166,6 +166,7 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:ImageLoaderMachO::doImageInit\n"
 		"leak:libSystem_atfork_child\n"
 		"leak:fork\n"
+		"leak:tzset\n"
 		/* Perl >= 5.32.0 - Upstream bug, tracked by https://github.com/Perl/perl5/issues/18108 */
 		"leak:perl_construct"
 #elif defined(__linux__)
