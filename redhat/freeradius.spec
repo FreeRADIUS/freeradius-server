@@ -89,7 +89,7 @@ BuildRequires: readline-devel
 BuildRequires: zlib-devel
 
 Requires(pre): shadow-utils glibc-common
-Requires(post): /sbin/chkconfig
+Requires(post): /sbin/chkconfig /usr/sbin/setsebool
 Requires(preun): /sbin/chkconfig
 Requires: freeradius-config = %{version}-%{release}
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
@@ -620,6 +620,7 @@ exit 0
 
 %post
 if [ $1 = 1 ]; then
+  /usr/sbin/setsebool -P radius_use_jit=1 &> /dev/null || :
 %if %{?_unitdir:1}%{!?_unitdir:0}
   /bin/systemctl enable radiusd
 %else
