@@ -11,7 +11,7 @@ RUN yum install -y rpmdevtools openssl epel-release git yum-utils rsync
 #  Install GCC that has the requisite support for C11 keywords and atomics
 #
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++
+RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
 ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 
 #
