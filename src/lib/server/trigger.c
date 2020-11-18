@@ -84,7 +84,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	 */
 	if (!head) return -1;
 
-	da = fr_dict_attr_by_name(request->dict, fmt);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), fmt);
 	if (!da) {
 		ERROR("Unknown attribute \"%s\"", fmt);
 		return -1;

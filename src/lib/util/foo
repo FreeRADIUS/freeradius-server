@@ -7,7 +7,7 @@
 		static unsigned int max_attr = UINT8_MAX + 1;
 
 		if (*attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
+			if (fr_dict_attr_by_name(NULL, fr_dict_root(dict), name)) return 0; /* exists, don't add it again */
 			*attr = ++max_attr;
 			flags->internal = 1;
 

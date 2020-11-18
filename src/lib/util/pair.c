@@ -2245,7 +2245,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		/*
 		 *	Attribute may be present with multiple names
 		 */
-		da = fr_dict_attr_by_name(fr_dict_by_da(vp->da), vp->da->name);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_by_da(vp->da)), vp->da->name);
 		if (!da) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" (%s) "
 					     "not found in global dictionary",

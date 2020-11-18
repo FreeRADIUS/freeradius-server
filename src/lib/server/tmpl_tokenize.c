@@ -3118,7 +3118,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		fr_sbuff_t	name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 		fr_sbuff_in_strcpy_literal(&name, "raw.");
-		fr_dict_print_attr_oid(&name, NULL, ref->da);
+		fr_dict_attr_oid_print(&name, NULL, ref->da);
 
 		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
@@ -3274,7 +3274,7 @@ int tmpl_attr_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 			     fr_dict_root(fr_dict_internal()), tmpl_attr_unresolved(vpt), -1, type, flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(dict_def, tmpl_attr_unresolved(vpt));
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_def), tmpl_attr_unresolved(vpt));
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -3898,17 +3898,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 						     fr_table_str_by_value(fr_value_box_type_table, tmpl_da(vpt)->type, "<INVALID>"));
 			}
 
-			da = fr_dict_attr_by_name(dict, tmpl_da(vpt)->name);
-			if (!da) {
-				if (!tmpl_da(vpt)->flags.is_unknown) {
-					fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-							     "attribute \"%s\" (%s) not found in dictionary (%s)",
-							     file, line, tmpl_da(vpt)->name,
-							     fr_table_str_by_value(fr_value_box_type_table, tmpl_da(vpt)->type, "<INVALID>"),
-							     fr_dict_root(dict)->name);
-				}
-				da = tmpl_da(vpt);
-			}
+			da = tmpl_da(vpt);
 
 			if ((da->type == FR_TYPE_COMBO_IP_ADDR) && (da->type != tmpl_da(vpt)->type)) {
 				da = fr_dict_attr_by_type(tmpl_da(vpt), tmpl_da(vpt)->type);

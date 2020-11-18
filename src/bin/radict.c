@@ -142,7 +142,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	fr_hash_iter_t		iter;
 	fr_dict_enum_t		*enumv;
 
-	(void)fr_dict_print_attr_oid(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da);
+	(void)fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da);
 
 	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
 		do {
 			DEBUG2("Looking for \"%s\" in dict \"%s\"", attr, fr_dict_root(*dict_p)->name);
 
-			da = fr_dict_attr_by_name(*dict_p, attr);
+			da = fr_dict_attr_by_name(NULL, fr_dict_root(*dict_p), attr);
 			if (da) {
 				da_print_info_td(*dict_p, da);
 				found = true;

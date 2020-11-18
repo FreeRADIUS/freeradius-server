@@ -161,15 +161,19 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.can_copy = true,
 							.copy = fr_dict_attr_ext_vendor_copy
 						},
+		[FR_DICT_ATTR_EXT_DA_STACK]	= {
+							.min = sizeof(fr_dict_attr_ext_da_stack_t),
+							.has_hdr = true,
+							.can_copy = false	/* Reinitialised for each new attribute */
+						},
 		[FR_DICT_ATTR_EXT_ENUMV]	= {
 							.min = sizeof(fr_dict_attr_ext_enumv_t),
 							.can_copy = true,
 							.copy = fr_dict_attr_ext_enumv_copy
 						},
-		[FR_DICT_ATTR_EXT_DA_STACK]	= {
-							.min = sizeof(fr_dict_attr_ext_da_stack_t),
-							.has_hdr = true,
-							.can_copy = false	/* Reinitialised for each new attribute */
+		[FR_DICT_ATTR_EXT_NAMESPACE]	= {
+							.min = sizeof(fr_dict_attr_ext_namespace_t),
+							.can_copy = false,	/* Same limitation as ext_children */
 						},
 		[FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC] = {
 							.min = sizeof(fr_dict_ext_protocol_specific_t),

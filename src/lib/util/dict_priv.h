@@ -75,8 +75,6 @@ struct fr_dict {
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
 
-	fr_hash_table_t		*attributes_by_name;	//!< Allow attribute lookup by unique name.
-
 	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
@@ -154,7 +152,8 @@ int			dict_protocol_add(fr_dict_t *dict);
 
 int			dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num);
 
-int			dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da);
+int			dict_attr_add_to_namespace(fr_dict_t *dict,
+						   fr_dict_attr_t const *parent, fr_dict_attr_t *da) CC_HINT(nonnull);
 
 bool			dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					      UNUSED char const *name, int *attr, fr_type_t type,
@@ -164,7 +163,7 @@ bool			dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					       char const *name, int *attr, fr_type_t type,
 					       fr_dict_attr_flags_t *flags);
 
-fr_dict_attr_t		*dict_attr_by_name(fr_dict_t const *dict, char const *name);
+fr_dict_attr_t		*dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t		*dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 

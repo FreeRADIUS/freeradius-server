@@ -26,9 +26,9 @@ VALUE	Manzara-Tariff-Type		MMS-Picture		1
 VALUE	Manzara-Tariff-Type		Unused			2
 VALUE	Manzara-Tariff-Type		Internet		3
 
+END-VENDOR Manzara
+
 #
 #  Poaching on the standard space is wrong.
 #
 VALUE	Acct-Status-Type		One-Time		17
-
-END-VENDOR Manzara

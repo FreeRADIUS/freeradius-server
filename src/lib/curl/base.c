@@ -210,7 +210,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
 			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
 
-			da = fr_dict_attr_by_name(dict_freeradius, buffer);
+			da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), buffer);
 			if (!da) {
 				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);

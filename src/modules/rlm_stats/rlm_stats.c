@@ -311,7 +311,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		if (!local_stats[i]) continue;
 
 		strlcpy(buffer + 18, fr_packet_codes[i], sizeof(buffer) - 18);
-		da = fr_dict_attr_by_name(dict_radius, buffer);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), buffer);
 		if (!da) continue;
 
 		MEM(vp = fr_pair_afrom_da(request->reply, da));

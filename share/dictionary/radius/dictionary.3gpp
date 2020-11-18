@@ -17,22 +17,22 @@ BEGIN-VENDOR	3GPP
 #	Most of the 'string' attributes are UTF-8 encoded text.
 #	Maybe we want a UTF-8 'type' in the server...
 #
-ATTRIBUTE	3GPP-IMSI				1	string
-ATTRIBUTE	3GPP-Charging-ID			2	integer
-ATTRIBUTE	3GPP-PDP-Type				3	integer
-ATTRIBUTE	3GPP-CG-Address				4	ipaddr
-ATTRIBUTE	3GPP-GPRS-Negotiated-QoS-profile	5	string
-ATTRIBUTE	3GPP-SGSN-Address			6	ipaddr
-ATTRIBUTE	3GPP-GGSN-Address			7	ipaddr
-ATTRIBUTE	3GPP-IMSI-MCC-MNC			8	string
-ATTRIBUTE	3GPP-GGSN-MCC-MNC			9	string
-ATTRIBUTE	3GPP-NSAPI				10	string
-ATTRIBUTE	3GPP-Session-Stop-Indicator		11	byte
-ATTRIBUTE	3GPP-Selection-Mode			12	string
-ATTRIBUTE	3GPP-Charging-Characteristics		13	string
-ATTRIBUTE	3GPP-CG-IPv6-Address			14	ipv6addr
-ATTRIBUTE	3GPP-SGSN-IPv6-Address			15	ipv6addr
-ATTRIBUTE	3GPP-GGSN-IPv6-Address			16	ipv6addr
+ATTRIBUTE	IMSI					1	string
+ATTRIBUTE	Charging-ID				2	integer
+ATTRIBUTE	PDP-Type				3	integer
+ATTRIBUTE	CG-Address				4	ipaddr
+ATTRIBUTE	GPRS-Negotiated-QoS-profile		5	string
+ATTRIBUTE	SGSN-Address				6	ipaddr
+ATTRIBUTE	GGSN-Address				7	ipaddr
+ATTRIBUTE	IMSI-MCC-MNC				8	string
+ATTRIBUTE	GGSN-MCC-MNC				9	string
+ATTRIBUTE	NSAPI					10	string
+ATTRIBUTE	Session-Stop-Indicator			11	byte
+ATTRIBUTE	Selection-Mode				12	string
+ATTRIBUTE	Charging-Characteristics		13	string
+ATTRIBUTE	CG-IPv6-Address				14	ipv6addr
+ATTRIBUTE	SGSN-IPv6-Address			15	ipv6addr
+ATTRIBUTE	GGSN-IPv6-Address			16	ipv6addr
 
 #
 #	This attribute is really an array of IPv6 addresses.
@@ -46,7 +46,7 @@ ATTRIBUTE	3GPP-IMEISV				20	string
 ATTRIBUTE	3GPP-RAT-Type				21	byte
 
 ATTRIBUTE	3GPP-User-Location-Info			22	struct
-MEMBER		3GPP-User-Location-Type			uint8	key
+MEMBER		Type					uint8	key
 
 #
 #  Encoded with nibbles broken up into bizarreness and confusion.
@@ -54,33 +54,33 @@ MEMBER		3GPP-User-Location-Type			uint8	key
 #  wire:    12 34 56
 #  Meaning: 214 653
 #
-MEMBER		3GPP-User-Location-PLMN-ID		octets[3]
+MEMBER		PLMN-ID					octets[3]
 
-STRUCT	3GPP-User-Location-CGI		3GPP-User-Location-Type	0
-MEMBER		3GPP-User-Location-CGI-LAC		uint16
-MEMBER		3GPP-User-Location-CGI-CAI		uint16
+STRUCT		CGI					Type	0
+MEMBER		LAC					uint16
+MEMBER		CAI					uint16
 
-STRUCT	3GPP-User-Location-SAI		3GPP-User-Location-Type	1
-MEMBER		3GPP-User-Location-SAI-LAC		uint16
-MEMBER		3GPP-User-Location-SAI-SAC		uint16
+STRUCT		SAI					Type	1
+MEMBER		LAC					uint16
+MEMBER		SAC					uint16
 
-STRUCT	3GPP-User-Location-RAI		3GPP-User-Location-Type	2
-MEMBER		3GPP-User-Location-RAI-RAI		uint16
-MEMBER		3GPP-User-Location-RAI-RAC		uint16
+STRUCT		RAI					Type	2
+MEMBER		RAI					uint16
+MEMBER		RAC					uint16
 
-STRUCT	3GPP-User-Location-LAI		3GPP-User-Location-Type	32
-MEMBER		3GPP-User-Location-LAI-LAI		uint16
+STRUCT		LAI					Type	32
+MEMBER		LAI					uint16
 
-STRUCT	3GPP-User-Location-TAI		3GPP-User-Location-Type	128
-MEMBER		3GPP-User-Location-TAI-TAC		uint16
+STRUCT		TAI					Type	128
+MEMBER		TAC					uint16
 
-STRUCT	3GPP-User-Location-ECGI		3GPP-User-Location-Type	129
-MEMBER		3GPP-User-Location-ECGI-ECI		octets[4]
+STRUCT		ECGI					Type	129
+MEMBER		ECI					octets[4]
 
-STRUCT	3GPP-User-Location-TAI-ECGI		3GPP-User-Location-Type 130
-MEMBER		3GPP-User-Location-TAI-ECGI-TAC		uint16
-MEMBER		3GPP-User-Location-TAI-ECGI-PLMN-ID	octets[3]
-MEMBER		3GPP-User-Location-TAI-ECGI-ECI		octets[4]
+STRUCT		TAI-ECGI				Type 130
+MEMBER		TAC					uint16
+MEMBER		PLMN-ID					octets[3]
+MEMBER		ECI					octets[4]
 
 ATTRIBUTE	3GPP-MS-TimeZone			23	octets[2]
 ATTRIBUTE	3GPP-CAMEL-Charging-Info		24	octets

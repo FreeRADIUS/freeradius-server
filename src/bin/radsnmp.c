@@ -452,7 +452,7 @@ static int radsnmp_get_response(int fd,
 			 *	Print OID from last index/root up to the parent of
 			 *	the index attribute.
 			 */
-			slen = fr_dict_print_attr_oid(&FR_SBUFF_OUT(p, end), parent, vp->da->parent);
+			slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(p, end), parent, vp->da->parent);
 			if (slen <= 0) return -1;
 
 			if (vp->vp_type != FR_TYPE_UINT32) {
@@ -483,7 +483,7 @@ static int radsnmp_get_response(int fd,
 		/*
 		 *	Actual TLV attribute
 		 */
-		slen = fr_dict_print_attr_oid(&FR_SBUFF_OUT(p, end), parent, vp->da);
+		slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(p, end), parent, vp->da);
 		if (slen < 0) return -1;
 
 		/*

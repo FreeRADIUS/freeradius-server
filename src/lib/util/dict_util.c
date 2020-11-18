@@ -367,7 +367,7 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t **da_
 
 		fr_sbuff_in_strcpy_literal(&unknown_name, "Attr-");
 		if (da->parent) {
-			if (fr_dict_print_attr_oid(&unknown_name, NULL, da->parent) > 0) {
+			if (fr_dict_attr_oid_print(&unknown_name, NULL, da->parent) > 0) {
 				fr_sbuff_in_char(&unknown_name, '.');
 			}
 		}
@@ -489,7 +489,7 @@ static inline CC_HINT(always_inline) int dict_attr_da_stack_set(fr_dict_attr_t *
 	return 0;
 }
 
-/** Cache the vendor pointer for an attribute
+/** Initialise a per-attribute enumeration table
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
@@ -502,6 +502,32 @@ static inline CC_HINT(always_inline) int dict_attr_enumv_init(fr_dict_attr_t **d
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_ENUMV);
 	if (unlikely(!ext)) return -1;
 	memset(ext, 0, sizeof(*ext));
+
+	return 0;
+}
+
+/** Initialise a per-attribute namespace
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_namespace_t	*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_NAMESPACE);
+	if (unlikely(!ext)) return -1;
+
+	/*
+	 *	Create the table of attributes by name.
+	 *      There MAY NOT be multiple attributes of the same name.
+	 */
+	ext->namespace = fr_hash_table_create(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+	if (!ext->namespace) {
+		fr_strerror_printf("Failed allocating \"namespace\" table");
+		return -1;
+	}
 
 	return 0;
 }
@@ -569,10 +595,11 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 		}
 
 		if (type == FR_TYPE_TLV) {
-			if (dict_attr_ref_init(da_p) < 0) return -1;
+			if (dict_attr_ref_init(da_p) < 0) return -1;	/* TLVs can reference common attribute sets */
 		}
 
 		if (dict_attr_children_init(da_p) < 0) return -1;
+		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
 		break;
 
 	/*
@@ -951,21 +978,30 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	return 0;
 }
 
-/** Add an attribute to the name table for the dictionary.
+/** Add an attribute to the name table for an attribute
  *
  * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[in] parent		containing the namespace to add this attribute to.
  * @param[in] da		to add to the name lookup tables.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
+int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 {
+	fr_hash_table_t		*namespace;
+
+	namespace = dict_attr_namespace(parent);
+	if (unlikely(!namespace)) {
+		fr_strerror_printf("Parent \"%s\" has no namespace", parent->name);
+	error:
+		return -1;
+	}
+
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(dict->attributes_by_name, da)) {
+	if (!fr_hash_table_insert(namespace, da)) {
 		fr_dict_attr_t *a;
 
 		/*
@@ -973,12 +1009,11 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		 *	but the parent, or number, or type are
 		 *	different, that's an error.
 		 */
-		a = fr_hash_table_find_by_data(dict->attributes_by_name, da);
+		a = fr_hash_table_find_by_data(namespace, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
-			error:
-				return -1;
+				goto error;
 			}
 		}
 
@@ -990,7 +1025,7 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		 *	dictionary but entry in the name hash table is
 		 *	updated to point to the new definition.
 		 */
-		if (!fr_hash_table_replace(dict->attributes_by_name, da)) {
+		if (!fr_hash_table_replace(namespace, da)) {
 			fr_strerror_printf("Internal error storing attribute");
 			goto error;
 		}
@@ -1096,7 +1131,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 #define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
 
-	old = fr_dict_attr_by_name(dict, name);
+	old = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
 	if (old) {
 		if ((old->parent == parent)&& (old->type == type) &&
 		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
@@ -1132,7 +1167,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
 	if (!n) return -1;
 
-	if (dict_attr_add_by_name(dict, n) < 0) {
+	if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
 	error:
 		talloc_free(n);
 		return -1;
@@ -1295,7 +1330,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 				return 0;
 			}
 
-			fr_strerror_printf("Duplicate VALUE name \"%s\" for attribute \"%s\". "
+			fr_strerror_printf("Duplicate VALUE name \"%s\" for Attribute '%s'. "
 					   "Old value was \"%pV\", new value was \"%pV\"", name, da->name,
 					   old->value, enumv->value);
 			talloc_free(enumv);
@@ -1675,7 +1710,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	case FR_SBUFF_PARSE_OK:
 		child = dict_attr_child_by_num(parent, num);
 		if (!child) {
-			fr_strerror_printf("Couldn't resolve child %u in parent '%s'",
+			fr_strerror_printf("Failed resolving child %u in context %s",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
 			fr_sbuff_set(in, &start);		/* Reset to start of number */
@@ -1693,9 +1728,9 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		fr_dict_attr_err_t	our_err;
 		ssize_t			slen;
 
-		slen = fr_dict_attr_by_name_substr(&our_err, &child, fr_dict_by_da(parent), in);
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in);
 		if (our_err != FR_DICT_ATTR_OK) {
-			fr_strerror_printf("Couldn't resolve \"%.*s\" in parent '%s'",
+			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
 					   (int)fr_sbuff_remaining(in),
 					   fr_sbuff_current(in),
 					   parent->name);
@@ -1730,18 +1765,23 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
  *	- >0 the number of bytes consumed.
  *	- <= 0 Parse error occurred here.
  */
-ssize_t fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
-			    fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-			    fr_sbuff_t *in)
+ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
+				   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				   fr_sbuff_t *in)
 {
 	fr_sbuff_marker_t	start;
 	fr_dict_attr_t const	*our_parent = parent;
 
-	fr_sbuff_next_if_char(in, '.');	/* Skip preceding separator */
+	fr_sbuff_marker(&start, in);
+
+	/*
+	 *	If the OID doesn't begin with '.' we
+	 *	resolve it from the root.
+	 */
+	if (!fr_sbuff_next_if_char(in, '.')) parent = fr_dict_root(fr_dict_by_da(parent));
 
 	*out = NULL;
 
-	fr_sbuff_marker(&start, in);
 	for (;;) {
 		ssize_t			slen;
 		fr_dict_attr_t const	*child;
@@ -1756,6 +1796,25 @@ ssize_t fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 	}
 
 	return fr_sbuff_marker_release_behind(&start);
+}
+
+/** Resolve an attribute using an OID string
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] oid		string to parse.
+ * @return
+ *	- NULL if we couldn't resolve the attribute.
+ *	- The resolved attribute.
+ */
+fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *oid)
+{
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(oid, strlen(oid));
+	fr_dict_attr_t const	*da;
+
+	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff) <= 0) return NULL;
+
+	return da;
 }
 
 /** Return the root attribute of a dictionary
@@ -1945,12 +2004,16 @@ static int _dict_attr_find_in_dicts(void *ctx, void *data)
 {
 	dict_attr_search_t	*search = ctx;
 	fr_dict_t		*dict;
+	fr_hash_table_t 	*namespace;
 
 	if (!data) return 0;	/* We get called with NULL data */
 
 	dict = talloc_get_type_abort(data, fr_dict_t);
 
-	search->found_da = fr_hash_table_find_by_data(dict->attributes_by_name, search->find);
+	namespace = dict_attr_namespace(dict->root);
+	if (!namespace) return 0;
+
+	search->found_da = fr_hash_table_find_by_data(namespace, search->find);
 	if (!search->found_da) return 0;
 
 	search->found_dict = data;
@@ -2160,23 +2223,21 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
  * @param[out] out		Where to store the resolve attribute.
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[in] parent		containing the namespace to search in.
  * @param[in] name		string start.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				    fr_dict_t const *dict, fr_sbuff_t *name)
+				    fr_dict_attr_t const *parent, fr_sbuff_t *name)
 {
 	fr_dict_attr_t const	*da;
 	size_t			len;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
 	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
+	fr_hash_table_t		*namespace;
 	*out = NULL;
-
-	INTERNAL_IF_NULL(dict, 0);
 
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
 					    &our_name, SIZE_MAX,
@@ -2192,10 +2253,17 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	da = fr_hash_table_find_by_data(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return -1;
+	}
+
+	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Attribute '%s' not found in the %s dictionary", buffer, fr_dict_root(dict)->name);
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
 		return 0;
 	}
 
@@ -2208,30 +2276,43 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 /* Internal version of fr_dict_attr_by_name
  *
  */
-fr_dict_attr_t *dict_attr_by_name(fr_dict_t const *dict, char const *name)
+fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	INTERNAL_IF_NULL(dict, NULL);
+	fr_hash_table_t		*namespace;
+	fr_dict_attr_t		*da;
 
-	if (!name) return NULL;
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return NULL;
+	}
 
-	return fr_hash_table_find_by_data(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
+	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t) { .name = name });
+	if (!da) {
+		if (err) *err = FR_DICT_ATTR_NOTFOUND;
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
+		return NULL;
+	}
+
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	return da;
 }
-
 
 /** Locate a #fr_dict_attr_t by its name
  *
- * @note Unlike attribute numbers, attribute names are unique to the dictionary.
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[out] err		Why the lookup failed. May be NULL.
+ *				@see fr_dict_attr_err_t.
+ * @param[in] parent		containing the namespace we're searching in.
  * @param[in] name		of the attribute to locate.
  * @return
  * 	- Attribute matching name.
  * 	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
+fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	return dict_attr_by_name(dict, name);
+	return dict_attr_by_name(err, parent, name);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -2297,7 +2378,7 @@ again:
 	 *	We rely on the fact the sbuff is only
 	 *	advanced on success.
 	 */
-	fr_dict_attr_by_name_substr(&aerr, out, dict, &our_name);
+	fr_dict_attr_by_name_substr(&aerr, out, fr_dict_root(dict), &our_name);
 	switch (aerr) {
 	case FR_DICT_ATTR_OK:
 		break;
@@ -2546,7 +2627,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 		return 0;
 	}
 
-	slen = fr_dict_attr_by_name_substr(err, out, dict_by_da(parent), name);
+	slen = fr_dict_attr_by_name_substr(err, out, parent, name);
 	if (slen <= 0) return slen;
 
 	if (is_direct_decendent) {
@@ -2764,16 +2845,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	}
 
 	/*
-	 *	Create the table of attributes by name.   There MAY NOT
-	 *	be multiple attributes of the same name.
-	 */
-	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
-	if (!dict->attributes_by_name) {
-		fr_strerror_printf("Failed allocating \"attributes_by_name\" table");
-		goto error;
-	}
-
-	/*
 	 *	Inter-dictionary reference caching
 	 */
 	dict->autoref = fr_hash_table_create(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
@@ -2868,22 +2939,22 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 		}
 
 		if (!*p->dict) {
-			fr_strerror_printf("Can't resolve attribute \"%s\", dictionary not loaded", p->name);
+			fr_strerror_printf("Can't resolve Attribute '%s', dictionary not loaded", p->name);
 			fr_strerror_printf_push("Check fr_dict_autoload_t struct has "
 						"an entry to load the dictionary \"%s\" is located in, and that "
 						"the fr_dict_autoload_t symbol name is correct", p->name);
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(*p->dict, p->name);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(*p->dict), p->name);
 		if (!da) {
-			fr_strerror_printf("Attribute \"%s\" not found in \"%s\" dictionary", p->name,
+			fr_strerror_printf("Attribute '%s' not found in \"%s\" dictionary", p->name,
 					   *p->dict ? (*p->dict)->root->name : "internal");
 			return -1;
 		}
 
 		if (da->type != p->type) {
-			fr_strerror_printf("Attribute \"%s\" should be type %s, but defined as type %s", da->name,
+			fr_strerror_printf("Attribute '%s' should be type %s, but defined as type %s", da->name,
 					   fr_table_str_by_value(fr_value_box_type_table, p->type, "?Unknown?"),
 					   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 			return -1;

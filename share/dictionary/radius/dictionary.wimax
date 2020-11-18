@@ -65,21 +65,12 @@ BEGIN-VENDOR	WiMAX
 ATTRIBUTE	WiMAX-Capability			1	tlv
 ATTRIBUTE	WiMAX-Release				.1	string
 ATTRIBUTE	WiMAX-Accounting-Capabilities		.2	byte
-ATTRIBUTE	WiMAX-Hotlining-Capabilities		.3	byte
-ATTRIBUTE	WiMAX-Idle-Mode-Notification-Cap	.4	byte
-ATTRIBUTE	WiMAX-ASN-IP-Service-Capabilities	.5	byte
-ATTRIBUTE	WiMAX-VCSN-IP-Service-Capabilities	.6	byte
-ATTRIBUTE	WiMAX-Authorized-IP-Services		.7	byte
-ATTRIBUTE	WiMAX-Authorized-Anchor-Locations	.8	byte
-ATTRIBUTE	WiMAX-ASN-Ethernet-Service-Capabilities	.9	byte
-ATTRIBUTE	WiMAX-VCSN-Ethernet-Service-Capabilities .10	byte
-ATTRIBUTE	WiMAX-Authorized-Ethernet-Services	.11	byte
-
 # This is really a bitmap
 VALUE	WiMAX-Accounting-Capabilities	No-Accounting		0
 VALUE	WiMAX-Accounting-Capabilities	IP-Session-Based	1
 VALUE	WiMAX-Accounting-Capabilities	Flow-Based		2
 
+ATTRIBUTE	WiMAX-Hotlining-Capabilities		.3	byte
 # This is really a bitmap
 VALUE	WiMAX-Hotlining-Capabilities	Not-Supported		0
 VALUE	WiMAX-Hotlining-Capabilities	Hotline-Profile-Id	1
@@ -87,22 +78,31 @@ VALUE	WiMAX-Hotlining-Capabilities	NAS-Filter-Rule		2
 VALUE	WiMAX-Hotlining-Capabilities	HTTP-Redirection	4
 VALUE	WiMAX-Hotlining-Capabilities	IP-Redirection		8
 
+ATTRIBUTE	WiMAX-Idle-Mode-Notification-Cap	.4	byte
 VALUE	WiMAX-Idle-Mode-Notification-Cap Not-Supported		0
 VALUE	WiMAX-Idle-Mode-Notification-Cap Supported		1
 
+ATTRIBUTE	WiMAX-ASN-IP-Service-Capabilities	.5	byte
 VALUE	WiMAX-ASN-IP-Service-Capabilities DHCP-Relay		1
 VALUE	WiMAX-ASN-IP-Service-Capabilities DHCP-Proxy		2
 VALUE	WiMAX-ASN-IP-Service-Capabilities FA			4
 VALUE	WiMAX-ASN-IP-Service-Capabilities PMIP-Client		8
 
+ATTRIBUTE	WiMAX-VCSN-IP-Service-Capabilities	.6	byte
+ATTRIBUTE	WiMAX-Authorized-IP-Services		.7	byte
+ATTRIBUTE	WiMAX-Authorized-Anchor-Locations	.8	byte
+ATTRIBUTE	WiMAX-ASN-Ethernet-Service-Capabilities	.9	byte
 VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eAFF-IPv4-Transport 1
 VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eAFF-IPv6-Transport 2
 VALUE	WiMAX-ASN-Ethernet-Service-Capabilities eFA		4
 
+ATTRIBUTE	WiMAX-VCSN-Ethernet-Service-Capabilities .10	byte
 VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eCFF-IPv4-Transport 1
 VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eCFF-IPv6-Transport 2
 VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eHAv4		4
 VALUE	WiMAX-VCSN-Ethernet-Service-Capabilities eHAv6		8
+
+ATTRIBUTE	WiMAX-Authorized-Ethernet-Services	.11	byte
 
 ATTRIBUTE	WiMAX-Device-Authentication-Indicator	2	byte
 ATTRIBUTE	WiMAX-GMT-Timezone-offset		3	signed
@@ -224,6 +224,12 @@ ATTRIBUTE	WiMAX-QoS-Id				.1	byte
 ATTRIBUTE	WiMAX-Global-Service-Class-Name		.2	string # 6 octets
 ATTRIBUTE	WiMAX-Service-Class-Name		.3	string
 ATTRIBUTE	WiMAX-Schedule-Type			.4	byte
+VALUE	WiMAX-Schedule-Type		Best-Effort		2
+VALUE	WiMAX-Schedule-Type		nrtPS			3
+VALUE	WiMAX-Schedule-Type		rtPS			4
+VALUE	WiMAX-Schedule-Type		Extended-rtPS		5
+VALUE	WiMAX-Schedule-Type		UGS			6
+
 ATTRIBUTE	WiMAX-Traffic-Priority			.5	byte
 ATTRIBUTE	WiMAX-Maximum-Sustained-Traffic-Rate	.6	integer
 ATTRIBUTE	WiMAX-Minimum-Reserved-Traffic-Rate	.7	integer
@@ -232,6 +238,20 @@ ATTRIBUTE	WiMAX-Tolerated-Jitter			.9	integer
 ATTRIBUTE	WiMAX-Maximum-Latency			.10	integer
 ATTRIBUTE	WiMAX-Reduced-Resources-Code		.11	byte
 ATTRIBUTE	WiMAX-Media-Flow-Type			.12	byte
+VALUE	WiMAX-Media-Flow-Type		VoIP			1
+VALUE	WiMAX-Media-Flow-Type		Robust-Browser		2
+VALUE	WiMAX-Media-Flow-Type		Secure-Browser-VPN	3
+VALUE	WiMAX-Media-Flow-Type		Streaming-Video		4
+VALUE	WiMAX-Media-Flow-Type		Streaming-Live-TV	5
+VALUE	WiMAX-Media-Flow-Type		Music-Photo-Download	6
+VALUE	WiMAX-Media-Flow-Type		Multi-Player-Gaming	7
+VALUE	WiMAX-Media-Flow-Type		Location-Based-Services	8
+VALUE	WiMAX-Media-Flow-Type		Text-Audio-Books	9
+VALUE	WiMAX-Media-Flow-Type		Video-Conversation	10
+VALUE	WiMAX-Media-Flow-Type		Message			11
+VALUE	WiMAX-Media-Flow-Type		Control			12
+VALUE	WiMAX-Media-Flow-Type		Data			13
+
 ATTRIBUTE	WiMAX-Unsolicited-Grant-Interval	.13	short
 ATTRIBUTE	WiMAX-SDU-Size				.14	short
 ATTRIBUTE	WiMAX-Unsolicited-Polling-Interval	.15	short
@@ -249,26 +269,6 @@ ATTRIBUTE	WiMAX-DHCP-Option			29.18	tlv
 
 ATTRIBUTE	WiMAX-Ref-R3-IF-Name			.1	string
 ATTRIBUTE	WiMAX-DHCP-Option-Container		.2	string
-
-VALUE	WiMAX-Schedule-Type		Best-Effort		2
-VALUE	WiMAX-Schedule-Type		nrtPS			3
-VALUE	WiMAX-Schedule-Type		rtPS			4
-VALUE	WiMAX-Schedule-Type		Extended-rtPS		5
-VALUE	WiMAX-Schedule-Type		UGS			6
-
-VALUE	WiMAX-Media-Flow-Type		VoIP			1
-VALUE	WiMAX-Media-Flow-Type		Robust-Browser		2
-VALUE	WiMAX-Media-Flow-Type		Secure-Browser-VPN	3
-VALUE	WiMAX-Media-Flow-Type		Streaming-Video		4
-VALUE	WiMAX-Media-Flow-Type		Streaming-Live-TV	5
-VALUE	WiMAX-Media-Flow-Type		Music-Photo-Download	6
-VALUE	WiMAX-Media-Flow-Type		Multi-Player-Gaming	7
-VALUE	WiMAX-Media-Flow-Type		Location-Based-Services	8
-VALUE	WiMAX-Media-Flow-Type		Text-Audio-Books	9
-VALUE	WiMAX-Media-Flow-Type		Video-Conversation	10
-VALUE	WiMAX-Media-Flow-Type		Message			11
-VALUE	WiMAX-Media-Flow-Type		Control			12
-VALUE	WiMAX-Media-Flow-Type		Data			13
 
 ATTRIBUTE	WiMAX-Uplink-Granted-QoS		30	string
 ATTRIBUTE	WiMAX-Control-Packets-In		31	integer
@@ -301,22 +301,6 @@ ATTRIBUTE	WiMAX-Duration-Threshold		.5	integer #s
 ATTRIBUTE	WiMAX-Resource-Quota			.6	integer
 ATTRIBUTE	WiMAX-Resource-Threshold		.7	integer
 ATTRIBUTE	WiMAX-Update-Reason			.8	integer
-ATTRIBUTE	WiMAX-Prepaid-Server			.9	combo-ip
-ATTRIBUTE	WiMAX-Service-Id			.10	string
-ATTRIBUTE	WiMAX-Rating-Group-Id			.11	integer
-ATTRIBUTE	WiMAX-Termination-Action		.12	byte
-ATTRIBUTE	WiMAX-Pool-Id				.13	integer
-ATTRIBUTE	WiMAX-Pool-Multiplier			.14	integer
-ATTRIBUTE	WiMAX-Requested-Action			.15	byte
-ATTRIBUTE	WiMAX-Check-Balance-Result		.16	byte
-
-#
-#  4 octets - integer representing 1/10's of lowest currency (e.g. cents)
-#  4 octets - currency code as in ISO-4217
-#  1+	    - UTF8 string containing text like "cost is $1 per minute"
-#
-ATTRIBUTE	WiMAX-Cost-Information-AVP		37.17	octets
-
 VALUE	WiMAX-Update-Reason		Pre-Initialization	1
 VALUE	WiMAX-Update-Reason		Initial-Request		2
 VALUE	WiMAX-Update-Reason		Threshold-Reached	3
@@ -328,12 +312,28 @@ VALUE	WiMAX-Update-Reason		Access-Service-Terminated 8
 VALUE	WiMAX-Update-Reason		Service-Not-Established	9
 VALUE	WiMAX-Update-Reason		One-Time-Charging	10
 
+ATTRIBUTE	WiMAX-Prepaid-Server			.9	combo-ip
+ATTRIBUTE	WiMAX-Service-Id			.10	string
+ATTRIBUTE	WiMAX-Rating-Group-Id			.11	integer
+ATTRIBUTE	WiMAX-Termination-Action		.12	byte
 VALUE	WiMAX-Termination-Action	Terminate		1
 VALUE	WiMAX-Termination-Action	Request-More-Quota	2
 VALUE	WiMAX-Termination-Action	Redirect-Or-Filter	3
 
+ATTRIBUTE	WiMAX-Pool-Id				.13	integer
+ATTRIBUTE	WiMAX-Pool-Multiplier			.14	integer
+ATTRIBUTE	WiMAX-Requested-Action			.15	byte
 VALUE	WiMAX-Requested-Action		Balance-Check		1
 VALUE	WiMAX-Requested-Action		Price-Enquiry		2
+
+ATTRIBUTE	WiMAX-Check-Balance-Result		.16	byte
+
+#
+#  4 octets - integer representing 1/10's of lowest currency (e.g. cents)
+#  4 octets - currency code as in ISO-4217
+#  1+	    - UTF8 string containing text like "cost is $1 per minute"
+#
+ATTRIBUTE	WiMAX-Cost-Information-AVP		37.17	octets
 
 ATTRIBUTE	WiMAX-Prepaid-Tariff-Switching		38	tlv
 ATTRIBUTE	WiMAX-Prepaid-Quota-Identifier		.1	string
@@ -437,8 +437,21 @@ ATTRIBUTE	WiMAX-PFDv2-Packet-Data-Flow-Id		.1	short
 ATTRIBUTE	WiMAX-PFDv2-Service-Data-Flow-Id	.2	short
 ATTRIBUTE	WiMAX-PFDv2-Service-Profile-Id		.3	integer
 ATTRIBUTE	WiMAX-PFDv2-Direction			.4	byte
+VALUE	WiMAX-PFDv2-Direction		Uplink			1
+VALUE	WiMAX-PFDv2-Direction		Downlink		2
+VALUE	WiMAX-PFDv2-Direction		Bi-Directional		3
+
 ATTRIBUTE	WiMAX-PFDv2-Activation-Trigger		.5	byte
+VALUE	WiMAX-PFDv2-Activation-Trigger	Provisioned		1
+VALUE	WiMAX-PFDv2-Activation-Trigger	Admit			2
+VALUE	WiMAX-PFDv2-Activation-Trigger	Activate		4
+VALUE	WiMAX-PFDv2-Activation-Trigger	Dynamic			8
+
 ATTRIBUTE	WiMAX-PFDv2-Transport-Type		.6	byte
+VALUE	WiMAX-PFDv2-Transport-Type	IPv4-CS			1
+VALUE	WiMAX-PFDv2-Transport-Type	IPv6-CS			2
+VALUE	WiMAX-PFDv2-Transport-Type	Ethernet		3
+
 ATTRIBUTE	WiMAX-PFDv2-Uplink-QoS-Id		.7	byte
 ATTRIBUTE	WiMAX-PFDv2-Downlink-QoS-Id		.8	byte
 
@@ -491,19 +504,6 @@ ATTRIBUTE	WiMAX-XXX				.4	byte
 
 ATTRIBUTE	WiMAX-PFDv2-Paging-Preference		84.9.10	byte
 ATTRIBUTE	WiMAX-PFDv2-VLAN-Tag-Rule-Id		84.9.11	short
-
-VALUE	WiMAX-PFDv2-Direction		Uplink			1
-VALUE	WiMAX-PFDv2-Direction		Downlink		2
-VALUE	WiMAX-PFDv2-Direction		Bi-Directional		3
-
-VALUE	WiMAX-PFDv2-Activation-Trigger	Provisioned		1
-VALUE	WiMAX-PFDv2-Activation-Trigger	Admit			2
-VALUE	WiMAX-PFDv2-Activation-Trigger	Activate		4
-VALUE	WiMAX-PFDv2-Activation-Trigger	Dynamic			8
-
-VALUE	WiMAX-PFDv2-Transport-Type	IPv4-CS			1
-VALUE	WiMAX-PFDv2-Transport-Type	IPv6-CS			2
-VALUE	WiMAX-PFDv2-Transport-Type	Ethernet		3
 
 ATTRIBUTE	WiMAX-VLAN-Tag-Processing-Descriptor	85	tlv
 ATTRIBUTE	WiMAX-VLAN-Tag-Rule-Id			.1	short

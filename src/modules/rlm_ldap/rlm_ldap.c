@@ -1522,7 +1522,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		goto error;
 	}
 
-	inst->group_da = fr_dict_attr_by_name(dict_freeradius, group_attribute);
+	inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 
 	/*
 	 *	Setup the cache attribute
@@ -1538,7 +1538,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			return -1;
 
 		}
-		inst->cache_da = fr_dict_attr_by_name(dict_freeradius, inst->cache_attribute);
+		inst->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->cache_attribute);
 	} else {
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}

@@ -144,7 +144,8 @@ VALUE	SG-Wimax-Node-Disconnect	Enable			0
 VALUE	SG-Wimax-Node-Disconnect	Disable			1
 VALUE	SG-Wimax-Service-Flow-Modification On			2
 VALUE	SG-Wimax-Service-Flow-Modification Off			1
-VALUE	Acct-Status-Type		SG-Service-Start	0x09960001
-VALUE	Acct-Status-Type		SG-Service-Stop		0x09960002
 
 END-VENDOR      SG
+
+VALUE	Acct-Status-Type		SG-Service-Start	0x09960001
+VALUE	Acct-Status-Type		SG-Service-Stop		0x09960002

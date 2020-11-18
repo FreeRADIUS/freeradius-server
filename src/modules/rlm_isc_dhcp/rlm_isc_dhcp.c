@@ -956,7 +956,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	 *	Now that we've parsed everything, look up the name.
 	 *	We forbid conflicts, but silently allow duplicates.
 	 */
-	da = fr_dict_attr_by_name(dict_dhcpv4, name);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_dhcpv4), name);
 	if (da &&
 	    ((da->attr != box.vb_uint32) || (da->type != type))) {
 		fr_strerror_printf("cannot add different code / type for a pre-existing name '%s'", name);
@@ -1118,7 +1118,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	if (state->saw_semicolon || (state->ptr[0] == ',')) {
 		fr_dict_attr_t const *da;
 
-		da = fr_dict_attr_by_name(dict_dhcpv4, argv[0]);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_dhcpv4), argv[0]);
 		if (da) {
 			talloc_free(argv[0]);
 			return parse_option(parent, state, da, argv[1]);
@@ -1130,7 +1130,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		memcpy(name, "DHCP-", 5);
 		strlcpy(name + 5, argv[0], sizeof(name) - 5);
 
-		da = fr_dict_attr_by_name(dict_dhcpv4, name);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_dhcpv4), name);
 		if (da) {
 			talloc_free(argv[0]);
 			return parse_option(parent, state, da, argv[1]);

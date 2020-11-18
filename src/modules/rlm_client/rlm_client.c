@@ -69,7 +69,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(request->dict, attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			talloc_free(attr);

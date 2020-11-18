@@ -2547,13 +2547,13 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	 */
 	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
 	if (!cc->test_gctx) {
-		PERROR("Failed allocating test dict_gctx");
+		fr_perror("Failed allocating test dict_gctx");
 		return NULL;
 	}
 
 	fr_dict_global_ctx_set(cc->test_gctx);
 	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
-		PERROR("Failed loading test dict_gctx internal dictionary");
+		fr_perror("Failed loading test dict_gctx internal dictionary");
 		return NULL;
 	}
 
@@ -2692,7 +2692,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		 */
 		case RESULT_PARSE_ERROR:
 		case RESULT_COMMAND_ERROR:
-			PERROR("%s[%d]", filename, cc->lineno);
+			fr_perror("%s[%d]", filename, cc->lineno);
 			ret = -1;
 			goto finish;
 
@@ -3005,7 +3005,7 @@ int main(int argc, char *argv[])
 	 *	Load the custom dictionary
 	 */
 	if (fr_dict_read(config.dict, config.raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		PERROR("Failed initialising the dictionaries");
+		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
 

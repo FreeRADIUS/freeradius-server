@@ -154,6 +154,27 @@ static inline fr_dict_attr_t const **dict_attr_children(fr_dict_attr_t const *da
 	}
 	return ext->children;
 }
+
+/** Return the namespace hash table associated with the attribute
+ *
+ * @param[in] da	to return the reference for.
+ * @return
+ *	- NULL if no namespace available.
+ *	- A pointer to the namespace hash table
+ */
+static inline fr_hash_table_t *dict_attr_namespace(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const		*ref;
+	fr_dict_attr_ext_namespace_t	*ext;
+
+	ref = fr_dict_attr_ref(da);
+	if (unlikely(ref != NULL)) return NULL;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_NAMESPACE);
+	if (!ext) return NULL;
+
+	return ext->namespace;
+}
 /** @} */
 
 #ifdef __cplusplus

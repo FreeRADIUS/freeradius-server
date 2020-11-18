@@ -114,7 +114,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		return NULL;
 	}
 
-	da = fr_dict_attr_by_name(dict, old->name);
+	da = fr_dict_attr_by_name(NULL, old->parent, old->name);
 	if (da) return da;
 
 	/*
@@ -177,7 +177,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
 		 *	if it so desires.
 		 */
-		if (dict_attr_add_by_name(dict, n) < 0) {
+		if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
@@ -199,7 +199,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	/*
 	 *	For paranoia, return it by name.
 	 */
-	return fr_dict_attr_by_name(dict, old->name);
+	return fr_dict_attr_by_name(NULL, parent, old->name);
 }
 
 /** Free dynamically allocated (unknown attributes)
@@ -347,7 +347,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	 *	If so, use the pre-defined name instead of an unknown
 	 *	one!
 	 */
-	da = fr_dict_attr_by_name(dict_by_da(parent), n->name);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_by_da(parent)), n->name);
 	if (da) {
 		fr_dict_unknown_free(&parent);
 		parent = n;

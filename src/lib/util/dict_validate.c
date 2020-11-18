@@ -599,7 +599,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (*attr == -1) {
 			flags->internal = 1;
 
-			v = fr_dict_attr_by_name(dict, name);
+			v = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
 			if (v) {
 				/*
 				 *	Exact duplicates are allowed.  The caller will take care of

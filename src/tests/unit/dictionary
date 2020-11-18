@@ -36,7 +36,23 @@ ATTRIBUTE	Extended-Attribute-1			241	tlv extended
 ATTRIBUTE	Extended-Attribute-2			242	tlv extended
 ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
 ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+
+VENDOR FreeRADIUS 11344
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-2.Extended-Vendor-Specific-2
+
+ATTRIBUTE	Unit-EVS-Integer 1 integer
+ATTRIBUTE	Unit-EVS-Octets	 2 octets
+
+END-Vendor FreeRADIUS
+
 ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
+
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-5.Extended-Vendor-Specific-5
+
+ATTRIBUTE	Unit-EVS-5-Integer	1 integer
+ATTRIBUTE	Unit-EVS-5-Octets	2 octets
+
+END-Vendor FreeRADIUS
 
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
@@ -71,26 +87,10 @@ MEMBER		Unit-Struct4-Int1		integer
 MEMBER		Unit-Struct4-Int2		integer
 MEMBER		Unit-Struct4-Short		uint16
 
-
 ATTRIBUTE	Unit-TLV-Integer	241.243.1	integer
 
 ATTRIBUTE	Unit-Root-247		247		tlv
 ATTRIBUTE	Unit-Long-Octets	247.241		octets
-
-VENDOR FreeRADIUS 11344
-BEGIN-Vendor FreeRADIUS parent=Extended-Vendor-Specific-2
-
-ATTRIBUTE	Unit-EVS-Integer 1 integer
-ATTRIBUTE	Unit-EVS-Octets	 2 octets
-
-END-Vendor FreeRADIUS
-
-BEGIN-Vendor FreeRADIUS parent=Extended-Vendor-Specific-5
-
-ATTRIBUTE	Unit-EVS-5-Integer	1 integer
-ATTRIBUTE	Unit-EVS-5-Octets	2 octets
-
-END-Vendor FreeRADIUS
 
 ATTRIBUTE      Test-Struct     255 struct
 MEMBER         Key-Field       uint8  key

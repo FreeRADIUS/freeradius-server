@@ -30,6 +30,7 @@ ATTRIBUTE	ChilliSpot-OriginalURL			9	string
 ATTRIBUTE	ChilliSpot-UAM-Allowed			100	string
 ATTRIBUTE	ChilliSpot-MAC-Allowed			101	string
 ATTRIBUTE	ChilliSpot-Interval			102	integer
+END-VENDOR	ChilliSpot
 
 # Inline with RFC 2882 use of VSE-Authorize-Only for remote config
 # Note that 14559 = 0x38df is used as prefix for the VSE.
@@ -37,4 +38,3 @@ ATTRIBUTE	ChilliSpot-Interval			102	integer
 # (ChilliSpot Only - CoovaChilli uses Service-Type = Administrative-User)
 VALUE	Service-Type			ChilliSpot-Authorize-Only 0x38df0001
 
-END-VENDOR	ChilliSpot

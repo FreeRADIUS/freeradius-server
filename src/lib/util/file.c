@@ -23,6 +23,7 @@
  */
 RCSID("$Id$")
 
+#include <sys/param.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -308,4 +309,28 @@ int fr_unlink(char const *filename) {
 	fr_strerror_printf("Failed removing regular file \"%s\": %s", filename, fr_syserror(errno));
 
 	return -1;
+}
+
+/** Intended to be used in logging functions to make output more readable
+ *
+ * This function is not performant and should probably not be used at runtime.
+ *
+ * @param[in] filename	to strip working directory from.
+ * @return Position in filename after our working directory.
+ */
+char const *fr_cwd_strip(char const *filename)
+{
+	static char our_wd[MAXPATHLEN];
+	char *found;
+
+	if (!getcwd(our_wd, sizeof(our_wd))) return filename;
+
+	found = strstr(filename, our_wd);
+	if (found && (found = our_wd)) {
+		filename += strlen(our_wd);
+		while (*filename == '/') filename++;
+		return filename;
+	}
+
+	return filename;
 }

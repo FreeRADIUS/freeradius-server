@@ -79,6 +79,13 @@ typedef struct {
 	fr_hash_table_t		*name_by_value;			//!< Lookup a name by value
 } fr_dict_attr_ext_enumv_t;
 
+/** Attribute extension - Holds a hash table with the names of all children of this attribute
+ *
+ */
+typedef struct {
+	fr_hash_table_t		*namespace;			//!< Lookup a child by name
+} fr_dict_attr_ext_namespace_t;
+
 /** Enum extension - Sub-struct or union pointer
  *
  */

@@ -379,17 +379,6 @@ ATTRIBUTE	Ascend-PPP-Address			253	ipaddr
 ATTRIBUTE	Ascend-MPP-Idle-Percent			254	integer
 ATTRIBUTE	Ascend-Xmit-Rate			255	integer
 
-# Ascend protocols
-VALUE	Framed-Protocol			Ascend-ARA		255
-VALUE	Framed-Protocol			Ascend-MPP		256
-VALUE	Framed-Protocol			Ascend-EURAW		257
-VALUE	Framed-Protocol			Ascend-EUUI		258
-VALUE	Framed-Protocol			Ascend-X25		259
-VALUE	Framed-Protocol			Ascend-COMB		260
-VALUE	Framed-Protocol			Ascend-FR		261
-VALUE	Framed-Protocol			Ascend-MP		262
-VALUE	Framed-Protocol			Ascend-FR-CIR		263
-
 #
 #	Ascend specific extensions
 #	Used by ASCEND MAX/Pipeline products (see above)
@@ -897,3 +886,15 @@ VALUE	Ascend-X25-Pad-X3-Profile	SHARK			8
 VALUE	Ascend-X25-Reverse-Charging	Reverse-Charging-No	0
 VALUE	Ascend-X25-Reverse-Charging	Reverse-Charging-Yes	1
 END-VENDOR Ascend
+
+# Ascend protocols
+VALUE	Framed-Protocol			Ascend-ARA		255
+VALUE	Framed-Protocol			Ascend-MPP		256
+VALUE	Framed-Protocol			Ascend-EURAW		257
+VALUE	Framed-Protocol			Ascend-EUUI		258
+VALUE	Framed-Protocol			Ascend-X25		259
+VALUE	Framed-Protocol			Ascend-COMB		260
+VALUE	Framed-Protocol			Ascend-FR		261
+VALUE	Framed-Protocol			Ascend-MP		262
+VALUE	Framed-Protocol			Ascend-FR-CIR		263
+

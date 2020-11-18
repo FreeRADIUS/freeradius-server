@@ -157,7 +157,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 		return -1;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(inst->dict, "Packet-Type");
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(inst->dict), "Packet-Type");
 	if (!attr_packet_type) {
 		cf_log_err(ci, "Failed to find 'Packet-Type' attribute");
 		return -1;

@@ -1085,7 +1085,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 				value[len] = '\0';
 
-				da = fr_dict_attr_by_name(dict_freeradius, attribute);
+				da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), attribute);
 				if (!da) {
 					RWDEBUG3("Skipping attribute %s: "
 						 "Add dictionary definition if you want to access it", attribute);

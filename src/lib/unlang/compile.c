@@ -2920,7 +2920,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
 	 */
 get_packet_type:
-	da = fr_dict_attr_by_name(dict, "Packet-Type");
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
 		talloc_free(vpt);
@@ -3082,7 +3082,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(dict, "Packet-Type");
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!attr_packet_type) {
 		cf_log_err(cs, "Cannot call namespace '%s' - it has no Packet-Type attribute",
 			   fr_dict_root(dict)->name);
