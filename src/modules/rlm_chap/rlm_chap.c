@@ -85,7 +85,10 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!in) return XLAT_ACTION_DONE;
+	if (!*in) {
+		REDEBUG("chap requires a password as input");
+		return XLAT_ACTION_FAIL;
+	}
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
