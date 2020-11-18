@@ -1747,9 +1747,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 		fr_dict_attr_t const	*child;
 
 		slen = fr_dict_oid_component(err, &child, our_parent, in);
-		if (slen <= 0) return slen - fr_sbuff_marker_release_behind(&start);
-
-		fr_assert(child);	/* Clang scan */
+		if ((slen <= 0) || !child) return slen - fr_sbuff_marker_release_behind(&start);
 
 		our_parent = child;
 		*out = child;
