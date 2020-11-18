@@ -100,9 +100,14 @@ static fr_sbuff_escape_rules_t const xlat_escape = {
  * The caller sets the literal parse rules for outside of expansions when they
  * call xlat_tokenize.
  */
-static fr_sbuff_parse_rules_t const xlat_rules = {
+static fr_sbuff_parse_rules_t const xlat_expansion_rules = {
 	.escapes = &xlat_unescape,
 	.terminals = &FR_SBUFF_TERM("}")	/* These get merged with other literal terminals */
+};
+
+static fr_sbuff_parse_rules_t const xlat_multi_arg_rules = {
+	.escapes = &xlat_unescape,
+	.terminals = &FR_SBUFF_TERM(")")	/* These get merged with other literal terminals */
 };
 
 /** Allocate an xlat node with no name, and no type set
@@ -245,7 +250,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	 *	Parse the alternate expansion.
 	 */
 	if (xlat_tokenize_literal(node, &node->alternate, &node->flags, in,
-				  true, &xlat_rules, t_rules) < 0) goto error;
+				  true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!node->alternate) {
 		talloc_free(node);
@@ -329,8 +334,9 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					 tmpl_rules_t const *rules)
+static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t **head,
+						    xlat_flags_t *flags, fr_sbuff_t *in,
+						    tmpl_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -390,7 +396,7 @@ static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xla
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_literal(node, &node->child, &node->flags, in, true, &xlat_rules, rules) < 0) {
+	if (xlat_tokenize_literal(node, &node->child, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
 	error:
 		*head = NULL;
 		talloc_free(node);
@@ -398,6 +404,95 @@ static inline int xlat_tokenize_function(TALLOC_CTX *ctx, xlat_exp_t **head, xla
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
+		fr_strerror_printf("Missing closing brace");
+		goto error;
+	}
+
+	xlat_flags_merge(flags, &node->flags);
+	*head = node;
+
+	return 0;
+}
+
+/** Parse an xlat function and its child arguments
+ *
+ * Parses a function call string in the format
+ * @verbatim %{<func>:<arguments} @endverbatim
+ *
+ * @return
+ *	- 0 if the string was parsed into a function.
+ *	- <0 on parse error.
+ */
+static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t **head,
+						   xlat_flags_t *flags, fr_sbuff_t *in,
+						   tmpl_rules_t const *rules)
+{
+	xlat_exp_t		*node;
+	xlat_t			*func;
+	fr_sbuff_marker_t	m_s;
+
+	/*
+	 *	Special characters, spaces, etc. cannot be
+	 *	module names.
+	 */
+	static bool const	func_chars[UINT8_MAX + 1] = {
+					SBUFF_CHAR_CLASS_ALPHA_NUM,
+					['.'] = true, ['-'] = true, ['_'] = true,
+				};
+
+	XLAT_DEBUG("FUNC <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	/*
+	 *	%{module:args}
+	 */
+	fr_sbuff_marker(&m_s, in);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars);
+
+	if (!fr_sbuff_is_char(in, ':')) {
+		fr_strerror_printf("Can't find function/argument separator");
+	bad_function:
+		*head = NULL;
+		fr_sbuff_set(in, &m_s);		/* backtrack */
+		fr_sbuff_marker_release(&m_s);
+		return -1;
+	}
+
+	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+
+	/*
+	 *	Allocate a node to hold the function
+	 */
+	node = xlat_exp_alloc(ctx, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+	if (!func) {
+		if (!rules || !rules->allow_unresolved) {
+			fr_strerror_printf("Unresolved expansion functions are not allowed here");
+			goto bad_function;
+		}
+		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
+		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
+	} else {
+		node->call.func = func;
+		node->flags.needs_async = func->needs_async;
+	}
+
+	fr_sbuff_next(in);			/* Skip the ':' */
+	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
+		   node->fmt, fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	fr_sbuff_marker_release(&m_s);
+
+	/*
+	 *	Now parse the child nodes that form the
+	 *	function's arguments.
+	 */
+	if (xlat_tokenize_argv(node, &node->child, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
+	error:
+		*head = NULL;
+		talloc_free(node);
+		return -1;
+	}
+
+	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_printf("Missing closing brace");
 		goto error;
 	}
@@ -655,7 +750,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		ret = xlat_tokenize_function(ctx, head, flags, in, t_rules);
+		ret = xlat_tokenize_function_single_arg(ctx, head, flags, in, t_rules);
 		if (ret <= 0) return ret;
 	}
 		break;
@@ -722,6 +817,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 	xlat_exp_t			*node = NULL;
 	size_t				len;
 	fr_sbuff_term_t			expansions = FR_SBUFF_TERMS(
+						L("%("),
 						L("%C"),
 						L("%D"),
 						L("%G"),
@@ -797,6 +893,18 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 				if (tokens != &expansions) talloc_free(tokens);
 				return -1;
 			}
+			fr_cursor_insert(&cursor, node);
+			node = NULL;
+			continue;
+		}
+
+		/*
+		 *	xlat function call with discreet arguments
+		 */
+		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
+			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
+
+			if (xlat_tokenize_function_multi_arg(ctx, &node, flags, in, t_rules) < 0) goto error;
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
 			continue;
