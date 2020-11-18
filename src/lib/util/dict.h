@@ -109,7 +109,6 @@ enum {
 #define da_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))
 #define da_is_bit_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_BIT_FIELD))
 #define da_is_length_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
-#define da_has_ref(_da) (((_da)->type == FR_TYPE_GROUP) || ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_HAS_REF)))
 
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 

@@ -752,7 +752,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Update 'ref'
 	 */
-	if (da_has_ref(da)) {
+	if (fr_dict_attr_ref(da)) {
 		fr_dict_attr_t		*self;
 		fr_dict_t		*dict;
 		char *p;
@@ -844,7 +844,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 				return -1;
 			}
 
-			if (da_has_ref(da)) {
+			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
 				talloc_free(ref);
 				return -1;
@@ -1689,7 +1689,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 				goto group_error;
 			}
 
-			if (da_has_ref(da)) {
+			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
 					this->filename, this->line);
 				goto group_error;

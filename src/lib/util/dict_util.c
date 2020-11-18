@@ -867,7 +867,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 
 	DA_VERIFY(child);
 
-	if (da_has_ref(parent)) {
+	if (fr_dict_attr_ref(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
 				   parent->name, fr_dict_attr_ref(parent)->name);
 		return false;
@@ -1147,6 +1147,16 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Add in by number
 	 */
 	if (dict_attr_child_add(mutable, n) < 0) goto error;
+
+	/*
+	 *	If it's a group attribute, the default
+	 *	reference goes to the root of the
+	 *	dictionary as that's where the default
+	 *	name/numberspace is.
+	 *
+	 *	This may be updated by the caller.
+	 */
+	if (type == FR_TYPE_GROUP) dict_attr_ref_set(n, fr_dict_root(dict));
 
 	return 0;
 }
@@ -2418,6 +2428,7 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 {
 	fr_dict_attr_t const *bin;
 	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
 
 #ifndef NDEBUG
 	/*
@@ -2428,7 +2439,8 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 	DA_VERIFY(parent);
 #endif
 
-	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	children = dict_attr_children(parent);
 	if (!children) return NULL;
@@ -2456,13 +2468,15 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 {
 	fr_dict_attr_t const *bin;
 	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
 
 	DA_VERIFY(parent);
 
 	/*
 	 *	Do any necessary dereferencing
 	 */
-	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	children = dict_attr_children(parent);
 	if (!children) return NULL;
@@ -2511,13 +2525,14 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 					  bool is_direct_decendent)
 {
 	ssize_t			slen;
-
+	fr_dict_attr_t const	*ref;
 	DA_VERIFY(parent);
 
 	/*
 	 *	Do any necessary dereferencing
 	 */
-	if (da_has_ref(parent)) parent = fr_dict_attr_ref(parent);
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	if (!fr_dict_attr_has_ext(parent, FR_DICT_ATTR_EXT_CHILDREN)) {
 		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
@@ -3384,9 +3399,13 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 {
 	fr_dict_attr_t const * const *bin;
 	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
 	size_t len, i, start;
 
-	if (!parent || da_has_ref(parent) || !prev) return NULL;
+	if (!parent || !prev) return NULL;
+
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	children = dict_attr_children(parent);
 	if (!children) return NULL;
@@ -3436,7 +3455,7 @@ static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callbac
 
 	children = dict_attr_children(da);
 
-	if (da_has_ref(da) || !children) return callback(ctx, da, depth);
+	if (fr_dict_attr_ref(da) || !children) return callback(ctx, da, depth);
 
 	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
