@@ -800,13 +800,16 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 					      sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	fr_pair_t		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
+	fr_pair_list_t		check_tmp, reply_tmp;
+	fr_pair_t		*sql_group = NULL;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
 
 	char			*expanded = NULL;
 	int			rows;
 
 	fr_assert(request->packet != NULL);
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
 
 	if (!inst->config->groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
@@ -903,7 +906,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			REXDENT();
 			radius_pairmove(request, &request->control_pairs, check_tmp, true);
 
-			check_tmp = NULL;
+			fr_pair_list_init(&check_tmp);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
@@ -942,7 +945,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
 			radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
-			reply_tmp = NULL;
+			fr_pair_list_init(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
 		 *	FALL_THROUGH_NO, which is the same as the users file if you

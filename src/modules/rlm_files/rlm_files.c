@@ -296,14 +296,14 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 				   fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
 	char const		*name;
-	fr_pair_t		*check_tmp = NULL;
-	fr_pair_t		*reply_tmp = NULL;
+	fr_pair_list_t		check_tmp, reply_tmp;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
 	PAIR_LIST		my_pl;
 	char			buffer[256];
 
-
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
 		REDEBUG("Failed expanding key %s", inst->key->name);
 		RETURN_MODULE_FAIL;

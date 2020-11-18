@@ -162,7 +162,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
 	fr_cursor_t		cursor, list;
-	fr_pair_t		*cert_vps = NULL;
+	fr_pair_list_t		cert_vps;
 	/*
 	 *	Examples and documentation show cert_info being
 	 *	a struct curl_certinfo *, but CPP checks require
@@ -176,6 +176,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	} ptr;
 	ptr.to_info = NULL;
 
+	fr_pair_list_init(&cert_vps);
 	fr_cursor_init(&list, &request->request_pairs);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
@@ -237,7 +238,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			 */
 			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
 			fr_cursor_merge(&list, &cursor);
-			cert_vps = NULL;
+			fr_pair_list_init(&cert_vps);
 		}
 	}
 	return 0;

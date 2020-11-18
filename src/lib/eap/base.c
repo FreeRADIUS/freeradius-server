@@ -119,10 +119,11 @@ fr_pair_t *eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *
 {
 	int		total, size;
 	uint8_t const *ptr;
-	fr_pair_t	*head = NULL;
+	fr_pair_list_t	head;
 	fr_pair_t	*vp;
 	fr_cursor_t	out;
 
+	fr_pair_list_init(&head);
 	total = eap->length[0] * 256 + eap->length[1];
 
 	if (total == 0) {

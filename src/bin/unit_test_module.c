@@ -571,7 +571,7 @@ int main(int argc, char *argv[])
 	FILE			*fp;
 	request_t			*request = NULL;
 	fr_pair_t		*vp;
-	fr_pair_t		*filter_vps = NULL;
+	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
@@ -586,6 +586,7 @@ int main(int argc, char *argv[])
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
 
+	fr_pair_list_init(&filter_vps);
 	/*
 	 *	Must be called first, so the handler is called last
 	 */

@@ -803,9 +803,10 @@ void fr_state_restore_to_child(request_t *request, void const *unique_ptr, int u
  */
 void fr_state_detach(request_t *request, bool will_free)
 {
-	fr_pair_t	*vps = NULL;
+	fr_pair_list_t	vps;
 	TALLOC_CTX	*new_state_ctx;
 
+	fr_pair_list_init(&vps);
 	if (unlikely(request->parent == NULL)) return;
 
 	if (will_free) {

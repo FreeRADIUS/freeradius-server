@@ -235,7 +235,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	case FR_TYPE_GROUP:
 	{
 		fr_cursor_t child_cursor;
-		fr_pair_t *head = NULL;
+		fr_pair_list_t head;
+		fr_pair_list_init(&head);
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;

@@ -67,9 +67,11 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	fr_cursor_t	in_cursor, cursor;
 	fr_value_box_t	*vb, *vb_decoded;
-	fr_pair_t	*vp, *head = NULL;
+	fr_pair_t	*vp;
+	fr_pair_list_t	head;
 	int		decoded = 0;
 
+	fr_pair_list_init(&head);
 	fr_cursor_init(&cursor, &head);
 
 	for (vb = fr_cursor_talloc_init(&in_cursor, in, fr_value_box_t);
@@ -77,9 +79,10 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	     vb = fr_cursor_next(&in_cursor)) {
 		uint8_t const	*p, *end;
 		ssize_t		len;
-		fr_pair_t	*vps = NULL;
+		fr_pair_list_t	vps;
 		fr_cursor_t	options_cursor;
 
+		fr_pair_list_init(&vps);
 		if (vb->type != FR_TYPE_OCTETS) {
 			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
 				vb,

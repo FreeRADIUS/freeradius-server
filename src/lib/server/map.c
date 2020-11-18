@@ -854,9 +854,10 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
 	int result;
 	char *expanded = NULL;
 	char answer[1024];
-	fr_pair_t **input_pairs = NULL;
-	fr_pair_t *output_pairs = NULL;
+	fr_pair_list_t *input_pairs = NULL;
+	fr_pair_list_t output_pairs;
 
+	fr_pair_list_init(&output_pairs);
 	*out = NULL;
 
 	MAP_VERIFY(map);
@@ -932,12 +933,14 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
 int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
-	fr_pair_t	*vp = NULL, *found = NULL, *n;
-	request_t		*context = request;
+	fr_pair_t	*vp = NULL, *n;
+	fr_pair_list_t	found;
+	request_t	*context = request;
 	fr_cursor_t	cursor;
 	ssize_t		slen;
 	char		*str;
 
+	fr_pair_list_init(&found);
 	*out = NULL;
 
 	MAP_VERIFY(map);
@@ -957,7 +960,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 	 *	the op.
 	 */
 	if (tmpl_is_list(map->lhs) && tmpl_is_list(map->rhs)) {
-		fr_pair_t **from = NULL;
+		fr_pair_list_t *from = NULL;
 
 		if (radius_request(&context, tmpl_request(map->rhs)) == 0) {
 			from = radius_list(context, tmpl_list(map->rhs));
@@ -1176,7 +1179,8 @@ do {\
 int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int			rcode = 0;
-	fr_pair_t		**list, *vp, *dst, *head = NULL;
+	fr_pair_t		*vp, *dst;
+	fr_pair_list_t		*list, head;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	fr_cursor_t		dst_list, src_list;
@@ -1190,6 +1194,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	tmpl_cursor_ctx_t	cc = {};
 
+	fr_pair_list_init(&head);
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
@@ -1344,7 +1349,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			if (tmpl_is_list(map->rhs)) {
 				fr_pair_list_free(list);
 				*list = head;
-				head = NULL;
+				fr_pair_list_init(&head);
 			} else {
 				FALL_THROUGH;
 

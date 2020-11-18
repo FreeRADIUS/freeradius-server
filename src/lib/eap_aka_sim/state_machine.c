@@ -802,7 +802,8 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 									     eap_aka_sim_session_t);
 	fr_cursor_t		cursor;
 	fr_cursor_t		to_encode;
-	fr_pair_t		*head = NULL, *vp, *subtype_vp;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp, *subtype_vp;
 	ssize_t			ret;
 	fr_aka_sim_encode_ctx_t	encoder_ctx = {
 					.root = fr_dict_root(dict_eap_aka_sim),
@@ -818,6 +819,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 					.hmac_extra_len = hmac_extra_len
 				};
 
+	fr_pair_list_init(&head);
 	/*
 	 *	Set the subtype to identity request
 	 */
@@ -1127,7 +1129,8 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
-	fr_pair_t		*to_peer = request->reply_pairs, *vp;
+	fr_pair_list_t		*to_peer = &request->reply_pairs;
+	fr_pair_t		*vp;
 
 	fr_pair_t		*kdf_id;
 
@@ -1222,7 +1225,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&to_peer, attr_eap_aka_sim_result_ind);
+	vp = fr_pair_find_by_da(to_peer, attr_eap_aka_sim_result_ind);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -1316,7 +1319,8 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 						 request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
-	fr_pair_t		*to_peer = request->reply_pairs, *vp;
+	fr_pair_list_t		*to_peer = &request->reply_pairs;
+	fr_pair_t		*vp;
 	fr_aka_sim_vector_src_t	src = AKA_SIM_VECTOR_SRC_AUTO;
 
 	fr_pair_t		*kdf_id;
@@ -1342,7 +1346,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 		 *	Copy the network name the user specified for
 		 *	key derivation purposes.
 		 */
-		vp = fr_pair_find_by_da(&to_peer, attr_eap_aka_sim_kdf_input);
+		vp = fr_pair_find_by_da(to_peer, attr_eap_aka_sim_kdf_input);
 		if (vp) {
 			talloc_free(eap_aka_sim_session->keys.network);
 			eap_aka_sim_session->keys.network = talloc_memdup(eap_aka_sim_session,
@@ -1411,7 +1415,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&to_peer, attr_eap_aka_sim_result_ind);
+	vp = fr_pair_find_by_da(to_peer, attr_eap_aka_sim_result_ind);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -1419,7 +1423,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 	 *	If so include AT_BIDDING with the correct
 	 *	value.
 	 */
-	vp = fr_pair_find_by_da(&to_peer, attr_eap_aka_sim_bidding);
+	vp = fr_pair_find_by_da(to_peer, attr_eap_aka_sim_bidding);
 	if (vp) {
 		eap_aka_sim_session->send_at_bidding_prefer_prime =
 			(vp->vp_uint16 == FR_BIDDING_VALUE_PREFER_AKA_PRIME);
@@ -1519,7 +1523,8 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
-	fr_pair_t		*to_peer = request->reply_pairs, *vp;
+	fr_pair_list_t		*to_peer = &request->reply_pairs;
+	fr_pair_t		*vp;
 	fr_aka_sim_vector_src_t	src = AKA_SIM_VECTOR_SRC_AUTO;
 
 	fr_pair_t		*kdf_id;
@@ -1561,7 +1566,7 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&to_peer, attr_eap_aka_sim_result_ind);
+	vp = fr_pair_find_by_da(to_peer, attr_eap_aka_sim_result_ind);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -2513,9 +2518,9 @@ static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_r
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	fr_pair_t		*mac, *checkcode;
-	fr_pair_t		*from_peer = request->request_pairs;
+	fr_pair_list_t		*from_peer = &request->request_pairs;
 
-	mac = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_mac);
+	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
@@ -2554,7 +2559,7 @@ static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_r
 	 *	means they don't support it, and we can't validate
 	 *	their view of the identity packets.
 	 */
-	checkcode = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_checkcode);
+	checkcode = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_checkcode);
 	if (checkcode) {
 		if (checkcode->vp_length != eap_aka_sim_session->checkcode_len) {
 			REDEBUG("Received checkcode's length (%zu) does not match calculated checkcode's length (%zu)",
@@ -2585,7 +2590,7 @@ static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_r
 	 *	clear out reauth information and enter the
 	 *	challenge state.
 	 */
-	if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_counter_too_small)) {
+	if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_counter_too_small)) {
 		RWDEBUG("Peer sent AT_COUNTER_TOO_SMALL (indicating our AT_COUNTER value (%u) wasn't fresh)",
 			eap_aka_sim_session->keys.reauth.counter);
 
@@ -2603,13 +2608,13 @@ static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_r
 	 *	RFC 4187 Section #6.2. Result Indications
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+		if (!fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return common_success_notification_enter(p_result, mctx, request, eap_session);
 		}
-	} else if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -2631,9 +2636,9 @@ static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, mod
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL, *mac, *checkcode;
-	fr_pair_t		*from_peer = request->request_pairs;
+	fr_pair_list_t		*from_peer = &request->request_pairs;
 
-	mac = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_mac);
+	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
@@ -2672,7 +2677,7 @@ static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, mod
 	 *	their view of the identity packets.
 	 */
 	if (eap_aka_sim_session->checkcode_md) {
-		checkcode = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_checkcode);
+		checkcode = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_checkcode);
 		if (checkcode) {
 			if (checkcode->vp_length != eap_aka_sim_session->checkcode_len) {
 				REDEBUG("Received checkcode's length (%zu) does not match "
@@ -2699,7 +2704,7 @@ static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, mod
 		}
 	}
 
-	vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_res);
+	vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_res);
 	if (!vp) {
 		REDEBUG("AT_RES missing from challenge response");
 		goto failure;
@@ -2731,13 +2736,13 @@ static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, mod
 	 *	RFC 4187 Section #6.2. Result Indications
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+		if (!fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return common_success_notification_enter(p_result, mctx, request, eap_session);
 		}
-	} else if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -2760,7 +2765,7 @@ static unlang_action_t sim_challenge_response_process(rlm_rcode_t *p_result, mod
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	fr_pair_t		*mac;
-	fr_pair_t		*from_peer = request->request_pairs;
+	fr_pair_list_t		*from_peer = &request->request_pairs;
 
 	memcpy(p, eap_aka_sim_session->keys.gsm.vector[0].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE);
 	p += AKA_SIM_VECTOR_GSM_SRES_SIZE;
@@ -2768,7 +2773,7 @@ static unlang_action_t sim_challenge_response_process(rlm_rcode_t *p_result, mod
 	p += AKA_SIM_VECTOR_GSM_SRES_SIZE;
 	memcpy(p, eap_aka_sim_session->keys.gsm.vector[2].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE);
 
-	mac = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_mac);
+	mac = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_mac);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 	failure:
@@ -2809,13 +2814,13 @@ static unlang_action_t sim_challenge_response_process(rlm_rcode_t *p_result, mod
 	 *      notification, otherwise send a normal EAP-Success.
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+		if (!fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return common_success_notification_enter(p_result, mctx, request, eap_session);
 		}
-	} else if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_result_ind)) {
+	} else if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_result_ind)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -2840,7 +2845,7 @@ static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, modu
 									     eap_aka_sim_session_t);
 	bool			user_set_id_req;
 	fr_pair_t		*identity_type;
-	fr_pair_t		*from_peer = request->request_pairs;
+	fr_pair_list_t		*from_peer = &request->request_pairs;
 	/*
 	 *	Digest the identity response
 	 */
@@ -2892,7 +2897,7 @@ static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, modu
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_identity_type);
+	identity_type = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_identity_type);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		return common_reauthentication_enter(p_result, mctx, request, eap_session);
@@ -3022,7 +3027,7 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	bool			user_set_id_req;
 	fr_pair_t		*identity_type;
 
-	fr_pair_t		*from_peer = request->request_pairs;
+	fr_pair_list_t		*from_peer = &request->request_pairs;
 
 	/*
 	 *	See if the user wants us to request another
@@ -3063,7 +3068,7 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_identity_type);
+	identity_type = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_identity_type);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		/*
@@ -3073,7 +3078,7 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 		 *  with a fast re-authentication identity is present for fast
 		 *  re-authentication
 		 */
-		if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_nonce_mt)) {
+		if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_nonce_mt)) {
 			REDEBUG("AT_NONCE_MT is not allowed in EAP-Response/SIM-Reauthentication messages");
 			return common_failure_notification_enter(p_result, mctx, request, eap_session);
 		}
@@ -3085,7 +3090,7 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 		 *  AT_IDENTITY attribute with a fast re-authentication identity is
 		 *  present for fast re-authentication.
 		 */
-		if (fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_selected_version)) {
+		if (fr_pair_find_by_da(from_peer, attr_eap_aka_sim_selected_version)) {
 			REDEBUG("AT_SELECTED_VERSION is not allowed in EAP-Response/SIM-Reauthentication messages");
 			return common_failure_notification_enter(p_result, mctx, request, eap_session);
 		}
@@ -3098,8 +3103,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	if pseudonym resolution went ok.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PSEUDONYM:
-		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3116,8 +3121,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	later.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PERMANENT:
-		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		FALL_THROUGH;
 	default:
@@ -3349,11 +3354,12 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_t **vps,
 	fr_aka_sim_decode_ctx_t	ctx = {
 					.keys = &eap_aka_sim_session->keys,
 				};
-	fr_pair_t		*aka_vps;
+	fr_pair_list_t		aka_vps;
 	fr_cursor_t		cursor;
 
 	int			ret;
 
+	fr_pair_list_init(&aka_vps);
 	fr_cursor_init(&cursor, &request->request_pairs);
 	fr_cursor_tail(&cursor);
 
@@ -3416,8 +3422,9 @@ static unlang_action_t common_failure_notification(rlm_rcode_t *p_result, module
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	fr_pair_t			*subtype_vp = NULL;
-	fr_pair_t			*vps;
+	fr_pair_list_t			vps;
 
+	fr_pair_list_init(&vps);
 	common_decode(&subtype_vp, &vps, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3490,8 +3497,9 @@ static unlang_action_t common_reauthentication(rlm_rcode_t *p_result, module_ctx
 										     eap_aka_sim_session_t);
 
 	fr_pair_t			*subtype_vp = NULL;
-	fr_pair_t			*from_peer;
+	fr_pair_list_t			from_peer;
 
+	fr_pair_list_init(&from_peer);
 	common_decode(&subtype_vp, &from_peer, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3566,8 +3574,9 @@ static unlang_action_t aka_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 
 	fr_pair_t		*subtype_vp = NULL;
 	fr_pair_t		*vp;
-	fr_pair_t		*from_peer;
+	fr_pair_list_t		from_peer;
 
+	fr_pair_list_init(&from_peer);
 	common_decode(&subtype_vp, &from_peer, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3693,8 +3702,9 @@ static unlang_action_t sim_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 									     eap_aka_sim_session_t);
 
 	fr_pair_t		*subtype_vp = NULL;
-	fr_pair_t		*from_peer;
+	fr_pair_list_t		from_peer;
 
+	fr_pair_list_init(&from_peer);
 	common_decode(&subtype_vp, &from_peer, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3763,8 +3773,9 @@ static unlang_action_t aka_identity(rlm_rcode_t *p_result, module_ctx_t const *m
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 										     eap_aka_sim_session_t);
 	fr_pair_t			*subtype_vp = NULL;
-	fr_pair_t			*from_peer;
+	fr_pair_list_t			from_peer;
 
+	fr_pair_list_init(&from_peer);
 	common_decode(&subtype_vp, &from_peer, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3874,8 +3885,9 @@ static unlang_action_t sim_start(rlm_rcode_t *p_result, module_ctx_t const *mctx
 										     eap_aka_sim_session_t);
 
 	fr_pair_t			*subtype_vp = NULL;
-	fr_pair_t			*from_peer;
+	fr_pair_list_t			from_peer;
 
+	fr_pair_list_init(&from_peer);
 	common_decode(&subtype_vp, &from_peer, p_result, mctx, request);
 	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -3979,7 +3991,7 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 										     eap_aka_sim_session_t);
 	fr_pair_t			*eap_type, *method, *identity_type;
 	fr_aka_sim_method_hint_t	running, hinted;
-	fr_pair_t			*from_peer = request->request_pairs;
+	fr_pair_list_t			*from_peer = &request->request_pairs;
 
 	section_rcode_process(p_result, mctx,request, eap_session, eap_aka_sim_session);
 
@@ -3991,7 +4003,7 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 	eap_type = fr_pair_find_by_da(&request->control_pairs, attr_eap_type);
 	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
 
-	method = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_method_hint);
+	method = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_method_hint);
 
 	/*
 	 *	Set default configuration, we may allow these
@@ -4107,7 +4119,7 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do a fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_identity_type);
+	identity_type = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_identity_type);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		return common_reauthentication_enter(p_result, mctx, request, eap_session);

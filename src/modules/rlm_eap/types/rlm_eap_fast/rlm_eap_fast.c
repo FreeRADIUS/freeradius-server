@@ -318,7 +318,8 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
 	request_t			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), request_t);
 	eap_fast_tunnel_t	*t;
-	fr_pair_t		*fast_vps = NULL, *vp;
+	fr_pair_list_t		fast_vps;
+	fr_pair_t		*vp;
 	fr_cursor_t		cursor;
 	char const		*errmsg;
 	int			dlen, plen;
@@ -328,6 +329,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 
 	if (!tls_session) return 0;
 
+	fr_pair_list_init(&fast_vps);
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	RDEBUG2("PAC provided via ClientHello SessionTicket extension");

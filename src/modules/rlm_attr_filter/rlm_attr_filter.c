@@ -175,7 +175,8 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_pair_t	*vp;
 	fr_cursor_t	input, check, out;
-	fr_pair_t	*input_item, *check_item, *output;
+	fr_pair_t	*input_item, *check_item;
+	fr_pair_list_t	output;
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
@@ -199,7 +200,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	/*
 	 *	Head of the output list
 	 */
-	output = NULL;
+	fr_pair_list_init(&output);
 	fr_cursor_init(&out, &output);
 
 	/*

@@ -78,7 +78,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	fr_tls_conf_t	*conf;
 	int		my_ok = ok;
 
-	fr_pair_t	*cert_vps = NULL;
+	fr_pair_list_t	cert_vps;
 	fr_cursor_t	cursor;
 
 	char const	**identity_p;
@@ -90,6 +90,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 	request_t		*request;
 
+	fr_pair_list_init(&cert_vps);
 	cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	err = X509_STORE_CTX_get_error(x509_ctx);
 	depth = X509_STORE_CTX_get_error_depth(x509_ctx);

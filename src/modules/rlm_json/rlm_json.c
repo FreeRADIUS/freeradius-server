@@ -195,13 +195,14 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	tmpl_t			*vpt = NULL;
 	fr_cursor_t		cursor;
 	fr_cursor_t		filter;
-	fr_pair_t		*json_vps = NULL;
-	fr_pair_t		*vps = NULL;
+	fr_pair_list_t		json_vps, vps;
 	bool			negate;
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
 
+	fr_pair_list_init(&json_vps);
+	fr_pair_list_init(&vps);
 	if (!in) {
 		REDEBUG("Missing attribute(s)");
 		return XLAT_ACTION_FAIL;

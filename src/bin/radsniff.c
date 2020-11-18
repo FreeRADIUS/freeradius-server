@@ -939,7 +939,8 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_t *vps, fr_dict_attr_t const *da[], int num)
 {
 	fr_cursor_t list_cursor, out_cursor;
-	fr_pair_t *match, *last_match, *copy;
+	fr_pair_t *match, *copy;
+	fr_pair_list_t last_match;
 	uint64_t count = 0;
 	int i;
 

@@ -1031,8 +1031,10 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 static size_t command_normalise_attribute(command_result_t *result, command_file_ctx_t *cc,
 					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	fr_pair_t 	*head = NULL;
+	fr_pair_list_t 	head;
 	ssize_t		slen;
+
+	fr_pair_list_init(&head);
 
 	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();
@@ -1255,9 +1257,11 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	char		*p, *end;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	fr_pair_t	*head = NULL, *vp;
+	fr_pair_list_t	head;
+	fr_pair_t	*vp;
 	ssize_t		slen;
 
+	fr_pair_list_init(&head);
 	p = in;
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_pair");
@@ -1375,10 +1379,12 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	char		*p, *end;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	fr_pair_t	*head = NULL, *vp;
+	fr_pair_list_t	head;
+	fr_pair_t	*vp;
 	ssize_t		slen;
 
 	p = in;
+	fr_pair_list_init(&head);
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_proto");
 	if (!tp) {
@@ -1599,11 +1605,13 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	char		*p = in;
 
 	uint8_t		*enc_p, *enc_end;
-	fr_pair_t	*head = NULL, *vp;
+	fr_pair_list_t	head;
+	fr_pair_t	*vp;
 	bool		truncate = false;
 
 	size_t		iterations = 0;
 
+	fr_pair_list_init(&head);
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
 	if (!tp) {
 		fr_strerror_printf_push("Failed locating encode testpoint");
@@ -1773,7 +1781,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	ssize_t		slen;
 	char		*p = in;
 
-	fr_pair_t	*head = NULL;
+	fr_pair_list_t	head;
+	fr_pair_list_init(&head);
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
 	if (!tp) {
@@ -1976,10 +1985,12 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 {
 	ssize_t slen;
 	fr_pair_ctx_t ctx;
-	fr_pair_t *vp, *head = NULL;
+	fr_pair_t *vp;
+	fr_pair_list_t head;
 	char *p, *end;
 	fr_cursor_t cursor;
 
+	fr_pair_list_init(&head);
 	ctx.ctx = cc->tmp_ctx;
 	ctx.parent = fr_dict_root(cc->tmpl_rules.dict_def);
 	ctx.cursor = &cursor;

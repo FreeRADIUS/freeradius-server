@@ -114,13 +114,14 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_radius_packet_t *orig
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	fr_cursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx = {
 					.secret = secret,
 					.tunnel_password_zeros = tunnel_password_zeros
 				};
 
+	fr_pair_list_init(&head);
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
 #endif

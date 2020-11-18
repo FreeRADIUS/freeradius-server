@@ -78,11 +78,12 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	fr_cursor_t		child_cursor;
 	fr_pair_t		*vp, *key_vp;
 	unsigned int		offset = 0;
 
+	fr_pair_list_init(&head);
 	if (data_len < 1) return -1; /* at least one byte of data */
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_struct_from_network");

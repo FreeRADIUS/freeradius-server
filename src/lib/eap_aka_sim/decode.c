@@ -357,7 +357,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 /** Break apart a TLV attribute into individual attributes
  *
  * @param[in] ctx		to allocate new attributes in.
- * @param[in] cursor		to addd new attributes to.
+ * @param[in] cursor		to add new attributes to.
  * @param[in] parent		the current attribute TLV attribute we're processing.
  * @param[in] data		to parse. Points to the data field of the attribute.
  * @param[in] attr_len		length of the TLV attribute.
@@ -376,10 +376,11 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	uint8_t			*decr = NULL;
 	ssize_t			decr_len;
 	fr_dict_attr_t const	*child;
-	fr_pair_t		*head = NULL;
+	fr_pair_list_t		head;
 	fr_cursor_t		tlv_cursor;
 	ssize_t			ret;
 
+	fr_pair_list_init(&head);
 	if (data_len < 2) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1; /* minimum attr size */

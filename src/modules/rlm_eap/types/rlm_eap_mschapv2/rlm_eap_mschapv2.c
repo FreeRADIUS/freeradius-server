@@ -272,10 +272,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
  */
 static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED void *tunnel_data)
 {
-	fr_pair_t		*response = NULL;
+	fr_pair_list_t		response;
 	mschapv2_opaque_t	*data;
 	request_t			*request = eap_session->request;
 
+	fr_pair_list_init(&response);
 	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	fr_assert(request != NULL);
 
@@ -348,9 +349,10 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 {
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
-	fr_pair_t			*response = NULL;
+	fr_pair_list_t			response;
  	rlm_eap_mschapv2_t const	*inst = mctx->instance;
 
+	fr_pair_list_init(&response);
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.

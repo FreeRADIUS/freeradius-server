@@ -192,13 +192,13 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
  * @param[in] map	to check
  * @param[in] src_dst	a lhs or rhs tmpl to check.
  * @return
- *	- true if destination list is OK.
- *	- false if destination list is invalid.
+ *	- destination list if list is valid.
+ *	- NULL if destination list is invalid.
  */
-static inline fr_pair_t **map_check_src_or_dst(request_t *request, map_t const *map, tmpl_t const *src_dst)
+static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t const *map, tmpl_t const *src_dst)
 {
-	request_t		*context = request;
-	fr_pair_t	**list;
+	request_t	*context = request;
+	fr_pair_list_t	*list;
 	request_ref_t	request_ref;
 	pair_list_t	list_ref;
 
@@ -352,7 +352,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
 		fr_cursor_t	to;
 		fr_cursor_t	from;
-		fr_pair_t	**list = NULL;
+		fr_pair_list_t	*list = NULL;
 		fr_pair_t	*vp = NULL;
 
 		/*
@@ -659,9 +659,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_EXEC:
 	{
 		fr_cursor_t	to, from;
-		fr_pair_t	*vp_head = NULL;
+		fr_pair_list_t	vp_head;
 		fr_pair_t	*vp;
 
+		fr_pair_list_init(&vp_head);
 		/*
 		 *	If the LHS is an attribute, we just do the
 		 *	same thing as an xlat expansion.
@@ -801,12 +802,13 @@ static inline fr_pair_t *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr,
 /** Allocate one or more fr_pair_ts from a #vp_list_mod_t
  *
  */
-static fr_pair_t *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
+static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
 {
 	map_t	*mod;
-	fr_pair_t	*head = NULL;
+	fr_pair_list_t	head;
 	fr_cursor_t	cursor;
 
+	fr_pair_list_init(&head);
 	fr_assert(vlm->mod);
 
 	/*
@@ -931,8 +933,9 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	int			rcode = 0;
 
 	map_t const		*map = vlm->map, *mod;
-	fr_pair_t		**vp_list, *found;
-	request_t			*context;
+	fr_pair_list_t		*vp_list;
+	fr_pair_t		*found;
+	request_t		*context;
 	TALLOC_CTX		*parent;
 
 	fr_cursor_t		list;
@@ -1007,8 +1010,10 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		{
 			bool		exists = false;
 			fr_cursor_t	from, to, to_insert;
-			fr_pair_t	*vp_from, *vp, *vp_to = NULL, *vp_to_insert = NULL;
+			fr_pair_list_t	vp_from, vp_to_insert;
+			fr_pair_t	*vp, *vp_to = NULL;
 
+			fr_pair_list_init(&vp_to_insert);
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (!vp_from) goto finish;
 
@@ -1038,7 +1043,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		case T_OP_ADD:
 		{
 			fr_cursor_t	to, from;
-			fr_pair_t	*vp_from;
+			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			fr_assert(vp_from);
@@ -1154,7 +1159,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	do_add:
 	{
 		fr_cursor_t	to, from;
-		fr_pair_t	*vp_from;
+		fr_pair_list_t	vp_from;
 
 		vp_from = map_list_mod_to_vps(parent, vlm);
 		if (!vp_from) goto finish;
@@ -1188,7 +1193,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_cursor_t	from;
-			fr_pair_t	*vp_from;
+			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (!vp_from) goto finish;
