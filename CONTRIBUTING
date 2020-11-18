@@ -105,5 +105,5 @@
   See README.* docs in the directories above for basic information on writing test cases.  The easiest
   way to write new tests is to use the existing tests as examples.
 
-  Tests are run via Travis for each pull-request, and on every commit by a developer with repository
-  access.
+  Tests are run via a GitHub Actions workflow for each pull-request, and on every commit by a develope
+  with repository access.

@@ -65,7 +65,7 @@ endif
 endif
 
 #
-#  To work around OpenSSL issues with travis.
+#  To work around OpenSSL issues within CI.
 #
 .PHONY:
 raddb/test.conf:
@@ -95,9 +95,9 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.r
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c | build.raddb
 	@$(MAKE) -C src/tests tests
 
-#  Tests specifically for Travis.  We do a LOT more than just
+#  Tests specifically for CI.  We do a LOT more than just
 #  the above tests
-travis-test: raddb/test.conf test
+ci-test: raddb/test.conf test
 	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv -n test
 	@rm -f raddb/test.conf
 	@$(MAKE) install
