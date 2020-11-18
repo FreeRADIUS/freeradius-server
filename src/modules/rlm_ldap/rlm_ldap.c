@@ -922,7 +922,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 */
 			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
 				set_port_maybe = false;
-			} else if ((p = strchr(value, ':')) && (p = strchr(p + 1, ':'))) {	/* IPv4 */
+			} else if ((p = strchr(value, ':')) && (strchr(p + 1, ':') != NULL)) {  /* IPv4 */
 				set_port_maybe = false;
 			}
 
