@@ -476,7 +476,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		unsigned int		num;
 		fr_dict_attr_t const	*da = NULL;
 
-		if (fr_dict_oid_component(&num, &p) < 0) {
+		if (fr_dict_oid_component_legacy(&num, &p) < 0) {
 		error:
 			talloc_free(n);
 			return -(p - oid_str);

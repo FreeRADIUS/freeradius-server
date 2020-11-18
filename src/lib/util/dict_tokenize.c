@@ -661,7 +661,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			}
 
 		} else {
-			slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
+			slen = fr_dict_attr_by_oid_legacy(ctx->dict, &parent, &attr, argv[1]);
 			if (slen <= 0) return -1;
 		}
 
@@ -674,7 +674,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		parent = ctx->relative_attr;
 		set_relative_attr = false;
 
-		slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid_legacy(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 	}
 

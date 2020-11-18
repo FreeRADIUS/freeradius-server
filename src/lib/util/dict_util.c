@@ -1480,7 +1480,7 @@ fr_dict_attr_t const *fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dic
  *	- 0 on success.
  *	- -1 on format error.
  */
-int fr_dict_oid_component(unsigned int *out, char const **oid)
+int fr_dict_oid_component_legacy(unsigned int *out, char const **oid)
 {
 	char const *p = *oid;
 	char *q;
@@ -1525,7 +1525,7 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -1542,7 +1542,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 
 	*attr = 0;
 
-	if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
+	if (fr_dict_oid_component_legacy(&num, &p) < 0) return oid - p;
 
 	/*
 	 *	Record progress even if we error out.
@@ -1596,7 +1596,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 		 */
 		*parent = child;
 
-		slen = fr_dict_attr_by_oid(dict, parent, attr, p);
+		slen = fr_dict_attr_by_oid_legacy(dict, parent, attr, p);
 		if (slen <= 0) return slen - (p - oid);
 		return slen + (p - oid);
 	}
@@ -1612,6 +1612,139 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 		fr_strerror_printf("Malformed OID string, got trailing garbage '%s'", p);
 		return oid - p;
 	}
+}
+
+/** Parse an OID component, resolving it to a defined attribute
+ *
+ * @note Will leave the sbuff pointing at the component the error occurred at
+ *	 so that the caller can attempt to process the component in another way.
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[out] out		The deepest attribute we resolved.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] in		string to parse.
+ * @return
+ *	- >0 the number of bytes consumed.
+ *	- <= 0 Parse error occurred here.
+ */
+ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
+			      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+			      fr_sbuff_t *in)
+{
+	fr_sbuff_marker_t	start;
+	uint32_t		num = 0;
+	fr_sbuff_parse_error_t	sberr;
+	fr_dict_attr_t const	*child;
+
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	*out = NULL;
+
+	fr_sbuff_marker(&start, in);
+
+	switch (parent->type) {
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		fr_strerror_printf("Attribute '%s' is not a structural type, "
+				   "so cannot contain child attributes.  "
+				   "Error at OID \"%.*s\"",
+				   parent->name,
+				   (int)fr_sbuff_remaining(in),
+				   fr_sbuff_current(in));
+		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
+		return -fr_sbuff_marker_release_behind(&start);
+	}
+
+	fr_sbuff_out(&sberr, &num, in);
+	switch (sberr) {
+	/*
+	 *	Lookup by number
+	 */
+	case FR_SBUFF_PARSE_OK:
+		child = dict_attr_child_by_num(parent, num);
+		if (!child) {
+			fr_strerror_printf("Couldn't resolve child %u in parent '%s'",
+					   num, parent->name);
+			if (err) *err = FR_DICT_ATTR_NOTFOUND;
+			fr_sbuff_set(in, &start);		/* Reset to start of number */
+			fr_sbuff_marker_release(&start);
+
+			return 0;
+		}
+		break;
+
+	/*
+	 *	Lookup by name
+	 */
+	case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+	{
+		fr_dict_attr_err_t	our_err;
+		ssize_t			slen;
+
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, fr_dict_by_da(parent), in);
+		if (our_err != FR_DICT_ATTR_OK) {
+			fr_strerror_printf("Couldn't resolve \"%.*s\" in parent '%s'",
+					   (int)fr_sbuff_remaining(in),
+					   fr_sbuff_current(in),
+					   parent->name);
+			if (err) *err = our_err;
+			return slen - fr_sbuff_marker_release_behind(&start);
+		}
+	}
+		break;
+
+	default:
+		fr_strerror_printf("Invalid OID component \"%.*s\"",
+				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return -fr_sbuff_marker_release_behind(&start);
+	}
+
+	*out = child;
+
+	return fr_sbuff_marker_release_behind(&start);
+}
+
+/** Resolve an attribute using an OID string
+ *
+ * @note Will leave the sbuff pointing at the component the error occurred at
+ *	 so that the caller can attempt to process the component in another way.
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[out] out		The deepest attribute we resolved.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] in		string to parse.
+ * @return
+ *	- >0 the number of bytes consumed.
+ *	- <= 0 Parse error occurred here.
+ */
+ssize_t fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
+			    fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+			    fr_sbuff_t *in)
+{
+	fr_sbuff_marker_t	start;
+	fr_dict_attr_t const	*our_parent = parent;
+
+	fr_sbuff_next_if_char(in, '.');	/* Skip preceding separator */
+
+	*out = NULL;
+
+	for (;;) {
+		ssize_t			slen;
+		fr_dict_attr_t const	*child;
+
+		slen = fr_dict_oid_component(err, &child, our_parent, in);
+		if (slen <= 0) return slen - fr_sbuff_marker_release_behind(&start);
+
+		our_parent = child;
+		*out = child;
+
+		if (!fr_sbuff_next_if_char(in, '.')) break;
+	}
+
+	return fr_sbuff_marker_release_behind(&start);
 }
 
 /** Return the root attribute of a dictionary

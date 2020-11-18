@@ -233,11 +233,11 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid(conf->dict, &parent, &attr, p);
+		slen = fr_dict_attr_by_oid_legacy(conf->dict, &parent, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
-		if (fr_dict_oid_component(&num, &p) < 0) break;	/* Just advances the pointer */
+		if (fr_dict_oid_component_legacy(&num, &p) < 0) break;	/* Just advances the pointer */
 		assert(attr == num);
 		p++;
 
