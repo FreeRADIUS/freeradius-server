@@ -739,9 +739,9 @@ int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_bo
 /*
  *	Printing
  */
-ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules);
+ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
 
-ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote);
+ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote) CC_HINT(nonnull);
 
 static inline size_t fr_value_box_aprint(TALLOC_CTX *ctx, char **out,
 					 fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
