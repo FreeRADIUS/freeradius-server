@@ -390,7 +390,7 @@ ssize_t			fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 					    fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-					    fr_sbuff_t *in);
+					    fr_sbuff_t *in) CC_HINT(nonnull(2,3,4));
 /** @} */
 
 /** @name Attribute, vendor and dictionary lookup
