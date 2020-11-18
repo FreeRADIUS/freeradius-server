@@ -1933,7 +1933,18 @@ static void cbtls_cache_clear(SSL_CTX *ctx, SSL_SESSION *sess)
 	return;
 }
 
-static int cbtls_cache_save(SSL *ssl, SSL_SESSION *sess)
+/*
+ *	OpenSSL calls this function in order to save the session
+ *	BEFORE it has sent the final TLS success.  So our process here
+ *	is to say "yes, we saved it", and then do the *actual* saving
+ *	after the TLS success has been sent.
+ */
+static int cbtls_cache_save(UNUSED SSL *ssl, UNUSED SSL_SESSION *sess)
+{
+	return 0;
+}
+
+static int cbtls_cache_save_vps(SSL *ssl, SSL_SESSION *sess, VALUE_PAIR *vps)
 {
 	fr_tls_server_conf_t	*conf;
 	VALUE_PAIR		*vp;
@@ -1971,12 +1982,17 @@ static int cbtls_cache_save(SSL *ssl, SSL_SESSION *sess)
 	fr_pair_value_memcpy(vp, sess_blob, size);
 	fr_pair_add(&fake->state, vp);
 
+	if (vps) fr_pair_add(&fake->reply->vps, fr_pair_list_copy(fake->reply, vps));
+
 	/*
 	 *	Use &request:TLS-Session-Id to save the
 	 *	&session-state:TLS-Session-Data values.
 	 *
-	 *	Any attributes which need to be saved should be read
-	 *	from the &outer.reply: list.
+	 *	The current &reply: list is the list of VPs which
+	 *	should be cached.
+	 *
+	 *	Any other attributes which need to be saved can be
+	 *	read from the &outer.reply: list.
 	 */
 	(void) process_post_auth(CACHE_SAVE, fake);
 
@@ -4377,6 +4393,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					fprintf(vp_file, "\n");
 					fclose(vp_file);
 				}
+
+			} else if (conf->session_cache_server) {
+				cbtls_cache_save_vps(ssn->ssl, ssn->ssl_session, vps);
+
 			} else {
 				RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached on disk.");
 			}
