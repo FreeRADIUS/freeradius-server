@@ -21,6 +21,7 @@
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/acutest_helpers.h>
 
 #include "sbuff.c"
 
@@ -42,30 +43,6 @@ do { \
 	TEST_CHECK(_len == (size_t)_num); \
 	TEST_MSG("Expected length : %zu", (size_t)_num); \
 	TEST_MSG("Got length      : %zu", _len); \
-} while(0)
-
-#define TEST_CHECK_LEN(_exp, _got) \
-do { \
-	size_t _our_got = (_got); \
-	TEST_CHECK(_exp == _our_got); \
-	TEST_MSG("Expected length : %zu", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zu", (ssize_t)_our_got); \
-} while(0)
-
-#define TEST_CHECK_SLEN(_exp, _got) \
-do { \
-	ssize_t _our_got = (_got); \
-	TEST_CHECK(_exp == _our_got); \
-	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
-} while(0)
-
-#define TEST_CHECK_STRCMP(_exp, _got) \
-do { \
-	char *_our_got = (_got); \
-	TEST_CHECK(((_exp) != NULL) && ((_got) != NULL) && (strcmp(_exp, _our_got) == 0)); \
-	TEST_MSG("Expected : \"%s\"", _exp); \
-	TEST_MSG("Got      : \"%s\"", _our_got); \
 } while(0)
 
 static void test_parse_init(void)
@@ -107,34 +84,34 @@ static void test_bstrncpy_exact(void)
 
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
-	TEST_CHECK_SLEN(5, slen);
-	TEST_CHECK_STRCMP("i am ", out);
-	TEST_CHECK_STRCMP("a test string", sbuff.p);
+	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_STRCMP(out, "i am ");
+	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(-7, slen);
+	TEST_CHECK_SLEN(slen, -7);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(-25, slen);
+	TEST_CHECK_SLEN(slen, -25);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -142,7 +119,7 @@ static void test_bstrncpy_exact(void)
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, 0);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
@@ -159,34 +136,34 @@ static void test_bstrncpy(void)
 
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
-	TEST_CHECK_SLEN(5, slen);
-	TEST_CHECK_STRCMP("i am ", out);
-	TEST_CHECK_STRCMP("a test string", sbuff.p);
+	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_STRCMP(out, "i am ");
+	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(18, slen);
-	TEST_CHECK_STRCMP("i am a longer test", out);
+	TEST_CHECK_SLEN(slen, 18);
+	TEST_CHECK_STRCMP(out, "i am a longer test");
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -194,7 +171,7 @@ static void test_bstrncpy(void)
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, 0);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
@@ -234,34 +211,34 @@ static void test_bstrncpy_allowed(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(5, slen);
-	TEST_CHECK_STRCMP("i am ", out);
-	TEST_CHECK_STRCMP("a test string", sbuff.p);
+	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_STRCMP(out, "i am ");
+	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(18, slen);
-	TEST_CHECK_STRCMP("i am a longer test", out);
+	TEST_CHECK_SLEN(slen, 18);
+	TEST_CHECK_STRCMP(out, "i am a longer test");
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -269,7 +246,7 @@ static void test_bstrncpy_allowed(void)
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -280,29 +257,29 @@ static void test_bstrncpy_allowed(void)
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
 					     allow_lowercase_and_space_no_t);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX,
 					     allow_lowercase_and_space_no_t);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
 					     allow_lowercase_and_space_no_t);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("i am a longer", out);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "i am a longer");
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
 					     (bool[UINT8_MAX + 1]){});
-	TEST_CHECK_SLEN(0, slen);
-	TEST_CHECK_STRCMP("", out);
+	TEST_CHECK_SLEN(slen, 0);
+	TEST_CHECK_STRCMP(out, "");
 }
 
 static void test_bstrncpy_until(void)
@@ -322,42 +299,42 @@ static void test_bstrncpy_until(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, NULL);
-	TEST_CHECK_SLEN(5, slen);
-	TEST_CHECK_STRCMP("i am ", out);
-	TEST_CHECK_STRCMP("a test string", sbuff.p);
+	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_STRCMP(out, "i am ");
+	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13, NULL, NULL);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1, NULL, NULL);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Check escapes");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &(fr_sbuff_unescape_rules_t){ .chr = 'n' });
-	TEST_CHECK_SLEN(18, slen);
-	TEST_CHECK_STRCMP("i am a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 18);
+	TEST_CHECK_STRCMP(out, "i am a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, NULL);
-	TEST_CHECK_SLEN(18, slen);
-	TEST_CHECK_STRCMP("i am a longer test", out);
+	TEST_CHECK_SLEN(slen, 18);
+	TEST_CHECK_STRCMP(out, "i am a longer test");
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, NULL, NULL);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -365,7 +342,7 @@ static void test_bstrncpy_until(void)
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0, NULL, NULL);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -375,26 +352,26 @@ static void test_bstrncpy_until(void)
 	TEST_CASE("Copy until first t");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &FR_SBUFF_TERM("t"), NULL);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX, &FR_SBUFF_TERM("t"), NULL);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX, &FR_SBUFF_TERM("t"), NULL);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("i am a longer", out);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "i am a longer");
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX, &FR_SBUFF_TERM("i"), NULL);
-	TEST_CHECK_SLEN(0, slen);
-	TEST_CHECK_STRCMP("", out);
+	TEST_CHECK_SLEN(slen, 0);
+	TEST_CHECK_STRCMP(out, "");
 }
 
 static void test_unescape_until(void)
@@ -449,34 +426,34 @@ static void test_unescape_until(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, &rules);
-	TEST_CHECK_SLEN(5, slen);
-	TEST_CHECK_STRCMP("i am ", out);
-	TEST_CHECK_STRCMP("a test string", sbuff.p);
+	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_STRCMP(out, "i am ");
+	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
 	TEST_CASE("Copy 13 bytes to out");
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 13, NULL, &rules);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("a test string", out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "a test string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun input");
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 1, NULL, &rules);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Copy would overrun output (and SIZE_MAX special value)");
 	fr_sbuff_init(&sbuff, in_long, sizeof(in_long));
 
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, NULL, &rules);
-	TEST_CHECK_SLEN(18, slen);
-	TEST_CHECK_STRCMP("i am a longer test", out);
+	TEST_CHECK_SLEN(slen, 18);
+	TEST_CHECK_STRCMP(out, "i am a longer test");
 
 	TEST_CASE("Zero length output buffer");
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, (size_t)1), &sbuff, SIZE_MAX, NULL, &rules);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -484,7 +461,7 @@ static void test_unescape_until(void)
 	fr_sbuff_set_to_start(&sbuff);
 	out[0] = 'a';
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 0, NULL, &rules);
-	TEST_CHECK_SLEN(0, slen);
+	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK(out[0] == '\0');	/* should be set to \0 */
 	TEST_CHECK(sbuff.p == sbuff.start);
 
@@ -495,29 +472,29 @@ static void test_unescape_until(void)
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("t"), &rules);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (same len as token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 15), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("t"), &rules);
-	TEST_CHECK_SLEN(14, slen);
-	TEST_CHECK_STRCMP("i am a longer ", out);
+	TEST_CHECK_SLEN(slen, 14);
+	TEST_CHECK_STRCMP(out, "i am a longer ");
 
 	TEST_CASE("Copy until first t with length constraint (one shorter than token)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("t"), &rules);
-	TEST_CHECK_SLEN(13, slen);
-	TEST_CHECK_STRCMP("i am a longer", out);
+	TEST_CHECK_SLEN(slen, 13);
+	TEST_CHECK_STRCMP(out, "i am a longer");
 
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("i"), &rules);
-	TEST_CHECK_SLEN(0, slen);
-	TEST_CHECK_STRCMP("", out);
+	TEST_CHECK_SLEN(slen, 0);
+	TEST_CHECK_STRCMP(out, "");
 
 	/*
 	 *	Escapes and substitution
@@ -526,17 +503,17 @@ static void test_unescape_until(void)
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules);
-	TEST_CHECK_SLEN(20, slen);
-	TEST_CHECK_STRCMP("i am a |t|est string", escape_out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 20);
+	TEST_CHECK_STRCMP(escape_out, "i am a |t|est string");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 
 	TEST_CASE("Escape with substition to different char");
 	fr_sbuff_init(&sbuff, in_escapes, sizeof(in_escapes));
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules_sub);
-	TEST_CHECK_SLEN(20, slen);
-	TEST_CHECK_STRCMP("i am a |t|est strinh", escape_out);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_SLEN(slen, 20);
+	TEST_CHECK_STRCMP(escape_out, "i am a |t|est strinh");
+	TEST_CHECK_STRCMP(sbuff.p, "");
 
 	{
 		char	tmp_out[24 + 1];
@@ -545,9 +522,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_sub_hex);
-		TEST_CHECK_SLEN(24, slen);
-		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh", tmp_out);
-		TEST_CHECK_STRCMP("|x20|040", sbuff.p);
+		TEST_CHECK_SLEN(slen, 24);
+		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh");
+		TEST_CHECK_STRCMP(sbuff.p, "|x20|040");
 	}
 
 	{
@@ -557,9 +534,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_sub_hex);
-		TEST_CHECK_SLEN(25, slen);
-		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh ", tmp_out);
-		TEST_CHECK_STRCMP("|040", sbuff.p);
+		TEST_CHECK_SLEN(slen, 25);
+		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh ");
+		TEST_CHECK_STRCMP(sbuff.p, "|040");
 	}
 
 	{
@@ -569,9 +546,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_sub_oct);
-		TEST_CHECK_SLEN(28, slen);
-		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20", tmp_out);
-		TEST_CHECK_STRCMP("|040", sbuff.p);
+		TEST_CHECK_SLEN(slen, 28);
+		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh|x20");
+		TEST_CHECK_STRCMP(sbuff.p, "|040");
 	}
 
 	{
@@ -581,9 +558,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_sub_oct);
-		TEST_CHECK_SLEN(29, slen);
-		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh|x20 ", tmp_out);
-		TEST_CHECK_STRCMP("", sbuff.p);
+		TEST_CHECK_SLEN(slen, 29);
+		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh|x20 ");
+		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
 
 	{
@@ -593,9 +570,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_seq, sizeof(in_escapes_seq));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_both);
-		TEST_CHECK_SLEN(26, slen);
-		TEST_CHECK_STRCMP("i |x|0am a |t|est strinh  ", tmp_out);
-		TEST_CHECK_STRCMP("", sbuff.p);
+		TEST_CHECK_SLEN(slen, 26);
+		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh  ");
+		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
 
 	{
@@ -606,9 +583,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)),
 						   &sbuff, SIZE_MAX, NULL, &pipe_rules);
-		TEST_CHECK_SLEN(1, slen);
-		TEST_CHECK_STRCMP("|", tmp_out);
-		TEST_CHECK_STRCMP("", sbuff.p);
+		TEST_CHECK_SLEN(slen, 1);
+		TEST_CHECK_STRCMP(tmp_out, "|");
+		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
 
 	{
@@ -618,9 +595,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_collapse, sizeof(in_escapes_collapse));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(in_escapes_collapse, sizeof(in_escapes_collapse)),
 						   &sbuff, SIZE_MAX, NULL, &pipe_rules);
-		TEST_CHECK_SLEN(5, slen);
-		TEST_CHECK_STRCMP("|foo|", in_escapes_collapse);
-		TEST_CHECK_STRCMP("", sbuff.p);
+		TEST_CHECK_SLEN(slen, 5);
+		TEST_CHECK_STRCMP(in_escapes_collapse, "|foo|");
+		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
 
 	{
@@ -666,9 +643,9 @@ static void test_unescape_until(void)
 		fr_sbuff_init(&sbuff, in_escapes_unit, sizeof(in_escapes_unit));
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   NULL, &double_quote_rules);
-		TEST_CHECK_SLEN(28, slen);
-		TEST_CHECK_STRCMP(expected, tmp_out);
-		TEST_CHECK_STRCMP("", sbuff.p);
+		TEST_CHECK_SLEN(slen, 28);
+		TEST_CHECK_STRCMP(tmp_out, expected);
+		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
 
 	/*
@@ -681,9 +658,9 @@ static void test_unescape_until(void)
 
 		len = fr_sbuff_out_aunescape_until(NULL, &buff, &FR_SBUFF_IN(in_zero, sizeof(in_zero) - 1), SIZE_MAX,
 						   NULL, &pipe_rules);
-		TEST_CHECK_SLEN(0, len);
+		TEST_CHECK_SLEN(len, 0);
 		talloc_get_type_abort(buff, char);
-		TEST_CHECK_SLEN(1, talloc_array_length(buff));
+		TEST_CHECK_SLEN(talloc_array_length(buff), 1);
 		talloc_free(buff);
 	}
 }
@@ -708,19 +685,19 @@ static void test_unescape_multi_char_terminals(void)
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
 	TEST_CHECK(slen == 3);
-	TEST_CHECK_STRCMP("foo", out);
+	TEST_CHECK_STRCMP(out, "foo");
 
 	fr_sbuff_advance(&sbuff, 1);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
 	TEST_CHECK(slen == 1);
-	TEST_CHECK_STRCMP(" ", out);
+	TEST_CHECK_STRCMP(out, " ");
 
 	fr_sbuff_advance(&sbuff, 4);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
 	TEST_CHECK(slen == 4);
-	TEST_CHECK_STRCMP(" baz", out);
+	TEST_CHECK_STRCMP(out, " baz");
 }
 
 static void test_no_advance(void)
@@ -891,7 +868,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Should alloc one byte");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_0, "A") == 1);
-	TEST_CHECK_STRCMP("A", fr_sbuff_start(&sbuff_0));
+	TEST_CHECK_STRCMP(fr_sbuff_start(&sbuff_0), "A");
 	TEST_SBUFF_USED(&sbuff_0, 1);
 	TEST_SBUFF_LEN(&sbuff_0, 2);
 
@@ -900,7 +877,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Ensure marker is updated");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_0, "B") == 1);
-	TEST_CHECK_STRCMP("AB", fr_sbuff_start(&sbuff_0));
+	TEST_CHECK_STRCMP(fr_sbuff_start(&sbuff_0), "AB");
 	TEST_SBUFF_USED(&sbuff_0, 2);
 	TEST_SBUFF_LEN(&sbuff_0, 3);
 	TEST_CHECK((marker_0.p - sbuff_0.start) == 1);
@@ -916,7 +893,7 @@ static void test_talloc_extend_with_marker(void)
 
 	TEST_CASE("Print string - Trigger re-alloc, ensure all pointers are updated");
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff_1, "C") == 1);
-	TEST_CHECK_STRCMP("C", fr_sbuff_start(&sbuff_1));
+	TEST_CHECK_STRCMP(fr_sbuff_start(&sbuff_1), "C");
 	TEST_CHECK(sbuff_0.buff == sbuff_1.buff);
 	TEST_CHECK(sbuff_0.p == sbuff_1.start + 1);
 	TEST_CHECK((marker_1.p - sbuff_1.start) == 0);
@@ -932,27 +909,27 @@ static void test_adv_past_str(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(6, fr_sbuff_adv_past_str(&sbuff, "i am a", SIZE_MAX));
-	TEST_CHECK_STRCMP(" test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_str(&sbuff, "i am a", SIZE_MAX), 6);
+	TEST_CHECK_STRCMP(sbuff.p, " test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_str(&sbuff, " am a", SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_str(&sbuff, " am a", SIZE_MAX), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_str(&sbuff, "i am a test string ", SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_str(&sbuff, "i am a test string ", SIZE_MAX), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_str(&sbuff, "i am a", SIZE_MAX));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_str(&sbuff, "i am a", SIZE_MAX), 0);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_past_str(&sbuff, "i am a test string", SIZE_MAX));
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_str(&sbuff, "i am a test string", SIZE_MAX), 18);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 }
 
@@ -963,27 +940,27 @@ static void test_adv_past_strcase(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(6, fr_sbuff_adv_past_strcase(&sbuff, "i AM a", SIZE_MAX));
-	TEST_CHECK_STRCMP(" test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_strcase(&sbuff, "i AM a", SIZE_MAX), 6);
+	TEST_CHECK_STRCMP(sbuff.p, " test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_strcase(&sbuff, " AM a", SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_strcase(&sbuff, " AM a", SIZE_MAX), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_strcase(&sbuff, "i AM a TEST string ", SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_strcase(&sbuff, "i AM a TEST string ", SIZE_MAX), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_strcase(&sbuff, "i AM a", SIZE_MAX));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_strcase(&sbuff, "i AM a", SIZE_MAX), 0);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_past_strcase(&sbuff, "i AM a TEST string", SIZE_MAX));
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_strcase(&sbuff, "i AM a TEST string", SIZE_MAX), 18);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 	TEST_CHECK(sbuff.p == sbuff.end);
 }
 
@@ -996,31 +973,31 @@ static void test_adv_past_whitespace(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a         test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 5);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a         test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 0);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 5);
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(2, fr_sbuff_adv_past_whitespace(&sbuff, 2));
-	TEST_CHECK_STRCMP("   i am a         test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2), 2);
+	TEST_CHECK_STRCMP(sbuff.p, "   i am a         test string");
 
 	TEST_CASE("Length constraint without token match");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_whitespace(&sbuff, 2));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 }
 
 static void test_adv_past_allowed(void)
@@ -1032,33 +1009,33 @@ static void test_adv_past_allowed(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
-	TEST_CHECK_STRCMP("i am a         test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 5);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a         test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }));
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 5);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(2, fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }));
-	TEST_CHECK_STRCMP("   i am a         test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }), 2);
+	TEST_CHECK_STRCMP(sbuff.p, "   i am a         test string");
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }));
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 }
 
 static void test_adv_until(void)
@@ -1068,32 +1045,32 @@ static void test_adv_until(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM(" "), '\0'));
-	TEST_CHECK_STRCMP(" abcdefgh ijklmnopp", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM(" "), '\0'), 0);
+	TEST_CHECK_STRCMP(sbuff.p, " abcdefgh ijklmnopp");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(1, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("a"), '\0'));
-	TEST_CHECK_STRCMP("abcdefgh ijklmnopp", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("a"), '\0'), 1);
+	TEST_CHECK_STRCMP(sbuff.p, "abcdefgh ijklmnopp");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(0, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("a"), '\0'));
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("a"), '\0'), 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token that is not in the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(19, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("|"), '\0'));
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("|"), '\0'), 19);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Check escapes");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(18, fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("p"), 'o'));
-	TEST_CHECK_STRCMP("p", sbuff.p);
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, SIZE_MAX, &FR_SBUFF_TERM("p"), 'o'), 18);
+	TEST_CHECK_STRCMP(sbuff.p, "p");
 
 	TEST_CASE("Check for token that is not in the string with length constraint");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(5, fr_sbuff_adv_until(&sbuff, 5, &FR_SBUFF_TERM("|"), '\0'));
+	TEST_CHECK_LEN(fr_sbuff_adv_until(&sbuff, 5, &FR_SBUFF_TERM("|"), '\0'), 5);
 	TEST_CHECK(sbuff.p == (sbuff.start + 5));
 }
 
@@ -1107,13 +1084,13 @@ static void test_adv_to_utf8(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🥺");
 	TEST_CHECK(p == sbuff.p);
-	TEST_CHECK_STRCMP("🥺🥺🥺🥺🍪😀", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "🥺🥺🥺🥺🍪😀");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🍪");
 	TEST_CHECK(p == (sbuff.start + (sizeof("🥺🥺🥺🥺") - 1)));
-	TEST_CHECK_STRCMP("🍪😀", p);
+	TEST_CHECK_STRCMP(p, "🍪😀");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
@@ -1167,13 +1144,13 @@ static void test_adv_to_chr(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'A');
 	TEST_CHECK(p == sbuff.p);
-	TEST_CHECK_STRCMP("AAAAbC", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "AAAAbC");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, 'b');
 	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
-	TEST_CHECK_STRCMP("bC", p);
+	TEST_CHECK_STRCMP(p, "bC");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
@@ -1194,7 +1171,7 @@ static void test_adv_to_chr(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_chr(&sbuff, 5, 'b');
 	TEST_CHECK(p == (sbuff.start + (sizeof("AAAA") - 1)));
-	TEST_CHECK_STRCMP("bC", p);
+	TEST_CHECK_STRCMP(p, "bC");
 
 	TEST_CASE("Check for token not at beginning of string outside length constraints");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
@@ -1212,19 +1189,19 @@ static void test_adv_to_str(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a test", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "test", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "test string");
 
 	TEST_CASE("Check for token at the end of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "ing", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("ing", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "ing");
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
@@ -1249,13 +1226,13 @@ static void test_adv_to_str(void)
 	p = fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, "i am a test string", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("i am a test string", p);
+	TEST_CHECK_STRCMP(p, "i am a test string");
 
 	TEST_CASE("Check for token not at beginning of string within length constraints");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_str(&sbuff, 11, "test", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "test string");
 
 	TEST_CASE("Check for token not at beginning of string outside length constraints");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
@@ -1273,19 +1250,19 @@ static void test_adv_to_strcase(void)
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i AM a TEST", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("i am a test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "tEst", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "test string");
 
 	TEST_CASE("Check for token at the end of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "Ing", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("ing", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "ing");
 
 	TEST_CASE("Check for token larger than the string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
@@ -1310,13 +1287,13 @@ static void test_adv_to_strcase(void)
 	p = fr_sbuff_adv_to_strcase(&sbuff, SIZE_MAX, "i AM a teST stRIng", SIZE_MAX);
 	TEST_CHECK(sbuff.p == sbuff.start);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("i am a test string", p);
+	TEST_CHECK_STRCMP(p, "i am a test string");
 
 	TEST_CASE("Check for token not at beginning of string within length constraints");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	p = fr_sbuff_adv_to_strcase(&sbuff, 11, "tEst", SIZE_MAX);
 	TEST_CHECK(sbuff.p == p);
-	TEST_CHECK_STRCMP("test string", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "test string");
 
 	TEST_CASE("Check for token not at beginning of string outside length constraints");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
@@ -1332,19 +1309,19 @@ static void test_next_if_char(void)
 	TEST_CASE("Check for advancement on match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	TEST_CHECK(fr_sbuff_next_if_char(&sbuff, 'i') == true);
-	TEST_CHECK_STRCMP(" ", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, " ");
 
 	TEST_CASE("Check for non-advancement on non-match");
 	TEST_CHECK(fr_sbuff_next_if_char(&sbuff, 'i') == false);
-	TEST_CHECK_STRCMP(" ", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, " ");
 
 	TEST_CASE("Check for advancement at end");
 	TEST_CHECK(fr_sbuff_next_if_char(&sbuff, ' ') == true);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 
 	TEST_CASE("Check we can't advance off the end of the buffer");
 	TEST_CHECK(fr_sbuff_next_if_char(&sbuff, ' ') == false);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 }
 
 static void test_next_unless_char(void)
@@ -1355,19 +1332,19 @@ static void test_next_unless_char(void)
 	TEST_CASE("Check for advancement on non-match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
 	TEST_CHECK(fr_sbuff_next_unless_char(&sbuff, ' ') == true);
-	TEST_CHECK_STRCMP(" ", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, " ");
 
 	TEST_CASE("Check for non-advancement on match");
 	TEST_CHECK(fr_sbuff_next_unless_char(&sbuff, ' ') == false);
-	TEST_CHECK_STRCMP(" ", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, " ");
 
 	TEST_CASE("Check for advancement at end");
 	TEST_CHECK(fr_sbuff_next_unless_char(&sbuff, '_') == true);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 
 	TEST_CASE("Check we can't advance off the end of the buffer");
 	TEST_CHECK(fr_sbuff_next_unless_char(&sbuff, '_') == false);
-	TEST_CHECK_STRCMP("", sbuff.p);
+	TEST_CHECK_STRCMP(sbuff.p, "");
 }
 
 TEST_LIST = {

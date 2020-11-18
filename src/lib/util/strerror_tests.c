@@ -21,6 +21,7 @@
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/acutest_helpers.h>
 
 #include "strerror.c"
 
@@ -52,7 +53,7 @@ static void test_strerror_printf(void)
 	error = fr_strerror();
 
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 123") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 123");
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
@@ -67,7 +68,7 @@ static void test_strerror_printf_push_pop(void)
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 1");
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error == NULL);
@@ -85,7 +86,7 @@ static void test_strerror_printf_push_strerror(void)
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1")) == 0);
+	TEST_CHECK_STRCMP(error, "Testing 1");
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error == NULL);
@@ -100,11 +101,11 @@ static void test_strerror_printf_push_pop_multi(void)
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 2") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 1");
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 2");
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error == NULL);
@@ -123,7 +124,7 @@ static void test_strerror_printf_push_strerror_multi(void)
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 2") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 2");
 
 	error = fr_strerror_pop();
 	TEST_CHECK(error == NULL);
@@ -138,7 +139,7 @@ static void test_strerror_printf_strerror_append(void)
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1 Testing 2") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 1 Testing 2");
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
@@ -154,7 +155,7 @@ static void test_strerror_printf_push_append(void)
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1 Testing 2") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 1 Testing 2");
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
@@ -170,7 +171,7 @@ static void test_strerror_printf_push_append2(void)
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
-	TEST_CHECK(error && (strcmp(error, "Testing 1 Testing 2") == 0));
+	TEST_CHECK_STRCMP(error, "Testing 1 Testing 2");
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);

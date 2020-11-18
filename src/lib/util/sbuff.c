@@ -1025,7 +1025,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	} \
 	num = strtoll(buff, &end, 10); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
 	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX))) { \
@@ -1080,7 +1080,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	} \
 	num = strtoull(buff, &end, _base); \
 	if (end == buff) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} \
 	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX))) { \
@@ -1136,7 +1136,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	_type		res; \
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
 	if (len == sizeof(buff)) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return 0; \
 	} else if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \

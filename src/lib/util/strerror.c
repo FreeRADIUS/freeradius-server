@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/thread_local.h>
@@ -34,12 +34,11 @@ RCSID("$Id$")
 
 typedef struct fr_log_entry_s fr_log_entry_t;
 struct fr_log_entry_s {
+	fr_dlist_t	list;
 	char		*msg;		//!< Log message.
 
 	char		*subject;	//!< Subject for error markers.
 	size_t		offset;		//!< Where to place the msg marker relative to the subject.
-
-	fr_log_entry_t	*next;		//!< Next log message.
 };
 
 /** Holds data used by the logging stack
@@ -52,8 +51,7 @@ typedef struct {
 	TALLOC_CTX	*pool_b;	//!< Pool to avoid memory allocations.
 	TALLOC_CTX	*pool;		//!< Current pool in use.
 
-	fr_cursor_t	cursor;		//!< Cursor to simplify pushing/popping messages.
-	fr_log_entry_t	*head;		//!< Head of the current thread local stack of messages.
+	fr_dlist_head_t	entries;
 } fr_log_buffer_t;
 
 static _Thread_local fr_log_buffer_t *fr_strerror_buffer;
@@ -85,8 +83,7 @@ static void _fr_logging_free(void *arg)
  */
 static inline void fr_strerror_clear(fr_log_buffer_t *buffer)
 {
-	buffer->head = NULL;
-	fr_cursor_talloc_init(&buffer->cursor, &buffer->head, fr_log_entry_t);
+	fr_dlist_talloc_init(&buffer->entries, fr_log_entry_t, list);
 }
 
 /** Initialise thread local storage
@@ -184,7 +181,7 @@ static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
 	}
 
 	fr_strerror_clear(buffer);
-	fr_cursor_prepend(&buffer->cursor, entry);	/* It's a LIFO (not that it matters here) */
+	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
 }
@@ -254,7 +251,7 @@ static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 	 *	if only a combination of fr_strerror and
 	 *	fr_strerror_printf_push are used.
 	 */
-	if (!buffer->head) talloc_free_children(buffer->pool);
+	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
 
 	entry = talloc_zero(buffer->pool_b, fr_log_entry_t);
 	if (!entry) {
@@ -268,8 +265,7 @@ static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 	va_end(ap_p);
 	if (!entry->msg) goto oom;
 
-	fr_cursor_prepend(&buffer->cursor, entry);	/* It's a LIFO */
-	fr_cursor_head(&buffer->cursor);		/* Reset current to first */
+	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
 }
@@ -333,8 +329,7 @@ char const *fr_strerror(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
-	fr_cursor_head(&buffer->cursor);
-	entry = fr_cursor_remove(&buffer->cursor);
+	entry = fr_dlist_tail(&buffer->entries);
 	if (!entry) return "";
 
 	/*
@@ -364,8 +359,7 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
-	fr_cursor_head(&buffer->cursor);
-	entry = fr_cursor_remove(&buffer->cursor);
+	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return "";
 
 	/*
@@ -394,7 +388,7 @@ char const *fr_strerror_peek(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
-	entry = fr_cursor_head(&buffer->cursor);
+	entry = fr_dlist_tail(&buffer->entries);
 	if (!entry) return "";
 
 	return entry->msg;
@@ -418,7 +412,7 @@ char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
-	entry = fr_cursor_head(&buffer->cursor);
+	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return "";
 
 	*subject = entry->subject;
@@ -448,9 +442,10 @@ char const *fr_strerror_pop(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return NULL;
 
-	fr_cursor_head(&buffer->cursor);
-	entry = fr_cursor_remove(&buffer->cursor);
+	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return NULL;
+
+	fr_dlist_remove(&buffer->entries, entry);
 
 	return entry->msg;
 }
@@ -474,9 +469,10 @@ char const *fr_strerror_marker_pop(char const **subject, size_t *offset)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return NULL;
 
-	fr_cursor_head(&buffer->cursor);
-	entry = fr_cursor_remove(&buffer->cursor);
+	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return NULL;
+
+	fr_dlist_remove(&buffer->entries, entry);
 
 	*subject = entry->subject;
 	*offset = entry->offset;
