@@ -1746,6 +1746,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Setup any header options and generic headers.
 	 */
 	FR_CURL_SET_OPTION(CURLOPT_URL, uri);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 	if (section->proxy) FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
 	FR_CURL_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
 	FR_CURL_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);

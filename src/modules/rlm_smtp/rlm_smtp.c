@@ -781,9 +781,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/* Set the destructor function to free all of the curl_slist elements */
 	talloc_set_destructor(mail_ctx, _free_mail_ctx);
 
+#if CURL_AT_LEAST_VERSION(7,45,0)
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
+#endif
 	/* Set the generic curl request conditions */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	if(RDEBUG_ENABLED3) {
@@ -925,8 +928,11 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 		RETURN_MODULE_INVALID;
 	}
 
+#if CURL_AT_LEAST_VERSION(7,45,0)
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
+#endif
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 

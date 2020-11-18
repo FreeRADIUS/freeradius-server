@@ -18,10 +18,11 @@ if test x$with_[]modname != xno; then
 	dnl # Check for curl
 	dnl ############################################################
 
-	LIBCURL_CHECK_CONFIG([], [7.45.0])
+	dnl # Minimum version needed for SSL verification to work properly for rlm_smtp and rlm_imap
+	LIBCURL_CHECK_CONFIG([], [7.24.0])
 
 	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
-		fail="$fail libcurl >= 7.45.0"
+		fail="$fail libcurl >= 7.24.0"
 	elif test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else
@@ -60,6 +61,7 @@ mod_cflags="$LIBCURL_CPPFLAGS"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
+
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

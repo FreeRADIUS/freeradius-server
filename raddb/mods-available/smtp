@@ -166,9 +166,8 @@ smtp {
 	#  `SCHEME://IP:PORT/`
 	#
 
-	#	`SCHEME` can be one of the protocols supported by Curl.
-	#	i.e. ftp, ftps, gopher, http, https, imap, imaps, ldap, ldaps,
-	#	     pop3, pop3s, rtsp, scp, sftp, smb, smbs, smtp, smtps.
+	#	`SCHEME` can be one of the SMTP protocols supported by Curl.
+	#	i.e. smtp, smtps.
 	#	If no `SCHEME` is given, it defaults to `smtp`.
 	#
 	#	`IP` is the IP address of the server.  It can be an IPv4 address,
