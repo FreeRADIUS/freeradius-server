@@ -75,7 +75,7 @@ alloc:
 	if (!da) {
 		fr_pair_t *vp;
 
-		vp = fr_pair_alloc(ctx);
+		vp = fr_pair_alloc_null(ctx);
 		if (!vp) return NULL;
 
 		/*
@@ -151,7 +151,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	fr_pair_t		*vp;
 	fr_dict_attr_t		*n;
 
-	vp = fr_pair_alloc(ctx);
+	vp = fr_pair_alloc_null(ctx);
 	if (!vp) return NULL;
 
 	if (fr_dict_unknown_afrom_oid_str(vp, &n, fr_dict_root(dict), attribute) <= 0) {

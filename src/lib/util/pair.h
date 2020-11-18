@@ -175,7 +175,7 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
 				default		  : (fr_pair_list_t *) NULL))
 
 /* Allocation and management */
-fr_pair_t	*fr_pair_alloc(TALLOC_CTX *ctx);
+fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
 
 fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx);
 

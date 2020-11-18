@@ -89,14 +89,20 @@ fr_pair_list_t *fr_pair_list_alloc(TALLOC_CTX *ctx)
 	return pl;
 }
 
-/** Dynamically allocate a new attribute
+/** Dynamically allocate a new attribute with no #fr_dict_attr_t assigned
+ *
+ * This is not the function you're looking for (unless you're binding
+ * unknown attributes to pairs, and need to pre-allocate the memory).
+ * You probably want #fr_pair_afrom_da instead.
+ *
+ * @note You must assign a #fr_dict_attr_t before freeing this #fr_pair_t.
  *
  * @param[in] ctx	to allocate the pair list in.
  * @return
  *	- A new #fr_pair_t.
  *	- NULL if an error occurred.
  */
-fr_pair_t *fr_pair_alloc(TALLOC_CTX *ctx)
+fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 {
 	fr_pair_t *vp;
 
@@ -114,18 +120,16 @@ fr_pair_t *fr_pair_alloc(TALLOC_CTX *ctx)
 	return vp;
 }
 
-/** Dynamically allocate a new attribute and fill in the da field
- * @hidecallergraph
+/** Dynamically allocate a new attribute and assign a #fr_dict_attr_t
  *
- * Allocates a new attribute and a new dictionary attr if no DA is provided.
- *
- * @note Doesn't require qualification with a dictionary as fr_dict_attr_t are unique.
+ * @note Will duplicate any unknown attributes passed as the da.
  *
  * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
  * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
  * @return
  *	- A new #fr_pair_t.
  *	- NULL if an error occurred.
+ * @hidecallergraph
  */
 fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
@@ -139,7 +143,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		return NULL;
 	}
 
-	vp = fr_pair_alloc(ctx);
+	vp = fr_pair_alloc_null(ctx);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;

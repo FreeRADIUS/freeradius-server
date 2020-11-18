@@ -1107,7 +1107,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		}
 
 		/*
-		 *  Setup fr_pair_alloc / recursion loop.
+		 *  Setup fr_pair_afrom_da / recursion loop.
 		 */
 		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
