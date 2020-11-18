@@ -4409,15 +4409,15 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else the session WAS allowed.  Copy the cached reply.
 	 */
 	} else {
-		char buffer[2 * MAX_SESSION_SIZE + 1];
-
-		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
-
 		/*
 		 *	The "restore VPs from OpenSSL cache" code is
 		 *	now in eaptls_process()
 		 */
 		if (conf->session_cache_path) {
+			char buffer[2 * MAX_SESSION_SIZE + 1];
+
+			tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
+
 			/* "touch" the cached session/vp file */
 			char filename[3 * MAX_SESSION_SIZE + 1];
 
@@ -4428,7 +4428,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				 conf->session_cache_path, FR_DIR_SEP, buffer);
 			utime(filename, NULL);
 		}
-
 
 		if (conf->session_cache_server) {
 			cbtls_cache_refresh(ssn->ssl, ssn->ssl_session);
