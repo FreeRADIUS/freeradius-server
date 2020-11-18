@@ -328,6 +328,7 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 	fr_pair_list_t	args;
 	fr_redis_cluster_node_t	*node = opaque;
 
+	fr_pair_list_init(&args);
 	node->addr = node->pending_addr;
 
 	if (node->cluster->triggers_enabled) {
@@ -375,6 +376,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 		fr_pair_list_t	args;
 		CONF_SECTION	*pool;
 
+		fr_pair_list_init(&args);
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
 		pool = cf_section_find(cluster->module, "pool", NULL);
