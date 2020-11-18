@@ -90,7 +90,7 @@ update request {
 	&Tmp-String-2 := "%{json_object_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+if (&Module-Failure-Message == 'Missing attribute(s)') {
 	test_pass
 } else {
 	test_fail
@@ -141,7 +141,7 @@ update request {
 	&Tmp-String-2 := "%{json_object_simple_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+if (&Module-Failure-Message == 'Missing attribute(s)') {
 	test_pass
 } else {
 	test_fail
@@ -192,7 +192,7 @@ update request {
 	&Tmp-String-2 := "%{json_array_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+if (&Module-Failure-Message == 'Missing attribute(s)') {
 	test_pass
 } else {
 	test_fail
@@ -243,7 +243,7 @@ update request {
 	&Tmp-String-2 := "%{json_array_names_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+if (&Module-Failure-Message == 'Missing attribute(s)') {
 	test_pass
 } else {
 	test_fail
@@ -294,7 +294,7 @@ update request {
 	&Tmp-String-2 := "%{json_array_values_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+if (&Module-Failure-Message == 'Missing attribute(s)') {
 	test_pass
 } else {
 	test_fail

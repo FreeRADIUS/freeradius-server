@@ -41,7 +41,10 @@ if (&Tmp-String-4 == '') {
 	test_fail
 }
 
-if (&Module-Failure-Message == 'Failed concatenating input: Invalid arguments.  List was NULL') {
+#
+#  Quoting nothing is not an error
+#
+if (!&Module-Failure-Message) {
 	test_pass
 } else {
 	test_fail
