@@ -197,7 +197,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	inst = talloc_get_type_abort(instance, rlm_icmp_t);
 
 	/*
-	 *	If there's no input, do nothing.
+	 *	If there's no input, do we can't ping anything.
 	 */
 	if (!*in) return XLAT_ACTION_FAIL;
 
