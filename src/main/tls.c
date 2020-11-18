@@ -1859,6 +1859,7 @@ static size_t tls_session_id_binary(SSL_SESSION *ssn, uint8_t *buffer, size_t bu
 #define CACHE_SAVE (1)
 #define CACHE_LOAD (2)
 #define CACHE_CLEAR (3)
+#define CACHE_REFRESH (3)
 
 static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SESSION *sess, SSL *ssl,
 					uint8_t const *data, size_t size)
@@ -1982,6 +1983,32 @@ static int cbtls_cache_save(SSL *ssl, SSL_SESSION *sess)
 error:
 	if (fake) talloc_free(fake);
 	free(sess_blob);
+
+	return 0;
+}
+
+static int cbtls_cache_refresh(SSL *ssl, SSL_SESSION *sess)
+{
+	fr_tls_server_conf_t	*conf;
+	REQUEST			*fake = NULL;
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	if (!conf) return 0;
+
+	/*
+	 *	Find the SSL ID from the session, and save it.
+	 *
+	 *	Save anything from the parent request.
+	 */
+	fake = cache_init_fake_request(conf, sess, ssl, NULL, 0);
+	if (!fake) return 0;
+	/*
+	 *	Use &request:TLS-Session-Id to update the cache
+	 *	entry so that it doesn't not expire.
+	 */
+	(void) process_post_auth(CACHE_REFRESH, fake);
+
+	talloc_free(fake);
 
 	return 0;
 }
@@ -4380,6 +4407,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			snprintf(filename, sizeof(filename), "%s%c%s.vps",
 				 conf->session_cache_path, FR_DIR_SEP, buffer);
 			utime(filename, NULL);
+		}
+
+
+		if (conf->session_cache_server) {
+			cbtls_cache_refresh(ssn->ssl, ssn->ssl_session);
 		}
 
 		/*

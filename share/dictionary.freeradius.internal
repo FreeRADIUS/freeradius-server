@@ -558,6 +558,7 @@ ATTRIBUTE	TLS-Cache-Method			1938	integer
 VALUE	TLS-Cache-Method		save			1
 VALUE	TLS-Cache-Method		load			2
 VALUE	TLS-Cache-Method		clear			3
+VALUE	TLS-Cache-Method		refresh			4
 
 
 # 1939: reserved for future cert attributes
