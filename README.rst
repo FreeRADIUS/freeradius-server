@@ -175,5 +175,5 @@ are available from `Network RADIUS <https://networkradius.com>`_.
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v3.0.x
-.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
+.. |BuildStatus| image:: https://github.com/FreeRADIUS/freeradius-server/workflows/CI/badge.svg?branch=v3.0.x
+.. _BuildStatus: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3ACI

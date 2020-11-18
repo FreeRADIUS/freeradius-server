@@ -29,7 +29,7 @@ if [ "${DO_BUILD}" = 'yes' -a ${CC} = 'clang' ]; then
 fi
 
 if [ "${DO_BUILD}" = 'yes' ]; then 
-    make travis-test
+    make ci-test
 fi
 
 if [ "${DO_BUILD}" = 'no' ]; then 
