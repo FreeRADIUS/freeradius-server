@@ -44,6 +44,6 @@ typedef struct {
 	bool		has_peer_challenge;
 	uint8_t		auth_challenge[MSCHAPV2_CHALLENGE_LEN];
 	uint8_t		peer_challenge[MSCHAPV2_CHALLENGE_LEN];
-	fr_pair_t	*mppe_keys;
-	fr_pair_t	*reply;
+	fr_pair_list_t	mppe_keys;
+	fr_pair_list_t	reply;
 } mschapv2_opaque_t;

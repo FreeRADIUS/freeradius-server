@@ -79,7 +79,7 @@ struct rc_request {
 
 	fr_radius_packet_t	*packet;	//!< The outgoing request.
 	fr_radius_packet_t	*reply;		//!< The incoming response.
-	fr_pair_t	*filter;	//!< If the reply passes the filter, then the request passes.
+	fr_pair_list_t	filter;		//!< If the reply passes the filter, then the request passes.
 	FR_CODE		filter_code;	//!< Expected code of the response packet.
 
 	int		resend;

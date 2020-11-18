@@ -386,6 +386,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->id = last_used_id;
 		request->num = num++;
 
+		fr_pair_list_init(&request->filter);
+
 		/*
 		 *	Read the request VP's.
 		 */

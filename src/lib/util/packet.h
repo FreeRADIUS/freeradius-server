@@ -65,7 +65,7 @@ typedef struct {
 	fr_time_t		timestamp;		//!< When we received the packet.
 	uint8_t			*data;			//!< Packet data (body).
 	size_t			data_len;		//!< Length of packet data.
-	fr_pair_t		*vps;			//!< Result of decoding the packet into fr_pair_ts.
+	fr_pair_list_t		vps;			//!< Result of decoding the packet into fr_pair_t list.
 
 	uint32_t       		rounds;			//!< for State[0]
 

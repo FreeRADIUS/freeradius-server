@@ -133,7 +133,7 @@ struct fr_pool_s {
 
 	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
 						//!< fired by the connection pool code.
-	fr_pair_t	*trigger_args;		//!< Arguments to make available in connection pool triggers.
+	fr_pair_list_t	trigger_args;		//!< Arguments to make available in connection pool triggers.
 
 	fr_time_delta_t	held_trigger_min;	//!< If a connection is held for less than the specified
 						//!< period, fire a trigger.
@@ -949,6 +949,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	beneath the pool.
 	 */
 	MEM(pool = talloc_zero(NULL, fr_pool_t));
+	fr_pair_list_init(&pool->trigger_args);
 
 	/*
 	 *	Ensure the pool is freed at the same time

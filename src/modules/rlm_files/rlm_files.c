@@ -304,6 +304,9 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 	fr_pair_list_init(&check_tmp);
 	fr_pair_list_init(&reply_tmp);
+	fr_pair_list_init(&my_pl.check);
+	fr_pair_list_init(&my_pl.reply);
+
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
 		REDEBUG("Failed expanding key %s", inst->key->name);
 		RETURN_MODULE_FAIL;

@@ -188,7 +188,7 @@ bool trigger_enabled(void)
 typedef struct {
 	char		*name;
 	xlat_exp_t	*xlat;
-	fr_pair_t	*vps;
+	fr_pair_list_t	vps;
 	fr_value_box_t	*box;
 	bool		expanded;
 } fr_trigger_t;
@@ -401,6 +401,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	}
 
 	MEM(ctx = talloc_zero(fake, fr_trigger_t));
+	fr_pair_list_init(&ctx->vps);
 	ctx->name = talloc_strdup(ctx, value);
 
 	if (request) {

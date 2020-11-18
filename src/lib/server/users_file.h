@@ -36,8 +36,8 @@ extern "C" {
 
 typedef struct pair_list {
 	char const		*name;
-	fr_pair_t		*check;
-	fr_pair_t		*reply;
+	fr_pair_list_t		check;
+	fr_pair_list_t		reply;
 	int			order;
 	int			lineno;
 	struct pair_list	*next;

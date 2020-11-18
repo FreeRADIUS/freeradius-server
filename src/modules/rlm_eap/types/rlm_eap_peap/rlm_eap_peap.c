@@ -117,6 +117,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	t->soh = inst->soh;
 	t->soh_virtual_server = inst->soh_virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
+	fr_pair_list_init(&t->soh_reply_vps);
 
 	return t;
 }

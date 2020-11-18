@@ -150,7 +150,7 @@ struct udp_request_s {
 	bool			can_retransmit;		//!< can we retransmit this packet?
 	bool			status_check;		//!< is this packet a status check?
 
-	fr_pair_t		*extra;			//!< VPs for debugging, like Proxy-State.
+	fr_pair_list_t		extra;			//!< VPs for debugging, like Proxy-State.
 
 	uint8_t			code;			//!< Packet code.
 	uint8_t			id;			//!< Last ID assigned to this packet.
@@ -343,6 +343,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	fr_assert(!h->status_u && !h->status_r && !h->status_request);
 
 	u = talloc_zero(h, udp_request_t);
+	fr_pair_list_init(&u->extra);
 
 	/*
 	 *	Status checks are prioritized over any other packet

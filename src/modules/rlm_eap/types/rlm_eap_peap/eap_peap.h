@@ -52,7 +52,7 @@ typedef struct {
 	char const	*virtual_server;
 	bool		soh;
 	char const	*soh_virtual_server;
-	fr_pair_t	*soh_reply_vps;
+	fr_pair_list_t	soh_reply_vps;
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 

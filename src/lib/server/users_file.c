@@ -122,6 +122,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	 *	Allocate the structure for one entry.
 	 */
 	MEM(t = talloc_zero(ctx, PAIR_LIST));
+	fr_pair_list_init(&t->check);
+	fr_pair_list_init(&t->reply);
 
 	/*
 	 *	Read the entire file into memory for speed.
@@ -329,6 +331,8 @@ parse_again:
 		 *	Allocate another one, just in case it's needed.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
+		fr_pair_list_init(&t->check);
+		fr_pair_list_init(&t->reply);
 
 		/*
 		 *	Look for a name.  If we came here because
