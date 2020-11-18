@@ -170,7 +170,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
 
-	if (!in) {
+	if (!*in) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}
@@ -231,7 +231,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	unsigned long				idx = 0;
 	fr_value_box_t				*vb;
 
-	if (!in) {
+	if (!*in) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}

@@ -109,10 +109,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_
 	fr_value_box_t *vb;
 	char *tmp;
 
-	if (!in) {
-		REDEBUG("Nothing to quote");
-		return XLAT_ACTION_FAIL;
-	}
+	if (!*in) return XLAT_ACTION_DONE;
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
@@ -203,7 +200,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-	if (!in) {
+	if (!*in) {
 		REDEBUG("Missing attribute(s)");
 		return XLAT_ACTION_FAIL;
 	}
