@@ -363,17 +363,12 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t **da_
 	 *	Generate a name if none is specified
 	 */
 	if (!name) {
-		fr_sbuff_t	unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
+		fr_sbuff_t unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
-		fr_sbuff_in_strcpy_literal(&unknown_name, "Attr-");
-		if (da->parent) {
-			if (fr_dict_attr_oid_print(&unknown_name, NULL, da->parent) > 0) {
-				fr_sbuff_in_char(&unknown_name, '.');
-			}
-		}
+
 		fr_sbuff_in_sprintf(&unknown_name, "%u", da->attr);
 
-		name = buffer;
+		name = fr_sbuff_buff(&unknown_name);
 		name_len = fr_sbuff_used(&unknown_name);
 	} else {
 		name_len = strlen(name);
