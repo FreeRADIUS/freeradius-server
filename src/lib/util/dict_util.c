@@ -1139,7 +1139,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 #define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
 
-	old = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
+	old = fr_dict_attr_by_name(NULL, parent, name);
 	if (old) {
 		if ((old->parent == parent)&& (old->type == type) &&
 		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
