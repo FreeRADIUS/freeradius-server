@@ -12,36 +12,36 @@ match &User-Name == &reply.User-Name
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
-match ERROR offset 2 Unterminated string
+match ERROR offset 2: Unterminated string
 
 condition ("foo
-match ERROR offset 2 Unterminated string
+match ERROR offset 2: Unterminated string
 
 condition ()
-match ERROR offset 1 Empty bareword is invalid
+match ERROR offset 1: Empty bareword is invalid
 
 condition (!)
-match ERROR offset 2 Empty bareword is invalid
+match ERROR offset 2: Empty bareword is invalid
 
 
 condition (|| b)
-match ERROR offset 1 Empty bareword is invalid
+match ERROR offset 1: Empty bareword is invalid
 
 condition ((ok || handled) foo)
-match ERROR offset 17 Unexpected text after condition
+match ERROR offset 17: Unexpected text after condition
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 5 Invalid operator
+match ERROR offset 5: Invalid operator
 
 condition (ok FOO handled)
-match ERROR offset 4 Invalid operator
+match ERROR offset 4: Invalid operator
 
 condition (ok !x handled)
-match ERROR offset 4 Invalid operator
+match ERROR offset 4: Invalid operator
 
 condition (ok =x handled)
-match ERROR offset 4 Invalid operator
+match ERROR offset 4: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -68,7 +68,7 @@ condition !(ok)
 match !ok
 
 condition !!ok
-match ERROR offset 1 Double negation is invalid
+match ERROR offset 1: Double negation is invalid
 
 condition !(!ok)
 match ok
@@ -93,7 +93,7 @@ condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match !&User-Name == &User-Password || &Filter-Id == &Reply-Message
 
 condition ((a == b) || (c == d)))
-match ERROR offset 22 Unexpected closing brace
+match ERROR offset 22: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
 match handled && &Packet-Type == Access-Challenge
@@ -107,13 +107,13 @@ condition handled &&&Packet-Type == Access-Challenge
 match handled && &Packet-Type == Access-Challenge
 
 condition &reply == &request
-match ERROR offset 0 Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 condition &reply == "hello"
-match ERROR offset 0 Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 condition "hello" == &reply
-match ERROR offset 11 Cannot use list references in condition
+match ERROR offset 11: Cannot use list references in condition
 
 
 #
@@ -129,22 +129,22 @@ condition !&User-Name != &User-Password
 match &User-Name == &User-Password
 
 condition <ipv6addr>foo
-match ERROR offset 0 Cannot do cast for existence check
+match ERROR offset 0: Cannot do cast for existence check
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>&Filter-Id == <ipaddr>&Framed-IP-Address
-match ERROR offset 22 Unexpected cast
+match ERROR offset 22: Unexpected cast
 
 condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
-match ERROR offset 22 Unexpected cast
+match ERROR offset 22: Unexpected cast
 
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 23 Unknown data type
+match ERROR offset 23: Unknown data type
 
 condition <blerg>&Filter-Id == "foo"
-match ERROR offset 1 Unknown data type
+match ERROR offset 1: Unknown data type
 
 #
 #  Normalize things
@@ -154,10 +154,10 @@ match &Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
-match ERROR offset 6 Cannot use !* on a string
+match ERROR offset 6: Cannot use !* on a string
 
 condition "foo" =* bar
-match ERROR offset 6 Cannot use =* on a string
+match ERROR offset 6: Cannot use =* on a string
 
 # existence checks don't need the RHS
 condition &User-Name =* bar
@@ -194,7 +194,7 @@ condition &User-Name == 'bob'
 match &User-Name == 'bob'
 
 condition &User-Name == bob
-match ERROR offset 14 Comparison value must be a quoted string
+match ERROR offset 14: Comparison value must be a quoted string
 
 # Integer (etc.) types must be "bare"
 condition &Session-Timeout == 10
@@ -215,10 +215,10 @@ condition &Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
-match ERROR offset 9 Failed to parse field
+match ERROR offset 9: Failed to parse field
 
 condition &NAS-Port == X
-match ERROR offset 13 Failed to parse value for attribute
+match ERROR offset 13: Failed to parse value for attribute
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -247,7 +247,7 @@ condition <ether> 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 match <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 8 Failed to parse field
+match ERROR offset 8: Failed to parse field
 
 #
 #  Tests for boolean data types.
@@ -328,13 +328,13 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition <ipaddr>127.0.0.1/327 == 127.0.0.1
-match ERROR offset 8 Failed to parse field
+match ERROR offset 8: Failed to parse field
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (/foo/)
-match ERROR offset 1 Unexpected regular expression
+match ERROR offset 1: Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -367,7 +367,7 @@ condition ('a')
 match true
 
 condition (a)
-match ERROR offset 1 Expected a module return code
+match ERROR offset 1: Expected a module return code
 
 #
 #  Module return codes are OK
@@ -394,7 +394,7 @@ match &User-Name
 #  Forbidden data types in cast
 #
 condition (<vsa>"foo" == &User-Name)
-match ERROR offset 2 Forbidden data type in cast
+match ERROR offset 2: Forbidden data type in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -409,10 +409,10 @@ condition <integer>"%{md4: 1 + 1}" < &NAS-Port
 match &NAS-Port > "%{md4: 1 + 1}"
 
 condition &Filter-Id == &Framed-IP-Address
-match ERROR offset 0 Cannot compare attributes of type 'string' and 'ipaddr'
+match ERROR offset 0: Cannot compare attributes of type 'string' and 'ipaddr'
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
-match ERROR offset 0 Cannot compare types 'ipaddr' (cast) and 'string' (attr)
+match ERROR offset 0: Cannot compare types 'ipaddr' (cast) and 'string' (attr)
 
 condition &Tmp-Integer64-0 == &request.Foo-Stuff-Bar
 match &Tmp-Integer64-0 == &Foo-Stuff-Bar
@@ -424,10 +424,10 @@ match &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
 #  Casting attributes of different size
 #
 condition <ipaddr>&Tmp-Integer64-0 == &Framed-IP-Address
-match ERROR offset 0 Cannot cast to attribute of incompatible size
+match ERROR offset 0: Cannot cast to attribute of incompatible size
 
 condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match ERROR offset 0 Cannot cast to attribute of incompatible size
+match ERROR offset 0: Cannot cast to attribute of incompatible size
 
 # but these are allowed
 condition <ether>&Tmp-Integer64-0 == "%{module: foo}"
@@ -495,10 +495,10 @@ match &Attr-26.24757.84.9.5.15 == 0x1a99
 #  Invalid array references.
 #
 condition &User-Name[a] == 'bob'
-match ERROR offset 11 Invalid array index
+match ERROR offset 11: Invalid array index
 
 condition &User-Name == &Filter-Id[a]
-match ERROR offset 25 Invalid array index
+match ERROR offset 25: Invalid array index
 
 #
 #  Attributes without an '&' prefix are
@@ -513,10 +513,10 @@ match false
 #  Bounds checks...
 #
 condition &User-Name[1001] == 'bob'
-match ERROR offset 11 Invalid array index '1001' (should be between 0-1000)
+match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-match ERROR offset 11 Invalid array index '-1' (should be between 0-1000)
+match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
@@ -529,17 +529,17 @@ condition request.Foo+Bar == request.Foo+Bar
 match true
 
 condition &request.Foo+Bar == 'request.Foo+Bar'
-match ERROR offset 12 Unexpected text after attribute reference
+match ERROR offset 12: Unexpected text after attribute reference
 
 condition 'request.Foo+d' == &request.Foo+Bar
-match ERROR offset 31 Unexpected text after attribute reference
+match ERROR offset 31: Unexpected text after attribute reference
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request.FooBar:0 == &request.FooBar
-match ERROR offset 15 Unexpected text after attribute reference
+match ERROR offset 15: Unexpected text after attribute reference
 
 condition &not-a-list:User-Name == &not-a-list:User-Name
-match ERROR offset 11 Unexpected text after attribute reference
+match ERROR offset 11: Unexpected text after attribute reference
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition &not-a-packet.User-Name == &not-a-packet.User-Name

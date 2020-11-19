@@ -1195,7 +1195,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 
 		if (fr_sbuff_out(&sberr, &ar->num, &tmp) == 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
-				fr_strerror_printf("Array index is not an integer");
+				fr_strerror_printf("Invalid array index");
 				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			error:
 				return TMPL_ATTR_REF_BAD_FILTER;

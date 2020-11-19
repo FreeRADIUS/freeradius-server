@@ -235,7 +235,7 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf_push(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -265,8 +265,6 @@ static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
 	va_end(ap_p);
 	if (!entry->msg) goto oom;
 
-	fr_dlist_insert_tail(&buffer->entries, entry);
-
 	return entry;
 }
 
@@ -280,11 +278,46 @@ static fr_log_entry_t *fr_strerror_vprintf_push(char const *fmt, va_list ap)
  */
 void fr_strerror_printf_push(char const *fmt, ...)
 {
-	va_list		ap;
+	va_list			ap;
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
 
 	va_start(ap, fmt);
-	fr_strerror_vprintf_push(fmt, ap);
+	entry = strerror_vprintf_push(fmt, ap);
 	va_end(ap);
+
+	if (!entry) return;
+
+	fr_dlist_insert_tail(&buffer->entries, entry);
+}
+
+/** Add a message to an existing stack of messages
+ *
+ * @param[in] fmt	printf style format string.
+ *			If NULL clears any existing messages.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_printf_push_head(char const *fmt, ...)
+{
+	va_list			ap;
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	va_start(ap, fmt);
+	entry = strerror_vprintf_push(fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	fr_dlist_insert_head(&buffer->entries, entry);
 }
 
 /** Add an error marker to an existing stack of messages
@@ -299,17 +332,55 @@ void fr_strerror_printf_push(char const *fmt, ...)
  */
 void fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...)
 {
-	va_list		ap;
-	fr_log_entry_t	*entry;
+	va_list			ap;
+	fr_log_entry_t		*entry;
+	fr_log_buffer_t		*buffer;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
 
 	va_start(ap, fmt);
-	entry = fr_strerror_vprintf_push(fmt, ap);
+	entry = strerror_vprintf_push(fmt, ap);
 	va_end(ap);
 
 	if (!entry) return;
 
 	entry->subject = talloc_strdup(entry, subject);
 	entry->offset = offset;
+
+	fr_dlist_insert_tail(&buffer->entries, entry);
+}
+
+
+/** Add an error marker to an existing stack of messages
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list			ap;
+	fr_log_entry_t		*entry;
+	fr_log_buffer_t		*buffer;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	va_start(ap, fmt);
+	entry = strerror_vprintf_push(fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	entry->subject = talloc_strdup(entry, subject);
+	entry->offset = offset;
+
+	fr_dlist_insert_head(&buffer->entries, entry);
 }
 
 /** Get the last library error

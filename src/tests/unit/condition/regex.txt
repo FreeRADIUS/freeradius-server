@@ -4,10 +4,10 @@ condition &User-Name !~ /^foo\nbar$/
 match !&User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
-match ERROR offset 7 Expected regular expression
+match ERROR offset 7: Expected regular expression
 
 condition (ok == /foo/)
-match ERROR offset 7 Unexpected regular expression
+match ERROR offset 7: Unexpected regular expression
 
 #
 #  Convert !~ to !(COND) for regex
@@ -34,13 +34,13 @@ condition foo =~ /bar/im
 match foo =~ /bar/im
 
 condition foo =~ /bar/ima
-match ERROR offset 14 Unsupported regex flag 'a'
+match ERROR offset 14: Unsupported regex flag 'a'
 
 condition foo =~ /bar/ii
-match ERROR offset 13 Duplicate regex flag 'i'
+match ERROR offset 13: Duplicate regex flag 'i'
 
 condition foo =~ /bar/iia
-match ERROR offset 13 Duplicate regex flag 'i'
+match ERROR offset 13: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly
@@ -63,7 +63,7 @@ xlat %{33}
 match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 condition &User-Name == /foo/
-match ERROR offset 14 Unexpected regular expression
+match ERROR offset 14: Unexpected regular expression
 
 count
 match 37

@@ -32,15 +32,15 @@ match &Unparsed-Child.WiMAX-Uplink-QOS-Id[0]
 #
 # Malformed filter
 condition &WiMAX-Packet-Flow-Descriptor[*.WiMAX-Uplink-QOS-Id[0]
-match ERROR offset 31 No closing ']' for array index
+match ERROR offset 31: No closing ']' for array index
 
 # Too many dots
 condition &WiMAX-Packet-Flow-Descriptor..WiMAX-Uplink-QOS-Id[0]
-match ERROR offset 30 Invalid attribute name
+match ERROR offset 30: Invalid attribute name
 
 # Trailing dots (marker should point to the bad parent)
 condition &WiMAX-Packet-Flow-Descriptor.WiMAX-Uplink-QOS-Id[0].
-match ERROR offset 30 Parent type of nested attribute must be of "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
+match ERROR offset 30: Parent type of nested attribute must be of "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
 
 # Not a child
 #condition &WiMAX-Packet-Flow-Descriptor.User-Name

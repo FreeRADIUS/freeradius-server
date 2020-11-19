@@ -1208,7 +1208,7 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 				   cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
 				   &FR_SBUFF_IN(in, inlen));
 	if (dec_len <= 0) {
-		fr_strerror_printf("ERROR offset %d %s", (int) -dec_len, fr_strerror());
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 
 	return_error:
 		talloc_free(cs);
@@ -1224,7 +1224,7 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 
 	in += dec_len;
 	if (*in != '\0') {
-		fr_strerror_printf("ERROR offset %d 'Too much text'", (int) dec_len);
+		fr_strerror_printf_push_head("ERROR offset %d 'Too much text'", (int) dec_len);
 		goto return_error;
 	}
 
@@ -2197,14 +2197,14 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 					.allow_unresolved = cc->tmpl_rules.allow_unresolved
 				});
 	if (dec_len <= 0) {
-		fr_strerror_printf_push("ERROR offset %d", (int) -dec_len);
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 
 	return_error:
 		RETURN_OK_WITH_ERROR();
 	}
 
 	if (((size_t) dec_len != input_len)) {
-		fr_strerror_printf_push("offset %d 'Too much text'", (int) dec_len);
+		fr_strerror_printf_push_head("offset %d 'Too much text'", (int) dec_len);
 		goto return_error;
 	}
 
@@ -2234,7 +2234,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 					.allow_unresolved = cc->tmpl_rules.allow_unresolved
 				  });
 	if (slen <= 0) {
-		fr_strerror_printf_push("ERROR offset %d", (int) -slen);
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();
 	}
 
