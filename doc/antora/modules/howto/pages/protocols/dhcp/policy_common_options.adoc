@@ -1,0 +1,80 @@
+== Configure common reply options
+
+FreeRADIUS includes a powerful xref:unlang/index.adoc[policy language] called
+"unlang".
+
+Statements in unlang may be used to call further policies, update attribute
+lists and invoke modules. There are also control flow statements (if,
+switch, etc.) typical of most imperative languages.
+
+FreeRADIUS has a number attribute lists that it maintains as it processes
+packets within the virtual server sections.  Most relevant to DHCP are
+`request`, `control` and `reply`.
+
+The DHCP options from the current request packet are provided in the
+`request` list.  This includes fixed DHCP parameters such as
+`DHCP-Client-Hardware-Address`, optional parameters such as
+`DHCP-Requested-IP-Address`, and parameters synthesised by FreeRADIUS such as
+`DHCP-Message-Type` and `DHCP-Network-Subnet`.
+
+DHCP options can be set by updating their value in the `reply` list.  This
+forms the basis of the packet returned to the client.
+
+In the default DHCP server configuration, a "policy" (akin to a subroutine) is
+used to set common options for reply packets.  The policy is found in
+`<raddb>/policy.d/dhcp`.
+
+Look at the contents of the `dhcp_common` section and set any global options
+applicable to all clients in this policy.
+
+[source,unlang]
+----
+dhcp_common {
+    update reply {
+        &DHCP-Domain-Name-Server := 8.8.8.8
+        &DHCP-Domain-Name-Server += 8.8.4.4
+        &DHCP-Subnet-Mask := 255.255.255.0
+        &DHCP-Router-Address := 192.0.2.1
+        ...
+    }
+}
+----
+
+Note, FreeRADIUS has four main operators for assigning values to attributes:
+
+`=`:: Add the attribute to the list, if and only if an attribute of the same
+  name is not already present in that list.
+`:=`:: Add the attribute to the list.  If any attribute of the same name is
+  already present in that list it is replaced with the new one.
+`+=`:: Add the attribute to the tail of the list, even if attributes of the
+  same name are already present in the list.
+`^=`:: Add the attribute to the head of the list, even if attributes of the
+  same name are already present in the list.
+
+These operators allow for attributes to be set to default values and then
+overwritten, e.g. setting a default lease time, but then overwriting it for
+a particular group of clients.
+
+Attributes in the `control` list are not returned in the DHCP reply packets
+but instead govern aspects of server's behaviour.
+
+To use an SQL backend for either static or dynamic IP allocation, un-comment
+the block:
+
+[source,unlang]
+----
+update control {
+    &Pool-Name := "local"
+}
+dhcp_sqlippool
+----
+
+The `Pool-Name` control attribute is used in looking up addresses in the
+database.  The line containing `dhcp_sqlippool` is a call to invoke an
+instance of a module with that name. This module is responsible for assigning a
+free IP address into the `DHCP-Your-IP-Address` reply attribute from the pool
+identified by `Pool-Name`.
+
+Here `Pool-Name` is being set to a constant value (`local`) indicating
+that a single pool is to be used. If you have multiple pools, then replace this
+`update` block with logic to map clients to the correct pool, as described below.
