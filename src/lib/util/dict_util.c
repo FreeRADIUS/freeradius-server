@@ -1994,15 +1994,15 @@ typedef struct {
 
 /** Search for an attribute name in all dictionaries
  *
- * @param[in] ctx	Attribute to search for.
  * @param[in] data	Dictionary to search in.
+ * @param[in] uctx	Attribute to search for.
  * @return
  *	- 0 if attribute not found in dictionary.
  *	- 1 if attribute found in dictionary.
  */
-static int _dict_attr_find_in_dicts(void *ctx, void *data)
+static int _dict_attr_find_in_dicts(void *data, void *uctx)
 {
-	dict_attr_search_t	*search = ctx;
+	dict_attr_search_t	*search = uctx;
 	fr_dict_t		*dict;
 	fr_hash_table_t 	*namespace;
 
@@ -2748,7 +2748,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	return 0;
 }
 
-static int _dict_free_autoref(UNUSED void *ctx, void *data)
+static int _dict_free_autoref(void *data, UNUSED void *uctx)
 {
 	fr_dict_t *dict = talloc_get_type_abort(data, fr_dict_t);
 

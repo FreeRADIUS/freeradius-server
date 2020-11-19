@@ -619,7 +619,7 @@ int fr_hash_table_num_elements(fr_hash_table_t *ht)
  */
 int fr_hash_table_walk(fr_hash_table_t *ht,
 		       fr_hash_table_walk_t callback,
-		       void *context)
+		       void *uctx)
 {
 	int i, ret;
 
@@ -636,7 +636,7 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
 			next = node->next;
 
-			ret = callback(context, node->data);
+			ret = callback(node->data, uctx);
 
 			if (ret != 0) return ret;
 		}

@@ -368,6 +368,8 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
  *
  * @{
  */
+void			fr_dict_namespace_debug(fr_dict_attr_t const *da);
+
 void			fr_dict_attr_debug(fr_dict_attr_t const *da);
 
 void			fr_dict_debug(fr_dict_t const *dict);

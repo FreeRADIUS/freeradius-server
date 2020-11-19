@@ -119,7 +119,8 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, 
 
 typedef struct {
 	fr_dict_t const		*dict;
-	char			buff[256];
+	char			prefix[256];
+	char			flags[256];
 	unsigned int		start_depth;
 } fr_dict_attr_debug_t;
 
@@ -130,19 +131,23 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	fr_dict_enum_t const		*enumv;
 	fr_dict_attr_ext_enumv_t 	*ext;
 
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(our_uctx->buff, sizeof(our_uctx->buff)),
+	fr_dict_snprint_flags(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
 			      our_uctx->dict, da->type, &da->flags);
 
-	FR_FAULT_LOG("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s",
-		     da->depth,
-		     (unsigned long)da,
-		     (da->depth - our_uctx->start_depth) * 4, "",
+	snprintf(our_uctx->prefix, sizeof(our_uctx->prefix),
+		 "[%02i] 0x%016" PRIxPTR "%*s",
+		 da->depth,
+		 (unsigned long)da,
+		 (da->depth - our_uctx->start_depth) * 4, "");
+
+	FR_FAULT_LOG("%s%s(%u) %s %s",
+		     our_uctx->prefix,
 		     da->name,
 		     da->attr,
 		     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
-		     our_uctx->buff);
+		     our_uctx->flags);
 
-	dict_attr_ext_debug(da);	/* Print all the extension debug info */
+	dict_attr_ext_debug(our_uctx->prefix, da);	/* Print all the extension debug info */
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext || !ext->name_by_value) return 0;
@@ -150,15 +155,27 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
-		FR_FAULT_LOG("[%02i] 0x%016" PRIxPTR "%*s%s -> %pV",
-			     da->depth,
-			     (unsigned long)da,
-			     ((da->depth + 1) - our_uctx->start_depth) * 4, "",
+	     	char *value = fr_asprintf(NULL, "%pV", enumv->value);
+
+		FR_FAULT_LOG("%s    %s -> %s",
+			     our_uctx->prefix,
 			     enumv->name,
-			     enumv->value);
+			     value);
+		talloc_free(value);
 	}
 
 	return 0;
+}
+
+void fr_dict_namespace_debug(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_debug_t    uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_hash_table_t		*namespace;
+
+	namespace = dict_attr_namespace(da);
+	if (!namespace) FR_FAULT_LOG("%s does not have namespace", da->name);
+
+	fr_hash_table_walk(namespace, (fr_hash_table_walk_t)dict_attr_debug, &uctx);
 }
 
 void fr_dict_attr_debug(fr_dict_attr_t const *da)

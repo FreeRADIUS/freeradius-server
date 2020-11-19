@@ -102,9 +102,9 @@ static inline int dict_attr_ext_copy_all(fr_dict_attr_t **da_out_p, fr_dict_attr
 /** Print extension debug information for attributes
  *
  */
-static inline void dict_attr_ext_debug(fr_dict_attr_t const *da)
+static inline void dict_attr_ext_debug(char const *name, fr_dict_attr_t const *da)
 {
-	fr_ext_debug(&fr_dict_attr_ext_def, da->name, da);
+	fr_ext_debug(&fr_dict_attr_ext_def, name, da);
 }
 /** @} */
 
