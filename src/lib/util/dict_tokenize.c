@@ -2547,6 +2547,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 		fr_dict_attr_t			*n;
 		fr_table_num_ordered_t const	*p = &fr_value_box_type_table[i];
 
+		if (p->value == FR_TYPE_VENDOR) continue;	/* These can't exist in the root */
+
 		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name.str);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
