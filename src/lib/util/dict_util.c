@@ -1148,26 +1148,26 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		if (old->parent != parent) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different parent (old %s, new %s)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different parent (old %s, new %s)",
 						name, old->parent->name, parent->name);
 			return -1;
 		}
 
 		if (old->attr != (unsigned int) attr) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different number (old %u, new %d)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different number (old %u, new %d)",
 						name, old->attr, attr);
 			return -1;
 		}
 
 		if (old->type != type) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different type (old %s, new %s)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different type (old %s, new %s)",
 						name,
 						fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
 						fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 			return -1;
 		}
 
-		fr_strerror_printf_push("Cannot add duplicate name %s with different flags",
+		fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different flags",
 					name);
 		return -1;
 	}
