@@ -2954,7 +2954,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(*p->dict), p->name);
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*p->dict), p->name);
 		if (!da) {
 			fr_strerror_printf("Attribute '%s' not found in \"%s\" dictionary", p->name,
 					   *p->dict ? (*p->dict)->root->name : "internal");
