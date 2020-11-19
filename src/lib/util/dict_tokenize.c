@@ -2382,6 +2382,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 					goto error;
 				}
 
+				if (dict_attr_add_to_namespace(ctx->dict, mutable, new) < 0) {
+					talloc_free(new);
+					goto error;
+				}
+
 				vendor_da = new;
 			}
 
