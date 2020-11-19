@@ -538,8 +538,6 @@ fr_dict_t const		*fr_dict_internal(void);
  *
  * @{
  */
-void			fr_dict_debug(fr_dict_t const *dict);
-
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
 					  fr_dict_attr_t const *parent);
 
