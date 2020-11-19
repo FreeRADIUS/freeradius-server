@@ -2989,50 +2989,6 @@ int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED voi
 	return 0;
 }
 
-static int dict_dump(void *ctx, fr_dict_attr_t const *da, int lvl)
-{
-	fr_dict_t const			*dict = (fr_dict_t const *) ctx;
-	char				flags[256];
-	fr_hash_iter_t			iter;
-	fr_dict_enum_t const		*enumv;
-	fr_dict_attr_ext_enumv_t 	*ext;
-
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
-
-	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
-	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
-
-	dict_attr_ext_debug(da);
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
-	if (!ext || !ext->name_by_value) return 0;
-
-	lvl++;
-	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
-	     enumv;
-	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
-		char			*enumv_str;
-
-		enumv_str = fr_asprintf(NULL, "[%02i] 0x%016" PRIxPTR "%*s%s -> %pV",
-					lvl, (unsigned long)da, lvl * 2, " ",
-					enumv->name, enumv->value);
-		printf("%s\n", enumv_str);
-		talloc_free(enumv_str);
-	}
-	lvl--;
-
-	return 0;
-}
-
-void fr_dict_dump(fr_dict_t const *dict)
-{
-	void *ctx;
-
-	memcpy(&ctx, &dict, sizeof(ctx)); /* const issues */
-
-	(void) fr_dict_walk(dict->root, ctx, dict_dump);
-}
-
 /** Callback to automatically load validation routines for dictionaries.
  *
  * @param[in] dl	the library we just loaded
@@ -3446,14 +3402,17 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	return NULL;
 }
 
-static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback, int depth)
+/** Call the specified callback for da and then for all its children
+ *
+ */
+static int dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx)
 {
 	size_t i, len;
 	fr_dict_attr_t const **children;
 
 	children = dict_attr_children(da);
 
-	if (fr_dict_attr_ref(da) || !children) return callback(ctx, da, depth);
+	if (fr_dict_attr_ref(da) || !children) return callback(da, uctx);
 
 	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
@@ -3463,7 +3422,7 @@ static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callbac
 		if (!children[i]) continue;
 
 		for (bin = children[i]; bin; bin = bin->next) {
-			ret = dict_walk(bin, ctx, callback, depth);
+			ret = dict_walk(bin, callback, uctx);
 			if (ret < 0) return ret;
 		}
 	}
@@ -3471,7 +3430,7 @@ static int dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callbac
 	return 0;
 }
 
-int fr_dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback)
+int fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx)
 {
-	return dict_walk(da, ctx, callback, 0);
+	return dict_walk(da, callback, uctx);
 }

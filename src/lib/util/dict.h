@@ -363,12 +363,19 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
 }
 /** @} */
 
+/** @name Debugging functions
+ *
+ * @{
+ */
+void			fr_dict_attr_debug(fr_dict_attr_t const *da);
+
+void			fr_dict_debug(fr_dict_t const *dict);
+/** @} */
+
 /** @name Attribute lineage
  *
  * @{
  */
-void			fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da);
-
 fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
 int			fr_dict_oid_component_legacy(unsigned int *out, char const **oid);
@@ -531,7 +538,7 @@ fr_dict_t const		*fr_dict_internal(void);
  *
  * @{
  */
-void			fr_dict_dump(fr_dict_t const *dict);
+void			fr_dict_debug(fr_dict_t const *dict);
 
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
 					  fr_dict_attr_t const *parent);
@@ -544,9 +551,9 @@ void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev);
 
-typedef int		(*fr_dict_walk_t)(void *ctx, fr_dict_attr_t const *da, int depth);
+typedef int		(*fr_dict_walk_t)(fr_dict_attr_t const *da, void *uctx);
 
-int			fr_dict_walk(fr_dict_attr_t const *da, void *ctx, fr_dict_walk_t callback);
+int			fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx);
 
 /** @} */
 

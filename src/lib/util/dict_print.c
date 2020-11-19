@@ -117,64 +117,58 @@ ssize_t fr_dict_print_attr_oid(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, 
 	return fr_sbuff_set(out, &our_out);
 }
 
-
 typedef struct {
-	fr_dict_t const *dict;
-	char buff[256];
-} fr_dict_print_t;
+	fr_dict_t const		*dict;
+	char			buff[256];
+	unsigned int		start_depth;
+} fr_dict_attr_debug_t;
 
-static int dict_print(void *ctx_in, fr_dict_attr_t const *da, int depth)
+static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 {
-	char const	*name;
-	fr_dict_print_t	*ctx = (fr_dict_print_t *) ctx_in;
+	fr_dict_attr_debug_t 		*our_uctx = uctx;
+	fr_hash_iter_t			iter;
+	fr_dict_enum_t const		*enumv;
+	fr_dict_attr_ext_enumv_t 	*ext;
 
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(ctx->buff, sizeof(ctx->buff)), ctx->dict, da->type, &da->flags);
+	fr_dict_snprint_flags(&FR_SBUFF_OUT(our_uctx->buff, sizeof(our_uctx->buff)),
+			      our_uctx->dict, da->type, &da->flags);
 
-	switch (da->type) {
-	case FR_TYPE_VSA:
-		name = "VSA";
-		break;
+	FR_FAULT_LOG("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s",
+		     da->depth,
+		     (unsigned long)da,
+		     (da->depth - our_uctx->start_depth) * 4, "",
+		     da->name,
+		     da->attr,
+		     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
+		     our_uctx->buff);
 
-	case FR_TYPE_TLV:
-		name = "TLV";
-		break;
+	dict_attr_ext_debug(da);	/* Print all the extension debug info */
 
-	case FR_TYPE_VENDOR:
-		name = "VENDOR";
-		break;
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext || !ext->name_by_value) return 0;
 
-	case FR_TYPE_STRUCT:
-		name = "STRUCT";
-		break;
-
-	case FR_TYPE_GROUP:
-		name = "GROUP";
-		break;
-
-	default:
-		if (da->parent && da->parent->type == FR_TYPE_STRUCT) {
-			name = "MEMBER";
-			break;
-		}
-
-		name = "ATTRIBUTE";
-		break;
+	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
+	     enumv;
+	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
+		FR_FAULT_LOG("[%02i] 0x%016" PRIxPTR "%*s%s -> %pV",
+			     da->depth,
+			     (unsigned long)da,
+			     ((da->depth + 1) - our_uctx->start_depth) * 4, "",
+			     enumv->name,
+			     enumv->value);
 	}
-
-	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
-	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
-	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
-	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), ctx->buff);
 
 	return 0;
 }
 
-
-void fr_dict_print(fr_dict_t const *dict, fr_dict_attr_t const *da)
+void fr_dict_attr_debug(fr_dict_attr_t const *da)
 {
-	fr_dict_print_t ctx;
+	fr_dict_attr_debug_t uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
 
-	ctx.dict = dict;
+	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
+}
 
-	(void) fr_dict_walk(da, &ctx, dict_print);
+void fr_dict_debug(fr_dict_t const *dict)
+{
+	fr_dict_attr_debug(fr_dict_root(dict));
 }

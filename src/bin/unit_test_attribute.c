@@ -929,7 +929,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Dump the dictionary if we're in super debug mode
 	 */
-	if (fr_debug_lvl > 5) fr_dict_dump(cc->tmpl_rules.dict_def);
+	if (fr_debug_lvl > 5) fr_dict_debug(cc->tmpl_rules.dict_def);
 
 	RETURN_OK(0);
 }
@@ -1495,7 +1495,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_file_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_dump(cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict);
+	fr_dict_debug(cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict);
 
 	/*
 	 *	Don't modify the contents of the data buffer
