@@ -1240,6 +1240,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  * @param[in] ctx		to allocate new attribute reference in.
  * @param[out] err		Parse error.
  * @param[in,out] vpt		to append this reference to.
+ * @param[in] parent		Last known parent.
  * @param[in] name		to parse.
  * @param[in] rules		see tmpl_attr_afrom_attr_substr.
  * @param[in] depth		How deep we are.  Used to check for maximum nesting level.
@@ -1248,7 +1249,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  *	- 0 on success.
  */
 static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-							 tmpl_t *vpt,
+							 tmpl_t *vpt, fr_dict_attr_t const *parent,
 							 fr_sbuff_t *name, tmpl_rules_t const *rules,
 							 unsigned int depth)
 {
@@ -1304,7 +1305,8 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 	*ar = (tmpl_attr_t){
 		.ar_num = NUM_ANY,
 		.ar_type = TMPL_ATTR_TYPE_UNRESOLVED,
-		.ar_unresolved = unresolved
+		.ar_unresolved = unresolved,
+		.ar_unresolved_parent = parent
 	};
 
 	if (tmpl_attr_parse_filter(err, ar, name) < 0) goto error;
@@ -1319,7 +1321,7 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 	 *	future OID components are also unresolved.
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth + 1);
+		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, name, rules, depth + 1);
 		if (ret < 0) {
 			fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			return -1;
@@ -1539,7 +1541,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, name, rules, depth);
+	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, name, rules, depth);
 
 check_attr:
 	/*
@@ -1855,11 +1857,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
 	vpt->data.attribute.ref_prefix = ref_prefix;
-
-	/*
-	 *	For backwards compatibility strip off "Attr-"
-	 */
-	(void)fr_sbuff_adv_past_strcase_literal(&our_name, "Attr-");
 
 	/*
 	 *	The "raw." prefix marks up the leaf attribute
@@ -3117,8 +3114,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		char		buffer[256];
 		fr_sbuff_t	name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
-		fr_sbuff_in_strcpy_literal(&name, "raw.");
-		fr_dict_attr_oid_print(&name, NULL, ref->da);
+		fr_sbuff_in_sprintf(&name, "%u", ref->da->attr);
 
 		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
@@ -3349,6 +3345,8 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 {
 	tmpl_request_t		*rr = NULL;
 	tmpl_attr_t		*ar = NULL;
+	fr_dict_attr_t const	*parent = NULL;
+	fr_da_stack_t		stack;
 	char			printed_rr = false;
 	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
 
@@ -3424,37 +3422,58 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			if (ar->ar_unresolved_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 			break;
 		}
-		ar = NULL;
+
+		/*
+		 *	Get the correct root
+		 */
+		ar = fr_dlist_head(&vpt->data.attribute.ar);
+		switch (ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			fr_proto_da_stack_build(&stack, ar->ar_da);
+			parent = stack.da[0];
+			break;
+
+		case TMPL_ATTR_TYPE_UNRESOLVED:
+			fr_proto_da_stack_build(&stack, ar->ar_unresolved_parent);
+			parent = stack.da[0];
+			break;
+		}
 	}
 
 	/*
 	 *	Print attribute identifiers
 	 */
+	ar = NULL;
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		if (!tmpl_is_list(vpt)) switch(ar->type) {
-		/*
-		 *	For normal attributes we use the name
-		 */
-		case TMPL_ATTR_TYPE_NORMAL:
-			if (ar->ar_da->flags.is_raw) goto do_raw;
-			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, ar->ar_da->name, ar->ar_da->name_len);
-			break;
+		fr_dict_attr_t const *ref = NULL;
 
-		/*
-		 *	For unknown attributes we use the number
-		 */
+		if (!tmpl_is_list(vpt)) switch(ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
 		case TMPL_ATTR_TYPE_UNKNOWN:
-		do_raw:
+		{
+			unsigned int i;
+
+			fr_proto_da_stack_build_partial(&stack, parent, ar->ar_da);
+
 			/*
-			 *	We need some context for unknown attributes
-			 *	so print the first known attribute.
+			 *	Print from our parent depth to the AR we're processing
+			 *
+			 *	For refs we skip the attribute pointed to be the ref
+			 *	and just print its children.
 			 */
-			if ((fr_dlist_head(&vpt->data.attribute.ar) == ar) &&
-			    ar->da->parent && !ar->da->parent->flags.is_root) {
-				FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, ar->da->parent->name, ar->da->parent->name_len);
-				FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+			for (i = (parent->depth - 1) + (ref != NULL); i < ar->ar_da->depth; i++) {
+				FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
+
+				/*
+				 *	Print intermediary separators
+				 *	if necessary.
+				 */
+				if ((i + 1) < ar->ar_da->depth) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 			}
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", ar->ar_da->attr);
+			ref = fr_dict_attr_ref(ar->ar_da);
+			if (ref) parent = ref;	/* Follow refs */
+		}
 			break;
 
 		/*
@@ -3462,8 +3481,26 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 		 *	got when parsing the tmpl.
 		 */
 		case TMPL_ATTR_TYPE_UNRESOLVED:
+		{
+			unsigned int i;
+
+			/*
+			 *	This is the first unresolved component in a potential
+			 *	chain of unresolved components.  Print the path up to
+			 *	the last known parent.
+			 */
+			if (ar->ar_unresolved_parent) {
+				for (i = (parent->depth - 1); i < ar->ar_unresolved_parent->depth; i++) {
+					FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
+					FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+				}
+			}
+			/*
+			 *	Then print the unresolved component
+			 */
 			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(&our_out, ar->ar_unresolved);
 			break;
+		}
 		}
 
 		/*

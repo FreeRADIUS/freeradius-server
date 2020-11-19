@@ -354,6 +354,7 @@ typedef struct {
 		struct {
 			char		* _CONST name;		//!< Undefined reference type.
 			bool		_CONST is_raw;		//!< User wants the leaf to be raw.
+			fr_dict_attr_t const *parent;		//!< Parent of the unresolved attribute
 		} unresolved;
 	};
 
@@ -395,6 +396,7 @@ typedef struct {
 #define ar_unknown			unknown.da
 #define ar_unresolved			unresolved.name
 #define ar_unresolved_raw		unresolved.is_raw
+#define ar_unresolved_parent		unresolved.parent
 #define ar_num				num
 /** @} */
 
