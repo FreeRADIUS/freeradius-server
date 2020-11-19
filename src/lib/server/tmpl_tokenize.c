@@ -3462,7 +3462,9 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			 *	For refs we skip the attribute pointed to be the ref
 			 *	and just print its children.
 			 */
-			for (i = (parent->depth - 1) + (ref != NULL); i < ar->ar_da->depth; i++) {
+			for (i = (parent->depth - 1) + (ar != fr_dlist_head(&vpt->data.attribute.ar));
+			     i < ar->ar_da->depth;
+			     i++) {
 				FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
 
 				/*
@@ -3471,7 +3473,9 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 				 */
 				if ((i + 1) < ar->ar_da->depth) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 			}
-			ref = fr_dict_attr_ref(ar->ar_da);
+
+			parent = ar->ar_da;
+			ref = fr_dict_attr_ref(parent);
 			if (ref) parent = ref;	/* Follow refs */
 		}
 			break;

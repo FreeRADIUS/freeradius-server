@@ -39,4 +39,4 @@ match ERROR offset 46: Invalid attribute name
 
 # Trailing dots (marker should point to the bad parent)
 condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id[0].
-match ERROR offset 30: Parent type of nested attribute must be of "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
+match ERROR offset 46: Parent type of nested attribute must be of "struct", "tlv", "vendor", "vsa" or "group", got "uint8"

@@ -602,7 +602,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	}
 
 	if (!fr_hash_table_insert(namespace, new)) {
-		fr_strerror_printf("Internal error storing attribute");
+		fr_strerror_printf("Attribute '%s' conflicts with another attribute in the same namespace", new->name);
 		goto error;
 	}
 
@@ -1040,7 +1040,10 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	caching the last attribute for a VALUE.
 	 */
 	if (!ctx->value_attr || (strcasecmp(argv[0], ctx->value_attr->name) != 0)) {
-		ctx->value_attr = fr_dict_attr_unconst(fr_dict_attr_by_oid(NULL, parent, argv[0]));
+		fr_dict_attr_t const *tmp;
+
+		if (!(tmp = fr_dict_attr_by_oid(NULL, parent, argv[0]))) goto fixup;
+		ctx->value_attr = fr_dict_attr_unconst(tmp);
 	}
 	da = ctx->value_attr;
 
@@ -1052,6 +1055,8 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 */
 	if (!da) {
 		dict_enum_fixup_t *fixup;
+
+	fixup:
 
 		if (!fr_cond_assert_msg(ctx->fixup_pool, "fixup pool context invalid")) return -1;
 
