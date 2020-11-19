@@ -43,12 +43,12 @@ fr_radius_packet_t *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 	fr_radius_packet_t	*rp;
 
 	rp = talloc_zero(ctx, fr_radius_packet_t);
-	fr_pair_list_init(&rp->vps);
 	if (!rp) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	rp->id = -1;
+	fr_pair_list_init(&rp->vps);
 
 	if (new_vector) {
 		fr_rand_buffer(rp->vector, sizeof(rp->vector));
