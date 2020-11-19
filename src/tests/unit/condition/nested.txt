@@ -1,4 +1,3 @@
-
 #
 #  Tests for parsing nested expressions
 #
@@ -8,43 +7,36 @@
 proto-dictionary radius
 
 # A nested attribute with partial path
-condition &WiMAX-Uplink-QOS-Id
-match &WiMAX-Uplink-QOS-Id
+condition &Vendor-Specific.WiMAX.Uplink-QOS-Id
+match &Vendor-Specific.WiMAX.Uplink-QOS-Id
 
 # A nested attribute with a full path (and no filters)
-condition &WiMAX-Packet-Flow-Descriptor.WiMAX-Uplink-QOS-Id
-match &WiMAX-Uplink-QOS-Id
+condition &Vendor-Specific.WiMAX.Uplink-QOS-Id
+match &Vendor-Specific.WiMAX.Uplink-QOS-Id
 
 # A nested attribute with an instance selector
-condition &WiMAX-Packet-Flow-Descriptor[5].WiMAX-Uplink-QOS-Id
-match &WiMAX-Packet-Flow-Descriptor[5].WiMAX-Uplink-QOS-Id
+condition &Vendor-Specific.Packet-Flow-Descriptor[5].Uplink-QOS-Id
+match &Vendor-Specific.Packet-Flow-Descriptor[5].Uplink-QOS-Id
 
 # A nested attribute with an instance selector at both levels
-condition &WiMAX-Packet-Flow-Descriptor[*].WiMAX-Uplink-QOS-Id[0]
-match &WiMAX-Packet-Flow-Descriptor[*].WiMAX-Uplink-QOS-Id[0]
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*].Uplink-QOS-Id[0]
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*].Uplink-QOS-Id[0]
 
 # Unparsed child - We won't know this is an error until pass2
-condition &Unparsed-Child.WiMAX-Uplink-QOS-Id[0]
-match &Unparsed-Child.WiMAX-Uplink-QOS-Id[0]
+condition &Unparsed-Child.Uplink-QOS-Id[0]
+match &Unparsed-Child.Uplink-QOS-Id[0]
 
 #
 #  Errors
 #
 # Malformed filter
-condition &WiMAX-Packet-Flow-Descriptor[*.WiMAX-Uplink-QOS-Id[0]
-match ERROR offset 31: No closing ']' for array index
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*.Uplink-QOS-Id[0]
+match ERROR offset 47: No closing ']' for array index
 
 # Too many dots
-condition &WiMAX-Packet-Flow-Descriptor..WiMAX-Uplink-QOS-Id[0]
-match ERROR offset 30: Invalid attribute name
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor..Uplink-QOS-Id[0]
+match ERROR offset 46: Invalid attribute name
 
 # Trailing dots (marker should point to the bad parent)
-condition &WiMAX-Packet-Flow-Descriptor.WiMAX-Uplink-QOS-Id[0].
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id[0].
 match ERROR offset 30: Parent type of nested attribute must be of "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
-
-# Not a child
-#condition &WiMAX-Packet-Flow-Descriptor.User-Name
-#match ERROR <doesn't fail correctly>
-
-#condition &WiMAX-Packet-Flow-Descriptor.User-Na
-#match ERROR <should print the complete hierarchy>
