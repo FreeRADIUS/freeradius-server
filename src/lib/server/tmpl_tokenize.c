@@ -137,8 +137,8 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     ar->da->attr
 		);
 		if (ar->da->parent) FR_FAULT_LOG("\t    parent     : %s", ar->da->parent->name);
-		FR_FAULT_LOG("\t    is_raw     : %pV", fr_box_bool(ar->da->flags.is_raw));
-		FR_FAULT_LOG("\t    is_unknown : %pV", fr_box_bool(ar->da->flags.is_unknown));
+		FR_FAULT_LOG("\t    is_raw     : %s", ar->da->flags.is_raw ? "yes" : "no");
+		FR_FAULT_LOG("\t    is_unknown : %s", ar->da->flags.is_unknown ? "yes" : "no");
 		break;
 
 
