@@ -999,6 +999,19 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 	}
 
 	/*
+	 *	Sanity check to stop children of vendors ending
+	 *	up in the Vendor-Specific or root namespace.
+	 */
+	if ((fr_dict_vendor_num_by_da(da) != 0) && (da->type != FR_TYPE_VENDOR) &&
+	    ((parent->type == FR_TYPE_VSA) || parent->flags.is_root)) {
+		fr_strerror_printf("Cannot insert attribute '%s' of type %s into %s",
+				   da->name,
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+				   parent->name);
+		goto error;
+	}
+
+	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
 	if (!fr_hash_table_insert(namespace, da)) {
