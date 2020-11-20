@@ -11,17 +11,17 @@
 proto arp
 proto-dictionary arp
 
-encode-proto Hardware-Format = Ethernet, Protocol-Format = IPv4, Hardware-Address-Length = 6, Protocol-Address-Length = 4, ARP-Operation = Request, Sender-Hardware-Address = 00:01:02:03:04:05, Sender-Protocol-Address = 192.0.2.1, Target-Hardware-Address = 00:aa:bb:cc:dd:ee, Target-Protocol-Address = 192.0.2.128
+encode-proto ARP-Packet.Hardware-Format = Ethernet, ARP-Packet.Protocol-Format = IPv4, ARP-Packet.Hardware-Address-Length = 6, ARP-PAcket.Protocol-Address-Length = 4, ARP-Packet.Packet-Type = Request, ARP-Packet.Sender-Hardware-Address = 00:01:02:03:04:05, ARP-Packet.Sender-Protocol-Address = 192.0.2.1, ARP-Packet.Target-Hardware-Address = 00:aa:bb:cc:dd:ee, ARP-Packet.Target-Protocol-Address = 192.0.2.128
 #     ----- ----- -- -- ----- ----------------- __________  ----------------- ___________
 match 00 01 08 00 06 04 00 01 00 01 02 03 04 05 c0 00 02 01 00 aa bb cc dd ee c0 00 02 80
 
 decode-proto -
-match Hardware-Format = Ethernet, Protocol-Format = IPv4, Hardware-Address-Length = 6, Protocol-Address-Length = 4, ARP-Operation = Request, Sender-Hardware-Address = 00:01:02:03:04:05, Sender-Protocol-Address = 192.0.2.1, Target-Hardware-Address = 00:aa:bb:cc:dd:ee, Target-Protocol-Address = 192.0.2.128
+match Hardware-Format = Ethernet, Protocol-Format = IPv4, Hardware-Address-Length = 6, Protocol-Address-Length = 4, Packet-Type = Request, Sender-Hardware-Address = 00:01:02:03:04:05, Sender-Protocol-Address = 192.0.2.1, Target-Hardware-Address = 00:aa:bb:cc:dd:ee, Target-Protocol-Address = 192.0.2.128
 
 #
 #  And with missing fields that we don't care about.  This results in the same hex string as above.
 #
-encode-proto ARP-Operation = Request, Sender-Hardware-Address = 00:01:02:03:04:05, Sender-Protocol-Address = 192.0.2.1, Target-Hardware-Address = 00:aa:bb:cc:dd:ee, Target-Protocol-Address = 192.0.2.128
+encode-proto ARP-Packet.Packet-Type = Request, ARP-Packet.Sender-Hardware-Address = 00:01:02:03:04:05, ARP-Packet.Sender-Protocol-Address = 192.0.2.1, ARP-Packet.Target-Hardware-Address = 00:aa:bb:cc:dd:ee, ARP-Packet.Target-Protocol-Address = 192.0.2.128
 #     ----- ----- -- -- ----- ----------------- __________  ----------------- ___________
 match 00 01 08 00 06 04 00 01 00 01 02 03 04 05 c0 00 02 01 00 aa bb cc dd ee c0 00 02 80
 

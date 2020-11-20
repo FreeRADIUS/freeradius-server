@@ -38,11 +38,11 @@ fr_dict_autoload_t proto_arp_process_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_arp_operation;
+static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_arp_process_dict_attr[];
 fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
-	{ .out = &attr_arp_operation, .name = "ARP-Operation", .type = FR_TYPE_UINT16, .dict = &dict_arp},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT16, .dict = &dict_arp},
 	{ NULL }
 };
 
@@ -55,13 +55,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	fr_pair_t *vp;
 
 	static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
-		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_OPERATION_VALUE_REPLY,
-		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_OPERATION_VALUE_REVERSE_REPLY,
+		[FR_PACKET_TYPE_VALUE_REQUEST]	= FR_PACKET_TYPE_VALUE_REPLY,
+		[FR_PACKET_TYPE_VALUE_REVERSE_REQUEST]  = FR_PACKET_TYPE_VALUE_REVERSE_REPLY,
 	};
 
 	static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
-		[FR_ARP_OPERATION_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
-		[FR_ARP_OPERATION_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
+		[FR_PACKET_TYPE_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
+		[FR_PACKET_TYPE_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
 	};
 
 	REQUEST_VERIFY(request);
@@ -81,9 +81,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		request->component = "arp";
 
-		dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint16(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint16(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request.ARP-Operation");
+			REDEBUG("Failed to find value for &request.Packet-Type");
 			RETURN_MODULE_FAIL;
 		}
 
@@ -116,7 +116,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		 *	Allow the admin to explicitly set the reply
 		 *	type.
 		 */
-		vp = fr_pair_find_by_da(&request->reply_pairs, attr_arp_operation);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) {
 			request->reply->code = vp->vp_uint8;
 		} else switch (rcode) {
@@ -183,7 +183,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_ARP_CODE_DO_NOT_RESPOND) {
-				dv = fr_dict_enum_by_value(attr_arp_operation, fr_box_uint8(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint8(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->name);
 
 				request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;

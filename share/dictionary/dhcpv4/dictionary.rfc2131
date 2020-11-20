@@ -149,18 +149,15 @@ ATTRIBUTE	DHCP-Rapid-Commit			80	octets
 # Fully Qualified Domain Name
 ATTRIBUTE	DHCP-Client-FQDN			81	string
 # Relay Agent Information
-ATTRIBUTE	DHCP-Relay-Agent-Information		82	tlv
+ATTRIBUTE	Relay-Agent-Information			82	tlv
 
-ATTRIBUTE	DHCP-Agent-Circuit-Id			.1	octets
-ATTRIBUTE	DHCP-Agent-Remote-Id			.2	octets
-
-ATTRIBUTE	DHCP-Relay-Circuit-Id			.1	octets
-ATTRIBUTE	DHCP-Relay-Remote-Id			.2	octets
+ATTRIBUTE	Circuit-Id				.1	octets
+ATTRIBUTE	Remote-Id				.2	octets
 
 # 3 is reserved and shouldn't be used for anything
-ATTRIBUTE	DHCP-Docsis-Device-Class		82.4	integer
-ATTRIBUTE	DHCP-Relay-Link-Selection		82.5	ipaddr
-ATTRIBUTE	DHCP-Subscriber-Id			82.6	string
+ATTRIBUTE	Docsis-Device-Class			.4	integer
+ATTRIBUTE	Relay-Link-Selection			.5	ipaddr
+ATTRIBUTE	Subscriber-Id				.6	string
 
 # AGH!  RADIUS inside of DHCP!
 ATTRIBUTE	DHCP-RADIUS-Attributes			82.7	octets
@@ -242,9 +239,9 @@ ATTRIBUTE	DHCP-GeoConf-Option			123	octets
 # String name that defines the vendor space used for the TLV's
 # in option 125.
 #
-ATTRIBUTE	DHCP-V-I-Vendor-Class			124	octets
+ATTRIBUTE	V-I-Vendor-Class			124	octets
 # Vendor-Specific
-ATTRIBUTE	DHCP-V-I-Vendor-Specific		125	vsa
+ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 
 ATTRIBUTE	DHCP-Etherboot				128	ether
 # (for IP Phone software load)

@@ -7,6 +7,6 @@ VENDOR		Cisco				9
 
 BEGIN-VENDOR	Cisco
 
-ATTRIBUTE	Cisco-Indirect-Image-Filename		5	string
+ATTRIBUTE	Indirect-Image-Filename			5	string
 
 END-VENDOR	Cisco

@@ -7,11 +7,11 @@ proto-dictionary dhcpv4
 #
 #  DHCP TLV types
 #
-encode-pair DHCP-Relay-Circuit-Id = 0xabcdef, DHCP-Relay-Remote-Id = 0x010203040506
+encode-pair Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.Remote-Id = 0x010203040506
 match 52 0d 01 03 ab cd ef 02 06 01 02 03 04 05 06
 
 decode-pair -
-match DHCP-Relay-Circuit-Id = 0xabcdef, DHCP-Relay-Remote-Id = 0x010203040506
+match Circuit-Id = 0xabcdef, Remote-Id = 0x010203040506
 
 encode-pair DHCP-Subnet-Mask = 255.255.0.0
 match 01 04 ff ff 00 00
@@ -35,12 +35,12 @@ match DHCP-ANDSF-IPv6-Address = fe80::1, DHCP-ANDSF-IPv6-Address = fe80::2, DHCP
 #  A long one... with a weird DHCP-specific vendor ID.
 #
 decode-pair 3501013d0701001ceaadac1e37070103060f2c2e2f3c094d5346545f495054565232011c4c41424f4c54322065746820312f312f30312f30312f31302f312f3209120000197f0d050b4c4142373336304f4c5432
-match DHCP-Message-Type = DHCP-Discover, DHCP-Client-Identifier = 0x01001ceaadac1e, DHCP-Parameter-Request-List = DHCP-Subnet-Mask, DHCP-Parameter-Request-List = DHCP-Router-Address, DHCP-Parameter-Request-List = DHCP-Domain-Name-Server, DHCP-Parameter-Request-List = DHCP-Domain-Name, DHCP-Parameter-Request-List = DHCP-NETBIOS-Name-Servers, DHCP-Parameter-Request-List = DHCP-NETBIOS-Node-Type, DHCP-Parameter-Request-List = DHCP-NETBIOS, DHCP-Vendor-Class-Identifier = 0x4d5346545f49505456, DHCP-Relay-Circuit-Id = 0x4c41424f4c54322065746820312f312f30312f30312f31302f312f32, DHCP-Vendor-Specific-Information = 0x0000197f0d050b4c4142373336304f4c5432
+match DHCP-Message-Type = DHCP-Discover, DHCP-Client-Identifier = 0x01001ceaadac1e, DHCP-Parameter-Request-List = DHCP-Subnet-Mask, DHCP-Parameter-Request-List = DHCP-Router-Address, DHCP-Parameter-Request-List = DHCP-Domain-Name-Server, DHCP-Parameter-Request-List = DHCP-Domain-Name, DHCP-Parameter-Request-List = DHCP-NETBIOS-Name-Servers, DHCP-Parameter-Request-List = DHCP-NETBIOS-Node-Type, DHCP-Parameter-Request-List = DHCP-NETBIOS, DHCP-Vendor-Class-Identifier = 0x4d5346545f49505456, Circuit-Id = 0x4c41424f4c54322065746820312f312f30312f30312f31302f312f32, DHCP-Vendor-Specific-Information = 0x0000197f0d050b4c4142373336304f4c5432
 
 #
 #  Two sub-options 82, that cannot fit in a single option.
 #
-encode-pair DHCP-Agent-Circuit-Id = 'oh hai this is an agent, how are you doing DHCP server? this is a really long agent circuit id, which will occupy most of the maximum size for an option so that the next sub option will not fit and a new option will be needed', DHCP-Agent-Remote-Id = 'trying to add a sub option agent remote id'
+encode-pair Relay-Agent-Information.Circuit-Id = 'oh hai this is an agent, how are you doing DHCP server? this is a really long agent circuit id, which will occupy most of the maximum size for an option so that the next sub option will not fit and a new option will be needed', Relay-Agent-Information.Remote-Id = 'trying to add a sub option agent remote id'
 match 52 e3 01 e1 6f 68 20 68 61 69 20 74 68 69 73 20 69 73 20 61 6e 20 61 67 65 6e 74 2c 20 68 6f 77 20 61 72 65 20 79 6f 75 20 64 6f 69 6e 67 20 44 48 43 50 20 73 65 72 76 65 72 3f 20 74 68 69 73 20 69 73 20 61 20 72 65 61 6c 6c 79 20 6c 6f 6e 67 20 61 67 65 6e 74 20 63 69 72 63 75 69 74 20 69 64 2c 20 77 68 69 63 68 20 77 69 6c 6c 20 6f 63 63 75 70 79 20 6d 6f 73 74 20 6f 66 20 74 68 65 20 6d 61 78 69 6d 75 6d 20 73 69 7a 65 20 66 6f 72 20 61 6e 20 6f 70 74 69 6f 6e 20 73 6f 20 74 68 61 74 20 74 68 65 20 6e 65 78 74 20 73 75 62 20 6f 70 74 69 6f 6e 20 77 69 6c 6c 20 6e 6f 74 20 66 69 74 20 61 6e 64 20 61 20 6e 65 77 20 6f 70 74 69 6f 6e 20 77 69 6c 6c 20 62 65 20 6e 65 65 64 65 64 52 2c 02 2a 74 72 79 69 6e 67 20 74 6f 20 61 64 64 20 61 20 73 75 62 20 6f 70 74 69 6f 6e 20 61 67 65 6e 74 20 72 65 6d 6f 74 65 20 69 64
 
 #  An empty option (Rapid Commit)
@@ -70,20 +70,22 @@ match DHCP-Domain-Name = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #
 #  3 isn't used for anything, and should just be treated as an unknown attribute
 #
+
+# These next two tests will be broken until we start printing qualified attribute names
 decode-pair 52 07 01 03 ab cd ef 03 00
-match DHCP-Relay-Circuit-Id = 0xabcdef, Attr-82.3 = 0x
+match Circuit-Id = 0xabcdef, 3 = 0x
 
 decode-pair 52 08 01 03 ab cd ef 03 01 ad
-match DHCP-Relay-Circuit-Id = 0xabcdef, Attr-82.3 = 0xad
+match Circuit-Id = 0xabcdef, 3 = 0xad
 
 #
 #  And option 82 with full suboptions
 #
-encode-pair DHCP-Agent-Circuit-Id = "123456789a123456789b123456789c123456789d123456789e123456789f123456789g123456789h123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789axyz"
+encode-pair Relay-Agent-Information.Circuit-Id = "123456789a123456789b123456789c123456789d123456789e123456789f123456789g123456789h123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789a123456789axyz"
 match 52 ff 01 fd 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 62 31 32 33 34 35 36 37 38 39 63 31 32 33 34 35 36 37 38 39 64 31 32 33 34 35 36 37 38 39 65 31 32 33 34 35 36 37 38 39 66 31 32 33 34 35 36 37 38 39 67 31 32 33 34 35 36 37 38 39 68 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 78 79 7a
 
 decode-pair -
-match DHCP-Relay-Circuit-Id = 0x3132333435363738396131323334353637383962313233343536373839633132333435363738396431323334353637383965313233343536373839663132333435363738396731323334353637383968313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396178797a
+match Circuit-Id = 0x3132333435363738396131323334353637383962313233343536373839633132333435363738396431323334353637383965313233343536373839663132333435363738396731323334353637383968313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396131323334353637383961313233343536373839613132333435363738396178797a
 
 count
 match 40
