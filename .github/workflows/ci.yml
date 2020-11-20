@@ -59,10 +59,10 @@ jobs:
           - ubuntu-18.04
 #          - ubuntu-20.04
         env:
-          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
-          - { CC: gcc, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
+          - { CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
+          - { CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
           - { CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
@@ -243,12 +243,65 @@ jobs:
         $CC --version
         make --version
 
-    - name: Build
+    - name: Minimal configure
+      run: ./configure -C --without-modules
+      if: ${{ matrix.env.DO_BUILD == 'no' }}
+
+    - name: Full configure
       run: |
-        export PATH=$(echo "$PATH" | sed -e 's#:/home/linuxbrew/[^:]\+##g')
-        ./scripts/ci/build.sh
-        mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e "CREATE USER radius@'%' IDENTIFIED BY 'radpass'"
-        mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e "GRANT ALL on radius.* TO radius@'%'"
+        if $CC -v 2>&1 | grep clang > /dev/null; then
+            echo "Enabling llvm sanitizers"
+            enable_llvm_sanitizers="--enable-llvm-address-sanitizer --enable-llvm-leak-sanitizer --enable-llvm-undefined-behaviour-sanitizer"
+        else
+            enable_llvm_sanitizers=""
+        fi
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C \
+            --enable-werror \
+            $enable_llvm_sanitizers \
+            --prefix=$HOME/freeradius \
+            --with-shared-libs=$LIBS_SHARED \
+            --with-threads=$LIBS_OPTIONAL \
+            --with-udpfromto=$LIBS_OPTIONAL \
+            --with-openssl=$LIBS_OPTIONAL \
+            --with-pcre=$LIBS_OPTIONAL \
+            --with-rlm-python-bin=/usr/bin/python2.7 \
+        || cat ./config.log
+        echo "Contents of src/include/autoconf.h"
+        cat "./src/include/autoconf.h"
+      if: ${{ matrix.env.DO_BUILD != 'no' }}
+
+    - name: Make
+      run: |
+        make -j `nproc`
+      if: ${{ matrix.env.DO_BUILD != 'no' }}
+
+    - name: Clang Static Analyzer
+      run: |
+        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
+      if: ${{ matrix.env.DO_BUILD != 'no' && matrix.env.CC == 'clang' }}
+
+    - name: "Clang Static Analyzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-scan.tgz
+        path: build/plist/**/*.html
+      if: ${{ matrix.env.DO_BUILD != 'no' && matrix.env.CC == 'clang' && failure() }}
+
+    - name: Setup fixtures
+      run: |
+        for i in \
+            postgresql-setup.sh \
+            imap-setup.sh \
+            exim-setup.sh \
+            mysql-setup.sh \
+            ldap-setup.sh \
+            redis-setup.sh; do
+
+            script="./scripts/ci/$i"
+            echo "Calling $i"
+            $script
+        done
+      if: ${{ matrix.env.DO_BUILD != 'no' }}
 
     - name: Test
       run: make ci-test
