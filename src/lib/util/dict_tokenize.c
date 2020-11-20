@@ -553,6 +553,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 {
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t 		*new;
+	fr_dict_attr_t const	*parent = ctx->stack[ctx->stack_depth].da;
 	fr_hash_table_t		*namespace;
 
 	if (argc != 2) {
@@ -568,16 +569,17 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		return -1;
 	}
 
-	da = dict_attr_by_name(NULL, fr_dict_root(ctx->dict), argv[0]);
+	da = dict_attr_by_name(NULL, parent, argv[0]);
 	if (da) {
-		fr_strerror_printf("Attribute %s already exists", argv[0]);
+		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
+				   argv[0], parent->name);
 		return -1;
 	}
 
 	/*
 	 *	The <src> can be a name.
 	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), argv[1]);
+	da = fr_dict_attr_by_oid(NULL, parent, argv[1]);
 	if (!da) {
 		fr_strerror_printf("Attribute %s does not exist", argv[1]);
 		return -1;
@@ -590,19 +592,19 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	second one is prioritized for printing.  For ALIASes,
 	 *	we want the first one to be prioritized.
 	 */
-	new = dict_attr_alloc(ctx->dict->pool, da->parent, argv[0], da->attr, da->type, &da->flags);
+	new = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type, &da->flags);
 	if (unlikely(!new)) return -1;
 
-	namespace = dict_attr_namespace(da->parent);
+	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
-		fr_strerror_printf("Attribute '%s' does not contain a namespace", da->parent->name);
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
 	error:
 		talloc_const_free(da);
 		return -1;
 	}
 
 	if (!fr_hash_table_insert(namespace, new)) {
-		fr_strerror_printf("Attribute '%s' conflicts with another attribute in the same namespace", new->name);
+		fr_strerror_printf("Internal error storing attribute");
 		goto error;
 	}
 
