@@ -1161,8 +1161,9 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
  */
 static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
+	int				i;
 	fr_dict_attr_t const   		*da;
-	fr_dict_attr_t			*parent;
+	fr_dict_attr_t const	       	*parent;
 	fr_value_box_t			value;
 	fr_type_t			type;
 	unsigned int			attr;
@@ -1175,34 +1176,30 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
+	fr_assert(ctx->stack_depth > 0);
+
 	/*
 	 *	Unwind the stack until we find a parent which has a child named "key_attr"
 	 */
-	if (ctx->stack_depth > 1) {
-		int i;
-
-		for (i = ctx->stack_depth; i > 0; i--) {
-			parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
-			if (parent) break;
+	for (i = ctx->stack_depth; i > 0; i--) {
+		parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
+		if (parent) {
+			ctx->stack_depth = i;
+			break;
 		}
+	}
 
-		if (!parent) {
-			fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
-					   key_attr);
-			return -1;
-		}
+	/*
+	 *	Else maybe it's a fully qualified name?
+	 */
+	if (!parent) {
+		parent = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da->dict->root, key_attr);
+	}
 
-		ctx->stack_depth = i;
-
-	} else {
-		/*
-		 *	This SHOULD be the "key" field.
-		 */
-		parent = dict_attr_by_name(NULL, ctx->stack[0].da, key_attr);
-		if (!parent) {
-			fr_strerror_printf_push("Failed resolving 'key' attribute");
-			return -1;
-		}
+	if (!parent) {
+		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
+				   key_attr);
+		return -1;
 	}
 
 	if (!da_is_key_field(parent)) {
@@ -1266,7 +1263,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Add the VALUE to the parent attribute, and ensure that
 	 *	the VALUE also contains a pointer to the child struct.
 	 */
-	if (dict_attr_enum_add_name(parent, name, &value, false, true, da) < 0) {
+	if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
 		fr_value_box_clear(&value);
 		return -1;
 	}
