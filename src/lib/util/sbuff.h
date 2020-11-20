@@ -1166,7 +1166,7 @@ size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c);
  *
  * @param[out] _slen	Where to write the return value.
  * @param[in] _sbuff	to search in.
- * @param[in] _table	to search for number in.w
+ * @param[in] _table	to search for number in.
  * @param[in] _number	to search for.
  * @param[in] _def	Default string value.
  */
