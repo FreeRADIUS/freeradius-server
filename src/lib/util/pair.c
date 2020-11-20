@@ -1741,7 +1741,7 @@ int fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted)
 	return ret;
 }
 
-/** Assign a string to to a "string" type value pair
+/** Assign a string to a "string" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
  * @param[in] src 	a string.
@@ -1763,7 +1763,7 @@ int fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, b
 	return 0;
 }
 
-/** Assign a string to to a "string" type value pair
+/** Assign a string to a "string" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
  * @param[in] src 	a string.
@@ -1922,7 +1922,7 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
 	return ret;
 }
 
-/** Assign a buffer to to a "octets" type value pair
+/** Assign a buffer to a "octets" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
  * @param[in] src 	a buffer.
@@ -1944,7 +1944,7 @@ int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, 
 	return 0;
 }
 
-/** Assign a talloced buffer to to a "octets" type value pair
+/** Assign a talloced buffer to a "octets" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
  * @param[in] src 	a string.
