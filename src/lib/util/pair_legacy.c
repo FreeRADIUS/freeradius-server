@@ -140,7 +140,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @return a new #fr_pair_t.
  */
 fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *vps,
-			 char const *attribute, char const *value, fr_token_t op)
+			char const *attribute, char const *value, fr_token_t op)
 {
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
@@ -207,8 +207,9 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 		}
 		talloc_free(preg);
 
-		vp = fr_pair_make(ctx, dict, NULL, attribute, NULL, op);
+		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return NULL;
+		vp->op = op;
 
 		if (fr_pair_mark_xlat(vp, value) < 0) {
 			talloc_free(vp);
@@ -294,7 +295,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Parse the name.
 		 */
-		slen = fr_dict_attr_by_qualified_name_substr(NULL, &da, dict, &FR_SBUFF_IN(p, strlen(p)), true);
+		slen = fr_dict_attr_by_oid_substr(NULL, &da, root, &FR_SBUFF_IN(p, strlen(p)));
 		if (slen <= 0) {
 
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);
@@ -435,7 +436,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 				 *	All other attributes get the name
 				 *	parsed.
 				 */
-				vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
+				vp = fr_pair_afrom_da(ctx, da);
+				vp->op = raw.op;
 				if (!vp) goto error;
 
 				/*
@@ -479,7 +481,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Now look for EOL, hash, etc.
 		 */
-		if (!*p || (*p == '#') || (*p == '\n')) {			
+		if (!*p || (*p == '#') || (*p == '\n')) {
 			last_token = T_EOL;
 			break;
 		}
