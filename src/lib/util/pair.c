@@ -54,7 +54,7 @@ static int _fr_pair_free(fr_pair_t *vp)
 	 *	Pairs with children have the children
 	 *	freed explicitly.
 	 */
-	switch (vp->da->type) {
+	if (likely(vp->da != NULL)) switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_pair_list_free(&vp->vp_group);
 		break;
