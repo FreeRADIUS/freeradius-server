@@ -273,6 +273,7 @@ int cf_pair_count(CONF_SECTION const *cs);
 CONF_SECTION *cf_item_parent(CONF_ITEM const *ci);
 bool cf_item_is_section(CONF_ITEM const *item);
 bool cf_item_is_pair(CONF_ITEM const *item);
+bool cf_item_is_data(CONF_ITEM const *item);
 CONF_PAIR *cf_item_to_pair(CONF_ITEM const *item);
 CONF_SECTION *cf_item_to_section(CONF_ITEM const *item);
 CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp);
