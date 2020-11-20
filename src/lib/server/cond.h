@@ -51,6 +51,9 @@ extern size_t cond_logical_op_table_len;
 extern fr_table_num_sorted_t const cond_cmp_op_table[];
 extern size_t cond_cmp_op_table_len;
 
+extern fr_table_num_sorted_t const cond_quote_table[];
+extern size_t cond_quote_table_len;
+
 typedef enum {
 	COND_TYPE_INVALID = 0,
 	COND_TYPE_TRUE,
