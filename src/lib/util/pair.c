@@ -2242,16 +2242,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 	} else {
 		fr_dict_attr_t const *da;
 
-		/*
-		 *	Attribute may be present with multiple names
-		 */
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_by_da(vp->da)), vp->da->name);
-		if (!da) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" (%s) "
-					     "not found in global dictionary",
-					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
-		}
+		da = vp->da;
 
 		if (da->type == FR_TYPE_COMBO_IP_ADDR) {
 			da = fr_dict_attr_by_type(vp->da, vp->da->type);
