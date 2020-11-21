@@ -902,6 +902,26 @@ static void test_talloc_extend_with_marker(void)
 	TEST_SBUFF_LEN(&sbuff_0, 5);
 }
 
+static void test_file_extend(void)
+{
+	fr_sbuff_t	sbuff;
+	fr_sbuff_uctx_file_t	fctx;
+	FILE		*fp;
+	char		buff[16];
+	char		fbuff[] = "                        xyzzy";
+
+	TEST_CASE("Initialization");
+	fp = fmemopen(fbuff, sizeof(fbuff) - 1, "r");
+	TEST_CHECK(fp != NULL);
+	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
+
+	TEST_CASE("Advance past whitespace, which will require shift/extend");
+	TEST_CHECK_LEN(sizeof(fbuff) - 6, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
+	TEST_CASE("Verify that we passed all and only whitespace");
+	TEST_CHECK_STRCMP(sbuff.p, "xyzzy");
+	fclose(fp);
+}
+
 static void test_adv_past_str(void)
 {
 	fr_sbuff_t	sbuff;
@@ -1366,6 +1386,7 @@ TEST_LIST = {
 	{ "fr_sbuff_talloc_extend_init_zero",	test_talloc_extend_init_zero },
 	{ "fr_sbuff_talloc_extend_multi_level",	test_talloc_extend_multi_level },
 	{ "fr_sbuff_talloc_extend_with_marker",	test_talloc_extend_with_marker },
+	{ "fr_sbuff_file_extend",		test_file_extend },
 
 	{ "fr_sbuff_no_advance",		test_no_advance },
 

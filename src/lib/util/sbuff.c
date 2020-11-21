@@ -227,8 +227,11 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 {
 	size_t			read, available;
-	fr_sbuff_uctx_file_t	*fctx = sbuff->uctx;
+	fr_sbuff_uctx_file_t	*fctx;
 
+	CHECK_SBUFF_INIT(sbuff);
+
+	fctx = sbuff->uctx;
 	if (extension == SIZE_MAX) extension = 0;
 
 	if (fr_sbuff_used(sbuff)) {
@@ -249,6 +252,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 
 	read = fread(sbuff->end, 1, available, fctx->file);
 	sbuff->end += read;	/* Advance end, which increases fr_sbuff_remaining() */
+	*sbuff->end = '\0';	/* Terminate sbuff */
 
 	/** Check for errors
 	 */
