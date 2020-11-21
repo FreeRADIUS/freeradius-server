@@ -18,6 +18,6 @@ VENDOR		Navini				6504
 #
 BEGIN-VENDOR	Navini
 
-ATTRIBUTE	Navini-AVPair				1	string
+ATTRIBUTE	AVPair				1	string
 
 END-VENDOR	Navini

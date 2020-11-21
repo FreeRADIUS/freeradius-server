@@ -10,7 +10,7 @@ VENDOR		Colubris			8744
 #
 BEGIN-VENDOR	Colubris
 
-ATTRIBUTE	Colubris-AVPair				0	string
-ATTRIBUTE	Colubris-Intercept			1	integer
+ATTRIBUTE	AVPair				0	string
+ATTRIBUTE	Intercept			1	integer
 
 END-VENDOR	Colubris

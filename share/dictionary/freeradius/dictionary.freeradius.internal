@@ -248,17 +248,17 @@ ATTRIBUTE	Session-State-User-Name			1189	string
 
 ATTRIBUTE	Exec-Export				1190	string
 
-ATTRIBUTE	LDAP-Sync-TLV				1193	tlv
-BEGIN-TLV	LDAP-Sync-TLV
-ATTRIBUTE	LDAP-Sync-Cookie			1	octets
-ATTRIBUTE	LDAP-Sync-DN				2	string
-ATTRIBUTE	LDAP-Sync-Filter			3	string
-ATTRIBUTE	LDAP-Sync-Attr				4	string
-ATTRIBUTE	LDAP-Sync-Scope				5	integer
-ATTRIBUTE	LDAP-Sync-Entry-State			6	integer
-ATTRIBUTE	LDAP-Sync-Entry-DN			7	string
-ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
-END-TLV		LDAP-Sync-TLV
+ATTRIBUTE	LDAP-Sync				1193	tlv
+BEGIN-TLV	LDAP-Sync
+ATTRIBUTE	Cookie					1	octets
+ATTRIBUTE	DN					2	string
+ATTRIBUTE	Filter					3	string
+ATTRIBUTE	Attr					4	string
+ATTRIBUTE	Scope					5	integer
+ATTRIBUTE	Entry-State				6	integer
+ATTRIBUTE	Entry-DN				7	string
+ATTRIBUTE	Entry-UUID				8	octets
+END-TLV		LDAP-Sync
 
 #
 #  Server-side "listen type = foo"

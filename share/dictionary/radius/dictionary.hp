@@ -18,97 +18,97 @@ VENDOR		HP				11
 BEGIN-VENDOR	HP
 
 # Management authorization
-ATTRIBUTE	HP-Privilege-Level			1	integer
-ATTRIBUTE	HP-Command-String			2	string
-ATTRIBUTE	HP-Command-Exception			3	integer
+ATTRIBUTE	Privilege-Level			1	integer
+ATTRIBUTE	Command-String			2	string
+ATTRIBUTE	Command-Exception			3	integer
 
-VALUE	HP-Command-Exception		Permit-List		0
-VALUE	HP-Command-Exception		Deny-List		1
+VALUE	Command-Exception		Permit-List		0
+VALUE	Command-Exception		Deny-List		1
 
-ATTRIBUTE	HP-Management-Protocol			26	integer
+ATTRIBUTE	Management-Protocol			26	integer
 
-VALUE	HP-Management-Protocol		HTTP			5
-VALUE	HP-Management-Protocol		HTTPS			6
+VALUE	Management-Protocol		HTTP			5
+VALUE	Management-Protocol		HTTPS			6
 
 # Dynamic port-access attributes
-ATTRIBUTE	HP-Port-Client-Limit-Dot1x		10	integer
-ATTRIBUTE	HP-Port-Client-Limit-MA			11	integer
-ATTRIBUTE	HP-Port-Client-Limit-WA			12	integer
-ATTRIBUTE	HP-Port-Auth-Mode-Dot1x			13	integer
+ATTRIBUTE	Port-Client-Limit-Dot1x		10	integer
+ATTRIBUTE	Port-Client-Limit-MA			11	integer
+ATTRIBUTE	Port-Client-Limit-WA			12	integer
+ATTRIBUTE	Port-Auth-Mode-Dot1x			13	integer
 
-VALUE	HP-Port-Auth-Mode-Dot1x		Port-Based		1
-VALUE	HP-Port-Auth-Mode-Dot1x		User-Based		2
+VALUE	Port-Auth-Mode-Dot1x		Port-Based		1
+VALUE	Port-Auth-Mode-Dot1x		User-Based		2
 
-ATTRIBUTE	HP-Port-MA-Port-Mode			14	integer
+ATTRIBUTE	Port-MA-Port-Mode			14	integer
 
-VALUE	HP-Port-MA-Port-Mode		User-Based		0
-VALUE	HP-Port-MA-Port-Mode		Port-Based		1
+VALUE	Port-MA-Port-Mode		User-Based		0
+VALUE	Port-MA-Port-Mode		Port-Based		1
 
-ATTRIBUTE	HP-Port-Bounce-Host			23	integer
-ATTRIBUTE	HP-Captive-Portal-URL			24	string
-ATTRIBUTE	HP-User-Role				25	string
-ATTRIBUTE	HP-CPPM-Role				27	string
-ATTRIBUTE	HP-CPPM-Secondary-Role			28	string
+ATTRIBUTE	Port-Bounce-Host			23	integer
+ATTRIBUTE	Captive-Portal-URL			24	string
+ATTRIBUTE	User-Role				25	string
+ATTRIBUTE	CPPM-Role				27	string
+ATTRIBUTE	CPPM-Secondary-Role			28	string
 
 # Client QoS attributes
-ATTRIBUTE	HP-Port-Priority-Regeneration-Table	40	string
+ATTRIBUTE	Port-Priority-Regeneration-Table	40	string
 
 # Access control
-ATTRIBUTE	HP-Cos					40	string
-#ATTRIBUTE	HP-Rate-Limit				46	integer
+ATTRIBUTE	Cos					40	string
+#ATTRIBUTE	Rate-Limit				46	integer
 
-ATTRIBUTE	HP-Bandwidth-Max-Ingress		46	integer
-ATTRIBUTE	HP-Bandwidth-Max-Egress			48	integer
+ATTRIBUTE	Bandwidth-Max-Ingress		46	integer
+ATTRIBUTE	Bandwidth-Max-Egress			48	integer
 
-ATTRIBUTE	HP-Ip-Filter-Raw			61	string
+ATTRIBUTE	Ip-Filter-Raw			61	string
 
 # Client ACL attributes
-ATTRIBUTE	HP-Nas-Filter-Rule			61	string
-ATTRIBUTE	HP-Access-Profile			62	string
-ATTRIBUTE	HP-Nas-Rules-IPv6			63	integer
+ATTRIBUTE	Nas-Filter-Rule			61	string
+ATTRIBUTE	Access-Profile			62	string
+ATTRIBUTE	Nas-Rules-IPv6			63	integer
 
 # VLAN assignment attributes
-ATTRIBUTE	HP-Egress-VLANID			64	integer
-ATTRIBUTE	HP-Egress-VLAN-Name			65	string
+ATTRIBUTE	Egress-VLANID			64	integer
+ATTRIBUTE	Egress-VLAN-Name			65	string
 
 # Bonjour Profile
-ATTRIBUTE	HP-Bonjour-Inbound-Profile		66	string
-ATTRIBUTE	HP-Bonjour-Outbound-Profile		67	string
+ATTRIBUTE	Bonjour-Inbound-Profile		66	string
+ATTRIBUTE	Bonjour-Outbound-Profile		67	string
 
 # AAA for REST
-ATTRIBUTE	HP-URI-String				80	string
-ATTRIBUTE	HP-URI-Json-String			81	string
-ATTRIBUTE	HP-URI-Access				82	string
-ATTRIBUTE	HP-URI-Exception			83	integer
+ATTRIBUTE	URI-String				80	string
+ATTRIBUTE	URI-Json-String			81	string
+ATTRIBUTE	URI-Access				82	string
+ATTRIBUTE	URI-Exception			83	integer
 
-ATTRIBUTE	HP-VC-groups				192	string
+ATTRIBUTE	VC-groups				192	string
 
 # See http://wiki.freeradius.org/vendor/HP#Capability-advertisements
-ATTRIBUTE	HP-Capability-Advert			255	octets
+ATTRIBUTE	Capability-Advert			255	octets
 
-# HP-Management-Protocol
+# Management-Protocol
 
 #
 #  Conflicting attributes are commented out.
 #
-#ATTRIBUTE	HP-Management-Role			26	integer
+#ATTRIBUTE	Management-Role			26	integer
 
-# HP-Management-Role
-#VALUE	HP-Management-Role		SuperUser		1
-#VALUE	HP-Management-Role		Monitor			2
-#VALUE	HP-Management-Role		HelpDeskManager		16
-#VALUE	HP-Management-Role		NetworkAdministrator	17
-#VALUE	HP-Management-Role		SystemAdministrator	18
-#VALUE	HP-Management-Role		WebUserAdminstrator	19
+# Management-Role
+#VALUE	Management-Role		SuperUser		1
+#VALUE	Management-Role		Monitor			2
+#VALUE	Management-Role		HelpDeskManager		16
+#VALUE	Management-Role		NetworkAdministrator	17
+#VALUE	Management-Role		SystemAdministrator	18
+#VALUE	Management-Role		WebUserAdminstrator	19
 
 END-VENDOR	HP
 
 #
 #	Poaching on the standard space is wrong.
 #
-#	Privilege attributes for HP-GbE2c, HP 1:10Gb, and HP 10Gb
+#	Privilege attributes for GbE2c, HP 1:10Gb, and HP 10Gb
 #	Ethernet Blade Switches
 #
-VALUE	Service-Type			HP-Oper			252
-VALUE	Service-Type			HP-User			255
+VALUE	Service-Type			Oper			252
+VALUE	Service-Type			User			255
 

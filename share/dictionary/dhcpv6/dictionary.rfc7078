@@ -11,14 +11,14 @@
 ##############################################################################
 
 ATTRIBUTE	Address-Selection			84	struct
-MEMBER		Address-Selection-Flags			uint8
-MEMBER		Address-Selection-Table-Rows		group	# of Address-Selection-Table
+MEMBER		Flags						uint8
+VALUE		Flags		Privacy-Reference	0x01	# bit mask
+VALUE		Flags		Automatic-Row-Addition	0x02	# bit mask
 
-VALUE	Address-Selection-Flags		Privacy-Reference	0x01	# bit mask
-VALUE	Address-Selection-Flags		Automatic-Row-Addition	0x02	# bit mask
+MEMBER		Table-Rows					group	# of Address-Selection-Table
 
 ATTRIBUTE	Address-Selection-Table			85	struct
-MEMBER		Address-Selection-Table-Label		uint8
-MEMBER		Address-Selection-Table-Precedence	uint8
-MEMBER		Address-Selection-Table-Prefix		ipv6prefix
+MEMBER		Label						uint8
+MEMBER		Precedence					uint8
+MEMBER		Prefix						ipv6prefix
 

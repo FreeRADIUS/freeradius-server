@@ -14,43 +14,43 @@ VENDOR		Xylan				800
 
 BEGIN-VENDOR	Xylan
 
-ATTRIBUTE	Xylan-Auth-Group			1	integer
-ATTRIBUTE	Xylan-Slot-Port				2	string
-ATTRIBUTE	Xylan-Time-of-Day			3	string
-ATTRIBUTE	Xylan-Client-IP-Addr			4	ipaddr
-ATTRIBUTE	Xylan-Group-Desc			5	string
-ATTRIBUTE	Xylan-Port-Desc				6	string
-ATTRIBUTE	Xylan-Profil-Numb			7	integer
-ATTRIBUTE	Xylan-Auth-Group-Protocol		8	string
-ATTRIBUTE	Xylan-Asa-Access			9	string
-ATTRIBUTE	Xylan-End-User-Profile			10	integer
-ATTRIBUTE	Xylan-Primary-Home-Agent		12	string
-ATTRIBUTE	Xylan-Secondary-Home-Agent		13	string
-ATTRIBUTE	Xylan-Home-Agent-Password		14	string
-ATTRIBUTE	Xylan-Home-Network-Name			15	string
-ATTRIBUTE	Xylan-Access-Priv			16	integer
-ATTRIBUTE	Xylan-Nms-Group				20	string
-ATTRIBUTE	Xylan-Nms-First-Name			21	string
-ATTRIBUTE	Xylan-Nms-Last-Name			22	string
-ATTRIBUTE	Xylan-Nms-Description			23	string
-ATTRIBUTE	Xylan-Acce-Priv-R1			33	octets
-ATTRIBUTE	Xylan-Acce-Priv-R2			34	octets
-ATTRIBUTE	Xylan-Acce-Priv-W1			35	octets
-ATTRIBUTE	Xylan-Acce-Priv-W2			36	octets
-ATTRIBUTE	Xylan-Acce-Priv-G1			37	octets
-ATTRIBUTE	Xylan-Acce-Priv-G2			38	octets
-ATTRIBUTE	Xylan-Acce-Priv-F-R1			39	octets
-ATTRIBUTE	Xylan-Acce-Priv-F-R2			40	octets
-ATTRIBUTE	Xylan-Acce-Priv-F-W1			41	octets
-ATTRIBUTE	Xylan-Acce-Priv-F-W2			42	octets
+ATTRIBUTE	Auth-Group			1	integer
+ATTRIBUTE	Slot-Port				2	string
+ATTRIBUTE	Time-of-Day			3	string
+ATTRIBUTE	Client-IP-Addr			4	ipaddr
+ATTRIBUTE	Group-Desc			5	string
+ATTRIBUTE	Port-Desc				6	string
+ATTRIBUTE	Profil-Numb			7	integer
+ATTRIBUTE	Auth-Group-Protocol		8	string
+ATTRIBUTE	Asa-Access			9	string
+ATTRIBUTE	End-User-Profile			10	integer
+ATTRIBUTE	Primary-Home-Agent		12	string
+ATTRIBUTE	Secondary-Home-Agent		13	string
+ATTRIBUTE	Home-Agent-Password		14	string
+ATTRIBUTE	Home-Network-Name			15	string
+ATTRIBUTE	Access-Priv			16	integer
+ATTRIBUTE	Nms-Group				20	string
+ATTRIBUTE	Nms-First-Name			21	string
+ATTRIBUTE	Nms-Last-Name			22	string
+ATTRIBUTE	Nms-Description			23	string
+ATTRIBUTE	Acce-Priv-R1			33	octets
+ATTRIBUTE	Acce-Priv-R2			34	octets
+ATTRIBUTE	Acce-Priv-W1			35	octets
+ATTRIBUTE	Acce-Priv-W2			36	octets
+ATTRIBUTE	Acce-Priv-G1			37	octets
+ATTRIBUTE	Acce-Priv-G2			38	octets
+ATTRIBUTE	Acce-Priv-F-R1			39	octets
+ATTRIBUTE	Acce-Priv-F-R2			40	octets
+ATTRIBUTE	Acce-Priv-F-W1			41	octets
+ATTRIBUTE	Acce-Priv-F-W2			42	octets
 
-ATTRIBUTE	Xylan-Policy-List			100	string
-ATTRIBUTE	Xylan-Redirect-Url			101	string
-ATTRIBUTE	Xylan-Device-Name			152	string
-ATTRIBUTE	Xylan-Device-Location			153	string
+ATTRIBUTE	Policy-List			100	string
+ATTRIBUTE	Redirect-Url			101	string
+ATTRIBUTE	Device-Name			152	string
+ATTRIBUTE	Device-Location			153	string
 
-VALUE	Xylan-Access-Priv		Xylan-Read-Priv		1
-VALUE	Xylan-Access-Priv		Xylan-Write-Priv	2
-VALUE	Xylan-Access-Priv		Xylan-Admin-Priv	3
+VALUE	Access-Priv		Read-Priv		1
+VALUE	Access-Priv		Write-Priv	2
+VALUE	Access-Priv		Admin-Priv	3
 
 END-VENDOR	Xylan

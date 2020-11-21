@@ -12,20 +12,20 @@
 
 VENDOR		Walabi				2004
 
-VALUE	Acct-Status-Type		WB-Login		217
-VALUE	Acct-Status-Type		WB-Logout		218
-VALUE	Acct-Status-Type		WB-WRitelog		219
+VALUE	Acct-Status-Type		Login		217
+VALUE	Acct-Status-Type		Logout		218
+VALUE	Acct-Status-Type		WRitelog		219
 
 # Store and Forward Fax Attributes:
 BEGIN-VENDOR	Walabi
-ATTRIBUTE	WB-AUTH-Time-Left			1	integer
-ATTRIBUTE	WB-Auth-Accum-BW			2	integer
-ATTRIBUTE	WB-Auth-BW-Quota			3	integer
-ATTRIBUTE	WB-Auth-BW-Count			4	integer
-ATTRIBUTE	WB-Auth-Upload-Limit			5	integer
-ATTRIBUTE	WB-Auth-Download-Limit			6	integer
-ATTRIBUTE	WB-Auth-Login-Time			7	integer
-ATTRIBUTE	WB-Auth-Logout-Time			8	integer
-ATTRIBUTE	WB-Auth-Time-Diff			9	integer
-ATTRIBUTE	WB-Auth-BW-Usage			10	integer
+ATTRIBUTE	AUTH-Time-Left			1	integer
+ATTRIBUTE	Auth-Accum-BW			2	integer
+ATTRIBUTE	Auth-BW-Quota			3	integer
+ATTRIBUTE	Auth-BW-Count			4	integer
+ATTRIBUTE	Auth-Upload-Limit			5	integer
+ATTRIBUTE	Auth-Download-Limit			6	integer
+ATTRIBUTE	Auth-Login-Time			7	integer
+ATTRIBUTE	Auth-Logout-Time			8	integer
+ATTRIBUTE	Auth-Time-Diff			9	integer
+ATTRIBUTE	Auth-BW-Usage			10	integer
 END-VENDOR Walabi

@@ -17,11 +17,11 @@ VENDOR		BlueCoat			14501
 BEGIN-VENDOR	BlueCoat
 
 # Accepts multiple groups as comma-separated list.
-ATTRIBUTE	Blue-Coat-Group				1	string
-ATTRIBUTE	Blue-Coat-Authorization			2	integer
+ATTRIBUTE	Group				1	string
+ATTRIBUTE	Authorization			2	integer
 
-VALUE	Blue-Coat-Authorization		No-Access		0
-VALUE	Blue-Coat-Authorization		Read-Only-Access	1
-VALUE	Blue-Coat-Authorization		Read-Write-Access	2
+VALUE	Authorization		No-Access		0
+VALUE	Authorization		Read-Only-Access	1
+VALUE	Authorization		Read-Write-Access	2
 
 END-VENDOR      BlueCoat

@@ -20,24 +20,23 @@ BEGIN-TLV	Ethernet-TLV
 ATTRIBUTE	Ethernet-Custom-TLV			1	tlv
 
 BEGIN-TLV	Ethernet-Custom-TLV
-ATTRIBUTE	Ethernet-SVLAN-TPID			0	uint16
-ATTRIBUTE	Ethernet-SVLAN-PCP			1	uint8
-ATTRIBUTE	Ethernet-SVLAN-DEI			2	bool
-ATTRIBUTE	Ethernet-SVLAN-VID			3	uint16
-ATTRIBUTE	Ethernet-CVLAN-TPID			4	uint16
-ATTRIBUTE	Ethernet-CVLAN-PCP			5	uint8
-ATTRIBUTE	Ethernet-CVLAN-DEI			6	bool
-ATTRIBUTE	Ethernet-CVLAN-VID			7	uint16
+ATTRIBUTE	SVLAN-TPID			0	uint16
+ATTRIBUTE	SVLAN-PCP			1	uint8
+ATTRIBUTE	SVLAN-DEI			2	bool
+ATTRIBUTE	SVLAN-VID			3	uint16
+ATTRIBUTE	CVLAN-TPID			4	uint16
+ATTRIBUTE	CVLAN-PCP			5	uint8
+ATTRIBUTE	CVLAN-DEI			6	bool
+ATTRIBUTE	CVLAN-VID			7	uint16
 END-TLV		Ethernet-Custom-TLV
 
 # Must be the same value as PROTO_OPT_GROUP_L2
 ATTRIBUTE	Ethernet-L2-TLV				2	tlv
 BEGIN-TLV	Ethernet-L2-TLV
-
-ATTRIBUTE	Ethernet-L2-Payload-Len			0	uint16
-ATTRIBUTE	Ethernet-Src-Address			1	ether
-ATTRIBUTE	Ethernet-Dst-Address			2	ether
-ATTRIBUTE	Ethernet-Next-Protocol			2	uint16
+ATTRIBUTE	L2-Payload-Len			0	uint16
+ATTRIBUTE	Src-Address			1	ether
+ATTRIBUTE	Dst-Address			2	ether
+ATTRIBUTE	Next-Protocol			2	uint16
 END-TLV		Ethernet-L2-TLV
 
 END-TLV		Ethernet-TLV

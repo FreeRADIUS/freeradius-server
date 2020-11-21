@@ -19,16 +19,16 @@ VENDOR		DragonWave			7262
 BEGIN-VENDOR	DragonWave
 
 # Used to determine the user login privilege level.
-ATTRIBUTE	DragonWave-Privilege-Level		1	integer
+ATTRIBUTE	Privilege-Level		1	integer
 
 #        Read-only access.
 
-VALUE	DragonWave-Privilege-Level	DragonWave-Admin-User	1
+VALUE	Privilege-Level	Admin-User	1
 
 #         Limited read-write access.
-VALUE	DragonWave-Privilege-Level	DragonWave-NOC-User	2
+VALUE	Privilege-Level	NOC-User	2
 
 #         Unlimited read-write access.
-VALUE	DragonWave-Privilege-Level	DragonWave-Super-User	3
+VALUE	Privilege-Level	Super-User	3
 
 END-VENDOR    DragonWave

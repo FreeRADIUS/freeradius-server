@@ -14,12 +14,12 @@ VENDOR		Microsemi			40676
 
 BEGIN-VENDOR	Microsemi
 
-ATTRIBUTE	Microsemi-User-Full-Name		1	string
-ATTRIBUTE	Microsemi-User-Name			2	string
-ATTRIBUTE	Microsemi-User-Initials			3	string
-ATTRIBUTE	Microsemi-User-Email			4	string
-ATTRIBUTE	Microsemi-User-Group			5	string
-ATTRIBUTE	Microsemi-Fallback-User-Group		6	string
-ATTRIBUTE	Microsemi-Network-Element-Group		7	string
+ATTRIBUTE	User-Full-Name		1	string
+ATTRIBUTE	User-Name			2	string
+ATTRIBUTE	User-Initials			3	string
+ATTRIBUTE	User-Email			4	string
+ATTRIBUTE	User-Group			5	string
+ATTRIBUTE	Fallback-User-Group		6	string
+ATTRIBUTE	Network-Element-Group		7	string
 
 END-VENDOR	Microsemi

@@ -11,6 +11,6 @@ VENDOR		Lantronix			244
 
 BEGIN-VENDOR	Lantronix
 
-ATTRIBUTE	Lantronix-User-Attributes		1	string
+ATTRIBUTE	User-Attributes		1	string
 
 END-VENDOR Lantronix

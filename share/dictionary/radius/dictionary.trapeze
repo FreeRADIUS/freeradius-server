@@ -19,33 +19,33 @@ VENDOR		Trapeze				14525
 
 BEGIN-VENDOR	Trapeze
 
-ATTRIBUTE	Trapeze-VLAN-Name			1	string
-ATTRIBUTE	Trapeze-Mobility-Profile		2	string
-ATTRIBUTE	Trapeze-Encryption-Type			3	string
-ATTRIBUTE	Trapeze-Time-Of-Day			4	string
+ATTRIBUTE	VLAN-Name			1	string
+ATTRIBUTE	Mobility-Profile		2	string
+ATTRIBUTE	Encryption-Type			3	string
+ATTRIBUTE	Time-Of-Day			4	string
 
 # New attributes for MSS 3.0 and later
 
-ATTRIBUTE	Trapeze-SSID				5	string
-ATTRIBUTE	Trapeze-End-Date			6	string
-ATTRIBUTE	Trapeze-Start-Date			7	string
-ATTRIBUTE	Trapeze-URL				8	string
+ATTRIBUTE	SSID				5	string
+ATTRIBUTE	End-Date			6	string
+ATTRIBUTE	Start-Date			7	string
+ATTRIBUTE	URL				8	string
 
 # Additional attributes, not known when added
-ATTRIBUTE	Trapeze-User-Group-Name			9	string
-ATTRIBUTE	Trapeze-QoS-Profile			10	string
-ATTRIBUTE	Trapeze-Simultaneous-Logins		11	string
-ATTRIBUTE	Trapeze-CoA-Username			12	string
+ATTRIBUTE	User-Group-Name			9	string
+ATTRIBUTE	QoS-Profile			10	string
+ATTRIBUTE	Simultaneous-Logins		11	string
+ATTRIBUTE	CoA-Username			12	string
 
 # New attributes for MSS 8.0 and later
-ATTRIBUTE	Trapeze-Audit				13	string
-ATTRIBUTE	Trapeze-NMS-User-Group			14	string
-ATTRIBUTE	Trapeze-NMS-Platform-Local-User		15	string
-ATTRIBUTE	Trapeze-SIP-Call-Detail-Record		16	string
-ATTRIBUTE	Trapeze-SmartPass-Access-Control	17	string
-ATTRIBUTE	Trapeze-Device-Profile			18	string
-ATTRIBUTE	Trapeze-Device-Type			19	string
-ATTRIBUTE	Trapeze-Allowed-Devices			20	string
-ATTRIBUTE	Trapeze-Device-Group			21	string
+ATTRIBUTE	Audit				13	string
+ATTRIBUTE	NMS-User-Group			14	string
+ATTRIBUTE	NMS-Platform-Local-User		15	string
+ATTRIBUTE	SIP-Call-Detail-Record		16	string
+ATTRIBUTE	SmartPass-Access-Control	17	string
+ATTRIBUTE	Device-Profile			18	string
+ATTRIBUTE	Device-Type			19	string
+ATTRIBUTE	Allowed-Devices			20	string
+ATTRIBUTE	Device-Group			21	string
 
 END-VENDOR	Trapeze

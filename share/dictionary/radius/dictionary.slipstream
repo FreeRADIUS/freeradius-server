@@ -16,6 +16,6 @@ VENDOR		Slipstream			7000
 
 BEGIN-VENDOR	Slipstream
 
-ATTRIBUTE	Slipstream-Auth				1	string
+ATTRIBUTE	Auth				1	string
 
 END-VENDOR	Slipstream

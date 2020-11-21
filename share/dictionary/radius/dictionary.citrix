@@ -14,12 +14,12 @@ VENDOR		Citrix				66
 
 BEGIN-VENDOR	Citrix
 
-ATTRIBUTE	Citrix-UID				10	integer
-ATTRIBUTE	Citrix-GID				11	integer
-ATTRIBUTE	Citrix-Home				12	string
-ATTRIBUTE	Citrix-Shell				13	string
-ATTRIBUTE	Citrix-Group-Names			14	string
-ATTRIBUTE	Citrix-Group-Ids			15	string
-ATTRIBUTE	Citrix-User-Groups			16	string
+ATTRIBUTE	UID				10	integer
+ATTRIBUTE	GID				11	integer
+ATTRIBUTE	Home				12	string
+ATTRIBUTE	Shell				13	string
+ATTRIBUTE	Group-Names			14	string
+ATTRIBUTE	Group-Ids			15	string
+ATTRIBUTE	User-Groups			16	string
 
 END-VENDOR Citrix

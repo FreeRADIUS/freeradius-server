@@ -31,9 +31,9 @@ ATTRIBUTE	WLAN-HESSID				181	string
 
 # Defined in Section 8.4.1.34 of the above IEEE document.
 ATTRIBUTE	WLAN-Venue-Info				182	struct
-MEMBER		WLAN-Venue-Reserved				octets[2]  # MUST be zero
-MEMBER		WLAN-Venue-Group				uint8
-MEMBER		WLAN-Venue-Type					uint8
+MEMBER		Reserved					octets[2]  # MUST be zero
+MEMBER		Group						uint8
+MEMBER		Type						uint8
 
 # A two or 3 character language code selected from ISO-639.
 # If it's two characters, a trailing zero byte is added
@@ -52,30 +52,29 @@ ATTRIBUTE	WLAN-Reason-Code			185	integer
 # 8.4.2.27.2 of [IEEE-802.11], with values of OUI and Suite Type drawn
 # from Table 8-99.
 ATTRIBUTE	WLAN-Pairwise-Cipher			186	struct
-MEMBER		WLAN-Pairwise-Cipher-OUI			octets[3]
-MEMBER		WLAN-Pairwise-Cipher-Suite-Type			uint8
+MEMBER		OUI						octets[3]
+MEMBER		Suite-Type					uint8
 
 # same as WLAN-Pairwise-Cipher
 ATTRIBUTE	WLAN-Group-Cipher			187	struct
-MEMBER		WLAN-Group-Cipher-OUI				octets[3]
-MEMBER		WLAN-Group-Cipher-Suite-Type			uint8
-
+MEMBER		OUI						octets[3]
+MEMBER		Type						uint8
 # in Suite selector format as specified in Figure 8-187
 # within Section 8.4.2.27.2 of [IEEE-802.11], with values of OUI and
 # Suite Type drawn from Table 8-101:
 ATTRIBUTE	WLAN-AKM-Suite				188	struct
-MEMBER		WLAN-AKM-Suite-OUI				octets[3]
-MEMBER		WLAN-AKM-Suite-Suite-Type			uint8
+MEMBER		OUI						octets[3]
+MEMBER		Suite-Type					uint8
 
 # same as WLAN-Pairwise-Cipher
 ATTRIBUTE	WLAN-Group-Mgmt-Cipher			189	struct
-MEMBER		WLAN-Group-Mgmt-Cipher-OUI			octets[3]
-MEMBER		WLAN-Group-Mgmt-Cipher-Suite-Type		uint8
+MEMBER		OUI						octets[3]
+MEMBER		Type						uint8
 
 # the upper 3 octets are zero
 # the low octet contains the RF Band field, whose values are defined
 # by the IEEE 802.11 Band ID field (Table 8-53a of [IEEE-802.11ad])
 
 ATTRIBUTE	WLAN-RF-Band				190	struct
-MEMBER		WLAN-RF-Band-Reserved				octets[3]
-MEMBER		WLAN-RF-Band-Id					uint8
+MEMBER		Reserved					octets[3]
+MEMBER		Id						uint8

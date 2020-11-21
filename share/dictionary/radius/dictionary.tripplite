@@ -23,7 +23,7 @@ BEGIN-VENDOR	TrippLite
 
 #
 ## Access is granted to the various facilities within the PowerAlert software
-## by means of the TrippLite-Authorization attribute, which is a comma-delimited
+## by means of the Authorization attribute, which is a comma-delimited
 ## string of facility-code to access-level pairs.
 ##
 ## Facility Codes: default, security, networksettings, systemsettings, systreminfo,
@@ -38,7 +38,7 @@ BEGIN-VENDOR	TrippLite
 ## - The user has no access to the security facility
 ##
 
-ATTRIBUTE	TrippLite-Authorization			1	string
+ATTRIBUTE	Authorization			1	string
 
 #
 ## Comma-delimited string of outlet security realms from 1 through 32 to which
@@ -50,17 +50,17 @@ ATTRIBUTE	TrippLite-Authorization			1	string
 ## - User has read-write access to realms 10 and 15
 ##
 
-ATTRIBUTE	TrippLite-Outlet-Realms			2	string
+ATTRIBUTE	Outlet-Realms			2	string
 
 #
 ## Simple message, usually sent as part of accounting
 ##
 
-ATTRIBUTE	TrippLite-Message			3	string
+ATTRIBUTE	Message			3	string
 
 #
 ## PADM20 user role. Role with same name should exists on the device.
 ##
-ATTRIBUTE	TrippLite-User-Role			4	string
+ATTRIBUTE	User-Role			4	string
 
 END-VENDOR TrippLite

@@ -38,14 +38,14 @@ ATTRIBUTE	GGSN-IPv6-Address			16	ipv6addr
 #	This attribute is really an array of IPv6 addresses.
 #	Why the heck couldn't they just send multiple attributes?
 #
-ATTRIBUTE	3GPP-IPv6-DNS-Servers			17	octets
+ATTRIBUTE	IPv6-DNS-Servers			17	octets
 
-ATTRIBUTE	3GPP-SGSN-MCC-MNC			18	string
-ATTRIBUTE	3GPP-Teardown-Indicator			19	byte
-ATTRIBUTE	3GPP-IMEISV				20	string
-ATTRIBUTE	3GPP-RAT-Type				21	byte
+ATTRIBUTE	SGSN-MCC-MNC				18	string
+ATTRIBUTE	Teardown-Indicator			19	byte
+ATTRIBUTE	IMEISV					20	string
+ATTRIBUTE	RAT-Type				21	byte
 
-ATTRIBUTE	3GPP-User-Location-Info			22	struct
+ATTRIBUTE	User-Location-Info			22	struct
 MEMBER		Type					uint8	key
 
 #
@@ -82,31 +82,31 @@ MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
 
-ATTRIBUTE	3GPP-MS-TimeZone			23	octets[2]
-ATTRIBUTE	3GPP-CAMEL-Charging-Info		24	octets
-ATTRIBUTE	3GPP-Packet-Filter			25	octets
-ATTRIBUTE	3GPP-Negotiated-DSCP			26	byte
-ATTRIBUTE	3GPP-Allocate-IP-Type			27	byte
+ATTRIBUTE	MS-TimeZone			23	octets[2]
+ATTRIBUTE	CAMEL-Charging-Info		24	octets
+ATTRIBUTE	Packet-Filter			25	octets
+ATTRIBUTE	Negotiated-DSCP			26	byte
+ATTRIBUTE	Allocate-IP-Type			27	byte
 
-VALUE	3GPP-RAT-Type			UTRAN			1
-VALUE	3GPP-RAT-Type			GERAN			2
-VALUE	3GPP-RAT-Type			WLAN			3
-VALUE	3GPP-RAT-Type			GAN			4
-VALUE	3GPP-RAT-Type			HSPA-Evolution		5
-VALUE	3GPP-RAT-Type			EUTRAN			6
-VALUE	3GPP-RAT-Type			Virtual			7
-VALUE	3GPP-RAT-Type			IEEE-802.16e		101
-VALUE	3GPP-RAT-Type			3GPP2-eHRPD		102
-VALUE	3GPP-RAT-Type			3GPP2-HRPD		103
-VALUE	3GPP-RAT-Type			3GPP2-1xRTT		104
+VALUE	RAT-Type			UTRAN			1
+VALUE	RAT-Type			GERAN			2
+VALUE	RAT-Type			WLAN			3
+VALUE	RAT-Type			GAN			4
+VALUE	RAT-Type			HSPA-Evolution		5
+VALUE	RAT-Type			EUTRAN			6
+VALUE	RAT-Type			Virtual			7
+VALUE	RAT-Type			IEEE-802.16e		101
+VALUE	RAT-Type			3GPP2-eHRPD		102
+VALUE	RAT-Type			3GPP2-HRPD		103
+VALUE	RAT-Type			3GPP2-1xRTT		104
 
-VALUE	3GPP-Allocate-IP-Type		Do-Not-Allocate		0
-VALUE	3GPP-Allocate-IP-Type		Allocate-IPv4-Address	1
-VALUE	3GPP-Allocate-IP-Type		Allocate-IPv6-Prefix	2
-VALUE	3GPP-Allocate-IP-Type		Allocate-IPv4-and-IPv6	3
+VALUE	Allocate-IP-Type		Do-Not-Allocate		0
+VALUE	Allocate-IP-Type		Allocate-IPv4-Address	1
+VALUE	Allocate-IP-Type		Allocate-IPv6-Prefix	2
+VALUE	Allocate-IP-Type		Allocate-IPv4-and-IPv6	3
 
 ATTRIBUTE	TWAN-Identifier				29	octets
-ATTRIBUTE	3GPP-User-Location-Info-Time		30	octets
-ATTRIBUTE	3GPP-Secondary-RAT-Usage		31	octets
+ATTRIBUTE	User-Location-Info-Time		30	octets
+ATTRIBUTE	Secondary-RAT-Usage		31	octets
 
 END-VENDOR	3GPP

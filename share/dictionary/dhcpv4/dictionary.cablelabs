@@ -7,10 +7,10 @@ VENDOR		CableLabs			4491
 
 BEGIN-VENDOR	CableLabs
 
-ATTRIBUTE	CableLabs-Option-Request		1	octets
-ATTRIBUTE	CableLabs-TFTP-Server-Addresses		2	ipaddr array
-ATTRIBUTE	CableLabs-eRouter-Containter		3	octets
-ATTRIBUTE	CableLabs-MIB-Environment-Indicator	4	octets
-ATTRIBUTE	CableLabs-Modem-Capabilities		5	octets
+ATTRIBUTE	Option-Request			1	octets
+ATTRIBUTE	TFTP-Server-Addresses		2	ipaddr array
+ATTRIBUTE	eRouter-Containter		3	octets
+ATTRIBUTE	MIB-Environment-Indicator	4	octets
+ATTRIBUTE	Modem-Capabilities		5	octets
 
 END-VENDOR	CableLabs

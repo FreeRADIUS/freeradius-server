@@ -74,45 +74,45 @@ typedef struct {
 static fr_dict_t const *dict_freeradius = NULL;
 static fr_dict_t const *dict_radius = NULL;
 
-static fr_dict_attr_t const *attr_cleartext_password;
-static fr_dict_attr_t const *attr_password_with_header;
-static fr_dict_attr_t const *attr_password_root;
+static fr_dict_attr_t const *attr_cleartext;
+static fr_dict_attr_t const *attr_with_header;
+static fr_dict_attr_t const *attr_root;
 
-static fr_dict_attr_t const *attr_md5_password;
-static fr_dict_attr_t const *attr_smd5_password;
-static fr_dict_attr_t const *attr_crypt_password;
+static fr_dict_attr_t const *attr_md5;
+static fr_dict_attr_t const *attr_smd5;
+static fr_dict_attr_t const *attr_crypt;
 
-static fr_dict_attr_t const *attr_sha1_password;
-static fr_dict_attr_t const *attr_ssha1_password;
+static fr_dict_attr_t const *attr_sha1;
+static fr_dict_attr_t const *attr_ssha1;
 
-static fr_dict_attr_t const *attr_sha2_password;
-static fr_dict_attr_t const *attr_sha2_224_password;
-static fr_dict_attr_t const *attr_sha2_256_password;
-static fr_dict_attr_t const *attr_sha2_384_password;
-static fr_dict_attr_t const *attr_sha2_512_password;
+static fr_dict_attr_t const *attr_sha2;
+static fr_dict_attr_t const *attr_sha2_224;
+static fr_dict_attr_t const *attr_sha2_256;
+static fr_dict_attr_t const *attr_sha2_384;
+static fr_dict_attr_t const *attr_sha2_512;
 
-static fr_dict_attr_t const *attr_ssha2_224_password;
-static fr_dict_attr_t const *attr_ssha2_256_password;
-static fr_dict_attr_t const *attr_ssha2_384_password;
-static fr_dict_attr_t const *attr_ssha2_512_password;
+static fr_dict_attr_t const *attr_ssha2_224;
+static fr_dict_attr_t const *attr_ssha2_256;
+static fr_dict_attr_t const *attr_ssha2_384;
+static fr_dict_attr_t const *attr_ssha2_512;
 
-static fr_dict_attr_t const *attr_sha3_password;
-static fr_dict_attr_t const *attr_sha3_224_password;
-static fr_dict_attr_t const *attr_sha3_256_password;
-static fr_dict_attr_t const *attr_sha3_384_password;
-static fr_dict_attr_t const *attr_sha3_512_password;
+static fr_dict_attr_t const *attr_sha3;
+static fr_dict_attr_t const *attr_sha3_224;
+static fr_dict_attr_t const *attr_sha3_256;
+static fr_dict_attr_t const *attr_sha3_384;
+static fr_dict_attr_t const *attr_sha3_512;
 
-static fr_dict_attr_t const *attr_ssha3_224_password;
-static fr_dict_attr_t const *attr_ssha3_256_password;
-static fr_dict_attr_t const *attr_ssha3_384_password;
-static fr_dict_attr_t const *attr_ssha3_512_password;
+static fr_dict_attr_t const *attr_ssha3_224;
+static fr_dict_attr_t const *attr_ssha3_256;
+static fr_dict_attr_t const *attr_ssha3_384;
+static fr_dict_attr_t const *attr_ssha3_512;
 
-static fr_dict_attr_t const *attr_pbkdf2_password;
-static fr_dict_attr_t const *attr_lm_password;
-static fr_dict_attr_t const *attr_nt_password;
-static fr_dict_attr_t const *attr_ns_mta_md5_password;
+static fr_dict_attr_t const *attr_pbkdf2;
+static fr_dict_attr_t const *attr_lm;
+static fr_dict_attr_t const *attr_nt;
+static fr_dict_attr_t const *attr_ns_mta_md5;
 
-static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_user;
 
 extern fr_dict_autoload_t password_dict[];
 fr_dict_autoload_t password_dict[] = {
@@ -123,44 +123,44 @@ fr_dict_autoload_t password_dict[] = {
 
 extern fr_dict_attr_autoload_t password_dict_attr[];
 fr_dict_attr_autoload_t password_dict_attr[] = {
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_password_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ .out = &attr_md5_password, .name = "MD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_smd5_password, .name = "SMD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_sha1_password, .name = "SHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha1_password, .name = "SSHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_md5, .name = "MD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_smd5, .name = "SMD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_crypt, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_sha1, .name = "SHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha1, .name = "SSHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_sha2_password, .name = "SHA2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_224_password, .name = "SHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_256_password, .name = "SHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_384_password, .name = "SHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_512_password, .name = "SHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2, .name = "SHA2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_224, .name = "SHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_256, .name = "SHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_384, .name = "SHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_512, .name = "SHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_ssha2_224_password, .name = "SSHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_256_password, .name = "SSHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_384_password, .name = "SSHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_512_password, .name = "SSHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_224, .name = "SSHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_256, .name = "SSHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_384, .name = "SSHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_512, .name = "SSHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_sha3_password, .name = "SHA3-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_224_password, .name = "SHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_256_password, .name = "SHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_384_password, .name = "SHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_512_password, .name = "SHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3, .name = "SHA3-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_224, .name = "SHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_256, .name = "SHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_384, .name = "SHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_512, .name = "SHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_ssha3_224_password, .name = "SSHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_256_password, .name = "SSHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_384_password, .name = "SSHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_512_password, .name = "SSHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_224, .name = "SSHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_256, .name = "SSHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_384, .name = "SSHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_512, .name = "SSHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_pbkdf2_password, .name = "PBKDF2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_lm_password, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ns_mta_md5_password, .name = "NS-MTA-MD5-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_pbkdf2, .name = "PBKDF2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_lm, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_nt, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ns_mta_md5, .name = "NS-MTA-MD5-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -192,42 +192,42 @@ static size_t password_type_table_len = NUM_ELEMENTS(password_type_table);
  *	@note Header comparison is case insensitive.
  */
 static fr_table_num_sorted_t const password_header_table[] = {
-	{ L("{base64_md5}"),		FR_MD5_PASSWORD		},
-	{ L("{clear}"),			FR_CLEARTEXT_PASSWORD	},
-	{ L("{cleartext}"),		FR_CLEARTEXT_PASSWORD	},
-	{ L("{crypt}"),			FR_CRYPT_PASSWORD	},
-	{ L("{md4}"),			FR_NT_PASSWORD		},
-	{ L("{md5}"),			FR_MD5_PASSWORD		},
-	{ L("{ns-mta-md5}"),		FR_NS_MTA_MD5_PASSWORD	},
-	{ L("{nt}"),			FR_NT_PASSWORD		},
-	{ L("{nthash}"),			FR_NT_PASSWORD		},
+	{ L("{base64_md5}"),			FR_MD5		},
+	{ L("{clear}"),				FR_CLEARTEXT	},
+	{ L("{cleartext}"),			FR_CLEARTEXT	},
+	{ L("{crypt}"),				FR_CRYPT	},
+	{ L("{md4}"),				FR_NT		},
+	{ L("{md5}"),				FR_MD5		},
+	{ L("{ns-mta-md5}"),			FR_NS_MTA_MD5	},
+	{ L("{nt}"),				FR_NT		},
+	{ L("{nthash}"),			FR_NT		},
 
 #ifdef HAVE_OPENSSL_EVP_H
-	{ L("{sha224}"),			FR_SHA2_PASSWORD	},
-	{ L("{sha256}"),			FR_SHA2_PASSWORD	},
-	{ L("{sha2}"),			FR_SHA2_PASSWORD	},
-	{ L("{sha384}"),			FR_SHA2_384_PASSWORD	},
-	{ L("{sha512}"),			FR_SHA2_512_PASSWORD	},
+	{ L("{sha224}"),			FR_SHA2	},
+	{ L("{sha256}"),			FR_SHA2	},
+	{ L("{sha2}"),				FR_SHA2	},
+	{ L("{sha384}"),			FR_SHA2_384	},
+	{ L("{sha512}"),			FR_SHA2_512	},
 #endif
-	{ L("{sha}"),			FR_SHA1_PASSWORD	},
-	{ L("{smd5}"),			FR_SMD5_PASSWORD	},
+	{ L("{sha}"),				FR_SHA1	},
+	{ L("{smd5}"),				FR_SMD5	},
 #ifdef HAVE_OPENSSL_EVP_H
-	{ L("{ssha224}"),			FR_SSHA2_224_PASSWORD	},
-	{ L("{ssha256}"),			FR_SSHA2_256_PASSWORD	},
+	{ L("{ssha224}"),			FR_SSHA2_224	},
+	{ L("{ssha256}"),			FR_SSHA2_256	},
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ L("{ssha3-224}"),		FR_SSHA3_224_PASSWORD	},
-	{ L("{ssha3-256}"),		FR_SSHA3_256_PASSWORD	},
-	{ L("{ssha3-384}"),		FR_SSHA3_384_PASSWORD	},
-	{ L("{ssha3-512}"),		FR_SSHA3_512_PASSWORD	},
+	{ L("{ssha3-224}"),			FR_SSHA3_224	},
+	{ L("{ssha3-256}"),			FR_SSHA3_256	},
+	{ L("{ssha3-384}"),			FR_SSHA3_384	},
+	{ L("{ssha3-512}"),			FR_SSHA3_512	},
 #  endif
-	{ L("{ssha384}"),			FR_SSHA2_384_PASSWORD	},
-	{ L("{ssha512}"),			FR_SSHA2_512_PASSWORD	},
+	{ L("{ssha384}"),			FR_SSHA2_384	},
+	{ L("{ssha512}"),			FR_SSHA2_512	},
 #endif
-	{ L("{ssha}"),			FR_SSHA1_PASSWORD	},
-	{ L("{x- orcllmv}"),		FR_LM_PASSWORD		},
-	{ L("{x- orclntv}"),		FR_NT_PASSWORD		},
-	{ L("{x-nthash}"),			FR_NT_PASSWORD		},
-	{ L("{x-pbkdf2}"),			FR_PBKDF2_PASSWORD	},
+	{ L("{ssha}"),				FR_SSHA1	},
+	{ L("{x- orcllmv}"),			FR_LM		},
+	{ L("{x- orclntv}"),			FR_NT		},
+	{ L("{x-nthash}"),			FR_NT		},
+	{ L("{x-pbkdf2}"),			FR_PBKDF2	},
 };
 static size_t password_header_table_len = NUM_ELEMENTS(password_header_table);
 
@@ -243,156 +243,156 @@ static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, f
  *
  */
 static password_info_t password_info[] = {
-	[FR_CLEARTEXT_PASSWORD]		= {
+	[FR_CLEARTEXT]			= {
 						.type = PASSWORD_CLEARTEXT,
-						.da = &attr_cleartext_password,
+						.da = &attr_cleartext,
 						.no_normify = true
 					},
-	[FR_CRYPT_PASSWORD]		= {
+	[FR_CRYPT]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_crypt_password
+						.da = &attr_crypt
 					},
-	[FR_LM_PASSWORD]		= {
+	[FR_LM]				= {
 						.type = PASSWORD_HASH,
-						.da = &attr_lm_password,
+						.da = &attr_lm,
 						.min_hash_len = MD4_DIGEST_LENGTH
 					},
-	[FR_MD5_PASSWORD]		= {
+	[FR_MD5]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_md5_password,
+						.da = &attr_md5,
 						.min_hash_len = MD5_DIGEST_LENGTH
 					},
-	[FR_NS_MTA_MD5_PASSWORD]	= {
+	[FR_NS_MTA_MD5]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_ns_mta_md5_password
+						.da = &attr_ns_mta_md5
 					},
-	[FR_NT_PASSWORD]		= {
+	[FR_NT]				= {
 						.type = PASSWORD_HASH,
-						.da = &attr_nt_password,
+						.da = &attr_nt,
 						.min_hash_len = MD4_DIGEST_LENGTH
 					},
-	[FR_PASSWORD_WITH_HEADER]	= {
+	[FR_WITH_HEADER]		= {
 						.type = PASSWORD_HASH_VARIABLE,
-						.da = &attr_password_with_header,
+						.da = &attr_with_header,
 						.func = password_process_header,
 						.always_allow = true
 					},
-	[FR_PBKDF2_PASSWORD]		= {
+	[FR_PBKDF2]			= {
 						.type = PASSWORD_HASH_VARIABLE,
-						.da = &attr_pbkdf2_password
+						.da = &attr_pbkdf2
 					},
-	[FR_SHA1_PASSWORD]		= {
+	[FR_SHA1]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha1_password,
+						.da = &attr_sha1,
 						.min_hash_len = SHA1_DIGEST_LENGTH
 					},
 #ifdef HAVE_OPENSSL_EVP_H
-	[FR_SHA2_PASSWORD]		= {
+	[FR_SHA2]			= {
 						.type = PASSWORD_HASH_VARIABLE,
-						.da = &attr_sha2_password,
+						.da = &attr_sha2,
 						.func = password_process_sha2,
 						.min_hash_len = SHA224_DIGEST_LENGTH,
 						.max_hash_len = SHA512_DIGEST_LENGTH
 					},
-	[FR_SHA2_224_PASSWORD]		= {
+	[FR_SHA2_224]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha2_224_password,
+						.da = &attr_sha2_224,
 						.min_hash_len = SHA224_DIGEST_LENGTH,
 					},
-	[FR_SHA2_256_PASSWORD]		= {
+	[FR_SHA2_256]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha2_256_password,
+						.da = &attr_sha2_256,
 						.min_hash_len = SHA256_DIGEST_LENGTH,
 					},
-	[FR_SHA2_384_PASSWORD]		= {
+	[FR_SHA2_384]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha2_384_password,
+						.da = &attr_sha2_384,
 						.min_hash_len = SHA384_DIGEST_LENGTH,
 					},
-	[FR_SHA2_512_PASSWORD]		= {
+	[FR_SHA2_512]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha2_512_password,
+						.da = &attr_sha2_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH,
 					},
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	[FR_SHA3_PASSWORD]		= {
+	[FR_SHA3]			= {
 						.type = PASSWORD_HASH_VARIABLE,
-						.da = &attr_sha3_password,
+						.da = &attr_sha3,
 						.func = password_process_sha3,
 						.min_hash_len = SHA224_DIGEST_LENGTH,
 					},
-	[FR_SHA3_224_PASSWORD]		= {
+	[FR_SHA3_224]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha3_224_password,
+						.da = &attr_sha3_224,
 						.min_hash_len = SHA224_DIGEST_LENGTH,
 					},
-	[FR_SHA3_256_PASSWORD]		= {
+	[FR_SHA3_256]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha3_256_password,
+						.da = &attr_sha3_256,
 						.min_hash_len = SHA256_DIGEST_LENGTH,
 					},
-	[FR_SHA3_384_PASSWORD]		= {
+	[FR_SHA3_384]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha3_384_password,
+						.da = &attr_sha3_384,
 						.min_hash_len = SHA384_DIGEST_LENGTH,
 					},
-	[FR_SHA3_512_PASSWORD]		= {
+	[FR_SHA3_512]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_sha3_512_password,
+						.da = &attr_sha3_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH
 					},
 #  endif
 #endif
-	[FR_SMD5_PASSWORD]		= {
+	[FR_SMD5]			= {
 						.type = PASSWORD_HASH,
-						.da = &attr_smd5_password,
+						.da = &attr_smd5,
 						.min_hash_len = MD5_DIGEST_LENGTH
 					},
-	[FR_SSHA1_PASSWORD]		= {
+	[FR_SSHA1]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha1_password,
+						.da = &attr_ssha1,
 						.min_hash_len = SHA1_DIGEST_LENGTH
 					},
 #ifdef HAVE_OPENSSL_EVP_H
-	[FR_SSHA2_224_PASSWORD]		= {
+	[FR_SSHA2_224]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha2_224_password,
+						.da = &attr_ssha2_224,
 						.min_hash_len = SHA224_DIGEST_LENGTH
 					},
-	[FR_SSHA2_256_PASSWORD]		= {
+	[FR_SSHA2_256]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha2_256_password,
+						.da = &attr_ssha2_256,
 						.min_hash_len = SHA256_DIGEST_LENGTH
 					},
-	[FR_SSHA2_384_PASSWORD]		= {
+	[FR_SSHA2_384]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha2_384_password,
+						.da = &attr_ssha2_384,
 						.min_hash_len = SHA384_DIGEST_LENGTH
 					},
-	[FR_SSHA2_512_PASSWORD]		= {
+	[FR_SSHA2_512]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha2_512_password,
+						.da = &attr_ssha2_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH
 					},
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	[FR_SSHA3_224_PASSWORD]		= {
+	[FR_SSHA3_224]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha3_224_password,
+						.da = &attr_ssha3_224,
 						.min_hash_len = SHA224_DIGEST_LENGTH,
 					},
-	[FR_SSHA3_256_PASSWORD]		= {
+	[FR_SSHA3_256]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha3_256_password,
+						.da = &attr_ssha3_256,
 						.min_hash_len = SHA256_DIGEST_LENGTH
 					},
-	[FR_SSHA3_384_PASSWORD]		= {
+	[FR_SSHA3_384]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha3_384_password,
+						.da = &attr_ssha3_384,
 						.min_hash_len = SHA384_DIGEST_LENGTH
 					},
-	[FR_SSHA3_512_PASSWORD]		= {
+	[FR_SSHA3_512]			= {
 						.type = PASSWORD_HASH_SALTED,
-						.da = &attr_ssha3_512_password,
+						.da = &attr_ssha3_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH
 					}
 #  endif
@@ -525,22 +525,22 @@ static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, request_t *request, fr_
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_224_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_224));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA256_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_256_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_256));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA384_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_384_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_384));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA512_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_512_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha2_512));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
@@ -571,22 +571,22 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 
 	switch (known_good->vp_length) {
 	case SHA224_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_224_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_224));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA256_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_256_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_256));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA384_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha3_384_password);
+		out = fr_pair_afrom_da(ctx, attr_sha3_384);
 		fr_pair_value_copy(out, known_good);
 		return out;
 
 	case SHA512_DIGEST_LENGTH:
-		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_512_password));
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_512));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
@@ -629,7 +629,7 @@ static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, f
 	normalise_t			normalised;
 
 	fr_pair_t			*new;
-	fr_dict_attr_t const		*def = attr_cleartext_password;
+	fr_dict_attr_t const		*def = attr_cleartext;
 
 	VP_VERIFY(known_good);
 
@@ -860,7 +860,7 @@ int password_normalise_and_replace(request_t *request, bool normify)
 	int		replaced = 0;
 	fr_pair_t	*known_good, *new;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return -1;
@@ -956,14 +956,14 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 	fr_cursor_t	cursor;
 	fr_pair_t	*known_good;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_password_root);
+	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
 	     known_good = fr_cursor_next(&cursor)) {
 		password_info_t		*info;
 		fr_pair_t		*out;
 		size_t			i;
 
-		if (known_good->da == attr_user_password) {
+		if (known_good->da == attr_user) {
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RWDEBUG("!!! Ignoring control.User-Password.  Update your        !!!");
 			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");

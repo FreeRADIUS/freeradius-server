@@ -19,7 +19,7 @@ VENDOR		Xirrus				21013
 #
 BEGIN-VENDOR	Xirrus
 
-ATTRIBUTE	Xirrus-Admin-Role			1	string
+ATTRIBUTE	Admin-Role			1	string
 
 END-VENDOR      Xirrus
 

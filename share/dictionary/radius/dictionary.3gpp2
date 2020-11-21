@@ -12,182 +12,181 @@
 #
 #	$Id$
 #
-VENDOR		3GPP2				5535
-
+VENDOR		3GPP2					5535
 BEGIN-VENDOR	3GPP2
 
-ATTRIBUTE	3GPP2-Ike-Preshared-Secret-Request	1	integer
-ATTRIBUTE	3GPP2-Security-Level			2	integer
-ATTRIBUTE	3GPP2-Pre-Shared-Secret			3	string # 18 octets
-ATTRIBUTE	3GPP2-Reverse-Tunnel-Spec		4	integer
-ATTRIBUTE	3GPP2-Diffserv-Class-Option		5	integer
+ATTRIBUTE	Ike-Preshared-Secret-Request		1	integer
+ATTRIBUTE	Security-Level				2	integer
+ATTRIBUTE	Pre-Shared-Secret			3	string # 18 octets
+ATTRIBUTE	Reverse-Tunnel-Spec			4	integer
+ATTRIBUTE	Diffserv-Class-Option			5	integer
 
 #  Contains embedded 3GPP2 accounting attributes.
-ATTRIBUTE	3GPP2-Accounting-Container		6	octets
-ATTRIBUTE	3GPP2-Home-Agent-IP-Address		7	ipaddr
+ATTRIBUTE	Accounting-Container			6	octets
+ATTRIBUTE	Home-Agent-IP-Address			7	ipaddr
 
 # A number formed from the concatenation of the home RADIUS IP address,
 # the FA IP address, and a 32-bit Unix timestamp, all encoded as 8 ASCII
 #  hex characters.
-ATTRIBUTE	3GPP2-KeyID				8	string # 22 octets
+ATTRIBUTE	KeyID					8	string # 22 octets
 
-ATTRIBUTE	3GPP2-PCF-IP-Address			9	ipaddr
-ATTRIBUTE	3GPP2-BSID				10	string
-ATTRIBUTE	3GPP2-User-Id				11	integer
-ATTRIBUTE	3GPP2-Forward-FCH-Mux-Option		12	integer
-ATTRIBUTE	3GPP2-Reverse-FCH-Mux-Option		13	integer
+ATTRIBUTE	PCF-IP-Address				9	ipaddr
+ATTRIBUTE	BSID					10	string
+ATTRIBUTE	User-Id					11	integer
+ATTRIBUTE	Forward-FCH-Mux-Option			12	integer
+ATTRIBUTE	Reverse-FCH-Mux-Option			13	integer
 #
 # 14-15 ?
 #
-ATTRIBUTE	3GPP2-Service-Option			16	integer
-ATTRIBUTE	3GPP2-Forward-Traffic-Type		17	integer
-ATTRIBUTE	3GPP2-Reverse-Traffic-Type		18	integer
-ATTRIBUTE	3GPP2-FCH-Frame-Size			19	integer
-ATTRIBUTE	3GPP2-Forward-FCH-RC			20	integer
-ATTRIBUTE	3GPP2-Reverse-FCH-RC			21	integer
-ATTRIBUTE	3GPP2-IP-Technology			22	integer
-ATTRIBUTE	3GPP2-Compulsory-Tunnel-Indicator	23	integer
-ATTRIBUTE	3GPP2-Release-Indicator			24	integer
-ATTRIBUTE	3GPP2-Bad-PPP-Frame-Count		25	integer
+ATTRIBUTE	Service-Option				16	integer
+ATTRIBUTE	Forward-Traffic-Type			17	integer
+ATTRIBUTE	Reverse-Traffic-Type			18	integer
+ATTRIBUTE	FCH-Frame-Size				19	integer
+ATTRIBUTE	Forward-FCH-RC				20	integer
+ATTRIBUTE	Reverse-FCH-RC				21	integer
+ATTRIBUTE	IP-Technology				22	integer
+ATTRIBUTE	Compulsory-Tunnel-Indicator		23	integer
+ATTRIBUTE	Release-Indicator			24	integer
+ATTRIBUTE	Bad-PPP-Frame-Count			25	integer
 #
 # 26-29 ?
 #
-ATTRIBUTE	3GPP2-Number-Active-Transitions		30	integer
-ATTRIBUTE	3GPP2-Terminating-SDB-Octet-Count	31	integer
-ATTRIBUTE	3GPP2-Originating-SDB-OCtet-Count	32	integer
-ATTRIBUTE	3GPP2-Terminating-Number-SDBs		33	integer
-ATTRIBUTE	3GPP2-Originating-Number-SDBs		34	integer
+ATTRIBUTE	Number-Active-Transitions		30	integer
+ATTRIBUTE	Terminating-SDB-Octet-Count		31	integer
+ATTRIBUTE	Originating-SDB-OCtet-Count		32	integer
+ATTRIBUTE	Terminating-Number-SDBs			33	integer
+ATTRIBUTE	Originating-Number-SDBs			34	integer
 # 35 ?
-ATTRIBUTE	3GPP2-IP-QoS				36	integer
+ATTRIBUTE	IP-QoS					36	integer
 # 37-38 ?
-ATTRIBUTE	3GPP2-Airlink-Priority			39	integer
-ATTRIBUTE	3GPP2-Airlink-Record-Type		40	integer # ?
-#ATTRIBUTE	3GPP2-R-P-Session-ID			41	string
-ATTRIBUTE	3GPP2-Airlink-Sequence-Number		42	integer # ?
-ATTRIBUTE	3GPP2-Received-HDLC-Octets		43	integer
-ATTRIBUTE	3GPP2-Correlation-Id			44	string
-ATTRIBUTE	3GPP2-Module-Orig-Term-Indicator	45	octets # ?
-ATTRIBUTE	3GPP2-Inbound-Mobile-IP-Sig-Octets	46	integer
-ATTRIBUTE	3GPP2-Outbound-Mobile-IP-Sig-Octets	47	integer
-ATTRIBUTE	3GPP2-Session-Continue			48	integer
-ATTRIBUTE	3GPP2-Active-Time			49	integer
-ATTRIBUTE	3GPP2-DCCH-Frame-Size			50	integer
-ATTRIBUTE	3GPP2-Begin-Session			51	integer
-ATTRIBUTE	3GPP2-ESN				52	string
+ATTRIBUTE	Airlink-Priority			39	integer
+ATTRIBUTE	Airlink-Record-Type			40	integer # ?
+#ATTRIBUTE	R-P-Session-ID				41	string
+ATTRIBUTE	Airlink-Sequence-Number			42	integer # ?
+ATTRIBUTE	Received-HDLC-Octets			43	integer
+ATTRIBUTE	Correlation-Id				44	string
+ATTRIBUTE	Module-Orig-Term-Indicator		45	octets # ?
+ATTRIBUTE	Inbound-Mobile-IP-Sig-Octets		46	integer
+ATTRIBUTE	Outbound-Mobile-IP-Sig-Octets		47	integer
+ATTRIBUTE	Session-Continue			48	integer
+ATTRIBUTE	Active-Time				49	integer
+ATTRIBUTE	DCCH-Frame-Size				50	integer
+ATTRIBUTE	Begin-Session				51	integer
+ATTRIBUTE	ESN					52	string
 # 53 ?
-ATTRIBUTE	3GPP2-S-Key				54	octets
-ATTRIBUTE	3GPP2-S-Request				55	integer
-ATTRIBUTE	3GPP2-S-Lifetime			56	date
-ATTRIBUTE	3GPP2-MN-HA-SPI				57	integer
-ATTRIBUTE	3GPP2-MN-HA-Shared-Key			58	string encrypt=2
+ATTRIBUTE	S-Key					54	octets
+ATTRIBUTE	S-Request				55	integer
+ATTRIBUTE	S-Lifetime				56	date
+ATTRIBUTE	MN-HA-SPI				57	integer
+ATTRIBUTE	MN-HA-Shared-Key			58	string encrypt=2
 
-ATTRIBUTE	3GPP2-Remote-IP-Address			59	tlv
-ATTRIBUTE	3GPP2-Remote-IP-Address-Value		.1	ipaddr
-ATTRIBUTE	3GPP2-Remote-IP-Address-Mask		.2	integer
-ATTRIBUTE	3GPP2-Remote-IP-Qualifier		.3	short
+ATTRIBUTE	Remote-IP				59	tlv
+ATTRIBUTE	Address					.1	ipaddr
+ATTRIBUTE	Mask					.2	integer
+ATTRIBUTE	Qualifier				.3	short
 
 # 60 - 69 are marked "reserved"
 
-ATTRIBUTE	3GPP2-Remote-IPv6-Address		70	tlv
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Value		.1	ipv6addr
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Prefix-Length	.2	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Qualifier	.3	tlv
+ATTRIBUTE	Remote-IPv6				70	tlv
+ATTRIBUTE	Value					.1	ipv6addr
+ATTRIBUTE	Prefix-Length				.2	integer
+ATTRIBUTE	Qualifier				.3	tlv
 
-ATTRIBUTE	3GPP2-Remote-Address-Table-Index	71	tlv
-ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Value	.1	short
-ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Qualifier .2	short
+ATTRIBUTE	Remote-Address-Table-Index		71	tlv
+ATTRIBUTE	Value					.1	short
+ATTRIBUTE	Qualifier				.2	short
 
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count	72	tlv
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Address .1	ipaddr
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Mask	.2	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward .3	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse .4	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Table-Index .5	short
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward-Overflow .6	short
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse-Overflow .7	short
+ATTRIBUTE	Remote-IPv4-Addr-Octet-Count		72	tlv
+ATTRIBUTE	Address 				.1	ipaddr
+ATTRIBUTE	Mask					.2	integer
+ATTRIBUTE	Forward 				.3	integer
+ATTRIBUTE	Reverse 				.4	integer
+ATTRIBUTE	Table-Index 				.5	short
+ATTRIBUTE	Forward-Overflow 			.6	short
+ATTRIBUTE	Reverse-Overflow 			.7	short
 
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking		73	tlv
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Allowed	.1	short
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Max-Class .2	short
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Reverse-Runnel .3	short
+ATTRIBUTE	Allowed-Diffserv-Marking		73	tlv
+ATTRIBUTE	Allowed					.1	short
+ATTRIBUTE	Max-Class 				.2	short
+ATTRIBUTE	Reverse-Runnel 				.3	short
 
-ATTRIBUTE	3GPP2-Service-Option-Profile		74	tlv
-ATTRIBUTE	3GPP2-Service-Option-Profile-Option	.1	short
+ATTRIBUTE	Service-Option-Profile			74	tlv
+ATTRIBUTE	Option					.1	short
 
-ATTRIBUTE	3GPP2-DNS-Update-Required		75	integer
+ATTRIBUTE	DNS-Update-Required			75	integer
 
 # Is this 76 or 78?  Check...
-#ATTRIBUTE	3GPP2-Always-On			76	integer
+#ATTRIBUTE	Always-On				76	integer
 # 77 ?
-#ATTRIBUTE	3GPP2-Always-On			78	integer
-ATTRIBUTE	3GPP2-Foreign-Agent-Address		79	ipaddr
-ATTRIBUTE	3GPP2-Last-User-Activity-Time		80	integer
-ATTRIBUTE	3GPP2-MN-AAA-Removal-Indication		81	integer
-ATTRIBUTE	3GPP2-RN-Packet-Data-Inactivity-Timer	82	integer
-ATTRIBUTE	3GPP2-Forward-PDCH-RC			83	integer
-ATTRIBUTE	3GPP2-Forward-DCCH-Mux-Option		84	integer
-ATTRIBUTE	3GPP2-Reverse-DCCH-Mux-Option		85	integer
-ATTRIBUTE	3GPP2-Forward-DCCH-RC			86	integer
-ATTRIBUTE	3GPP2-Reverse-DHHC-RC			87	integer
-ATTRIBUTE	3GPP2-Session-Termination-Capability	88	integer
-ATTRIBUTE	3GPP2-Allowed-Persistent-TFTs		89	integer
+#ATTRIBUTE	Always-On				78	integer
+ATTRIBUTE	Foreign-Agent-Address			79	ipaddr
+ATTRIBUTE	Last-User-Activity-Time			80	integer
+ATTRIBUTE	MN-AAA-Removal-Indication		81	integer
+ATTRIBUTE	RN-Packet-Data-Inactivity-Timer		82	integer
+ATTRIBUTE	Forward-PDCH-RC				83	integer
+ATTRIBUTE	Forward-DCCH-Mux-Option			84	integer
+ATTRIBUTE	Reverse-DCCH-Mux-Option			85	integer
+ATTRIBUTE	Forward-DCCH-RC				86	integer
+ATTRIBUTE	Reverse-DHHC-RC				87	integer
+ATTRIBUTE	Session-Termination-Capability		88	integer
+ATTRIBUTE	Allowed-Persistent-TFTs			89	integer
 
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota		90	tlv
+ATTRIBUTE	Prepaid-Acct-Quota			90	tlv
 
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-QuotaIDentifier .1	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuota	.2	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuotaOverflow .3	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThreshold .4	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThresholdOverflow .5	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-UpdateReason	.8	short
+ATTRIBUTE	Quota-IDentifier 			.1	integer
+ATTRIBUTE	Volume-Quota				.2	integer
+ATTRIBUTE	Volume-Quota-Overflow 			.3	integer
+ATTRIBUTE	Volume-Threshold 			.4	integer
+ATTRIBUTE	Volume-Threshold-Overflow		.5	integer
+ATTRIBUTE	Update-Reason				.8	short
 
 # The next two attributes contain sub-types
-ATTRIBUTE	3GPP2-Prepaid-acct-Capability		91	octets
-ATTRIBUTE	3GPP2-MIP-Lifetime			92	octets
+ATTRIBUTE	Prepaid-acct-Capability			91	octets
+ATTRIBUTE	MIP-Lifetime				92	octets
 
-ATTRIBUTE	3GPP2-Acct-Stop-Trigger			93	integer
+ATTRIBUTE	Acct-Stop-Trigger			93	integer
 
-ATTRIBUTE	3GPP2-Service-Reference-Id		94	tlv
-ATTRIBUTE	3GPP2-Service-Reference-Id-Value	.1	short
-ATTRIBUTE	3GPP2-Service-Reference-Main-SC-Indicator .2	short
+ATTRIBUTE	Service-Reference-Id			94	tlv
+ATTRIBUTE	Value					.1	short
+ATTRIBUTE	Main-SC-Indicator			.2	short
 
-ATTRIBUTE	3GPP2-DNS-Update-Capability		95	integer
-ATTRIBUTE	3GPP2-Disconnect-Reason			96	integer
+ATTRIBUTE	DNS-Update-Capability			95	integer
+ATTRIBUTE	Disconnect-Reason			96	integer
 
-ATTRIBUTE	3GPP2-Remote-IPv6-Octet-Count		97	tlv
-ATTRIBUTE	3GPP2-Remote-IPv6-Count-Address		.1	ipv6addr
-ATTRIBUTE	3GPP2-Remote-IPv6-Prefix-Length		.2	short
-ATTRIBUTE	3GPP2-Remote-IPv6-Forward-Octet-Count	.3	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count	.4	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Table-Index		.5	short
-ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count-Overflow .6	short
+ATTRIBUTE	Remote-IPv6-Octet-Count			97	tlv
+ATTRIBUTE	Count-Address				.1	ipv6addr
+ATTRIBUTE	Prefix-Length				.2	short
+ATTRIBUTE	Forward-Octet-Count			.3	integer
+ATTRIBUTE	Reverse-Octet-Count			.4	integer
+ATTRIBUTE	Table-Index				.5	short
+ATTRIBUTE	Reverse-Octet-Count-Overflow		.6	short
 
-ATTRIBUTE	3GPP2-PrePaid-Tariff-Switching		98	tlv
-ATTRIBUTE	3GPP2-Prepaid-Quota-Identifier		.1	integer
-ATTRIBUTE	3GPP2-Prepaid-Volume-Used-After-Tariff-Switch .2	integer
-ATTRIBUTE	3GPP2-Prepaid-Volume-Used-ATS-Overflow	.3	short
-ATTRIBUTE	3GPP2-Prepaid-Tariff-Switch-Interval	.4	integer
-ATTRIBUTE	3GPP2-Prepaid-Time-Interval-After-Tariff-Switch-Update .5	integer
+ATTRIBUTE	PrePaid-Tariff-Switching		98	tlv
+ATTRIBUTE	Quota-Identifier			.1	integer
+ATTRIBUTE	Volume-Used-After-Tariff-Switch 	.2	integer
+ATTRIBUTE	Volume-Used-ATS-Overflow		.3	short
+ATTRIBUTE	Tariff-Switch-Interval			.4	integer
+ATTRIBUTE	Time-Interval-After-Tariff-Switch-Update .5	integer
 
-ATTRIBUTE	3GPP2-MEID				116	octets	# sub tlvs?
+ATTRIBUTE	MEID					116	octets	# sub tlvs?
 
-ATTRIBUTE	3GPP2-DNS-Server-IP-Address		117	tlv
-ATTRIBUTE	3GPP2-DNS-Server-Primary-IP-Address	.1	ipaddr
-ATTRIBUTE	3GPP2-DNS-Server-Secondary-IP-Address	.2	ipaddr
-ATTRIBUTE	3GPP2-DNS-Server-Flag			.3	byte
-ATTRIBUTE	3GPP2-DNS-Server-Entity-Type		.4	byte
+ATTRIBUTE	DNS-Server				117	tlv
+ATTRIBUTE	Primary-IP-Address			.1	ipaddr
+ATTRIBUTE	Secondary-IP-Address			.2	ipaddr
+ATTRIBUTE	Flag					.3	byte
+ATTRIBUTE	Entity-Type				.4	byte
 
-VALUE	3GPP2-DNS-Server-Entity-Type	HAAA			1
-VALUE	3GPP2-DNS-Server-Entity-Type	VAAA			2
+VALUE		Entity-Type	HAAA			1
+VALUE		Entity-Type	VAAA			2
 
-ATTRIBUTE	3GPP2-Carrier-ID			142	string
+ATTRIBUTE	Carrier-ID				142	string
 
 # More sub-types
-ATTRIBUTE	3GPP2-GMT-Time-Zone-Offset		143	signed
+ATTRIBUTE	GMT-Time-Zone-Offset			143	signed
 
-ATTRIBUTE	3GPP2-HA-Request			168	integer
-ATTRIBUTE	3GPP2-HA-Authorised			169	integer
-ATTRIBUTE	3GPP2-IP-Ver-Authorised			172	integer
-ATTRIBUTE	3GPP2-MIPv4-Mesg-Id			173	string
+ATTRIBUTE	HA-Request				168	integer
+ATTRIBUTE	HA-Authorised				169	integer
+ATTRIBUTE	IP-Ver-Authorised			172	integer
+ATTRIBUTE	MIPv4-Mesg-Id				173	string
 
 END-VENDOR 3GPP2

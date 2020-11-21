@@ -12,15 +12,16 @@
 
 ATTRIBUTE	Lease-Query				44	struct
 MEMBER		Lease-Query-Type				uint8
-MEMBER		Lease-Query-Link-Address			ipv6addr
-MEMBER		Lease-Query-Options				group
 
 #
 #  Query by address includes an IA-Addr option.
 #  Query by client ID includes an Client-ID option which is matched against.
 #
-VALUE	Lease-Query-Type	Query-By-Address	1
-VALUE	Lease-Query-Type	Query-By-Client-ID	2
+VALUE		Lease-Query-Type	Query-By-Address	1
+VALUE		Lease-Query-Type	Query-By-Client-ID	2
+
+MEMBER		Lease-Query-Link-Address			ipv6addr
+MEMBER		Lease-Query-Options				group
 
 #
 #  Client-Data includes Client-ID, IA-Addr, IA-Prefix, and
@@ -29,7 +30,7 @@ VALUE	Lease-Query-Type	Query-By-Client-ID	2
 ATTRIBUTE	Client-Data				45	group
 ATTRIBUTE	Client-Last-Transaction-Time		46	uint32
 ATTRIBUTE	Lease-Query-Relay-Data			47	struct
-MEMBER		Lease-Query-Relay-Address			ipv6addr
-MEMBER		Lease-Query-Relay-Message			octets	# an entire Relay Message :(
+MEMBER		Relay-Address					ipv6addr
+MEMBER		Relay-Message					octets	# an entire Relay Message :(
 
 ATTRIBUTE	Lease-Query-Client-Link			48	ipv6addr array

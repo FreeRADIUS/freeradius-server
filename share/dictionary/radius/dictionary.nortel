@@ -15,9 +15,9 @@
 VENDOR		Nortel				562
 BEGIN-VENDOR	Nortel
 
-ATTRIBUTE	Nortel-User-Role			110	string
+ATTRIBUTE	User-Role			110	string
 
-ATTRIBUTE	Nortel-Privilege-Level			166	integer
+ATTRIBUTE	Privilege-Level			166	integer
 
 ATTRIBUTE	Passport-Command-Scope			200	integer
 ATTRIBUTE	Passport-Command-Impact			201	integer
@@ -28,36 +28,36 @@ ATTRIBUTE	Passport-Login-Directory		205	string
 ATTRIBUTE	Passport-Timeout-Protocol		206	integer
 ATTRIBUTE	Passport-Role				207	string
 
-VALUE	Nortel-Privilege-Level		VoiceMailAdmin		0
-VALUE	Nortel-Privilege-Level		ContactCenter		1
-VALUE	Nortel-Privilege-Level		SBAInstaller		2
-VALUE	Nortel-Privilege-Level		SBASystemCoord		3
-VALUE	Nortel-Privilege-Level		SBASystemCoordBasic	4
-VALUE	Nortel-Privilege-Level		SBABasic		5
-VALUE	Nortel-Privilege-Level		Security		6
-VALUE	Nortel-Privilege-Level		CTEApp			7
-VALUE	Nortel-Privilege-Level		SBA-IPSetRegistration	8
-VALUE	Nortel-Privilege-Level		Application-BCMMonitor	9
-VALUE	Nortel-Privilege-Level		CDRApp			10
-VALUE	Nortel-Privilege-Level		ModemLogin		11
-VALUE	Nortel-Privilege-Level		GuestLogin		12
-VALUE	Nortel-Privilege-Level		AdminDownload		13
-VALUE	Nortel-Privilege-Level		ExclusiveAccess		14
-VALUE	Nortel-Privilege-Level		Admin			15
-VALUE	Nortel-Privilege-Level		DataAdmin		16
-VALUE	Nortel-Privilege-Level		RemoteAccess		17
-VALUE	Nortel-Privilege-Level		Guest			18
-VALUE	Nortel-Privilege-Level		VoiceAdmin		19
-VALUE	Nortel-Privilege-Level		BackupOperator		20
-VALUE	Nortel-Privilege-Level		RemoteMonitoring	21
-VALUE	Nortel-Privilege-Level		SoftwareUpgrade		22
-VALUE	Nortel-Privilege-Level		AlarmViewer		24
-VALUE	Nortel-Privilege-Level		OperationalLogs		26
-VALUE	Nortel-Privilege-Level		DiagnosticLogs		27
-VALUE	Nortel-Privilege-Level		ApplicationIVR		28
-VALUE	Nortel-Privilege-Level		ISDN-Dial-in		30
-VALUE	Nortel-Privilege-Level		WAN-Dial-in		32
-VALUE	Nortel-Privilege-Level		System-SerialPort	36
+VALUE	Privilege-Level		VoiceMailAdmin		0
+VALUE	Privilege-Level		ContactCenter		1
+VALUE	Privilege-Level		SBAInstaller		2
+VALUE	Privilege-Level		SBASystemCoord		3
+VALUE	Privilege-Level		SBASystemCoordBasic	4
+VALUE	Privilege-Level		SBABasic		5
+VALUE	Privilege-Level		Security		6
+VALUE	Privilege-Level		CTEApp			7
+VALUE	Privilege-Level		SBA-IPSetRegistration	8
+VALUE	Privilege-Level		Application-BCMMonitor	9
+VALUE	Privilege-Level		CDRApp			10
+VALUE	Privilege-Level		ModemLogin		11
+VALUE	Privilege-Level		GuestLogin		12
+VALUE	Privilege-Level		AdminDownload		13
+VALUE	Privilege-Level		ExclusiveAccess		14
+VALUE	Privilege-Level		Admin			15
+VALUE	Privilege-Level		DataAdmin		16
+VALUE	Privilege-Level		RemoteAccess		17
+VALUE	Privilege-Level		Guest			18
+VALUE	Privilege-Level		VoiceAdmin		19
+VALUE	Privilege-Level		BackupOperator		20
+VALUE	Privilege-Level		RemoteMonitoring	21
+VALUE	Privilege-Level		SoftwareUpgrade		22
+VALUE	Privilege-Level		AlarmViewer		24
+VALUE	Privilege-Level		OperationalLogs		26
+VALUE	Privilege-Level		DiagnosticLogs		27
+VALUE	Privilege-Level		ApplicationIVR		28
+VALUE	Privilege-Level		ISDN-Dial-in		30
+VALUE	Privilege-Level		WAN-Dial-in		32
+VALUE	Privilege-Level		System-SerialPort	36
 
 ##############################################################################
 #

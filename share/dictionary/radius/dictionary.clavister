@@ -17,6 +17,6 @@ VENDOR		Clavister			5089
 #
 BEGIN-VENDOR	Clavister
 
-ATTRIBUTE	Clavister-User-Group			1	string
+ATTRIBUTE	User-Group			1	string
 
 END-VENDOR	Clavister

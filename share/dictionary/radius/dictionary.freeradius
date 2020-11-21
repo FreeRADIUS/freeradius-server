@@ -16,37 +16,37 @@ VENDOR		FreeRADIUS			11344
 
 BEGIN-VENDOR	FreeRADIUS
 
-ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
-ATTRIBUTE	FreeRADIUS-Acct-Session-Start-Time	2	date
+ATTRIBUTE	Proxied-To			1	ipaddr
+ATTRIBUTE	Acct-Session-Start-Time	2	date
 
 #
 #  FreeRADIUS v4 produces statistics in its own TLV
 #
-ATTRIBUTE	FreeRADIUS-Stats4-TLV			15	tlv
-ATTRIBUTE	FreeRADIUS-Stats4-Type			.1	integer
+ATTRIBUTE	Stats4-TLV			15	tlv
+ATTRIBUTE	Stats4-Type			.1	integer
 
-VALUE	FreeRADIUS-Stats4-Type		Global			1
-VALUE	FreeRADIUS-Stats4-Type		Client			2
-VALUE	FreeRADIUS-Stats4-Type		Listener		3
+VALUE	Stats4-Type		Global			1
+VALUE	Stats4-Type		Client			2
+VALUE	Stats4-Type		Listener		3
 
-ATTRIBUTE	FreeRADIUS-Stats4-Name			.2	string
-ATTRIBUTE	FreeRADIUS-Stats4-Number		.3	string
-ATTRIBUTE	FreeRADIUS-Stats4-IPv4-Address		.4	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats4-IPv6-Address		.5	ipv6addr
-ATTRIBUTE	FreeRADIUS-Stats4-Port			.6	integer
+ATTRIBUTE	Stats4-Name			.2	string
+ATTRIBUTE	Stats4-Number		.3	string
+ATTRIBUTE	Stats4-IPv4-Address		.4	ipaddr
+ATTRIBUTE	Stats4-IPv6-Address		.5	ipv6addr
+ATTRIBUTE	Stats4-Port			.6	integer
 
 #
 #  All of the counters are in a sub-TLV
 #
-ATTRIBUTE	FreeRADIUS-Stats4-Counters		15.8	TLV
-ATTRIBUTE	FreeRADIUS-Stats4-Requests		.1	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Responses		.2	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Invalid-Requests	.3	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Dup-Requests		.4	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Malformed-Requests	.5	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Packets-Dropped	.6	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Bad-Authenticators	.7	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Unknown-Types		.8	integer64
+ATTRIBUTE	Stats4-Counters		15.8	TLV
+ATTRIBUTE	Stats4-Requests		.1	integer64
+ATTRIBUTE	Stats4-Responses		.2	integer64
+ATTRIBUTE	Stats4-Invalid-Requests	.3	integer64
+ATTRIBUTE	Stats4-Dup-Requests		.4	integer64
+ATTRIBUTE	Stats4-Malformed-Requests	.5	integer64
+ATTRIBUTE	Stats4-Packets-Dropped	.6	integer64
+ATTRIBUTE	Stats4-Bad-Authenticators	.7	integer64
+ATTRIBUTE	Stats4-Unknown-Types		.8	integer64
 
 #
 #  These count request and response packets for each type of packet.
@@ -54,25 +54,25 @@ ATTRIBUTE	FreeRADIUS-Stats4-Unknown-Types		.8	integer64
 #  that the reader is knowledgable enough to know which ones are
 #  requests, and which ones are responses.
 #
-ATTRIBUTE	FreeRADIUS-Stats4-Packet-Counters	15.9	TLV
+ATTRIBUTE	Stats4-Packet-Counters	15.9	TLV
 
 #
 #  The attribute number for the counters is taken from the packet codes.
 #
-ATTRIBUTE	FreeRADIUS-Stats4-Access-Request	15.9.1	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Access-Accept		15.9.2	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Access-Reject		15.9.3	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Accounting-Request	15.9.4	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Accounting-Response	15.9.5	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Access-Challenge	15.9.11	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Status-Server		15.9.12	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-Request	15.9.40	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-ACK	15.9.41	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-NAK	15.9.42	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-CoA-Request		15.9.43	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-CoA-ACK		15.9.44	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-CoA-NAK		15.9.45	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Protocol-Error	15.9.52	integer64
+ATTRIBUTE	Stats4-Access-Request	15.9.1	integer64
+ATTRIBUTE	Stats4-Access-Accept		15.9.2	integer64
+ATTRIBUTE	Stats4-Access-Reject		15.9.3	integer64
+ATTRIBUTE	Stats4-Accounting-Request	15.9.4	integer64
+ATTRIBUTE	Stats4-Accounting-Response	15.9.5	integer64
+ATTRIBUTE	Stats4-Access-Challenge	15.9.11	integer64
+ATTRIBUTE	Stats4-Status-Server		15.9.12	integer64
+ATTRIBUTE	Stats4-Disconnect-Request	15.9.40	integer64
+ATTRIBUTE	Stats4-Disconnect-ACK	15.9.41	integer64
+ATTRIBUTE	Stats4-Disconnect-NAK	15.9.42	integer64
+ATTRIBUTE	Stats4-CoA-Request		15.9.43	integer64
+ATTRIBUTE	Stats4-CoA-ACK		15.9.44	integer64
+ATTRIBUTE	Stats4-CoA-NAK		15.9.45	integer64
+ATTRIBUTE	Stats4-Protocol-Error	15.9.52	integer64
 
 #
 #  Attributes 127 through 187 are for statistics produced by
@@ -83,109 +83,109 @@ ATTRIBUTE	FreeRADIUS-Stats4-Protocol-Error	15.9.52	integer64
 #
 #  This attribute is really a bitmask.
 #
-ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
+ATTRIBUTE	Statistics-Type		127	integer
 
-VALUE	FreeRADIUS-Statistics-Type	None			0
-VALUE	FreeRADIUS-Statistics-Type	Authentication		1
-VALUE	FreeRADIUS-Statistics-Type	Accounting		2
-VALUE	FreeRADIUS-Statistics-Type	Proxy-Authentication	4
-VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
-VALUE	FreeRADIUS-Statistics-Type	Internal		0x10
-VALUE	FreeRADIUS-Statistics-Type	Client			0x20
-VALUE	FreeRADIUS-Statistics-Type	Server			0x40
-VALUE	FreeRADIUS-Statistics-Type	Home-Server		0x80
+VALUE	Statistics-Type	None			0
+VALUE	Statistics-Type	Authentication		1
+VALUE	Statistics-Type	Accounting		2
+VALUE	Statistics-Type	Proxy-Authentication	4
+VALUE	Statistics-Type	Proxy-Accounting	8
+VALUE	Statistics-Type	Internal		0x10
+VALUE	Statistics-Type	Client			0x20
+VALUE	Statistics-Type	Server			0x40
+VALUE	Statistics-Type	Home-Server		0x80
 
-VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		0x03
-VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		0x0c
+VALUE	Statistics-Type	Auth-Acct		0x03
+VALUE	Statistics-Type	Proxy-Auth-Acct		0x0c
 
-VALUE	FreeRADIUS-Statistics-Type	All			0x1f
+VALUE	Statistics-Type	All			0x1f
 
 #
 #  Global authentication statistics for packets received by the server.
 #
-ATTRIBUTE	FreeRADIUS-Total-Access-Requests	128	integer
-ATTRIBUTE	FreeRADIUS-Total-Access-Accepts		129	integer
-ATTRIBUTE	FreeRADIUS-Total-Access-Rejects		130	integer
-ATTRIBUTE	FreeRADIUS-Total-Access-Challenges	131	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Responses		132	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Duplicate-Requests 133	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Malformed-Requests 134	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Invalid-Requests	135	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Dropped-Requests	136	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Unknown-Types	137	integer
+ATTRIBUTE	Total-Access-Requests	128	integer
+ATTRIBUTE	Total-Access-Accepts		129	integer
+ATTRIBUTE	Total-Access-Rejects		130	integer
+ATTRIBUTE	Total-Access-Challenges	131	integer
+ATTRIBUTE	Total-Auth-Responses		132	integer
+ATTRIBUTE	Total-Auth-Duplicate-Requests 133	integer
+ATTRIBUTE	Total-Auth-Malformed-Requests 134	integer
+ATTRIBUTE	Total-Auth-Invalid-Requests	135	integer
+ATTRIBUTE	Total-Auth-Dropped-Requests	136	integer
+ATTRIBUTE	Total-Auth-Unknown-Types	137	integer
 
 #
 #  Global statistics for auth packets sent by the server to all home servers
 #
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Requests	138	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Accepts	139	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Rejects	140	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Challenges 141	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Responses	142	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Duplicate-Requests 143	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Malformed-Requests 144	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Invalid-Requests 145	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Dropped-Requests 146	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Unknown-Types 147	integer
+ATTRIBUTE	Total-Proxy-Access-Requests	138	integer
+ATTRIBUTE	Total-Proxy-Access-Accepts	139	integer
+ATTRIBUTE	Total-Proxy-Access-Rejects	140	integer
+ATTRIBUTE	Total-Proxy-Access-Challenges 141	integer
+ATTRIBUTE	Total-Proxy-Auth-Responses	142	integer
+ATTRIBUTE	Total-Proxy-Auth-Duplicate-Requests 143	integer
+ATTRIBUTE	Total-Proxy-Auth-Malformed-Requests 144	integer
+ATTRIBUTE	Total-Proxy-Auth-Invalid-Requests 145	integer
+ATTRIBUTE	Total-Proxy-Auth-Dropped-Requests 146	integer
+ATTRIBUTE	Total-Proxy-Auth-Unknown-Types 147	integer
 
 #
 #  Global accounting statistics for packets received by the server.
 #
-ATTRIBUTE	FreeRADIUS-Total-Accounting-Requests	148	integer
-ATTRIBUTE	FreeRADIUS-Total-Accounting-Responses	149	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Duplicate-Requests 150	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Malformed-Requests 151	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Invalid-Requests	152	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Dropped-Requests	153	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Unknown-Types	154	integer
+ATTRIBUTE	Total-Accounting-Requests	148	integer
+ATTRIBUTE	Total-Accounting-Responses	149	integer
+ATTRIBUTE	Total-Acct-Duplicate-Requests 150	integer
+ATTRIBUTE	Total-Acct-Malformed-Requests 151	integer
+ATTRIBUTE	Total-Acct-Invalid-Requests	152	integer
+ATTRIBUTE	Total-Acct-Dropped-Requests	153	integer
+ATTRIBUTE	Total-Acct-Unknown-Types	154	integer
 
 #
 #  Global statistics for acct packets sent by the server to all home servers
 #
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Requests 155	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Responses 156	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Duplicate-Requests 157	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Malformed-Requests 158	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Invalid-Requests 159	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Dropped-Requests 160	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Unknown-Types 161	integer
+ATTRIBUTE	Total-Proxy-Accounting-Requests 155	integer
+ATTRIBUTE	Total-Proxy-Accounting-Responses 156	integer
+ATTRIBUTE	Total-Proxy-Acct-Duplicate-Requests 157	integer
+ATTRIBUTE	Total-Proxy-Acct-Malformed-Requests 158	integer
+ATTRIBUTE	Total-Proxy-Acct-Invalid-Requests 159	integer
+ATTRIBUTE	Total-Proxy-Acct-Dropped-Requests 160	integer
+ATTRIBUTE	Total-Proxy-Acct-Unknown-Types 161	integer
 
 #
 #  Internal queues.  Different packet types are put into different queues.
 #
-ATTRIBUTE	FreeRADIUS-Queue-Len-Internal		162	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Proxy		163	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Auth		164	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Acct		165	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Detail		166	integer
+ATTRIBUTE	Queue-Len-Internal		162	integer
+ATTRIBUTE	Queue-Len-Proxy		163	integer
+ATTRIBUTE	Queue-Len-Auth		164	integer
+ATTRIBUTE	Queue-Len-Acct		165	integer
+ATTRIBUTE	Queue-Len-Detail		166	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Client-IP-Address	167	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats-Client-Number		168	integer
-ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		169	integer
+ATTRIBUTE	Stats-Client-IP-Address	167	ipaddr
+ATTRIBUTE	Stats-Client-Number		168	integer
+ATTRIBUTE	Stats-Client-Netmask		169	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Server-IP-Address	170	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats-Server-Port		171	integer
+ATTRIBUTE	Stats-Server-IP-Address	170	ipaddr
+ATTRIBUTE	Stats-Server-Port		171	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Server-Outstanding-Requests 172	integer
-ATTRIBUTE	FreeRADIUS-Stats-Server-State		173	integer
+ATTRIBUTE	Stats-Server-Outstanding-Requests 172	integer
+ATTRIBUTE	Stats-Server-State		173	integer
 
-VALUE	FreeRADIUS-Stats-Server-State	Alive			0
-VALUE	FreeRADIUS-Stats-Server-State	Zombie			1
-VALUE	FreeRADIUS-Stats-Server-State	Dead			2
-VALUE	FreeRADIUS-Stats-Server-State	Idle			3
+VALUE	Stats-Server-State	Alive			0
+VALUE	Stats-Server-State	Zombie			1
+VALUE	Stats-Server-State	Dead			2
+VALUE	Stats-Server-State	Idle			3
 
 #
 #  When a home server is marked "dead" or "alive"
 #
-ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Death	174	date
-ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Life	175	date
+ATTRIBUTE	Stats-Server-Time-Of-Death	174	date
+ATTRIBUTE	Stats-Server-Time-Of-Life	175	date
 
 #
 #  When this server was started.  If start == hup, it hasn't been
 #  hup'd yet.  This is friendlier than having hup == 0 on start.
 #
-ATTRIBUTE	FreeRADIUS-Stats-Start-Time		176	date
-ATTRIBUTE	FreeRADIUS-Stats-HUP-Time		177	date
+ATTRIBUTE	Stats-Start-Time		176	date
+ATTRIBUTE	Stats-HUP-Time		177	date
 
 #
 #  Exponential moving average of home server response time
@@ -195,15 +195,15 @@ ATTRIBUTE	FreeRADIUS-Stats-HUP-Time		177	date
 #  Both Window-1 and Window-10 are times in microseconds
 #  (1/1000000 of a second).
 #
-ATTRIBUTE	FreeRADIUS-Server-EMA-Window		178	integer
-ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-1	179	integer
-ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-10	180	integer
+ATTRIBUTE	Server-EMA-Window		178	integer
+ATTRIBUTE	Server-EMA-USEC-Window-1	179	integer
+ATTRIBUTE	Server-EMA-USEC-Window-10	180	integer
 
-ATTRIBUTE	FreeRADIUS-Queue-PPS-In			181	integer
-ATTRIBUTE	FreeRADIUS-Queue-PPS-Out		182	integer
-ATTRIBUTE	FreeRADIUS-Queue-Use-Percentage		183	integer
+ATTRIBUTE	Queue-PPS-In			181	integer
+ATTRIBUTE	Queue-PPS-Out		182	integer
+ATTRIBUTE	Queue-Use-Percentage		183	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Last-Packet-Recv	184	date
-ATTRIBUTE	FreeRADIUS-Stats-Last-Packet-Sent	185	date
+ATTRIBUTE	Stats-Last-Packet-Recv	184	date
+ATTRIBUTE	Stats-Last-Packet-Sent	185	date
 
 END-VENDOR FreeRADIUS

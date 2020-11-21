@@ -16,12 +16,12 @@ VENDOR		Shasta				3199
 #
 BEGIN-VENDOR	Shasta
 
-ATTRIBUTE	Shasta-User-Privilege			1	integer
-ATTRIBUTE	Shasta-Service-Profile			2	string
-ATTRIBUTE	Shasta-VPN-Name				3	string
+ATTRIBUTE	User-Privilege			1	integer
+ATTRIBUTE	Service-Profile			2	string
+ATTRIBUTE	VPN-Name				3	string
 
-VALUE	Shasta-User-Privilege		User			1
-VALUE	Shasta-User-Privilege		Super-User		2
-VALUE	Shasta-User-Privilege		SSuper-User		3
+VALUE	User-Privilege		User			1
+VALUE	User-Privilege		Super-User		2
+VALUE	User-Privilege		SSuper-User		3
 
 END-VENDOR	Shasta

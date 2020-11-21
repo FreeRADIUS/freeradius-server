@@ -14,13 +14,13 @@ VENDOR		BSkyB				16924
 
 BEGIN-VENDOR	BSkyB
 
-ATTRIBUTE	Sky-Wifi-AP-ID				1	integer
-ATTRIBUTE	Sky-Wifi-Service-ID			2	integer
-ATTRIBUTE	Sky-Wifi-Filter-Profile			3	string
-ATTRIBUTE	Sky-Wifi-Billing-Class			4	octets
-ATTRIBUTE	Sky-Wifi-Provider-ID			5	integer
-ATTRIBUTE	Sky-Wifi-Credentials			6	string
-ATTRIBUTE	Sky-Wifi-Replicated-Packet		7	string
-ATTRIBUTE	Sky-Wifi-Protocol-Restriction		8	integer
+ATTRIBUTE	Wifi-AP-ID				1	integer
+ATTRIBUTE	Wifi-Service-ID				2	integer
+ATTRIBUTE	Wifi-Filter-Profile			3	string
+ATTRIBUTE	Wifi-Billing-Class			4	octets
+ATTRIBUTE	Wifi-Provider-ID			5	integer
+ATTRIBUTE	Wifi-Credentials			6	string
+ATTRIBUTE	Wifi-Replicated-Packet			7	string
+ATTRIBUTE	Wifi-Protocol-Restriction		8	integer
 
 END-VENDOR	BSkyB

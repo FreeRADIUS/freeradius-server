@@ -16,8 +16,8 @@
 #  not be encoded correctly.
 #
 ATTRIBUTE	Prefix64				113	struct
-MEMBER		Prefix64-ASM-Length			uint8		# MUST have value 96
-MEMBER		Prefix64-ASM-Prefix			octets[7]	# IPv6 prefix
-MEMBER		Prefix64-SSM-Length			uint8		# MUST have value 96
-MEMBER		Prefix64-SSM-Prefix			octets[7]	# IPv6 prefix
-MEMBER		Prefix64-Unicast			ipv6prefix	# MUST have prefix 32, 40, 48, 56, 64, 96
+MEMBER		ASM-Length					uint8		# MUST have value 96
+MEMBER		ASM-Prefix					octets[7]	# IPv6 prefix
+MEMBER		SSM-Length					uint8		# MUST have value 96
+MEMBER		SSM-Prefix					octets[7]	# IPv6 prefix
+MEMBER		Unicast						ipv6prefix	# MUST have prefix 32, 40, 48, 56, 64, 96

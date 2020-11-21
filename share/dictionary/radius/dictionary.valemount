@@ -15,16 +15,16 @@ BEGIN-VENDOR	ValemountNetworks
 
 # Rates to give PPPoE customers, can be used in Authentication replies,
 # in bits/s
-ATTRIBUTE	VNC-PPPoE-CBQ-RX			1	integer
-ATTRIBUTE	VNC-PPPoE-CBQ-TX			2	integer
+ATTRIBUTE	PPPoE-CBQ-RX			1	integer
+ATTRIBUTE	PPPoE-CBQ-TX			2	integer
 
 # Fallback support for each direction. (1 / 0)
-ATTRIBUTE	VNC-PPPoE-CBQ-RX-Fallback		3	integer
-ATTRIBUTE	VNC-PPPoE-CBQ-TX-Fallback		4	integer
+ATTRIBUTE	PPPoE-CBQ-RX-Fallback		3	integer
+ATTRIBUTE	PPPoE-CBQ-TX-Fallback		4	integer
 
-ATTRIBUTE	VNC-Splash				10	integer
+ATTRIBUTE	Splash				10	integer
 
-VALUE	VNC-Splash			Show			1
-VALUE	VNC-Splash			No-Show			0
+VALUE	Splash			Show			1
+VALUE	Splash			No-Show			0
 
 END-VENDOR	ValemountNetworks

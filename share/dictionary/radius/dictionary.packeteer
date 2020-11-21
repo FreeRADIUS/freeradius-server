@@ -20,7 +20,7 @@ VENDOR		Packeteer			2334
 #
 BEGIN-VENDOR	Packeteer
 
-ATTRIBUTE	Packeteer-AVPair			1	string
-ATTRIBUTE	Packeteer-PC-AVPair			2	string
+ATTRIBUTE	AVPair				1	string
+ATTRIBUTE	PC-AVPair			2	string
 
 END-VENDOR	Packeteer

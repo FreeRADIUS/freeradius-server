@@ -6,5 +6,5 @@
 
 VENDOR		Force10				6027
 BEGIN-VENDOR	Force10
-ATTRIBUTE	Force10-AVPair				1	string
+ATTRIBUTE	AVPair				1	string
 END-VENDOR	Force10

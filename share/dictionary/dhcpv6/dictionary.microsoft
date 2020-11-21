@@ -13,6 +13,6 @@
 VENDOR		Microsoft			311
 
 BEGIN-VENDOR	Microsoft
-ATTRIBUTE	Microsoft-Rogue-Detection-Request	94	octets
-ATTRIBUTE	Microsoft-Rogue-Detection-Reply		95	octets
+ATTRIBUTE	Rogue-Detection-Request	94	octets
+ATTRIBUTE	Rogue-Detection-Reply		95	octets
 END-VENDOR	Microsoft

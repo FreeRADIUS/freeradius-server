@@ -13,19 +13,20 @@
 ATTRIBUTE	4RD					97	group		# of 4RD-Map-Rule and 4RD-Non-Map-Rule
 
 ATTRIBUTE	4RD-Map-Rule				98	struct
-MEMBER		4RD-Map-Rule-IPv4-Prefix-Len		uint8
-MEMBER		4RD-Map-Rule-IPv6-Prefix-Len		uint8
-MEMBER		4RD-Map-Rule-EA-Len			uint8
-MEMBER		4RD-Map-Rule-WPK-Authorized		uint8	# only high bit used
-MEMBER		4RD-Map-Rule-IPv4-Prefix		octets[4]
-MEMBER		4RD-Map-Rule-IPv6-Prefix		octets[12]
+MEMBER		IPv4-Prefix-Len					uint8
+MEMBER		IPv6-Prefix-Len					uint8
+MEMBER		EA-Len						uint8
 
-VALUE	4RD-Map-Rule-WPK-Authorized	Authorized		0x80
-VALUE	4RD-Map-Rule-WPK-Authorized	Not-Authorized		0x00
+MEMBER		WPK-Authorized					uint8	# only high bit used
+VALUE		WPK-Authorized		Authorized		0x80
+VALUE		WPK-Authorized		Not-Authorized		0x00
+
+MEMBER		IPv4-Prefix					octets[4]
+MEMBER		IPv6-Prefix					octets[12]
 
 ATTRIBUTE	4RD-Non-Map-Rule			99	struct
-MEMBER		4RD-Non-Map-Rule-Flag-Traffic-Class-Provided bit[1]
-MEMBER		4RD-Non-Map-Rule-Flag-Reserved		bit[6]
-MEMBER		4RD-Non-Map-Rule-Flag-Hub-And-Spoke	bit[1]
-MEMBER		4RD-Non-Map-Rule-Domain-PMTU		uint8
+MEMBER		Flag-Traffic-Class-Provided			bit[1]
+MEMBER		Flag-Reserved					bit[6]
+MEMBER		Flag-Hub-And-Spoke				bit[1]
+MEMBER		Domain-PMTU					uint8
 

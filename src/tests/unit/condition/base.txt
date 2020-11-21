@@ -558,7 +558,7 @@ condition &1 == 0x616263
 match &User-Name == 'abc'
 
 condition &26.11344.1 == 0x7f000001
-match &Vendor-Specific.FreeRADIUS.FreeRADIUS-Proxied-To == 127.0.0.1
+match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly

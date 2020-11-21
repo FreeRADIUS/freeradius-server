@@ -11,8 +11,8 @@ VENDOR		Merit				61
 
 BEGIN-VENDOR	Merit
 
-ATTRIBUTE	Merit-Proxy-Action			211	string
-ATTRIBUTE	Merit-User-Id				222	string
-ATTRIBUTE	Merit-User-Realm			223	string
+ATTRIBUTE	Proxy-Action			211	string
+ATTRIBUTE	User-Id				222	string
+ATTRIBUTE	User-Realm			223	string
 
 END-VENDOR	Merit

@@ -10,7 +10,7 @@ VENDOR		CheckPoint			2620
 
 BEGIN-VENDOR	CheckPoint
 
-ATTRIBUTE	CP-Gaia-User-Role			229	string
-ATTRIBUTE	CP-Gaia-SuperUser-Access		230	integer
+ATTRIBUTE	Gaia-User-Role			229	string
+ATTRIBUTE	Gaia-SuperUser-Access		230	integer
 
 END-VENDOR	CheckPoint

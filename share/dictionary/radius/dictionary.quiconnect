@@ -14,8 +14,8 @@ VENDOR		Quiconnect			14436
 
 BEGIN-VENDOR	Quiconnect
 
-ATTRIBUTE	Quiconnect-AVPair			1	string
-ATTRIBUTE	Quiconnect-VNP-Information		2	string
-ATTRIBUTE	Quiconnect-HSP-Information		3	string
+ATTRIBUTE	AVPair			1	string
+ATTRIBUTE	VNP-Information		2	string
+ATTRIBUTE	HSP-Information		3	string
 
 END-VENDOR	Quiconnect

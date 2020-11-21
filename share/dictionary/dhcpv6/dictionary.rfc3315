@@ -11,15 +11,15 @@
 ##############################################################################
 
 ATTRIBUTE	Client-ID				1	struct
-MEMBER		Client-ID-DUID				uint16 key
+MEMBER		DUID						uint16 key
 
-STRUCT	Client-ID-DUID-LLT			Client-ID-DUID	1
-MEMBER		Client-ID-DUID-LLT-Hardware-Type	uint16 key
-MEMBER		Client-ID-DUID-LLT-Time			date
+STRUCT		LLT			DUID		1
+MEMBER		Hardware-Type					uint16 key
+MEMBER		Time						date
 
-#  Sub-struct of the above structure.
-STRUCT	Client-ID-DUID-LLT-Ethernet Client-ID-DUID-LLT-Hardware-Type 1
-MEMBER		Client-ID-DUID-LLT-Ethernet-Address	ether
+#  Sub-struct of Client-ID.LLT.Hardware-Type
+STRUCT		Ethernet		Hardware-Type	1
+MEMBER		Ethernet-Address				ether
 
 #
 #  If the 'key' field has value OTHER than what is defined here,
@@ -27,121 +27,122 @@ MEMBER		Client-ID-DUID-LLT-Ethernet-Address	ether
 #  contains the rest of the structure.
 #
 
-STRUCT	Client-ID-DUID-EN			Client-ID-DUID	2
-MEMBER		Client-ID-DUID-EN-Enterprise-Number	uint32
-MEMBER		Client-ID-DUID-EN-Identifier		octets
+STRUCT		EN			DUID		2
+MEMBER		EN-Enterprise-Number				uint32
+MEMBER		EN-Identifier					octets
 
-STRUCT	Client-ID-DUID-LL			Client-ID-DUID	3
-MEMBER		Client-ID-DUID-LL-Hardware-Type		uint16 key
+STRUCT		LL			DUID		3
+MEMBER		Hardware-Type					uint16 key
 
-#  Sub-struct of the above structure.
-STRUCT	Client-ID-DUID-LL-Ethernet Client-ID-DUID-LL-Hardware-Type 1
-MEMBER		Client-ID-DUID-LL-Ethernet-Address	ether
+#  Sub-struct of Client-ID.LL.Hardware-Type
+STRUCT		Ethernet		Hardware-Type 	1
+MEMBER		Address						ether
 
 ATTRIBUTE	Server-ID				2	struct
-MEMBER		Server-ID-DUID				uint16 key
+MEMBER		DUID						uint16 key
 
-#
-#  Duplicate sub-struct as the server cannot (yet) reference structs
-#
-STRUCT	Server-ID-DUID-LLT			Server-ID-DUID	1
-MEMBER		Server-ID-DUID-LLT-Hardware-Type	uint16 key
-MEMBER		Server-ID-DUID-LLT-Time			date
+STRUCT		LLT			DUID		1
+MEMBER		Hardware-Type					uint16 key
+MEMBER		Time						date
 
-#  Sub-struct of the above structure.
-STRUCT	Server-ID-DUID-LLT-Ethernet Server-ID-DUID-LLT-Hardware-Type 1
-MEMBER		Server-ID-DUID-LLT-Ethernet-Address	ether
+#  Sub-struct of Server-ID.LLT.Hardware-Type
+STRUCT		Ethernet		Hardware-Type	1
+MEMBER		Ethernet-Address				ether
 
-STRUCT	Server-ID-DUID-EN			Server-ID-DUID	2
-MEMBER		Server-ID-DUID-EN-Enterprise-Number	uint32
-MEMBER		Server-ID-DUID-EN-Identifier		octets
+STRUCT		EN			DUID		2
+MEMBER		Enterprise-Number				uint32
+MEMBER		Identifier					octets
 
-STRUCT	Server-ID-DUID-LL			Server-ID-DUID	3
-MEMBER		Server-ID-DUID-LL-Hardware-Type		uint16 key
+STRUCT		LL			DUID		3
+MEMBER		Hardware-Type					uint16 key
 
-#  Sub-struct of the above structure.
-STRUCT	Server-ID-DUID-LL-Ethernet Server-ID-DUID-LL-Hardware-Type 1
-MEMBER		Server-ID-DUID-LL-Ethernet-Address	ether
+#  Sub-struct of Server-ID.LL.Hardware-Type
+STRUCT		Ethernet		Hardware-Type	1
+MEMBER		Ethernet-Address				ether
 
 ATTRIBUTE	IA-NA					3	struct
-MEMBER		IA-NA-IAID				uint32
-MEMBER		IA-NA-T1				time_delta
-MEMBER		IA-NA-T2				time_delta
-MEMBER		IA-NA-Options				group
+MEMBER		IAID						uint32
+MEMBER		T1						time_delta
+MEMBER		T2						time_delta
+MEMBER		Options						group
 
 ATTRIBUTE	IA-TA					4	struct
-MEMBER		IA-TA-IAID				uint32
-MEMBER		IA-TA-Options				group
+MEMBER		IAID						uint32
+MEMBER		Options						group
 
 ATTRIBUTE	IA-Addr					5	struct
-MEMBER		IA-Addr-IPv6-Address			ipv6addr
-MEMBER		IA-Addr-Preferred-Lifetime		time_delta
-MEMBER		IA-Addr-Valid-Lifetime			time_delta
-MEMBER		IA-Addr-Options				group
+MEMBER		Address						ipv6addr
+MEMBER		Preferred-Lifetime				time_delta
+MEMBER		Valid-Lifetime					time_delta
+MEMBER		Options						group
 
 ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested options
 
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
 ATTRIBUTE	Relay-Message				9	group
+
 ATTRIBUTE	Auth					11	struct
-MEMBER		Auth-Protocol				uint8
-MEMBER		Auth-Algorithm				uint8
-MEMBER		Auth-Replay-Detection-Method		uint8
-MEMBER		Auth-Replay-Detection			uint64
-MEMBER		Auth-Information			octets
 
-#STRUCT	Auth-RKAP			Auth-Protocol		3 # really P=3,A=1,RDM=0
-#MEMBER		Auth-RKAP-Type				uint8
-#MEMBER		Auth-RKAP-Value				octets[16]
+MEMBER		Protocol					uint8
+VALUE		Protocol	Configuration-Token	0
+VALUE		Protocol	Delayed-Authentication	1
+VALUE		Protocol	Obsolete		2
+VALUE		Protocol	Reconfigure-Key		3
 
-#VALUE	Auth-RKAP-Type			Reconfigure-Key		1
-#VALUE	Auth-RKAP-Type			HMAC-MD5		2
+MEMBER		Algorithm					uint8
+VALUE		Algorithm			HMAC-MD5	1
 
-VALUE	Auth-Protocol			Configuration-Token	0
-VALUE	Auth-Protocol			Delayed-Authentication	1
-VALUE	Auth-Protocol			Obsolete		2
-VALUE	Auth-Protocol			Reconfigure-Key		3
+MEMBER		Replay-Detection-Method				uint8
+VALUE		Replay-Detection-Method	Monotonicly-Increasing-Value 0
 
-VALUE	Auth-Algorithm			HMAC-MD5		1
+MEMBER		Replay-Detection				uint64
+MEMBER		Information					octets
 
-VALUE	Auth-Replay-Detection-Method	Monotonicly-Increasing-Value 0
+#STRUCT		Auth-RKAP		Auth-Protocol		3 # really P=3,A=1,RDM=0
+#MEMBER		Type						uint8
+#VALUE		Type			Reconfigure-Key	1
+#VALUE		Type			HMAC-MD5	2
+
+#MEMBER		Value						octets[16]
 
 ATTRIBUTE	Unicast					12	ipv6addr
 ATTRIBUTE	Status-Code				13	struct
-MEMBER		Status-Code-Value			uint16
-MEMBER		Status-Code-Message			string
+MEMBER		Value						uint16
 
-VALUE	Status-Code-Value		Success			0
-VALUE	Status-Code-Value		UnspecFail		1
-VALUE	Status-Code-Value		NoAddrsAvail		2
-VALUE	Status-Code-Value		NoBinding		3
-VALUE	Status-Code-Value		NotOnLink		4
-VALUE	Status-Code-Value		UseMulticast		5
-VALUE	Status-Code-Value		NoPrefixAvail		6
-VALUE	Status-Code-Value		UnknownQueryType	7
-VALUE	Status-Code-Value		MalformedQuery		8
-VALUE	Status-Code-Value		NotConfigured		9
-VALUE	Status-Code-Value		NotAllowed		10
-VALUE	Status-Code-Value		QueryTerminated		11
-VALUE	Status-Code-Value		DataMissing		12
-VALUE	Status-Code-Value		CatchUpComplete		13
-VALUE	Status-Code-Value		NotSupported		14
-VALUE	Status-Code-Value		TLSConnectionRefused	15
-VALUE	Status-Code-Value		AddressInUse		16
-VALUE	Status-Code-Value		ConfigurationConflict	17
-VALUE	Status-Code-Value		MissingBindingInformation 18
-VALUE	Status-Code-Value		OutdatedBindingInformation 19
-VALUE	Status-Code-Value		ServerShuttingDown	20
-VALUE	Status-Code-Value		DNSUpdateNotSupported	21
-VALUE	Status-Code-Value		ExcessiveTimeSkew	22
+VALUE		Value		Success			0
+VALUE		Value		UnspecFail		1
+VALUE		Value		NoAddrsAvail		2
+VALUE		Value		NoBinding		3
+VALUE		Value		NotOnLink		4
+VALUE		Value		UseMulticast		5
+VALUE		Value		NoPrefixAvail		6
+VALUE		Value		UnknownQueryType	7
+VALUE		Value		MalformedQuery		8
+VALUE		Value		NotConfigured		9
+VALUE		Value		NotAllowed		10
+VALUE		Value		QueryTerminated		11
+VALUE		Value		DataMissing		12
+VALUE		Value		CatchUpComplete		13
+VALUE		Value		NotSupported		14
+VALUE		Value		TLSConnectionRefused	15
+VALUE		Value		AddressInUse		16
+VALUE		Value		ConfigurationConflict	17
+VALUE		Value		MissingBindingInformation 18
+VALUE		Value		OutdatedBindingInformation 19
+VALUE		Value		ServerShuttingDown	20
+VALUE		Value		DNSUpdateNotSupported	21
+VALUE		Value		ExcessiveTimeSkew	22
+
 # Unassigned	23-65535
+
+MEMBER		Message						string
 
 ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
 ATTRIBUTE	Vendor-Class				16	struct
-MEMBER		Vendor-Class-PEN			uint32
-MEMBER		Vendor-Class-Data			octets  # really 2 octets length + data, repeated
+MEMBER		PEN						uint32
+MEMBER		Data						octets  # really 2 octets length + data, repeated
 
 ATTRIBUTE	Vendor-Opts				17	vsa
 ATTRIBUTE	Interface-ID				18	octets

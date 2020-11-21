@@ -12,7 +12,7 @@
 
 ATTRIBUTE	NTP-Server				56	tlv
 BEGIN-TLV	NTP-Server
-ATTRIBUTE	NTP-Server-Address			1	ipv6addr
-ATTRIBUTE	NTP-Server-Multicast-Address		2	ipv6addr
-ATTRIBUTE	NTP-Server-FQDN				3	string dns_label
+ATTRIBUTE	Address					1	ipv6addr
+ATTRIBUTE	Multicast-Address			2	ipv6addr
+ATTRIBUTE	FQDN					3	string dns_label
 END-TLV		NTP-Server

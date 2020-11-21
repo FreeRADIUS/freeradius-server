@@ -12,48 +12,48 @@ VENDOR		Mikrotik			14988
 
 BEGIN-VENDOR	Mikrotik
 
-ATTRIBUTE	Mikrotik-Recv-Limit			1	integer
-ATTRIBUTE	Mikrotik-Xmit-Limit			2	integer
+ATTRIBUTE	Recv-Limit			1	integer
+ATTRIBUTE	Xmit-Limit			2	integer
 
 # this attribute is unused
-ATTRIBUTE	Mikrotik-Group				3	string
+ATTRIBUTE	Group				3	string
 
-ATTRIBUTE	Mikrotik-Wireless-Forward		4	integer
-ATTRIBUTE	Mikrotik-Wireless-Skip-Dot1x		5	integer
-ATTRIBUTE	Mikrotik-Wireless-Enc-Algo		6	integer
-ATTRIBUTE	Mikrotik-Wireless-Enc-Key		7	string
-ATTRIBUTE	Mikrotik-Rate-Limit			8	string
-ATTRIBUTE	Mikrotik-Realm				9	string
-ATTRIBUTE	Mikrotik-Host-IP			10	ipaddr
-ATTRIBUTE	Mikrotik-Mark-Id			11	string
-ATTRIBUTE	Mikrotik-Advertise-URL			12	string
-ATTRIBUTE	Mikrotik-Advertise-Interval		13	integer
-ATTRIBUTE	Mikrotik-Recv-Limit-Gigawords		14	integer
-ATTRIBUTE	Mikrotik-Xmit-Limit-Gigawords		15	integer
-ATTRIBUTE	Mikrotik-Wireless-PSK			16	string
-ATTRIBUTE	Mikrotik-Total-Limit			17	integer
-ATTRIBUTE	Mikrotik-Total-Limit-Gigawords		18	integer
-ATTRIBUTE	Mikrotik-Address-List			19	string
-ATTRIBUTE	Mikrotik-Wireless-MPKey			20	string
-ATTRIBUTE	Mikrotik-Wireless-Comment		21	string
-ATTRIBUTE	Mikrotik-Delegated-IPv6-Pool		22	string
-ATTRIBUTE	Mikrotik-DHCP-Option-Set		23	string
-ATTRIBUTE	Mikrotik-DHCP-Option-Param-STR1		24	string
-ATTRIBUTE	Mikrotik-DHCP-Option-ParamSTR2		25	string
-ATTRIBUTE	Mikrotik-Wireless-VLANID		26	integer
-ATTRIBUTE	Mikrotik-Wireless-VLANID-Type		27	integer
-ATTRIBUTE	Mikrotik-Wireless-Minsignal		28	string
-ATTRIBUTE	Mikrotik-Wireless-Maxsignal		29	string
+ATTRIBUTE	Wireless-Forward		4	integer
+ATTRIBUTE	Wireless-Skip-Dot1x		5	integer
+ATTRIBUTE	Wireless-Enc-Algo		6	integer
+ATTRIBUTE	Wireless-Enc-Key		7	string
+ATTRIBUTE	Rate-Limit			8	string
+ATTRIBUTE	Realm				9	string
+ATTRIBUTE	Host-IP			10	ipaddr
+ATTRIBUTE	Mark-Id			11	string
+ATTRIBUTE	Advertise-URL			12	string
+ATTRIBUTE	Advertise-Interval		13	integer
+ATTRIBUTE	Recv-Limit-Gigawords		14	integer
+ATTRIBUTE	Xmit-Limit-Gigawords		15	integer
+ATTRIBUTE	Wireless-PSK			16	string
+ATTRIBUTE	Total-Limit			17	integer
+ATTRIBUTE	Total-Limit-Gigawords		18	integer
+ATTRIBUTE	Address-List			19	string
+ATTRIBUTE	Wireless-MPKey			20	string
+ATTRIBUTE	Wireless-Comment		21	string
+ATTRIBUTE	Delegated-IPv6-Pool		22	string
+ATTRIBUTE	DHCP-Option-Set		23	string
+ATTRIBUTE	DHCP-Option-Param-STR1		24	string
+ATTRIBUTE	DHCP-Option-ParamSTR2		25	string
+ATTRIBUTE	Wireless-VLANID		26	integer
+ATTRIBUTE	Wireless-VLANID-Type		27	integer
+ATTRIBUTE	Wireless-Minsignal		28	string
+ATTRIBUTE	Wireless-Maxsignal		29	string
 
 # MikroTik Values
 
-VALUE	Mikrotik-Wireless-Enc-Algo	No-encryption		0
-VALUE	Mikrotik-Wireless-Enc-Algo	40-bit-WEP		1
-VALUE	Mikrotik-Wireless-Enc-Algo	104-bit-WEP		2
-VALUE	Mikrotik-Wireless-Enc-Algo	AES-CCM			3
-VALUE	Mikrotik-Wireless-Enc-Algo	TKIP			4
+VALUE	Wireless-Enc-Algo	No-encryption		0
+VALUE	Wireless-Enc-Algo	40-bit-WEP		1
+VALUE	Wireless-Enc-Algo	104-bit-WEP		2
+VALUE	Wireless-Enc-Algo	AES-CCM			3
+VALUE	Wireless-Enc-Algo	TKIP			4
 
-VALUE	Mikrotik-Wireless-VLANID-Type	802.1q			0
-VALUE	Mikrotik-Wireless-VLANID-Type	802.1ad			1
+VALUE	Wireless-VLANID-Type	802.1q			0
+VALUE	Wireless-VLANID-Type	802.1ad			1
 
 END-VENDOR	Mikrotik

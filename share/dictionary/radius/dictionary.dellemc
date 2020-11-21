@@ -13,8 +13,8 @@ VENDOR		DellEMC				674
 
 BEGIN-VENDOR	DellEMC
 
-ATTRIBUTE	DellEMC-AVpair				1	string
-ATTRIBUTE	DellEMC-Group-Name			2	string
+ATTRIBUTE	AVpair				1	string
+ATTRIBUTE	Group-Name			2	string
 
 END-VENDOR DellEMC
 

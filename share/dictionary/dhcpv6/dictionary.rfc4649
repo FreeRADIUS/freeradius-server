@@ -12,5 +12,5 @@
 ##############################################################################
 
 ATTRIBUTE	Relay-Agent-Remote-ID			37	struct
-MEMBER		Relay-Agent-Remote-ID-Vendor			uint32
-MEMBER		Relay-Agent-Remote-ID-Value			octets
+MEMBER		Vendor						uint32
+MEMBER		Value						octets

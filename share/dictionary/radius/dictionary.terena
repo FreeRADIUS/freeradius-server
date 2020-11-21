@@ -14,7 +14,7 @@ VENDOR		TERENA				25178
 
 BEGIN-VENDOR	TERENA
 
-ATTRIBUTE	Eduroam-SP-Country			10	string
-ATTRIBUTE	Eduroam-Monitoring-Inflate		11	string
+ATTRIBUTE	SP-Country			10	string
+ATTRIBUTE	Monitoring-Inflate		11	string
 
 END-VENDOR      TERENA

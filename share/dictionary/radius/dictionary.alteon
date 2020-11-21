@@ -13,23 +13,23 @@ VENDOR		Alteon				1872
 
 BEGIN-VENDOR	Alteon
 
-ATTRIBUTE	Alteon-Group-Mapping			1	string
-ATTRIBUTE	Alteon-VPN-Id				3	integer
-ATTRIBUTE	Alteon-Client-IP-Address		4	ipaddr
-ATTRIBUTE	Alteon-Client-Netmask			5	ipaddr
-ATTRIBUTE	Alteon-Primary-NBNS-Server		6	ipaddr
-ATTRIBUTE	Alteon-Secondary-NBNS-Server		7	ipaddr
-ATTRIBUTE	Alteon-Primary-DNS-Server		8	ipaddr
-ATTRIBUTE	Alteon-Secondary-DNS-Server		9	ipaddr
-ATTRIBUTE	Alteon-Domain-Name			10	string
+ATTRIBUTE	Group-Mapping			1	string
+ATTRIBUTE	VPN-Id				3	integer
+ATTRIBUTE	Client-IP-Address		4	ipaddr
+ATTRIBUTE	Client-Netmask			5	ipaddr
+ATTRIBUTE	Primary-NBNS-Server		6	ipaddr
+ATTRIBUTE	Secondary-NBNS-Server		7	ipaddr
+ATTRIBUTE	Primary-DNS-Server		8	ipaddr
+ATTRIBUTE	Secondary-DNS-Server		9	ipaddr
+ATTRIBUTE	Domain-Name			10	string
 
-ATTRIBUTE	Alteon-Service-Type			26	integer
+ATTRIBUTE	Service-Type			26	integer
 
-VALUE	Alteon-Service-Type		Alteon-L4admin		250
-VALUE	Alteon-Service-Type		Alteon-Slbadmin		251
-VALUE	Alteon-Service-Type		Alteon-Oper		252
-VALUE	Alteon-Service-Type		Alteon-L4oper		253
-VALUE	Alteon-Service-Type		Alteon-Slboper		254
-VALUE	Alteon-Service-Type		Alteon-User		255
+VALUE	Service-Type		L4admin		250
+VALUE	Service-Type		Slbadmin		251
+VALUE	Service-Type		Oper		252
+VALUE	Service-Type		L4oper		253
+VALUE	Service-Type		Slboper		254
+VALUE	Service-Type		User		255
 
 END-VENDOR	Alteon

@@ -18,57 +18,57 @@ VENDOR		Motorola			161
 BEGIN-VENDOR	Motorola
 
 # Low Priority uplink CIR
-ATTRIBUTE	Motorola-Canopy-LPULCIR			1	integer
+ATTRIBUTE	Canopy-LPULCIR			1	integer
 # Low Priority downlink CIR
-ATTRIBUTE	Motorola-Canopy-LPDLCIR			2	integer
+ATTRIBUTE	Canopy-LPDLCIR			2	integer
 # High Priority uplink CIR
-ATTRIBUTE	Motorola-Canopy-HPULCIR			3	integer
+ATTRIBUTE	Canopy-HPULCIR			3	integer
 # High Priority downlink CIR
-ATTRIBUTE	Motorola-Canopy-HPDLCIR			4	integer
+ATTRIBUTE	Canopy-HPDLCIR			4	integer
 # High Priority Enable
-ATTRIBUTE	Motorola-Canopy-HPENABLE		5	integer
+ATTRIBUTE	Canopy-HPENABLE		5	integer
 # Uplink Bit Rate/Sustained Uplink Rate
-ATTRIBUTE	Motorola-Canopy-ULBR			6	integer
+ATTRIBUTE	Canopy-ULBR			6	integer
 # Uplink Bit Limit/Uplink Burst Allocation
-ATTRIBUTE	Motorola-Canopy-ULBL			7	integer
+ATTRIBUTE	Canopy-ULBL			7	integer
 # Downlink Bit Rate/Sustained Downlink Rate
-ATTRIBUTE	Motorola-Canopy-DLBR			8	integer
+ATTRIBUTE	Canopy-DLBR			8	integer
 # Downlink Bit Limit/Downlink Burst Allocation
-ATTRIBUTE	Motorola-Canopy-DLBL			9	integer
+ATTRIBUTE	Canopy-DLBL			9	integer
 # VLAN Learning Enable
-ATTRIBUTE	Motorola-Canopy-VLLEARNEN		14	integer
+ATTRIBUTE	Canopy-VLLEARNEN		14	integer
 # VLAN Frames Types allowed - all/Tag/Untagged
-ATTRIBUTE	Motorola-Canopy-VLFRAMES		15	integer
+ATTRIBUTE	Canopy-VLFRAMES		15	integer
 # VLAN Membership  (1-4094)
-ATTRIBUTE	Motorola-Canopy-VLIDSET			16	integer
+ATTRIBUTE	Canopy-VLIDSET			16	integer
 # VLAN Age Timeout
-ATTRIBUTE	Motorola-Canopy-VLAGETO			20	integer
+ATTRIBUTE	Canopy-VLAGETO			20	integer
 # VLAN Ingress VLAN ID
-ATTRIBUTE	Motorola-Canopy-VLIGVID			21	integer
+ATTRIBUTE	Canopy-VLIGVID			21	integer
 # VLAN Management VLAN ID
-ATTRIBUTE	Motorola-Canopy-VLMGVID			22	integer
+ATTRIBUTE	Canopy-VLMGVID			22	integer
 # VLAN SM Management Passthrough Enable
-ATTRIBUTE	Motorola-Canopy-VLSMMGPASS		23	integer
+ATTRIBUTE	Canopy-VLSMMGPASS		23	integer
 # Broadcast Traffic Maximum Information Rate
-ATTRIBUTE	Motorola-Canopy-BCASTMIR		24	integer
+ATTRIBUTE	Canopy-BCASTMIR		24	integer
 # Userlevel permission for the User logging in remotely
-ATTRIBUTE	Motorola-Canopy-UserLevel		50	integer
+ATTRIBUTE	Canopy-UserLevel		50	integer
 
-VALUE	Motorola-Canopy-HPENABLE	Disable			0
-VALUE	Motorola-Canopy-HPENABLE	Enable			1
+VALUE	Canopy-HPENABLE	Disable			0
+VALUE	Canopy-HPENABLE	Enable			1
 
-VALUE	Motorola-Canopy-VLLEARNEN	Disable			0
-VALUE	Motorola-Canopy-VLLEARNEN	Enable			1
+VALUE	Canopy-VLLEARNEN	Disable			0
+VALUE	Canopy-VLLEARNEN	Enable			1
 
-VALUE	Motorola-Canopy-VLFRAMES	All			0
-VALUE	Motorola-Canopy-VLFRAMES	Tagged			1
-VALUE	Motorola-Canopy-VLFRAMES	Untagged		2
+VALUE	Canopy-VLFRAMES	All			0
+VALUE	Canopy-VLFRAMES	Tagged			1
+VALUE	Canopy-VLFRAMES	Untagged		2
 
-VALUE	Motorola-Canopy-VLSMMGPASS	Enable			1
-VALUE	Motorola-Canopy-VLSMMGPASS	Disable			0
+VALUE	Canopy-VLSMMGPASS	Enable			1
+VALUE	Canopy-VLSMMGPASS	Disable			0
 
-VALUE	Motorola-Canopy-UserLevel	TECH			1
-VALUE	Motorola-Canopy-UserLevel	INSTALL			2
-VALUE	Motorola-Canopy-UserLevel	ADMIN			3
+VALUE	Canopy-UserLevel	TECH			1
+VALUE	Canopy-UserLevel	INSTALL			2
+VALUE	Canopy-UserLevel	ADMIN			3
 
 END-VENDOR Motorola

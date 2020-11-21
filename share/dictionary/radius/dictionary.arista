@@ -12,17 +12,17 @@
 VENDOR		Arista				30065
 BEGIN-VENDOR	Arista
 
-ATTRIBUTE	Arista-AVPair				1	string
-ATTRIBUTE	Arista-User-Priv-Level			2	integer
-ATTRIBUTE	Arista-User-Role			3	string
-ATTRIBUTE	Arista-CVP-Role				4	string
-ATTRIBUTE	Arista-Command				5	string
-ATTRIBUTE	Arista-WebAuth				6	integer
-ATTRIBUTE	Arista-BlockMac				7	string
-ATTRIBUTE	Arista-UnblockMac			8	string
-ATTRIBUTE	Arista-PortFlap				9	integer
+ATTRIBUTE	AVPair				1	string
+ATTRIBUTE	User-Priv-Level			2	integer
+ATTRIBUTE	User-Role			3	string
+ATTRIBUTE	CVP-Role				4	string
+ATTRIBUTE	Command				5	string
+ATTRIBUTE	WebAuth				6	integer
+ATTRIBUTE	BlockMac				7	string
+ATTRIBUTE	UnblockMac			8	string
+ATTRIBUTE	PortFlap				9	integer
 
-VALUE		Arista-WebAuth		start	        0
-VALUE		Arista-WebAuth		complete	1
+VALUE		WebAuth		start	        0
+VALUE		WebAuth		complete	1
 
 END-VENDOR   Arista

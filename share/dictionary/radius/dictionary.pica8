@@ -12,9 +12,9 @@ VENDOR		Pica8				35098
 
 BEGIN-VENDOR	Pica8
 
-ATTRIBUTE	Pica8-AVPair				1	string
-ATTRIBUTE	Pica8-IP-Downloadable-ACL-Rule		2	string
-ATTRIBUTE	Pica8-IP-Downloadable-ACL-Name		3	string
-ATTRIBUTE	Pica8-Redirect-URL			4	string
+ATTRIBUTE	AVPair				1	string
+ATTRIBUTE	IP-Downloadable-ACL-Rule		2	string
+ATTRIBUTE	IP-Downloadable-ACL-Name		3	string
+ATTRIBUTE	Redirect-URL			4	string
 
 END-VENDOR	Pica8

@@ -16,6 +16,6 @@ VENDOR		Riverbed			17163
 
 BEGIN-VENDOR	Riverbed
 
-ATTRIBUTE	Riverbed-Local-User			1	string
+ATTRIBUTE	Local-User			1	string
 
 END-VENDOR    Riverbed

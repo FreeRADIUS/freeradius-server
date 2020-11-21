@@ -12,8 +12,8 @@
 ##############################################################################
 
 ATTRIBUTE	S46-Priority				111	uint16 array
-VALUE	S46-Priority			DS-Lite			64
-VALUE	S46-Priority			DHCPv4-Over-DHCPv6	88
-VALUE	S46-Priority			MAP-E			94
-VALUE	S46-Priority			MAP-T			95
-VALUE	S46-Priority			Lightweight-4-Over-6	96
+VALUE		S46-Priority	DS-Lite			64
+VALUE		S46-Priority	DHCPv4-Over-DHCPv6	88
+VALUE		S46-Priority	MAP-E			94
+VALUE		S46-Priority	MAP-T			95
+VALUE		S46-Priority	Lightweight-4-Over-6	96

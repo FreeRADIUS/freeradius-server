@@ -9,9 +9,9 @@
 VENDOR		Meraki				29671
 BEGIN-VENDOR	Meraki
 
-ATTRIBUTE	Meraki-Device-Name			1	string
-ATTRIBUTE	Meraki-Network-Name			2	string
-ATTRIBUTE	Meraki-Ap-Name				3	string
-ATTRIBUTE	Meraki-Ap-Tags				4	string
+ATTRIBUTE	Device-Name			1	string
+ATTRIBUTE	Network-Name			2	string
+ATTRIBUTE	Ap-Name				3	string
+ATTRIBUTE	Ap-Tags				4	string
 
 END-VENDOR      Meraki

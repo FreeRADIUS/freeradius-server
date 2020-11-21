@@ -12,21 +12,20 @@
 ##############################################################################
 
 ATTRIBUTE	Geolocation				63	struct
-MEMBER		GeoLocation-Latitude-Uncertainty	bit[6]
-MEMBER		GeoLocation-Latitude			bit[34]  # 9 bits of integer, 25 bits of fraction
-MEMBER		GeoLocation-Longitude-Uncertainty	bit[6]
-MEMBER		GeoLocation-Longitude			bit[34]  # 9 bits of integer, 25 bits of fraction
-MEMBER		GeoLocation-Altitude-Type		bit[4]
-MEMBER		GeoLocation-Altitude-Uncertainty	bit[6]
-MEMBER		GeoLocation-Altitude			bit[30]
-MEMBER		GeoLocation-Version			bit[2]	# must be 1
-MEMBER		GeoLocation-Reserved			bit[3]
-MEMBER		GeoLocation-Datum			bit[3]
+MEMBER		Latitude-Uncertainty				bit[6]
+MEMBER		Latitude					bit[34]  # 9 bits of integer, 25 bits of fraction
+MEMBER		Longitude-Uncertainty				bit[6]
+MEMBER		Longitude					bit[34]  # 9 bits of integer, 25 bits of fraction
+MEMBER		Altitude-Type					bit[4]
+VALUE		Altitude-Type		Unknown			0
+VALUE		Altitude-Type		Meters			1
+VALUE		Altitude-Type		Floors			2
 
-VALUE	GeoLocation-Altitude-Type	Unknown			0
-VALUE	GeoLocation-Altitude-Type	Meters			1
-VALUE	GeoLocation-Altitude-Type	Floors			2
-
-VALUE	GeoLocation-Datum		WGS84			1
-VALUE	GeoLocation-Datum		NAD83-NAVD88		2
-VALUE	GeoLocation-Datum		NAD83-MLLW		3
+MEMBER		Altitude-Uncertainty				bit[6]
+MEMBER		Altitude					bit[30]
+MEMBER		Version						bit[2]	# must be 1
+MEMBER		Reserved					bit[3]
+MEMBER		Datum						bit[3]
+VALUE		Datum			WGS84			1
+VALUE		Datum			NAD83-NAVD88		2
+VALUE		Datum			NAD83-MLLW		3

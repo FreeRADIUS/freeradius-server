@@ -16,6 +16,6 @@ BEGIN-VENDOR	Arbor
 
 # Arbor-Privilege-Level = "system_admin or system_analyst or system_user"
 
-ATTRIBUTE	Arbor-Privilege-Level			1	string
+ATTRIBUTE	Privilege-Level			1	string
 
 END-VENDOR Arbor

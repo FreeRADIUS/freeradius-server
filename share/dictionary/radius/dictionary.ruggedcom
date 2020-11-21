@@ -8,6 +8,6 @@ VENDOR		RuggedCom			15004
 
 BEGIN-VENDOR	RuggedCom
 
-ATTRIBUTE	RuggedCom-Privilege-level		2	string
+ATTRIBUTE	Privilege-level		2	string
 
 END-VENDOR RuggedCom

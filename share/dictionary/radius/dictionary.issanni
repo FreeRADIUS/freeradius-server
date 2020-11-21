@@ -16,29 +16,29 @@ BEGIN-VENDOR	Issanni
 #
 # UTStarcom Issanni DSL router.
 #
-ATTRIBUTE	Issanni-SoftFlow-Template		1	string
-ATTRIBUTE	Issanni-NAT-Support			2	string
-ATTRIBUTE	Issanni-Routing-Context			3	string
-ATTRIBUTE	Issanni-Tunnel-Name			4	string
-ATTRIBUTE	Issanni-IP-Pool-Name			5	string
-ATTRIBUTE	Issanni-PPPoE-URL			6	string
-ATTRIBUTE	Issanni-PPPoE-MOTM			7	string
-ATTRIBUTE	Issanni-Service				8	string
-ATTRIBUTE	Issanni-Pri-DNS				9	ipaddr
-ATTRIBUTE	Issanni-Sec-DNS				10	ipaddr
-ATTRIBUTE	Issanni-Pri-NBNS			11	ipaddr
-ATTRIBUTE	Issanni-Sec-NBNS			12	ipaddr
-ATTRIBUTE	Issanni-Traffic-Class			13	string
-ATTRIBUTE	Issanni-Tunnel-Type			14	integer
-ATTRIBUTE	Issanni-NAT-Type			15	integer
-ATTRIBUTE	Issanni-QOS-Class			16	string
-ATTRIBUTE	Issanni-Interface-Name			17	string
+ATTRIBUTE	SoftFlow-Template		1	string
+ATTRIBUTE	NAT-Support			2	string
+ATTRIBUTE	Routing-Context			3	string
+ATTRIBUTE	Tunnel-Name			4	string
+ATTRIBUTE	IP-Pool-Name			5	string
+ATTRIBUTE	PPPoE-URL			6	string
+ATTRIBUTE	PPPoE-MOTM			7	string
+ATTRIBUTE	Service				8	string
+ATTRIBUTE	Pri-DNS				9	ipaddr
+ATTRIBUTE	Sec-DNS				10	ipaddr
+ATTRIBUTE	Pri-NBNS			11	ipaddr
+ATTRIBUTE	Sec-NBNS			12	ipaddr
+ATTRIBUTE	Traffic-Class			13	string
+ATTRIBUTE	Tunnel-Type			14	integer
+ATTRIBUTE	NAT-Type			15	integer
+ATTRIBUTE	QOS-Class			16	string
+ATTRIBUTE	Interface-Name			17	string
 
-VALUE	Issanni-Tunnel-Type		IP-IP			1
-VALUE	Issanni-Tunnel-Type		ESP			2
-VALUE	Issanni-Tunnel-Type		L2TP			3
+VALUE	Tunnel-Type		IP-IP			1
+VALUE	Tunnel-Type		ESP			2
+VALUE	Tunnel-Type		L2TP			3
 
-VALUE	Issanni-NAT-Type		NAT			1
-VALUE	Issanni-NAT-Type		NAPT			2
+VALUE	NAT-Type		NAT			1
+VALUE	NAT-Type		NAPT			2
 
 END-VENDOR	Issanni

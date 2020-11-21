@@ -76,44 +76,44 @@ static fr_dict_autoload_t rlm_pap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_password_root;
+static fr_dict_attr_t const *attr_root;
 
-static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_user;
 
 static fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_password_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
 
 #ifdef HAVE_OPENSSL_EVP_H
 static fr_table_num_sorted_t const pbkdf2_crypt_names[] = {
-	{ L("HMACSHA1"),		FR_SSHA1_PASSWORD },
-	{ L("HMACSHA2+224"),	FR_SSHA2_224_PASSWORD },
-	{ L("HMACSHA2+256"),	FR_SSHA2_256_PASSWORD },
-	{ L("HMACSHA2+384"),	FR_SSHA2_384_PASSWORD },
-	{ L("HMACSHA2+512"),	FR_SSHA2_512_PASSWORD },
+	{ L("HMACSHA1"),	FR_SSHA1 },
+	{ L("HMACSHA2+224"),	FR_SSHA2_224 },
+	{ L("HMACSHA2+256"),	FR_SSHA2_256 },
+	{ L("HMACSHA2+384"),	FR_SSHA2_384 },
+	{ L("HMACSHA2+512"),	FR_SSHA2_512 },
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	{ L("HMACSHA3+224"),	FR_SSHA3_224_PASSWORD },
-	{ L("HMACSHA3+256"),	FR_SSHA3_256_PASSWORD },
-	{ L("HMACSHA3+384"),	FR_SSHA3_384_PASSWORD },
-	{ L("HMACSHA3+512"),	FR_SSHA3_512_PASSWORD },
+	{ L("HMACSHA3+224"),	FR_SSHA3_224 },
+	{ L("HMACSHA3+256"),	FR_SSHA3_256 },
+	{ L("HMACSHA3+384"),	FR_SSHA3_384 },
+	{ L("HMACSHA3+512"),	FR_SSHA3_512 },
 #  endif
 };
 static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
 static fr_table_num_sorted_t const pbkdf2_passlib_names[] = {
-	{ L("sha1"),		FR_SSHA1_PASSWORD },
-	{ L("sha256"),		FR_SSHA2_256_PASSWORD },
-	{ L("sha512"),		FR_SSHA2_512_PASSWORD }
+	{ L("sha1"),		FR_SSHA1 },
+	{ L("sha256"),		FR_SSHA2_256 },
+	{ L("sha512"),		FR_SSHA2_512 }
 };
 static size_t pbkdf2_passlib_names_len = NUM_ELEMENTS(pbkdf2_passlib_names);
 #endif
 
-static fr_dict_attr_t const **pap_allowed_passwords;
+static fr_dict_attr_t const **pap_alloweds;
 
 /*
  *	Authorize the user for PAP authentication.
@@ -131,9 +131,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_NOOP;
 	}
 
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user);
 	if (!password) {
-		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user_password->name);
+		RDEBUG2("No %s attribute in the request.  Cannot do PAP", attr_user->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -449,48 +449,48 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 
 	digest_type = fr_table_value_by_substr(hash_names, (char const *)p, q - p, -1);
 	switch (digest_type) {
-	case FR_SSHA1_PASSWORD:
+	case FR_SSHA1:
 		evp_md = EVP_sha1();
 		digest_len = SHA1_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA2_224_PASSWORD:
+	case FR_SSHA2_224:
 		evp_md = EVP_sha224();
 		digest_len = SHA224_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA2_256_PASSWORD:
+	case FR_SSHA2_256:
 		evp_md = EVP_sha256();
 		digest_len = SHA256_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA2_384_PASSWORD:
+	case FR_SSHA2_384:
 		evp_md = EVP_sha384();
 		digest_len = SHA384_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA2_512_PASSWORD:
+	case FR_SSHA2_512:
 		evp_md = EVP_sha512();
 		digest_len = SHA512_DIGEST_LENGTH;
 		break;
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	case FR_SSHA3_224_PASSWORD:
+	case FR_SSHA3_224:
 		evp_md = EVP_sha3_224();
 		digest_len = SHA224_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA3_256_PASSWORD:
+	case FR_SSHA3_256:
 		evp_md = EVP_sha3_256();
 		digest_len = SHA256_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA3_384_PASSWORD:
+	case FR_SSHA3_384:
 		evp_md = EVP_sha3_384();
 		digest_len = SHA384_DIGEST_LENGTH;
 		break;
 
-	case FR_SSHA3_512_PASSWORD:
+	case FR_SSHA3_512:
 		evp_md = EVP_sha3_512();
 		digest_len = SHA512_DIGEST_LENGTH;
 		break;
@@ -690,25 +690,25 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
 {
 	ssize_t len;
 	uint8_t digest[MD4_DIGEST_LENGTH];
-	uint8_t ucs2_password[512];
+	uint8_t ucs2[512];
 
 	RDEBUG2("Comparing with \"known-good\" NT-Password");
 
-	fr_assert(password->da == attr_user_password);
+	fr_assert(password->da == attr_user);
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
 		REDEBUG("\"known good\" NT-Password has incorrect length, expected 16 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
-	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password),
+	len = fr_utf8_to_ucs2(ucs2, sizeof(ucs2),
 			      password->vp_strvalue, password->vp_length);
 	if (len < 0) {
 		REDEBUG("User-Password is not in UCS2 format");
 		RETURN_MODULE_INVALID;
 	}
 
-	fr_md4_calc(digest, (uint8_t *)ucs2_password, len);
+	fr_md4_calc(digest, (uint8_t *)ucs2, len);
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
@@ -825,42 +825,42 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_dummy(rlm_rcode_t *p_result,
  *
  */
 static const pap_auth_func_t auth_func_table[] = {
-	[FR_CLEARTEXT_PASSWORD]	= pap_auth_clear,
-	[FR_LM_PASSWORD]	= pap_auth_lm,
-	[FR_MD5_PASSWORD]	= pap_auth_md5,
-	[FR_SMD5_PASSWORD]	= pap_auth_smd5,
+	[FR_CLEARTEXT]	= pap_auth_clear,
+	[FR_LM]	= pap_auth_lm,
+	[FR_MD5]	= pap_auth_md5,
+	[FR_SMD5]	= pap_auth_smd5,
 
 #ifdef HAVE_CRYPT
-	[FR_CRYPT_PASSWORD]	= pap_auth_crypt,
+	[FR_CRYPT]	= pap_auth_crypt,
 #endif
-	[FR_NS_MTA_MD5_PASSWORD] = pap_auth_ns_mta_md5,
-	[FR_NT_PASSWORD]	= pap_auth_nt,
-	[FR_PASSWORD_WITH_HEADER] = pap_auth_dummy,
-	[FR_SHA1_PASSWORD]	= pap_auth_sha1,
-	[FR_SSHA1_PASSWORD]	= pap_auth_ssha1,
+	[FR_NS_MTA_MD5] = pap_auth_ns_mta_md5,
+	[FR_NT]	= pap_auth_nt,
+	[FR_WITH_HEADER] = pap_auth_dummy,
+	[FR_SHA1]	= pap_auth_sha1,
+	[FR_SSHA1]	= pap_auth_ssha1,
 
 #ifdef HAVE_OPENSSL_EVP_H
-	[FR_PBKDF2_PASSWORD]	= pap_auth_pbkdf2,
-	[FR_SHA2_PASSWORD]	= pap_auth_dummy,
-	[FR_SHA2_224_PASSWORD]	= pap_auth_sha2_224,
-	[FR_SHA2_256_PASSWORD]	= pap_auth_sha2_256,
-	[FR_SHA2_384_PASSWORD]	= pap_auth_sha2_384,
-	[FR_SHA2_512_PASSWORD]	= pap_auth_sha2_512,
-	[FR_SSHA2_224_PASSWORD]	= pap_auth_ssha2_224,
-	[FR_SSHA2_256_PASSWORD]	= pap_auth_ssha2_256,
-	[FR_SSHA2_384_PASSWORD]	= pap_auth_ssha2_384,
-	[FR_SSHA2_512_PASSWORD]	= pap_auth_ssha2_512,
+	[FR_PBKDF2]	= pap_auth_pbkdf2,
+	[FR_SHA2]	= pap_auth_dummy,
+	[FR_SHA2_224]	= pap_auth_sha2_224,
+	[FR_SHA2_256]	= pap_auth_sha2_256,
+	[FR_SHA2_384]	= pap_auth_sha2_384,
+	[FR_SHA2_512]	= pap_auth_sha2_512,
+	[FR_SSHA2_224]	= pap_auth_ssha2_224,
+	[FR_SSHA2_256]	= pap_auth_ssha2_256,
+	[FR_SSHA2_384]	= pap_auth_ssha2_384,
+	[FR_SSHA2_512]	= pap_auth_ssha2_512,
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	[FR_SHA3_PASSWORD]	= pap_auth_dummy,
-	[FR_SHA3_224_PASSWORD]	= pap_auth_sha3_224,
-	[FR_SHA3_256_PASSWORD]	= pap_auth_sha3_256,
-	[FR_SHA3_384_PASSWORD]	= pap_auth_sha3_384,
-	[FR_SHA3_512_PASSWORD]	= pap_auth_sha3_512,
-	[FR_SSHA3_224_PASSWORD]	= pap_auth_ssha3_224,
-	[FR_SSHA3_256_PASSWORD]	= pap_auth_ssha3_256,
-	[FR_SSHA3_384_PASSWORD]	= pap_auth_ssha3_384,
-	[FR_SSHA3_512_PASSWORD]	= pap_auth_ssha3_512,
+	[FR_SHA3]	= pap_auth_dummy,
+	[FR_SHA3_224]	= pap_auth_sha3_224,
+	[FR_SHA3_256]	= pap_auth_sha3_256,
+	[FR_SHA3_384]	= pap_auth_sha3_384,
+	[FR_SHA3_512]	= pap_auth_sha3_512,
+	[FR_SSHA3_224]	= pap_auth_ssha3_224,
+	[FR_SSHA3_256]	= pap_auth_ssha3_256,
+	[FR_SSHA3_384]	= pap_auth_ssha3_384,
+	[FR_SSHA3_512]	= pap_auth_ssha3_512,
 #  endif
 #endif	/* HAVE_OPENSSL_EVP_H */
 };
@@ -877,7 +877,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;
 
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user);
 	if (!password) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		RETURN_MODULE_INVALID;
@@ -904,7 +904,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	in the request.
 	 */
 	known_good = password_find(&ephemeral, request, request,
-				   pap_allowed_passwords, talloc_array_length(pap_allowed_passwords),
+				   pap_alloweds, talloc_array_length(pap_alloweds),
 				   inst->normify);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
@@ -1002,20 +1002,20 @@ static int mod_load(void)
 	 *	Get a list of the DAs that match are allowed
 	 *	functions.
 	 */
-	pap_allowed_passwords = talloc_array(NULL, fr_dict_attr_t const *, allowed);
+	pap_alloweds = talloc_array(NULL, fr_dict_attr_t const *, allowed);
 	for (i = 0; i < NUM_ELEMENTS(auth_func_table); i++) {
 		fr_dict_attr_t const *password_da;
 
 		if (auth_func_table[i] == NULL) continue;
 
-		password_da = fr_dict_attr_child_by_num(attr_password_root, i);
+		password_da = fr_dict_attr_child_by_num(attr_root, i);
 		if (!fr_cond_assert(password_da)) {
 			ERROR("Could not resolve password attribute %zu", i);
-			talloc_free(pap_allowed_passwords);
+			talloc_free(pap_alloweds);
 			return -1;
 		}
 
-		pap_allowed_passwords[j++] = password_da;
+		pap_alloweds[j++] = password_da;
 	}
 
 	return 0;
@@ -1023,7 +1023,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	talloc_free(pap_allowed_passwords);
+	talloc_free(pap_alloweds);
 	fr_dict_autofree(rlm_pap_dict);
 }
 

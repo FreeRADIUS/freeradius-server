@@ -9,14 +9,14 @@ VENDOR		Infoblox			7779
 
 BEGIN-VENDOR	Infoblox
 
-ATTRIBUTE	Infoblox-windows-group			1	string
-ATTRIBUTE	Infoblox-variable-1			2	string
-ATTRIBUTE	Infoblox-variable-2			3	string
-ATTRIBUTE	Infoblox-variable-3			4	string
-ATTRIBUTE	Infoblox-variable-4			5	string
-ATTRIBUTE	Infoblox-variable-5			6	string
-ATTRIBUTE	Infoblox-Version			7	string
-ATTRIBUTE	Infoblox-Product-Name			8	string
-ATTRIBUTE	Infoblox-Group-Info			9	string
+ATTRIBUTE	windows-group			1	string
+ATTRIBUTE	variable-1			2	string
+ATTRIBUTE	variable-2			3	string
+ATTRIBUTE	variable-3			4	string
+ATTRIBUTE	variable-4			5	string
+ATTRIBUTE	variable-5			6	string
+ATTRIBUTE	Version				7	string
+ATTRIBUTE	Product-Name			8	string
+ATTRIBUTE	Group-Info			9	string
 
 END-VENDOR	Infoblox

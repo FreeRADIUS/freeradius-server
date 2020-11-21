@@ -14,54 +14,54 @@ VENDOR		Juniper				2636
 
 BEGIN-VENDOR	Juniper
 
-ATTRIBUTE	Juniper-Local-User-Name			1	string
-ATTRIBUTE	Juniper-Allow-Commands			2	string
-ATTRIBUTE	Juniper-Deny-Commands			3	string
-ATTRIBUTE	Juniper-Allow-Configuration		4	string
-ATTRIBUTE	Juniper-Deny-Configuration		5	string
+ATTRIBUTE	Local-User-Name			1	string
+ATTRIBUTE	Allow-Commands			2	string
+ATTRIBUTE	Deny-Commands			3	string
+ATTRIBUTE	Allow-Configuration		4	string
+ATTRIBUTE	Deny-Configuration		5	string
 
-ATTRIBUTE	Juniper-Interactive-Command		8	string
-ATTRIBUTE	Juniper-Configuration-Change		9	string
-ATTRIBUTE	Juniper-User-Permissions		10	string
-ATTRIBUTE	Juniper-Junosspace-Profile		11	string
+ATTRIBUTE	Interactive-Command		8	string
+ATTRIBUTE	Configuration-Change		9	string
+ATTRIBUTE	User-Permissions		10	string
+ATTRIBUTE	Junosspace-Profile		11	string
 
-ATTRIBUTE	Juniper-CTP-Group			21	integer
-ATTRIBUTE	Juniper-CTPView-APP-Group		22	integer
-ATTRIBUTE	Juniper-CTPView-OS-Group		23	integer
+ATTRIBUTE	CTP-Group			21	integer
+ATTRIBUTE	CTPView-APP-Group		22	integer
+ATTRIBUTE	CTPView-OS-Group		23	integer
 
-ATTRIBUTE	Juniper-Primary-Dns			31	ipaddr
-ATTRIBUTE	Juniper-Primary-Wins			32	ipaddr
-ATTRIBUTE	Juniper-Secondary-Dns			33	ipaddr
-ATTRIBUTE	Juniper-Secondary-Wins			34	ipaddr
-ATTRIBUTE	Juniper-Interface-id			35	string
-ATTRIBUTE	Juniper-Ip-Pool-Name			36	string
-ATTRIBUTE	Juniper-Keep-Alive			37	integer
-ATTRIBUTE	Juniper-CoS-Traffic-Control-Profile	38	string
-ATTRIBUTE	Juniper-CoS-Parameter			39	string
-ATTRIBUTE	Juniper-encapsulation-overhead		40	integer
-ATTRIBUTE	Juniper-cell-overhead			41	integer
-ATTRIBUTE	Juniper-tx-connect-speed		42	integer
-ATTRIBUTE	Juniper-rx-connect-speed		43	integer
-ATTRIBUTE	Juniper-Firewall-filter-name		44	string
-ATTRIBUTE	Juniper-Policer-Parameter		45	string
-ATTRIBUTE	Juniper-Local-Group-Name		46	string
-ATTRIBUTE	Juniper-Local-Interface			47	string
-ATTRIBUTE	Juniper-Switching-Filter		48	string
-ATTRIBUTE	Juniper-VoIP-Vlan			49	string
+ATTRIBUTE	Primary-Dns			31	ipaddr
+ATTRIBUTE	Primary-Wins			32	ipaddr
+ATTRIBUTE	Secondary-Dns			33	ipaddr
+ATTRIBUTE	Secondary-Wins			34	ipaddr
+ATTRIBUTE	Interface-id			35	string
+ATTRIBUTE	Ip-Pool-Name			36	string
+ATTRIBUTE	Keep-Alive			37	integer
+ATTRIBUTE	CoS-Traffic-Control-Profile	38	string
+ATTRIBUTE	CoS-Parameter			39	string
+ATTRIBUTE	encapsulation-overhead		40	integer
+ATTRIBUTE	cell-overhead			41	integer
+ATTRIBUTE	tx-connect-speed		42	integer
+ATTRIBUTE	rx-connect-speed		43	integer
+ATTRIBUTE	Firewall-filter-name		44	string
+ATTRIBUTE	Policer-Parameter		45	string
+ATTRIBUTE	Local-Group-Name		46	string
+ATTRIBUTE	Local-Interface			47	string
+ATTRIBUTE	Switching-Filter		48	string
+ATTRIBUTE	VoIP-Vlan			49	string
 
-ATTRIBUTE	Juniper-AV-Pair				52	string
+ATTRIBUTE	AV-Pair				52	string
 
-VALUE	Juniper-CTPView-APP-Group	Net_View		1
-VALUE	Juniper-CTPView-APP-Group	Net_Admin		2
-VALUE	Juniper-CTPView-APP-Group	Global_Admin		3
+VALUE	CTPView-APP-Group	Net_View		1
+VALUE	CTPView-APP-Group	Net_Admin		2
+VALUE	CTPView-APP-Group	Global_Admin		3
 
-VALUE	Juniper-CTP-Group		Read_Only		1
-VALUE	Juniper-CTP-Group		Admin			2
-VALUE	Juniper-CTP-Group		Privileged_Admin	3
-VALUE	Juniper-CTP-Group		Auditor			4
+VALUE	CTP-Group		Read_Only		1
+VALUE	CTP-Group		Admin			2
+VALUE	CTP-Group		Privileged_Admin	3
+VALUE	CTP-Group		Auditor			4
 
-VALUE	Juniper-CTPView-OS-Group	Web_Manager		1
-VALUE	Juniper-CTPView-OS-Group	System_Admin		2
-VALUE	Juniper-CTPView-OS-Group	Auditor			3
+VALUE	CTPView-OS-Group	Web_Manager		1
+VALUE	CTPView-OS-Group	System_Admin		2
+VALUE	CTPView-OS-Group	Auditor			3
 
 END-VENDOR	Juniper

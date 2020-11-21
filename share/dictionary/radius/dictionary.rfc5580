@@ -22,21 +22,21 @@ ATTRIBUTE	Operator-Name				126	string
 #  Large blobs of stuff
 #
 ATTRIBUTE	Location-Information			127	struct
-MEMBER		Location-Information-Index		uint16
-MEMBER		Location-Information-Code		uint8
-MEMBER		Location-Information-Entity		uint8
-MEMBER		Location-Information-Sighting-Time	uint64
-MEMBER		Location-Information-TTL		uint64
-MEMBER		Location-Information-Method		string
+MEMBER		Index						uint16
+MEMBER		Code						uint8
+MEMBER		Entity						uint8
+MEMBER		Sighting-Time					uint64
+MEMBER		TTL						uint64
+MEMBER		Method						string
 
 ATTRIBUTE	Location-Data				128	struct
-MEMBER		Location-Data-Index			uint16
-MEMBER		Location-Data-Location			octets
+MEMBER		Index						uint16
+MEMBER		Location					octets
 
 ATTRIBUTE	Basic-Location-Policy-Rules		129	struct
-MEMBER		Basic-Location-Policy-Flags		uint16
-MEMBER		Basic-Location-Policy-Retention-Expires	uint64
-MEMBER		Basic-Location-Policy-Note-Well		string
+MEMBER		Flags						uint16
+MEMBER		Retention-Expires				uint64
+MEMBER		Note-Well					string
 
 ATTRIBUTE	Extended-Location-Policy-Rules		130	string
 

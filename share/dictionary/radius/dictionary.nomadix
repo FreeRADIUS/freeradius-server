@@ -14,35 +14,35 @@ VENDOR		Nomadix				3309
 #
 BEGIN-VENDOR	Nomadix
 
-ATTRIBUTE	Nomadix-Bw-Up				1	integer
-ATTRIBUTE	Nomadix-Bw-Down				2	integer
-ATTRIBUTE	Nomadix-URL-Redirection			3	string
-ATTRIBUTE	Nomadix-IP-Upsell			4	integer
-ATTRIBUTE	Nomadix-Expiration			5	string
-ATTRIBUTE	Nomadix-Subnet				6	string
-ATTRIBUTE	Nomadix-MaxBytesUp			7	integer
-ATTRIBUTE	Nomadix-MaxBytesDown			8	integer
-ATTRIBUTE	Nomadix-EndofSession			9	integer
-ATTRIBUTE	Nomadix-Session-Terminate-End-Of-Day	9	integer
-ATTRIBUTE	Nomadix-Logoff-URL			10	string
-ATTRIBUTE	Nomadix-Net-VLAN			11	integer
-ATTRIBUTE	Nomadix-Config-URL			12	string
-ATTRIBUTE	Nomadix-Goodbye-URL			13	string
-ATTRIBUTE	Nomadix-Qos-Policy			14	string
-ATTRIBUTE	Nomadix-SMTP-Redirect			17	integer
-ATTRIBUTE	Nomadix-Centralized-Mgmt		18	string
-ATTRIBUTE	Nomadix-Group-Policy-Id			19	integer
-ATTRIBUTE	Nomadix-Group-Bw-Max-Up			20	integer
-ATTRIBUTE	Nomadix-Group-Bw-Max-Down		21	integer
-ATTRIBUTE	Nomadix-MaxGigaWords-Up			22	integer
-ATTRIBUTE	Nomadix-MaxGigaWords-Down		23	integer
-ATTRIBUTE	Nomadix-Preferred-WAN			24	string
-ATTRIBUTE	Nomadix-Bw-Class-Name			27	string
-ATTRIBUTE	Nomadix-MaxBytesTotal			28	integer
-ATTRIBUTE	Nomadix-MaxGigawordsTotal		29	integer
+ATTRIBUTE	Bw-Up				1	integer
+ATTRIBUTE	Bw-Down				2	integer
+ATTRIBUTE	URL-Redirection			3	string
+ATTRIBUTE	IP-Upsell			4	integer
+ATTRIBUTE	Expiration			5	string
+ATTRIBUTE	Subnet				6	string
+ATTRIBUTE	MaxBytesUp			7	integer
+ATTRIBUTE	MaxBytesDown			8	integer
+ATTRIBUTE	EndofSession			9	integer
+ATTRIBUTE	Session-Terminate-End-Of-Day	9	integer
+ATTRIBUTE	Logoff-URL			10	string
+ATTRIBUTE	Net-VLAN			11	integer
+ATTRIBUTE	Config-URL			12	string
+ATTRIBUTE	Goodbye-URL			13	string
+ATTRIBUTE	Qos-Policy			14	string
+ATTRIBUTE	SMTP-Redirect			17	integer
+ATTRIBUTE	Centralized-Mgmt		18	string
+ATTRIBUTE	Group-Policy-Id			19	integer
+ATTRIBUTE	Group-Bw-Max-Up			20	integer
+ATTRIBUTE	Group-Bw-Max-Down		21	integer
+ATTRIBUTE	MaxGigaWords-Up			22	integer
+ATTRIBUTE	MaxGigaWords-Down		23	integer
+ATTRIBUTE	Preferred-WAN			24	string
+ATTRIBUTE	Bw-Class-Name			27	string
+ATTRIBUTE	MaxBytesTotal			28	integer
+ATTRIBUTE	MaxGigawordsTotal		29	integer
 
-VALUE	Nomadix-IP-Upsell		PrivatePool		0
-VALUE	Nomadix-IP-Upsell		PublicPool		1
+VALUE	IP-Upsell		PrivatePool		0
+VALUE	IP-Upsell		PublicPool		1
 
 END-VENDOR	Nomadix
 

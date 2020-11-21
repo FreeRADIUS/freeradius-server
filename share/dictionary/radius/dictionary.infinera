@@ -7,7 +7,7 @@ VENDOR		Infinera			8708
 
 BEGIN-VENDOR	Infinera
 
-ATTRIBUTE	Infinera-User-Category			1	string
-ATTRIBUTE	Infinera-ENM-User-Category		2	string
+ATTRIBUTE	User-Category			1	string
+ATTRIBUTE	ENM-User-Category		2	string
 
 END-VENDOR      Infinera

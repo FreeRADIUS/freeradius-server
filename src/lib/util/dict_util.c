@@ -2271,7 +2271,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
+		fr_strerror_printf("Attribute '%s' not found in namespace %s", buffer, parent->name);
 		return 0;
 	}
 
@@ -2299,7 +2299,7 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
+		fr_strerror_printf("Attribute '%s' not found in namespace %s", name, parent->name);
 		return NULL;
 	}
 

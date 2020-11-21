@@ -19,18 +19,18 @@ VENDOR		Alvarion			12394
 
 BEGIN-VENDOR	Alvarion
 
-ATTRIBUTE	Alvarion-R3-IF-Descriptor		1	tlv
-ATTRIBUTE	Alvarion-R3-IF-Name			.1	string
-ATTRIBUTE	Alvarion-R3-IF-ID			.2	integer
-ATTRIBUTE	Alvarion-PDFID				.3	short
-ATTRIBUTE	Alvarion-IPv4-Address			.4	ipaddr
+ATTRIBUTE	R3-IF-Descriptor		1	tlv
+ATTRIBUTE	R3-IF-Name			.1	string
+ATTRIBUTE	R3-IF-ID			.2	integer
+ATTRIBUTE	PDFID				.3	short
+ATTRIBUTE	IPv4-Address			.4	ipaddr
 # IPv4 subnet mask plus bit-width mask
-ATTRIBUTE	Alvarion-IPv4-Netmask			1.5	octets
-ATTRIBUTE	Alvarion-DGW-IPv4-Address		1.6	ipaddr
+ATTRIBUTE	IPv4-Netmask			1.5	octets
+ATTRIBUTE	DGW-IPv4-Address		1.6	ipaddr
 
 # Container for DHCP options delivery in DHCP Proxy mode.
-ATTRIBUTE	Alvarion-DHCP-Option			2	tlv
-ATTRIBUTE	Alvarion-Ref-R3-IF-Name			.1	string
-ATTRIBUTE	Alvarion-DHCP-Option-Container		.2	string
+ATTRIBUTE	DHCP-Option			2	tlv
+ATTRIBUTE	Ref-R3-IF-Name			.1	string
+ATTRIBUTE	DHCP-Option-Container		.2	string
 
 END-VENDOR 	Alvarion

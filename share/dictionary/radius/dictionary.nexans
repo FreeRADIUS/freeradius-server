@@ -15,7 +15,7 @@ VENDOR		Nexans				266
 
 BEGIN-VENDOR	Nexans
 
-ATTRIBUTE	Nexans-Port-Default-VLAN-ID		1	integer
-ATTRIBUTE	Nexans-Port-Voice-VLAN-ID		2	integer
+ATTRIBUTE	Port-Default-VLAN-ID		1	integer
+ATTRIBUTE	Port-Voice-VLAN-ID		2	integer
 
 END-VENDOR      Nexans

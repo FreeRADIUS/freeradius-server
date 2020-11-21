@@ -14,6 +14,6 @@ VENDOR		Actelis				5468
 
 BEGIN-VENDOR	Actelis
 
-ATTRIBUTE	Actelis-Privilege			1	string
+ATTRIBUTE	Privilege				1	string
 
 END-VENDOR	Actelis

@@ -12,7 +12,6 @@
 VENDOR		Aerohive			26928
 
 BEGIN-VENDOR	Aerohive
-#BEGIN-VENDOR Extreme
 
 # Source: http://docs.aerohive.com/330000/docs/help/english/ng/Content/reference/docs/radius-dictionary.htm
 # Last-updated-date 25-October-2017
