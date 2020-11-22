@@ -16,5 +16,4 @@ ATTRIBUTE	MIP6-Feature-Vector			124	integer64
 #  Encoded as one octet prefix, followed by 16 octets of address information.
 #
 ATTRIBUTE	MIP6-Home-Link-Prefix			125	struct
-MEMBER		Prefix						uint8
-MEMBER		Address						ipv6addr
+MEMBER		IPv6-Prefix					ipv6prefix

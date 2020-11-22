@@ -2216,7 +2216,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 
 		vp->op = T_OP_EQ;
-		fr_pair_aprint(vb, &buff, vp);
+		fr_pair_aprint(vb, &buff, NULL, vp);
 		vp->op = op;
 
 		vb->vb_strvalue = buff;

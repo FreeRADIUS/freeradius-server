@@ -104,11 +104,11 @@ proto-dictionary dhcpv6
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #
 #  21.3. Server Identifier Option
@@ -136,11 +136,11 @@ match Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #
 #  21.4. Identity Association for Non-temporary Addresses Option
@@ -192,11 +192,11 @@ match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102
 #
 #  IA_NA-options        Options associated with this IA_NA.
 #
-encode-pair IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }
+encode-pair IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }
 match 00 03 00 12 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 06 00 02 00 ad
 
 decode-pair -
-match IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }
+match IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }
 
 #
 #  21.5. Identity Association for Temporary Addresses Option
@@ -231,11 +231,11 @@ match IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options 
 #
 #  IA_TA-options        Options associated with this IA_TA.
 #
-encode-pair IA-TA-IAID = 3237998080, IA-TA-Options = { Option-Request = 173 }
+encode-pair IA-TA.IAID = 3237998080, IA-TA.Options = { Option-Request = 173 }
 match 00 04 00 0a c0 ff ee 00 00 06 00 02 00 ad
 
 decode-pair -
-match IA-TA-IAID = 3237998080, IA-TA-Options = { Option-Request = 173 }
+match IA-TA.IAID = 3237998080, IA-TA.Options = { Option-Request = 173 }
 
 #
 #  21.6.  IA Address Option
@@ -290,7 +290,7 @@ match IA-TA-IAID = 3237998080, IA-TA-Options = { Option-Request = 173 }
 #                       variable-length field (24 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-Addr-IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = { Option-Request = 173 }
+encode-pair IA-Addr.IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }
 match 00 05 00 1e fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 06 00 02 00 ad
 
 #
@@ -300,7 +300,7 @@ match 00 05 00 1e fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00
 # We use a regex match to deal with the inconsistency.
 #
 decode-pair -
-match-regex IA-Addr-IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = \{ Option-Request = 173 \}
+match-regex IA-Addr.IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = \{ Option-Request = 173 \}
 
 #
 #  21.7.  Option Request Option
@@ -451,11 +451,11 @@ match Elapsed-Time = 45887
 #                               (11 octets less than the value in the
 #                               option-len field).
 #
-encode-pair Auth-Protocol =	Reconfigure-Key, Auth-Algorithm = HMAC-MD5, Auth-Replay-Detection-Method = Monotonicly-Increasing-Value, Auth-Replay-Detection = 1234567890, Auth-Information = 0x010203040506070809101112131415
+encode-pair Auth.Protocol = Reconfigure-Key, Auth.Algorithm = HMAC-MD5, Auth.Replay-Detection-Method = Monotonicly-Increasing-Value, Auth.Replay-Detection = 1234567890, Auth.Information = 0x010203040506070809101112131415
 match 00 0b 00 1a 03 01 00 00 00 00 00 49 96 02 d2 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
 
 decode-pair -
-match Auth-Protocol = Reconfigure-Key, Auth-Algorithm = HMAC-MD5, Auth-Replay-Detection-Method = Monotonicly-Increasing-Value, Auth-Replay-Detection = 1234567890, Auth-Information = 0x010203040506070809101112131415
+match Auth.Protocol = Reconfigure-Key, Auth.Algorithm = HMAC-MD5, Auth.Replay-Detection-Method = Monotonicly-Increasing-Value, Auth.Replay-Detection = 1234567890, Auth.Information = 0x010203040506070809101112131415
 
 #
 #  21.12.  Server Unicast Option
@@ -525,11 +525,11 @@ match Unicast = fec0::
 #                       variable-length field (2 octets less than the
 #                       value in the option-len field).
 #
-encode-pair Status-Code-Value = NoPrefixAvail, Status-Code-Message = "Tapioca com queijo"
+encode-pair Status-Code.Value = NoPrefixAvail, Status-Code.Message = "Tapioca com queijo"
 match 00 0d 00 14 00 06 54 61 70 69 6f 63 61 20 63 6f 6d 20 71 75 65 69 6a 6f
 
 decode-pair -
-match Status-Code-Value = NoPrefixAvail, Status-Code-Message = "Tapioca com queijo"
+match Status-Code.Value = NoPrefixAvail, Status-Code.Message = "Tapioca com queijo"
 
 #
 #  21.14.  Rapid Commit Option
@@ -627,11 +627,11 @@ match User-Class = 0x1122, User-Class = 0x334455
 #                       variable-length field (4 octets less than the
 #                       value in the option-len field).
 #
-encode-pair Vendor-Class-PEN = 11344, Vendor-Class-Data = 0xb33f
+encode-pair Vendor-Class.PEN = 11344, Vendor-Class.Data = 0xb33f
 match 00 10 00 06 00 00 2c 50 b3 3f
 
 decode-pair -
-match Vendor-Class-PEN = 11344, Vendor-Class-Data = 0xb33f
+match Vendor-Class.PEN = 11344, Vendor-Class.Data = 0xb33f
 
 #
 #  21.17.  Vendor-specific Information Option
@@ -831,11 +831,11 @@ match Reconf-Accept = 0x
 #                       variable-length field (12 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+encode-pair IA-PD.IAID = 2864434397, IA-PD.T1 = 54093, IA-PD.T2 = 45887, IA-PD.Options = { Preference = 1 }
 match 00 19 00 11 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 07 00 01 01
 
 decode-pair -
-match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+match IA-PD.IAID = 2864434397, IA-PD.T1 = 54093, IA-PD.T2 = 45887, IA-PD.Options = { Preference = 1 }
 
 #
 #  21.22.  IA Prefix Option
@@ -892,11 +892,11 @@ match IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options
 #                       variable-length field (25 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128, IA-PD-Options = { Preference = 1 }
+encode-pair IA-PD-Prefix.Preferred-Lifetime = 29425646, IA-PD-Prefix.Valid-Lifetime = 46202862, IA-PD-Prefix.IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128, IA-PD.Options = { Preference = 1 }
 match 00 1a 00 19 01 c0 ff ee 02 c0 ff ee 80 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 19 00 11 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 01 01
 
 decode-pair -
-match IA-PD-Prefix-Preferred-Lifetime = 29425646, IA-PD-Prefix-Valid-Lifetime = 46202862, IA-PD-Prefix-IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128, IA-PD-IAID = 0, IA-PD-T1 = 0, IA-PD-T2 = 0, IA-PD-Options = { Preference = 1 }
+match IA-PD-Prefix.Preferred-Lifetime = 29425646, IA-PD-Prefix.Valid-Lifetime = 46202862, IA-PD-Prefix.IPv6-Prefix = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128, IA-PD.IAID = 0, IA-PD.T1 = 0, IA-PD.T2 = 0, IA-PD.Options = { Preference = 1 }
 
 #
 #  21.23.  Information Refresh Time Option

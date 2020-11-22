@@ -102,7 +102,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, 
 	if (ancestor) {
 		if (da_stack.da[ancestor->depth - 1] != ancestor) {
 			fr_strerror_printf("Attribute '%s' is not a descendent of \"%s\"", da->name, ancestor->name);
-			return -1;
+			return 0;
 		}
 		depth = ancestor->depth;
 	}
@@ -111,9 +111,11 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, 
 	 *	We don't print the ancestor, we print the OID
 	 *	between it and the da.
 	 */
-	FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", da_stack.da[depth]->attr);
-	for (i = depth + 1; i < (int)da->depth; i++) FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%u", da_stack.da[i]->attr);
-
+	FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[depth]->name);
+	for (i = depth + 1; i < (int)da->depth; i++) {
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[i]->name);
+	}
 	return fr_sbuff_set(out, &our_out);
 }
 

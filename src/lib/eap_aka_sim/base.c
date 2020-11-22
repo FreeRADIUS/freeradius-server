@@ -120,8 +120,8 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_checkcode, .name = "Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_client_error_code, .name = "Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_counter, .name = "Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Encr-Data.Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_counter, .name = "Encr-Data.Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_encr_data, .name = "Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_fullauth_id_req, .name = "Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_identity_type, .name = "Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
@@ -136,12 +136,12 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_mac, .name = "MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_method_hint, .name = "Method-Hint", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_mk, .name = "MK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_next_pseudonym, .name = "Next-Pseudonym", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_next_reauth_id, .name = "Next-Reauth-ID", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_next_pseudonym, .name = "Encr-Data.Next-Pseudonym", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_next_reauth_id, .name = "Encr-Data.Next-Reauth-ID", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_nonce_mt, .name = "Nonce-MT", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_nonce_s, .name = "Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_nonce_s, .name = "Encr-Data.Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_notification, .name = "Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_padding, .name = "Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_padding, .name = "Encr-Data.Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_permanent_id_req, .name = "Permanent-Id-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_permanent_identity, .name = "Permanent-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_rand, .name = "RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
@@ -153,8 +153,8 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_version_list, .name = "Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	/*
 	 *	Separate from the EAP-AKA-AND-SIM dictionary

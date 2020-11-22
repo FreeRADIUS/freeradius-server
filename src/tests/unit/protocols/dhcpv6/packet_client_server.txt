@@ -26,11 +26,11 @@ proto-dictionary dhcpv6
 #    Client Identifier
 #    Elapsed time
 #
-encode-proto Packet-Type = Solicit, Transaction-ID = 0xabcdef, Rapid-Commit = yes, IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 0xad }, Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
+encode-proto Packet-Type = Solicit, Transaction-ID = 0xabcdef, Rapid-Commit = yes, IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 0xad }, Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
 match 01 ab cd ef 00 0e 00 00 00 03 00 12 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 06 00 02 00 ad 00 27 00 0b 04 09 74 61 70 69 6f 63 61 30 31 00 06 00 0a 00 17 00 18 00 38 00 1f 00 0e 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 08 00 02 b3 3f
 
 decode-proto -
-match Packet-Type = Solicit, Transaction-ID = 0xabcdef, Rapid-Commit = yes, IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }, Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
+match Packet-Type = Solicit, Transaction-ID = 0xabcdef, Rapid-Commit = yes, IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }, Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
 
 #
 #  2. Advertise (Server -> Client)
@@ -45,11 +45,11 @@ match Packet-Type = Solicit, Transaction-ID = 0xabcdef, Rapid-Commit = yes, IA-N
 #    Domain Search List
 #    Identity Association for Non-temporary Address
 #
-encode-proto Packet-Type = Advertise, Transaction-ID = 0xabcdef, Rapid-Commit = yes, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 3721182122, DNS-Servers = 2804:14d:2a73:44ab::123, DNS-Servers = 2804:14d:2a73:44ab::456, Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co", IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }, IA-Addr-IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = { Option-Request = 173 }
+encode-proto Packet-Type = Advertise, Transaction-ID = 0xabcdef, Rapid-Commit = yes, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 3721182122, DNS-Servers = 2804:14d:2a73:44ab::123, DNS-Servers = 2804:14d:2a73:44ab::456, Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co", IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }, IA-Addr.IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }
 match 02 ab cd ef 00 0e 00 00 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 52 00 04 dd cc bb aa 00 17 00 20 28 04 01 4d 2a 73 44 ab 00 00 00 00 00 00 01 23 28 04 01 4d 2a 73 44 ab 00 00 00 00 00 00 04 56 00 18 00 31 09 6d 79 64 6f 6d 61 69 6e 31 03 63 6f 6d 00 09 6d 79 64 6f 6d 61 69 6e 32 03 6c 61 6e 00 04 63 6f 72 70 09 6d 79 64 6f 6d 61 69 6e 33 02 63 6f 00 00 03 00 12 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 06 00 02 00 ad 00 05 00 1e fd 85 d2 bb 09 2c 00 01 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 06 00 02 00 ad
 
 decode-proto -
-match Packet-Type = Advertise, Transaction-ID = 0xabcdef, Rapid-Commit = yes, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 3721182122, DNS-Servers = 2804:14d:2a73:44ab::123, DNS-Servers = 2804:14d:2a73:44ab::456, Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co", IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }, IA-Addr-IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = { Option-Request = 173 }
+match Packet-Type = Advertise, Transaction-ID = 0xabcdef, Rapid-Commit = yes, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 3721182122, DNS-Servers = 2804:14d:2a73:44ab::123, DNS-Servers = 2804:14d:2a73:44ab::456, Domain-List = "mydomain1.com", Domain-List = "mydomain2.lan", Domain-List = "corp.mydomain3.co", IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }, IA-Addr.IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }
 
 #
 #  3. Request (Client -> Broadcast)
@@ -64,11 +64,11 @@ match Packet-Type = Advertise, Transaction-ID = 0xabcdef, Rapid-Commit = yes, Se
 #    Client Identifier
 #    Elapsed time
 #
-encode-proto Packet-Type = Request, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }, IA-Addr-IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = { Option-Request = 173 }, Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
+encode-proto Packet-Type = Request, Transaction-ID = 0xc0ffee, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }, IA-Addr.IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }, Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
 match 03 c0 ff ee 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 03 00 12 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 06 00 02 00 ad 00 05 00 1e fd 85 d2 bb 09 2c 00 01 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 06 00 02 00 ad 00 27 00 0b 04 09 74 61 70 69 6f 63 61 30 31 00 06 00 0a 00 17 00 18 00 38 00 1f 00 0e 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 08 00 02 b3 3f
 
 decode-proto -
-match Packet-Type = Request, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, IA-NA-IAID = 180150000, IA-NA-T1 = 54093, IA-NA-T2 = 45887, IA-NA-Options = { Option-Request = 173 }, IA-Addr-IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr-Preferred-Lifetime = 120, IA-Addr-Valid-Lifetime = 86400, IA-Addr-Options = { Option-Request = 173 }, Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
+match Packet-Type = Request, Transaction-ID = 0xc0ffee, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }, IA-Addr.IPv6-Address = fd85:d2bb:92c:1:74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }, Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01", Option-Request = DNS-Servers, Option-Request = Domain-List, Option-Request = NTP-Server, Option-Request = SNTP-Servers, Option-Request = Rapid-Commit, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Elapsed-Time = 45887
 
 #
 #  4. Reply (Server -> Client)
@@ -83,11 +83,11 @@ match Packet-Type = Request, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-
 #    Domain Search List
 #    Identity Association for Non-temporary Address
 #
-encode-proto Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 60, DNS-Servers = fd85:d2bb:92c::1, DNS-Servers = fd85:d2bb:92c::2
+encode-proto Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 60, DNS-Servers = fd85:d2bb:92c::1, DNS-Servers = fd85:d2bb:92c::2
 match 07 c0 ff ee 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 52 00 04 00 00 00 3c 00 17 00 20 fd 85 d2 bb 09 2c 00 00 00 00 00 00 00 00 00 01 fd 85 d2 bb 09 2c 00 00 00 00 00 00 00 00 00 02
 
 decode-proto -
-match Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 60, DNS-Servers = fd85:d2bb:92c::1, DNS-Servers = fd85:d2bb:92c::2
+match Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, SOL-Max-RT = 60, DNS-Servers = fd85:d2bb:92c::1, DNS-Servers = fd85:d2bb:92c::2
 
 #
 #  5. Release (Client -> Broadcast)
@@ -101,11 +101,11 @@ match Packet-Type = Reply, Transaction-ID = 0xc0ffee, Server-ID-DUID = Server-ID
 #    Elapsed time
 #    Identity Association for Prefix Delegation
 #
-encode-proto Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+encode-proto Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD.IAID = 2864434397, IA-PD.T1 = 54093, IA-PD.T2 = 45887, IA-PD.Options = { Preference = 1 }
 match 08 00 b3 3f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 06 00 04 00 17 00 18 00 08 00 02 b3 3f 00 19 00 11 aa bb cc dd 00 00 d3 4d 00 00 b3 3f 00 07 00 01 01
 
 decode-proto -
-match Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD-IAID = 2864434397, IA-PD-T1 = 54093, IA-PD-T2 = 45887, IA-PD-Options = { Preference = 1 }
+match Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 45887, IA-PD.IAID = 2864434397, IA-PD.T1 = 54093, IA-PD.T2 = 45887, IA-PD.Options = { Preference = 1 }
 
 #
 #  6. Reply (Server -> Client)
@@ -117,11 +117,11 @@ match Packet-Type = Release, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-
 #    Server Identifier
 #    Status code
 #
-encode-proto Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code-Value = Success, Status-Code-Message = "Release received."
+encode-proto Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code.Value = Success, Status-Code.Message = "Release received."
 match 07 00 b3 3f 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 0d 00 13 00 00 52 65 6c 65 61 73 65 20 72 65 63 65 69 76 65 64 2e
 
 decode-proto -
-match Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code-Value = Success, Status-Code-Message = "Release received."
+match Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code.Value = Success, Status-Code.Message = "Release received."
 
 count
 match 26

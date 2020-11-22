@@ -1,44 +1,44 @@
 proto radius
 proto-dictionary radius
 
-encode-pair Ascend-Data-Filter = "ip in drop tcp dstport > 1023"
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ip in drop tcp dstport > 1023"
 match 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00 00 03 ff 00 03 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match Ascend-Data-Filter = "ip in drop tcp dstport > 1023"
+match Vendor-Specific.Ascend.Data-Filter = "ip in drop tcp dstport > 1023"
 
 #
-#  We no longer support setting Ascend-Data-Filters as hex strings
+#  We no longer support setting Vendor-Specific.Ascend.Data-Filters as hex strings
 #
-#attribute Ascend-Data-Filter = 0x01010100010203040a0b0c0d05200600000504d2020200000000000000000000
-#match Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
+#attribute Vendor-Specific.Ascend.Data-Filter = 0x01010100010203040a0b0c0d05200600000504d2020200000000000000000000
+#match Vendor-Specific.Ascend.Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
 
-encode-pair Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
 match 1a 28 00 00 02 11 f2 22 01 01 01 00 01 02 03 04 0a 0b 0c 0d 05 20 06 00 00 05 04 d2 02 02 00 00 00 00 00 00 00 00 00 00
 
 decode-pair 1a2800000211f22201010100010203040a0b0c0d05200600000504d2020200000000000000000000
-match Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
+match Vendor-Specific.Ascend.Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
 
 
-encode-pair Ascend-Data-Filter = "ipv6 in forward srcip ::1 dstip ::1 tcp srcport = 5 dstport = 1234"
+encode-pair Vendor-Specific.Ascend.Data-Filter = "ipv6 in forward srcip ::1 dstip ::1 tcp srcport = 5 dstport = 1234"
 match 1a 38 00 00 02 11 f2 32 03 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 80 80 06 00 00 05 04 d2 02 02 00 00
 
 decode-pair -
-match Ascend-Data-Filter = "ipv6 in forward srcip ::1/128 dstip ::1/128 tcp srcport = 5 dstport = 1234"
+match Vendor-Specific.Ascend.Data-Filter = "ipv6 in forward srcip ::1/128 dstip ::1/128 tcp srcport = 5 dstport = 1234"
 
 # length < 16 gets padded with zeros
-encode-pair Ascend-Send-Secret = "foo"
+encode-pair Vendor-Specific.Ascend.Send-Secret = "foo"
 match 1a 18 00 00 02 11 d6 12 ce 8d bb 09 a0 cd c2 9c ca f1 bd cb 25 41 f7 70
 
 decode-pair -
-match Ascend-Send-Secret = "foo"
+match Vendor-Specific.Ascend.Send-Secret = "foo"
 
 # length > 16 gets chopped
-encode-pair Ascend-Send-Secret = "foo 56789abcdef012"
+encode-pair Vendor-Specific.Ascend.Send-Secret = "foo 56789abcdef012"
 match 1a 18 00 00 02 11 d6 12 ce 8d bb 29 95 fb f5 a4 f3 90 df a8 41 24 91 40
 
 decode-pair -
-match Ascend-Send-Secret = "foo 56789abcdef0"
+match Vendor-Specific.Ascend.Send-Secret = "foo 56789abcdef0"
 
 count
 match 22

@@ -13,7 +13,7 @@ proto-dictionary dhcpv6
 #   0                   1                   2                   3
 #   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-#  | option = OPTION_4RD_MAP_RULE  |         option-length         |
+#  | option = OPTION_IP4RD_MAP_RULE  |         option-length         |
 #   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |  prefix4-len  |  prefix6-len  |    ea-len     |W|   Reserved  |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -28,7 +28,7 @@ proto-dictionary dhcpv6
 #
 #  Figure 8: Encapsulated Option for Mapping-Rule Parameters
 #
-#  o  option code: 98, encapsulated OPTION_4RD_MAP_RULE option (see Section 6)
+#  o  option code: 98, encapsulated OPTION_IP4RD_MAP_RULE option (see Section 6)
 #  o  option-length: 20
 #  o  prefix4-len: number of bits of the Rule IPv4 prefix
 #  o  prefix6-len: number of bits of the Rule IPv6 prefix
@@ -37,33 +37,32 @@ proto-dictionary dhcpv6
 #  o  rule-ipv4-prefix: Rule IPv4 prefix, left-aligned
 #  o  rule-ipv6-prefix: Rule IPv6 prefix, left-aligned
 #
-encode-pair 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304 }
+encode-pair IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304 }
 match 00 61 00 18 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000 }
-
+match IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000 }
 #
 #  Multiple rules
 #
-encode-pair 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001 }
+encode-pair IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv4-Prefix-Len = 8, IP4RD-Map-Rule.IPv6-Prefix-Len = 0, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x7f000001 }
 match 00 61 00 30 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00 00 62 00 14 08 00 04 01 7f 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 128, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x01020304, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000, 4RD-Map-Rule-IPv4-Prefix-Len = 8, 4RD-Map-Rule-IPv6-Prefix-Len = 0, 4RD-Map-Rule-EA-Len = 4, 4RD-Map-Rule-WPK-Authorized = 1, 4RD-Map-Rule-IPv4-Prefix = 0x7f000001, 4RD-Map-Rule-IPv6-Prefix = 0x000000000000000000000000 }
+match IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000, IP4RD-Map-Rule.IPv4-Prefix-Len = 8, IP4RD-Map-Rule.IPv6-Prefix-Len = 0, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x7f000001, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000 }
 
 #
 #   0                   1                   2                   3
 #   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-#  |option =OPTION_4RD_NON_MAP_RULE|         option-length         |
+#  |option =OPTION_IP4RD_NON_MAP_RULE|         option-length         |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |H|      0    |T| traffic-class |         domain-pmtu           |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #
 #  Figure 9: Encapsulated Option for Non-Mapping-Rule Parameters of 4rd Domains
 #
-#  o  option code: 99, encapsulated OPTION_4RD_NON_MAP_RULE option (see Section 6)
+#  o  option code: 99, encapsulated OPTION_IP4RD_NON_MAP_RULE option (see Section 6)
 #  o  option-length: 4
 #  o  H: Hub-and-spoke topology (= 1 if Yes)
 #  o  T: Traffic Class flag (= 1 if a Tunnel Traffic Class is provided)
@@ -75,11 +74,11 @@ match 4RD = { 4RD-Map-Rule-IPv4-Prefix-Len = 16, 4RD-Map-Rule-IPv6-Prefix-Len = 
 #  similar parameter formats would, however, be recommended to
 #  facilitate training and operation.
 #
-encode-pair 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = yes, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = yes, 4RD-Non-Map-Rule-Domain-PMTU = 31
+encode-pair IP4RD-Non-Map-Rule.Traffic-Class-Provided = yes, IP4RD-Non-Map-Rule.Hub-And-Spoke = yes, IP4RD-Non-Map-Rule.Domain-PMTU = 31
 match 00 63 00 02 81 1f
 
 decode-pair -
-match 4RD-Non-Map-Rule-Flag-Traffic-Class-Provided = yes, 4RD-Non-Map-Rule-Flag-Reserved = 0, 4RD-Non-Map-Rule-Flag-Hub-And-Spoke = yes, 4RD-Non-Map-Rule-Domain-PMTU = 31
+match IP4RD-Non-Map-Rule.Traffic-Class-Provided = yes, IP4RD-Non-Map-Rule.Reserved = 0, IP4RD-Non-Map-Rule.Hub-And-Spoke = yes, IP4RD-Non-Map-Rule.Domain-PMTU = 31
 
 count
 match 14

@@ -83,11 +83,10 @@ proto-dictionary dhcpv6
 #  Lati: 45.421532 = 0x4235afa6
 #  Long: -75.697189 = 0xc29764f6
 #
-encode-pair GeoLocation-Latitude-Uncertainty = 1, GeoLocation-Latitude = 0x4235afa6, GeoLocation-Longitude-Uncertainty = 1, GeoLocation-Longitude = 0xc29764f6, GeoLocation-Altitude-Type = Meters, GeoLocation-Altitude-Uncertainty = 1, GeoLocation-Altitude = 99, GeoLocation-Version = 1, GeoLocation-Reserved = 0, GeoLocation-Datum = NAD83-NAVD88
+encode-pair GeoLocation.Latitude-Uncertainty = 1, GeoLocation.Latitude = 0x4235afa6, GeoLocation.Longitude-Uncertainty = 1, GeoLocation.Longitude = 0xc29764f6, GeoLocation.Altitude-Type = Meters, GeoLocation.Altitude-Uncertainty = 1, GeoLocation.Altitude = 99, GeoLocation.Version = 1, GeoLocation.Reserved = 0, GeoLocation.Datum = NAD83-NAVD88
 match 00 3f 00 10 04 42 35 af a6 04 c2 97 64 f6 10 40 00 00 63 42
 
 decode-pair -
-match GeoLocation-Latitude-Uncertainty = 1, GeoLocation-Latitude = 1110814630, GeoLocation-Longitude-Uncertainty = 1, GeoLocation-Longitude = 3264701686, GeoLocation-Altitude-Type = Meters, GeoLocation-Altitude-Uncertainty = 1, GeoLocation-Altitude = 99, GeoLocation-Version = 1, GeoLocation-Reserved = 0, GeoLocation-Datum = NAD83-NAVD88
-
+match Geolocation.Latitude-Uncertainty = 1, Geolocation.Latitude = 1110814630, Geolocation.Longitude-Uncertainty = 1, Geolocation.Longitude = 3264701686, Geolocation.Altitude-Type = Meters, Geolocation.Altitude-Uncertainty = 1, Geolocation.Altitude = 99, Geolocation.Version = 1, Geolocation.Reserved = 0, Geolocation.Datum = NAD83-NAVD88
 count
 match 6

@@ -38,18 +38,18 @@ proto-dictionary dhcpv6
 #
 
 # type: Ethernet
-encode-pair Client-Link-Layer-Type = Client-Link-Layer-Ethernet, Client-Link-Layer-Ethernet-Address = c0:ff:ee:c0:ff:ee
+encode-pair Client-Link-Layer.Type = Ethernet, Client-Link-Layer.Type.Ethernet.Address = c0:ff:ee:c0:ff:ee 
 match 00 4f 00 08 00 01 c0 ff ee c0 ff ee
 
-decode-pair -
-match Client-Link-Layer-Type = Client-Link-Layer-Ethernet, Client-Link-Layer-Ethernet-Address = c0:ff:ee:c0:ff:ee
+decode-pair 00 4f 00 08 00 01 c0 ff ee c0 ff ee
+match Client-Link-Layer.Type = Ethernet, Client-Link-Layer.Type.Ethernet.Address = c0:ff:ee:c0:ff:ee
 
 # type: Lanstar
-encode-pair Client-Link-Layer-Type = Client-Link-Layer-Lanstar, Client-Link-Layer-Lanstar-Address = 0xc0ffeec0ffee
+encode-pair Client-Link-Layer.Type = Lanstar, Client-Link-Layer.Type.Lanstar.Address = 0xc0ffeec0ffee
 match 00 4f 00 08 00 09 c0 ff ee c0 ff ee
 
 decode-pair -
-match Client-Link-Layer-Type = Client-Link-Layer-Lanstar, Client-Link-Layer-Lanstar-Address = 0xc0ffeec0ffee
+match Client-Link-Layer.Type = Lanstar, Client-Link-Layer.Type.Lanstar.Address = 0xc0ffeec0ffee
 
 count
 match 10

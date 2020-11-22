@@ -886,7 +886,7 @@ int fr_pair_cmp(fr_pair_t *a, fr_pair_t *b)
 							a->da->name);
 				return -1;
 			}
-			fr_pair_aprint(NULL, &value, b);
+			fr_pair_aprint(NULL, &value, NULL, b);
 			if (!value) {
 				talloc_free(preg);
 				return -1;
@@ -1083,8 +1083,8 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 		return;
 	}
 
-	fr_pair_aprint(ctx, &value, list);
-	fr_pair_aprint(ctx, &str, filter);
+	fr_pair_aprint(ctx, &value, NULL, list);
+	fr_pair_aprint(ctx, &str, NULL, filter);
 
 	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
 

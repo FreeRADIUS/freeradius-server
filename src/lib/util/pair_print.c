@@ -39,10 +39,8 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 {
 	fr_sbuff_t	our_out;
 	fr_pair_t	*child;
-	fr_pair_list_t	head;
 	fr_cursor_t	cursor;
 
-	fr_pair_list_init(&head);
 	VP_VERIFY(vp);
 
 	/*
@@ -54,60 +52,56 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 		return fr_sbuff_in_sprintf(out, "%s%s%s", quote_str, vp->xlat, quote_str);
 	}
 
+	switch (vp->da->type) {
+	/*
+	 *	For structural types descend down
+	 */
+	case FR_TYPE_STRUCTURAL:
+		/*
+		 *	Serialize all child VPs as full quoted
+		 *	<pair> = ["]<child>["]
+		 */
+		our_out = FR_SBUFF_NO_ADVANCE(out);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
+		for (child = fr_cursor_init(&cursor, &vp->vp_group);
+		     child != NULL;
+		     child = fr_cursor_next(&cursor)) {
+			FR_SBUFF_RETURN(fr_pair_print, &our_out, vp, child);
+			if (fr_cursor_next_peek(&cursor)) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
+		}
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
+
+		return fr_sbuff_set(out, &our_out);
+
 	/*
 	 *	For simple types just print the box
 	 */
-	if (vp->da->type != FR_TYPE_GROUP) {
+	default:
 		return fr_value_box_print_quoted(out, &vp->data, quote);
 	}
-
-	/*
-	 *	Serialize all child VPs as full quoted
-	 *	<pair> = ["]<child>["]
-	 */
-	our_out = FR_SBUFF_NO_ADVANCE(out);
-
-	head = vp->vp_ptr;
-	if (!fr_cond_assert(head != NULL)) return 0;
-
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
-	for (child = fr_cursor_init(&cursor, &head);
-	     child != NULL;
-	     child = fr_cursor_next(&cursor)) {
-		VP_VERIFY(child);
-
-		FR_SBUFF_RETURN(fr_pair_print, &our_out, child);
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
-	}
-
-	if (fr_sbuff_used(&our_out)) {
-		fr_sbuff_set(&our_out, fr_sbuff_current(&our_out) - 2);
-		*fr_sbuff_current(&our_out) = '\0';
-	}
-
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
-
-	return fr_sbuff_set(out, &our_out);
 }
 
 /** Print one attribute and value to a string
  *
  * Print a fr_pair_t in the format:
 @verbatim
-	<attribute_name>[:tag] <op> [q]<value>[q]
+	<attribute_name> <op> <value>
 @endverbatim
  * to a string.
  *
  * @param[in] out	Where to write the string.
+ * @param[in] parent	If not NULL, only print OID components from
+ *			this parent to the VP.
  * @param[in] vp	to print.
  * @return
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *vp)
+ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const *vp)
 {
-	char const	*token = NULL;
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	char const		*token = NULL;
+	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_dict_attr_t const	*parent_da = NULL;
 
 	if (!out) return 0;
 
@@ -121,7 +115,12 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *vp)
 		token = "<INVALID-TOKEN>";
 	}
 
-	FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%s %s ", vp->da->name, token);
+	if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da);
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
 
 	return fr_sbuff_set(out, &our_out);
@@ -135,7 +134,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *vp)
  * @param fp to output to.
  * @param vp to print.
  */
-void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
+void fr_pair_fprint(FILE *fp, fr_pair_t const *parent, fr_pair_t const *vp)
 {
 	char		buff[1024];
 	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
@@ -144,7 +143,7 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 	VP_VERIFY(vp);
 
 	fr_sbuff_in_char(&sbuff, '\t');
-	fr_pair_print(&sbuff, vp);
+	fr_pair_print(&sbuff, parent, vp);
 	fr_sbuff_in_char(&sbuff, '\n');
 
 	fputs(buff, fp);

@@ -1,11 +1,11 @@
 proto radius
 proto-dictionary radius
 
-encode-pair Lucent-Max-Shared-Users = 1
+encode-pair Vendor-Specific.Lucent.Max-Shared-Users = 1
 match 1a 0d 00 00 12 ee 00 02 07 00 00 00 01
 
 decode-pair -
-match Lucent-Max-Shared-Users = 1
+match Vendor-Specific.Lucent.Max-Shared-Users = 1
 
 decode-pair 1a 0d 00 00 12 ee ff 02 07 00 00 00 01
 match Attr-26.4846.65282 = 0x00000001

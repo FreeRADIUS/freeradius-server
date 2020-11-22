@@ -745,12 +745,15 @@ ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, 
 
 static inline size_t fr_value_box_aprint(TALLOC_CTX *ctx, char **out,
 					 fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
-SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print, data, e_rules)
+{
+	SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print, data, e_rules)
+}
 
 static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
 					        fr_value_box_t const *data, fr_token_t quote)
-SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
-
+{
+	SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
+}
 /** @name Hashing
  *
  * @{

@@ -89,11 +89,13 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 {
 	fr_pair_t		*vp;
 	fr_dict_attr_t		*n;
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(attribute, strlen(attribute));
 
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) return NULL;
 
-	if (fr_dict_unknown_afrom_oid_str(vp, &n, fr_dict_root(dict), attribute) <= 0) {
+	if ((fr_dict_unknown_afrom_oid_substr(vp, NULL, &n, fr_dict_root(dict), &sbuff) <= 0) ||
+					      fr_sbuff_remaining(&sbuff)) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -298,9 +300,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		slen = fr_dict_attr_by_oid_substr(NULL, &da, root, &FR_SBUFF_IN(p, strlen(p)));
 		if (slen <= 0) {
 
-			slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, root, p);
+			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, root,
+								&FR_SBUFF_IN(p, strlen(p)));
 			if (slen <= 0) {
-				fr_strerror_printf("Invalid attribute name %s", p);
 				p += -slen;
 
 			error:

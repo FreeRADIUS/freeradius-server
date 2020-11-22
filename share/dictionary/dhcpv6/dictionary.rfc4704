@@ -12,8 +12,8 @@
 ##############################################################################
 
 ATTRIBUTE	Client-FQDN				39	struct
-MEMBER		Flag-Reserved					bit[5]
-MEMBER		Flag-No-Server-Update				bit[1]
-MEMBER		Flag-Server-Override				bit[1]
-MEMBER		Flag-Server-Update				bit[1]
+MEMBER		Reserved					bit[5]
+MEMBER		No-Server-Update				bit[1]
+MEMBER		Server-Override					bit[1]
+MEMBER		Server-Update					bit[1]
 MEMBER		Domain-Name					string		partial_dns_label

@@ -7,11 +7,11 @@
 proto dhcpv6
 proto-dictionary dhcpv6
 
-encode-proto Packet-Type = Request, Transaction-Id = 0xabcdef, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+encode-proto Packet-Type = Request, Transaction-ID = 0xabcdef, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 match 03 ab cd ef 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-proto -
-match Packet-Type = Request, Transaction-ID = 0xabcdef, Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Packet-Type = Request, Transaction-ID = 0xabcdef, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 count
 match 6

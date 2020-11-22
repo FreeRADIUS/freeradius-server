@@ -1050,6 +1050,46 @@ static inline size_t fr_sbuff_marker_release_ahead(fr_sbuff_marker_t *m)
 	fr_sbuff_marker_release(m);
 	return len;
 }
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was behind p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p.
+ */
+static inline size_t fr_sbuff_marker_release_reset_behind(fr_sbuff_marker_t *m)
+{
+	size_t len = fr_sbuff_behind(m);
+	fr_sbuff_set(m->parent, m);
+	fr_sbuff_marker_release(m);
+	return len;
+}
+
+/** Trims the linked list back to the specified pointer and return how many bytes marker was ahead of p
+ *
+ * Pointers should be released in the inverse order to allocation.
+ *
+ * Alternatively the oldest pointer can be released, resulting in any newer pointer
+ * also being removed from the list.
+ *
+ * @param[in] m		to release.
+ * @return
+ *	- 0 marker is ahead of p.
+ *	- >0 the number of bytes the marker is behind p.
+ */
+static inline size_t fr_sbuff_marker_release_reset_ahead(fr_sbuff_marker_t *m)
+{
+	size_t len = fr_sbuff_ahead(m);
+	fr_sbuff_set(m->parent, m);
+	fr_sbuff_marker_release(m);
+	return len;
+}
 /** @} */
 
 /** @name Copy data between an sbuff/marker
@@ -1246,7 +1286,6 @@ do { \
  * @param[in] ...	additional arguments to pass to _func.
  */
 #define SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(_func, ...) \
-{ \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
 	ssize_t			slen; \
@@ -1260,7 +1299,6 @@ do { \
 	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
 	*out = sbuff.buff; \
 	return (size_t)slen; \
-}
 
 static inline size_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy, in, len);

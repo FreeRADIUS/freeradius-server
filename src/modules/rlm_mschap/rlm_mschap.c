@@ -184,8 +184,8 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_mppe_keys, .name = "MS-CHAP-MPPE-Keys", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_encryption_types, .name = "MS-MPPE-Encryption-Types", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 

@@ -43,7 +43,7 @@ proto-dictionary dhcpv6
 #       \iapdopt   \
 #
 decode-proto 01 e1 e0 93 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 06 00 04 00 17 00 18 00 08 00 02 00 00 00 19 00 0c 02 03 04 05 00 00 0e 10 00 00 15 18
-match Packet-Type = Solicit, Transaction-ID = 0xe1e093, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = Client-ID-DUID-LL-Ethernet, Client-ID-DUID-LL-Ethernet-Address = 00:01:02:03:04:05, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-PD-IAID = 33752069, IA-PD-T1 = 3600, IA-PD-T2 = 5400
+match Packet-Type = Solicit, Transaction-ID = 0xe1e093, Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-PD.IAID = 33752069, IA-PD.T1 = 3600, IA-PD.T2 = 5400
 
 #
 #  2.
@@ -85,7 +85,7 @@ match Packet-Type = Solicit, Transaction-ID = 0xe1e093, Client-ID-DUID = Client-
 #       |  lladdr    = 00:11:22:33:44:55
 #
 decode-proto 02 e1 e0 93 00 19 00 29 02 03 04 05 00 00 0e 10 00 00 15 18 00 1a 00 19 00 00 11 94 00 00 1c 20 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 49 99 00 11 22 33 44 55
-match Packet-Type = Advertise, Transaction-ID = 0xe1e093, IA-PD-IAID = 33752069, IA-PD-T1 = 3600, IA-PD-T2 = 5400, IA-PD-Options = { IA-PD-Prefix-Preferred-Lifetime = 4500, IA-PD-Prefix-Valid-Lifetime = 7200, IA-PD-Prefix-IPv6-Prefix = 2a00:1:1:100::/56 }, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = Client-ID-DUID-LL-Ethernet, Client-ID-DUID-LL-Ethernet-Address = 00:01:02:03:04:05, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = Server-ID-DUID-LLT-Ethernet, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:39:05 UTC", Server-ID-DUID-LLT-Ethernet-Address = 00:11:22:33:44:55
+match Packet-Type = Advertise, Transaction-ID = 0xe1e093, IA-PD.IAID = 33752069, IA-PD.T1 = 3600, IA-PD.T2 = 5400, IA-PD.Options = { IA-PD-Prefix.Preferred-Lifetime = 4500, IA-PD-Prefix.Valid-Lifetime = 7200, IA-PD-Prefix.IPv6-Prefix = 2a00:1:1:100::/56 }, Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05, Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, Server-ID.DUID.LLT.Time = "Nov 26 2012 15:39:05 UTC", Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55
 
 #
 #  3.
@@ -135,7 +135,7 @@ match Packet-Type = Advertise, Transaction-ID = 0xe1e093, IA-PD-IAID = 33752069,
 #         |  iaprefopts= ''
 #
 decode-proto 03 12 b0 8a 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 49 99 00 11 22 33 44 55 00 06 00 04 00 17 00 18 00 08 00 02 00 00 00 19 00 29 02 03 04 05 00 00 0e 10 00 00 15 18 00 1a 00 19 00 00 1c 20 00 00 1d 4c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00
-match Packet-Type = Request, Transaction-ID = 0x12b08a, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = Client-ID-DUID-LL-Ethernet, Client-ID-DUID-LL-Ethernet-Address = 00:01:02:03:04:05, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = Server-ID-DUID-LLT-Ethernet, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:39:05 UTC", Server-ID-DUID-LLT-Ethernet-Address = 00:11:22:33:44:55, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-PD-IAID = 33752069, IA-PD-T1 = 3600, IA-PD-T2 = 5400, IA-PD-Options = { IA-PD-Prefix-Preferred-Lifetime = 7200, IA-PD-Prefix-Valid-Lifetime = 7500, IA-PD-Prefix-IPv6-Prefix = 2a00:1:1:100::/56 }
+match Packet-Type = Request, Transaction-ID = 0x12b08a, Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05, Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, Server-ID.DUID.LLT.Time = "Nov 26 2012 15:39:05 UTC", Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55, Option-Request = DNS-Servers, Option-Request = Domain-List, Elapsed-Time = 0, IA-PD.IAID = 33752069, IA-PD.T1 = 3600, IA-PD.T2 = 5400, IA-PD.Options = { IA-PD-Prefix.Preferred-Lifetime = 7200, IA-PD-Prefix.Valid-Lifetime = 7500, IA-PD-Prefix.IPv6-Prefix = 2a00:1:1:100::/56 }
 
 #
 #  4.
@@ -177,7 +177,7 @@ match Packet-Type = Request, Transaction-ID = 0x12b08a, Client-ID-DUID = Client-
 #       |  lladdr    = 00:11:22:33:44:55
 #
 decode-proto 07 12 b0 8a 00 19 00 29 02 03 04 05 00 00 0e 10 00 00 15 18 00 1a 00 19 00 00 11 94 00 00 1c 20 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 46 49 99 00 11 22 33 44 55
-match Packet-Type = Reply, Transaction-ID = 0x12b08a, IA-PD-IAID = 33752069, IA-PD-T1 = 3600, IA-PD-T2 = 5400, IA-PD-Options = { IA-PD-Prefix-Preferred-Lifetime = 4500, IA-PD-Prefix-Valid-Lifetime = 7200, IA-PD-Prefix-IPv6-Prefix = 2a00:1:1:100::/56 }, Client-ID-DUID = Client-ID-DUID-LL, Client-ID-DUID-LL-Hardware-Type = Client-ID-DUID-LL-Ethernet, Client-ID-DUID-LL-Ethernet-Address = 00:01:02:03:04:05, Server-ID-DUID = Server-ID-DUID-LLT, Server-ID-DUID-LLT-Hardware-Type = Server-ID-DUID-LLT-Ethernet, Server-ID-DUID-LLT-Time = "Nov 26 2012 15:39:05 UTC", Server-ID-DUID-LLT-Ethernet-Address = 00:11:22:33:44:55
+match Packet-Type = Reply, Transaction-ID = 0x12b08a, IA-PD.IAID = 33752069, IA-PD.T1 = 3600, IA-PD.T2 = 5400, IA-PD.Options = { IA-PD-Prefix.Preferred-Lifetime = 4500, IA-PD-Prefix.Valid-Lifetime = 7200, IA-PD-Prefix.IPv6-Prefix = 2a00:1:1:100::/56 }, Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05, Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, Server-ID.DUID.LLT.Time = "Nov 26 2012 15:39:05 UTC", Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55
 
 count
 match 10

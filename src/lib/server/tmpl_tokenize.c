@@ -2891,13 +2891,15 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 							 false);
 		if (slen <= 0) {
 			fr_dict_attr_t	*unknown_da;
+			fr_sbuff_t	sbuff = FR_SBUFF_IN(ar->ar_unresolved,
+							    talloc_array_length(ar->ar_unresolved) - 1);
 
 		unknown:
 			/*
 			 *	Can't find it under its regular name.  Try an unknown attribute.
 			 */
-			slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, parent, ar->ar_unresolved);
-			if ((slen <= 0) || (ar->ar_unresolved[slen] != '\0')) {
+			slen = fr_dict_unknown_afrom_oid_substr(vpt, NULL, &unknown_da, parent, &sbuff);
+			if ((slen <= 0) || (fr_sbuff_remaining(&sbuff))) {
 				fr_strerror_printf_push("Failed resolving unresolved attribute");
 				return -1;
 			}

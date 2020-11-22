@@ -1040,7 +1040,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = fr_pair_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head);
+	slen = fr_pair_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, head);
 	talloc_list_free(&head);
 
 	if (slen < 0) {
@@ -1347,7 +1347,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		for (vp = fr_cursor_head(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), vp)) < 0) {
+			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
 			oob:
 				fr_strerror_printf("Out of output buffer space");
 				CLEAR_TEST_POINT(cc);
@@ -1376,12 +1376,13 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	fr_test_point_proto_decode_t	*tp = NULL;
 	fr_cursor_t 	cursor;
 	void		*decoder_ctx = NULL;
-	char		*p, *end;
+	char		*p;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
 	fr_pair_list_t	head;
 	fr_pair_t	*vp;
 	ssize_t		slen;
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX);
 
 	p = in;
 	fr_pair_list_init(&head);
@@ -1440,12 +1441,6 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
-	 *	Set p to be the output buffer
-	 */
-	p = data;
-	end = p + COMMAND_OUTPUT_MAX;
-
-	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
@@ -1455,27 +1450,24 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		for (vp = fr_cursor_head(&cursor);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), vp)) < 0) {
+			if ((slen = fr_pair_print(&sbuff, NULL, vp)) < 0) {
 			oob:
-				fr_strerror_printf("Out of output buffer space");
+				fr_strerror_printf("Out of output buffer space (%zd)", slen);
 				CLEAR_TEST_POINT(cc);
 				RETURN_COMMAND_ERROR();
 			}
-			p += slen;
 
 			if (fr_cursor_next_peek(&cursor)) {
-				slen = strlcpy(p, ", ", end - p);
-				if (is_truncated((size_t)slen, end - p)) goto oob;
-				p += slen;
+				if (fr_sbuff_in_char(&sbuff, ',', ' ') <= 0) goto oob;
 			}
 		}
 		fr_pair_list_free(&head);
 	} else { /* zero-length to_decibute */
-		*p = '\0';
+		*data = '\0';
 	}
 
 	CLEAR_TEST_POINT(cc);
-	RETURN_OK(p - data);
+	RETURN_OK(fr_sbuff_used(&sbuff));
 }
 
 /** Parse a dictionary attribute, writing "ok" to the data buffer is everything was ok
@@ -2017,7 +2009,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	for (vp = fr_cursor_init(&cursor, &head);
 	     vp != NULL;
 	     vp = fr_cursor_next(&cursor)) {
-		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), vp)) <= 0) RETURN_OK_WITH_ERROR();
+		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) <= 0) RETURN_OK_WITH_ERROR();
 		p += (size_t)slen;
 
 		if (p >= end) break;

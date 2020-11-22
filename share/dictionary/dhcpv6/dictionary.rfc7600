@@ -10,9 +10,9 @@
 #
 ##############################################################################
 
-ATTRIBUTE	4RD					97	group		# of 4RD-Map-Rule and 4RD-Non-Map-Rule
+ATTRIBUTE	IP4RD					97	group		# of 4RD-Map-Rule and 4RD-Non-Map-Rule
 
-ATTRIBUTE	4RD-Map-Rule				98	struct
+ATTRIBUTE	IP4RD-Map-Rule				98	struct
 MEMBER		IPv4-Prefix-Len					uint8
 MEMBER		IPv6-Prefix-Len					uint8
 MEMBER		EA-Len						uint8
@@ -24,9 +24,9 @@ VALUE		WPK-Authorized		Not-Authorized		0x00
 MEMBER		IPv4-Prefix					octets[4]
 MEMBER		IPv6-Prefix					octets[12]
 
-ATTRIBUTE	4RD-Non-Map-Rule			99	struct
-MEMBER		Flag-Traffic-Class-Provided			bit[1]
-MEMBER		Flag-Reserved					bit[6]
-MEMBER		Flag-Hub-And-Spoke				bit[1]
+ATTRIBUTE	IP4RD-Non-Map-Rule				99	struct
+MEMBER		Traffic-Class-Provided				bit[1]
+MEMBER		Reserved					bit[6]
+MEMBER		Hub-And-Spoke					bit[1]
 MEMBER		Domain-PMTU					uint8
 

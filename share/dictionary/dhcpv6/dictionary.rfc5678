@@ -14,15 +14,15 @@
 ATTRIBUTE	MOD-Address-List			54	tlv
 
 BEGIN-TLV	MOD-Address-List
-ATTRIBUTE	MOS-Address-IS				1	ipv6addr array
-ATTRIBUTE	MOS-Address-CS				2	ipv6addr array
-ATTRIBUTE	MOS-Address-ES				3	ipv6addr array
+ATTRIBUTE	IS				1	ipv6addr array
+ATTRIBUTE	CS				2	ipv6addr array
+ATTRIBUTE	ES				3	ipv6addr array
 END-TLV		MOD-Address-List
 
 ATTRIBUTE	MOS-Domain-Name-List			55	tlv
 
 BEGIN-TLV	MOS-Domain-Name-List
-ATTRIBUTE	MOS-Domain-Name-IS			1	string dns_label,array
-ATTRIBUTE	MOS-Domain-Name-CS			2	string dns_label,array
-ATTRIBUTE	MOS-Domain-Name-ES			3	string dns_label,array
+ATTRIBUTE	IS				1	string dns_label,array
+ATTRIBUTE	CS				2	string dns_label,array
+ATTRIBUTE	ES				3	string dns_label,array
 END-TLV		MOS-Domain-Name-List

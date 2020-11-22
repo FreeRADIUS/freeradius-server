@@ -19,7 +19,7 @@ MEMBER		Time						date
 
 #  Sub-struct of Client-ID.LLT.Hardware-Type
 STRUCT		Ethernet		Hardware-Type	1
-MEMBER		Ethernet-Address				ether
+MEMBER		Address						ether
 
 #
 #  If the 'key' field has value OTHER than what is defined here,
@@ -28,8 +28,8 @@ MEMBER		Ethernet-Address				ether
 #
 
 STRUCT		EN			DUID		2
-MEMBER		EN-Enterprise-Number				uint32
-MEMBER		EN-Identifier					octets
+MEMBER		Enterprise-Number				uint32
+MEMBER		Identifier					octets
 
 STRUCT		LL			DUID		3
 MEMBER		Hardware-Type					uint16 key
@@ -47,7 +47,7 @@ MEMBER		Time						date
 
 #  Sub-struct of Server-ID.LLT.Hardware-Type
 STRUCT		Ethernet		Hardware-Type	1
-MEMBER		Ethernet-Address				ether
+MEMBER		Address						ether
 
 STRUCT		EN			DUID		2
 MEMBER		Enterprise-Number				uint32
@@ -58,7 +58,7 @@ MEMBER		Hardware-Type					uint16 key
 
 #  Sub-struct of Server-ID.LL.Hardware-Type
 STRUCT		Ethernet		Hardware-Type	1
-MEMBER		Ethernet-Address				ether
+MEMBER		Address						ether
 
 ATTRIBUTE	IA-NA					3	struct
 MEMBER		IAID						uint32
@@ -71,7 +71,7 @@ MEMBER		IAID						uint32
 MEMBER		Options						group
 
 ATTRIBUTE	IA-Addr					5	struct
-MEMBER		Address						ipv6addr
+MEMBER		IPv6-Address					ipv6addr
 MEMBER		Preferred-Lifetime				time_delta
 MEMBER		Valid-Lifetime					time_delta
 MEMBER		Options						group

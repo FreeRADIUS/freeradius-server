@@ -21,7 +21,7 @@ match 6
 
 # Same string attribute but now marked as "unknown"
 decode-pair 01 80 01 03 62 6f 62
-match Attr-1 = 0x626f62
+match 1 = 0x626f62
 returned
 match 7
 

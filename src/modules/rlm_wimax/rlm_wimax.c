@@ -104,8 +104,8 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_wimax_rrq_ha_ip, .name = "WiMAX-RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
 	{ .out = &attr_wimax_ha_rk_key_requested, .name = "WiMAX-HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ NULL }
 };

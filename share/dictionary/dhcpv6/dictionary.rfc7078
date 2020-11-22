@@ -11,9 +11,9 @@
 ##############################################################################
 
 ATTRIBUTE	Address-Selection			84	struct
-MEMBER		Flags						uint8
-VALUE		Flags		Privacy-Reference	0x01	# bit mask
-VALUE		Flags		Automatic-Row-Addition	0x02	# bit mask
+MEMBER		Reserved					bit[6]
+MEMBER		Automatic-Row-Addition				bit[1]
+MEMBER		Privacy-Reference				bit[1]
 
 MEMBER		Table-Rows					group	# of Address-Selection-Table
 

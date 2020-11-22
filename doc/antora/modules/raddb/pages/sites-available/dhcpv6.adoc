@@ -239,8 +239,8 @@ recv Solicit {
 }
 send Advertise {
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 recv Request {
@@ -248,8 +248,8 @@ recv Request {
 }
 send Offer {
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 recv Information-Request {
@@ -257,8 +257,8 @@ recv Information-Request {
 }
 send Reply {
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 }

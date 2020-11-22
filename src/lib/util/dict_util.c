@@ -1697,13 +1697,15 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_UINT16:	/* stupid struct issues */
+	case FR_TYPE_UINT8:
 		break;
 
 	default:
-		fr_strerror_printf("Attribute '%s' is not a structural type, "
-				   "so cannot contain child attributes.  "
+		fr_strerror_printf("Attribute '%s' is type %s so cannot contain child attributes.  "
 				   "Error at OID \"%.*s\"",
 				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<INVALID>"),
 				   (int)fr_sbuff_remaining(in),
 				   fr_sbuff_current(in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
@@ -2496,11 +2498,11 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
 	return fr_hash_table_find_by_data(dict_by_da(da)->attributes_combo,
-				      &(fr_dict_attr_t){
-				      		.parent = da->parent,
-				      		.attr = da->attr,
-				      		.type = type
-				      });
+					  &(fr_dict_attr_t){
+						  .parent = da->parent,
+						  .attr = da->attr,
+						  .type = type
+					  });
 }
 
 /** Check if a child attribute exists in a parent using a pointer (da)

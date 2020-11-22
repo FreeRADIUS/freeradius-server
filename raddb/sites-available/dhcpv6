@@ -219,8 +219,8 @@ send Advertise {
 	#  All replies MUST include a Server-ID option
 	#
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 
@@ -236,8 +236,8 @@ send Offer {
 	#  All replies MUST include a Server-ID option
 	#
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 
@@ -257,8 +257,8 @@ send Reply {
 	#  All replies MUST include a Server-ID option
 	#
 	update reply {
-		&Server-ID-DUID = Server-ID-DUID-UUID
-		&Server-ID-DUID-UUID-Value := 0x00000000000000000000000000000000
+		&Server-ID.DUID = UUID
+		&Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 	}
 }
 

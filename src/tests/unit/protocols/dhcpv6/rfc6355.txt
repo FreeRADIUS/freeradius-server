@@ -46,71 +46,71 @@ proto-dictionary dhcpv6
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID
+encode-pair Client-ID.DUID = UUID
 match 00 01 00 02 00 04
 
 decode-pair -
-match Client-ID-DUID = Client-ID-DUID-UUID
+match Client-ID.DUID = UUID
 
 #  Encode a 16-octet UUID
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #  UUID-Value field is 16 octets.  So we truncate if if it's too long, and pad it with zeros if it's too short.
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f1112
+encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f1112
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 #  But if we decode something that's too long, we ignore the extra data
 decode-pair -
-match Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #  Or we pad the UUID to 16 octets if it's too short
-encode-pair Client-ID-DUID = Client-ID-DUID-UUID, Client-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d
+encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 00 00
 
 #  And if we see something that's too short, we get a bad attribute.
 decode-pair 00 01 00 10 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d
-match Client-ID-DUID = Client-ID-DUID-UUID, Attr-1.1.4 = 0x000102030405060708090a0b0c0d
+match Client-ID.DUID = UUID, Client-ID.DUID.4 = 0x000102030405060708090a0b0c0d
 
 #
 #  Server Identifier
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Server-ID-DUID = Server-ID-DUID-UUID
+encode-pair Server-ID.DUID = UUID
 match 00 02 00 02 00 04
 
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-UUID
+match Server-ID.DUID = UUID
 
 #  Encode a 16-octet UUID
-encode-pair Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #  UUID-Value field is 16 octets.  So we truncate if if it's too long, and pad it with zeros if it's too short.
-encode-pair Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f1112
+encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f1112
 match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 #  But if we decode something that's too long, we ignore the extra data
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0e0f
+match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 #  Or we pad the UUID to 16 octets if it's too short
-encode-pair Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d
+encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d
 match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 00 00
 
 decode-pair -
-match Server-ID-DUID = Server-ID-DUID-UUID, Server-ID-DUID-UUID-Value = 0x000102030405060708090a0b0c0d0000
+match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0000
 
 #  And if we see something that's too short, we get a bad attribute.
 decode-pair 00 02 00 10 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d
-match Server-ID-DUID = Server-ID-DUID-UUID, Attr-2.1.4 = 0x000102030405060708090a0b0c0d
+match Server-ID.DUID = UUID, Server-ID.DUID.4 = 0x000102030405060708090a0b0c0d
 
 count
 match 36
