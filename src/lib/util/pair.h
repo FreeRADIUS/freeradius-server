@@ -183,7 +183,7 @@ fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx);
  *
  * @hidecallergraph
  */
-fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
 
 fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
 

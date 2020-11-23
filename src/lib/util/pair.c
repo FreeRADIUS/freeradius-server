@@ -135,14 +135,6 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	fr_pair_t *vp;
 
-	/*
-	 *	Caller must specify a da else we don't know what the attribute type is.
-	 */
-	if (!da) {
-		fr_strerror_printf("Invalid arguments");
-		return NULL;
-	}
-
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
@@ -189,29 +181,25 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  */
 fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr)
 {
-	fr_dict_attr_t const *da;
-	fr_pair_t *vp;
+	fr_dict_attr_t const	*da;
+	fr_pair_t 		*vp;
+
+	vp = fr_pair_alloc_null(ctx);
+	if (unlikely(!vp)) return NULL;
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) {
-		unsigned int		vendor_id = 0;
-		fr_dict_attr_t const	*vendor;
+		fr_dict_attr_t *unknown;
 
-		/*
-		 *	If parent is a vendor, that's fine. If parent
-		 *	is a TLV attribute parented by a vendor, that's
-		 *	also fine...
-		 */
-		vendor = fr_dict_vendor_da_by_da(parent);
-		if (vendor) vendor_id = vendor->attr;
-
-		da = fr_dict_unknown_afrom_fields(ctx, parent,
-						  vendor_id, attr);
-		if (!da) return NULL;
+		if (fr_dict_unknown_afrom_num(vp, &unknown, parent, attr) < 0) {
+			talloc_free(vp);
+			return NULL;
+		}
+		da = unknown;
 	}
+	vp->da = da;
+	fr_value_box_init(&vp->data, da->type, da, false);
 
-	vp = fr_pair_afrom_da(ctx, da);
-	fr_dict_unknown_free(&da);
 	return vp;
 }
 
