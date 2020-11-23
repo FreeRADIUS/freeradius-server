@@ -34,8 +34,6 @@ RCSIDH(pair_legacy_h, "$Id$")
 extern "C" {
 #endif
 
-fr_pair_t	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
-
 fr_pair_t	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			      fr_pair_list_t *vps, char const *attribute, char const *value, fr_token_t op);
 

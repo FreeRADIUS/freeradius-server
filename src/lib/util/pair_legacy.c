@@ -35,67 +35,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-/** Create a new valuepair
- *
- * If attr and vendor match a dictionary entry then a VP with that #fr_dict_attr_t
- * will be returned.
- *
- * If attr or vendor are uknown will call dict_attruknown to create a dynamic
- * #fr_dict_attr_t of #FR_TYPE_OCTETS.
- *
- * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
- * checking @verbatim vp->da->flags.is_unknown @endverbatim.
- *
- * @param[in] ctx for allocated memory, usually a pointer to a #fr_radius_packet_t.
- * @param[in] attr number.
- * @param[in] vendor number.
- * @return
- *	- A new #fr_pair_t.
- *	- NULL on error.
- */
-fr_pair_t *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
-{
-	fr_dict_attr_t const *da;
-	fr_dict_attr_t const *parent;
-
-	if (vendor == 0) {
-		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), attr);
-		goto alloc;
-	}
-
-	parent = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_VENDOR_SPECIFIC);
-	if (!parent) return NULL;
-
-	parent = fr_dict_attr_child_by_num(parent, vendor);
-	if (!parent) return NULL;
-
-	da = fr_dict_attr_child_by_num(parent, attr);
-
-alloc:
-	if (!da) {
-		fr_pair_t *vp;
-
-		vp = fr_pair_alloc_null(ctx);
-		if (!vp) return NULL;
-
-		/*
-		 *	Ensure that the DA is parented by the VP.
-		 */
-		da = fr_dict_unknown_afrom_fields(vp, fr_dict_root(fr_dict_internal()), vendor, attr);
-		if (!da) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		vp->da = da;
-		fr_value_box_init(&vp->data, da->type, da, false);
-
-		return vp;
-	}
-
-	return fr_pair_afrom_da(ctx, da);
-}
-
 /** Mark a valuepair for xlat expansion
  *
  * Copies xlat source (unprocessed) string to valuepair value, and sets value type.
