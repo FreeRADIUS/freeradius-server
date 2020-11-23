@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
+#include <freeradius-devel/server/cond.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
@@ -193,9 +194,19 @@ error:
 }
 
 fr_table_num_sorted_t const map_assignment_op_table[] = {
+	{ L("!*"),	T_OP_CMP_FALSE		},
+	{ L("!="),	T_OP_NE			},
+	{ L("!~"),	T_OP_REG_NE		},
 	{ L("+="),	T_OP_ADD		},
 	{ L(":="),	T_OP_SET		},
+	{ L("<"),	T_OP_LT			},
+	{ L("<="),	T_OP_LE			},
 	{ L("="),	T_OP_EQ			},
+	{ L("=*"),	T_OP_CMP_TRUE		},
+	{ L("=="),	T_OP_CMP_EQ		},
+	{ L("=~"),	T_OP_REG_EQ		},
+	{ L(">"),	T_OP_GT			},
+	{ L(">="),	T_OP_GE			}
 };
 size_t map_assignment_op_table_len = NUM_ELEMENTS(map_assignment_op_table);
 
@@ -272,18 +283,18 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  * @param[in] op_table_len	length of op_table
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
+ * @param[in] rhs_term		terminating rules for the RHS
  * @return
  *	- <0 on error
  *	- 0 on success
  */
 int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		    fr_table_num_sorted_t const *op_table, size_t op_table_len,
-		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
+		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+		    fr_sbuff_parse_rules_t const *rhs_term)
 {
-	char		quote;
 	ssize_t		slen;
 	fr_token_t	token;
-	tmpl_t		*tmpl;
 	map_t		*map;
 	fr_sbuff_t	sbuff = FR_SBUFF_NO_ADVANCE(in);
 
@@ -293,51 +304,55 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
 	if (slen < 0) return -1;
 
-	if (!fr_sbuff_remaining(in)) return 0;
-
-	quote = *fr_sbuff_current(&sbuff);
-	switch (quote) {
-	case '"':
-		token = T_DOUBLE_QUOTED_STRING;
-		goto parse_lhs;
-
-	case '\'':
-		token = T_SINGLE_QUOTED_STRING;
-		goto parse_lhs;
-
-	case '`':
-		token = T_BACK_QUOTED_STRING;
-	parse_lhs:
-		fr_sbuff_advance(&sbuff, 1); /* no need to check */
-
+	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
+	switch (token) {
+	case T_SOLIDUS_QUOTED_STRING:
+	case T_DOUBLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(map, &map->lhs, &sbuff, token,
 					 tmpl_parse_rules_quoted[token], lhs_rules);
 		break;
 
 	default:
-		token = T_BARE_WORD;
-
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &sbuff,
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 		break;
 	}
 
-	if (slen <= 0) {
+	if (slen < 0) {
 	error:
 		talloc_free(map);
 		return -1;
 	}
 
 	/*
+	 *	We didn't parse anything from the LHS, that's OK.  The
+	 *	input must be empty.
+	 */
+	if (slen == 0) {
+		talloc_free(map);
+		*out = NULL;
+		return 0;
+	}
+
+	/*
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
 	 */
 	if (token != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&sbuff, quote)) {
+		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
 			fr_strerror_printf("Unexpected end of quoted string");
 			return -1;
 		}
 
 		fr_sbuff_advance(&sbuff, 1);
+
+		/*
+		 *	The tmpl code does NOT return tmpl_type_data
+		 *	for string data without xlat.  Instead, it
+		 *	creates TMPL_TYPE_UNRESOLVED.
+		 */
+		if (tmpl_resolve(map->lhs) < 0) goto error;
 	}
 
 	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
@@ -350,7 +365,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	 *	Parse operator.
 	 */
 	fr_sbuff_out_by_longest_prefix(&slen, &map->op, op_table, &sbuff, 0);
-	if (slen == 0) {
+	if (slen <= 0) {
 		fr_strerror_printf("Invalid operator");
 		goto error;
 	}
@@ -365,44 +380,66 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	 *	Copy LHS code above, except parsing in RHS, with some
 	 *	minor modifications.
 	 */
-	quote = *fr_sbuff_current(&sbuff);
-	switch (quote) {
-	case '"':
-		token = T_DOUBLE_QUOTED_STRING;
-		goto parse_rhs;
-
-	case '\'':
-		token = T_SINGLE_QUOTED_STRING;
-		goto parse_rhs;
-
-	case '`':
-		token = T_BACK_QUOTED_STRING;
-	parse_rhs:
-		fr_sbuff_advance(&sbuff, 1); /* no need to check */
-
+	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
+	switch (token) {
+	case T_SOLIDUS_QUOTED_STRING:
+	case T_DOUBLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token,
 					 tmpl_parse_rules_quoted[token], rhs_rules);
 		break;
 
 	default:
-		token = T_BARE_WORD;
+		if (!rhs_term) rhs_term = &tmpl_parse_rules_bareword_quoted;
 
-		slen = tmpl_afrom_substr(map, &tmpl, &sbuff, token,
-					 tmpl_parse_rules_quoted[token], rhs_rules);
+		/*
+		 *	Use the RHS termination rules ONLY for bare
+		 *	words.  For quoted strings we already know how
+		 *	to terminate the input string.
+		 */
+		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token, rhs_term, rhs_rules);
 		break;
 	}
-	if (slen <= 0) goto error;
+	if (slen < 0) goto error;
+
+	if (slen == 0) {
+		fr_strerror_printf("Unexpected end of input after operator");
+		goto error;
+	}
+	fr_assert(map->rhs != NULL);
 
 	/*
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
 	 */
 	if (token != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&sbuff, quote)) {
+		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
 			fr_strerror_printf("Unexpected end of quoted string");
 			return -1;
 		}
 
 		fr_sbuff_advance(&sbuff, 1);
+
+		/*
+		 *	The tmpl code does NOT return tmpl_type_data
+		 *	for string data without xlat.  Instead, it
+		 *	creates TMPL_TYPE_UNRESOLVED.
+		 */
+		if (tmpl_resolve(map->rhs) < 0) goto error;
+
+	} else if (tmpl_is_attr(map->lhs)) {
+		/*
+		 *	If the operator is "true" or "false", just
+		 *	cast the RHS to string, as no one will care
+		 *	about it.
+		 */
+		if ((map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
+			fr_dict_attr_t const *da = tmpl_da(map->lhs);
+
+			if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) goto error;
+		} else {
+			if (tmpl_cast_in_place(map->rhs, FR_TYPE_STRING, NULL) < 0) goto error;
+		}
 	}
 
 	fr_sbuff_set(in, &sbuff);
@@ -675,7 +712,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
 	if (map_afrom_sbuff(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
-			    lhs_rules, rhs_rules) < 0) {
+			    lhs_rules, rhs_rules, NULL) < 0) {
 		return -1;
 	}
 

@@ -125,7 +125,8 @@ int		map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp,
 
 int		map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 				fr_table_num_sorted_t const *op_table, size_t op_table_len,
-				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
+				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+				fr_sbuff_parse_rules_t const *rhs_term);
 
 void		map_sort(map_t **maps, fr_cmp_t cmp);
 
