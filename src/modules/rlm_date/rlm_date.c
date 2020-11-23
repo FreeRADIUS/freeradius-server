@@ -43,17 +43,21 @@ static const CONF_PARSER module_config[] = {
 
 DIAG_OFF(format-nonliteral)
 static ssize_t date_convert_string(request_t *request, char **out, size_t outlen,
-				   const char *str, const char *fmt)
+				   const char *str, rlm_date_t const *inst)
 {
 	struct tm tminfo;
 	time_t date = 0;
 
-	if (strptime(str, fmt, &tminfo) == NULL) {
-		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, fmt);
+	if (strptime(str, inst->fmt, &tminfo) == NULL) {
+		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, inst->fmt);
 		return -1;
 	}
 
-	date = mktime(&tminfo);
+	if (inst->utc) {
+		date = timegm(&tminfo);
+	} else {
+		date = mktime(&tminfo);
+	}
 	if (date < 0) {
 		REDEBUG("Failed converting parsed time into unix time");
 		return -1;
@@ -151,7 +155,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	unix timestamp.
 	 */
 	case FR_TYPE_STRING:
-		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst->fmt);
+		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst);
 
 	default:
 		REDEBUG("Can't convert type %s into date", fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"));
