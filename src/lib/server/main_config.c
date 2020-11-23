@@ -795,14 +795,6 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		rad_suid_down();
 	}
 
-	/*
-	 *	This also clears the dumpable flag if core dumps
-	 *	aren't allowed.
-	 */
-	if (fr_set_dumpable(config->allow_core_dumps) < 0) PERROR("Failed enabling core dumps");
-
-	if (config->allow_core_dumps) INFO("Core dumps are enabled");
-
 	return 0;
 }
 #endif	/* HAVE_SETUID */
@@ -1179,6 +1171,13 @@ do {\
 	 */
 	if (switch_users(config, cs) < 0) goto failure;
 #endif
+
+	/*
+	 *	This also clears the dumpable flag if core dumps
+	 *	aren't allowed.
+	 */
+	if (fr_set_dumpable(config->allow_core_dumps) < 0) PERROR("Failed enabling core dumps");
+	if (config->allow_core_dumps) INFO("Core dumps are enabled");
 
 	/*
 	 *	This allows us to figure out where, relative to
