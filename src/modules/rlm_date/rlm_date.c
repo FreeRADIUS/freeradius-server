@@ -95,7 +95,11 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 			goto error;
 		}
 
-		date = mktime(&tminfo);
+		if (!inst->utc) {
+			date = mktime(&tminfo);
+		} else {
+			date = timegm(&tminfo);
+		}
 		if (date < 0) {
 			REDEBUG("Failed converting parsed time into unix time");
 
