@@ -1,5 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <float.h>
+#include <unistd.h>
 
 #include "dbuff.h"
 
@@ -383,6 +384,68 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff2, (uint64_t) 0x123456789abcdef0) == -8);
 }
 
+static void test_dbuff_fd(void)
+{
+	uint8_t const		data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+					  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+	int			fd[2];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_fd_t	fctx;
+	uint8_t			buff[4];
+	uint8_t			output[8];
+
+	/*
+	 *	buff is far smaller than one would ever use in practice;
+	 *	it's made that way to force multiple shift/extend operations.
+	 */
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(pipe(fd) == 0);
+	TEST_CHECK(write(fd[1], data, sizeof(data)) == sizeof(data));
+	close(fd[1]);
+	TEST_CHECK(fr_dbuff_init_fd(&dbuff, &fctx, buff, sizeof(buff), fd[0], 24) == &dbuff);
+	TEST_CASE("Initial extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 1) == 1);
+	TEST_CHECK(memcmp(output, data, 1) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 2) == 2);
+	TEST_CHECK(memcmp(output, &data[1], 2) == 0);
+	TEST_CASE("Leftover byte plus data from next extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == 4);
+	TEST_CHECK(memcmp(output, &data[3], 4) == 0);
+	TEST_CASE("Multiple extends");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 8) == 8);
+	TEST_CHECK(memcmp(output, &data[7], 8) == 0);
+	TEST_CASE("EOF");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == -3);
+	close(fd[0]);
+}
+
+static void test_dbuff_fd_max(void)
+{
+	uint8_t const		data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+					  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
+	int			fd[2];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_fd_t	fctx;
+	uint8_t			buff[4];
+	uint8_t			output[8];
+
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(pipe(fd) == 0);
+	TEST_CHECK(write(fd[1], data, sizeof(data)) == sizeof(data));
+	close(fd[1]);
+	TEST_CHECK(fr_dbuff_init_fd(&dbuff, &fctx, buff, sizeof(buff), fd[0], 8) == &dbuff);
+	TEST_CASE("Initial extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 1) == 1);
+	TEST_CHECK(memcmp(output, data, 1) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 2) == 2);
+	TEST_CHECK(memcmp(output, &data[1], 2) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == 4);
+	TEST_CHECK(memcmp(output, &data[3], 4) == 0);
+	TEST_CASE("Confirm that max precludes another shift/extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == -3);
+	close(fd[0]);
+}
+
 /** Test functions that read from dbuffs.
  *
  */
@@ -494,7 +557,9 @@ TEST_LIST = {
 	{ "fr_dbuff_move",				test_dbuff_move },
 	{ "fr_dbuff_talloc_extend",			test_dbuff_talloc_extend },
 	{ "fr_dbuff_talloc_extend_multi_level",		test_dbuff_talloc_extend_multi_level },
-	{ "fr_dbff_out",				test_dbuff_out },
+	{ "fr_dbuff_fd",				test_dbuff_fd },
+	{ "fr_dbuff_fd_max",				test_dbuff_fd_max },
+	{ "fr_dbuff_out",				test_dbuff_out },
 
 
 	{ NULL }
