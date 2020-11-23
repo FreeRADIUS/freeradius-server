@@ -705,6 +705,20 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		return 0;
 	}
 
+	/*
+	 *	Try to parse dates via locale-specific names,
+	 *	using the same format string as strftime().
+	 *
+	 *	If that fails, then we fall back to our parsing
+	 *	routine, which is much more forgiving.
+	 */
+	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
+	if (p && (*p == '\0')) {
+		t = mktime(tm);
+		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		return 0;
+	}
+
 	strlcpy(buf, date_str, sizeof(buf));
 
 	p = buf;
