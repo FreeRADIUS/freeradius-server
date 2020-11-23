@@ -59,10 +59,10 @@ proto-dictionary radius
 #    |  value     = '\x00\x81 \x01\r\xb8\n\x0b\x12\xf0\x00\x00\x00\x00\x00\x00\x00\x01'
 #
 decode-proto 01 f0 00 8d 2a fd b0 90 41 8a c6 36 52 98 fb bb 15 e0 fd 2e 01 05 62 6f 62 02 12 45 e8 d5 da ea d8 7e 40 15 e0 fc c0 ec 0f 08 a1 5f 12 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01 61 14 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 00 61 0c 00 40 20 01 0d b8 0a 0b 12 f0 61 04 00 00 61 03 00 61 15 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 00 00 61 14 00 81 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01
-match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x2afdb090418ac6365298fbbb15e0fd2e, User-Name = "bob", User-Password = "\323\006\334\020\236\%\004Z\005\246\373\344\354\033\212*", NAS-IPv6-Address = 2001:db8:a0b:12f0::1, Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64, Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64, Framed-IPv6-Prefix = ::/0, Attr-97 = 0x00, Attr-97 = 0x004020010db80a0b12f0000000000000000000, Attr-97 = 0x008120010db80a0b12f00000000000000001
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x2afdb090418ac6365298fbbb15e0fd2e, User-Name = "bob", User-Password = "\323\006\334\020\236\%\004Z\005\246\373\344\354\033\212*", NAS-IPv6-Address = 2001:db8:a0b:12f0::1, Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64, Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64, Framed-IPv6-Prefix = ::/0, 97 = 0x00, 97 = 0x004020010db80a0b12f0000000000000000000, 97 = 0x008120010db80a0b12f00000000000000001
 
 encode-proto -
-match 01 00 00 85 00 44 be 93 a9 c4 d0 90 66 04 bc 31 93 7a 49 51 01 05 62 6f 62 02 12 3b ab 4a 9a db 55 c5 f9 98 99 d7 09 e3 c0 9e 32 5f 12 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01 61 0c 00 40 20 01 0d b8 0a 0b 12 f0 61 0c 00 40 20 01 0d b8 0a 0b 12 f0 61 04 00 00 61 03 00 61 15 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 00 00 61 14 00 81 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01
+match 01 00 00 8d 2a fd b0 90 41 8a c6 36 52 98 fb bb 15 e0 fd 2e 01 05 62 6f 62 02 12 45 e8 d5 da ea d8 7e 40 15 e0 fc c0 ec 0f 08 a1 5f 12 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01 61 14 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 00 61 0c 00 40 20 01 0d b8 0a 0b 12 f0 61 04 00 00 61 03 00 61 15 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 00 00 61 14 00 81 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01
 
 count
 match 6

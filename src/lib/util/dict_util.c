@@ -1779,9 +1779,11 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 				   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
 				   fr_sbuff_t *in)
 {
-	fr_sbuff_marker_t	start;
+	fr_sbuff_marker_t	start, c_s;
 	fr_dict_attr_t const	*our_parent = parent;
+	ssize_t			ret;
 
+	fr_sbuff_marker(&c_s, in);
 	fr_sbuff_marker(&start, in);
 
 	/*
@@ -1797,15 +1799,23 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		fr_dict_attr_t const	*child;
 
 		slen = fr_dict_oid_component(err, &child, our_parent, in);
-		if ((slen <= 0) || !child) return slen - fr_sbuff_marker_release_behind(&start);
+		if ((slen <= 0) || !child) {
+			ret = (slen - fr_sbuff_marker_release_behind(&start));
+			fr_sbuff_marker_release_reset_behind(&c_s);	/* Set marker back to the previous '.' */
+			return ret;
+		}
 
 		our_parent = child;
 		*out = child;
 
+		fr_sbuff_set(&c_s, in);
 		if (!fr_sbuff_next_if_char(in, '.')) break;
 	}
 
-	return fr_sbuff_marker_release_behind(&start);
+	ret = fr_sbuff_marker_release_behind(&start);
+	fr_sbuff_marker_release(&c_s);
+
+	return ret;
 }
 
 /** Resolve an attribute using an OID string

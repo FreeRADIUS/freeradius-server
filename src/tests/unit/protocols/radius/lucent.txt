@@ -8,9 +8,9 @@ decode-pair -
 match Vendor-Specific.Lucent.Max-Shared-Users = 1
 
 decode-pair 1a 0d 00 00 12 ee ff 02 07 00 00 00 01
-match Attr-26.4846.65282 = 0x00000001
+match Vendor-Specific.Lucent.65282 = 0x00000001
 
-encode-pair -
+encode-pair Vendor-Specific.Lucent.65282 = 0x00000001
 match 1a 0d 00 00 12 ee ff 02 07 00 00 00 01
 
 count

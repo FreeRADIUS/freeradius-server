@@ -191,7 +191,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 	if (!da) {
 		fr_dict_attr_t *unknown;
 
-		if (fr_dict_unknown_afrom_num(vp, &unknown, parent, attr) < 0) {
+		if (fr_dict_unknown_attr_afrom_num(vp, &unknown, parent, attr) < 0) {
 			talloc_free(vp);
 			return NULL;
 		}

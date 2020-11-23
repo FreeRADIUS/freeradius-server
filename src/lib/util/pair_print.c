@@ -117,6 +117,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 
 	if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
 
+	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);

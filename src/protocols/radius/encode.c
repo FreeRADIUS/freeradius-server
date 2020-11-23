@@ -1474,10 +1474,15 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, ui
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {
-		int i;
+		vp = fr_pair_find_by_da(&vps, attr_packet_authentication_vector);
+		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);
+		} else {
+			int i;
 
-		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
-			data[4 + i] = fr_fast_rand(&test_ctx->rand_ctx);
+			for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
+				data[4 + i] = fr_fast_rand(&test_ctx->rand_ctx);
+			}
 		}
 	}
 

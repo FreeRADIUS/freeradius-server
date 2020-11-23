@@ -256,7 +256,8 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list, fr_token_t *token, int depth)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer,
+					 fr_pair_list_t *list, fr_token_t *token, int depth)
 {
 	fr_pair_t	*vp, *head, **tail;
 	char const	*p, *next;
@@ -299,7 +300,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 */
 		slen = fr_dict_attr_by_oid_substr(NULL, &da, root, &FR_SBUFF_IN(p, strlen(p)));
 		if (slen <= 0) {
-
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, root,
 								&FR_SBUFF_IN(p, strlen(p)));
 			if (slen <= 0) {
@@ -380,12 +380,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			char const *q;
 
 			/*
-			 *	Free the unknown attribute, we don't need it any more.
-			 */
-			fr_dict_unknown_free(&da);
-			da_unknown = NULL;
-
-			/*
 			 *	Get the RHS thing.
 			 */
 			quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
@@ -431,16 +425,19 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			 *	so we may need to fix that later.
 			 */
 			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-				vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, raw.r_opand, raw.op);
+				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) goto error;
+				vp->op = raw.op;
+
+				fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false);
 			} else {
 				/*
 				 *	All other attributes get the name
 				 *	parsed.
 				 */
 				vp = fr_pair_afrom_da(ctx, da);
-				vp->op = raw.op;
 				if (!vp) goto error;
+				vp->op = raw.op;
 
 				/*
 				 *	We don't care what the value is, so

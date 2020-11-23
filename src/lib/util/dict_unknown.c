@@ -483,11 +483,6 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	fr_sbuff_marker_t	start;
 	ssize_t			slen;
 
-	if (!fr_cond_assert(parent)) {
-		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
-		return -1;
-	}
-
 	*out = NULL;
 
 	fr_sbuff_marker(&start, in);
@@ -567,7 +562,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 */
 	if (fr_sbuff_behind(&start) > 0) {
 		if (!fr_sbuff_next_if_char(in, '.')) {	/* this is likely a logic bug if the test fails ? */
-			fr_strerror_printf("Missing OID component separator %s", fr_sbuff_current(&start));
+			fr_strerror_printf("Missing OID component separator %s", fr_sbuff_current(in));
 		error:
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			talloc_free(n);
