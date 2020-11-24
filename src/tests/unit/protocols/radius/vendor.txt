@@ -40,8 +40,13 @@ match Attributes of type 'vsa' are not yet supported
 encode-pair raw.26 = 0x00000009abcdef
 match 1a 09 00 00 00 09 ab cd ef
 
+decode-pair -
+match raw.Vendor-Specific = 0x00000009abcdef
+
+#
+#  Parse this as itself, nothing else.
+#
 attribute raw.26 = 0x00000009abcdef
-#match Vendor-Specific = 0x00000009abcdef
 match raw.26 = 0x00000009abcdef
 
 # this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
@@ -80,4 +85,4 @@ decode-pair 1a 39 00 00 01 37 01 33 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
 match raw.Vendor-Specific.Microsoft.CHAP-Response = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
 
 count
-match 38
+match 40
