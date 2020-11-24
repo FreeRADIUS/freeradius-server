@@ -40,7 +40,7 @@ static fr_dict_attr_t const *attr_cleartext_password;
 
 extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -57,7 +57,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	bool			ephemeral;
 
 	/*
-	 *	Get the Cleartext-Password for this user.
+	 *	Get the Password.Cleartext for this user.
 	 */
 	fr_assert(eap_session->request != NULL);
 

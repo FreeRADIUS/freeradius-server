@@ -668,8 +668,8 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
 /*
  *  	get the vps and put them in perl hash
  *  	If one VP have multiple values it is added as array_ref
- *  	Example for this is Cisco-AVPair that holds multiple values.
- *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
+ *  	Example for this is Vendor-Specific.Cisco.AVPair that holds multiple values.
+ *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
  */
 static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_t **vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)

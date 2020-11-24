@@ -135,7 +135,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	CONF_SECTION		*unlang;
 
 	/*
-	 *	Get the Cleartext-Password for this user.
+	 *	Get the Password.Cleartext for this user.
 	 */
 
 	/*

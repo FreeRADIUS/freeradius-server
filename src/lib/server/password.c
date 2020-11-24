@@ -123,42 +123,42 @@ fr_dict_autoload_t password_dict[] = {
 
 extern fr_dict_attr_autoload_t password_dict_attr[];
 fr_dict_attr_autoload_t password_dict_attr[] = {
-	{ .out = &attr_cleartext, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_root, .name = "Password", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ .out = &attr_md5, .name = "MD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_smd5, .name = "SMD5-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_crypt, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_sha1, .name = "SHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha1, .name = "SSHA1-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_md5, .name = "Password.MD5", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_smd5, .name = "Password.SMD5", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_crypt, .name = "Password.Crypt", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_sha1, .name = "Password.SHA1", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha1, .name = "Password.SSHA1", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_sha2, .name = "SHA2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_224, .name = "SHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_256, .name = "SHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_384, .name = "SHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha2_512, .name = "SHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2, .name = "Password.SHA2", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_224, .name = "Password.SHA2-224", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_256, .name = "Password.SHA2-256", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_384, .name = "Password.SHA2-384", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha2_512, .name = "Password.SHA2-512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_ssha2_224, .name = "SSHA2-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_256, .name = "SSHA2-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_384, .name = "SSHA2-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha2_512, .name = "SSHA2-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_224, .name = "Password.SSHA2-224", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_256, .name = "Password.SSHA2-256", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_384, .name = "Password.SSHA2-384", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha2_512, .name = "Password.SSHA2-512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_sha3, .name = "SHA3-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_224, .name = "SHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_256, .name = "SHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_384, .name = "SHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_sha3_512, .name = "SHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3, .name = "Password.SHA3", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_224, .name = "Password.SHA3-224", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_256, .name = "Password.SHA3-256", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_384, .name = "Password.SHA3-384", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sha3_512, .name = "Password.SHA3-512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_ssha3_224, .name = "SSHA3-224-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_256, .name = "SSHA3-256-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_384, .name = "SSHA3-384-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ssha3_512, .name = "SSHA3-512-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_224, .name = "Password.SSHA3-224", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_256, .name = "Password.SSHA3-256", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_384, .name = "Password.SSHA3-384", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ssha3_512, .name = "Password.SSHA3-512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
-	{ .out = &attr_pbkdf2, .name = "PBKDF2-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_lm, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_nt, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ns_mta_md5, .name = "NS-MTA-MD5-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_pbkdf2, .name = "Password.PBKDF2", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_lm, .name = "Password.LM", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_nt, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ns_mta_md5, .name = "Password.NS-MTA-MD5", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
@@ -603,7 +603,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 #  endif
 #endif
 
-/** Convert a Password-With-Header attribute to the correct type
+/** Convert a Password.With-Header attribute to the correct type
  *
  * Attribute may be base64 encoded, in which case it will be decoded
  * first, then evaluated.
@@ -613,7 +613,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] request		Current request.
- * @param[in] known_good	Password-With-Header attribute to convert.
+ * @param[in] known_good	Password.With-Header attribute to convert.
  * @return
  *	- Buffer containing normified value on success.
  *	- NULL on error.
@@ -717,7 +717,7 @@ do_header:
 				known_good->vp_length, decoded);
 
 			/*
-			 *	Password-With-Header is a string attribute.
+			 *	Password.With-Header is a string attribute.
 			 *	Even though we're handling binary data, the header
 			 *	must be \0 terminated.
 			 */
@@ -730,7 +730,7 @@ do_header:
 
 	/*
 	 *	Rewrite to the default attribute type
-	 *	currently Cleartext-Password.
+	 *	currently Password.Cleartext.
 	 *
 	 *	This is usually correct if there's no
 	 *	header to indicate hash type.
@@ -967,7 +967,7 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RWDEBUG("!!! Ignoring control.User-Password.  Update your        !!!");
 			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
-			RWDEBUG("!!! password is in Cleartext-Password and NOT in        !!!");
+			RWDEBUG("!!! password is in Password.Cleartext and NOT in        !!!");
 			RWDEBUG("!!! User-Password.                                      !!!");
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			continue;

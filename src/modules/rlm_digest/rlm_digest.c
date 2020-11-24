@@ -65,7 +65,7 @@ static const fr_dict_attr_t *attr_digest_user_name;
 extern fr_dict_attr_autoload_t rlm_digest_dict_attr[];
 fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_digest_response, .name = "Digest-Response", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_TLV, .dict = &dict_radius },
@@ -145,7 +145,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		passwd = fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password);
 	}
 	if (!passwd) {
-		REDEBUG("Cleartext-Password or Digest-HA1 is required for authentication");
+		REDEBUG("Password.Cleartext or Digest-HA1 is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
 

@@ -81,7 +81,7 @@ static fr_dict_attr_t const *attr_virtual_server;
 extern fr_dict_attr_autoload_t paircmp_dict_attr[];
 fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Password.Crypt", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
@@ -592,7 +592,7 @@ int paircmp(request_t *request,
 		if (check_item->da == attr_user_password) {
 			if (check_item->op == T_OP_CMP_EQ) {
 				WARN("Found User-Password == \"...\"");
-				WARN("Are you sure you don't mean Cleartext-Password?");
+				WARN("Are you sure you don't mean Password.Cleartext?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
 			if (fr_pair_find_by_num(&request_list, 0, FR_USER_PASSWORD) == NULL) continue;

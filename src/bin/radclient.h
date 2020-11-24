@@ -74,7 +74,7 @@ struct rc_request {
 
 	rc_file_pair_t	*files;		//!< Request and response file names.
 
-	fr_pair_t	*password;	//!< Cleartext-Password
+	fr_pair_t	*password;	//!< Password.Cleartext
 	fr_time_delta_t	timestamp;
 
 	fr_radius_packet_t	*packet;	//!< The outgoing request.

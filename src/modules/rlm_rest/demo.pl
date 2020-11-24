@@ -46,7 +46,7 @@ while ($client = $daemon->accept) {
 			my $resp = HTTP::Response->new('200', 'OK');
 
 			$resp->header('Content-Type' => 'application/json');
-			$resp->content('{"control.Cleartext-Password":"testing123","reply.Reply-Message":"Hello from demo.pl"}');
+			$resp->content('{"control.Password.Cleartext":"testing123","reply.Reply-Message":"Hello from demo.pl"}');
 
 			$client->send_response($resp);
 		} else {

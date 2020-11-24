@@ -82,7 +82,7 @@ static fr_dict_attr_t const *attr_user;
 
 static fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_root, .name = "Password-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_root, .name = "Password", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
 	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
