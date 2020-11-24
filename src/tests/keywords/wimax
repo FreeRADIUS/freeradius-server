@@ -1,8 +1,8 @@
 update request {
-	&WiMAX-PFDv2-Src-Port = 6809
+	&Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
 }
 
-if (&WiMAX-PFDv2-Src-Port != 6809) {
+if (&Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port != 6809) {
 	test_fail
 }
 
@@ -12,7 +12,7 @@ update request {
 	&26.24757.84.9.5.7 = 0x01
 }
 
-if (&WiMAX-PFDv2-Src-Assigned != 1) {
+if (&Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned != 1) {
 	test_fail
 }
 

@@ -52,7 +52,7 @@ update {
 	"Vendor-%{Tmp-Integer-0}-1" := 127.0.0.1
 }
 
-if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
+if (&Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
 	test_fail
 }
 

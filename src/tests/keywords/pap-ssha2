@@ -106,7 +106,7 @@ update {
 #  Base64 of SHA2-384 password (in SHA2-Password)
 #
 update control {
-	&control.SHA2-Password := "%{hex:%{sha2_384:%{User-Password}}}"
+	&control.Password.SHA2 := "%{hex:%{sha2_384:%{User-Password}}}"
 }
 
 pap.authorize
@@ -129,7 +129,7 @@ update control {
 #  Base64 of SHA2-256 password (in SHA2-256-Password)
 #
 update control {
-	&control.SHA2-256-Password := "%{hex:%{sha2_256:%{User-Password}}}"
+	&control.Password.SHA2-256 := "%{hex:%{sha2_256:%{User-Password}}}"
 }
 
 pap.authorize
@@ -148,7 +148,7 @@ update {
 #  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
 #
 update control {
-	&control.SHA2-224-Password := "%{sha2_224:%{User-Password}}"
+	&control.Password.SHA2-224 := "%{sha2_224:%{User-Password}}"
 }
 
 pap.authorize

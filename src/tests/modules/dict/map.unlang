@@ -1,5 +1,5 @@
 update request {
-	&FreeRADIUS-Proxied-To := 127.0.0.1
+	&Vendor-Specific.FreeRADIUS.Proxied-To := 127.0.0.1
 	&Reply-Message := 'foo'
 }
 
@@ -33,35 +33,35 @@ else {
 	test_fail
 }
 
-if ("%{attr_by_oid:26.11344.1}" == 'FreeRADIUS-Proxied-To') {
+if ("%{attr_by_oid:26.11344.1}" == 'Vendor-Specific.FreeRADIUS.Proxied-To') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{attr:FreeRADIUS-Proxied-To}" == 'FreeRADIUS-Proxied-To') {
+if ("%{attr:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'FreeRADIUS-Proxied-To') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{attr_num:FreeRADIUS-Proxied-To}" == 1) {
+if ("%{attr_num:Vendor-Specific.FreeRADIUS.Proxied-To}" == 1) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{vendor:FreeRADIUS-Proxied-To}" == 'FreeRADIUS') {
+if ("%{vendor:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'FreeRADIUS') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{vendor_num:FreeRADIUS-Proxied-To}" == 11344) {
+if ("%{vendor_num:Vendor-Specific.FreeRADIUS.Proxied-To}" == 11344) {
 	test_pass
 }
 else {

@@ -2,7 +2,7 @@
 #  PRE: wimax
 #
 update request {
-	&FreeRADIUS-Proxied-To  := 127.0.0.2
+	&Vendor-Specific.FreeRADIUS.Proxied-To  := 127.0.0.2
 }
 
 #
@@ -43,11 +43,11 @@ update request {
 	&26.11344.1 := 0x7f000001
 }
 
-if (&FreeRADIUS-Proxied-To == 127.0.0.2) {
+if (&Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.2) {
 	test_fail
 }
 
-if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
+if (&Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
 	test_fail
 }
 

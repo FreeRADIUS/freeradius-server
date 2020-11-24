@@ -17,7 +17,7 @@ VENDOR		FreeRADIUS			11344
 BEGIN-VENDOR	FreeRADIUS
 
 ATTRIBUTE	Proxied-To			1	ipaddr
-ATTRIBUTE	Acct-Session-Start-Time	2	date
+ATTRIBUTE	Session-Start-Time		2	date
 
 #
 #  FreeRADIUS v4 produces statistics in its own TLV
