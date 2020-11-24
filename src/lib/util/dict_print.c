@@ -184,6 +184,7 @@ void fr_dict_attr_debug(fr_dict_attr_t const *da)
 {
 	fr_dict_attr_debug_t uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
 
+	dict_attr_debug(da, &uctx);
 	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
 }
 
