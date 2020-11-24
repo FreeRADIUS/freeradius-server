@@ -156,6 +156,7 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA \
 	FR_TYPE_GROUP: \
+	case FR_TYPE_VENDOR: \
 	case FR_TYPE_TLV: \
 	case FR_TYPE_STRUCT
 
@@ -166,8 +167,8 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL \
 	FR_TYPE_STRUCTURAL_EXCEPT_VSA: \
-	case FR_TYPE_VSA: \
-	case FR_TYPE_VENDOR
+	case FR_TYPE_VSA \
+
 
 /** Types which do not represent concrete values
  *
