@@ -4,58 +4,58 @@ proto-dictionary radius
 #
 #  Structs in RADIUS
 #
-encode-pair Unit-Struct1-Int1 = 1, Unit-Struct1-Int2 = 2, Unit-Struct1-Short = 4, Unit-Struct1-String = "foo"
+encode-pair Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-String = "foo"
 match f1 10 f7 00 00 00 01 00 00 00 02 00 04 66 6f 6f
 
 decode-pair -
-match Unit-Struct1-Int1 = 1, Unit-Struct1-Int2 = 2, Unit-Struct1-Short = 4, Unit-Struct1-String = "foo"
+match Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-String = "foo"
 
 #
 # And structs where the last part is a TLV.
 #
 #  Note that we don't encode the TLV itself, only the children.
 #
-encode-pair Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4, Unit-Struct2-TLV-Int1 = 6, Unit-Struct2-TLV-Int2 = 7, Unit-Struct2-TLV-String = "foo"
+encode-pair Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int1 = 6, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int2 = 7, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-String = "foo"
 match f1 1a f8 00 00 00 01 00 04 01 06 00 00 00 06 02 06 00 00 00 07 03 05 66 6f 6f
 
 decode-pair -
-match Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4, Unit-Struct2-TLV-Int1 = 6, Unit-Struct2-TLV-Int2 = 7, Unit-Struct2-TLV-String = "foo"
+match Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int1 = 6, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int2 = 7, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-String = "foo"
 
-encode-pair Unit-Struct3-Int = 1, Unit-Struct3a-Ipaddr1 = 127.0.0.1, Unit-Struct3a-Ipaddr2 = 8.8.8.8
+encode-pair Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-Int = 1, Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-TLV.Unit-Struct3a.Unit-Struct3a-Ipaddr1 = 127.0.0.1, Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-TLV.Unit-Struct3a.Unit-Struct3a-Ipaddr2 = 8.8.8.8
 match f1 11 f9 00 00 00 01 01 0a 7f 00 00 01 08 08 08 08
 
 decode-pair -
-match Unit-Struct3-Int = 1, Unit-Struct3a-Ipaddr1 = 127.0.0.1, Unit-Struct3a-Ipaddr2 = 8.8.8.8
+match Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-Int = 1, Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-TLV.Unit-Struct3a.Unit-Struct3a-Ipaddr1 = 127.0.0.1, Extended-Attribute-1.Unit-Ext-241-Struct3.Unit-Struct3-TLV.Unit-Struct3a.Unit-Struct3a-Ipaddr2 = 8.8.8.8
 
 #
 #  Fixed size struct
 #
-encode-pair Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
+encode-pair Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Short = 4
 match f1 0d fa 00 00 00 01 00 00 00 02 00 04
 
 decode-pair -
-match Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
+match Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Short = 4
 
 #
 #  Wrong-sized struct (last field missing), it just decodes what it can.
 #
 decode-pair f1 0b fa 00 00 00 01 00 00 00 02
-match Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2
+match Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int2 = 2
 
 #
 #  Wrong-sized struct (last two fields missing), it just decodes what it can.
 #
 decode-pair f1 07 fa 00 00 00 01
-match Unit-Struct4-Int1 = 1
+match Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int1 = 1
 
 #
 #  Wrong-sized struct (data is too long), we ignore the extra data.
 #
 decode-pair f1 0e fa 00 00 00 01 00 00 00 02 00 04 00
-match Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
+match Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct4.Unit-Struct4-Short = 4
 
 decode-pair ff 09 01 00 00 1a 99 05 06
-match Key-Field = Sub-Struct, Filler = 6809, Nested-Sub1 = 5, Nested-Sub2 = 6
+match Test-Struct.Key-Field = Sub-Struct, Test-Struct.Filler = 6809, Test-Struct.Key-Field.Sub-Struct.Nested-Sub1 = 5, Test-Struct.Key-Field.Sub-Struct.Nested-Sub2 = 6
 
 encode-pair -
 match ff 09 01 00 00 1a 99 05 06

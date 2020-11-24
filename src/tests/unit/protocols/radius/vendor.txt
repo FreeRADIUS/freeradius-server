@@ -1,20 +1,20 @@
 proto radius
 proto-dictionary radius
 
-encode-pair SN-VPN-Name = "foo"
+encode-pair Vendor-Specific.Starent.VPN-Name = "foo"
 match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
 
 decode-pair -
-match SN-VPN-Name = "foo"
+match Vendor-Specific.Starent.VPN-Name = "foo"
 
-encode-pair USR-Event-Id = 1234
+encode-pair Vendor-Specific.USR.Event-Id = 1234
 match 1a 0e 00 00 01 ad 00 00 bf be 00 00 04 d2
 
 decode-pair -
-match USR-Event-Id = 1234
+match Vendor-Specific.USR.Event-Id = 1234
 
 decode-pair 1a 15 00 00 4e 20 01 0f 6c 69 74 68 69 61 73 70 72 69 6e 67 73
-match Attr-26.20000.1 = 0x6c6974686961737072696e6773
+match Vendor-Specific.20000.1 = 0x6c6974686961737072696e6773
 
 encode-pair 3Com-User-Access-Level = 3Com-Visitor, 3Com-Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00"
 match 1a 0c 00 00 00 2b 01 06 00 00 00 00 1a 26 00 00 00 2b 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
@@ -37,18 +37,18 @@ match 3Com-User-Access-Level = 3Com-Visitor, 3Com-Ip-Host-Addr = "155.4.12.100 0
 encode-pair Vendor-Specific = 0xabcdef
 match Attributes of type 'vsa' are not yet supported
 
-encode-pair Attr-26 = 0x00000009abcdef
+encode-pair raw.26 = 0x00000009abcdef
 match 1a 09 00 00 00 09 ab cd ef
 
-attribute Attr-26 = 0x00000009abcdef
-match Attr-26 = 0x00000009abcdef
+attribute raw.26 = 0x00000009abcdef
+match Vendor-Specific = 0x00000009abcdef
 
 # this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
-encode-pair ERX-LI-Action = off
+encode-pair Vendor-Specific.Unisphere.ERX-LI-Action = off
 match 1a 1a 00 00 13 0a 3a 14 8d 31 89 6e 2e 8a f5 fa 78 fb d5 90 d8 1a 15 91 c1 f1
 
 decode-pair -
-match ERX-LI-Action = off
+match Vendor-Specific.Unisphere.ERX-LI-Action = off
 
 #packet coa_request
 #original null
@@ -60,23 +60,23 @@ match ERX-LI-Action = off
 #  Unknown vendors get decoded as TLVs with type=1,length=1
 #
 decode-pair 1a12000080000105abcdef02076161616161
-match Attr-26.32768.1 = 0xabcdef, Attr-26.32768.2 = 0x6161616161
+match Vendor-Specific.32768.1 = 0xabcdef, Vendor-Specific.32768.2 = 0x6161616161
 
 #
 #  This MUST be 50 octets of data
 #
-encode-pair MS-CHAP-Response = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX"
+encode-pair Vendor-Specific.Microsoft.CHAP-Response = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX"
 match 1a 3a 00 00 01 37 01 34 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 58
 
 decode-pair -
-match MS-CHAP-Response = 0x7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787858
+match Vendor-Specific.Microsoft.CHAP-Response = 0x7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787858
 
 #
 #  And now something which *isn't* 50 octets, but instead 49.
 #  Therefore it's an "invalid attribute", as defined in RFC 6929 Section 2.8.
 #
 decode-pair 1a 39 00 00 01 37 01 33 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
-match Attr-26.311.1 = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
+match raw.Vendor-Specific.Microsoft.CHAP-Response = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
 
 count
 match 38

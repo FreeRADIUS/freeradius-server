@@ -8,16 +8,14 @@ match User-Name = "bob"
 #
 #  Only WiMAX really has nested TLVs
 #
-#  And we don't print out the leading contexts :(
-#
-pair WiMAX-Source-IPAddress = 127.0.0.1
-match WiMAX-Source-IPAddress = 127.0.0.1
+#pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IPAddress = 127.0.0.1
+#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IPAddress = 127.0.0.1
 
-pair WiMAX-Packet-Flow-Descriptor.WiMAX-Classifier.WiMAX-Source-Specification, .WiMAX-Source-IPAddress = 127.0.0.1
-match WiMAX-Source-IPAddress = 127.0.0.1
+#pair WiMAX-Packet-Flow-Descriptor.WiMAX-Classifier.WiMAX-Source-Specification, .WiMAX-Source-IPAddress = 127.0.0.1
+#match WiMAX-Source-IPAddress = 127.0.0.1
 
-pair WiMAX-Packet-Flow-Descriptor.WiMAX-Classifier.WiMAX-Source-Specification, .WiMAX-Source-IPAddress = 127.0.0.1, ..WiMAX-Destination-Specification, .WiMAX-Destination-IPAddress = 127.0.0.2
-match WiMAX-Source-IPAddress = 127.0.0.1, WiMAX-Destination-IPAddress = 127.0.0.2
+#pair WiMAX-Packet-Flow-Descriptor.WiMAX-Classifier.WiMAX-Source-Specification, .WiMAX-Source-IPAddress = 127.0.0.1, ..WiMAX-Destination-Specification, .WiMAX-Destination-IPAddress = 127.0.0.2
+#match WiMAX-Source-IPAddress = 127.0.0.1, WiMAX-Destination-IPAddress = 127.0.0.2
 
 count
-match 10
+match 4
