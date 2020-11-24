@@ -1538,17 +1538,19 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		dict_enum_fixup_t *this, *next;
 
 		for (this = ctx->enum_fixup; this != NULL; this = next) {
-			fr_value_box_t	value;
-			fr_type_t	type;
-			int		ret;
+			fr_value_box_t		value;
+			fr_type_t		type;
+			int			ret;
+			fr_dict_attr_t const	*da_const;
 
 			next = this->next;
-			da = fr_dict_attr_unconst(fr_dict_attr_by_oid(NULL, this->parent, this->attribute));
-			if (!da) {
+			da_const = fr_dict_attr_by_oid(NULL, this->parent, this->attribute);
+			if (!da_const) {
 				fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
 							this->name, fr_cwd_strip(this->filename), this->line);
 				return -1;
 			}
+			da = fr_dict_attr_unconst(da_const);
 			type = da->type;
 
 			if (fr_value_box_from_str(this, &value, &type, NULL,
