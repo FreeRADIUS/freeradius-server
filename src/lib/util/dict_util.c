@@ -1693,16 +1693,14 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 			      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
 			      fr_sbuff_t *in)
 {
-	fr_sbuff_marker_t	start;
 	uint32_t		num = 0;
 	fr_sbuff_parse_error_t	sberr;
 	fr_dict_attr_t const	*child;
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
 	*out = NULL;
-
-	fr_sbuff_marker(&start, in);
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
@@ -1717,10 +1715,17 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 				   (int)fr_sbuff_remaining(in),
 				   fr_sbuff_current(in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
-		return -fr_sbuff_marker_release_behind(&start);
+		return 0;
 	}
 
-	fr_sbuff_out(&sberr, &num, in);
+	/*
+	 *	Try to parse a number.  BUT if the trailing character
+	 *	is an allowed dictionary character, then we know that
+	 *	the OID isn't a number, it's a name.  e.g. "3com".
+	 */
+	fr_sbuff_out(&sberr, &num, &our_in);
+	if (fr_sbuff_is_in_charset(&our_in, fr_dict_attr_allowed_chars)) sberr = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
+
 	switch (sberr) {
 	/*
 	 *	Lookup by number
@@ -1731,12 +1736,9 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 			fr_strerror_printf("Failed resolving child %u in context %s",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
-			fr_sbuff_set(in, &start);		/* Reset to start of number */
-			fr_sbuff_marker_release(&start);
-
 			return 0;
 		}
-		break;
+		FALL_THROUGH;
 
 	/*
 	 *	Lookup by name
@@ -1746,28 +1748,29 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		fr_dict_attr_err_t	our_err;
 		ssize_t			slen;
 
-		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in);
+		our_in = FR_SBUFF_NO_ADVANCE(in);
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in);
 		if (our_err != FR_DICT_ATTR_OK) {
 			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
 					   (int)fr_sbuff_remaining(in),
 					   fr_sbuff_current(in),
 					   parent->name);
 			if (err) *err = our_err;
-			return slen - fr_sbuff_marker_release_behind(&start);
+			return slen;
 		}
 	}
 		break;
 
 	default:
 		fr_strerror_printf("Invalid OID component \"%.*s\"",
-				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
+				   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return -fr_sbuff_marker_release_behind(&start);
+		return -fr_sbuff_used(&our_in);
 	}
 
 	*out = child;
 
-	return fr_sbuff_marker_release_behind(&start);
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Resolve an attribute using an OID string
