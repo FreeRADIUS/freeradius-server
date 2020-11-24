@@ -170,7 +170,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_tim
 		fr_tacacs_packet_t *pkt = (fr_tacacs_packet_t *) buffer;
 
 		thread->seen_first_packet = true;
-		thread->single_connection = ((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT) != 0);
+		thread->single_connection = ((pkt->hdr.flags & FR_FLAGS_VALUE_SINGLE_CONNECT) != 0);
 	}
 
 	/*
@@ -213,7 +213,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	pkt = (fr_tacacs_packet_t *) buffer;
 	if (written == 0) {
 		thread->stats.total_responses++;
-		if (thread->single_connection) pkt->hdr.flags |= FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT;
+		if (thread->single_connection) pkt->hdr.flags |= FR_FLAGS_VALUE_SINGLE_CONNECT;
 	}
 
 	/*
@@ -228,7 +228,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	are only doing a single session.  In which case,
 	 *	return 0, which tells the caller to close the socket.
 	 */
-	if (((pkt->hdr.flags & FR_TACACS_FLAGS_VALUE_SINGLE_CONNECT) == 0) &&
+	if (((pkt->hdr.flags & FR_FLAGS_VALUE_SINGLE_CONNECT) == 0) &&
 	    (data_size + written) >= buffer_len) {
 		// @todo - check status for pass / fail / error, which
 		// cause the connection to be closed.  Everything else

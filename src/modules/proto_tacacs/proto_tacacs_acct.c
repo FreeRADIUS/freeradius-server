@@ -110,7 +110,7 @@ static void accounting_failed(request_t *request, char const *msg)
 	 *	Set the status.
 	 */
 	MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
-	vp->vp_uint8 = FR_TACACS_ACCOUNTING_STATUS_VALUE_ERROR;
+	vp->vp_uint8 = FR_ACCOUNTING_STATUS_VALUE_ERROR;
 }
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
