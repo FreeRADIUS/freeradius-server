@@ -7,10 +7,10 @@ update {
 }
 
 #
-#  Unencoded Cleartext-Password in password with header
+#  Unencoded Password.Cleartext in password with header
 #
 update {
- 	&control.Password-With-Header := "%{User-Password}"
+ 	&control.Password.With-Header := "%{User-Password}"
 }
 pap.authorize
 pap.authenticate {
@@ -25,13 +25,13 @@ update {
 }
 
 #
-#  Base64 encoded Cleartext-Password in password with header
+#  Base64 encoded Password.Cleartext in password with header
 #
 update {
 	&Tmp-String-1 := "{clear}%{User-Password}"
 }
 update {
- 	&control.Password-With-Header := "%{base64:%{Tmp-String-1}}"
+ 	&control.Password.With-Header := "%{base64:%{Tmp-String-1}}"
 }
 pap.authorize
 pap.authenticate {
@@ -49,7 +49,7 @@ update {
 #  Hex encoded SSHA password
 #
 update {
-	&control.Password-With-Header += "{ssha}%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	&control.Password.With-Header += "{ssha}%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
 }
 
 pap.authorize
@@ -82,7 +82,7 @@ update {
 }
 
 update {
-	&control.Password-With-Header += "{ssha}%{control.Tmp-String-1}"
+	&control.Password.With-Header += "{ssha}%{control.Tmp-String-1}"
 }
 
 pap.authorize
@@ -115,7 +115,7 @@ update {
 }
 
 update {
-	&control.Password-With-Header += "%{base64:%{control.Tmp-String-1}}"
+	&control.Password.With-Header += "%{base64:%{control.Tmp-String-1}}"
 }
 
 pap.authorize

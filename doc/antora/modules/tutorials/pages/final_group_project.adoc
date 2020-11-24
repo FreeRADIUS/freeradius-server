@@ -133,7 +133,7 @@ other participant in the group, into your backend datastore.
 If the datastore provides no authentication method (`sql`, `redis`), you should
 use the value of `&Stripped-User-Name` as the key, and when the user attempts to
 login, retrieve the user's password and store it in
-`&control.Cleartext-Password`.
+`&control.Password.Cleartext`.
 
 == Authorization
 
@@ -184,7 +184,7 @@ If the user does exist, and your module has an authenticate method (`ldap`,
 
 If the backend module does not have an authenticate method (`redis`, `files`,
 `sql`), you should ensure the "known good" copy of the user's password is set in
-`&control.Cleartext-Password` and then call the pap module.
+`&control.Password.Cleartext` and then call the pap module.
 
 === Bonus tasks
 

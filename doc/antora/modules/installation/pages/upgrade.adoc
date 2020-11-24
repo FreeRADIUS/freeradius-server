@@ -605,7 +605,7 @@ preferable to having them hard-coded in C.
 === rlm_eap_pwd
 
 The `virtual_server` configuration has been removed from EAP-PWD. The
-module now looks for &request.control.Cleartext-Password.
+module now looks for &request.control.Password.Cleartext.
 
 === rlm_eap_leap
 

@@ -61,7 +61,7 @@ numbers may be different, but the general format should be the same.
 Sent Access-Request Id 47 from 0.0.0.0:52132 to 127.0.0.1:1812 length 44
 	User-Name = "bob"
 	CHAP-Password = 0x70170db9ab2baad7ca45b3ef9cd844eccd
-	Cleartext-Password = "bob"
+	Password.Cleartext = "bob"
 Received Access-Accept Id 47 from 127.0.0.1:1812 to 127.0.0.1:52132 length 25
 	User-Name = "bob"
 ----
@@ -81,10 +81,10 @@ containing `ERROR` or `WARNING`, or the `chap` module name.
 (0)    chap - Setting &control.Auth-Type = chap
 (0)    chap (ok)
 ...
-(0)  Found "known good" password in &control.Cleartext-Password
+(0)  Found "known good" password in &control.Password.Cleartext
 (0)  Running 'authenticate chap' from file ./raddb/sites-enabled/default
 (0)  authenticate chap {
-(0)    chap - Comparing with "known good" Cleartext-Password
+(0)    chap - Comparing with "known good" Password.Cleartext
 (0)    chap - CHAP user "bob" authenticated successfully
 (0)    chap (ok)
 (0)  } # authenticate chap (ok)
@@ -106,7 +106,7 @@ authentication.
 Once the `recv Access-Request { ... }` section has finished
 processing, the server calls the `authenticate chap { ... }` section.
 In the default configuration, that section contains just a reference
-to the `chap` module.  The `chap` module finds a `Cleartext-Password`
+to the `chap` module.  The `chap` module finds a `Password.Cleartext`
 which has previously been added to the request, and performs the CHAP
 calculations.  If the calculated CHAP values match the CHAP values in
 the request packet, then the user is authenticated.  Otherwise,
@@ -116,8 +116,8 @@ This two-phase processing of CHAP ensures that the `chap` module is
 independent of any database.  That is, the "known good" password can
 be obtained from any other module, such as `ldap`, `sql`, `files`,
 etc.  The `chap` module only needs to know that it handles CHAP, and
-that it has been given a `Cleartext-Password` in order to authenticate
-the user.  The source of that `Cleartext-Password` is unimportant.
+that it has been given a `Password.Cleartext` in order to authenticate
+the user.  The source of that `Password.Cleartext` is unimportant.
 
 == Disabling CHAP
 

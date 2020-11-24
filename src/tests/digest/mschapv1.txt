@@ -1,5 +1,5 @@
 #
-#	bob	Cleartext-Password := "bob"
+#	bob	Password.Cleartext := "bob"
 #
 #	TESTS 1
 #

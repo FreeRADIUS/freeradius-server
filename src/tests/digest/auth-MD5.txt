@@ -6,7 +6,7 @@
 #
 #  In the "users" file: 
 #
-#       bob		Cleartext-Password := "zanzibar"
+#       bob		Password.Cleartext := "zanzibar"
 #  Or	bob	    	Digest-HA1 := "12af60467a33e8518da5c68bbff12b11"
 #
 #

@@ -24,7 +24,7 @@
 | Purpose                                     | `ldap { user { ... } }` config item
 | Specify where to search for users           | ```base_dn = '<user_base_dn>'```
 | Specify how to find a user                  | ```filter = "(&(<user_filter>)(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
-| Retrieve a "known good" password            | ```update { &control.Password-With-Header = <user_password_attribute>```
+| Retrieve a "known good" password            | ```update { &control.Password.With-Header = <user_password_attribute>```
 | Allow accounts to be explicitly disabled    | ```access_attribute = '<user_access_disabled_attribute>'``` +
                                                 ```access_positive = 'no'```
 | Require accounts to be explicitly enabled   | ```access_attribute = '<user_access_enabled_attribute>'``` +

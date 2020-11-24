@@ -329,7 +329,7 @@ permissions permit this:
 ----
 sqlcmd -S tcp:192.0.2.1,1433 -U radius -P radPass_123 -d radius   \
     -Q "INSERT INTO radcheck (username, attribute, op, value)     \
-        VALUES ('bob', 'Cleartext-Password', ':=', 'radpass')"
+        VALUES ('bob', 'Password.Cleartext', ':=', 'radpass')"
 ----
 
 Finally, attempt an authentication:
@@ -339,7 +339,7 @@ Finally, attempt an authentication:
 
  $ radtest bob test 127.0.0.1 0 testing123
  Sent Access-Request Id 53 from 0.0.0.0:12345 to 127.0.0.1:1812
-        Cleartext-Password = "test"
+        Password.Cleartext = "test"
         User-Name = "bob"
         User-Password = "test"
         NAS-IP-Address = 192.0.2.10

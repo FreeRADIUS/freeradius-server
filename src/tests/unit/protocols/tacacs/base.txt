@@ -16,7 +16,7 @@ proto-dictionary tacacs
 #	Authentication: Start Request: (Client -> Server)
 #
 decode-proto c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 1, TACACS-Flags = None, TACACS-Session-Id = 3071264782, TACACS-Length = 34, TACACS-Packet-Body-Type = Start, TACACS-Action = LOGIN, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "tapioca/0", TACACS-Remote-Address = "localhost", TACACS-Data = 0x68656c6c6f
+match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 34, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", Data = 0x68656c6c6f
 
 encode-proto -
 match c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
@@ -25,7 +25,7 @@ match c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb
 #	Authentication: Reply: (Client <- Server)
 #
 decode-proto c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 1, TACACS-Packet-Type = Authentication, TACACS-Sequence-Number = 2, TACACS-Flags = None, TACACS-Session-Id = 3071264782, TACACS-Length = 6, TACACS-Packet-Body-Type = Reply, TACACS-Authentication-Status = Pass, TACACS-Authentication-Flags = 0, TACACS-Server-Message = "", TACACS-Data = 0x
+match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 6, Packet-Body-Type = Reply, Authentication-Status = Pass, Authentication-Flags = 0, Server-Message = "", Data = 0x
 
 encode-proto -
 match c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
@@ -34,7 +34,7 @@ match c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
 #  Authorization - Request: (Client -> Server)
 #
 decode-proto c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f c0 5a aa 46 da 12 cd ee 48 62 69 67 9a b8 b4 db 70 98 30 b7 fc f6 93 09 d4 3f 2c a9 58 9e 3c 6a 0e d5 50 20 e6 a5 39 46
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 1, TACACS-Flags = None, TACACS-Session-Id = 3781589222, TACACS-Length = 53, TACACS-Packet-Body-Type = Request, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "tapioca/0", TACACS-Remote-Address = "localhost", TACACS-ArgumentList = "service=ppp", TACACS-ArgumentList = "protocol=ip"
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 53, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", ArgumentList = "service=ppp", ArgumentList = "protocol=ip"
 
 encode-proto -
 match c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f c0 5a aa 46 da 12 cd ee 48 62 69 67 9a b8 b4 db 70 98 30 b7 fc f6 93 09 d4 3f 2c a9 58 9e 3c 6a 0e d5 50 20 e6 a5 39 46
@@ -43,7 +43,7 @@ match c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f
 #  Authorization - Response: (Client <- Server)
 #
 decode-proto c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Authorization, TACACS-Sequence-Number = 2, TACACS-Flags = None, TACACS-Session-Id = 3781589222, TACACS-Length = 19, TACACS-Packet-Body-Type = Response, TACACS-Authorization-Status = Pass-Add, TACACS-Server-Message = "", TACACS-Data = 0x, TACACS-ArgumentList = "addr=1.2.3.4"
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 19, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, ArgumentList = "addr=1.2.3.4"
 
 encode-proto -
 match c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
@@ -52,7 +52,7 @@ match c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc
 #  Accounting - Request: (Client -> Server)
 #
 decode-proto c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89 71 72 dd 89 46 75 df 9c 00 a5 96 28 05 fc 57 88 02 0c 11 a3 60 9a 05 8b 71 6d 27 ca 83 b0 ab 2f 00 27 c8 da 58 d3 1a f1 3f 07 17 8d f6 35 c5 7b e2 07 be 29 86 d4 93 16 99 04 01 ef 03 6c 1c 2b ad 3a fb 5b 11 06 61 dc d9 09 1d 6a 08 1e
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 1, TACACS-Flags = None, TACACS-Session-Id = 127612377, TACACS-Length = 91, TACACS-Packet-Body-Type = Request, TACACS-Accounting-Flags = Start, TACACS-Authentication-Method = TACACSPLUS, TACACS-Privilege-Level = Minimum, TACACS-Authentication-Type = PAP, TACACS-Authentication-Service = PPP, TACACS-User-Name = "bob", TACACS-Client-Port = "tapioca/0", TACACS-Remote-Address = "localhost", TACACS-ArgumentList = "", TACACS-ArgumentList = "start_time=1596565644", TACACS-ArgumentList = "task_id=17558", TACACS-ArgumentList = "service=ppp", TACACS-ArgumentList = "protocol=ip"
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 91, Packet-Body-Type = Request, Accounting-Flags = Start, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", ArgumentList = "", ArgumentList = "start_time=1596565644", ArgumentList = "task_id=17558", ArgumentList = "service=ppp", ArgumentList = "protocol=ip"
 
 encode-proto -
 match c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89 71 72 dd 89 46 75 df 9c 00 a5 96 28 05 fc 57 88 02 0c 11 a3 60 9a 05 8b 71 6d 27 ca 83 b0 ab 2f 00 27 c8 da 58 d3 1a f1 3f 07 17 8d f6 35 c5 7b e2 07 be 29 86 d4 93 16 99 04 01 ef 03 6c 1c 2b ad 3a fb 5b 11 06 61 dc d9 09 1d 6a 08 1e
@@ -61,8 +61,7 @@ match c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89
 #  Accounting - Response: (Client <- Server)
 #
 decode-proto c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73
-match TACACS-Version-Major = TACACS-Plus, TACACS-Version-Minor = 0, TACACS-Packet-Type = Accounting, TACACS-Sequence-Number = 2, TACACS-Flags = None, TACACS-Session-Id = 127612377, TACACS-Length = 5, TACACS-Packet-Body-Type = Reply, TACACS-Server-Message = "", TACACS-Data = 0x, TACACS-Accounting-Status = Success
-
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 5, Packet-Body-Type = Reply, Server-Message = "", Data = 0x, Accounting-Status = Success
 encode-proto -
 match c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73
 

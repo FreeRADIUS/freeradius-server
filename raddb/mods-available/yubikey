@@ -55,7 +55,7 @@ yubikey {
 	#  If two factor authentication (password concatenated with OTP) is required, split
 	#  configuration should be set to yes and the pap module should be uncommented.
 	#
-	#  Each account will need a password added (either using attribute `Cleartext-Password`,
+	#  Each account will need a password added (either using attribute `Password.Cleartext`,
 	#  `SSHA-Password`, etc.).
 	#
 	#  The module itself does not provide persistent storage as

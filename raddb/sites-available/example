@@ -94,7 +94,7 @@ server example {
 		#
 		if (&User-Name == 'bob') {
 			update control {
-				&Cleartext-Password := 'bob'
+				&Password.Cleartext := 'bob'
 			}
 		}
 

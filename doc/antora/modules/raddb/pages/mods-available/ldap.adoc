@@ -191,7 +191,7 @@ password mechanism.
 
 
 edir_autz:: Set to `yes` if you want to bind as the user after retrieving the
-`Cleartext-Password`. This will consume the login grace, and verify user authorization.
+`Password.Cleartext`. This will consume the login grace, and verify user authorization.
 
 
 
@@ -799,7 +799,7 @@ ldap {
 #		ldap_debug = 0x0000
 	}
 	update {
-		&control.Password-With-Header	+= 'userPassword'
+		&control.Password.With-Header	+= 'userPassword'
 #		&control.NT-Password		:= 'ntPassword'
 #		&reply.Reply-Message		:= 'radiusReplyMessage'
 #		&reply.Tunnel-Type		:= 'radiusTunnelType'

@@ -21,7 +21,7 @@ update {
 #  Hex encoded SSHA2-512 password
 #
 update {
-	&control.Password-With-Header += "{ssha512}%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	&control.Password.With-Header += "{ssha512}%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
 }
 
 pap.authorize
@@ -54,7 +54,7 @@ update {
 }
 
 update {
-	&control.Password-With-Header += "{ssha512}%{control.Tmp-String-1}"
+	&control.Password.With-Header += "{ssha512}%{control.Tmp-String-1}"
 }
 
 pap.authorize
@@ -87,7 +87,7 @@ update {
 }
 
 update {
-	&control.Password-With-Header += "%{base64:%{control.Tmp-String-1}}"
+	&control.Password.With-Header += "%{base64:%{control.Tmp-String-1}}"
 }
 
 pap.authorize

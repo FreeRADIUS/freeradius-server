@@ -90,7 +90,7 @@ match User-Name = "bob"
 #  The Type/Length is OK, but the attribute data is of the wrong size.
 #
 decode-pair 04 04 ab cd
-match Attr-4 = 0xabcd
+match raw.NAS-IP-Address = 0xabcd
 
 #  Zero-length attributes
 decode-pair 01 02

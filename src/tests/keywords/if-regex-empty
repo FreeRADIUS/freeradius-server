@@ -2,7 +2,7 @@
 # PRE: update if if-regex-match
 #
 
-if (&control.Cleartext-Password !~ /hell(o)(.*)/) {
+if (&control.Password.Cleartext !~ /hell(o)(.*)/) {
 	test_fail
 }
 
@@ -20,7 +20,7 @@ if ("%{2}") {
 	test_fail
 }
 
-if (&control.Cleartext-Password !~ /hello(.*)/) {
+if (&control.Password.Cleartext !~ /hello(.*)/) {
 	test_fail
 }
 
@@ -34,7 +34,7 @@ if ("%{1}") {
 #
 #  Check assignment of regex null-match
 #
-if (&control.Cleartext-Password =~ /hell(o)(.*)/) {
+if (&control.Password.Cleartext =~ /hell(o)(.*)/) {
 	update {
 		&control.Tmp-String-1 := "%{2}"
 	}

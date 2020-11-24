@@ -39,20 +39,20 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    ldap - Waiting for search result...
 (0)    ldap - User object found at DN "uid=john,ou=people,dc=example,dc=com"
 (0)    ldap - Processing user attributes
-(0)    ldap -   &control.Password-With-Header += password
+(0)    ldap -   &control.Password.With-Header += password
 (0)    ldap - Released connection (0)
 (0)    ldap (updated)
 ...
-(0)    pap - No {...} in &Password-With-Header, re-writing to Cleartext-Password
-(0)    pap - Normalized &control.Password-With-Header -> &control.Cleartext-Password
-(0)    pap - Removing &control.Password-With-Header
+(0)    pap - No {...} in &Password.With-Header, re-writing to Password.Cleartext
+(0)    pap - Normalized &control.Password.With-Header -> &control.Password.Cleartext
+(0)    pap - Removing &control.Password.With-Header
 (0)    pap - Setting &control.Auth-Type = pap
 (0)    pap (updated)
 (0)  } # recv Access-Request (updated)
 (0)  Running 'authenticate pap' from file /usr/local/etc/raddb/sites-enabled/default
 (0)  authenticate pap {
 (0)    pap - Login attempt with password
-(0)    pap - Comparing with "known-good" Cleartext-Password (8)
+(0)    pap - Comparing with "known-good" Password.Cleartext (8)
 (0)    pap - User authenticated successfully
 (0)    pap (ok)
 (0)  } # authenticate pap (ok)
@@ -73,16 +73,16 @@ ldapsearch -LL -H ldap://localhost -x -D cn=freeradius,dc=example,dc=com -w mypa
  ** found `uid=john,ou=people,dc=example,dc=com`
  *** if for you no user is found, but you know the user is in your directory, recheck the `user { ... }` section in `raddb/mods-available/ldap` as you may have a filter or attribute configuration set incorrectly
  ** found some useful attributes associated with that user
- *** the password which it placed into `control.Password-With-Header`
+ *** the password which it placed into `control.Password.With-Header`
  *** as RADIUS attributes were changed, it returns `updated` as a result code to unlang
  . the modules `expiration` and `logintime` were used, but both had no effect (`noop`)
  . the module `pap` was used
- ** it found a suitable password to use in `&Password-With-Header`
- *** populates `&control.Cleartext-Password`
+ ** it found a suitable password to use in `&Password.With-Header`
+ *** populates `&control.Password.Cleartext`
  *** the module decides it has everything it needs to do authentication so sets `&control.Auth-Type = pap`
  *** as RADIUS attributes were changed, it returns `updated` as a result code to unlang
  . the authenticate section runs and hands off to `pap` as `&control.Auth-Type = pap` was set earlier
- ** `&control.Cleartext-Password` is compared to `&request.User-Password`
+ ** `&control.Password.Cleartext` is compared to `&request.User-Password`
  ** matches so `ok` is returned
  . we return `Access-Accept` as `ok` was returned to unlang
 

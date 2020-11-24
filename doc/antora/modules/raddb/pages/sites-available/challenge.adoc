@@ -51,13 +51,13 @@ recv Access-Request {
 	if (!State) {
 		update control {
 			Auth-Type := Step1
-			Cleartext-Password := "hello"
+			Password.Cleartext := "hello"
 		}
 	}
 	else {
 		update control {
 			Auth-Type := Step2
-			Cleartext-Password := &session-state.Tmp-Integer-0
+			Password.Cleartext := &session-state.Tmp-Integer-0
 		}
 	}
 }

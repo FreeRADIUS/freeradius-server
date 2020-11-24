@@ -73,7 +73,7 @@ may also be used to create values for reply attributes. Stop the server,
 and edit the users file to add the following entry at the top:
 
 -----------------------------------------------------------------------------
-bob Cleartext-Password := "hello"
+bob Password.Cleartext := "hello"
         Reply-Message = "Hello %{User-Name}, your NAS port is %{NAS-Port}",
         Reply-Message += "at time %T"
 -----------------------------------------------------------------------------

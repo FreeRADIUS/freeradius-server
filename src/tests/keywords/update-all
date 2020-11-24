@@ -4,7 +4,7 @@
 #  A more generic "update" mechanism
 #
 update {
-	&control.Cleartext-Password := 'hello'
+	&control.Password.Cleartext := 'hello'
 }
 
 success

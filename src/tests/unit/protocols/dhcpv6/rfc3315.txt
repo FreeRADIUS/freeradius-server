@@ -142,7 +142,7 @@ match Server-ID.DUID = LL, Server-ID.DUID.LL.Hardware-Type = Ethernet, Server-ID
 #  this will likely be easier to do once we have real nested TLVs / groups
 #
 decode-pair 00 02 00 0a 00 03 00 ff d3 4d 00 c0 ff ee
-match Server-ID.DUID = LL, Server-ID.DUID.LL.Hardware-Type = 255, Server-ID.DUID.LL.Hardware-Type.0 = 0xd34d00c0ffee
+match Server-ID.DUID = LL, raw.Server-ID.DUID.LL = 0x00ffd34d00c0ffee
 
 count
 match 28

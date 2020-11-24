@@ -21,7 +21,7 @@ the `exec` module. Then, edit the users file to add the following entry at the
 top:
 
 -------------------------------------------------------------------------------
-bob Cleartext-Password := "hello"
+bob Password.Cleartext := "hello"
     Callback-Id = "%{exec:/bin/echo Hello, there}"
 -------------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ some simple mathematical operations. The following sample file entry
 demonstrates how to use the `expr` module.
 
 -------------------------------------------------------------------------------
-bob	Cleartext-Password := "hello"
+bob	Password.Cleartext := "hello"
 	Session-Timeout = `%{expr: 60 * 60}`
 -------------------------------------------------------------------------------
 
@@ -81,11 +81,11 @@ You should use the `bob-login-one.sh` script to send a request to match the
 first entry and should send another request with a different NAS-Port.
 
 -------------------------------------------------------------------------------
-bob	Cleartext-Password := "hello", NAS-Port == "%{exec:/usr/bin/id -u}"
+bob	Password.Cleartext := "hello", NAS-Port == "%{exec:/usr/bin/id -u}"
 	Reply-Message = "Your port is very nice.",
 	Session-Timeout = "%{expr: 60 * 60}"
 
-bob	Cleartext-Password := "hello", NAS-Port != "%{exec:/usr/bin/id -u}"
+bob	Password.Cleartext := "hello", NAS-Port != "%{exec:/usr/bin/id -u}"
         Reply-Message = "Your port is less nice.",
         Session-Timeout = "%{expr: 60 * 2}"
 -------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ The run-time variables may be nested, too. The following file entry
 demonstrates this nesting.
 
 -------------------------------------------------------------------------------
-bob	Cleartext-Password := "hello"
+bob	Password.Cleartext := "hello"
 	Session-Timeout = "%{expr: 60 * %{exec:/usr/bin/id -u}}"
 -------------------------------------------------------------------------------
 

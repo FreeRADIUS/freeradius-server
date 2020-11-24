@@ -14,5 +14,5 @@ if (fail) {
 }
 
 update control {
-	&Cleartext-Password := "hello"
+	&Password.Cleartext := "hello"
 }

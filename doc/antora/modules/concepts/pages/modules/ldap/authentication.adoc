@@ -122,7 +122,7 @@ determine what format it is in (base64, binary, or text), and what
 password "encryption" mechanism has been used (crypt, MD5, SHA, SSHA2,
 SHA3, etc).  All that is necessary is that the
 xref:raddb:mods-available/ldap.adoc[ldap module] be configured to map
-the `userPassword` LDAP field to the `&control.Password-With-Header`
+the `userPassword` LDAP field to the `&control.Password.With-Header`
 attribute in FreeRADIUS.  FreeRADIUS will then "do the right thing" to
 authenticate the user.
 

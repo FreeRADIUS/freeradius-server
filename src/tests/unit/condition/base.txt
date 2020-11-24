@@ -477,7 +477,7 @@ match &Acct-Input-Octets-64 > "%{Session-Timeout}"
 #  Parse OIDs into known attributes, where possible.
 #
 condition &26.24757.84.9.5.4 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Source-Spec.Port == 6809
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
 #  This OID is known, but the data is malformed.
@@ -485,11 +485,11 @@ match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Source-Spec.Po
 #  in packets.
 #
 condition &raw.26.24757.84.9.5.7 == 0x1a99
-match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Source-Spec.7 == 0x1a99
+match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
 condition &26.24757.84.9.5.15 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Source-Spec.15 == 0x1a99
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.

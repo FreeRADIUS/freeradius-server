@@ -4,7 +4,7 @@
 #  3.5.2
 #
 #
-#  In the "users" file: bob	Cleartext-Password := "zanzibar"
+#  In the "users" file: bob	Password.Cleartext := "zanzibar"
 #
 #	TESTS 1
 #

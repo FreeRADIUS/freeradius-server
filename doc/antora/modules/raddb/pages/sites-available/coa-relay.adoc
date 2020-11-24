@@ -52,7 +52,7 @@ To perform a CoA update of all active sessions belonging to a user:
 
   $ cat <<EOF | radclient -t 15 127.0.0.1 coa testing123
     User-Name = bob
-    Cisco-AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
+    Vendor-Specific.Cisco.AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
     EOF
 
 In addition to configuring and activating this site, instances of the radius

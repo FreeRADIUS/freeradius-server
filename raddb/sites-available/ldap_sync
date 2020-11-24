@@ -96,7 +96,7 @@ server ldap {
 
 			update {
 				&User-Name := 'cn'
-				&Password-With-Header := 'userPassword'
+				&Password.With-Header := 'userPassword'
 			}
 		}
 

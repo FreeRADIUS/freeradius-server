@@ -7,7 +7,7 @@ update control {
 #
 if (&control.Tmp-String-0 == "yes") {
 	update {
-		&control.Cleartext-Password := "hello"
+		&control.Password.Cleartext := "hello"
 		&reply.Reply-Message += "success"
 	}
 }

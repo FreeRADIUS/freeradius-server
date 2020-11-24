@@ -3,10 +3,10 @@
 #
 User-Name = "bob"
 User-Password = "hello"
-Cisco-AVPair = "stupid=1"
-Cisco-AVPair += "retarded=2"
-Cisco-AVPair += "cisco=3"
-Cisco-AVPair += "shit=4"
+Vendor-Specific.Cisco.AVPair = "stupid=1"
+Vendor-Specific.Cisco.AVPair += "retarded=2"
+Vendor-Specific.Cisco.AVPair += "cisco=3"
+Vendor-Specific.Cisco.AVPair += "shit=4"
 
 #
 #  Expected answer

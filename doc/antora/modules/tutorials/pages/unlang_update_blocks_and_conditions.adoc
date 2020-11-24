@@ -28,7 +28,7 @@ Here, we will emulate that behaviour using the policy language.
 
 * Create a condition (_condition 1_) to execute policy code if
 the `&User-Name` in the request is 'bob'.
-* Within that condition block, set the control attribute `&Cleartext-Password`
+* Within that condition block, set the control attribute `&Password.Cleartext`
 to be 'hello', and instruct the server to run the the `authenticate { ... }`
 subsection for `pap`.
 * Use the `bob.sh` script to verify that you see an `Access-Accept` returned

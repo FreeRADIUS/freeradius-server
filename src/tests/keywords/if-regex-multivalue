@@ -3,12 +3,12 @@
 #
 
 update request {
-	&Cisco-AVPair := 'foo=bar'
-	&Cisco-AVPair += 'bar=baz'
-	&Cisco-AVPair += 'baz=foo'
+	&Vendor-Specific.Cisco.AVPair := 'foo=bar'
+	&Vendor-Specific.Cisco.AVPair += 'bar=baz'
+	&Vendor-Specific.Cisco.AVPair += 'baz=foo'
 }
 
-if (&Cisco-AVPair[*] =~ /bar=(.*)/) {
+if (&Vendor-Specific.Cisco.AVPair[*] =~ /bar=(.*)/) {
 	if ("%{1}" != 'baz') {
 		test_fail
 	}

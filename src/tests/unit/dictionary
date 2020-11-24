@@ -25,9 +25,9 @@ ATTRIBUTE	Unit-Integer64		252		integer64
 ATTRIBUTE	Unit-Octets		253		octets
 
 ATTRIBUTE	Unit-TLV		254		tlv
-ATTRIBUTE	Unit-TLV-Milliseconds	254.1		date milliseconds
-ATTRIBUTE	Unit-TLV-Delta-MSec	254.2		time_delta milliseconds
-ATTRIBUTE	Unit-TLV-Delta-Sec	254.3		time_delta seconds
+ATTRIBUTE	Milliseconds		254.1		date milliseconds
+ATTRIBUTE	Delta-MSec		254.2		time_delta milliseconds
+ATTRIBUTE	Delta-Sec		254.3		time_delta seconds
 
 #
 #  Copied here for simplicity

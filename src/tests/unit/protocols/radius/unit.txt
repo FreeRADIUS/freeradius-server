@@ -5,52 +5,53 @@ proto-dictionary radius
 #
 #  And using the dictionaries
 #
-encode-pair Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+encode-pair Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 1, Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 2
 match f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
-attribute Unit-Ext-241-Integer = 6809
-match Unit-Ext-241-Integer = 6809
+attribute Extended-Attribute-1.Unit-Ext-241-Integer = 6809
+match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 
-encode-pair Unit-Ext-241-Integer = 6809
+encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 match f1 07 f1 00 00 1a 99
 
 decode-pair -
-match Unit-Ext-241-Integer = 6809
+match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 
 #
 #  Encoded as two different top-level attributes.
 #
-encode-pair Unit-Ext-241-Integer = 6809, Unit-Ext-241-Integer = 2112
+encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809, Extended-Attribute-1.Unit-Ext-241-Integer = 2112
 match f1 07 f1 00 00 1a 99 f1 07 f1 00 00 08 40
 
 #
 #  EVS data types
 #
-encode-pair Unit-EVS-Integer = 6809
+encode-pair Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Unit-EVS-Integer = 6809
 match f2 0c 1a 00 00 2c 50 01 00 00 1a 99
 
 decode-pair -
-match Unit-EVS-Integer = 6809
+match Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Unit-EVS-Integer = 6809
 
 #
 #  This is ambiguous, so we do something.  Anything...
 #  When we have nested fr_pair_ts, we can just follow
 #  that format instead of guessing.
 #
-encode-pair Unit-TLV-Integer = 1, Unit-TLV-Integer = 2
+
+encode-pair Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 2 
 match f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
 
 decode-pair -
-match Unit-TLV-Integer = 1, Unit-TLV-Integer = 2
+match Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 2
 
 #
 #  And "long extended" EVS
 #
-encode-pair Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+encode-pair Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 1, Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 2
 match f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
 decode-pair -
-match Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+match Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 1, Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS.Unit-EVS-5-Integer = 2
 
 encode-pair Event-Timestamp := 864000
 match 37 06 00 0d 2f 00
@@ -63,29 +64,29 @@ encode-pair -
 match 37 06 00 0d 2f 00
 
 # Can we parse RFC 3339 dates correctly?
-attribute Unit-TLV-Milliseconds = "2019-08-21T07:40:31.123-04:00"
-match Unit-TLV-Milliseconds = "2019-08-21T03:40:31.123Z"
+attribute Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
+match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
 
 #
 #  Time delta in milliseconds.
 #
-attribute Unit-TLV-Delta-MSec = 5
-match Unit-TLV-Delta-MSec = 5
+attribute Unit-TLV.Delta-MSec = 5
+match Unit-TLV.Delta-MSec = 5
 
 encode-pair -
 match fe 08 02 06 00 00 00 05
 
 decode-pair -
-match Unit-TLV-Delta-MSec = 5
+match Unit-TLV.Delta-MSec = 5
 
-attribute Unit-TLV-Delta-Sec = 10
-match Unit-TLV-Delta-Sec = 10
+attribute Unit-TLV.Delta-Sec = 10
+match Unit-TLV.Delta-Sec = 10
 
 encode-pair -
 match fe 08 03 06 00 00 00 0a
 
 decode-pair -
-match Unit-TLV-Delta-Sec = 10
+match Unit-TLV.Delta-Sec = 10
 
 count
 match 44

@@ -15,15 +15,15 @@
 #  For instructions on creating the various types of passwords,
 #  see http://www.openldap.org/faq/data/cache/347.html
 #
-#  The module looks for the `Password-With-Header` control attribute to find
+#  The module looks for the `Password.With-Header` control attribute to find
 #  the *"known good" password*. The attribute value comprises the header followed
 #  immediately by the password data. The header is given by the following table.
 #
 #  [options="header,autowidth"]
 #  |===
 #  | Header       | Attribute           | Description
-#  | {clear}      | Cleartext-Password  | Clear-text passwords.
-#  | {cleartext}  | Cleartext-Password  | Clear-text passwords.
+#  | {clear}      | Password.Cleartext  | Clear-text passwords.
+#  | {cleartext}  | Password.Cleartext  | Clear-text passwords.
 #  | {crypt}      | Crypt-Password      | Unix-style "crypt"ed passwords.
 #  | {md5}        | MD5-Password        | MD5 hashed passwords.
 #  | {base64_md5} | MD5-Password        | MD5 hashed passwords.
@@ -58,8 +58,8 @@
 #  It will automatically handle Base-64 encoded data, hex strings, and binary data,
 #  and convert them to a format that the server can  use.
 #
-#  If there is no `Password-With-Header` attribute, the module looks for one
-#  of the `Cleartext-Password`, `NT-Password`, `Crypt-Password`, etc. attributes
+#  If there is no `Password.With-Header` attribute, the module looks for one
+#  of the `Password.Cleartext`, `NT-Password`, `Crypt-Password`, etc. attributes
 #  as listed in the above table. These attributes should contain the relevant
 #  format password directly, without the header prefix.
 #
@@ -67,7 +67,7 @@
 #  as to which one is used for authentication.
 #
 #  NOTE: It is important to understand the difference between the `User-Password`
-#  and `Cleartext-Password` attributes. The `Cleartext-Password` attribute is
+#  and `Password.Cleartext` attributes. The `Password.Cleartext` attribute is
 #  the  *"known  good"* password for the user. Simply supplying the Cleart-ext-Password
 #  to the server will result in most authentication  methods working. The `User-Password`
 #  attribute is the password as typed in by the user on their private machine.

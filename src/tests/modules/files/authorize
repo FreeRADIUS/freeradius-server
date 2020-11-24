@@ -7,7 +7,7 @@
 #  Basic syntax tests with comments. Parsing only.
 #
 
-user    Cleartext-Password := "hello" # comment!
+user    Password.Cleartext := "hello" # comment!
 
 
 user2   # comment!
@@ -18,7 +18,7 @@ user2   # comment!
 #  Setting ":=" of reply and control items
 #
 
-bob  Cleartext-Password := "hello"
+bob  Password.Cleartext := "hello"
      Reply-Message := "success"
 
 
@@ -26,7 +26,7 @@ bob  Cleartext-Password := "hello"
 #  Detect erroneous Fall-Through
 #
 
-doug  Cleartext-Password := "goodbye"
+doug  Password.Cleartext := "goodbye"
       Reply-Message := "success"
 
 doug
@@ -37,10 +37,10 @@ doug
 #  Fall-Through across a non-matching entry
 #
 
-famous  Cleartext-Password := "bradpitt"
+famous  Password.Cleartext := "bradpitt"
         Fall-Through = yes
 
-unused  Cleartext-Password := "jabberwocky"
+unused  Password.Cleartext := "jabberwocky"
         Reply-Message := "fail"
 
 famous
@@ -51,7 +51,7 @@ famous
 #  Modification of the reply list
 #
 
-addreply  Cleartext-Password := "testing123"
+addreply  Password.Cleartext := "testing123"
           Reply-Message := "success1",
           Fall-Through = yes
 
@@ -59,34 +59,34 @@ addreply
           Reply-Message += "success2"
 
 
-subreply  Cleartext-Password := "testing123"
+subreply  Password.Cleartext := "testing123"
           Reply-Message := "success1",
           Reply-Message += "success2",
           Reply-Message += "success3",
           Fall-Through = yes
 
-subreply  Cleartext-Password := "testing123"
+subreply  Password.Cleartext := "testing123"
           Reply-Message -= "success2"
 
 
-filterreply  Cleartext-Password := "testing123"
+filterreply  Password.Cleartext := "testing123"
              Reply-Message := "success1",
              Reply-Message += "success2",
              Fall-Through = yes
 
-filterreply  Cleartext-Password := "testing123"
+filterreply  Password.Cleartext := "testing123"
              Reply-Message !* ANY
 
 
 #
 #  Addition "+=" to the control list
 #
-#  Note: Set ":=" of control items is already tested with Cleartext-Password
+#  Note: Set ":=" of control items is already tested with Password.Cleartext
 #  Note: Filtering "!*" does not apply to control items as this would overload
 #        the operator syntax since "!*" checks that no such attribute in the
 #        request.
 
-addcontrol  Cleartext-Password := "testing123", Reply-Message := "success1"
+addcontrol  Password.Cleartext := "testing123", Reply-Message := "success1"
             Fall-Through = yes
 
 addcontrol  Reply-Message += "success2"

@@ -19,7 +19,7 @@ tacacs_pap {
 		update {
 			&request.User-Name := &parent.request.TACACS-User-Name
 			&request.User-Password := &parent.request.TACACS-Data
-			&control.Cleartext-Password := &parent.control.Cleartext-Password
+			&control.Password.Cleartext := &parent.control.Password.Cleartext
 		}
 		pap.authorize
 		pap.authenticate
@@ -43,7 +43,7 @@ tacacs_chap {
 			#
 #			&request.CHAP-Password := ...
 #			&request.CHAP-Challenge := ...
-			&control.Cleartext-Password := &parent.control.Cleartext-Password
+			&control.Password.Cleartext := &parent.control.Password.Cleartext
 		}
 		chap.authenticate
 	}
@@ -66,7 +66,7 @@ tacacs_mschap {
 			#
 #			&request.MS-CHAP-Challenge := ...
 #			&request.MS-CHAP-Response := ...
-			&control.Cleartext-Password := &parent.control.Cleartext-Password
+			&control.Password.Cleartext := &parent.control.Password.Cleartext
 		}
 		chap.authenticate
 	}

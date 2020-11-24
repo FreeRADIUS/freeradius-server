@@ -143,7 +143,7 @@ VALUE	Classifier-Direction	OUT			2
 VALUE	Classifier-Direction	Bi-Directional		3
 VALUE	Classifier-Direction	FF			4
 
-ATTRIBUTE	Source-Specification		28.11.5	tlv
+ATTRIBUTE	Src-Spec		28.11.5	tlv
 
 ATTRIBUTE	Source-IPAddress			.1	combo-ip
 # 2 IPv4 or IPv6 addresses
@@ -165,7 +165,7 @@ VALUE	Source-Assigned		Src-Assigned		1
 VALUE	Source-Assigned		Dst-Assigned		2
 VALUE	Source-Assigned		Src-Dst-Assigned	3
 
-ATTRIBUTE	Destination-Specification		28.11.6	tlv
+ATTRIBUTE	Dst-Spec		28.11.6	tlv
 
 ATTRIBUTE	Destination-IPAddress		.1	combo-ip
 # 2 IPv4 or IPv6 addresses to indicate beginning/end of range
@@ -409,7 +409,7 @@ ATTRIBUTE	PFDv2-Classifier-Priority		.2	byte
 ATTRIBUTE	PFDv2-Classifier-Protocol		.3	byte
 ATTRIBUTE	PFDv2-Classifier-Direction	.4	byte
 
-ATTRIBUTE	PFDv2-Classifier-Source-Spec	.5	tlv
+ATTRIBUTE	PFDv2-Classifier-Src-Spec	.5	tlv
 ATTRIBUTE	PFDv2-Src-IP-Address		.5.1	combo-ip
 # really two IPv4 OR IPv6 addresses
 ATTRIBUTE	PFDv2-Src-IP-Address-Range	84.9.5.2	octets

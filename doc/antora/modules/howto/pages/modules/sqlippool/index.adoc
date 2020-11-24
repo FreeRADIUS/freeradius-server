@@ -623,7 +623,7 @@ Send the Access Request to FreeRADIUS.
 ----
 cat access-request.rad | radclient -x 127.0.0.1 auth testing123
 Sent Access-Request Id 1 from 0.0.0.0:2000 to 127.0.0.1:1812 length 81
-	Cleartext-Password = "testing123"
+	Password.Cleartext = "testing123"
 	User-Name = "bob"
 	User-Password = "testing123"
 	Calling-Station-Id = "00:53:00:11:22:33"

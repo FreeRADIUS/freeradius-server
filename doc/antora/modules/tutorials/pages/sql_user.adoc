@@ -29,7 +29,7 @@ the following SQL commands:
 [source, sql]
 ---------------------------------------------------------
 INSERT INTO radcheck (UserName, Attribute, op, Value)
-  values("bob", "Cleartext-Password", ":=", "hello");
+  values("bob", "Password.Cleartext", ":=", "hello");
 INSERT INTO radreply (UserName, Attribute, op, Value)
   values("bob", "Reply-Message", ":=", "Hello from SQL");
 ---------------------------------------------------------

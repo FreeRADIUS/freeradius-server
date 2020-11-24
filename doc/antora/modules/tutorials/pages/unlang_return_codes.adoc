@@ -39,7 +39,7 @@ of the time.
 Create an instance of the sometimes module called `bad_ldap`.
 
 Add unlang statements such that if the module returns `noop`, then a
-`&control.Cleartext-Password = 'hello'` attribute pair is added to the request,
+`&control.Password.Cleartext = 'hello'` attribute pair is added to the request,
 and the return code is set to `updated`.
 
 Run three test requests using `bob.sh`, you should see that at least one request

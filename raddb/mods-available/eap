@@ -93,7 +93,7 @@ eap {
 	#
 	#  ### EAP-PWD (Secure password-based authentication)
 	#
-	#  In v4, the "known good" password is taken from the `&request.control.Cleartext-Password` list,
+	#  In v4, the "known good" password is taken from the `&request.control.Password.Cleartext` list,
 	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
 	#  is no not used.
 	#

@@ -28,7 +28,7 @@ if (&request.Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 
 	test_fail
 }
 
-if (&request.Tmp-String-4 != "Cleartext-Password = \"hello\"") {
+if (&request.Tmp-String-4 != "Password.Cleartext = \"hello\"") {
 	test_fail
 }
 

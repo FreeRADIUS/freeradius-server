@@ -1,5 +1,5 @@
 Sent Access-Request Id 123 from 0.0.0.0:1234 to 127.0.0.1:12340 length 51 
-        Cleartext-Password = "hello"
+        Password.Cleartext = "hello"
         User-Name = "bob"
         User-Password = "hello"
         NAS-Identifier = "auth_4"

@@ -108,8 +108,8 @@ match %{User-Name[*]}
 xlat %{request.User-Name[#]}
 match %{User-Name[#]}
 
-xlat %{3GPP-SGSN-Address}
-match %{3GPP-SGSN-Address}
+xlat %{Vendor-Specific.3GPP.SGSN-Address}
+match %{Vendor-Specific.3GPP.SGSN-Address}
 
 xlat \"Hello %S goo\"
 match \"Hello %S goo\"
@@ -120,14 +120,14 @@ match \"%{Foreach-Variable-0}\"
 #
 #  3GPP stuff
 #
-xlat \"%{request.3GPP-IMSI}\"
-match \"%{3GPP-IMSI}\"
+xlat \"%{request.Vendor-Specific.3GPP.IMSI}\"
+match \"%{Vendor-Specific.3GPP.IMSI}\"
 
-xlat \"%{reply.3GPP-IMSI}\"
-match \"%{reply.3GPP-IMSI}\"
+xlat \"%{reply.Vendor-Specific.3GPP.IMSI}\"
+match \"%{reply.Vendor-Specific.3GPP.IMSI}\"
 
-xlat \"%{reply.3GPP-IMSI[2]}\"
-match \"%{reply.3GPP-IMSI[2]}\"
+xlat \"%{reply.Vendor-Specific.3GPP.IMSI[2]}\"
+match \"%{reply.Vendor-Specific.3GPP.IMSI[2]}\"
 
 xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/

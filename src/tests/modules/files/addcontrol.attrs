@@ -8,6 +8,6 @@ User-Password = "testing123"
 #  Expected answer
 #
 Packet-Type == Access-Accept
-Cleartext-Password == 'testing123'
+Password.Cleartext == 'testing123'
 Reply-Message == "success1"
 Reply-Message == "success2"

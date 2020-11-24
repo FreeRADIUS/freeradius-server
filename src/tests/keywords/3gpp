@@ -2,7 +2,7 @@
 #  PRE: update
 #
 update request {
-	&3GPP-IMSI := "hello"
+	&Vendor-Specific.3GPP.IMSI := "hello"
 }
 
 #
@@ -10,8 +10,8 @@ update request {
 #  by an attribute.
 #
 update control {
-	&Tmp-String-0 := &3GPP-IMSI
-	&Tmp-String-1 := &request.3GPP-IMSI
+	&Tmp-String-0 := &Vendor-Specific.3GPP.IMSI
+	&Tmp-String-1 := &request.Vendor-Specific.3GPP.IMSI
 }
 
 success

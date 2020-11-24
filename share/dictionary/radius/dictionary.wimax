@@ -200,7 +200,7 @@ VALUE	Classifer-Direction		OUT			2
 VALUE	Classifer-Direction		Bi-Directional		3
 VALUE	Classifer-Direction		FF			4
 
-ATTRIBUTE	Source-Specification			28.11.5	tlv
+ATTRIBUTE	Src-Spec			28.11.5	tlv
 
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
@@ -210,7 +210,7 @@ ATTRIBUTE	Port-Range				.5	octets
 ATTRIBUTE	Inverted				.6	octets
 ATTRIBUTE	Assigned				.7	octets
 
-ATTRIBUTE	Destination-Specification		28.11.6	tlv
+ATTRIBUTE	Dst-Spec		28.11.6	tlv
 
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
@@ -473,7 +473,7 @@ ATTRIBUTE	Priority				.2	byte
 ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
-ATTRIBUTE	Source-Spec				84.9.5	tlv
+ATTRIBUTE	Src-Spec				84.9.5	tlv
 ATTRIBUTE	IP-Address				.1	combo-ip
 # really two IPv4 OR IPv6 addresses
 ATTRIBUTE	IP-Address-Range			.2	octets

@@ -73,7 +73,7 @@ match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 00 00
 
 #  And if we see something that's too short, we get a bad attribute.
 decode-pair 00 01 00 10 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d
-match Client-ID.DUID = UUID, Client-ID.DUID.4 = 0x000102030405060708090a0b0c0d
+match Client-ID.DUID = UUID, raw.Client-ID.DUID.UUID = 0x000102030405060708090a0b0c0d
 
 #
 #  Server Identifier
@@ -110,7 +110,7 @@ match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090
 
 #  And if we see something that's too short, we get a bad attribute.
 decode-pair 00 02 00 10 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d
-match Server-ID.DUID = UUID, Server-ID.DUID.4 = 0x000102030405060708090a0b0c0d
+match Server-ID.DUID = UUID, raw.Server-ID.DUID.UUID = 0x000102030405060708090a0b0c0d
 
 count
 match 36

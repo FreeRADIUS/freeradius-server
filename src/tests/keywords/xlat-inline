@@ -21,10 +21,10 @@ if ("%{debug:%{Tmp-Integer-0}}" != "%{Tmp-Integer-0}") {
 }
 
 # Check for 'splosions
-"%{%{control.Cleartext-Password}:-%{control.User-Name}}"
-"%{%{control.User-Name}:-%{control.Cleartext-Password}}"
+"%{%{control.Password.Cleartext}:-%{control.User-Name}}"
+"%{%{control.User-Name}:-%{control.Password.Cleartext}}"
 
-if (&control.Cleartext-Password =~ /(h)(e)(l)(l)(o)/) {
+if (&control.Password.Cleartext =~ /(h)(e)(l)(l)(o)/) {
 	"%{0}"
 	"%{1}"
 	"%{2}"

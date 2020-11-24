@@ -871,7 +871,7 @@ encrypted via `crypt`, `bcrypt`, or other hashing.
 
 For users who are using CHAP authentication. A back-end database
 listed in the "recv Access-Request" section MUST supply a
-Cleartext-Password attribute. Encrypted passwords won't work.
+Password.Cleartext attribute. Encrypted passwords won't work.
 
 
 
@@ -879,7 +879,7 @@ Cleartext-Password attribute. Encrypted passwords won't work.
 
 For users who are using MS-CHAP authentication. A back-end
 database listed in the "recv Access-Request" section MUST supply
-either a Cleartext-Password attribute, or an NT-Password
+either a Password.Cleartext attribute, or an NT-Password
 attribute. Encrypted passwords won't work.
 
 

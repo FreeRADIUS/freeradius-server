@@ -20,8 +20,8 @@
 "%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_c', 1000)}"
 "%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_c', 1000)}"
 
-"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_a', 'Cleartext-Password', ':=', 'UserAPassword')}"
-"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_b', 'Cleartext-Password', ':=', 'UserBPassword')}"
+"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_a', 'Password.Cleartext', ':=', 'UserAPassword')}"
+"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_b', 'Password.Cleartext', ':=', 'UserBPassword')}"
 
 "%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_a', 'Reply-Message', ':=', 'Hello User A')}"
 "%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_b', 'Reply-Message', ':=', 'Hello User B')}"
@@ -37,7 +37,7 @@ else {
 	test_fail
 }
 
-if (&control.Cleartext-Password == &User-Password) {
+if (&control.Password.Cleartext == &User-Password) {
 	test_pass
 }
 else {

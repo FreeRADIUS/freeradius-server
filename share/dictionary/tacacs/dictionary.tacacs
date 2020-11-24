@@ -9,129 +9,127 @@
 #
 # TACACS+ Op codes
 #
-ATTRIBUTE	TACACS-Packet				1	struct
-MEMBER		TACACS-Version-Major			bit[4]
-MEMBER		TACACS-Version-Minor			bit[4]
-MEMBER		TACACS-Packet-Type			uint8
-MEMBER		TACACS-Sequence-Number			uint8
-MEMBER		TACACS-Flags				uint8
-MEMBER		TACACS-Session-Id			uint32
-MEMBER		TACACS-Length				uint32
+ATTRIBUTE	Packet				1	struct
+MEMBER		Version-Major				bit[4]
+VALUE		Version-Major	Plus			12
+
+MEMBER		Version-Minor				bit[4]
+MEMBER		Packet-Type				uint8
+VALUE		Packet-Type	Authentication	1
+VALUE		Packet-Type	Authorization	2
+VALUE		Packet-Type	Accounting	3
+
+MEMBER		Sequence-Number				uint8
+MEMBER		Flags					uint8
+VALUE		Flags		None		0
+VALUE		Flags		Unencrypted	1
+VALUE		Flags		Single-Connect	4
+VALUE		Flags		Unencrypred-Single-Connect 5
+
+MEMBER		Session-Id			uint32
+MEMBER		Length				uint32
 
 #
 # TACACS+ Attributes
 #
-ATTRIBUTE	TACACS-Packet-Body-Type			2	byte
-ATTRIBUTE	TACACS-Authentication-Flags		3	byte
-ATTRIBUTE	TACACS-Authentication-Continue-Flags	4	byte
-ATTRIBUTE	TACACS-Authentication-Method		6	byte
-ATTRIBUTE	TACACS-Authentication-Status		7	byte
-ATTRIBUTE	TACACS-Authentication-Service		8	byte
-ATTRIBUTE	TACACS-Authentication-Type		9	byte
+ATTRIBUTE	Packet-Body-Type		2	byte
+VALUE		Packet-Body-Type	Unknown	0
+VALUE		Packet-Body-Type	Start	1
+VALUE		Packet-Body-Type	Reply	2
+VALUE		Packet-Body-Type	Continue 3
+VALUE		Packet-Body-Type	Request	4
+VALUE		Packet-Body-Type	Response 5
 
-ATTRIBUTE	TACACS-User-Name			10	string
-ATTRIBUTE	TACACS-Client-Port			11	string
-ATTRIBUTE	TACACS-Remote-Address			12	string
-ATTRIBUTE	TACACS-Data				13	octets
 
-ATTRIBUTE	TACACS-Server-Message			14	string
-ATTRIBUTE	TACACS-User-Message			15	string
+ATTRIBUTE	Authentication-Flags		3	byte
+VALUE		Authentication-Flags	No-Echo	1
 
-ATTRIBUTE	TACACS-Action				16	byte
-ATTRIBUTE	TACACS-Privilege-Level			17	byte
+ATTRIBUTE	Authentication-Continue-Flags	4	byte
+VALUE		Authentication-Continue-Flags Unset		0
+VALUE		Authentication-Continue-Flags Abort		1
 
-ATTRIBUTE	TACACS-Authorization-Status		18	byte
+ATTRIBUTE	Authentication-Method		6	byte
+VALUE		Authentication-Method	Not-Set			0
+VALUE		Authentication-Method	None			1
+VALUE		Authentication-Method	KRB5			2
+VALUE		Authentication-Method	Line			3
+VALUE		Authentication-Method	Enable			4
+VALUE		Authentication-Method	Local			5
+VALUE		Authentication-Method	TACACSPLUS		6
+VALUE		Authentication-Method	Guest			8
+VALUE		Authentication-Method	RADIUS			16
+VALUE		Authentication-Method	KRB4			17
+VALUE		Authentication-Method	RCMD			32
 
-ATTRIBUTE	TACACS-Accounting-Status		19	byte
-ATTRIBUTE	TACACS-Accounting-Flags			20	byte
 
-ATTRIBUTE	TACACS-ArgumentList			21	string array
+ATTRIBUTE	Authentication-Status		7	byte
+VALUE		Authentication-Status	Pass			1
+VALUE		Authentication-Status	Fail			2
+VALUE		Authentication-Status	Get-Data		3
+VALUE		Authentication-Status	Get-User		4
+VALUE		Authentication-Status	Get-Pass		5
+VALUE		Authentication-Status	Restart			6
+VALUE		Authentication-Status	Error			7
+VALUE		Authentication-Status	Follow			33
 
-#
-# TACACS+ integer mappings
-#
-VALUE	TACACS-Packet-Body-Type		Unknown			0
-VALUE	TACACS-Packet-Body-Type		Start			1
-VALUE	TACACS-Packet-Body-Type		Reply			2
-VALUE	TACACS-Packet-Body-Type		Continue		3
-VALUE	TACACS-Packet-Body-Type		Request			4
-VALUE	TACACS-Packet-Body-Type		Response		5
 
-VALUE	TACACS-Version-Major		TACACS-Plus		12
+ATTRIBUTE	Authentication-Service		8	byte
+VALUE		Authentication-Service	None			0
+VALUE		Authentication-Service	LOGIN			1
+VALUE		Authentication-Service	ENABLE			2
+VALUE		Authentication-Service	PPP			3
+VALUE		Authentication-Service	PT			5
+VALUE		Authentication-Service	RCMD			6
+VALUE		Authentication-Service	X25			7
+VALUE		Authentication-Service	NASI			8
+VALUE		Authentication-Service	FWPROXY			9
 
-VALUE	TACACS-Packet-Type		Authentication		1
-VALUE	TACACS-Packet-Type		Authorization		2
-VALUE	TACACS-Packet-Type		Accounting		3
+ATTRIBUTE	Authentication-Type		9	byte
+VALUE		Authentication-Type	ASCII			1
+VALUE		Authentication-Type	PAP			2
+VALUE		Authentication-Type	CHAP			3
+VALUE		Authentication-Type	ARAP			4	# deprecated
+VALUE		Authentication-Type	MSCHAP			5
+VALUE		Authentication-Type	MSCHAPv2		6
 
-VALUE	TACACS-Flags			None			0
-VALUE	TACACS-Flags			Unencrypted		1
-VALUE	TACACS-Flags			Single-Connect		4
-VALUE	TACACS-Flags			Unencrypred-Single-Connect 5
+ATTRIBUTE	User-Name			10	string
+ATTRIBUTE	Client-Port			11	string
+ATTRIBUTE	Remote-Address			12	string
+ATTRIBUTE	Data				13	octets
 
-VALUE	TACACS-Action			LOGIN			1
-VALUE	TACACS-Action			CHPASS			2
-VALUE	TACACS-Action			SENDAUTH		3
+ATTRIBUTE	Server-Message			14	string
+ATTRIBUTE	User-Message			15	string
 
-VALUE	TACACS-Privilege-Level		Minimum			0
-VALUE	TACACS-Privilege-Level		User			1
-VALUE	TACACS-Privilege-Level		Root			15
-VALUE	TACACS-Privilege-Level		Maximum			15
+ATTRIBUTE	Action				16	byte
+VALUE		Action			LOGIN			1
+VALUE		Action			CHPASS			2
+VALUE		Action			SENDAUTH		3
 
-VALUE	TACACS-Authentication-Type	ASCII			1
-VALUE	TACACS-Authentication-Type	PAP			2
-VALUE	TACACS-Authentication-Type	CHAP			3
-VALUE	TACACS-Authentication-Type	ARAP			4	# deprecated
-VALUE	TACACS-Authentication-Type	MSCHAP			5
-VALUE	TACACS-Authentication-Type	MSCHAPv2		6
+ATTRIBUTE	Privilege-Level			17	byte
+VALUE		Privilege-Level		Minimum			0
+VALUE		Privilege-Level		User			1
+VALUE		Privilege-Level		Root			15
+VALUE		Privilege-Level		Maximum			15
 
-VALUE	TACACS-Authentication-Service	None			0
-VALUE	TACACS-Authentication-Service	LOGIN			1
-VALUE	TACACS-Authentication-Service	ENABLE			2
-VALUE	TACACS-Authentication-Service	PPP			3
-VALUE	TACACS-Authentication-Service	ARAP			4
-VALUE	TACACS-Authentication-Service	PT			5
-VALUE	TACACS-Authentication-Service	RCMD			6
-VALUE	TACACS-Authentication-Service	X25			7
-VALUE	TACACS-Authentication-Service	NASI			8
-VALUE	TACACS-Authentication-Service	FWPROXY			9
+ATTRIBUTE	Authorization-Status		18	byte
+VALUE		Authorization-Status	Pass-Add		1
+VALUE		Authorization-Status	Pass-Repl		2
+VALUE		Authorization-Status	Fail			16
+VALUE		Authorization-Status	Error			17
+VALUE		Authorization-Status	Follow			33
 
-VALUE	TACACS-Authentication-Status	Pass			1
-VALUE	TACACS-Authentication-Status	Fail			2
-VALUE	TACACS-Authentication-Status	Get-Data		3
-VALUE	TACACS-Authentication-Status	Get-User		4
-VALUE	TACACS-Authentication-Status	Get-Pass		5
-VALUE	TACACS-Authentication-Status	Restart			6
-VALUE	TACACS-Authentication-Status	Error			7
-VALUE	TACACS-Authentication-Status	Follow			33
+ATTRIBUTE	Accounting-Status		19	byte
+VALUE		Accounting-Status	Success			1
+VALUE		Accounting-Status	Error			2
+VALUE		Accounting-Status	Follow			33
 
-VALUE	TACACS-Authentication-Method	Not-Set			0
-VALUE	TACACS-Authentication-Method	None			1
-VALUE	TACACS-Authentication-Method	KRB5			2
-VALUE	TACACS-Authentication-Method	Line			3
-VALUE	TACACS-Authentication-Method	Enable			4
-VALUE	TACACS-Authentication-Method	Local			5
-VALUE	TACACS-Authentication-Method	TACACSPLUS		6
-VALUE	TACACS-Authentication-Method	Guest			8
-VALUE	TACACS-Authentication-Method	RADIUS			16
-VALUE	TACACS-Authentication-Method	KRB4			17
-VALUE	TACACS-Authentication-Method	RCMD			32
+ATTRIBUTE	Accounting-Flags		20	byte
+VALUE		Accounting-Flags	Start			2
+VALUE		Accounting-Flags	Stop			4
+VALUE		Accounting-Flags	Watchdog		8
+VALUE		Accounting-Flags	Watchdog-Update		10
 
-VALUE	TACACS-Authorization-Status	Pass-Add		1
-VALUE	TACACS-Authorization-Status	Pass-Repl		2
-VALUE	TACACS-Authorization-Status	Fail			16
-VALUE	TACACS-Authorization-Status	Error			17
-VALUE	TACACS-Authorization-Status	Follow			33
+ATTRIBUTE	ArgumentList			21	string array
 
-VALUE	TACACS-Accounting-Status	Success			1
-VALUE	TACACS-Accounting-Status	Error			2
-VALUE	TACACS-Accounting-Status	Follow			33
 
-VALUE	TACACS-Authentication-Flags	No-Echo			1
 
-VALUE	TACACS-Authentication-Continue-Flags Unset		0
-VALUE	TACACS-Authentication-Continue-Flags Abort		1
-
-VALUE	TACACS-Accounting-Flags		Start			2
-VALUE	TACACS-Accounting-Flags		Stop			4
-VALUE	TACACS-Accounting-Flags		Watchdog		8
-VALUE	TACACS-Accounting-Flags		Watchdog-Update		10

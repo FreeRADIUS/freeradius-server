@@ -88,7 +88,7 @@ might have the following setup:
 |===
 |UserName | Attribute          | Op | Value
 
-|joeuser  | Cleartext-Password | := | somepassword
+|joeuser  | Password.Cleartext | := | somepassword
 |===
 
 .radreply table
