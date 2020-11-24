@@ -1,0 +1,23 @@
+proto radius
+proto-dictionary radius
+
+decode-pair 05 04 01 02
+match raw.NAS-Port = 0x0102
+
+#
+#  We don't print raw attributes with a prefix.  Perhaps we should.
+#
+attribute raw.NAS-Port = 0x0102
+match NAS-Port = 0x0102
+
+#
+#  This currently encodes the wrong thing,
+#  likely because the "raw" flag isn't being passed
+#  down to the NAS-Port attribute, and it therefore
+#  tries to encode ???
+#
+encode-pair raw.NAS-Port = 0x0102
+match 05 04 01 02
+
+count
+match 8

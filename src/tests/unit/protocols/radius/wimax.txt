@@ -30,23 +30,14 @@ match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # Encoding this as an unknown should have it also encode-pair to the right data.
 #
-#  This just encodes "I don't know what the heck it is, but it's not WiMAX"
+#  @todo - ensure that unknown attributes still have the WiMAX
+#  "continuation" flag.
 #
-encode-pair raw.26.24757.84.9.4 = 0x01
-match 1a 0b b5 09 54 07 09 05 04 03 01
-
-decode-pair -
-match raw.Vendor-Specific = 0xb50954070905040301
-
-#
-#  This encodes a WiMAX VSA of "84", but we know it's WiMAX,
-#  so we add the WiMAX continuation byte.  And we know it's
-#  Vendor-Specific, so we encode that correctly, too.
-#
-encode-pair raw.Vendor-Specific.Wimax.84.9.4 = 0x01
+encode-pair 26.24757.84.9.4 = 0x01
 match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
-decode-pair -
+# and parsing the OID should parse LHS / RHS into the known attribute.
+attribute 26.24757.84.9.4 = 0x01
 match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1
 
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
@@ -84,12 +75,23 @@ match raw.Vendor-Specific.WiMAX.Capability = 0x0104312e30020301
 decode-pair 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
 match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
 
-#
-#  @todo - this seems wrong.  The Capability attribute only has its
-#  first byte encoded.  Which seems rather wrong. :(
-#
 encode-pair -
-match 1a 0a 00 00 60 b5 01 04 00 01
+match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
+
+encode-pair Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match Group list for Capability MUST start with '{'
+
+#
+#  We don't print raw attributes with a "raw" prefix.  Perhaps we should.
+#
+attribute raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+
+attribute raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+
+encode-pair -
+match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
 
 #
 #  This one is correct... Capability has the wrong length
@@ -104,9 +106,8 @@ decode-pair 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
 match raw.Vendor-Specific.WiMAX.Capability = 0x0105312e30020201
 
 encode-pair -
-match 1a 0a 00 00 60 b5 01 04 00 01
+match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
 
-# @todo - same here
 encode-pair raw.Vendor-Specific.WiMAX.1 = 0x0105312e30020201
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
 
@@ -117,9 +118,8 @@ decode-pair 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
 match raw.Vendor-Specific.WiMAX.Capability = 0x0105312e30020401
 
 encode-pair -
-match 1a 0a 00 00 60 b5 01 04 00 01
+match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
 
-# @todo - same here
 encode-pair raw.Vendor-Specific.WiMAX.1 = 0x0105312e30020401
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
 
@@ -189,4 +189,4 @@ match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06
 # data Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Idle-Mode-Notification-Cap = Supported
 
 count
-match 90
+match 94

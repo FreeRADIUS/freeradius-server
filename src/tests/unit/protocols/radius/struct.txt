@@ -69,11 +69,7 @@ match raw.Test-Struct = 0x0200001a99fffefdfcfbfa
 # was Key-Field = 2, Filler = 6809, Attr-255.1.0 = 0xfffefdfcfbfa
 
 encode-pair -
-match ff 07 02 00 00 1a 99
-
-# @todo - investigate why it's truncating output
-#  should be ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
-
+match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 count
 match 32

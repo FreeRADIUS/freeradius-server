@@ -182,6 +182,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	flags.is_unknown = 1;
 	flags.array = 0;
 	flags.has_value = 0;
+	flags.length = 0;	/* unknown length */
 
 	/*
 	 *	Allocate an attribute.
@@ -357,6 +358,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
 	flags.is_unknown = 1;
 	flags.array = 0;
 	flags.has_value = 0;
+	flags.length = 0;	/* unknown length */
 
 	/*
 	 *	Allocate an attribute.
