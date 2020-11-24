@@ -1813,6 +1813,30 @@ int fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool 
 	return ret;
 }
 
+/** Append a talloced buffer to an existing "string" type value pair
+ *
+ * @param[in,out] vp	to update.
+ * @param[in] src	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainted)
+{
+	int ret;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+
+	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
+	}
+
+	return ret;
+}
+
 /** Pre-allocate a memory buffer for a "octets" type value pair
  *
  * @note Will clear existing values (including buffers).
