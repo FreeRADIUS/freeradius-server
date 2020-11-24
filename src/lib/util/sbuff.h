@@ -113,6 +113,7 @@ typedef struct {
 	FILE			*file;			//!< FILE * we're reading from.
 	char			*buff_end;		//!< The true end of the buffer.
 	size_t			max;			//!< Maximum number of bytes to read.
+	bool			eof;			//!< are we at EOF?
 } fr_sbuff_uctx_file_t;
 
 /** Terminal element with pre-calculated lengths

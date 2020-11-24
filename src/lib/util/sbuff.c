@@ -232,6 +232,8 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	CHECK_SBUFF_INIT(sbuff);
 
 	fctx = sbuff->uctx;
+	if (fctx->eof) return 0;
+
 	if (extension == SIZE_MAX) extension = 0;
 
 	if (fr_sbuff_used(sbuff)) {
@@ -260,6 +262,8 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 			fr_strerror_printf("Error extending buffer: %s", fr_syserror(ferror(fctx->file)));
 			return 0;
 		}
+
+		fctx->eof = true;
 	}
 
 	return read;
