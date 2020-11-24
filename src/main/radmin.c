@@ -108,7 +108,7 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: %s [ args ]\n", progname);
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
-	fprintf(stderr, "  -D <dictdir>    Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(output, "  -D <dictdir>    Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e command      Execute 'command' and then exit.\n");
 	fprintf(output, "  -E              Echo commands as they are being executed.\n");
 	fprintf(output, "  -f socket_file  Open socket_file directly, without reading radius.conf\n");
