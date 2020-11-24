@@ -1925,7 +1925,7 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
 /** Assign a buffer to a "octets" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
- * @param[in] src 	a buffer.
+ * @param[in] src 	data to copy.
  * @param[in] len	of src.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
@@ -1947,7 +1947,7 @@ int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, 
 /** Assign a talloced buffer to a "octets" type value pair
  *
  * @param[in] vp 	to assign new buffer to.
- * @param[in] src 	a string.
+ * @param[in] src 	data to copy.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
