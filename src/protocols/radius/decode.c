@@ -1011,7 +1011,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	ssize_t			ret;
 	uint32_t		vendor;
 	fr_dict_attr_t const	*child;
-	fr_dict_attr_t		*unknown;
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
