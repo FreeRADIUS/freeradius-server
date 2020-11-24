@@ -325,6 +325,10 @@ fr_dict_attr_t		*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx,
 							fr_dict_attr_t const *parent, unsigned int num)
 							CC_HINT(nonnull(2));
 
+fr_dict_attr_t		*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+						       CC_HINT(nonnull(2));
+
+
 fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx,
 						      fr_dict_attr_t const *parent,
 						      unsigned int vendor, unsigned int attr)
@@ -431,7 +435,7 @@ fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
 
-fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da);
+fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 

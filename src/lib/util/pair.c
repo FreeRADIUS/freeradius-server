@@ -148,7 +148,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_acopy(vp, da, NULL);
+		unknown = fr_dict_unknown_afrom_da(vp, da);
 		da = unknown;
 	}
 
@@ -191,7 +191,8 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 	if (!da) {
 		fr_dict_attr_t *unknown;
 
-		if (fr_dict_unknown_attr_afrom_num(vp, &unknown, parent, attr) < 0) {
+		unknown = fr_dict_unknown_attr_afrom_num(vp, parent, attr);
+		if (!unknown) {
 			talloc_free(vp);
 			return NULL;
 		}
@@ -232,7 +233,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 *	Copy the unknown attribute hierarchy
 	 */
 	if (n->da->flags.is_unknown) {
-		n->da = fr_dict_unknown_acopy(n, n->da, NULL);
+		n->da = fr_dict_unknown_afrom_da(n, n->da);
 		if (!n->da) {
 			talloc_free(n);
 			return NULL;
@@ -292,7 +293,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
 	if (vp->da->flags.is_unknown) {
 		fr_dict_attr_t *da;
 
-		da = fr_dict_unknown_acopy(vp, vp->da, NULL);
+		da = fr_dict_unknown_afrom_da(vp, vp->da);
 
 		fr_dict_unknown_free(&vp->da);
 
@@ -330,7 +331,7 @@ void fr_pair_list_free(fr_pair_list_t *vps)
  */
 int fr_pair_to_unknown(fr_pair_t *vp)
 {
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t *unknown;
 
 	VP_VERIFY(vp);
 
@@ -338,11 +339,12 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;
 
-	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, fr_dict_vendor_num_by_da(vp->da), vp->da->attr);
-	if (!da) return -1;
+	unknown = fr_dict_unknown_afrom_da(vp, vp->da);
+	if (!unknown) return -1;
+	unknown->flags.is_raw = 1;
 
 	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
-	vp->da = da;
+	vp->da = unknown;
 
 	return 0;
 }
@@ -2255,7 +2257,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 	}
 
 	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
-		if (vp->data.type != FR_TYPE_OCTETS) {
+		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
 					     file, line, vp->da, vp->da->name,

@@ -745,7 +745,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_acopy(dst_ar, src_ar->ar_unknown, NULL);
+	 		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -798,7 +798,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da, NULL);
+		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -849,7 +849,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
-		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, da, NULL);
+		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
 	} else {
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
@@ -1495,14 +1495,16 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 
 		switch (parent->type) {
 		case FR_TYPE_VSA:
-			if (fr_dict_unknown_vendor_afrom_num(ar, &da_unknown, parent, oid) < 0) {
+			da_unknown = fr_dict_unknown_vendor_afrom_num(ar, parent, oid);
+			if (!da_unknown) {
 				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
 			}
 			break;
 
 		default:
-			if (fr_dict_unknown_attr_afrom_num(ar, &da_unknown, parent, oid) < 0) {
+			da_unknown = fr_dict_unknown_attr_afrom_num(ar, parent, oid);
+			if (!da_unknown) {
 				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
 			}
@@ -3113,12 +3115,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	switch (ref->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
-		char		buffer[256];
-		fr_sbuff_t	name = FR_SBUFF_OUT(buffer, sizeof(buffer));
-
-		fr_sbuff_in_sprintf(&name, "%u", ref->da->attr);
-
-		ref->da = ref->ar_unknown = fr_dict_unknown_acopy(vpt, ref->da, fr_sbuff_start(&name));
+		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->ar_unknown->flags.is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
@@ -3230,7 +3227,22 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	dictionary.
 		 */
 		ar->type = TMPL_ATTR_TYPE_NORMAL;
-		ar->ar_da = da;
+
+		/*
+		 *	If the attribute is *NOT* raw then
+		 *	swap the canonical unknown with the
+		 *	one that was previously associated
+		 *	with the tmpl.
+		 *
+		 *	This establishes the unknown attribute
+		 *	in the dictionary if it was really
+		 *	unknown whilst not mucking up the
+		 *	types for raw attributes.
+		 */
+		if (!ar->ar_da->flags.is_raw) {
+			fr_dict_unknown_free(&ar->ar_da);
+			ar->ar_da = da;
+		}
 	}
 
 	return 0;

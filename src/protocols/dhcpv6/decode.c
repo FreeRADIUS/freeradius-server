@@ -50,6 +50,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
 {
 	fr_pair_t		*vp;
+	fr_dict_attr_t		*unknown;
 	fr_dict_attr_t const	*da;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decoder_ctx;
 	ssize_t			slen;
@@ -65,19 +66,20 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t
 	 *	therefore of type "octets", and will be
 	 *	handled below.
 	 */
-	da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent->parent,
-					  fr_dict_vendor_num_by_da(parent), parent->attr);
-	if (!da) {
+	unknown = fr_dict_unknown_attr_afrom_da(packet_ctx->tmp_ctx, parent);
+	if (!unknown) {
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 		return PAIR_DECODE_OOM;
 	}
+	unknown->flags.is_raw = 1;
 
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da(ctx, unknown);
 	if (!vp) return PAIR_DECODE_OOM;
 
 	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true);
 	if (slen < 0) {
 		talloc_free(vp);
+		da = unknown;
 		fr_dict_unknown_free(&da);
 		return slen;
 	}
@@ -486,9 +488,8 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const 
 	if (!da) {
 		fr_dict_attr_t *n;
 
-		if (fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, &n, parent, pen) < 0) {
-			return PAIR_DECODE_OOM;
-		}
+		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, pen);
+		if (!n) return PAIR_DECODE_OOM;
 		da = n;
 	}
 
@@ -530,7 +531,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		da = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, 0, option);
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);

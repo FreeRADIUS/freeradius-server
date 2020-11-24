@@ -892,13 +892,21 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	if (fr_dict_attr_ref(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
 				   parent->name, fr_dict_attr_ref(parent)->name);
-		return false;
+		return -1;
 	}
 
 	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
-				   parent->name, fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
-		return false;
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+		return -1;
+	}
+
+	if ((parent->type == FR_TYPE_VSA) && (child->type != FR_TYPE_VENDOR)) {
+		fr_strerror_printf("Cannot add non-vendor children to attribute '%s' of type %s",
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+		return -1;
 	}
 
 	/*
@@ -1609,6 +1617,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 		break;
 
 	default:
+		if (dict_attr_can_have_children(*parent)) break;
 		fr_strerror_printf("Attribute %s (%i) is not a TLV, so cannot contain a child attribute.  "
 				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
@@ -1697,15 +1706,14 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_UINT16:	/* stupid struct issues */
-	case FR_TYPE_UINT8:
 		break;
 
 	default:
-		fr_strerror_printf("Attribute '%s' is type %s so cannot contain child attributes.  "
+		if (dict_attr_can_have_children(parent)) break;
+		fr_strerror_printf("Attribute '%s' is type %s and cannot contain child attributes.  "
 				   "Error at OID \"%.*s\"",
 				   parent->name,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<UNKNOWN>"),
 				   (int)fr_sbuff_remaining(in),
 				   fr_sbuff_current(in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
@@ -1781,10 +1789,9 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 {
 	fr_sbuff_marker_t	start, c_s;
 	fr_dict_attr_t const	*our_parent = parent;
-	ssize_t			ret;
 
-	fr_sbuff_marker(&c_s, in);
 	fr_sbuff_marker(&start, in);
+	fr_sbuff_marker(&c_s, in);
 
 	/*
 	 *	If the OID doesn't begin with '.' we
@@ -1800,8 +1807,11 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 
 		slen = fr_dict_oid_component(err, &child, our_parent, in);
 		if ((slen <= 0) || !child) {
-			ret = (slen - fr_sbuff_marker_release_behind(&start));
-			fr_sbuff_marker_release_reset_behind(&c_s);	/* Set marker back to the previous '.' */
+			ssize_t ret = slen - fr_sbuff_behind(&start);
+
+			fr_sbuff_set(in, &c_s);
+			fr_sbuff_marker_release(&start);
+
 			return ret;
 		}
 
@@ -1812,10 +1822,7 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		if (!fr_sbuff_next_if_char(in, '.')) break;
 	}
 
-	ret = fr_sbuff_marker_release_behind(&start);
-	fr_sbuff_marker_release(&c_s);
-
-	return ret;
+	return fr_sbuff_marker_release_behind(&start);
 }
 
 /** Resolve an attribute using an OID string
@@ -2283,7 +2290,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Attribute '%s' not found in namespace %s", buffer, parent->name);
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
 		return 0;
 	}
 
@@ -2311,7 +2318,7 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Attribute '%s' not found in namespace %s", name, parent->name);
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
 		return NULL;
 	}
 
@@ -2508,11 +2515,11 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
 	return fr_hash_table_find_by_data(dict_by_da(da)->attributes_combo,
-					  &(fr_dict_attr_t){
-						  .parent = da->parent,
-						  .attr = da->attr,
-						  .type = type
-					  });
+				      &(fr_dict_attr_t){
+				      		.parent = da->parent,
+				      		.attr = da->attr,
+				      		.type = type
+				      });
 }
 
 /** Check if a child attribute exists in a parent using a pointer (da)

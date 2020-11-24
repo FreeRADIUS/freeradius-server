@@ -493,8 +493,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent,
-								     fr_dict_vendor_num_by_da(parent), p[0]);
+			unknown_child = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
 			if (!unknown_child) goto error;
 			child = unknown_child;
 		}
@@ -533,6 +532,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	fr_pair_t		*vp;
 	uint8_t const		*p = data;
 	size_t			prefix = 0;
+	fr_dict_attr_t		*unknown;
 
 	fr_aka_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
@@ -708,12 +708,12 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
-						      fr_dict_vendor_num_by_da(parent), parent->attr);
+		parent = unknown = fr_dict_unknown_attr_afrom_da(ctx, parent);
 		if (!parent) {
 			fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
 			return -1;
 		}
+		unknown->flags.is_raw = 1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
@@ -898,7 +898,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr
 			fr_strerror_printf("Unknown (non-skippable) attribute %i", sim_at);
 			return -1;
 		}
-		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, sim_at);
+		da = fr_dict_unknown_attr_afrom_num(ctx, parent, sim_at);
 	}
 	if (!da) return -1;
 

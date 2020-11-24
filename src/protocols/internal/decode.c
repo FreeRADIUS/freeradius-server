@@ -254,7 +254,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	if (unknown || parent_da->flags.is_unknown) {
 	unknown:
 		FR_PROTO_TRACE("Unknown attribute %" PRIu64, type);
-		da = fr_dict_unknown_afrom_fields(ctx, parent_da, 0, type);
+		da = fr_dict_unknown_attr_afrom_num(ctx, parent_da, type);
 	} else {
 		da = fr_dict_attr_child_by_num(parent_da, type);
 		if (!da) {

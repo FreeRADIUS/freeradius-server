@@ -298,12 +298,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			PACKET_HEADER_CHECK("Authentication Start");
 
 			if ((pkt->hdr.ver.minor == 0) &&
-			    (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+			    (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 				fr_strerror_printf("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
 				goto fail;
 			}
 
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_START);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_START);
 
 			/*
 			 *	Decode 4 octets of various flags.
@@ -329,15 +329,15 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 				want = 255;
 				break;
 
-			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_CHAP:
+			case FR_AUTHENTICATION_TYPE_VALUE_CHAP:
 				want = 1 + 8 + 16; /* id + 8 octets of challenge + 16 hash */
 				break;
 
-			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
 				want = 1 + 8 + 49; /* id + 8 octets of challenge + 49 MS-CHAP stuff */
 				break;
 
-			case FR_TACACS_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
 				want = 1 + 16 + 49; /* id + 16 octets of challenge + 49 MS-CHAP stuff */
 				break;
 			}
@@ -353,11 +353,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			} else {
 				fr_dict_attr_t *da;
 
-				da = fr_dict_unknown_acopy(ctx, attr_tacacs_data, NULL);
+				da = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
 				if (da) {
 					DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
 					talloc_free(da); /* the VP makes it's own copy */
 				}
+				da->flags.is_raw = 1;
 			}
 
 		} else if (packet_is_authen_continue(pkt)) {
@@ -390,12 +391,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->authen.cont.body;
 			PACKET_HEADER_CHECK("Authentication Continue");
 
-			if (pkt->authen.start.authen_type != FR_TACACS_AUTHENTICATION_TYPE_VALUE_ASCII) {
+			if (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
 				fr_strerror_printf("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
 				goto fail;
 			}
 
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_CONTINUE);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
@@ -429,7 +430,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			p = pkt->authen.reply.body;
 			PACKET_HEADER_CHECK("Authentication Reply");
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen.reply.status);
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_flags, pkt->authen.reply.flags);
@@ -481,7 +482,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->author.req.body;
 			PACKET_HEADER_CHECK("Authorization REQUEST");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REQUEST);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
 			 *	Decode 4 octets of various flags.
@@ -536,7 +537,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->author.res.body;
 			PACKET_HEADER_CHECK("Authorization RESPONSE");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.res.arg_cnt);
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_RESPONSE);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
 			 *	Decode 1 octets
@@ -594,7 +595,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			p = pkt->acct.req.body;
 			PACKET_HEADER_CHECK("Accounting REQUEST");
 			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REQUEST);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
 			 *	Decode 5 octets of various flags.
@@ -639,7 +640,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			p = pkt->acct.reply.body;
 			PACKET_HEADER_CHECK("Accounting REPLY");
-			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_TACACS_PACKET_BODY_TYPE_REPLY);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			/*
 			 *	Decode 2 fields, based on their "length"

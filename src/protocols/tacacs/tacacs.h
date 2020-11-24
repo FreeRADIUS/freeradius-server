@@ -23,9 +23,9 @@
 #include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
 #include <freeradius-devel/protocol/tacacs/dictionary.h>
 
-#define FR_TACACS_HEADER_LENGTH 		sizeof(fr_tacacs_packet_hdr_t)
-#define FR_TACACS_MAX_PACKET_SIZE		4096
-#define FR_TACACS_MAX_ATTRIBUTES 		255
+#define FR_HEADER_LENGTH 		sizeof(fr_tacacs_packet_hdr_t)
+#define FR_MAX_PACKET_SIZE		4096
+#define FR_MAX_ATTRIBUTES 		255
 
 
 #define FR_TAC_PLUS_MAJOR_VER			12
@@ -237,12 +237,12 @@ typedef struct CC_HINT(__packed__) {
 } fr_tacacs_packet_acct_req_hdr_t;
 
 typedef enum {
-	FR_TACACS_PACKET_BODY_TYPE_UNKNOWN  	= 0,
-	FR_TACACS_PACKET_BODY_TYPE_START    	= 1,
-	FR_TACACS_PACKET_BODY_TYPE_REPLY    	= 2,
-	FR_TACACS_PACKET_BODY_TYPE_CONTINUE 	= 3,
-	FR_TACACS_PACKET_BODY_TYPE_REQUEST  	= 4,
-	FR_TACACS_PACKET_BODY_TYPE_RESPONSE 	= 5
+	FR_PACKET_BODY_TYPE_UNKNOWN  	= 0,
+	FR_PACKET_BODY_TYPE_START    	= 1,
+	FR_PACKET_BODY_TYPE_REPLY    	= 2,
+	FR_PACKET_BODY_TYPE_CONTINUE 	= 3,
+	FR_PACKET_BODY_TYPE_REQUEST  	= 4,
+	FR_PACKET_BODY_TYPE_RESPONSE 	= 5
 } fr_tacacs_packet_body_type_t;
 
 typedef enum {

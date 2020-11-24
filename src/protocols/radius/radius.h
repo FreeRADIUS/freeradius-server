@@ -207,7 +207,7 @@ ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char cons
 ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
-					    void *decoder_ctx);
+					    void *decoder_ctx) CC_HINT(nonnull(1,2,3,4));
 
 ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 				     fr_dict_attr_t const *parent,

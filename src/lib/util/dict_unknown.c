@@ -30,12 +30,12 @@ RCSID("$Id$")
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
- * @param[in] old		unknown attribute to add.
+ * @param[in] unknown		attribute to add.
  * @return
- *	- Existing #fr_dict_attr_t if old was found in a dictionary.
- *	- A new entry representing old.
+ *	- Existing #fr_dict_attr_t if unknown was found in a dictionary.
+ *	- A new entry representing unknown.
  */
-fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old)
+fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *unknown)
 {
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent;
@@ -46,26 +46,32 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		return NULL;
 	}
 
-	da = fr_dict_attr_by_name(NULL, old->parent, old->name);
-	if (da) return da;
+	da = fr_dict_attr_by_name(NULL, unknown->parent, unknown->name);
+	if (da) {
+		if (da->attr == unknown->attr) return da;
+
+		fr_strerror_printf("Unknown attribute '%s' conflicts with existing attribute in context %s",
+				   da->name, unknown->parent->name);
+		return da;
+	}
 
 	/*
 	 *	Define the complete unknown hierarchy
 	 */
-	if (old->parent && old->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_add(dict, old->parent);
+	if (unknown->parent && unknown->parent->flags.is_unknown) {
+		parent = fr_dict_unknown_add(dict, unknown->parent);
 		if (!parent) {
-			fr_strerror_printf_push("Failed adding parent \"%s\"", old->parent->name);
+			fr_strerror_printf_push("Failed adding parent \"%s\"", unknown->parent->name);
 			return NULL;
 		}
 	} else {
 #ifdef __clang_analyzer__
-		if (!old->parent) return NULL;
+		if (!unknown->parent) return NULL;
 #endif
-		parent = old->parent;
+		parent = unknown->parent;
 	}
 
-	memcpy(&flags, &old->flags, sizeof(flags));
+	memcpy(&flags, &unknown->flags, sizeof(flags));
 	flags.is_unknown = 0;
 
 	/*
@@ -74,18 +80,18 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *	as a child attribute to the Vendor-Specific
 	 *	container.
 	 */
-	if (old->type == FR_TYPE_VENDOR) {
+	if (unknown->type == FR_TYPE_VENDOR) {
 		fr_dict_attr_t *mutable, *n;
 
-		if (dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
+		if (dict_vendor_add(dict, unknown->name, unknown->attr) < 0) return NULL;
 
-		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
+		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type, &flags);
 		if (unlikely(!n)) return NULL;
 
 		/*
 		 *	Setup parenting for the attribute
 		 */
-		memcpy(&mutable, &old->parent, sizeof(mutable));
+		memcpy(&mutable, &unknown->parent, sizeof(mutable));
 		if (dict_attr_child_add(mutable, n) < 0) return NULL;
 
 		return n;
@@ -96,11 +102,11 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *	add it both by name and by number.  If it does exist,
 	 *	add it only by name.
 	 */
-	da = fr_dict_attr_child_by_num(parent, old->attr);
+	da = fr_dict_attr_child_by_num(parent, unknown->attr);
 	if (da) {
 		fr_dict_attr_t *n;
 
-		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
+		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type, &flags);
 		if (!n) return NULL;
 
 		/*
@@ -118,7 +124,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	}
 
 #ifdef __clang_analyzer__
-	if (!old->name) return NULL;
+	if (!unknown->name) return NULL;
 #endif
 
 	/*
@@ -126,12 +132,12 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *
 	 *	Fixme - Copy extensions?
 	 */
-	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, &flags) < 0) return NULL;
+	if (fr_dict_attr_add(dict, parent, unknown->name, unknown->attr, unknown->type, &flags) < 0) return NULL;
 
 	/*
 	 *	For paranoia, return it by name.
 	 */
-	return fr_dict_attr_by_name(NULL, parent, old->name);
+	return fr_dict_attr_by_name(NULL, parent, unknown->name);
 }
 
 /** Free dynamically allocated (unknown attributes)
@@ -264,8 +270,7 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 		return NULL;
 
 	default:
-		fr_strerror_printf("Unknown vendors can only be parented by 'vsa' types "
-				   "attributes, not '%s'",
+		fr_strerror_printf("Unknown vendors can only be parented by a vsa, not a %s",
 				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return NULL;
 	}
@@ -288,14 +293,14 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
+		break;
+
+	default:
 		fr_strerror_printf("%s: Cannot allocate unknown tlv attribute (%u) with parent type %s",
 				   __FUNCTION__,
 				   num,
 				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<INVALID>"));
 		return NULL;
-
-	default:
-		break;
 	}
 
 	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_TLV, &flags);
@@ -331,6 +336,60 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
 }
 
+/** Initialise an octets type attribute from a da
+ *
+ * @param[in] ctx		to allocate the attribute in.
+ * @param[in] da		of the unknown attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t		*n;
+	fr_dict_attr_t const	*parent;
+	fr_dict_attr_flags_t	flags = da->flags;
+
+	/*
+	 *	Set the unknown flag, and clear other flags which are
+	 *	no longer relevant.
+	 */
+	flags.is_unknown = 1;
+	flags.array = 0;
+	flags.has_value = 0;
+
+	/*
+	 *	Allocate an attribute.
+	 */
+	n = dict_attr_alloc_null(ctx);
+	if (!n) return NULL;
+
+	/*
+	 *	We want to have parent / child relationships, AND to
+	 *	copy all unknown parents, AND to free the unknown
+	 *	parents when this 'da' is freed.  We therefore talloc
+	 *	the parent from the 'da'.
+	 */
+	if (da->parent->flags.is_unknown) {
+		parent = fr_dict_unknown_afrom_da(n, da->parent);
+		if (!parent) {
+			talloc_free(n);
+			return NULL;
+		}
+
+	} else {
+		parent = da->parent;
+	}
+
+	/*
+	 *	Initialize the rest of the fields.
+	 */
+	dict_attr_init(&n, parent, da->name, da->attr, FR_TYPE_OCTETS, &flags);
+	DA_VERIFY(n);
+
+	return n;
+}
+
 /** Initialise two #fr_dict_attr_t from numbers
  *
  * @param[in] ctx		to allocate the unknown attributes in.
@@ -349,7 +408,7 @@ fr_dict_attr_t	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	unknown_vendor = fr_dict_unknown_vendor_afrom_num(ctx, parent, vendor);
 	if (unlikely(!unknown_vendor)) return NULL;
 
-	unknown = fr_dict_unknown_attr_afrom_num(ctx, parent, attr);
+	unknown = fr_dict_unknown_attr_afrom_num(ctx, unknown_vendor, attr);
 	if (unlikely(!unknown)) {
 		talloc_free(unknown_vendor);
 		return NULL;
@@ -391,10 +450,13 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				};
 	fr_sbuff_marker_t	start;
 	ssize_t			slen;
+	bool			is_raw = true;
 
 	*out = NULL;
 
 	fr_sbuff_marker(&start, in);
+
+	is_raw = fr_sbuff_adv_past_str_literal(in, "raw");
 
 	/*
 	 *	Resolve all the known bits first...
@@ -407,11 +469,18 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 *	are known...
 	 *
 	 *	Just exit and pass back the known
-	 *	attribute.
+	 *	attribute, unless we got a raw prefix
+	 *	in which case process that.
 	 */
 	case FR_DICT_ATTR_OK:
-		*out = fr_dict_attr_unconst(our_parent);	/* Which is the resolved attribute in this case */
-		if (err) *err = FR_DICT_ATTR_OK;
+		if (is_raw) {
+			*out = fr_dict_unknown_attr_afrom_da(ctx, our_parent);
+			if (err) *err = *out ? FR_DICT_ATTR_OK : FR_DICT_ATTR_PARSE_ERROR;
+		} else {
+			*out = fr_dict_attr_unconst(our_parent);	/* Which is the resolved attribute in this case */
+			if (err) *err = FR_DICT_ATTR_OK;
+		}
+
 		return fr_sbuff_marker_release_behind(&start);
 
 	/*
@@ -484,7 +553,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	/*
 	 *	Loop until there's no more component separators.
 	 */
-	do {
+	for (;;) {
 		uint32_t		num;
 		fr_sbuff_parse_error_t	sberr;
 
@@ -500,9 +569,13 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			{
 				fr_dict_attr_t	*ni;
 
-				ni = fr_dict_unknown_vendor_afrom_num(n, our_parent, num);
-				if (!ni) goto error;
-				our_parent = ni;
+				if (fr_sbuff_next_if_char(in, '.')) {
+					ni = fr_dict_unknown_vendor_afrom_num(n, our_parent, num);
+					if (!ni) goto error;
+					our_parent = ni;
+					continue;
+				}
+				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_VENDOR, &flags) < 0) goto error;
 			}
 				break;
 
@@ -514,16 +587,16 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			{
 				fr_dict_attr_t	*ni;
 
-				ni = fr_dict_unknown_tlv_afrom_num(n, our_parent, num);
-				if (!ni) goto error;
-				our_parent = ni;
+				if (fr_sbuff_next_if_char(in, '.')) {
+					ni = fr_dict_unknown_tlv_afrom_num(n, our_parent, num);
+					if (!ni) goto error;
+					our_parent = ni;
+					continue;
+				}
 			}
-				break;
+				FALL_THROUGH;
 
 			default:
-			{
-				char name[20];
-
 				/*
 				 *	Leaf type with more components
 				 *	is an error.
@@ -534,10 +607,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 										 our_parent->type, "<INVALID>"));
 					goto error;
 				}
-
-				snprintf(name, sizeof(name), "%u", num);
-				dict_attr_init(&n, our_parent, name, num, FR_TYPE_OCTETS, &flags);
-			}
+				flags.is_raw = is_raw;
+				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS, &flags) < 0) goto error;
 				break;
 			}
 			break;
@@ -550,11 +621,11 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			fr_sbuff_adv_past_allowed(in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars);
 			fr_strerror_printf("Unknown attribute \"%.*s\"",
 					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start));
-
-			return -fr_sbuff_marker_release_reset_behind(&start);
+			goto error;
 		}
 		}
-	} while (fr_sbuff_next_if_char(in, '.'));
+		break;
+	};
 
 	DA_VERIFY(n);
 

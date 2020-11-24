@@ -36,9 +36,10 @@ typedef struct {
      fr_encode_value_t	encoder;
 } encode_ctx_wrapper;
 
-fr_pair_t *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	fr_pair_t *vp;
+	fr_dict_attr_t *unknown;
 	fr_dict_attr_t const *child;
 
 #if defined(__clang_analyzer__) || !defined(NDEBUG)
@@ -48,11 +49,12 @@ fr_pair_t *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 	/*
 	 *	Build an unknown attr of the entire STRUCT.
 	 */
-	child = fr_dict_unknown_afrom_fields(ctx, parent->parent,
-					     fr_dict_vendor_num_by_da(parent), parent->attr);
-	if (!child) return NULL;
+	unknown = fr_dict_unknown_attr_afrom_da(ctx, parent);
+	if (!unknown) return NULL;
+	unknown->flags.is_raw = 1;
 
-	vp = fr_pair_afrom_da(ctx, child); /* makes a copy of 'child' */
+	vp = fr_pair_afrom_da(ctx, unknown); /* makes a copy of 'child' */
+	child = unknown;
 	fr_dict_unknown_free(&child);
 	if (!vp) return NULL;
 
@@ -223,7 +225,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(ctx, &child_cursor, NULL, child, p, child_length, decoder_ctx);
+			slen = decode_value(ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decoder_ctx);
 			if (slen < 0) return slen - (p - data);
 
 			p += slen;   	/* not always the same as child->flags.length */
@@ -263,7 +265,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		unknown:
 			fr_pair_list_free(&head);
 
-			vp = fr_unknown_from_network(ctx, parent, data, data_len);
+			vp = fr_raw_from_network(ctx, parent, data, data_len);
 			if (!vp) return -1;
 
 			/*
@@ -319,7 +321,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 							     fr_dict_vendor_num_by_da(key_vp->da), 0);
 			if (!child) goto unknown;
 
-			vp = fr_unknown_from_network(ctx, child, p, end - p);
+			vp = fr_raw_from_network(ctx, child, p, end - p);
 			if (!vp) {
 				fr_dict_unknown_free(&child);
 				return -(p - data);

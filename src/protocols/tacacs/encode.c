@@ -470,8 +470,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	   When the status equals TAC_PLUS_AUTHOR_STATUS_FOLLOW, then the
 			 *	   arg_cnt MUST be 0.
 			 */
-			if (!((packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_ERROR) ||
-			      (packet->author.res.status == FR_TACACS_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
+			if (!((packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
+			      (packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
 				packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(&work_dbuff, vps, attr_tacacs_argument_list);
 			} else {
 				packet->author.res.arg_cnt = 0;
@@ -654,7 +654,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 */
 	packet_len = fr_dbuff_used(&work_dbuff);
 	body_len = (packet_len - sizeof(fr_tacacs_packet_hdr_t));
-	fr_assert(packet_len < FR_TACACS_MAX_PACKET_SIZE);
+	fr_assert(packet_len < FR_MAX_PACKET_SIZE);
 	packet->hdr.length = htonl(body_len);
 
 	/*

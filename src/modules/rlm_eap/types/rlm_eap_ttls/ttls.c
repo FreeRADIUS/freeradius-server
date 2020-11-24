@@ -226,7 +226,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 				talloc_free(vp);
 				goto error;
 			}
-			MEM(vp->da = fr_dict_unknown_afrom_fields(vp, parent, 0, attr));
+			MEM(vp->da = fr_dict_unknown_attr_afrom_num(vp, parent, attr));
 		}
 
 do_value:

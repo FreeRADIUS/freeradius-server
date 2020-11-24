@@ -118,7 +118,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	 *	caller to clean up the unknown da.
 	 */
 	if (da->flags.is_unknown) {
-		vp->da = fr_dict_unknown_acopy(vp, da, NULL);
+		vp->da = fr_dict_unknown_attr_afrom_da(vp, da);
 		da = vp->da;
 	}
 
@@ -203,25 +203,26 @@ finish:
 	return p - data;
 }
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent, uint8_t attr,
 			  uint8_t const *data, size_t data_len)
 {
 	ssize_t slen;
-	fr_dict_attr_t *tmp;
+	fr_dict_attr_t *unknown;
 	fr_dict_attr_t const *child;
 
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_raw");
+
 	/*
-	 *	Build an unknown attr.  Note that we can't call
-	 *	fr_dict_unknown_acopy(), as it leaves the "child" da
-	 *	as FR_TYPE_TLV, when we want FR_TYPE_OCTETS.
+	 *	Build an unknown attr.
 	 */
-	if (fr_dict_unknown_attr_afrom_num(ctx, &tmp, da->parent, da->attr) < 0) {
-		return -1;
-	}
-	child = tmp;		/* const issues */
+	unknown = fr_dict_unknown_attr_afrom_num(ctx, parent, attr);
+	if (!unknown) return -1;
+	unknown->flags.is_raw = 1;
+
+	child = unknown;		/* const issues */
 
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name,
+		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
 	slen = decode_value(ctx, cursor, child, data, data_len);
@@ -304,7 +305,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			 *	options" option.  Return it as random crap.
 			 */
 		raw:
-			tlv_len = decode_raw(ctx, cursor, parent, p, end - p);
+			tlv_len = decode_raw(ctx, cursor, parent, p[0], p, end - p);
 			if (tlv_len < 0) return tlv_len;
 
 			return data_len;
@@ -319,17 +320,16 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			fr_dict_attr_t const *unknown_child;
+			fr_dict_attr_t const *unknown;
 
 			FR_PROTO_TRACE("failed to find child %u of TLV %s", p[0], parent->name);
 
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent,
-								     fr_dict_vendor_num_by_da(parent), p[0]);
-			if (!unknown_child) return -1;
-			child = unknown_child;
+			unknown = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
+			if (!unknown) return -1;
+			child = unknown;
 		}
 		FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
 			       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
@@ -396,13 +396,39 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	return p - data;
 }
 
+/*
+ *  One VSA option may contain multiple vendors, each vendor
+ *  may contain one or more sub-options.
+ *
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  option-code  |  option-len   |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |      enterprise-number1       |
+ *  |                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   data-len1   |               |
+ *  +-+-+-+-+-+-+-+-+ option-data1  |
+ *  /                               /
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ ----
+ *  |      enterprise-number2       |   ^
+ *  |                               |   |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   |
+ *  |   data-len2   |               | optional
+ *  +-+-+-+-+-+-+-+-+ option-data2  |   |
+ *  /                               /   |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   |
+ *  ~            ...                ~   V
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ ----
+ */
 static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len)
 {
 	ssize_t			len;
+	uint8_t			option_len;
 	uint32_t		pen;
-	fr_dict_attr_t const	*da;
-	uint8_t const		*end;
+	fr_dict_attr_t const	*vendor;
+	uint8_t const		*end = data + data_len;
+	uint8_t const		*p = data;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
 
@@ -410,22 +436,20 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
-	end = data + data_len;
-
 next:
 	/*
-	 *	Enterprise code + data-len + at least one option header
+	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num)
+	 *	to be able to decode vendor specific
+	 *	attributes.
 	 */
-	if (((end - data) < 4 + 1 + 2) ||
-	    (data[4] == 0) || ((data + 5 + data[4]) > end)) {
-		len = decode_raw(ctx, cursor, parent, data, end - data);
+	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
+		len = decode_raw(ctx, cursor, parent->parent, parent->attr, p, end - p);
 		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
 	}
 
-	memcpy(&pen, data, sizeof(pen));
-	pen = htonl(pen);
+	pen = fr_net_to_uint32(p);
 
 	/*
 	 *	Verify that the parent (which should be a VSA)
@@ -435,23 +459,32 @@ next:
 	 *	vendor attributes have a standard format, so we can
 	 *	decode the data anyway.
 	 */
-	da = fr_dict_attr_child_by_num(parent, pen);
-	if (!da) {
+	vendor = fr_dict_attr_child_by_num(parent, pen);
+	if (!vendor) {
 		fr_dict_attr_t *n;
 
-		if (fr_dict_unknown_vendor_afrom_num(ctx, &n, parent, pen) < 0) {
-			return PAIR_DECODE_OOM;
-		}
-		da = n;
+		n = fr_dict_unknown_vendor_afrom_num(ctx, parent, pen);
+		if (!n) return PAIR_DECODE_OOM;
+		vendor = n;
 	}
+	p += sizeof(uint32_t);
 
-	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
+	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor->name);
 
-	len = decode_tlv(ctx, cursor, da, data + 5, data[4]);
+	option_len = p[0];
+	if ((p + option_len) > end) {
+		len = decode_raw(ctx, cursor, vendor, p[1], p, end - p);
+		if (len < 0) return len;
+
+		return data_len + 2; /* decoded the whole thing */
+	}
+	p++;
+
+	len = decode_tlv(ctx, cursor, vendor, p, option_len);
 	if (len <= 0) return len;
 
-	data += 5 + len;
-	if (data < end) goto next;
+	p += len;
+	if (p < end) goto next;
 
 	/*
 	 *	Tell the caller we read all of it, even if we didn't.
@@ -513,7 +546,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	Unknown attribute, create an octets type
 		 *	attribute with the contents of the sub-option.
 		 */
-		child = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), p[0]);
+		child = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
 		if (!child) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
