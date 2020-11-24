@@ -2249,7 +2249,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 type,
 				 NULL,
 				 &parse_rules);
-	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+	if (slen <= 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
