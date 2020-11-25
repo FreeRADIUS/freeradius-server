@@ -2209,18 +2209,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
        case FR_TYPE_STRUCTURAL:
 	       if (!vp->vp_group) break;
 
-	       {
-		       fr_cursor_t cursor;
-		       fr_pair_t *child, *head;
-
-		       head = vp->vp_group;
-
-		       for (child = fr_cursor_init(&cursor, &head);
-			    child != NULL;
-			    child = fr_cursor_next(&cursor)) {
-			       fr_pair_verify(file, line, child);
-		       }
-	       }
+	       fr_pair_list_verify(file, line, vp, &vp->vp_group);
 	       break;
 
 	default:
