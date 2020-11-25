@@ -2959,6 +2959,45 @@ int fr_dict_const_free(fr_dict_t const **dict)
  *	- 0 on success.
  *	- -1 on failure.
  */
+int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
+{
+	fr_dict_enum_autoload_t const	*p = to_load;
+	fr_dict_enum_t const		*enumv;
+
+	for (p = to_load; p->out; p++) {
+		if (unlikely(!p->attr)) {
+			fr_strerror_printf("Invalid autoload entry, missing attribute pointer");
+			return -1;
+		}
+
+		if (unlikely(!*p->attr)) {
+			fr_strerror_printf("Can't resolve value '%s', attribute not loaded", p->name);
+			fr_strerror_printf_push("Check fr_dict_attr_autoload_t struct has "
+						"an entry to load the attribute \"%s\" is located in, and that "
+						"the fr_dict_autoload_attr_t symbol name is correct", p->name);
+			return -1;
+		}
+
+		enumv = fr_dict_enum_by_name(*(p->attr), p->name, -1);
+		if (!enumv) {
+			fr_strerror_printf("Value '%s' not found in \"%s\" attribute",
+					   p->name, (*(p->attr))->name);
+			return -1;
+		}
+
+		if (p->out) *(p->out) = enumv;
+	}
+
+	return 0;
+}
+
+/** Process a dict_attr_autoload element to load/verify a dictionary attribute
+ *
+ * @param[in] to_load	attribute definition
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
 int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 {
 	fr_dict_attr_t const		*da;
@@ -3032,6 +3071,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 	return 0;
 }
 
+
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] to_free	previously loaded dictionary to free.
@@ -3047,6 +3087,38 @@ void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 
 		fr_dict_free(dict);
 	}
+}
+
+/** Callback to automatically resolve enum values
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_enum_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_enum_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_enum_autoload((fr_dict_enum_autoload_t *)symbol) < 0) return -1;
+
+	return 0;
+}
+
+/** Callback to automatically resolve attributes and check the types are correct
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_attr_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) return -1;
+
+	return 0;
 }
 
 /** Callback to automatically load dictionaries required by modules
@@ -3076,22 +3148,6 @@ void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
-/** Callback to automatically resolve attributes and check the types are correct
- *
- * @param[in] module	being loaded.
- * @param[in] symbol	An array of fr_dict_autoload_t to load.
- * @param[in] user_ctx	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
-{
-	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) return -1;
-
-	return 0;
-}
-
 /** Callback to automatically load validation routines for dictionaries.
  *
  * @param[in] dl	the library we just loaded
@@ -3101,7 +3157,7 @@ int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
+static int dict_validation_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 {
 	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
 	fr_dict_protocol_t const *proto = symbol;
@@ -3206,7 +3262,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	if (!new_ctx->dict_loader) goto error;
 
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
-				       dict_onload_func, NULL) < 0) goto error;
+				       dict_validation_onload_func, NULL) < 0) goto error;
 
 	if (!dict_gctx) dict_gctx = new_ctx;	/* Set as the default */
 	talloc_set_destructor(dict_gctx, _dict_global_free);

@@ -190,6 +190,17 @@ typedef struct {
 	char const		*name;				//!< Vendor name.
 } fr_dict_vendor_t;
 
+/** Specifies a value which must be present for the module to function
+ *
+ */
+typedef struct {
+	fr_dict_enum_t const	**out;				//!< Enumeration value.
+	fr_dict_attr_t const	**attr;				//!< The protocol dictionary the attribute should
+								///< be resolved in. ** so it's a compile time
+								///< constant.
+	char const		*name;				//!< of the attribute.
+} fr_dict_enum_autoload_t;
+
 /** Specifies an attribute which must be present for the module to function
  *
  */
@@ -509,17 +520,21 @@ int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
  *
  * @{
  */
+int			fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load);
+
 int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 
 int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
 
+int			fr_dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx);
+
+int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx);
+
 int			fr_dl_dict_autoload(dl_t const *module, void *symbol, void *user_ctx);
 
 void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
-
-int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx);
 /** @} */
 
 /** @name Allocating and freeing

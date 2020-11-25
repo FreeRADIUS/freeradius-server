@@ -685,6 +685,8 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	 *	Register dictionary autoload callbacks
 	 */
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
+				   DL_PRIORITY_DICT_ATTR, "dict_enum", fr_dl_dict_enum_autoload, NULL);
+	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_DICT_ATTR, "dict_attr", fr_dl_dict_attr_autoload, NULL);
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autoload, NULL);
