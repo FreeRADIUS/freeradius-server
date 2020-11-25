@@ -636,6 +636,67 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	return fr_sbuff_marker_release_behind(&start);
 }
 
+/** Fixup the parent of an unknown attribute using an equivalent known attribute
+ *
+ * This can be useful where an unknown attribute's ancestors are added to
+ * a dictionary but not the unknown attribute itself.
+ *
+ * @param[in] da	to fixup.
+ * @param[in] parent	to assign.  If NULL, we will attempt to resolve
+ *			the parent in the dictionary the current unknown
+ *			attribute extends.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent)
+{
+	fr_dict_attr_t const *da_u, *da_k;
+
+	if (parent) {
+		da_u = da->parent;
+		da_k = parent;
+
+		/*
+		 *	Walk back up the hierarchy until we get to a known
+		 *	ancestor on the unknown side.
+		 */
+		for (da_u = da->parent, da_k = parent;
+		     da_k && da_u && da_u->flags.is_unknown;
+		     da_u = da_u->parent, da_k = da_k->parent) {
+			if (unlikely(da_u->attr != da_k->attr)) {
+				fr_strerror_printf("Unknown parent number %u does not match "
+						   "known parent number %u (%s)",
+						   da_u->attr, da_k->attr, da_k->name);
+				return -1;
+			}
+
+			if (unlikely(da_u->depth != da_k->depth)) {
+				fr_strerror_printf("Unknown parent depth %u does not match "
+						   "known parent depth %u (%s)",
+						   da_u->depth, da_k->depth, da_k->name);
+				return -1;
+			}
+		}
+		if ((da_k == NULL) != (da_u == NULL)) {
+			fr_strerror_printf("Truncated or over-extended hierarchy "
+					   "for unknown attribute %u", da->attr);
+			return -1;
+		}
+	} else {
+		parent = fr_dict_attr_unknown_resolve(fr_dict_by_da(da), da->parent);
+		if (!parent) {
+			fr_strerror_printf("Failed resolving unknown attribute %u "
+					   "in dictionary", da->attr);
+			return -1;
+		}
+	}
+
+	da->parent = parent;
+
+	return 0;
+}
+
 /** Check to see if we can convert a nested TLV structure to known attributes
  *
  * @param[in] dict			to search in.
@@ -644,7 +705,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
  *	- NULL if we can't.
  *	- Known attribute if we can.
  */
-fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t const *da)
+fr_dict_attr_t const *fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
 	INTERNAL_IF_NULL(dict, NULL);
 
@@ -653,7 +714,7 @@ fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t c
 	if (da->parent) {
 		fr_dict_attr_t const *parent;
 
-		parent = fr_dict_attr_known(dict, da->parent);
+		parent = fr_dict_attr_unknown_resolve(dict, da->parent);
 		if (!parent) return NULL;
 
 		return fr_dict_attr_child_by_num(parent, da->attr);
@@ -662,4 +723,3 @@ fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t const *dict, fr_dict_attr_t c
 	if (dict->root == da) return dict->root;
 	return NULL;
 }
-

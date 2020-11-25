@@ -956,7 +956,7 @@ int fr_snmp_process(request_t *request)
 
 		if (!vp->da->flags.is_unknown) continue;
 
-		da = fr_dict_attr_known(NULL, vp->da);
+		da = fr_dict_attr_unknown_resolve(NULL, vp->da);
 		if (!da) {
 			WARN("Failed converting \"%s\" to a known attribute", vp->da->name);
 			continue;

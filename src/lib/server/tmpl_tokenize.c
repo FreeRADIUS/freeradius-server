@@ -3193,7 +3193,7 @@ int tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type)
  */
 int tmpl_attr_unknown_add(tmpl_t *vpt)
 {
-	tmpl_attr_t		*ar = NULL;
+	tmpl_attr_t		*ar = NULL, *next_ar = NULL;;
 
 	if (!vpt) return 1;
 
@@ -3204,7 +3204,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 	if (!tmpl_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
 
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		fr_dict_attr_t const	*da;
+		fr_dict_attr_t const	*unknown, *known;
 
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:		/* Skip */
@@ -3218,9 +3218,27 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 			break;
 		}
 
-		da = ar->ar_da;
-		da = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(da)), da);
-		if (!da) return -1;
+		unknown = ar->ar_da;
+		known = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
+		if (!known) return -1;
+
+		/*
+		 *	Fixup the parent of the next unknown
+		 *	now it's known.
+		 */
+		next_ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		if (next_ar) switch (next_ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			if (next_ar->ar_da->parent == unknown) {
+				if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next_ar->ar_da),
+									 known) < 0) return -1;
+			}
+			break;
+
+		default:
+			break;
+		}
 
 		/*
 		 *	Convert the ref to a normal type.
@@ -3244,7 +3262,10 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 */
 		if (!ar->ar_da->flags.is_raw) {
 			fr_dict_unknown_free(&ar->ar_da);
-			ar->ar_da = da;
+			ar->ar_da = known;
+		} else if (!fr_cond_assert(!next_ar)) {
+			fr_strerror_printf("Only the leaf may be raw");
+			return -1;
 		}
 	}
 
