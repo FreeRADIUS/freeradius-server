@@ -36,6 +36,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/sysutmp.h>
+#include <freeradius-devel/radius/radius.h>
 
 #include <grp.h>
 #include <pwd.h>
@@ -379,7 +380,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	status = vp->vp_uint32;
 
 	/*
-	 *	FIXME: handle FR_STATUS_ALIVE like 1.5.4.3 did.
+	 *	Maybe handle ALIVE, too?
 	 */
 	if (status != FR_STATUS_START &&
 	    status != FR_STATUS_STOP)

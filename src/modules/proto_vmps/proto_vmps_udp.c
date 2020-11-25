@@ -256,14 +256,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 */
 	if (data_size <= 0) return data_size;
 
-	/*
-	 *	Root through the reply to determine any
-	 *	connection-level negotiation data.
-	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
-//		status_check_reply(inst, buffer, buffer_len);
-	}
-
 	return data_size;
 }
 

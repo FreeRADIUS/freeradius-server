@@ -25,6 +25,9 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/radius/radius.h>
+
 #include <freeradius-devel/io/pair.h>
 #include "chbind.h"
 #include "attrs.h"

@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <ctype.h>
 

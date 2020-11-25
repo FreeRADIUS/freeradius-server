@@ -552,10 +552,16 @@ void request_verify(char const *file, int line, request_t const *request)
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, "request");
+#if 0
+		/*
+		 *	@todo - a multi-protocol server shouldn't have
+		 *	hard-coded RADIUS.
+		 */
 		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
 		    (request->reply && !request->reply->code)) {
 			fr_assert(request->state_ctx != NULL);
 		}
+#endif
 	}
 	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
 

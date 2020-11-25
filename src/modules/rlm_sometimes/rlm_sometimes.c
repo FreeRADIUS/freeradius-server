@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/debug.h>
 
 /*
@@ -112,6 +113,8 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *insta
 	/*
 	 *	If we're returning "handled", then set the packet
 	 *	code in the reply, so that the server responds.
+	 *
+	 *	@todo - MULTI_PROTOCOL - make this protocol agnostic
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {

@@ -27,6 +27,9 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+#include <freeradius-devel/radius/radius.h>
+#endif
 
 /** Merge connection and call specific client and server controls
  *
@@ -190,6 +193,9 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
 
+	/*
+	 *	@todo - MULTI_PROTOCOL - switch to auto-loaded dictionaries.
+	 */
 	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {

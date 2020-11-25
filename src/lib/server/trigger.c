@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 /*
  *	Public "thunk" API so that the various binaries can link to

@@ -25,6 +25,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/radius/radius.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
@@ -263,7 +264,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code != FR_CODE_ACCESS_CHALLENGE) {
+		if ((request->dict == dict_radius) && request->packet->code != FR_CODE_ACCESS_CHALLENGE) {
 			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 

@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/server/radutmp.h>
 #include	<freeradius-devel/server/module.h>
 #include	<freeradius-devel/util/debug.h>
+#include	<freeradius-devel/radius/radius.h>
 
 #include	<fcntl.h>
 
@@ -195,6 +196,8 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	char			*filename = NULL;
 	char			*expanded = NULL;
+
+	if (request->dict != dict_radius) RETURN_MODULE_NOOP;
 
 	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 not supported!");

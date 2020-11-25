@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/radius/defs.h>
 
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/md4.h>

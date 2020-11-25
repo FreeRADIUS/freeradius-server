@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>

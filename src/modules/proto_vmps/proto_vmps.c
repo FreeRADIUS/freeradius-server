@@ -172,7 +172,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_radius_packet_t *packet = request->packet;
 	fr_cursor_t cursor;
 
-	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_VQP_MAX_CODE);
 
 	RHEXDUMP3(data, data_len, "proto_vmps decode packet");
 
@@ -247,7 +247,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	"Do not respond"
 	 */
 	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
+	    (request->reply->code >= FR_VQP_MAX_CODE)) {
 		*buffer = false;
 		return 1;
 	}

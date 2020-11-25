@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/radius/radius.h>
 
 #include <freeradius-devel/protocol/radius/freeradius.h>
 
@@ -39,6 +40,11 @@ RCSID("$Id$")
  */
 
 #include <pthread.h>
+
+/*
+ *	@todo - MULTI_PROTOCOL - make this protocol agnostic.
+ *	Perhaps keep stats in a hash table by (request->dict, request->code) ?
+ */
 
 typedef struct {
 	pthread_mutex_t		mutex;

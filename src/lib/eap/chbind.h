@@ -33,6 +33,8 @@ RCSIDH(lib_eap_chbind_h, "$Id$")
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/radius/defs.h>
 
 /* Structure to represent eap channel binding packet format */
 typedef struct {

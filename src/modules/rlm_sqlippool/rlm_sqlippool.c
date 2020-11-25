@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <rlm_sql.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/radius/radius.h>
 
 #include <ctype.h>
 
@@ -815,7 +816,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		RETURN_MODULE_NOOP;
 	}
 	acct_status_type = vp->vp_uint32;
-
 
 	switch (acct_status_type) {
 	case FR_STATUS_START:

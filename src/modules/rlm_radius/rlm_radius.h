@@ -22,6 +22,7 @@
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/radius/radius.h>
 
 /*
  * $Id$

@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #define FR_VQP_MAX_CODE (5)
+#define FR_CODE_DO_NOT_RESPOND (0)
 #define FR_VQP_HDR_LEN (8)
 #define FR_VQP_VERSION (1)
 

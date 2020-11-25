@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

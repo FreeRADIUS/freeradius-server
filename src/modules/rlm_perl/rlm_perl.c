@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef INADDR_ANY
 #  undef INADDR_ANY

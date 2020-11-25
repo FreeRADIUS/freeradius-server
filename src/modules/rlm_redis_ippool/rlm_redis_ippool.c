@@ -48,6 +48,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
 
+#include <freeradius-devel/radius/radius.h>
+
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"

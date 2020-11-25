@@ -26,6 +26,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/util/misc.h>
 
