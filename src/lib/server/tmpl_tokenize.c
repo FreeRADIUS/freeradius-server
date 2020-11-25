@@ -1616,6 +1616,8 @@ do_suffix:
 	 *	trailing '.' then there's another attribute reference
 	 *	we need to parse, otherwise we're done.
 	 */
+	fr_sbuff_marker_release(&m_s);
+	fr_sbuff_marker(&m_s, name);
 	if (fr_sbuff_next_if_char(name, '.')) {
 		switch (da->type) {
 		/*
