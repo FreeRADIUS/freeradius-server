@@ -3227,17 +3227,10 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	now it's known.
 		 */
 		next_ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
-		if (next_ar) switch (next_ar->type) {
-		case TMPL_ATTR_TYPE_NORMAL:
-		case TMPL_ATTR_TYPE_UNKNOWN:
-			if (next_ar->ar_da->parent == unknown) {
-				if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next_ar->ar_da),
-									 known) < 0) return -1;
-			}
-			break;
-
-		default:
-			break;
+		if (next_ar && (next_ar->type == TMPL_ATTR_TYPE_UNKNOWN) &&
+		    (next_ar->ar_da->parent == unknown)) {
+			if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next_ar->ar_da),
+								 known) < 0) return -1;
 		}
 
 		/*
