@@ -1695,7 +1695,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 {
 	uint32_t		num = 0;
 	fr_sbuff_parse_error_t	sberr;
-	fr_dict_attr_t const	*child;
+	fr_dict_attr_t const	*child, *ref;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 
 	if (err) *err = FR_DICT_ATTR_OK;
@@ -1704,6 +1704,8 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
+		ref = fr_dict_attr_ref(parent);
+		if (ref) parent = ref;
 		break;
 
 	default:
