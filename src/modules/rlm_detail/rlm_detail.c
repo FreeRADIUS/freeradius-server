@@ -99,7 +99,6 @@ static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_protocol;
 
-static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
@@ -112,7 +111,6 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
@@ -274,13 +272,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	 *	Write the information to the file.
 	 */
 	if (!compat) {
+		fr_dict_attr_t const *da;
+		char const *name = NULL;
+
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), "Packet-Type");
+		if (da) name = fr_dict_enum_name_by_value(da, fr_box_uint32(packet->code));
+
 		/*
 		 *	Print out names, if they're OK.
 		 *	Numbers, if not.
 		 */
-		if (is_radius_code(packet->code)) {
-			WRITE("\tPacket-Type = %s\n",
-			      fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(packet->code)));
+		if (name) {
+			WRITE("\tPacket-Type = %s\n", name);
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
