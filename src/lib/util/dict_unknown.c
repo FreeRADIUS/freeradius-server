@@ -436,13 +436,15 @@ fr_dict_attr_t	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
  * @param[in] parent		Attribute to use as the root for resolving OIDs in.
  *				Usually the root of a protocol dictionary.
  * @param[in] in		of attribute.
+ * @param[in] tt		Terminal strings.
  * @return
  *	- The number of bytes parsed on success.
  *	- <= 0 on failure.  Negative offset indicates parse error position.
  */
 ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					 fr_dict_attr_err_t *err, fr_dict_attr_t **out,
-			      	  	 fr_dict_attr_t const *parent, fr_sbuff_t *in)
+			      	  	 fr_dict_attr_t const *parent,
+			      	  	 fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
 	fr_dict_attr_t const	*our_parent;
 	fr_dict_attr_t		*n = NULL;
@@ -452,7 +454,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				};
 	fr_sbuff_marker_t	start;
 	ssize_t			slen;
-	bool			is_raw = true;
+	bool			is_raw;
 
 	*out = NULL;
 
@@ -463,7 +465,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	/*
 	 *	Resolve all the known bits first...
 	 */
-	slen = fr_dict_attr_by_oid_substr(&our_err, &our_parent, parent, in);
+	slen = fr_dict_attr_by_oid_substr(&our_err, &our_parent, parent, in, tt);
 	switch (our_err) {
 	/*
 	 *	Um this is awkward, we were asked to
@@ -477,6 +479,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	case FR_DICT_ATTR_OK:
 		if (is_raw) {
 			*out = fr_dict_unknown_attr_afrom_da(ctx, our_parent);
+			(*out)->flags.is_raw = 1;
 			if (err) *err = *out ? FR_DICT_ATTR_OK : FR_DICT_ATTR_PARSE_ERROR;
 		} else {
 			*out = fr_dict_attr_unconst(our_parent);	/* Which is the resolved attribute in this case */

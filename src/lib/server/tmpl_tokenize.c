@@ -1341,7 +1341,8 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
  * @param[in,out] vpt		to append this reference to.
  * @param[in] parent		Result of parsing the previous attribute reference.
  * @param[in] name		to parse.
- * @param[in] rules		which places constraints on attribute reference parsing.
+ * @param[in] p_rules		Formatting rules used to check for trailing garbage.
+ * @param[in] t_rules		which places constraints on attribute reference parsing.
  *				Rules interpreted by this function is:
  *				- allow_unknown - If false unknown OID components
  *				  result in a parse error.
@@ -1362,7 +1363,9 @@ static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_a
 static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					      tmpl_t *vpt,
 					      fr_dict_attr_t const *parent,
-					      fr_sbuff_t *name, tmpl_rules_t const *rules, unsigned int depth)
+					      fr_sbuff_t *name,
+					      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+					      unsigned int depth)
 {
 	uint32_t		oid = 0;
 	ssize_t			slen;
@@ -1396,7 +1399,9 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	if (!parent) {
 		slen = fr_dict_attr_by_qualified_oid_substr(&dict_err, &da,
-							    rules->dict_def, name, !rules->disallow_internal);
+							    t_rules->dict_def,
+							    name, p_rules ? p_rules->terminals : NULL,
+							    !t_rules->disallow_internal);
 	/*
 	 *	Otherwise we're resolving in the context of the last component,
 	 *	or its reference in the case of group attributes.
@@ -1454,8 +1459,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	significantly more numberspace overlap
 		 *	between the protocols.
 		 */
-		if (!parent && rules->dict_def) parent = fr_dict_root(rules->dict_def);
-		if (!parent && !rules->disallow_internal) parent = fr_dict_root(fr_dict_internal());
+		if (!parent && t_rules->dict_def) parent = fr_dict_root(t_rules->dict_def);
+		if (!parent && !t_rules->disallow_internal) parent = fr_dict_root(fr_dict_internal());
 		if (!parent) {
 			fr_strerror_printf("OID references must be qualified with a protocol when used here");
 			if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
@@ -1485,7 +1490,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			goto check_attr;
 		}
 
-		if (!rules->allow_unknown) {
+		if (!t_rules->allow_unknown) {
 			fr_strerror_printf("Unknown attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
@@ -1531,7 +1536,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Don't alter the fr_strerror buffer, may contain useful
 	 *	errors from the dictionary code.
 	 */
-	if (!rules->allow_unresolved) {
+	if (!t_rules->allow_unresolved) {
 		fr_strerror_printf_push("Unresolved attributes not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
@@ -1544,26 +1549,26 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, name, rules, depth);
+	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, name, t_rules, depth);
 
 check_attr:
 	/*
 	 *	Attribute location (dictionary) checks
 	 */
-	if (!rules->allow_foreign || rules->disallow_internal) {
+	if (!t_rules->allow_foreign || t_rules->disallow_internal) {
 		fr_dict_t const *found_in = fr_dict_by_da(da);
 
 		/*
 		 *	Parent is the dict root if this is the first ref in the
 		 *	chain.
 		 */
-		if (!parent) parent = fr_dict_root(rules->dict_def);
+		if (!parent) parent = fr_dict_root(t_rules->dict_def);
 
 		/*
 		 *	Even if allow_foreign is false, if disallow_internal is not
 		 *	true, we still allow the resolution.
 		 */
-		if (rules->disallow_internal && (found_in == fr_dict_internal())) {
+		if (t_rules->disallow_internal && (found_in == fr_dict_internal())) {
 			fr_strerror_printf("Internal attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
@@ -1587,10 +1592,10 @@ check_attr:
 		 *	|_ RADIUS attribute
 		 */
 		if (found_in != fr_dict_internal() &&
-		    !rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
+		    !t_rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
-					   fr_dict_root(rules->dict_def)->name);
+					   fr_dict_root(t_rules->dict_def)->name);
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
@@ -1660,7 +1665,7 @@ do_suffix:
 		}
 
 		if (ar) tmpl_attr_insert(vpt, ar);
-		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, name, rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, name, p_rules, t_rules, depth + 1) < 0) {
 			if (ar) fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
 		}
@@ -1908,7 +1913,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	    (((fr_sbuff_next_if_char(&our_name, ':') && (vpt->data.attribute.old_list_sep = true)) ||
 	     fr_sbuff_next_if_char(&our_name, '.')) && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
-						  vpt, t_rules->attr_parent, &our_name, t_rules, 0);
+						  vpt, t_rules->attr_parent, &our_name, p_rules, t_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -2906,7 +2911,8 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 			/*
 			 *	Can't find it under its regular name.  Try an unknown attribute.
 			 */
-			slen = fr_dict_unknown_afrom_oid_substr(vpt, NULL, &unknown_da, parent, &sbuff);
+			slen = fr_dict_unknown_afrom_oid_substr(vpt, NULL, &unknown_da, parent,
+								&sbuff, NULL);
 			if ((slen <= 0) || (fr_sbuff_remaining(&sbuff))) {
 				fr_strerror_printf_push("Failed resolving unresolved attribute");
 				return -1;

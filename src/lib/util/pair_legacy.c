@@ -35,6 +35,29 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+fr_sbuff_term_t const 		bareword_terminals =
+				FR_SBUFF_TERMS(
+					L("\t"),
+					L("\n"),
+					L(" "),
+					L("!*"),
+					L("!="),
+					L("!~"),
+					L("&&"),		/* Logical operator */
+					L(")"),			/* Close condition/sub-condition */
+					L("+="),
+					L("-="),
+					L(":="),
+					L("<"),
+					L("<="),
+					L("=*"),
+					L("=="),
+					L("=~"),
+					L(">"),
+					L(">="),
+					L("||"),		/* Logical operator */
+				);
+
 /** Mark a valuepair for xlat expansion
  *
  * Copies xlat source (unprocessed) string to valuepair value, and sets value type.
@@ -94,7 +117,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) return NULL;
 
-	if ((fr_dict_unknown_afrom_oid_substr(vp, NULL, &n, fr_dict_root(dict), &sbuff) <= 0) ||
+	if ((fr_dict_unknown_afrom_oid_substr(vp, NULL, &n, fr_dict_root(dict), &sbuff, NULL) <= 0) ||
 					      fr_sbuff_remaining(&sbuff)) {
 		talloc_free(vp);
 		return NULL;
@@ -285,7 +308,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		ssize_t slen;
 		fr_dict_attr_t const *da;
 		fr_dict_attr_t *da_unknown = NULL;
-
 		fr_skip_whitespace(p);
 
 		/*
@@ -300,13 +322,23 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 
 		/*
+		 *	Hacky hack...
+		 */
+		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
+
+		/*
 		 *	Parse the name.
 		 */
-		slen = fr_dict_attr_by_oid_substr(NULL, &da, root, &FR_SBUFF_IN(p, strlen(p)));
-		if ((slen <= 0) && internal) slen = fr_dict_attr_by_oid_substr(NULL, &da, internal, &FR_SBUFF_IN(p, strlen(p)));
+		slen = fr_dict_attr_by_oid_substr(NULL, &da, root,
+						  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+		if ((slen <= 0) && internal) {
+			slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
+							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+		}
 		if (slen <= 0) {
+		do_unknown:
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, root,
-								&FR_SBUFF_IN(p, strlen(p)));
+								&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
 			if (slen <= 0) {
 				p += -slen;
 

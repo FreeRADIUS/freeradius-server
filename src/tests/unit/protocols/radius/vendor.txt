@@ -47,7 +47,7 @@ match raw.Vendor-Specific = 0x00000009abcdef
 #  Parse this as itself, nothing else.
 #
 attribute raw.26 = 0x00000009abcdef
-match raw.26 = 0x00000009abcdef
+match raw.Vendor-Specific = 0x00000009abcdef
 
 # this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
 encode-pair Vendor-Specific.Unisphere.ERX-LI-Action = off

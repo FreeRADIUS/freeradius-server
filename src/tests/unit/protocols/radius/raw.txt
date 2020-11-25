@@ -4,11 +4,8 @@ proto-dictionary radius
 decode-pair 05 04 01 02
 match raw.NAS-Port = 0x0102
 
-#
-#  We don't print raw attributes with a prefix.  Perhaps we should.
-#
 attribute raw.NAS-Port = 0x0102
-match NAS-Port = 0x0102
+match raw.NAS-Port = 0x0102
 
 #
 #  This currently encodes the wrong thing,

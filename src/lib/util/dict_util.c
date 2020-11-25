@@ -1685,27 +1685,28 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
  * @param[out] out		The deepest attribute we resolved.
  * @param[in] parent		Where to resolve relative attributes from.
  * @param[in] in		string to parse.
+ * @param[in] tt		Terminal strings.
  * @return
  *	- >0 the number of bytes consumed.
  *	- <= 0 Parse error occurred here.
  */
 ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 			      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-			      fr_sbuff_t *in)
+			      fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
+	fr_sbuff_marker_t	start;
 	uint32_t		num = 0;
 	fr_sbuff_parse_error_t	sberr;
-	fr_dict_attr_t const	*child, *ref;
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_dict_attr_t const	*child;
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
 	*out = NULL;
 
+	fr_sbuff_marker(&start, in);
+
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
-		ref = fr_dict_attr_ref(parent);
-		if (ref) parent = ref;
 		break;
 
 	default:
@@ -1717,30 +1718,31 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 				   (int)fr_sbuff_remaining(in),
 				   fr_sbuff_current(in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
-		return 0;
+		return -fr_sbuff_marker_release_behind(&start);
 	}
 
-	/*
-	 *	Try to parse a number.  BUT if the trailing character
-	 *	is an allowed dictionary character, then we know that
-	 *	the OID isn't a number, it's a name.  e.g. "3com".
-	 */
-	fr_sbuff_out(&sberr, &num, &our_in);
-	if (fr_sbuff_is_in_charset(&our_in, fr_dict_attr_allowed_chars)) sberr = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
-
+	fr_sbuff_out(&sberr, &num, in);
 	switch (sberr) {
 	/*
 	 *	Lookup by number
 	 */
 	case FR_SBUFF_PARSE_OK:
+		if (!fr_sbuff_is_char(in, '.') && !fr_sbuff_is_terminal(in, tt)) {
+			fr_sbuff_set(in, &start);	/* Reset to the start */
+			goto oid_str;
+		}
+
 		child = dict_attr_child_by_num(parent, num);
 		if (!child) {
 			fr_strerror_printf("Failed resolving child %u in context %s",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
+			fr_sbuff_set(in, &start);		/* Reset to start of number */
+			fr_sbuff_marker_release(&start);
+
 			return 0;
 		}
-		FALL_THROUGH;
+		break;
 
 	/*
 	 *	Lookup by name
@@ -1750,29 +1752,29 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		fr_dict_attr_err_t	our_err;
 		ssize_t			slen;
 
-		our_in = FR_SBUFF_NO_ADVANCE(in);
-		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in);
+	oid_str:
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in);
 		if (our_err != FR_DICT_ATTR_OK) {
 			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
 					   (int)fr_sbuff_remaining(in),
 					   fr_sbuff_current(in),
 					   parent->name);
 			if (err) *err = our_err;
-			return slen;
+			return slen - fr_sbuff_marker_release_behind(&start);
 		}
 	}
 		break;
 
 	default:
 		fr_strerror_printf("Invalid OID component \"%.*s\"",
-				   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return -fr_sbuff_used(&our_in);
+		return -fr_sbuff_marker_release_behind(&start);
 	}
 
 	*out = child;
 
-	return fr_sbuff_set(in, &our_in);
+	return fr_sbuff_marker_release_behind(&start);
 }
 
 /** Resolve an attribute using an OID string
@@ -1784,13 +1786,14 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
  * @param[out] out		The deepest attribute we resolved.
  * @param[in] parent		Where to resolve relative attributes from.
  * @param[in] in		string to parse.
+ * @param[in] tt		Terminal strings.
  * @return
  *	- >0 the number of bytes consumed.
  *	- <= 0 Parse error occurred here.
  */
 ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 				   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-				   fr_sbuff_t *in)
+				   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
 	fr_sbuff_marker_t	start, c_s;
 	fr_dict_attr_t const	*our_parent = parent;
@@ -1810,7 +1813,7 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		ssize_t			slen;
 		fr_dict_attr_t const	*child;
 
-		slen = fr_dict_oid_component(err, &child, our_parent, in);
+		slen = fr_dict_oid_component(err, &child, our_parent, in, tt);
 		if ((slen <= 0) || !child) {
 			ssize_t ret = slen - fr_sbuff_behind(&start);
 
@@ -1844,7 +1847,7 @@ fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(oid, strlen(oid));
 	fr_dict_attr_t const	*da;
 
-	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff) <= 0) return NULL;
+	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL) <= 0) return NULL;
 
 	return da;
 }
@@ -2266,6 +2269,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 {
 	fr_dict_attr_t const	*da;
 	size_t			len;
+	fr_dict_attr_t const	*ref;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
 	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 	fr_hash_table_t		*namespace;
@@ -2284,6 +2288,9 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
+
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
@@ -2357,13 +2364,15 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] name		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
  * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					     fr_dict_t const *dict_def, fr_sbuff_t *name, bool fallback)
+					     fr_dict_t const *dict_def,
+					     fr_sbuff_t *name, fr_sbuff_term_t const *tt, bool fallback)
 {
 	fr_dict_t		*dict = NULL;
 	fr_dict_t		*dict_iter = NULL;
@@ -2410,7 +2419,7 @@ again:
 	 *	We rely on the fact the sbuff is only
 	 *	advanced on success.
 	 */
-	fr_dict_attr_by_oid_substr(&aerr, out, fr_dict_root(dict), &our_name);
+	fr_dict_attr_by_oid_substr(&aerr, out, fr_dict_root(dict), &our_name, tt);
 	switch (aerr) {
 	case FR_DICT_ATTR_OK:
 		break;
@@ -2497,7 +2506,7 @@ fr_dict_attr_t const *fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err, fr_
 
 	fr_sbuff_init(&our_name, name, strlen(name) + 1);
 
-	slen = fr_dict_attr_by_qualified_oid_substr(err, &da, dict_def, &our_name, fallback);
+	slen = fr_dict_attr_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
 	if (slen <= 0) return NULL;
 
 	if ((size_t)slen != fr_sbuff_len(&our_name)) {

@@ -347,7 +347,8 @@ fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx,
 
 ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							 fr_dict_attr_err_t *err, fr_dict_attr_t **out,
-							 fr_dict_attr_t const *parent, fr_sbuff_t *in)
+							 fr_dict_attr_t const *parent,
+							 fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 							 CC_HINT(nonnull(3,4,5));
 
 int			fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent);
@@ -419,12 +420,13 @@ ssize_t			fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const
 
 ssize_t			fr_dict_oid_component(fr_dict_attr_err_t *err,
 					      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-					      fr_sbuff_t *in)
+					      fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 					      CC_HINT(nonnull(2,3,4));
 
 ssize_t			fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 						   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-						   fr_sbuff_t *in) CC_HINT(nonnull(2,3,4));
+						   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+						   CC_HINT(nonnull(2,3,4));
 
 fr_dict_attr_t const	*fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 					     fr_dict_attr_t const *parent, char const *oid)
@@ -482,7 +484,8 @@ fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 
 ssize_t			fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							     fr_dict_t const *dict_def,
-							     fr_sbuff_t *name, bool fallback);
+							     fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+							     bool fallback);
 
 fr_dict_attr_t const	*fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err,
 						       fr_dict_t const *dict_def, char const *attr, bool fallback)
