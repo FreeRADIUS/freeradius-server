@@ -2492,6 +2492,42 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	return 0;
 }
 
+/* Alloc a new root dictionary attribute
+ *
+ * @note Must only be called once per dictionary.
+ *
+ * @param[in] proto_name	that we're loading the dictionary for.
+ * @param[in] proto_number	The artificial (or IANA allocated) number for the protocol.
+ * @return
+ *	- A pointer to the new dict context on success.
+ *	- NULL on failure.
+ */
+fr_dict_t *fr_dict_alloc(char const *proto_name, unsigned int proto_number)
+{
+	fr_dict_t	*dict;
+
+	if (unlikely(!dict_gctx)) {
+		fr_strerror_printf("fr_dict_global_ctx_init() must be called before loading dictionary files");
+		return NULL;
+	}
+
+	/*
+	 *	Alloc dict instance.
+	 */
+	dict = dict_alloc(dict_gctx);
+	if (!dict) return NULL;
+
+	/*
+	 *	Set the root name of the dictionary
+	 */
+	if (dict_root_set(dict, proto_name, proto_number) < 0) {
+		talloc_free(dict);
+		return NULL;
+	}
+
+	return dict;
+}
+
 /** Read supplementary attribute definitions into an existing dictionary
  *
  * @param[in] dict	Existing dictionary.
