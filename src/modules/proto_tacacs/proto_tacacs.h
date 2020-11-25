@@ -24,7 +24,6 @@
 
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/tacacs/tacacs.h>
-#include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
 #include <freeradius-devel/protocol/tacacs/tacacs.h>
 
 #define FR_PACKET_TYPE_MAX (FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND + 1)
