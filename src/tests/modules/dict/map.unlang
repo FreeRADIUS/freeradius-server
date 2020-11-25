@@ -33,14 +33,14 @@ else {
 	test_fail
 }
 
-if ("%{attr_by_oid:26.11344.1}" == 'Vendor-Specific.FreeRADIUS.Proxied-To') {
+if ("%{attr_by_oid:26.11344.1}" == 'Proxied-To') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{attr:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'FreeRADIUS-Proxied-To') {
+if ("%{attr:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'Proxied-To') {
 	test_pass
 }
 else {

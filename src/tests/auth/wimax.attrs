@@ -5,21 +5,21 @@
 #
 User-Name = "bob"
 User-Password = "hello"
-WiMAX-GMT-Timezone-offset = -1
-WiMAX-AAA-Session-Id = 0x01020304
-WiMAX-hHA-IP-MIP4 = 192.0.2.1
+Vendor-Specific.WiMAX.GMT-Timezone-offset = -1
+Vendor-Specific.WiMAX.AAA-Session-Id = 0x01020304
+Vendor-Specific.WiMAX.hHA-IP-MIP4 = 192.0.2.1
 #
 #  Automatically encoded capability
 #
-WiMAX-Accounting-Capabilities = 2
-WiMAX-Release = "1.0"
-WiMAX-Packet-Data-Flow-Id = 1
+Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = 2
+Vendor-Specific.WiMAX.Capability.Release = "1.0"
+Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id = 1
 #
 #  Long string
 #
-WiMAX-Hotline-Indicator = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaaaaaaaaaabbbbbbbbbbcccccccccc123"
-WiMAX-Service-Data-Flow-Id = 2
-WiMAX-hHA-IP-MIP4 = 192.0.2.2
+Vendor-Specific.WiMAX.Hotline-Indicator = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaaaaaaaaaabbbbbbbbbbcccccccccc123"
+Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-Id = 2
+Vendor-Specific.WiMAX.hHA-IP-MIP4 = 192.0.2.2
 
 # and the response
 Packet-Type == Access-Accept

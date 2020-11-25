@@ -10,12 +10,12 @@
 #
 User-name = "bob",
 Digest-Response = "e4e4ea61d186d07a92c9e1f6919902e9",
-Digest-Realm = "biloxi.com",
-Digest-Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
-Digest-Method = "INVITE",
-Digest-URI = "sip:bob@biloxi.com",
-Digest-Algorithm = "MD5-sess",
-Digest-User-Name = "bob",
-Digest-QOP = "auth",
-Digest-Nonce-Count  = "00000001",
-Digest-CNonce = "0a4f113b"
+Digest-Attributes.Realm = "biloxi.com",
+Digest-Attributes.Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+Digest-Attributes.Method = "INVITE",
+Digest-Attributes.URI = "sip:bob@biloxi.com",
+Digest-Attributes.Algorithm = "MD5-sess",
+Digest-Attributes.User-Name = "bob",
+Digest-Attributes.QOP = "auth",
+Digest-Attributes.Nonce-Count  = "00000001",
+Digest-Attributes.CNonce = "0a4f113b"

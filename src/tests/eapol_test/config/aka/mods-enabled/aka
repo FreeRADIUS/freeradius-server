@@ -13,7 +13,7 @@ cache eap_aka_cache {
 	#  update <section> { ... }::
 	#
 	update {
-		&session-state.Session-Data	:= &session-state.Session-Data
-		&session-state.Counter		:= &session-state.Counter
+		&session-state.Session-Data		:= &session-state.Session-Data
+		&session-state.Encr-Data.Counter	:= &session-state.Encr-Data.Counter
 	}
 }

@@ -4,10 +4,10 @@
 #  Section 3.3
 #
 #
-#  In the "users" file: 
+#  In the "users" file:
 #
 #       bob		Password.Cleartext := "zanzibar"
-#  Or	bob	    	Digest-HA1 := "12af60467a33e8518da5c68bbff12b11"
+#  Or	bob	    	Digest-Attributes.HA1 := "12af60467a33e8518da5c68bbff12b11"
 #
 #
 #
@@ -17,12 +17,12 @@
 #
 User-Name = "bob",
 Digest-Response = "89eb0059246c02b2f6ee02c7961d5ea3",
-Digest-Realm = "biloxi.com",
-Digest-Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
-Digest-Method = "INVITE",
-Digest-URI = "sip:bob@biloxi.com",
-Digest-User-Name = "bob",
-Digest-QOP = "auth",
-Digest-Algorithm = "MD5",
-Digest-Nonce-Count = "00000001",
-Digest-CNonce = "0a4f113b",
+Digest-Attributes.Realm = "biloxi.com",
+Digest-Attributes.Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+Digest-Attributes.Method = "INVITE",
+Digest-Attributes.URI = "sip:bob@biloxi.com",
+Digest-Attributes.User-Name = "bob",
+Digest-Attributes.QOP = "auth",
+Digest-Attributes.Algorithm = "MD5",
+Digest-Attributes.Nonce-Count = "00000001",
+Digest-Attributes.CNonce = "0a4f113b",

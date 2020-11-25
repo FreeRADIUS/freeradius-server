@@ -3,7 +3,7 @@
 #
 User-Name = "bob"
 User-Password = "hello"
-Attr-17 = 0xabcdef
+raw.17 = 0xabcdef
 
 #
 #  Expected answer

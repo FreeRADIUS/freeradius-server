@@ -75,7 +75,7 @@ do
 				PASSWORD="CHAP-Password"
 				;;
 			mschap)
-				PASSWORD="MS-CHAP-Password"
+				PASSWORD="Vendor-Specific.Microsoft.CHAP-Password"
 				;;
 			*)
 				usage

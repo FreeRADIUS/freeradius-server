@@ -25,16 +25,16 @@ server eap-sim {
                         &Sim-SQN := 3
                 }
 		update reply {
-			&Next-Reauth-Id := ""
-			&Next-Pseudonym := ""
+			&Encr-Data.Next-Reauth-Id := ""
+			&Encr-Data.Next-Pseudonym := ""
 		}
 		ok
 	}
 
 	send Reauthentication-Request {
 		update reply {
-			&Next-Reauth-Id := ""
-			&Next-Pseudonym := ""
+			&Encr-Data.Next-Reauth-Id := ""
+			&Encr-Data.Next-Pseudonym := ""
 		}
 		ok
 	}

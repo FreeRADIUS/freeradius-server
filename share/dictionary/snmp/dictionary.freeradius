@@ -50,10 +50,10 @@ ATTRIBUTE	FreeRADIUS-Mib-2			.3.6.1.2.1	tlv
 #
 BEGIN-TLV	FreeRADIUS-Mib-2
 ATTRIBUTE	Radius-Mib				67	tlv
-ATTRIBUTE	Radius-Authentication			.1	tlv
-ATTRIBUTE	Radius-Auth-Serv-Mib			.1.1	tlv
-ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		.1.1.1	tlv
-ATTRIBUTE	Radius-Auth-Serv			.1.1.1.1	tlv
+ATTRIBUTE	Radius-Authentication			67.1	tlv
+ATTRIBUTE	Radius-Auth-Serv-Mib			67.1.1	tlv
+ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		67.1.1.1	tlv
+ATTRIBUTE	Radius-Auth-Serv			67.1.1.1.1	tlv
 
 BEGIN-TLV	Radius-Auth-Serv
 ATTRIBUTE	Radius-Auth-Serv-Ident			1	string
@@ -116,7 +116,7 @@ ATTRIBUTE	Radius-Auth-Serv-Ext-Bad-Authenticators	11	integer
 ATTRIBUTE	Radius-Auth-Serv-Ext-Packet-Dropped	12	integer
 ATTRIBUTE	Radius-Auth-Serv-Ext-Unknown-Types	13	integer
 ATTRIBUTE	Radius-Auth-Serv-Counter-Discontinuity	14	integer
-END-TLV		Radius-Auth-Client-Ext-Entry
+END-TLV		16.Radius-Auth-Client-Ext-Entry
 
-END-TLV		Radius-Auth-Serv
-END-TLV		FreeRADIUS-Mib-2
+END-TLV		67.1.1.1.Radius-Auth-Serv
+END-TLV		1.3.6.1.2.FreeRADIUS-Mib-2

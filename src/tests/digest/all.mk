@@ -33,8 +33,8 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do	\
 		echo "DIGEST-TEST $(TARGET)_$${_num}";			\
 		cp -f $< $@.request;					\
-		echo "Test-Name = \"$(TARGET)\"" >> $@.request;		\
-		echo "Test-Number = \"$${_num}\"" >> $@.request;	\
+		echo "Vendor-Specific.Test.Test-Name = \"$(TARGET)\"" >> $@.request;		\
+		echo "Vendor-Specific.Test.Test-Number = \"$${_num}\"" >> $@.request;	\
 		if ! $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(PORT) auth $(SECRET) > $@.out; then \
 			echo "FAILED";					\
 			cat $@.out;					\

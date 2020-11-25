@@ -5,7 +5,7 @@ if ("${feature.tls}" == no) {
 
 if (&User-Name == 'pbkdf2_iter0') {
 	update control {
-		&PBKDF2-Password := 'HMACSHA2+256:AAAAAP:CuNDJ9NimZoP5ljnPNCBUA==:f09zV7dReGg5SIv/EXY9tCL4XQRr5guhL0Q6UXSKI3c='
+		&Password.PBKDF2 := 'HMACSHA2+256:AAAAAP:CuNDJ9NimZoP5ljnPNCBUA==:f09zV7dReGg5SIv/EXY9tCL4XQRr5guhL0Q6UXSKI3c='
 	}
 	pap.authorize
 	pap.authenticate

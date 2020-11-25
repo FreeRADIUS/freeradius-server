@@ -22,7 +22,7 @@ ATTRIBUTE	Session-Start-Time		2	date
 #
 #  FreeRADIUS v4 produces statistics in its own TLV
 #
-ATTRIBUTE	Stats4-TLV			15	tlv
+ATTRIBUTE	Stats4				15	tlv
 ATTRIBUTE	Stats4-Type			.1	integer
 
 VALUE	Stats4-Type		Global			1
@@ -30,7 +30,7 @@ VALUE	Stats4-Type		Client			2
 VALUE	Stats4-Type		Listener		3
 
 ATTRIBUTE	Stats4-Name			.2	string
-ATTRIBUTE	Stats4-Number		.3	string
+ATTRIBUTE	Stats4-Number			.3	string
 ATTRIBUTE	Stats4-IPv4-Address		.4	ipaddr
 ATTRIBUTE	Stats4-IPv6-Address		.5	ipv6addr
 ATTRIBUTE	Stats4-Port			.6	integer

@@ -27,7 +27,7 @@ Framed-Protocol = PPP
 Acct-Link-Count = 0
 Idle-Timeout = 0
 Session-Timeout = 604800
-Access-Loop-Encapsulation = 0x000000
+Vendor-Specific.ADSL-Forum.Access-Loop-Encapsulation = 0x000000
 Proxy-State = 0x323531
 
 #
