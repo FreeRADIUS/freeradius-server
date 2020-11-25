@@ -1395,8 +1395,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!parent) {
-		slen = fr_dict_attr_by_qualified_name_substr(&dict_err, &da,
-							     rules->dict_def, name, !rules->disallow_internal);
+		slen = fr_dict_attr_by_qualified_oid_substr(&dict_err, &da,
+							    rules->dict_def, name, !rules->disallow_internal);
 	/*
 	 *	Otherwise we're resolving in the context of the last component,
 	 *	or its reference in the case of group attributes.
@@ -2865,8 +2865,9 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 	 */
 	ar = fr_dlist_head(&vpt->data.attribute.ar);
 	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
-		if (fr_dict_attr_by_qualified_name(&da, vpt->rules.dict_def,
-						   ar->ar_unresolved, true) != FR_DICT_ATTR_OK) {
+		da = fr_dict_attr_by_qualified_oid(NULL, vpt->rules.dict_def,
+						   ar->ar_unresolved, true);
+		if (!da) {
 			parent = fr_dict_root(vpt->rules.dict_def);
 			goto unknown;
 		}

@@ -469,12 +469,13 @@ ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *attr)
 			CC_HINT(nonnull(2,3));
 
-ssize_t			fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-							      fr_dict_t const *dict_def,
-							      fr_sbuff_t *name, bool fallback);
+ssize_t			fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+							     fr_dict_t const *dict_def,
+							     fr_sbuff_t *name, bool fallback);
 
-fr_dict_attr_err_t	fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
-						       fr_dict_t const *dict_def, char const *attr, bool fallback);
+fr_dict_attr_t const	*fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err,
+						       fr_dict_t const *dict_def, char const *attr, bool fallback)
+						       CC_HINT(nonnull(3));
 
 fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 

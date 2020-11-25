@@ -2360,8 +2360,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					      fr_dict_t const *dict_def, fr_sbuff_t *name, bool fallback)
+ssize_t fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					     fr_dict_t const *dict_def, fr_sbuff_t *name, bool fallback)
 {
 	fr_dict_t		*dict = NULL;
 	fr_dict_t		*dict_iter = NULL;
@@ -2479,30 +2479,32 @@ again:
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
  *
- * @param[out] out		Dictionary found attribute.
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] name		Dictionary/Attribute name.
  * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return an #fr_dict_attr_err_t value.
  */
-fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
-						  char const *name, bool fallback)
+fr_dict_attr_t const *fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err, fr_dict_t const *dict_def,
+						    char const *name, bool fallback)
 {
 	ssize_t			slen;
-	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
 	fr_sbuff_t		our_name;
+	fr_dict_attr_t const	*da;
 
 	fr_sbuff_init(&our_name, name, strlen(name) + 1);
 
-	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, &our_name, fallback);
-	if (slen <= 0) return err;
+	slen = fr_dict_attr_by_qualified_oid_substr(err, &da, dict_def, &our_name, fallback);
+	if (slen <= 0) return NULL;
 
 	if ((size_t)slen != fr_sbuff_len(&our_name)) {
 		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
-		return FR_DICT_ATTR_PARSE_ERROR;
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return NULL;
 	}
 
-	return FR_DICT_ATTR_OK;
+	return da;
 }
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type

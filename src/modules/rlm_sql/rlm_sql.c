@@ -1075,8 +1075,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			goto error;
 		}
 
-		if (fr_dict_attr_by_qualified_name(&inst->group_da, dict_freeradius,
-						   group_attribute, false) != FR_DICT_ATTR_OK) {
+		inst->group_da = fr_dict_attr_by_qualified_oid(NULL, dict_freeradius, group_attribute, false);
+		if (!inst->group_da) {
 			PERROR("Failed resolving group attribute");
 			goto error;
 		}

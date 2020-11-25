@@ -152,7 +152,8 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	if (fr_dict_attr_by_qualified_name(&da, dict, attrname, true) != FR_DICT_ATTR_OK) {
+	da = fr_dict_attr_by_qualified_oid(NULL, dict, attrname, true);
+	if (da) {
 		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
