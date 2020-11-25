@@ -875,11 +875,28 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 		fr_table_num_ordered_t const	*type;
 		size_t				i;
 
-		RIDEBUG2("&%s.%s %s %pV",
-			fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-			vp->da->name,
-			fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
-			&vp->data);
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			if (!vp->vp_group) {
+				RIDEBUG2("&%s.%s %s {}",
+					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+					 vp->da->name,
+					 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"));
+			} else {
+				RIDEBUG2("&%s.%s %s {...}", /* @todo */
+					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+					 vp->da->name,
+					 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"));
+			}
+			break;
+
+		default:
+			RIDEBUG2("&%s.%s %s %pV",
+				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+				 vp->da->name,
+				 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
+				 &vp->data);
+		}
 
 		if (!RDEBUG_ENABLED3) continue;
 
