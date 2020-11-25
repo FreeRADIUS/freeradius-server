@@ -264,6 +264,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 	fr_token_t	last_token = T_INVALID;
 	fr_pair_t_RAW	raw;
 	fr_dict_attr_t const *root = fr_dict_root(dict);
+	fr_dict_attr_t const *internal = fr_dict_root(fr_dict_internal());
+
+	if (internal == root) internal = NULL;
 
 	/*
 	 *	We allow an empty line.
@@ -299,6 +302,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 *	Parse the name.
 		 */
 		slen = fr_dict_attr_by_oid_substr(NULL, &da, root, &FR_SBUFF_IN(p, strlen(p)));
+		if ((slen <= 0) && internal) slen = fr_dict_attr_by_oid_substr(NULL, &da, internal, &FR_SBUFF_IN(p, strlen(p)));
 		if (slen <= 0) {
 			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, root,
 								&FR_SBUFF_IN(p, strlen(p)));
