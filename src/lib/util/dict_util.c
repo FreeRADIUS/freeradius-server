@@ -2408,7 +2408,7 @@ again:
 	 *	We rely on the fact the sbuff is only
 	 *	advanced on success.
 	 */
-	fr_dict_attr_by_name_substr(&aerr, out, fr_dict_root(dict), &our_name);
+	fr_dict_attr_by_oid_substr(&aerr, out, fr_dict_root(dict), &our_name);
 	switch (aerr) {
 	case FR_DICT_ATTR_OK:
 		break;
