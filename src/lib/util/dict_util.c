@@ -2985,7 +2985,7 @@ int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
 			return -1;
 		}
 
-		if (p->out) *(p->out) = enumv;
+		if (p->out) *(p->out) = enumv->value;
 	}
 
 	return 0;

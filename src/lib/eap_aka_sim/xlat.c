@@ -22,7 +22,6 @@
  */
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.eap.h>
 #include "base.h"
 #include "attrs.h"
 
@@ -495,22 +494,14 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 			goto error;
 		}
 
-		switch (eap_type->vp_uint32) {
-		case FR_EAP_TYPE_VALUE_SIM:
+		if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
 			tag = ID_TAG_SIM_PSEUDONYM_B64;
-			break;
-
-		case FR_EAP_TYPE_VALUE_AKA:
+		} else if (eap_type->vp_uint32 == enum_eap_type_aka->vb_uint32) {
 			tag = ID_TAG_AKA_PSEUDONYM_B64;
-			break;
-
-		case FR_EAP_TYPE_VALUE_AKA_PRIME:
+		} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
 			tag = ID_TAG_AKA_PRIME_PSEUDONYM_B64;
-			break;
-
-		default:
+		} else {
 			REDEBUG("&control.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
-			break;
 		}
 
 		id_p = id;

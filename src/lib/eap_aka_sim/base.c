@@ -174,6 +174,18 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ NULL }
 };
 
+fr_value_box_t const	*enum_eap_type_sim;
+fr_value_box_t const	*enum_eap_type_aka;
+fr_value_box_t const	*enum_eap_type_aka_prime;
+
+extern fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[];
+fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[] = {
+	{ .out = &enum_eap_type_sim, .name = "SIM", .attr = &attr_eap_type },
+	{ .out = &enum_eap_type_aka, .name = "AKA", .attr = &attr_eap_type },
+	{ .out = &enum_eap_type_aka_prime, .name = "AKA-Prime", .attr = &attr_eap_type },
+	{ NULL }
+};
+
 /** SIM AT on-the-wire format attribute sizes
  *
  * Holds the min/max sizes of all supported SIM AT attribute values as they

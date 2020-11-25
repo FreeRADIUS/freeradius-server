@@ -194,7 +194,7 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_dict_enum_t const	**out;				//!< Enumeration value.
+	fr_value_box_t const	**out;				//!< Enumeration value.
 	fr_dict_attr_t const	**attr;				//!< The protocol dictionary the attribute should
 								///< be resolved in. ** so it's a compile time
 								///< constant.
