@@ -1096,7 +1096,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_address_t address;
 	fr_io_connection_t my_connection, *connection;
 	fr_io_pending_packet_t *pending;
-	fr_io_track_t *track;
+	fr_io_track_t *track, *new_track;
 	fr_listen_t *child;
 	int value, accept_fd = -1;
 
@@ -1105,7 +1105,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
-	track = NULL;
+	track = new_track = NULL;
 
 	/*
 	 *	There was data left over from the previous read, go
@@ -1528,7 +1528,7 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
-			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
+			track = new_track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
 			if (!track) {
 				DEBUG("Failed tracking packet from client %s - discarding it",
 				      client->radclient->shortname);
@@ -1595,7 +1595,7 @@ have_client:
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
 				DEBUG("Too many pending packets for client %pV - discarding packet",
 				      fr_box_ipaddr(client->src_ipaddr));
-				return 0;
+				goto done;
 			}
 
 			/*
@@ -1605,14 +1605,14 @@ have_client:
 						      track, *priority);
 			if (!pending) {
 				DEBUG("Failed tracking packet from client %pV - discarding packet", fr_box_ipaddr(client->src_ipaddr));
-				return 0;
+				goto done;
 			}
 
 			if (fr_heap_num_elements(client->pending) > 1) {
 				DEBUG("Client %pV is still being dynamically defined.  "
 				      "Caching this packet until the client has been defined",
 				      fr_box_ipaddr(client->src_ipaddr));
-				return 0;
+				goto done;
 			}
 
 			/*
@@ -1678,7 +1678,7 @@ have_client:
 		 */
 		if (nak) {
 			DEBUG("Discarding packet to NAKed connection %s", connection->name);
-			return 0;
+			goto done;
 		}
 	}
 
@@ -1689,7 +1689,7 @@ have_client:
 		connection = fr_io_connection_alloc(inst, thread, client, -1, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
-			return 0;
+			goto done;
 		}
 	}
 
@@ -1707,9 +1707,15 @@ have_client:
 	 *	@todo TCP - for ACCEPT sockets, we don't have a
 	 *	packet, so don't do this.  Instead, the connection
 	 *	will take care of figuring out what to do.
+	 *
+	 *	We don't need "new_track" after this, as it will be
+	 *	tracked in the connected socket.
 	 */
 	(void) fr_network_listen_inject(connection->nr, connection->listen,
 					buffer, packet_len, recv_time);
+
+done:
+	talloc_free(new_track);
 	return 0;
 }
 
