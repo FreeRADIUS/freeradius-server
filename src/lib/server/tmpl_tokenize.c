@@ -3462,23 +3462,6 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			if (ar->ar_unresolved_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 			break;
 		}
-
-		/*
-		 *	Get the correct root
-		 */
-		ar = fr_dlist_head(&vpt->data.attribute.ar);
-		switch (ar->type) {
-		case TMPL_ATTR_TYPE_NORMAL:
-		case TMPL_ATTR_TYPE_UNKNOWN:
-			fr_proto_da_stack_build(&stack, ar->ar_da);
-			parent = stack.da[0];
-			break;
-
-		case TMPL_ATTR_TYPE_UNRESOLVED:
-			fr_proto_da_stack_build(&stack, ar->ar_unresolved_parent);
-			parent = stack.da[0];
-			break;
-		}
 	}
 
 	/*
@@ -3495,6 +3478,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			unsigned int i;
 
 			fr_proto_da_stack_build_partial(&stack, parent, ar->ar_da);
+			if (!parent) parent = stack.da[0];
 
 			/*
 			 *	Print from our parent depth to the AR we're processing
@@ -3516,7 +3500,10 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 
 			parent = ar->ar_da;
 			ref = fr_dict_attr_ref(parent);
-			if (ref) parent = ref;	/* Follow refs */
+			if (ref) {
+				parent = ref;	/* Follow refs */
+				if (parent->flags.is_root) parent = NULL;	/* Else everything goes boom */
+			}
 		}
 			break;
 
@@ -3534,6 +3521,9 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			 *	the last known parent.
 			 */
 			if (ar->ar_unresolved_parent) {
+				fr_proto_da_stack_build_partial(&stack, parent, ar->ar_unresolved_parent);
+				if (!parent) parent = stack.da[0];
+
 				for (i = (parent->depth - 1); i < ar->ar_unresolved_parent->depth; i++) {
 					FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
 					FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
