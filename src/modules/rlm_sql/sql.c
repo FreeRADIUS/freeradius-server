@@ -108,18 +108,19 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 
 /*************************************************************************
  *
- *	Function: sql_fr_pair_list_afrom_str
+ *	Function: sql_pair_list_afrom_str
  *
  *	Purpose: Read entries from the database and fill fr_pair_t structures
  *
  *************************************************************************/
-int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_cursor_t *cursor, rlm_sql_row_t row)
+int sql_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_cursor_t *cursor, rlm_sql_row_t row)
 {
-	fr_pair_t *vp;
-	char const *ptr, *value;
-	char buf[FR_MAX_STRING_LEN];
-	char do_xlat = 0;
-	fr_token_t token, op = T_EOL;
+	fr_pair_t		*vp;
+	char const		*ptr, *value;
+	char			buf[FR_MAX_STRING_LEN];
+	char			do_xlat = 0;
+	fr_dict_attr_t const	*da;
+	fr_token_t		token, op = T_EOL;
 
 	/*
 	 *	Verify the 'Attribute' field
@@ -194,13 +195,20 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_cursor_t 
 	}
 
 	/*
-	 *	Create the pair
+	 *	Search in our local dictionary
+	 *	falling back to internal.
 	 */
-	vp = fr_pair_make(ctx, request->dict, NULL, row[2], NULL, op);
-	if (!vp) {
-		RPEDEBUG("Failed to create the pair");
-		return -1;
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(request->dict), row[2]);
+	if (!da) {
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(fr_dict_internal()), row[2]);
+		if (!da) {
+			RPEDEBUG("Failed creating pair from SQL data");
+			return -1;
+		}
 	}
+
+	MEM(vp = fr_pair_afrom_da(ctx, da));
+	vp->op = op;
 
 	if (do_xlat) {
 		if (fr_pair_mark_xlat(vp, value) < 0) {
@@ -513,7 +521,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rl
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(ctx, request, cursor, row) != 0) {
+		if (sql_pair_list_afrom_str(ctx, request, cursor, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);

@@ -29,6 +29,11 @@ ATTRIBUTE	Secondary-Home-Agent		13	string
 ATTRIBUTE	Home-Agent-Password		14	string
 ATTRIBUTE	Home-Network-Name			15	string
 ATTRIBUTE	Access-Priv			16	integer
+
+VALUE	Access-Priv		Read-Priv		1
+VALUE	Access-Priv		Write-Priv	2
+VALUE	Access-Priv		Admin-Priv	3
+
 ATTRIBUTE	Nms-Group				20	string
 ATTRIBUTE	Nms-First-Name			21	string
 ATTRIBUTE	Nms-Last-Name			22	string
@@ -49,8 +54,5 @@ ATTRIBUTE	Redirect-Url			101	string
 ATTRIBUTE	Device-Name			152	string
 ATTRIBUTE	Device-Location			153	string
 
-VALUE	Access-Priv		Read-Priv		1
-VALUE	Access-Priv		Write-Priv	2
-VALUE	Access-Priv		Admin-Priv	3
 
 END-VENDOR	Xylan

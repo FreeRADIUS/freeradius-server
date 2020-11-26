@@ -39,23 +39,23 @@ VALUE	FreeRADIUS-SNMP-Failure		inconsistent-value	5
 
 # Creates iso(1).org(3).dod(6).internet(1).mgmt(2).mib-2(1)
 ATTRIBUTE	FreeRADIUS-Iso				1	tlv
-ATTRIBUTE	FreeRADIUS-Org				.3	tlv
-ATTRIBUTE	FreeRADIUS-Dod				.3.6	tlv
-ATTRIBUTE	FreeRADIUS-Internet			.3.6.1	tlv
-ATTRIBUTE	FreeRADIUS-Mgmt				.3.6.1.2	tlv
-ATTRIBUTE	FreeRADIUS-Mib-2			.3.6.1.2.1	tlv
+ATTRIBUTE	FreeRADIUS-Org				1.3	tlv
+ATTRIBUTE	FreeRADIUS-Dod				1.3.6	tlv
+ATTRIBUTE	FreeRADIUS-Internet			1.3.6.1	tlv
+ATTRIBUTE	FreeRADIUS-Mgmt				1.3.6.1.2	tlv
+ATTRIBUTE	FreeRADIUS-Mib-2			1.3.6.1.2.1	tlv
 
 #
 #  Everything below is defined in the context of MIB-2
 #
-BEGIN-TLV	FreeRADIUS-Mib-2
+BEGIN-TLV	1.3.6.1.2.FreeRADIUS-Mib-2
 ATTRIBUTE	Radius-Mib				67	tlv
 ATTRIBUTE	Radius-Authentication			67.1	tlv
 ATTRIBUTE	Radius-Auth-Serv-Mib			67.1.1	tlv
 ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		67.1.1.1	tlv
 ATTRIBUTE	Radius-Auth-Serv			67.1.1.1.1	tlv
 
-BEGIN-TLV	Radius-Auth-Serv
+BEGIN-TLV	67.1.1.1.Radius-Auth-Serv
 ATTRIBUTE	Radius-Auth-Serv-Ident			1	string
 ATTRIBUTE	Radius-Auth-Serv-Up-Time		2	integer
 ATTRIBUTE	Radius-Auth-Serv-Reset-Time		3	integer
@@ -82,7 +82,7 @@ ATTRIBUTE	Radius-Auth-Client-Table-Index		.0	integer
 ATTRIBUTE	Radius-Auth-Client-Entry		.1	tlv
 
 # Client statistics
-BEGIN-TLV	Radius-Auth-Client-Entry
+BEGIN-TLV	15.Radius-Auth-Client-Entry
 ATTRIBUTE	Radius-Auth-Client-Index		1	integer
 ATTRIBUTE	Radius-Auth-Client-Address		2	ipaddr
 ATTRIBUTE	Radius-Auth-Client-ID			3	string
@@ -95,13 +95,13 @@ ATTRIBUTE	Radius-Auth-Serv-Malformed-Access-Requests 9	integer
 ATTRIBUTE	Radius-Auth-Serv-Bad-Authenticators	10	integer
 ATTRIBUTE	Radius-Auth-Serv-Packets-Dropped	11	integer
 ATTRIBUTE	Radius-Auth-Serv-Unknown-Types		12	integer
-END-TLV		Radius-Auth-Client-Entry
+END-TLV		15.Radius-Auth-Client-Entry
 
 ATTRIBUTE	Radius-Auth-Client-Ext-Table		16	tlv
 ATTRIBUTE	Radius-Auth-Client-Ext-Table-Index	.0	integer
 ATTRIBUTE	Radius-Auth-Client-Ext-Entry		.1	tlv
 
-BEGIN-TLV	Radius-Auth-Client-Ext-Entry
+BEGIN-TLV	16.Radius-Auth-Client-Ext-Entry
 ATTRIBUTE	Radius-Auth-Client-Ext-Index		1	integer
 ATTRIBUTE	Radius-Auth-Client-Inet-Address-Type	2	integer
 ATTRIBUTE	Radius-Auth-Client-Inet-Address		3	ipaddr

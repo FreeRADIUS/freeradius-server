@@ -191,7 +191,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	fr_pair_t *vp;
 	fr_token_t op;
 
-	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end));
+	slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
 	if (slen <= 0) return slen - (in - start);
 
 	if (da->parent != pair_ctx->parent) {
@@ -305,7 +305,7 @@ static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t i
 	 *	Parse the attribute name.
 	 */
 	while (p < end) {
-		slen = fr_dict_attr_by_name_substr(NULL, &da, parent, &FR_SBUFF_IN(p, end));
+		slen = fr_dict_attr_by_name_substr(NULL, &da, parent, &FR_SBUFF_IN(p, end), NULL);
 		if (slen <= 0) return slen - (p - in);
 
 		if (da->parent != parent) {
@@ -440,7 +440,7 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 		/*
 		 *	We allow a leaf OR a reference here.
 		 */
-		slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end));
+		slen = fr_dict_attr_by_name_substr(NULL, &da, pair_ctx->parent, &FR_SBUFF_IN(p, end), NULL);
 		if (slen <= 0) return slen - (p - in);
 
 		/*

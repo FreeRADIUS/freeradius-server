@@ -657,9 +657,6 @@ int fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t cons
 	fr_dict_attr_t const *da_u, *da_k;
 
 	if (parent) {
-		da_u = da->parent;
-		da_k = parent;
-
 		/*
 		 *	Walk back up the hierarchy until we get to a known
 		 *	ancestor on the unknown side.

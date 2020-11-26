@@ -1753,7 +1753,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		ssize_t			slen;
 
 	oid_str:
-		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in);
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in, tt);
 		if (our_err != FR_DICT_ATTR_OK) {
 			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
 					   (int)fr_sbuff_remaining(in),
@@ -1805,8 +1805,12 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 	 *	If the OID doesn't begin with '.' we
 	 *	resolve it from the root.
 	 */
-	if (!fr_sbuff_next_if_char(in, '.')) parent = fr_dict_root(fr_dict_by_da(parent));
 
+#if 0
+	if (!fr_sbuff_next_if_char(in, '.')) our_parent = fr_dict_root(fr_dict_by_da(parent));
+#else
+	fr_sbuff_next_if_char(in, '.');
+#endif
 	*out = NULL;
 
 	for (;;) {
@@ -1861,12 +1865,6 @@ fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
-	if (!dict) {
-		if (!dict_gctx) return NULL;
-
-		return dict_gctx->internal->root;	/* Remove me when dictionaries are done */
-	}
-
 	return dict->root;
 }
 
@@ -1885,7 +1883,10 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
 	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
 
-	if (!dict_gctx || !name || !out) return 0;
+	if (!dict_gctx || !name || !out) {
+		if (err) *err = FR_DICT_ATTR_EINVAL;
+		return 0;
+	}
 
 	memset(&root, 0, sizeof(root));
 
@@ -1908,6 +1909,11 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	}
 
 	/*
+	 *	The remaining operations don't generate errors
+	 */
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	/*
 	 *	If what we stopped at wasn't a '.', then there
 	 *	can't be a protocol name in this string.
 	 */
@@ -1924,6 +1930,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 		*out = NULL;
 		return 0;
 	}
+
 	*out = dict;
 
 	return (size_t)fr_sbuff_set(name, &our_name);
@@ -1999,7 +2006,7 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 			fr_cond_assert_msg(da_p->dict == dict, "Inconsistent dict membership.  "
 					   "Expected %s, got %s",
 					   !da_p->dict ? "(null)" : fr_dict_root(da_p->dict)->name,
-					   !dict ? "(null)" : fr_dict_root(da_p->dict)->name);
+					   !dict ? "(null)" : fr_dict_root(dict)->name);
 			DA_VERIFY(da_p);
 		}
 
@@ -2240,6 +2247,147 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 	return vendor;
 }
 
+/** Callback function for resolving dictionary attributes
+ *
+ * @param[out] err	Where to write error codes.  Any error
+ *			other than FR_DICT_ATTR_NOTFOUND will
+ *			prevent resolution from continuing.
+ * @param[in] parent	The dictionary root or other attribute to search from.
+ * @param[in] in	Contains the string to resolve.
+ * @param[in] tt	Terminal sequences to use to determine the portion
+ *			of in to search.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
+				   	   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				   	   fr_sbuff_t *in, fr_sbuff_term_t const *tt);
+
+/** Internal function for searching for attributes in multiple dictionaries
+ *
+ */
+static inline CC_HINT(always_inline) ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+							      fr_dict_t const *dict_def,
+							      fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+							      bool fallback, dict_attr_resolve_func_t func)
+{
+	fr_dict_attr_err_t	our_err;
+	fr_hash_iter_t  	iter;
+	fr_dict_t		*dict = NULL, *initial;
+
+	ssize_t			slen;
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+
+	INTERNAL_IF_NULL(dict_def, -1);
+
+	/*
+	 *	Check for dictionary prefix
+	 */
+	slen = dict_by_protocol_substr(&our_err, &initial, &our_in, dict_def);
+	if (our_err != FR_DICT_ATTR_OK) goto error;
+
+	/*
+ 	 *	Has dictionary qualifier, can't fallback
+	 */
+	if (slen > 0) {
+		/*
+		 *	Next thing SHOULD be a '.'
+		 */
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			return 0;
+		}
+
+		fallback = false;
+	}
+
+	/*
+	 *	Initial search in the specified dictionary
+	 */
+	if (initial) {
+		slen = func(&our_err, out, fr_dict_root(initial), &our_in, tt);
+		switch (our_err) {
+		case FR_DICT_ATTR_OK:
+			return fr_sbuff_set(in, &our_in);
+
+		case FR_DICT_ATTR_NOTFOUND:
+			if (!fallback) goto error;
+			break;
+
+		default:
+			goto error;
+		}
+	}
+
+	/*
+	 *	Next in the internal dictionary
+	 */
+	slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
+	switch (our_err) {
+	case FR_DICT_ATTR_OK:
+		return fr_sbuff_set(in, &our_in);
+
+	case FR_DICT_ATTR_NOTFOUND:
+		if (!fallback) goto error;
+		break;
+
+	default:
+		goto error;
+	}
+
+	/*
+	 *	Now loop over the protocol dictionaries
+	 */
+	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+		if (dict == initial) continue;
+		if (dict == dict_gctx->internal) continue;
+
+		(void)func(&our_err, out, fr_dict_root(dict), &our_in, tt);
+		switch (our_err) {
+		case FR_DICT_ATTR_OK:
+			return fr_sbuff_set(in, &our_in);
+
+		case FR_DICT_ATTR_NOTFOUND:
+			continue;
+
+		default:
+			break;
+		}
+	}
+
+error:
+	if (err) *err = our_err;
+	*out = NULL;
+
+	FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+}
+
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					     fr_dict_t const *dict_def,
+					     fr_sbuff_t *name, fr_sbuff_term_t const *tt, bool fallback)
+{
+	return dict_attr_search(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+}
+
 /** Look up a dictionary attribute by a name embedded in another string
  *
  * Find the first invalid attribute name char in the string pointed
@@ -2260,12 +2408,14 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
  * @param[out] out		Where to store the resolve attribute.
  * @param[in] parent		containing the namespace to search in.
  * @param[in] name		string start.
+ * @param[in] tt		Terminal sequences to use to determine the portion
+ *				of in to search.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				    fr_dict_attr_t const *parent, fr_sbuff_t *name)
+				    fr_dict_attr_t const *parent, fr_sbuff_t *name, UNUSED fr_sbuff_term_t const *tt)
 {
 	fr_dict_attr_t const	*da;
 	size_t			len;
@@ -2354,7 +2504,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 	return dict_attr_by_name(err, parent, name);
 }
 
-/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+/** Locate a qualified #fr_dict_attr_t by a dictionary qualified OID string
  *
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
@@ -2363,7 +2513,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
  *				@see fr_dict_attr_err_t
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] name		Dictionary/Attribute name.
+ * @param[in] in		Dictionary/Attribute name.
  * @param[in] tt		Terminal strings.
  * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return
@@ -2372,120 +2522,9 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
  */
 ssize_t fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					     fr_dict_t const *dict_def,
-					     fr_sbuff_t *name, fr_sbuff_term_t const *tt, bool fallback)
+					     fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
 {
-	fr_dict_t		*dict = NULL;
-	fr_dict_t		*dict_iter = NULL;
-	ssize_t			slen;
-	fr_dict_attr_err_t	aerr = FR_DICT_ATTR_OK;
-	bool			internal = false;
-	fr_hash_iter_t  	iter;
-	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
-	*out = NULL;
-
-	INTERNAL_IF_NULL(dict_def, -1);
-
-	/*
-	 *	Figure out if we should use the default dictionary
-	 *	or if the string was qualified.
-	 */
-	slen = dict_by_protocol_substr(err, &dict, &our_name, dict_def);
-	if (slen < 0) {
-		return 0;
-
-	/*
-	 *	Nothing was parsed, use the default dictionary
-	 */
-	} else if (slen == 0) {
-		memcpy(&dict, &dict_def, sizeof(dict));
-
-	/*
-	 *	Has dictionary qualifier, can't fallback
-	 */
-	} else if (slen > 0) {
-		/*
-		 *	Next thing SHOULD be a '.'
-		 */
-		if (!fr_sbuff_next_if_char(&our_name, '.')) {
-			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			return 0;
-		}
-
-		fallback = false;
-	}
-
-again:
-	/*
-	 *	We rely on the fact the sbuff is only
-	 *	advanced on success.
-	 */
-	fr_dict_attr_by_oid_substr(&aerr, out, fr_dict_root(dict), &our_name, tt);
-	switch (aerr) {
-	case FR_DICT_ATTR_OK:
-		break;
-
-	case FR_DICT_ATTR_NOTFOUND:
-		/*
-		 *	Loop over all the dictionaries
-		 */
-		if (fallback) {
-			/*
-			 *	Haven't started yet, do so.
-			 */
-			if (!dict_iter) {
-				/*
-				 *	Check the internal dictionary
-				 *	first, unless it's alreaday
-				 *	been checked.
-				 */
-				if (!internal) {
-					internal = true;
-					if (dict_def != dict_gctx->internal) {
-						dict = dict_gctx->internal;
-						goto again;
-					}
-				}
-
-				/*
-				 *	Start the iteration over all dictionaries.
-				 */
-				dict_iter = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
-			} else {
-			redo:
-				dict_iter = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter);
-			}
-
-			if (!dict_iter) goto fail;
-			if (dict_iter == dict_def) goto redo;
-
-			dict = dict_iter;
-			goto again;
-		}
-
-	fail:
-		if (err) *err = aerr;
-		FR_SBUFF_ERROR_RETURN(&our_name);
-
-	/*
-	 *	Other error codes are the same
-	 */
-	default:
-		if (err) *err = aerr;
-		FR_SBUFF_ERROR_RETURN(&our_name);
-	}
-
-	/*
-	 *	If we're returning a success code indication,
-	 *	ensure we populated out
-	 */
-	if (!fr_cond_assert(*out)) {
-		if (err) *err = FR_DICT_ATTR_EINVAL;
-		return 0;
-	}
-
-	if (err) *err = FR_DICT_ATTR_OK;
-
-	return (size_t)fr_sbuff_set(name, &our_name);
+	return dict_attr_search(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -2670,7 +2709,7 @@ ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
 		return 0;
 	}
 
-	slen = fr_dict_attr_by_name_substr(err, out, parent, name);
+	slen = fr_dict_attr_by_name_substr(err, out, parent, name, NULL);
 	if (slen <= 0) return slen;
 
 	if (is_direct_decendent) {

@@ -30,13 +30,14 @@ ATTRIBUTE	Pri-NBNS			11	ipaddr
 ATTRIBUTE	Sec-NBNS			12	ipaddr
 ATTRIBUTE	Traffic-Class			13	string
 ATTRIBUTE	Tunnel-Type			14	integer
-ATTRIBUTE	NAT-Type			15	integer
-ATTRIBUTE	QOS-Class			16	string
-ATTRIBUTE	Interface-Name			17	string
 
 VALUE	Tunnel-Type		IP-IP			1
 VALUE	Tunnel-Type		ESP			2
 VALUE	Tunnel-Type		L2TP			3
+
+ATTRIBUTE	NAT-Type			15	integer
+ATTRIBUTE	QOS-Class			16	string
+ATTRIBUTE	Interface-Name			17	string
 
 VALUE	NAT-Type		NAT			1
 VALUE	NAT-Type		NAPT			2

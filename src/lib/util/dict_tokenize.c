@@ -2216,7 +2216,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			da = dict_attr_by_name(NULL, fr_dict_root(ctx->dict), argv[1]);
+			da = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da, argv[1]);
 			if (!da) {
 				fr_strerror_printf_push("Failed resolving attribute in BEGIN-TLV entry");
 				goto error;
@@ -2251,7 +2251,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), argv[1]);
+
+
+			da = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth - 1].da, argv[1]);
 			if (!da) {
 				fr_strerror_printf_push("Failed resolving attribute in END-TLV entry");
 				goto error;

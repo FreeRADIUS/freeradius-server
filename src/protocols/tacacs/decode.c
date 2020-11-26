@@ -355,10 +355,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 				da = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
 				if (da) {
+					da->flags.is_raw = 1;
 					DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
 					talloc_free(da); /* the VP makes it's own copy */
 				}
-				da->flags.is_raw = 1;
+
 			}
 
 		} else if (packet_is_authen_continue(pkt)) {
