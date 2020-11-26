@@ -2217,9 +2217,11 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 
 	/*
 	 *	Check for something looking like an IPv6 address
+	 *
+	 *	Minimum string is '::'
 	 */
 	len = fr_sbuff_adv_past_allowed(&our_in, FR_IPADDR_STRLEN + 1, ipv6_chars);
-	if ((len < 3) || (len > FR_IPADDR_STRLEN)) {
+	if ((len < 2) || (len > FR_IPADDR_STRLEN)) {
 	error:
 		return -fr_sbuff_used(&our_in);
 	}
