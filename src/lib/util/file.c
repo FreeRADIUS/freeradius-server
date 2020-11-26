@@ -326,7 +326,7 @@ char const *fr_cwd_strip(char const *filename)
 	if (!getcwd(our_wd, sizeof(our_wd))) return filename;
 
 	found = strstr(filename, our_wd);
-	if (found && (found = our_wd)) {
+	if (found && (found == our_wd)) {
 		filename += strlen(our_wd);
 		while (*filename == '/') filename++;
 		return filename;

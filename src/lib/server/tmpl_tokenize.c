@@ -1557,12 +1557,13 @@ check_attr:
 	 */
 	if (!t_rules->allow_foreign || t_rules->disallow_internal) {
 		fr_dict_t const *found_in = fr_dict_by_da(da);
+		fr_dict_t const *dict_def = t_rules->dict_def ? t_rules->dict_def : fr_dict_internal();
 
 		/*
 		 *	Parent is the dict root if this is the first ref in the
 		 *	chain.
 		 */
-		if (!parent) parent = fr_dict_root(t_rules->dict_def);
+		if (!parent) parent = fr_dict_root(dict_def);
 
 		/*
 		 *	Even if allow_foreign is false, if disallow_internal is not
@@ -1595,7 +1596,7 @@ check_attr:
 		    !t_rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
-					   fr_dict_root(t_rules->dict_def)->name);
+					   fr_dict_root(dict_def)->name);
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;

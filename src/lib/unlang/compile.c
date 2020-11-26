@@ -3076,7 +3076,12 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	The dictionaries are not compatible, forbid it.
 	 */
 	dict = virtual_server_namespace(server);
-	if (dict && (dict != fr_dict_internal()) && fr_dict_internal() &&
+	if (!dict) {
+		cf_log_err(cs, "Cannot call virtual server '%s', failed retrieving its namespace",
+			   fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		return NULL;
+	}
+	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
 	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
 		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s' - they have incompatible protocols",
 			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
