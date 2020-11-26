@@ -1656,8 +1656,9 @@ do_suffix:
 			break;
 
 		default:
-			fr_strerror_printf("Parent type of nested attribute must be of "
+			fr_strerror_printf("Parent type of nested attribute %s must be of type "
 					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
+					   da->name,
 					   fr_table_str_by_value(fr_value_box_type_table,
 					   			 da->type, "<INVALID>"));
 			fr_sbuff_set(name, &m_s);
