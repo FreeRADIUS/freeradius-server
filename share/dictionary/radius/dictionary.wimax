@@ -205,20 +205,20 @@ ATTRIBUTE	Src-Spec				28.11.5	tlv
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
 ATTRIBUTE	IPAddressMask				.3	octets
-ATTRIBUTE	Port					.4	octets
-ATTRIBUTE	Port-Range				.5	octets
-ATTRIBUTE	Inverted				.6	octets
-ATTRIBUTE	Assigned				.7	octets
+ATTRIBUTE	Port					.4	short
+ATTRIBUTE	Port-Range				.5	integer
+ATTRIBUTE	Inverted				.6	byte
+ATTRIBUTE	Assigned				.7	byte
 
 ATTRIBUTE	Dst-Spec				28.11.6	tlv
 
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
 ATTRIBUTE	IPAddressMask				.3	octets
-ATTRIBUTE	Port					.4	octets
-ATTRIBUTE	Port-Range				.5	octets
-ATTRIBUTE	Inverted				.6	octets
-ATTRIBUTE	Assigned				.7	octets
+ATTRIBUTE	Port					.4	short
+ATTRIBUTE	Port-Range				.5	integer
+ATTRIBUTE	Inverted				.6	byte
+ATTRIBUTE	Assigned				.7	byte
 
 ATTRIBUTE	IP-TOS/DSCP-Range-and-Mask		28.11.7	octets
 ATTRIBUTE	VLAN-ID					28.11.8	integer
