@@ -51,6 +51,10 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_cursor_t *cursor, void *encoder_ctx);
+
 /** Macro-like function for encoding an option header
  *
  *    0                   1                   2                   3
@@ -118,6 +122,48 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Pack multiple attributes into into a single option
 	 */
+	if (vp->da->type == FR_TYPE_STRUCT) {
+		fr_cursor_t child_cursor;
+
+		fr_assert(vp->da == da);
+
+		fr_cursor_init(&child_cursor, &vp->vp_group);
+
+		slen = encode_struct(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx);
+		if (slen < 0) return slen;
+
+		vp = fr_cursor_current(&child_cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+		/*
+		 *	Encode any TLV, attributes which are part of
+		 *	this structure.
+		 *
+		 *	The fr_struct_to_network() function can't do
+		 *	this work, as it's not protocol aware, and
+		 *	doesn't have the da_stack or encoder_ctx.
+		 *
+		 *	Note that we call the "internal" encode
+		 *	function, as we don't want the encapsulating
+		 *	TLV to be encoded here.  It's number is just
+		 *	the field number in the struct.
+		 */
+		while (vp && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth)) {
+			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, &child_cursor, encoder_ctx);
+			if (slen < 0) return slen;
+
+			vp = fr_cursor_current(cursor);
+			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		}
+
+		/*
+		 *	Skip the attribute we just encoded, and re-build the da_stack.
+		 */
+		vp = fr_cursor_next(cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		return fr_dbuff_set(dbuff, &work_dbuff);
+	}
+
 	if (da->type == FR_TYPE_STRUCT) {
 		slen = encode_struct(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
