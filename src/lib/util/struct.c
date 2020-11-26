@@ -485,11 +485,17 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 		/*
 		 *	Encode child TLVs at the end of a struct.
 		 *
-		 *	@todo - just have a loop here looking for
-		 *	vp->da->parent == child, and encoding those.
+		 *	In order to encode the child TLVs, we need to
+		 *	know the length of "T" and "L", and we don't.
+		 *	So just let the caller do the work.
 		 */
 		if (child->type == FR_TYPE_TLV) {
-			break;
+			if (offset != 0) goto leftover_bits;
+
+			fr_assert(!key_da);
+			fr_assert(!do_length);
+
+			return fr_dbuff_set(dbuff, &work_dbuff);
 		}
 
 		/*

@@ -978,6 +978,32 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	}
 
 	/*
+	 *	Ensure that no previous child has "key" or "length" set.
+	 */
+	if (type == FR_TYPE_TLV) {
+		int i;
+
+		for (i = 0; i <= ctx->stack[ctx->stack_depth].member_num; i++) {
+			fr_dict_attr_t const *da;
+
+			da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, i);
+			if (!da) continue; /* really should be WTF? */
+
+			if (da_is_key_field(da)) {
+				fr_strerror_printf("'struct' %s has a 'key' field %s, and cannot end with a TLV %s",
+						   ctx->stack[ctx->stack_depth].da->name, da->name, argv[0]);
+				return -1;
+			}
+
+			if (da_is_length_field(da)) {
+				fr_strerror_printf("'struct' %s has a 'length' field %s, and cannot end with a TLV %s",
+						   ctx->stack[ctx->stack_depth].da->name, da->name, argv[0]);
+				return -1;
+			}
+		}
+	}
+
+	/*
 	 *	Add the MEMBER to the parent.
 	 */
 	if (fr_dict_attr_add(ctx->dict,
