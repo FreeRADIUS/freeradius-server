@@ -596,25 +596,16 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 			 *	are exactly the fixed size, UNLESS the entire
 			 *	output is truncated.
 			 */
+#ifndef NDEBUG
 			if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
-				size_t mylen = vp->da->flags.length;
-
 				fr_assert(vp->data.enumv == vp->da);
-
-				if (vp->vp_length < mylen) {
-					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr),
-								  vp->vp_length);
-					FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, mylen - vp->vp_length);
-				} else {
-					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), mylen);
-				}
-
-			} else {
-				/*
-				 *	Determine the nested type and call the appropriate encoder
-				 */
-				if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
 			}
+#endif
+
+			/*
+			 *	Determine the nested type and call the appropriate encoder
+			 */
+			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
 
 			do {
 				vp = fr_cursor_next(cursor);

@@ -248,22 +248,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			}
 			break;
 		}
-		FALL_THROUGH;
-
-	case FR_TYPE_OCTETS:
-		/*
-		 *	If asked to encode more data than allowed,
-		 *	we encode only the allowed data.
-		 */
-		slen = fr_dhcpv6_option_len(vp);
-
-		if (vp->vp_length < (size_t)slen) {
-			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), vp->vp_length);
-			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0x00, slen - vp->vp_length);
-		} else {
-			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr), (size_t) slen);
-		}
-		break;
+		goto to_network;
 
 	/*
 	 * Common encoder might add scope byte, so we just copy the address portion
@@ -397,6 +382,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		}
 	}
 		break;
+
+	/*
+	 *	The value_box functions will take care of fixed-width
+	 *	"string" and "octets" options.
+	 */
+	to_network:
+	case FR_TYPE_OCTETS:
+		fr_assert(!vp->da->flags.length || (vp->data.enumv == vp->da));
+		FALL_THROUGH;
 
 	/*
 	 *    0                   1                   2                   3
