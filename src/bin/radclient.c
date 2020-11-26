@@ -114,8 +114,8 @@ extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_password, .name = "MS-CHAP-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_password, .name = "Password.MS-CHAP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_response, .name = "Vendor-Specific.Microsoft.CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
