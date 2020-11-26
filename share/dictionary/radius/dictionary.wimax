@@ -473,7 +473,7 @@ ATTRIBUTE	Priority				.2	byte
 ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
-ATTRIBUTE	Src-Spec				.5	tlv
+ATTRIBUTE	Src-Spec				84.9.5	tlv
 ATTRIBUTE	IP-Address				.1	combo-ip
 # really two IPv4 OR IPv6 addresses
 ATTRIBUTE	IP-Address-Range			.2	octets
@@ -519,11 +519,11 @@ ATTRIBUTE	Eth-Proto-Type				.1	tlv
 ATTRIBUTE	Ethertype				.1	short
 ATTRIBUTE	Type-DSAP				.2	byte
 
-ATTRIBUTE	Eth-VLAN-Id				.2	tlv
+ATTRIBUTE	Eth-VLAN-Id				84.9.9.2	tlv
 ATTRIBUTE	S-VID					.1	integer
 ATTRIBUTE	C-VID					.2	integer
 
-ATTRIBUTE	Eth-Priority-Range			.3	tlv
+ATTRIBUTE	Eth-Priority-Range			84.9.9.3	tlv
 ATTRIBUTE	Low					.1	byte
 ATTRIBUTE	High					.2	byte
 ATTRIBUTE	XXX					.4	byte
