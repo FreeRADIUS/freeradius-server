@@ -573,6 +573,13 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 			return -1;
 		}
 
+		/*
+		 *	Remember key_da before we do any encoding.
+		 */
+		if (da_is_key_field(child)) {
+			key_da = child;
+		}
+
 		if (encode_value) {
 			ssize_t	len;
 			/*
@@ -591,6 +598,8 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 			 */
 			if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
 				size_t mylen = vp->da->flags.length;
+
+				fr_assert(vp->data.enumv == vp->da);
 
 				if (vp->vp_length < mylen) {
 					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)(vp->vp_ptr),
@@ -611,10 +620,6 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 				vp = fr_cursor_next(cursor);
 				if (!vp || !vp->da->flags.internal) break;
 			} while (vp != NULL);
-		}
-
-		if (da_is_key_field(child)) {
-			key_da = child;
 		}
 
 	next:
