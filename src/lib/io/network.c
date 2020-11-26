@@ -822,6 +822,7 @@ next_message:
 	fr_assert(cd->m.when == now);
 
 	if (fr_network_send_request(nr, cd) < 0) {
+		talloc_free(cd->packet_ctx); /* not sure what else to do here */
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
