@@ -1638,6 +1638,7 @@ do_suffix:
 		case FR_TYPE_TLV:
 		case FR_TYPE_VENDOR:
 		case FR_TYPE_VSA:
+		is_union:
 			/*
 			 *	Omit nesting types where the relationship is already
 			 *	described by the dictionaries and there's no filter.
@@ -1657,6 +1658,8 @@ do_suffix:
 			break;
 
 		default:
+			if (fr_dict_attr_is_key_field(da)) goto is_union;
+
 			fr_strerror_printf("Parent type of nested attribute %s must be of type "
 					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
 					   da->name,
