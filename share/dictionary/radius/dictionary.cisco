@@ -26,31 +26,31 @@ VENDOR		Cisco				9
 #
 BEGIN-VENDOR	Cisco
 
-ATTRIBUTE	AVPair				1	string
+ATTRIBUTE	AVPair					1	string
 ATTRIBUTE	NAS-Port				2	string
 
 #
 #  T.37 Store-and-Forward attributes.
 #
-ATTRIBUTE	Fax-Account-Id-Origin		3	string
-ATTRIBUTE	Fax-Msg-Id			4	string
+ATTRIBUTE	Fax-Account-Id-Origin			3	string
+ATTRIBUTE	Fax-Msg-Id				4	string
 ATTRIBUTE	Fax-Pages				5	string
-ATTRIBUTE	Fax-Coverpage-Flag		6	string
-ATTRIBUTE	Fax-Modem-Time			7	string
+ATTRIBUTE	Fax-Coverpage-Flag			6	string
+ATTRIBUTE	Fax-Modem-Time				7	string
 ATTRIBUTE	Fax-Connect-Speed			8	string
-ATTRIBUTE	Fax-Recipient-Count		9	string
-ATTRIBUTE	Fax-Process-Abort-Flag		10	string
-ATTRIBUTE	Fax-Dsn-Address			11	string
-ATTRIBUTE	Fax-Dsn-Flag			12	string
-ATTRIBUTE	Fax-Mdn-Address			13	string
-ATTRIBUTE	Fax-Mdn-Flag			14	string
-ATTRIBUTE	Fax-Auth-Status			15	string
-ATTRIBUTE	Email-Server-Address		16	string
-ATTRIBUTE	Email-Server-Ack-Flag		17	string
-ATTRIBUTE	Gateway-Id			18	string
+ATTRIBUTE	Fax-Recipient-Count			9	string
+ATTRIBUTE	Fax-Process-Abort-Flag			10	string
+ATTRIBUTE	Fax-Dsn-Address				11	string
+ATTRIBUTE	Fax-Dsn-Flag				12	string
+ATTRIBUTE	Fax-Mdn-Address				13	string
+ATTRIBUTE	Fax-Mdn-Flag				14	string
+ATTRIBUTE	Fax-Auth-Status				15	string
+ATTRIBUTE	Email-Server-Address			16	string
+ATTRIBUTE	Email-Server-Ack-Flag			17	string
+ATTRIBUTE	Gateway-Id				18	string
 ATTRIBUTE	Call-Type				19	string
 ATTRIBUTE	Port-Used				20	string
-ATTRIBUTE	Abort-Cause			21	string
+ATTRIBUTE	Abort-Cause				21	string
 
 #
 #  Voice over IP attributes.
@@ -68,28 +68,28 @@ ATTRIBUTE	h323-gw-id				33	string
 ATTRIBUTE	h323-incoming-conf-id			35	string
 
 ATTRIBUTE	Policy-Up				37	string
-ATTRIBUTE	Policy-Down			38	string
+ATTRIBUTE	Policy-Down				38	string
 
 ATTRIBUTE	Relay-Information-Option		46	string
-ATTRIBUTE	DHCP-User-Class			47	string
+ATTRIBUTE	DHCP-User-Class				47	string
 ATTRIBUTE	DHCP-Vendor-Class			48	string
 
 ATTRIBUTE	DHCP-Relay-GiAddr			50	string
-ATTRIBUTE	Service-Name			51	string
+ATTRIBUTE	Service-Name				51	string
 ATTRIBUTE	Parent-Session-Id			52	string
 
-ATTRIBUTE	Sub-QoS-Pol-In			55	string
-ATTRIBUTE	Sub-QoS-Pol-Out			56	string
-ATTRIBUTE	In-ACL				57	string
-ATTRIBUTE	Out-ACL				58	string
+ATTRIBUTE	Sub-QoS-Pol-In				55	string
+ATTRIBUTE	Sub-QoS-Pol-Out				56	string
+ATTRIBUTE	In-ACL					57	string
+ATTRIBUTE	Out-ACL					58	string
 ATTRIBUTE	Sub-PBR-Policy-In			59	string
-ATTRIBUTE	Sub-Activate-Service		60	string
-ATTRIBUTE	IPv6-In-ACL			61	string
-ATTRIBUTE	IPv6-Out-ACL			62	string
-ATTRIBUTE	Sub-Deactivate-Service		63	string
+ATTRIBUTE	Sub-Activate-Service			60	string
+ATTRIBUTE	IPv6-In-ACL				61	string
+ATTRIBUTE	IPv6-Out-ACL				62	string
+ATTRIBUTE	Sub-Deactivate-Service			63	string
 
-ATTRIBUTE	DHCP-Subscriber-Id		65	string
-ATTRIBUTE	DHCPv6-Link-Address		66	string
+ATTRIBUTE	DHCP-Subscriber-Id			65	string
+ATTRIBUTE	DHCPv6-Link-Address			66	string
 
 ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
@@ -127,34 +127,34 @@ ATTRIBUTE	dsp-id					151	string
 #	Extra attributes sent by the Cisco, if you configure
 #	"radius-server vsa accounting" (requires IOS11.2+).
 #
-ATTRIBUTE	Multilink-ID			187	integer
+ATTRIBUTE	Multilink-ID				187	integer
 ATTRIBUTE	Num-In-Multilink			188	integer
 ATTRIBUTE	Pre-Input-Octets			190	integer
 ATTRIBUTE	Pre-Output-Octets			191	integer
 ATTRIBUTE	Pre-Input-Packets			192	integer
-ATTRIBUTE	Pre-Output-Packets		193	integer
-ATTRIBUTE	Maximum-Time			194	integer
+ATTRIBUTE	Pre-Output-Packets			193	integer
+ATTRIBUTE	Maximum-Time				194	integer
 ATTRIBUTE	Disconnect-Cause			195	integer
 ATTRIBUTE	Data-Rate				197	integer
-ATTRIBUTE	PreSession-Time			198	integer
-ATTRIBUTE	PW-Lifetime			208	integer
+ATTRIBUTE	PreSession-Time				198	integer
+ATTRIBUTE	PW-Lifetime				208	integer
 ATTRIBUTE	IP-Direct				209	integer
 ATTRIBUTE	PPP-VJ-Slot-Comp			210	integer
-ATTRIBUTE	PPP-Async-Map			212	integer
-ATTRIBUTE	IP-Pool-Definition		217	string
-ATTRIBUTE	Assign-IP-Pool			218	integer
+ATTRIBUTE	PPP-Async-Map				212	integer
+ATTRIBUTE	IP-Pool-Definition			217	string
+ATTRIBUTE	Assign-IP-Pool				218	integer
 ATTRIBUTE	Route-IP				228	integer
 ATTRIBUTE	Link-Compression			233	integer
-ATTRIBUTE	Target-Util			234	integer
+ATTRIBUTE	Target-Util				234	integer
 ATTRIBUTE	Maximum-Channels			235	integer
-ATTRIBUTE	Data-Filter			242	integer
-ATTRIBUTE	Call-Filter			243	integer
-ATTRIBUTE	Idle-Limit			244	integer
-ATTRIBUTE	Subscriber-Password		249	string
-ATTRIBUTE	Account-Info			250	string
-ATTRIBUTE	Service-Info			251	string
-ATTRIBUTE	Command-Code			252	string
-ATTRIBUTE	Control-Info			253	string
+ATTRIBUTE	Data-Filter				242	integer
+ATTRIBUTE	Call-Filter				243	integer
+ATTRIBUTE	Idle-Limit				244	integer
+ATTRIBUTE	Subscriber-Password			249	string
+ATTRIBUTE	Account-Info				250	string
+ATTRIBUTE	Service-Info				251	string
+ATTRIBUTE	Command-Code				252	string
+ATTRIBUTE	Control-Info				253	string
 ATTRIBUTE	Xmit-Rate				255	integer
 
 VALUE	Disconnect-Cause		No-Reason		0

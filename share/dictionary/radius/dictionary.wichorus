@@ -13,8 +13,8 @@ VENDOR		Wichorus			27030
 
 BEGIN-VENDOR	Wichorus
 
-ATTRIBUTE	Policy-Name			1	string
-ATTRIBUTE	User-Privilege			2	string
+ATTRIBUTE	Policy-Name				1	string
+ATTRIBUTE	User-Privilege				2	string
 
 #
 #  Some versions of the Wichorus equipment use the following attribute.

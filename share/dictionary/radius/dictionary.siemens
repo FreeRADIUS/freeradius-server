@@ -14,15 +14,15 @@ VENDOR		Siemens				4329
 
 BEGIN-VENDOR	Siemens
 
-ATTRIBUTE	URL-Redirection			1	string
-ATTRIBUTE	AP-Name				2	string
-ATTRIBUTE	AP-Serial			3	string
-ATTRIBUTE	VNS-Name			4	string
-ATTRIBUTE	SSID				5	string
-ATTRIBUTE	BSS-MAC				6	string
-ATTRIBUTE	Policy-Name			7	string
-ATTRIBUTE	Topology-Name			8	string
-ATTRIBUTE	Ingress-RC-Name			9	string
-ATTRIBUTE	Egress-RC-Name			10	string
+ATTRIBUTE	URL-Redirection				1	string
+ATTRIBUTE	AP-Name					2	string
+ATTRIBUTE	AP-Serial				3	string
+ATTRIBUTE	VNS-Name				4	string
+ATTRIBUTE	SSID					5	string
+ATTRIBUTE	BSS-MAC					6	string
+ATTRIBUTE	Policy-Name				7	string
+ATTRIBUTE	Topology-Name				8	string
+ATTRIBUTE	Ingress-RC-Name				9	string
+ATTRIBUTE	Egress-RC-Name				10	string
 
 END-VENDOR	Siemens

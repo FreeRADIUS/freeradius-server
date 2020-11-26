@@ -236,13 +236,13 @@ ATTRIBUTE	Cache-Allow-Insert			1177	bool
 # 1178 unused
 
 ATTRIBUTE	SMTP-Mail-Header			1179	string
-ATTRIBUTE 	SMTP-Mail-Body				1180	string
-ATTRIBUTE 	SMTP-Sender-Address 			1181	string
-ATTRIBUTE 	SMTP-Recipients 			1182	string
-ATTRIBUTE 	SMTP-TO 				1183	string
-ATTRIBUTE 	SMTP-CC 				1184	string
-ATTRIBUTE 	SMTP-BCC				1185	string
-ATTRIBUTE 	SMTP-Attachments			1186	string
+ATTRIBUTE	SMTP-Mail-Body				1180	string
+ATTRIBUTE	SMTP-Sender-Address			1181	string
+ATTRIBUTE	SMTP-Recipients				1182	string
+ATTRIBUTE	SMTP-TO					1183	string
+ATTRIBUTE	SMTP-CC					1184	string
+ATTRIBUTE	SMTP-BCC				1185	string
+ATTRIBUTE	SMTP-Attachments			1186	string
 
 ATTRIBUTE	Session-State-User-Name			1189	string
 
@@ -456,7 +456,6 @@ ATTRIBUTE	Tmp-Ethernet-3				1783	ether
 ATTRIBUTE	Tmp-Ethernet-4				1784	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
-
 
 ATTRIBUTE	Log-Message				1894	string
 ATTRIBUTE	Log-Level				1895	integer

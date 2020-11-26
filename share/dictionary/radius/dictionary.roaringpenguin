@@ -17,7 +17,7 @@ BEGIN-VENDOR	Roaring-Penguin
 # Upstream speed limit in kb/s
 ATTRIBUTE	Upstream-Speed-Limit			1	integer
  # Downstream speed limit in kb/s
-ATTRIBUTE	Downstream-Speed-Limit		2	integer
+ATTRIBUTE	Downstream-Speed-Limit			2	integer
 
 # Send a HURL
 ATTRIBUTE	HURL					3	string
@@ -26,6 +26,6 @@ ATTRIBUTE	HURL					3	string
 ATTRIBUTE	MOTM					4	string
 
 # Maximum sessions per user
-ATTRIBUTE	Max-Sessions-Per-User		5	integer
+ATTRIBUTE	Max-Sessions-Per-User			5	integer
 
 END-VENDOR	Roaring-Penguin

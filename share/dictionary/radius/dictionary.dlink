@@ -16,22 +16,22 @@ VENDOR		Dlink				171
 
 BEGIN-VENDOR	Dlink
 
-ATTRIBUTE	User-Level			1	integer
-ATTRIBUTE	Ingress-Bandwidth-Assignment	2	integer
-ATTRIBUTE	Egress-Bandwidth-Assignment	3	integer
-ATTRIBUTE	1p-Priority			4	integer
+ATTRIBUTE	User-Level				1	integer
+ATTRIBUTE	Ingress-Bandwidth-Assignment		2	integer
+ATTRIBUTE	Egress-Bandwidth-Assignment		3	integer
+ATTRIBUTE	1p-Priority				4	integer
 ATTRIBUTE	VLAN-Name				10	string
-ATTRIBUTE	VLAN-ID				11	string
-ATTRIBUTE	ACL-Profile			12	string
+ATTRIBUTE	VLAN-ID					11	string
+ATTRIBUTE	ACL-Profile				12	string
 ATTRIBUTE	ACL-Rule				13	string
-ATTRIBUTE	ACL-Script			14	string
+ATTRIBUTE	ACL-Script				14	string
 
-VALUE	User-Level		User-Legacy		1
-VALUE	User-Level		User			3
-VALUE	User-Level		Operator		4
-VALUE	User-Level		Admin			5
-VALUE	User-Level		Power-User		6
-VALUE	User-Level		Admin-Legacy		15
+VALUE	User-Level			User-Legacy		1
+VALUE	User-Level			User			3
+VALUE	User-Level			Operator		4
+VALUE	User-Level			Admin			5
+VALUE	User-Level			Power-User		6
+VALUE	User-Level			Admin-Legacy		15
 
 END-VENDOR      Dlink
 

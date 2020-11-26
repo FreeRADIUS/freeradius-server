@@ -38,7 +38,7 @@ BEGIN-VENDOR	TrippLite
 ## - The user has no access to the security facility
 ##
 
-ATTRIBUTE	Authorization			1	string
+ATTRIBUTE	Authorization				1	string
 
 #
 ## Comma-delimited string of outlet security realms from 1 through 32 to which
@@ -50,17 +50,17 @@ ATTRIBUTE	Authorization			1	string
 ## - User has read-write access to realms 10 and 15
 ##
 
-ATTRIBUTE	Outlet-Realms			2	string
+ATTRIBUTE	Outlet-Realms				2	string
 
 #
 ## Simple message, usually sent as part of accounting
 ##
 
-ATTRIBUTE	Message			3	string
+ATTRIBUTE	Message					3	string
 
 #
 ## PADM20 user role. Role with same name should exists on the device.
 ##
-ATTRIBUTE	User-Role			4	string
+ATTRIBUTE	User-Role				4	string
 
 END-VENDOR TrippLite

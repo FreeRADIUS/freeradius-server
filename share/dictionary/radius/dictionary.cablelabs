@@ -14,84 +14,84 @@ VENDOR		CableLabs			4491
 
 BEGIN-VENDOR	CableLabs
 
-ATTRIBUTE	Reserved			0	octets
+ATTRIBUTE	Reserved				0	octets
 
 #
 #  http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-EM-C01-071129.pdf
 #
-ATTRIBUTE	Event-Message			1	octets
-ATTRIBUTE	MTA-Endpoint-Name		3	string
-ATTRIBUTE	Calling-Party-Number		4	string
-ATTRIBUTE	Called-Party-Number		5	string
-ATTRIBUTE	Database-ID			6	string
-ATTRIBUTE	Query-Type			7	integer
-ATTRIBUTE	Returned-Number		9	string
-ATTRIBUTE	Call-Termination-Cause	11	octets
+ATTRIBUTE	Event-Message				1	octets
+ATTRIBUTE	MTA-Endpoint-Name			3	string
+ATTRIBUTE	Calling-Party-Number			4	string
+ATTRIBUTE	Called-Party-Number			5	string
+ATTRIBUTE	Database-ID				6	string
+ATTRIBUTE	Query-Type				7	integer
+ATTRIBUTE	Returned-Number				9	string
+ATTRIBUTE	Call-Termination-Cause			11	octets
 
 #ATTRIBUTE	Related-Call-Billing-Correlation-ID 13 octets
-ATTRIBUTE	Related-Call-Billing-Crl-ID	13	octets
+ATTRIBUTE	Related-Call-Billing-Crl-ID		13	octets
 
 #ATTRIBUTE	First-Call-Calling-Party-Number 14 string
 #ATTRIBUTE	Second-Call-Calling-Party-Number 15 string
-ATTRIBUTE	First-Call-Calling-Party-Num	14	string
-ATTRIBUTE	Second-Call-Calling-Party-Num	15	string
+ATTRIBUTE	First-Call-Calling-Party-Num		14	string
+ATTRIBUTE	Second-Call-Calling-Party-Num		15	string
 
-ATTRIBUTE	Charge-Number			16	string
-ATTRIBUTE	Forwarded-Number		17	string
-ATTRIBUTE	Service-Name			18	string
-ATTRIBUTE	Intl-Code			20	string
-ATTRIBUTE	Dial-Around-Code		21	string
-ATTRIBUTE	Location-Routing-Number	22	string
-ATTRIBUTE	Carrier-Identification-Code	23	string
-ATTRIBUTE	Trunk-Group-ID		24	octets
-ATTRIBUTE	Routing-Number		25	string
-ATTRIBUTE	MTA-UDP-Portnum		26	integer
-ATTRIBUTE	Channel-State			29	integer
-ATTRIBUTE	SF-ID				30	integer
-ATTRIBUTE	Error-Description		31	string
-ATTRIBUTE	QoS-Descriptor		32	octets
-ATTRIBUTE	Direction-indicator		37	integer
-ATTRIBUTE	Time-Adjustment		38	octets
-ATTRIBUTE	SDP-Upstream			39	string
-ATTRIBUTE	SDP-Downstream		40	string
-ATTRIBUTE	User-Input			41	string
-ATTRIBUTE	Translation-Input		42	string
-ATTRIBUTE	Redirected-From-Info		43	octets
+ATTRIBUTE	Charge-Number				16	string
+ATTRIBUTE	Forwarded-Number			17	string
+ATTRIBUTE	Service-Name				18	string
+ATTRIBUTE	Intl-Code				20	string
+ATTRIBUTE	Dial-Around-Code			21	string
+ATTRIBUTE	Location-Routing-Number			22	string
+ATTRIBUTE	Carrier-Identification-Code		23	string
+ATTRIBUTE	Trunk-Group-ID				24	octets
+ATTRIBUTE	Routing-Number				25	string
+ATTRIBUTE	MTA-UDP-Portnum				26	integer
+ATTRIBUTE	Channel-State				29	integer
+ATTRIBUTE	SF-ID					30	integer
+ATTRIBUTE	Error-Description			31	string
+ATTRIBUTE	QoS-Descriptor				32	octets
+ATTRIBUTE	Direction-indicator			37	integer
+ATTRIBUTE	Time-Adjustment				38	octets
+ATTRIBUTE	SDP-Upstream				39	string
+ATTRIBUTE	SDP-Downstream				40	string
+ATTRIBUTE	User-Input				41	string
+ATTRIBUTE	Translation-Input			42	string
+ATTRIBUTE	Redirected-From-Info			43	octets
 
 #ATTRIBUTE	Electronic-Surveillance-Indication 44 octets
-ATTRIBUTE	Electronic-Surveillance-Ind	44	octets
+ATTRIBUTE	Electronic-Surveillance-Ind		44	octets
 
-ATTRIBUTE	Redirected-From-Party-Number	45	string
-ATTRIBUTE	Redirected-To-Party-Number	46	string
+ATTRIBUTE	Redirected-From-Party-Number		45	string
+ATTRIBUTE	Redirected-To-Party-Number		46	string
 
 #ATTRIBUTE	Electronic-Surveillance-DF-Security 47 octets
-ATTRIBUTE	El-Surveillance-DF-Security	47	octets
+ATTRIBUTE	El-Surveillance-DF-Security		47	octets
 
-ATTRIBUTE	CCC-ID			48	octets
-ATTRIBUTE	Financial-Entity-ID		49	string
-ATTRIBUTE	Flow-Direction		50	integer
-ATTRIBUTE	Signal-Type			51	integer
-ATTRIBUTE	Alerting-Signal		52	integer
-ATTRIBUTE	Subject-Audible-Signal	53	integer
-ATTRIBUTE	Terminal-Display-Info		54	octets
-ATTRIBUTE	Switch-Hook-Flash		55	string
-ATTRIBUTE	Dialed-Digits			56	string
-ATTRIBUTE	Misc-Signaling-Information	57	string
-ATTRIBUTE	AM-Opaque-Data		61	integer
-ATTRIBUTE	Subscriber-ID			62	integer
-ATTRIBUTE	Volume-Usage-Limit		63	integer
-ATTRIBUTE	Gate-Usage-Info		64	integer
-ATTRIBUTE	Element-Requesting-QoS	65	integer
-ATTRIBUTE	QoS-Release-Reason		66	integer
-ATTRIBUTE	Policy-Denied-Reason		67	integer
-ATTRIBUTE	Policy-Deleted-Reason		68	integer
-ATTRIBUTE	Policy-Update-Reason		69	integer
-ATTRIBUTE	Policy-Decision-Status	70	integer
-ATTRIBUTE	Application-Manager-ID	71	integer
-ATTRIBUTE	Time-Usage-Limit		72	integer
-ATTRIBUTE	Gate-Time-Info		73	integer
-ATTRIBUTE	Account-Code			80	string
-ATTRIBUTE	Authorization-Code		81	string
+ATTRIBUTE	CCC-ID					48	octets
+ATTRIBUTE	Financial-Entity-ID			49	string
+ATTRIBUTE	Flow-Direction				50	integer
+ATTRIBUTE	Signal-Type				51	integer
+ATTRIBUTE	Alerting-Signal				52	integer
+ATTRIBUTE	Subject-Audible-Signal			53	integer
+ATTRIBUTE	Terminal-Display-Info			54	octets
+ATTRIBUTE	Switch-Hook-Flash			55	string
+ATTRIBUTE	Dialed-Digits				56	string
+ATTRIBUTE	Misc-Signaling-Information		57	string
+ATTRIBUTE	AM-Opaque-Data				61	integer
+ATTRIBUTE	Subscriber-ID				62	integer
+ATTRIBUTE	Volume-Usage-Limit			63	integer
+ATTRIBUTE	Gate-Usage-Info				64	integer
+ATTRIBUTE	Element-Requesting-QoS			65	integer
+ATTRIBUTE	QoS-Release-Reason			66	integer
+ATTRIBUTE	Policy-Denied-Reason			67	integer
+ATTRIBUTE	Policy-Deleted-Reason			68	integer
+ATTRIBUTE	Policy-Update-Reason			69	integer
+ATTRIBUTE	Policy-Decision-Status			70	integer
+ATTRIBUTE	Application-Manager-ID			71	integer
+ATTRIBUTE	Time-Usage-Limit			72	integer
+ATTRIBUTE	Gate-Time-Info				73	integer
+ATTRIBUTE	Account-Code				80	string
+ATTRIBUTE	Authorization-Code			81	string
 
 #
 #  Commented out because they cannot be used.
@@ -120,90 +120,90 @@ ATTRIBUTE	Authorization-Code		81	string
 #VALUE	Event-Message		Policy-Delete		32
 #VALUE	Event-Message		Policy-Update		33
 
-VALUE	Query-Type		Reserved		0
-VALUE	Query-Type		Toll-Free-Number-Looukp	1
-VALUE	Query-Type		LNP-Number-Lookup	2
-VALUE	Query-Type		Calling-Name-Delivery-Lookup 3
+VALUE	Query-Type			Reserved		0
+VALUE	Query-Type			Toll-Free-Number-Looukp	1
+VALUE	Query-Type			LNP-Number-Lookup	2
+VALUE	Query-Type			Calling-Name-Delivery-Lookup 3
 
-VALUE	Channel-State		Reserved		0
-VALUE	Channel-State		Open			1
-VALUE	Channel-State		Change			2
-VALUE	Channel-State		Close			3
+VALUE	Channel-State			Reserved		0
+VALUE	Channel-State			Open			1
+VALUE	Channel-State			Change			2
+VALUE	Channel-State			Close			3
 
-VALUE	Direction-indicator	Undefined		0
-VALUE	Direction-indicator	Originating		1
-VALUE	Direction-indicator	Terminating		2
+VALUE	Direction-indicator		Undefined		0
+VALUE	Direction-indicator		Originating		1
+VALUE	Direction-indicator		Terminating		2
 
-VALUE	Flow-Direction	Reserved		0
-VALUE	Flow-Direction	Upstream		1
-VALUE	Flow-Direction	Downstream		2
+VALUE	Flow-Direction			Reserved		0
+VALUE	Flow-Direction			Upstream		1
+VALUE	Flow-Direction			Downstream		2
 
-VALUE	Signal-Type		Reserved		0
-VALUE	Signal-Type		Network-Signal		1
-VALUE	Signal-Type		Subject-Signal		2
+VALUE	Signal-Type			Reserved		0
+VALUE	Signal-Type			Network-Signal		1
+VALUE	Signal-Type			Subject-Signal		2
 
-VALUE	Alerting-Signal	Reserved-0		0
-VALUE	Alerting-Signal	Ringing			1
-VALUE	Alerting-Signal	Distinctive-Ringing-2	2
-VALUE	Alerting-Signal	Distinctive-Ringing-3	3
-VALUE	Alerting-Signal	Distinctive-Ringing-4	4
-VALUE	Alerting-Signal	Ringsplash		5
-VALUE	Alerting-Signal	Call-Waiting-Tone-1	6
-VALUE	Alerting-Signal	Call-Waiting-Tone-2	7
-VALUE	Alerting-Signal	Call-Waiting-Tone-3	8
-VALUE	Alerting-Signal	Call-Waiting-Tone-4	9
-VALUE	Alerting-Signal	Reserved-10		10
-VALUE	Alerting-Signal	Distinctive-Ringing-0	11
-VALUE	Alerting-Signal	Distinctive-Ringing-1	12
-VALUE	Alerting-Signal	Distinctive-Ringing-5	13
-VALUE	Alerting-Signal	Distinctive-Ringing-6	14
-VALUE	Alerting-Signal	Distinctive-Ringing-7	15
+VALUE	Alerting-Signal			Reserved-0		0
+VALUE	Alerting-Signal			Ringing			1
+VALUE	Alerting-Signal			Distinctive-Ringing-2	2
+VALUE	Alerting-Signal			Distinctive-Ringing-3	3
+VALUE	Alerting-Signal			Distinctive-Ringing-4	4
+VALUE	Alerting-Signal			Ringsplash		5
+VALUE	Alerting-Signal			Call-Waiting-Tone-1	6
+VALUE	Alerting-Signal			Call-Waiting-Tone-2	7
+VALUE	Alerting-Signal			Call-Waiting-Tone-3	8
+VALUE	Alerting-Signal			Call-Waiting-Tone-4	9
+VALUE	Alerting-Signal			Reserved-10		10
+VALUE	Alerting-Signal			Distinctive-Ringing-0	11
+VALUE	Alerting-Signal			Distinctive-Ringing-1	12
+VALUE	Alerting-Signal			Distinctive-Ringing-5	13
+VALUE	Alerting-Signal			Distinctive-Ringing-6	14
+VALUE	Alerting-Signal			Distinctive-Ringing-7	15
 
-VALUE	AM-Opaque-Data	Reserved-0		0
-VALUE	AM-Opaque-Data	Dial-Tone		1
-VALUE	AM-Opaque-Data	Stutter-Dial-Tone	2
-VALUE	AM-Opaque-Data	Ring-Back-Tone		3
-VALUE	AM-Opaque-Data	Reorder-Tone		4
-VALUE	AM-Opaque-Data	Busy-Tone		5
-VALUE	AM-Opaque-Data	Confirmation-Tone	6
-VALUE	AM-Opaque-Data	Reserved-7		7
-VALUE	AM-Opaque-Data	Message-Waiting-Indicator 8
-VALUE	AM-Opaque-Data	Off-hook-Warning-Tone	9
+VALUE	AM-Opaque-Data			Reserved-0		0
+VALUE	AM-Opaque-Data			Dial-Tone		1
+VALUE	AM-Opaque-Data			Stutter-Dial-Tone	2
+VALUE	AM-Opaque-Data			Ring-Back-Tone		3
+VALUE	AM-Opaque-Data			Reorder-Tone		4
+VALUE	AM-Opaque-Data			Busy-Tone		5
+VALUE	AM-Opaque-Data			Confirmation-Tone	6
+VALUE	AM-Opaque-Data			Reserved-7		7
+VALUE	AM-Opaque-Data			Message-Waiting-Indicator 8
+VALUE	AM-Opaque-Data			Off-hook-Warning-Tone	9
 
-VALUE	Element-Requesting-QoS Client			0
-VALUE	Element-Requesting-QoS Policy-Server		1
-VALUE	Element-Requesting-QoS Embedded-Client	2
+VALUE	Element-Requesting-QoS		Client			0
+VALUE	Element-Requesting-QoS		Policy-Server		1
+VALUE	Element-Requesting-QoS		Embedded-Client		2
 
-VALUE	QoS-Release-Reason	Gate-Closed-By-PS	1
-VALUE	QoS-Release-Reason	Inactivity-Resource-Recovery-Timer-Expiration 2
-VALUE	QoS-Release-Reason	CM-Failure		3
-VALUE	QoS-Release-Reason	Pre-Empted		4
-VALUE	QoS-Release-Reason	RSVP-PathTear-request	5
-VALUE	QoS-Release-Reason	CM-Request		6
-VALUE	QoS-Release-Reason	Admitted-Timer-Expiration 7
-VALUE	QoS-Release-Reason	Other			127
+VALUE	QoS-Release-Reason		Gate-Closed-By-PS	1
+VALUE	QoS-Release-Reason		Inactivity-Resource-Recovery-Timer-Expiration 2
+VALUE	QoS-Release-Reason		CM-Failure		3
+VALUE	QoS-Release-Reason		Pre-Empted		4
+VALUE	QoS-Release-Reason		RSVP-PathTear-request	5
+VALUE	QoS-Release-Reason		CM-Request		6
+VALUE	QoS-Release-Reason		Admitted-Timer-Expiration 7
+VALUE	QoS-Release-Reason		Other			127
 
-VALUE	Policy-Denied-Reason	Policy-Server-Admission-Control-Failure 1
-VALUE	Policy-Denied-Reason	Insufficient-Resources	2
-VALUE	Policy-Denied-Reason	Unknown-Subscriber	3
-VALUE	Policy-Denied-Reason	Unauthorized-AMID	4
-VALUE	Policy-Denied-Reason	Undefined-Service-Class-Name 5
-VALUE	Policy-Denied-Reason	Incompatible-Envelope	6
-VALUE	Policy-Denied-Reason	Other			127
+VALUE	Policy-Denied-Reason		Policy-Server-Admission-Control-Failure 1
+VALUE	Policy-Denied-Reason		Insufficient-Resources	2
+VALUE	Policy-Denied-Reason		Unknown-Subscriber	3
+VALUE	Policy-Denied-Reason		Unauthorized-AMID	4
+VALUE	Policy-Denied-Reason		Undefined-Service-Class-Name 5
+VALUE	Policy-Denied-Reason		Incompatible-Envelope	6
+VALUE	Policy-Denied-Reason		Other			127
 
-VALUE	Policy-Deleted-Reason	Application-Manager-Request 1
-VALUE	Policy-Deleted-Reason	CMTS-Decistion		2
-VALUE	Policy-Deleted-Reason	Other			127
+VALUE	Policy-Deleted-Reason		Application-Manager-Request 1
+VALUE	Policy-Deleted-Reason		CMTS-Decistion		2
+VALUE	Policy-Deleted-Reason		Other			127
 
-VALUE	Policy-Update-Reason	Traffic-Profile		1
-VALUE	Policy-Update-Reason	Classifier		2
-VALUE	Policy-Update-Reason	Volume-Limit		3
-VALUE	Policy-Update-Reason	Time-Limit		4
-VALUE	Policy-Update-Reason	Opaque-Data		5
-VALUE	Policy-Update-Reason	Multiple-Updates	6
-VALUE	Policy-Update-Reason	Other			127
+VALUE	Policy-Update-Reason		Traffic-Profile		1
+VALUE	Policy-Update-Reason		Classifier		2
+VALUE	Policy-Update-Reason		Volume-Limit		3
+VALUE	Policy-Update-Reason		Time-Limit		4
+VALUE	Policy-Update-Reason		Opaque-Data		5
+VALUE	Policy-Update-Reason		Multiple-Updates	6
+VALUE	Policy-Update-Reason		Other			127
 
-VALUE	Policy-Decision-Status Policy-Approved	1
-VALUE	Policy-Decision-Status Policy-Denied		2
+VALUE	Policy-Decision-Status		Policy-Approved		1
+VALUE	Policy-Decision-Status		Policy-Denied		2
 
 END-VENDOR CableLabs

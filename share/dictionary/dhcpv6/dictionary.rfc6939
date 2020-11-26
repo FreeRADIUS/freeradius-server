@@ -11,128 +11,128 @@
 ##############################################################################
 
 ATTRIBUTE	Client-Link-Layer			79	struct		# Complex struct see RFC 6939
-MEMBER		Type						uint16 key
+MEMBER		Type					uint16 key
 
-STRUCT		Ethernet			Type	1
-MEMBER		Address						ether
+STRUCT	Ethernet				Type		1
+MEMBER		Address					ether
 
-STRUCT		Experimental-Ethernet		Type	2
-MEMBER		Address						octets
+STRUCT	Experimental-Ethernet				Type	2
+MEMBER		Address					octets
 
-STRUCT		AX_25				Type	3
-MEMBER		Address						octets
+STRUCT	AX_25				Type			3
+MEMBER		Address					octets
 
-STRUCT		Proteon-Token-Ring		Type	4
-MEMBER		Address						octets
+STRUCT	Proteon-Token-Ring				Type	4
+MEMBER		Address					octets
 
-STRUCT		Chaos				Type	5
-MEMBER		Address						octets
+STRUCT	Chaos				Type			5
+MEMBER		Address					octets
 
-STRUCT		IEEE-802			Type	6
-MEMBER		Address						octets
+STRUCT	IEEE-802				Type		6
+MEMBER		Address					octets
 
-STRUCT		Arcnet				Type	7
-MEMBER		Address						octets
+STRUCT	Arcnet				Type			7
+MEMBER		Address					octets
 
-STRUCT		Hyperchannel			Type	8
-MEMBER		Address						octets
+STRUCT	Hyperchannel				Type		8
+MEMBER		Address					octets
 
-STRUCT		Lanstar				Type	9
-MEMBER		Address						octets
+STRUCT	Lanstar				Type			9
+MEMBER		Address					octets
 
-STRUCT		Autonet-Short-Address		Type	10
-MEMBER		Address 					octets
+STRUCT	Autonet-Short-Address				Type	10
+MEMBER		Address					octets
 
-STRUCT		LocalTalk			Type	11
-MEMBER		Address						octets
+STRUCT	LocalTalk				Type		11
+MEMBER		Address					octets
 
-STRUCT		LocalNet			Type	12
-MEMBER		Address						octets
+STRUCT	LocalNet				Type		12
+MEMBER		Address					octets
 
-STRUCT		Ultra-Link			Type	13
-MEMBER		Address						octets
+STRUCT	Ultra-Link				Type		13
+MEMBER		Address					octets
 
-STRUCT		SMDS				Type	14
-MEMBER		Address						octets
+STRUCT	SMDS				Type			14
+MEMBER		Address					octets
 
-STRUCT		Frame-Relay			Type	15
-MEMBER		Address						octets
+STRUCT	Frame-Relay				Type		15
+MEMBER		Address					octets
 
-STRUCT		ATM-16				Type	16
-MEMBER		Address						octets
+STRUCT	ATM-16				Type			16
+MEMBER		Address					octets
 
-STRUCT		HDLC				Type	17
-MEMBER		Address						octets
+STRUCT	HDLC				Type			17
+MEMBER		Address					octets
 
-STRUCT		Fibre-Channel			Type	18
-MEMBER		Address						octets
+STRUCT	Fibre-Channel				Type		18
+MEMBER		Address					octets
 
-STRUCT		ATM-19				Type	19
-MEMBER		Address						octets
+STRUCT	ATM-19				Type			19
+MEMBER		Address					octets
 
-STRUCT		Serial-Line			Type	20
-MEMBER		Address						octets
+STRUCT	Serial-Line				Type		20
+MEMBER		Address					octets
 
-STRUCT		ATM-21				Type	21
-MEMBER		Address						octets
+STRUCT	ATM-21				Type			21
+MEMBER		Address					octets
 
-STRUCT		MIL-STD-188-220			Type	22
-MEMBER		Address						octets
+STRUCT	MIL-STD-188-220				Type		22
+MEMBER		Address					octets
 
-STRUCT		Metricom			Type	23
-MEMBER		Address						octets
+STRUCT	Metricom				Type		23
+MEMBER		Address					octets
 
-STRUCT		IEEE-1394			Type	24
-MEMBER		Address						octets
+STRUCT	IEEE-1394				Type		24
+MEMBER		Address					octets
 
-STRUCT		MAPOS				Type	25
-MEMBER		Address						octets
+STRUCT	MAPOS				Type			25
+MEMBER		Address					octets
 
-STRUCT		Twinaxial			Type	26
-MEMBER		Address						octets
+STRUCT	Twinaxial				Type		26
+MEMBER		Address					octets
 
-STRUCT		EUI-64				Type 	27
-MEMBER		Address						octets
+STRUCT	EUI-64				Type			27
+MEMBER		Address					octets
 
-STRUCT		HIPARP				Type	28
-MEMBER		Address						octets
+STRUCT	HIPARP				Type			28
+MEMBER		Address					octets
 
-STRUCT		IP-Over-ISO-7816-3		Type	29
-MEMBER		Address						octets
+STRUCT	IP-Over-ISO-7816-3				Type	29
+MEMBER		Address					octets
 
-STRUCT		ARPSec				Type	30
-MEMBER		Address						octets
+STRUCT	ARPSec				Type			30
+MEMBER		Address					octets
 
-STRUCT		IPSec-Tunnel			Type	31
-MEMBER		Address						octets
+STRUCT	IPSec-Tunnel				Type		31
+MEMBER		Address					octets
 
-STRUCT		Infiniband			Type	32
-MEMBER		Address						octets
+STRUCT	Infiniband				Type		32
+MEMBER		Address					octets
 
-STRUCT		CAI-TIA-102			Type	33
-MEMBER		Addres						octets
+STRUCT	CAI-TIA-102				Type		33
+MEMBER		Addres					octets
 
-STRUCT		Wiegand-Interface		Type	34
-MEMBER		Address						octets
+STRUCT	Wiegand-Interface				Type	34
+MEMBER		Address					octets
 
-STRUCT		Pure-IP				Type	35
-MEMBER		Address						octets
+STRUCT	Pure-IP				Type			35
+MEMBER		Address					octets
 
-STRUCT		HW-EXP1				Type	36
-MEMBER		Address						octets
+STRUCT	HW-EXP1				Type			36
+MEMBER		Address					octets
 
-STRUCT		HFI				Type	37
-MEMBER		Address						octets
+STRUCT	HFI				Type			37
+MEMBER		Address					octets
 
 #
 #	Unassigned 38-255
 #
 
-STRUCT		HW_EXP2				Type	256
-MEMBER		Address						octets
+STRUCT	HW_EXP2				Type			256
+MEMBER		Address					octets
 
-STRUCT		AEthernet			Type	257
-MEMBER		Address						octets
+STRUCT	AEthernet				Type		257
+MEMBER		Address					octets
 
 #
 #	Unassigned	258-65534

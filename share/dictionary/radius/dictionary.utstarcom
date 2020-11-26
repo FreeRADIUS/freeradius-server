@@ -14,32 +14,32 @@ VENDOR		UTStarcom			7064
 
 BEGIN-VENDOR	UTStarcom
 
-ATTRIBUTE	VLAN-ID			140	integer
-ATTRIBUTE	CommittedBandwidth		142	integer
-ATTRIBUTE	MaxBandwidth			143	integer
-ATTRIBUTE	Priority			145	integer
-ATTRIBUTE	Error-Reason			147	integer
-ATTRIBUTE	PrimaryDNS			152	integer
-ATTRIBUTE	SecondaryDNS			153	integer
-ATTRIBUTE	MaxBurstSize			161	integer
-ATTRIBUTE	MaxDelay			162	integer
-ATTRIBUTE	MaxJitter			163	integer
-ATTRIBUTE	DeviceId			165	string
-ATTRIBUTE	Module-Id			166	integer
-ATTRIBUTE	Port-No			167	integer
-ATTRIBUTE	Logical-Port-No		168	integer
-ATTRIBUTE	UNI-MAX-MAC			169	integer
-ATTRIBUTE	Default-Gateway		170	integer
-ATTRIBUTE	CLI-Access-Level		171	integer
-ATTRIBUTE	Act-Input-Octets		180	string
-ATTRIBUTE	Act-Output-Octets		181	string
-ATTRIBUTE	Act-Input-Frames		182	string
-ATTRIBUTE	Act-Output-Frames		183	string
-ATTRIBUTE	Onu-MC-Filter-Enable		184	integer
-ATTRIBUTE	UNI-Auto-Negotiation		185	integer
-ATTRIBUTE	UNI-Speed			186	integer
-ATTRIBUTE	UNI-Duplex			187	integer
-ATTRIBUTE	ONU-Admin_status		188	integer
-ATTRIBUTE	ONU-FW-SC-Upgrade		189	integer
+ATTRIBUTE	VLAN-ID					140	integer
+ATTRIBUTE	CommittedBandwidth			142	integer
+ATTRIBUTE	MaxBandwidth				143	integer
+ATTRIBUTE	Priority				145	integer
+ATTRIBUTE	Error-Reason				147	integer
+ATTRIBUTE	PrimaryDNS				152	integer
+ATTRIBUTE	SecondaryDNS				153	integer
+ATTRIBUTE	MaxBurstSize				161	integer
+ATTRIBUTE	MaxDelay				162	integer
+ATTRIBUTE	MaxJitter				163	integer
+ATTRIBUTE	DeviceId				165	string
+ATTRIBUTE	Module-Id				166	integer
+ATTRIBUTE	Port-No					167	integer
+ATTRIBUTE	Logical-Port-No				168	integer
+ATTRIBUTE	UNI-MAX-MAC				169	integer
+ATTRIBUTE	Default-Gateway				170	integer
+ATTRIBUTE	CLI-Access-Level			171	integer
+ATTRIBUTE	Act-Input-Octets			180	string
+ATTRIBUTE	Act-Output-Octets			181	string
+ATTRIBUTE	Act-Input-Frames			182	string
+ATTRIBUTE	Act-Output-Frames			183	string
+ATTRIBUTE	Onu-MC-Filter-Enable			184	integer
+ATTRIBUTE	UNI-Auto-Negotiation			185	integer
+ATTRIBUTE	UNI-Speed				186	integer
+ATTRIBUTE	UNI-Duplex				187	integer
+ATTRIBUTE	ONU-Admin_status			188	integer
+ATTRIBUTE	ONU-FW-SC-Upgrade			189	integer
 
 END-VENDOR	UTStarcom

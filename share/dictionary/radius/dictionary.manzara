@@ -7,24 +7,24 @@ VENDOR		Manzara				19382
 
 BEGIN-VENDOR	Manzara
 
-ATTRIBUTE	User-UID			1	integer
-ATTRIBUTE	User-GID			2	integer
-ATTRIBUTE	User-Home			3	string
-ATTRIBUTE	User-Shell			4	string
-ATTRIBUTE	PPP-Addr-String			5	string
-ATTRIBUTE	Full-Login-String		6	string
-ATTRIBUTE	Tariff-Units			7	integer
-ATTRIBUTE	Tariff-Type			8	integer
-ATTRIBUTE	ECP-Session-Key			9	octets
-ATTRIBUTE	Map-Name			10	string
-ATTRIBUTE	Map-Key				11	string
-ATTRIBUTE	Map-Value			12	string
-ATTRIBUTE	Map-Error			13	string
-ATTRIBUTE	Service-Type			14	string
+ATTRIBUTE	User-UID				1	integer
+ATTRIBUTE	User-GID				2	integer
+ATTRIBUTE	User-Home				3	string
+ATTRIBUTE	User-Shell				4	string
+ATTRIBUTE	PPP-Addr-String				5	string
+ATTRIBUTE	Full-Login-String			6	string
+ATTRIBUTE	Tariff-Units				7	integer
+ATTRIBUTE	Tariff-Type				8	integer
+ATTRIBUTE	ECP-Session-Key				9	octets
+ATTRIBUTE	Map-Name				10	string
+ATTRIBUTE	Map-Key					11	string
+ATTRIBUTE	Map-Value				12	string
+ATTRIBUTE	Map-Error				13	string
+ATTRIBUTE	Service-Type				14	string
 
-VALUE	Tariff-Type		MMS-Picture		1
-VALUE	Tariff-Type		Unused			2
-VALUE	Tariff-Type		Internet		3
+VALUE	Tariff-Type			MMS-Picture		1
+VALUE	Tariff-Type			Unused			2
+VALUE	Tariff-Type			Internet		3
 
 END-VENDOR Manzara
 

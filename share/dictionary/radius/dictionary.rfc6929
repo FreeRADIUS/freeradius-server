@@ -31,7 +31,7 @@ ATTRIBUTE	Extended-Vendor-Specific-6		246.26	vsa
 #
 #  An example of a vendor dictionary is given below (commented out).
 #
-#  In this case, the "Cisco-Foo-Bar" attribute has OID 241.26.9.1 
+#  In this case, the "Cisco-Foo-Bar" attribute has OID 241.26.9.1
 #
 #BEGIN-VENDOR Cisco format=Extended-Vendor-Specific-1
 #ATTRIBUTE Cisco-Foo-Bar 1 integer

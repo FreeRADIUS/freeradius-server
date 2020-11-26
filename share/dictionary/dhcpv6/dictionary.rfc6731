@@ -11,10 +11,10 @@
 ##############################################################################
 
 ATTRIBUTE	DNS-Recursive-Name-Server		74	struct
-MEMBER		Preference					uint8
-VALUE		Preference High					0x01
-VALUE		Preference Medium				0x02
-VALUE		Preference Low					0x03
-VALUE		Preference Reserved				0x04
+MEMBER		Preference				uint8
+VALUE	Preference			High			0x01
+VALUE	Preference			Medium			0x02
+VALUE	Preference			Low			0x03
+VALUE	Preference			Reserved		0x04
 
-MEMBER		FQDN						octets	# really array of DNS labels
+MEMBER		FQDN					octets	# really array of DNS labels

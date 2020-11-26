@@ -11,27 +11,27 @@
 ##############################################################################
 
 ATTRIBUTE	Kerberos-Principal-Name			75	struct
-MEMBER		Type						uint32
-MEMBER		String						octets			# really KerberosString
+MEMBER		Type					uint32
+MEMBER		String					octets			# really KerberosString
 
 ATTRIBUTE	Kerberos-Realm-Name			76	struct
-MEMBER		Type						uint32
-MEMBER		String						octets			# really KerberosString
+MEMBER		Type					uint32
+MEMBER		String					octets			# really KerberosString
 
 ATTRIBUTE	Kerberos-Default-Realm-Name		77	struct
-MEMBER		Type						uint32
-MEMBER		String						octets			# really KerberosString
+MEMBER		Type					uint32
+MEMBER		String					octets			# really KerberosString
 
 ATTRIBUTE	Kerberos-KDC				78	struct
-MEMBER		Priority					uint16
-MEMBER		Weight						uint16
-MEMBER		Transport-Type					uint8
-VALUE		Transport-Type		UDP		1
-VALUE		Transport-Type		TCP		2
-VALUE		Transport-Type		TLS		3
-VALUE		Transport-Type		Reserved	255
+MEMBER		Priority				uint16
+MEMBER		Weight					uint16
+MEMBER		Transport-Type				uint8
+VALUE	Transport-Type			UDP			1
+VALUE	Transport-Type			TCP			2
+VALUE	Transport-Type			TLS			3
+VALUE	Transport-Type			Reserved		255
 
-MEMBER		Port-Number					uint16
-MEMBER		IPv6-Address					ipv6addr
-MEMBER		Realm-Name-Type					uint32
-MEMBER		Realm-Name-String				octets			# really KerberosString
+MEMBER		Port-Number				uint16
+MEMBER		IPv6-Address				ipv6addr
+MEMBER		Realm-Name-Type				uint32
+MEMBER		Realm-Name-String			octets			# really KerberosString

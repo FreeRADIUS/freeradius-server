@@ -13,8 +13,8 @@ VENDOR		pfSense				13644
 
 BEGIN-VENDOR	pfSense
 
-ATTRIBUTE	Bandwidth-Max-Up		1	integer
-ATTRIBUTE	Bandwidth-Max-Down		2	integer
-ATTRIBUTE	Max-Total-Octets		3	integer
+ATTRIBUTE	Bandwidth-Max-Up			1	integer
+ATTRIBUTE	Bandwidth-Max-Down			2	integer
+ATTRIBUTE	Max-Total-Octets			3	integer
 
 END-VENDOR	pfSense

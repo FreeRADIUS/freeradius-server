@@ -12,7 +12,7 @@
 #
 #	$Id$
 #
-VENDOR		3GPP2					5535
+VENDOR		3GPP2				5535
 BEGIN-VENDOR	3GPP2
 
 ATTRIBUTE	Ike-Preshared-Secret-Request		1	integer
@@ -97,18 +97,18 @@ ATTRIBUTE	Value					.1	short
 ATTRIBUTE	Qualifier				.2	short
 
 ATTRIBUTE	Remote-IPv4-Addr-Octet-Count		72	tlv
-ATTRIBUTE	Address 				.1	ipaddr
+ATTRIBUTE	Address					.1	ipaddr
 ATTRIBUTE	Mask					.2	integer
-ATTRIBUTE	Forward 				.3	integer
-ATTRIBUTE	Reverse 				.4	integer
-ATTRIBUTE	Table-Index 				.5	short
-ATTRIBUTE	Forward-Overflow 			.6	short
-ATTRIBUTE	Reverse-Overflow 			.7	short
+ATTRIBUTE	Forward					.3	integer
+ATTRIBUTE	Reverse					.4	integer
+ATTRIBUTE	Table-Index				.5	short
+ATTRIBUTE	Forward-Overflow			.6	short
+ATTRIBUTE	Reverse-Overflow			.7	short
 
 ATTRIBUTE	Allowed-Diffserv-Marking		73	tlv
 ATTRIBUTE	Allowed					.1	short
-ATTRIBUTE	Max-Class 				.2	short
-ATTRIBUTE	Reverse-Runnel 				.3	short
+ATTRIBUTE	Max-Class				.2	short
+ATTRIBUTE	Reverse-Runnel				.3	short
 
 ATTRIBUTE	Service-Option-Profile			74	tlv
 ATTRIBUTE	Option					.1	short
@@ -133,10 +133,10 @@ ATTRIBUTE	Allowed-Persistent-TFTs			89	integer
 
 ATTRIBUTE	Prepaid-Acct-Quota			90	tlv
 
-ATTRIBUTE	Quota-IDentifier 			.1	integer
+ATTRIBUTE	Quota-IDentifier			.1	integer
 ATTRIBUTE	Volume-Quota				.2	integer
-ATTRIBUTE	Volume-Quota-Overflow 			.3	integer
-ATTRIBUTE	Volume-Threshold 			.4	integer
+ATTRIBUTE	Volume-Quota-Overflow			.3	integer
+ATTRIBUTE	Volume-Threshold			.4	integer
 ATTRIBUTE	Volume-Threshold-Overflow		.5	integer
 ATTRIBUTE	Update-Reason				.8	short
 
@@ -163,7 +163,7 @@ ATTRIBUTE	Reverse-Octet-Count-Overflow		.6	short
 
 ATTRIBUTE	PrePaid-Tariff-Switching		98	tlv
 ATTRIBUTE	Quota-Identifier			.1	integer
-ATTRIBUTE	Volume-Used-After-Tariff-Switch 	.2	integer
+ATTRIBUTE	Volume-Used-After-Tariff-Switch		.2	integer
 ATTRIBUTE	Volume-Used-ATS-Overflow		.3	short
 ATTRIBUTE	Tariff-Switch-Interval			.4	integer
 ATTRIBUTE	Time-Interval-After-Tariff-Switch-Update .5	integer
@@ -176,8 +176,8 @@ ATTRIBUTE	Secondary-IP-Address			.2	ipaddr
 ATTRIBUTE	Flag					.3	byte
 ATTRIBUTE	Entity-Type				.4	byte
 
-VALUE		Entity-Type	HAAA			1
-VALUE		Entity-Type	VAAA			2
+VALUE	Entity-Type			HAAA			1
+VALUE	Entity-Type			VAAA			2
 
 ATTRIBUTE	Carrier-ID				142	string
 

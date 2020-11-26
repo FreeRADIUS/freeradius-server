@@ -21,16 +21,16 @@ VENDOR		infonet				4453
 # messy. Same with Type.  -Clark
 BEGIN-VENDOR	infonet
 
-ATTRIBUTE	Proxy				238	string
-ATTRIBUTE	Config				239	string
-ATTRIBUTE	MCS-Country			240	string
-ATTRIBUTE	MCS-Region			241	string
-ATTRIBUTE	MCS-Off-Peak			242	string
-ATTRIBUTE	MCS-Overflow			243	string
-ATTRIBUTE	MCS-Port			244	string
-ATTRIBUTE	MCS-Port-Count			245	string
-ATTRIBUTE	Account-Number			247	string
-ATTRIBUTE	Type				248	string
+ATTRIBUTE	Proxy					238	string
+ATTRIBUTE	Config					239	string
+ATTRIBUTE	MCS-Country				240	string
+ATTRIBUTE	MCS-Region				241	string
+ATTRIBUTE	MCS-Off-Peak				242	string
+ATTRIBUTE	MCS-Overflow				243	string
+ATTRIBUTE	MCS-Port				244	string
+ATTRIBUTE	MCS-Port-Count				245	string
+ATTRIBUTE	Account-Number				247	string
+ATTRIBUTE	Type					248	string
 
 #
 #       Specific Attributes
@@ -41,13 +41,13 @@ ATTRIBUTE	Type				248	string
 #       to a proxy site. This includes accounting packets as well as
 #       auth packets.
 #
-ATTRIBUTE	Pool-Request			252	string
-ATTRIBUTE	Surcharge-Type			254	integer
-ATTRIBUTE	NAS-Location			255	string
-ATTRIBUTE	Random-IP-Pool			246	string
+ATTRIBUTE	Pool-Request				252	string
+ATTRIBUTE	Surcharge-Type				254	integer
+ATTRIBUTE	NAS-Location				255	string
+ATTRIBUTE	Random-IP-Pool				246	string
 #
-ATTRIBUTE	Realm-Type			249	string
-ATTRIBUTE	LoginHost-Dest			250	string
-ATTRIBUTE	Tunnel-Decision-IP		251	string
+ATTRIBUTE	Realm-Type				249	string
+ATTRIBUTE	LoginHost-Dest				250	string
+ATTRIBUTE	Tunnel-Decision-IP			251	string
 
 END-VENDOR	infonet

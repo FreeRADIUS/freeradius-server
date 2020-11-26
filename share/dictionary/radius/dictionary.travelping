@@ -13,23 +13,23 @@ BEGIN-VENDOR	Travelping
 #
 #    Standard attribute
 #
-ATTRIBUTE	Gateway-Version			1	string
+ATTRIBUTE	Gateway-Version				1	string
 ATTRIBUTE	Firmware-Variant			2	string
 ATTRIBUTE	Firmware-Version			3	string
-ATTRIBUTE	Gateway-Config			4	string
-ATTRIBUTE	ENC-IV				5	string
+ATTRIBUTE	Gateway-Config				4	string
+ATTRIBUTE	ENC-IV					5	string
 ATTRIBUTE	Password				6	string
 ATTRIBUTE	User-Agent				7	string
 ATTRIBUTE	Auth-Reply				8	integer
-ATTRIBUTE	Access-Class-Id			9	string
+ATTRIBUTE	Access-Class-Id				9	string
 ATTRIBUTE	Host-Name				10	string
 ATTRIBUTE	DHCP-Request-Option-List		11	string
 ATTRIBUTE	DHCP-Parameter-Request-List		12	string
 ATTRIBUTE	DHCP-Vendor-Class-Id			13	string
-ATTRIBUTE	DHCP-Client-Id			14	string
+ATTRIBUTE	DHCP-Client-Id				14	string
 ATTRIBUTE	Location-Id				15	string
-ATTRIBUTE	NAT-IP-Address			16	ipaddr
-ATTRIBUTE	Zone-Id				17	string
+ATTRIBUTE	NAT-IP-Address				16	ipaddr
+ATTRIBUTE	Zone-Id					17	string
 ATTRIBUTE	Monitor-Id				18	string
 ATTRIBUTE	Related-Session-Id			19	string
 ATTRIBUTE	Monitor-Session-Id			20	integer
@@ -40,45 +40,45 @@ ATTRIBUTE	Exit-Access-Class-Id			24	string
 ATTRIBUTE	Access-Rule				25	string
 ATTRIBUTE	Access-Group				26	string
 ATTRIBUTE	NAT-Pool-Id				27	string
-ATTRIBUTE	NAT-Port-Start			28	integer
+ATTRIBUTE	NAT-Port-Start				28	integer
 ATTRIBUTE	NAT-Port-End				29	integer
 ATTRIBUTE	Keep-Alive-Timeout			30	integer
-ATTRIBUTE	TLS-Auth-Type			31	integer
+ATTRIBUTE	TLS-Auth-Type				31	integer
 ATTRIBUTE	TLS-Pre-Shared-Key			32	string
 ATTRIBUTE	CAPWAP-Timestamp			33	integer
-ATTRIBUTE	CAPWAP-WVersion			34	string
+ATTRIBUTE	CAPWAP-WVersion				34	string
 ATTRIBUTE	CAPWAP-Session-Id			35	octets
-ATTRIBUTE	CAPWAP-Radio-Id			36	integer
-ATTRIBUTE	CAPWAP-WWAN-Id			37	integer
-ATTRIBUTE	CAPWAP-WWAN-RAT			38	integer
+ATTRIBUTE	CAPWAP-Radio-Id				36	integer
+ATTRIBUTE	CAPWAP-WWAN-Id				37	integer
+ATTRIBUTE	CAPWAP-WWAN-RAT				38	integer
 ATTRIBUTE	CAPWAP-WWAN-RSSi			39	integer
 ATTRIBUTE	CAPWAP-WWAN-CREG			40	integer
-ATTRIBUTE	CAPWAP-WWAN-LAC			41	integer
+ATTRIBUTE	CAPWAP-WWAN-LAC				41	integer
 ATTRIBUTE	CAPWAP-WWAN-Latency			42	integer
-ATTRIBUTE	CAPWAP-WWAN-MCC			43	integer
-ATTRIBUTE	CAPWAP-WWAN-MNC			44	integer
+ATTRIBUTE	CAPWAP-WWAN-MCC				43	integer
+ATTRIBUTE	CAPWAP-WWAN-MNC				44	integer
 ATTRIBUTE	CAPWAP-WWAN-Cell-Id			45	integer
-ATTRIBUTE	CAPWAP-Power-Save-Idle-Timeout	46	integer
-ATTRIBUTE	CAPWAP-Power-Save-Busy-Timeout	47	integer
+ATTRIBUTE	CAPWAP-Power-Save-Idle-Timeout		46	integer
+ATTRIBUTE	CAPWAP-Power-Save-Busy-Timeout		47	integer
 ATTRIBUTE	CAPWAP-SSID				48	string
-ATTRIBUTE	CAPWAP-Max-WIFI-Clients		49	integer
+ATTRIBUTE	CAPWAP-Max-WIFI-Clients			49	integer
 ATTRIBUTE	CAPWAP-Walled-Garden			50	string
 ATTRIBUTE	CAPWAP-GPS-Latitude			51	string
 ATTRIBUTE	CAPWAP-GPS-Longitude			52	string
 ATTRIBUTE	CAPWAP-GPS-Altitude			53	string
-ATTRIBUTE	CAPWAP-GPS-Hdop			54	string
+ATTRIBUTE	CAPWAP-GPS-Hdop				54	string
 ATTRIBUTE	CAPWAP-GPS-Timestamp			55	string
-ATTRIBUTE	CAPWAP-Hardware-Version		56	string
-ATTRIBUTE	CAPWAP-Software-Version		57	string
+ATTRIBUTE	CAPWAP-Hardware-Version			56	string
+ATTRIBUTE	CAPWAP-Software-Version			57	string
 ATTRIBUTE	CAPWAP-Boot-Version			58	string
-ATTRIBUTE	CAPWAP-Other-Software-Version	59	string
+ATTRIBUTE	CAPWAP-Other-Software-Version		59	string
 ATTRIBUTE	Excess-Input-Octets			60	integer64
 ATTRIBUTE	Excess-Output-Octets			61	integer64
 ATTRIBUTE	Excess-Total-Octets			62	integer64
 ATTRIBUTE	Trace-Id				63	string
 
-VALUE	TLS-Auth-Type		Pre-Shared-Key		0
-VALUE	TLS-Auth-Type		X509-Subject-CommonName	1
+VALUE	TLS-Auth-Type			Pre-Shared-Key		0
+VALUE	TLS-Auth-Type			X509-Subject-CommonName	1
 
 END-VENDOR	Travelping
 
@@ -86,7 +86,7 @@ END-VENDOR	Travelping
 # Vendor specific values for standard RADIUS attributes
 # 0x48f9 == 18681 == Vendor Id
 #
-VALUE	Framed-Protocol			CAPWAP		0x48f90001
+VALUE	Framed-Protocol			CAPWAP			0x48f90001
 
 VALUE	Service-Type			CAPWAP-WTP		0x48f90001
 VALUE	Service-Type			CAPWAP-STA		0x48f90002

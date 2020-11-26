@@ -17,25 +17,25 @@ VENDOR		APC				318
 
 BEGIN-VENDOR	APC
 
-ATTRIBUTE	Service-Type			1	integer
-ATTRIBUTE	Outlets				2	string
-ATTRIBUTE	Perms				3	string
+ATTRIBUTE	Service-Type				1	integer
+ATTRIBUTE	Outlets					2	string
+ATTRIBUTE	Perms					3	string
 ATTRIBUTE	Username				4	string
-ATTRIBUTE	Contact				5	string
+ATTRIBUTE	Contact					5	string
 ATTRIBUTE	ACCPX-Doors				6	string
-ATTRIBUTE	ACCPX-Status			7	string
-ATTRIBUTE	ACCPX-Access1			8	string
-ATTRIBUTE	ACCPX-Access2			9	string
-ATTRIBUTE	ACCPX-Access3			10	string
-ATTRIBUTE	ACCPX-Access4			11	string
-ATTRIBUTE	ACCPX-Access5			12	string
-ATTRIBUTE	ACCPX-Access6			13	string
-ATTRIBUTE	ACCPX-Access7			14	string
+ATTRIBUTE	ACCPX-Status				7	string
+ATTRIBUTE	ACCPX-Access1				8	string
+ATTRIBUTE	ACCPX-Access2				9	string
+ATTRIBUTE	ACCPX-Access3				10	string
+ATTRIBUTE	ACCPX-Access4				11	string
+ATTRIBUTE	ACCPX-Access5				12	string
+ATTRIBUTE	ACCPX-Access6				13	string
+ATTRIBUTE	ACCPX-Access7				14	string
 
-VALUE	Service-Type		Admin			1
-VALUE	Service-Type		Device			2
-VALUE	Service-Type		ReadOnly		3
-VALUE	Service-Type		Outlet			4
-VALUE	Service-Type		Card			5
+VALUE	Service-Type			Admin			1
+VALUE	Service-Type			Device			2
+VALUE	Service-Type			ReadOnly		3
+VALUE	Service-Type			Outlet			4
+VALUE	Service-Type			Card			5
 
 END-VENDOR APC

@@ -21,22 +21,22 @@ BEGIN-VENDOR	3com
 ATTRIBUTE	User-Access-Level			1	integer
 
 #	Read-only access to basic network tools (ping, etc)
-VALUE	User-Access-Level		Visitor		0
+VALUE	User-Access-Level		Visitor			0
 
 #	Read-only access to manageable (not security) parameters
-VALUE	User-Access-Level		Monitor		1
+VALUE	User-Access-Level		Monitor			1
 
 # 	Read-write access to manageable (not security) parameters
-VALUE	User-Access-Level		Manager		2
+VALUE	User-Access-Level		Manager			2
 
 #	Read-write access to all manageable parameters
-VALUE	User-Access-Level		Administrator	3
+VALUE	User-Access-Level		Administrator		3
 
 ATTRIBUTE	VLAN-Name				2	string
 ATTRIBUTE	Mobility-Profile			3	string
-ATTRIBUTE	Encryption-Type			4	string
-ATTRIBUTE	Time-Of-Day			5	string
-ATTRIBUTE	SSID				6	string
+ATTRIBUTE	Encryption-Type				4	string
+ATTRIBUTE	Time-Of-Day				5	string
+ATTRIBUTE	SSID					6	string
 
 #	String formatted as: YY/MM/DD-HH:MM
 #	NOT as a "date" attribute!
@@ -47,11 +47,11 @@ ATTRIBUTE	End-Date				7	string
 #ATTRIBUTE	Start-Date				7	string
 
 #	URL where the user is redirected after WebAAA
-ATTRIBUTE	URL				8	string
+ATTRIBUTE	URL					8	string
 
 ATTRIBUTE	Connect_Id				26	integer
-ATTRIBUTE	NAS-Startup-Timestamp		59	integer
-ATTRIBUTE	Ip-Host-Addr			60	string
+ATTRIBUTE	NAS-Startup-Timestamp			59	integer
+ATTRIBUTE	Ip-Host-Addr				60	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	3com

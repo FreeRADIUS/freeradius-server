@@ -14,13 +14,13 @@ VENDOR		Cosine				3085
 
 BEGIN-VENDOR	Cosine
 
-ATTRIBUTE	Connection-Profile-Name		1	string
-ATTRIBUTE	Enterprise-ID			2	string
-ATTRIBUTE	Address-Pool-Name		3	string
-ATTRIBUTE	DS-Byte				4	integer
-ATTRIBUTE	VPI-VCI				5	octets
-ATTRIBUTE	DLCI				6	integer
-ATTRIBUTE	LNS-IP-Address			7	ipaddr
-ATTRIBUTE	CLI-User-Permission-ID		8	string
+ATTRIBUTE	Connection-Profile-Name			1	string
+ATTRIBUTE	Enterprise-ID				2	string
+ATTRIBUTE	Address-Pool-Name			3	string
+ATTRIBUTE	DS-Byte					4	integer
+ATTRIBUTE	VPI-VCI					5	octets
+ATTRIBUTE	DLCI					6	integer
+ATTRIBUTE	LNS-IP-Address				7	ipaddr
+ATTRIBUTE	CLI-User-Permission-ID			8	string
 
 END-VENDOR  Cosine

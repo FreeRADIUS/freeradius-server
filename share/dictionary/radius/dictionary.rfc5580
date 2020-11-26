@@ -22,21 +22,21 @@ ATTRIBUTE	Operator-Name				126	string
 #  Large blobs of stuff
 #
 ATTRIBUTE	Location-Information			127	struct
-MEMBER		Index						uint16
-MEMBER		Code						uint8
-MEMBER		Entity						uint8
-MEMBER		Sighting-Time					uint64
-MEMBER		TTL						uint64
-MEMBER		Method						string
+MEMBER		Index					uint16
+MEMBER		Code					uint8
+MEMBER		Entity					uint8
+MEMBER		Sighting-Time				uint64
+MEMBER		TTL					uint64
+MEMBER		Method					string
 
 ATTRIBUTE	Location-Data				128	struct
-MEMBER		Index						uint16
-MEMBER		Location					octets
+MEMBER		Index					uint16
+MEMBER		Location				octets
 
 ATTRIBUTE	Basic-Location-Policy-Rules		129	struct
-MEMBER		Flags						uint16
-MEMBER		Retention-Expires				uint64
-MEMBER		Note-Well					string
+MEMBER		Flags					uint16
+MEMBER		Retention-Expires			uint64
+MEMBER		Note-Well				string
 
 ATTRIBUTE	Extended-Location-Policy-Rules		130	string
 
@@ -44,11 +44,11 @@ ATTRIBUTE	Extended-Location-Policy-Rules		130	string
 #  Really a bit-packed field
 #
 ATTRIBUTE	Location-Capable			131	struct
-MEMBER		Civic-Location-Capable				bit[1]
-MEMBER		Geo-Location-Capable				bit[1]
-MEMBER		Users-Location-Capable				bit[1]
-MEMBER		NAS-Location-Capable				bit[1]
-MEMBER		Location-Capable-Reserved			bit[4]
+MEMBER		Civic-Location-Capable			bit[1]
+MEMBER		Geo-Location-Capable			bit[1]
+MEMBER		Users-Location-Capable			bit[1]
+MEMBER		NAS-Location-Capable			bit[1]
+MEMBER		Location-Capable-Reserved		bit[4]
 
 ATTRIBUTE	Requested-Location-Info			132	integer
 VALUE	Requested-Location-Info		Civic-Location		1

@@ -15,19 +15,19 @@ BEGIN-VENDOR	Livingston
 
 ATTRIBUTE	Terminate-Detail			2	string
 ATTRIBUTE	Advice-of-Charge			3	string
-ATTRIBUTE	Connect-Detail			4	string
+ATTRIBUTE	Connect-Detail				4	string
 
-ATTRIBUTE	IP-Pool				6	string
+ATTRIBUTE	IP-Pool					6	string
 ATTRIBUTE	IP-Gateway				7	ipaddr
 ATTRIBUTE	Modem-Info				8	string
 ATTRIBUTE	IPSec-Log-Options			9	integer
 ATTRIBUTE	IPSec-Deny-Action			10	integer
 ATTRIBUTE	IPSec-Active-Profile			11	string
-ATTRIBUTE	IPSec-Outsource-Profile		12	string
-ATTRIBUTE	IPSec-Passive-Profile		13	string
-ATTRIBUTE	NAT-TCP-Session-Timeout		14	integer
+ATTRIBUTE	IPSec-Outsource-Profile			12	string
+ATTRIBUTE	IPSec-Passive-Profile			13	string
+ATTRIBUTE	NAT-TCP-Session-Timeout			14	integer
 ATTRIBUTE	NAT-Other-Session-Timeout		15	integer
-ATTRIBUTE	NAT-Log-Options			16	integer
+ATTRIBUTE	NAT-Log-Options				16	integer
 ATTRIBUTE	NAT-Sess-Dir-Fail-Action		17	integer
 ATTRIBUTE	NAT-Inmap				18	string
 ATTRIBUTE	NAT-Outmap				19	string
@@ -42,7 +42,7 @@ VALUE	IPSec-Deny-Action		Pass-Through		3
 
 VALUE	IPSec-Log-Options		SA-Success-On		1
 VALUE	IPSec-Log-Options		SA-Failure-On		2
-VALUE	IPSec-Log-Options		ConsoOn		3
+VALUE	IPSec-Log-Options		ConsoOn			3
 VALUE	IPSec-Log-Options		Syslog-On		4
 VALUE	IPSec-Log-Options		SA-Success-Off		5
 VALUE	IPSec-Log-Options		SA-Failure-Off		6
@@ -53,14 +53,14 @@ VALUE	NAT-Sess-Dir-Fail-Action	Drop			1
 VALUE	NAT-Sess-Dir-Fail-Action	ICMP-Reject		2
 VALUE	NAT-Sess-Dir-Fail-Action	Pass-Through		3
 
-VALUE	NAT-Log-Options		Session-Success-On	1
-VALUE	NAT-Log-Options		Session-Failure-On	2
-VALUE	NAT-Log-Options		ConsoOn		3
-VALUE	NAT-Log-Options		Syslog-On		4
-VALUE	NAT-Log-Options		Success-Off		5
-VALUE	NAT-Log-Options		Failure-Off		6
-VALUE	NAT-Log-Options		ConsoOff		7
-VALUE	NAT-Log-Options		Syslog-Off		8
+VALUE	NAT-Log-Options			Session-Success-On	1
+VALUE	NAT-Log-Options			Session-Failure-On	2
+VALUE	NAT-Log-Options			ConsoOn			3
+VALUE	NAT-Log-Options			Syslog-On		4
+VALUE	NAT-Log-Options			Success-Off		5
+VALUE	NAT-Log-Options			Failure-Off		6
+VALUE	NAT-Log-Options			ConsoOff		7
+VALUE	NAT-Log-Options			Syslog-Off		8
 
 VALUE	Multicast-Client		On			1
 

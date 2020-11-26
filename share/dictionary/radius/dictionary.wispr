@@ -24,16 +24,16 @@ VENDOR		WISPr				14122
 #
 BEGIN-VENDOR	WISPr
 
-ATTRIBUTE	Location-ID			1	string
-ATTRIBUTE	Location-Name			2	string
-ATTRIBUTE	Logoff-URL			3	string
-ATTRIBUTE	Redirection-URL			4	string
+ATTRIBUTE	Location-ID				1	string
+ATTRIBUTE	Location-Name				2	string
+ATTRIBUTE	Logoff-URL				3	string
+ATTRIBUTE	Redirection-URL				4	string
 ATTRIBUTE	Bandwidth-Min-Up			5	integer
-ATTRIBUTE	Bandwidth-Min-Down		6	integer
+ATTRIBUTE	Bandwidth-Min-Down			6	integer
 ATTRIBUTE	Bandwidth-Max-Up			7	integer
-ATTRIBUTE	Bandwidth-Max-Down		8	integer
-ATTRIBUTE	Session-Terminate-Time		9	string
-ATTRIBUTE	Session-Terminate-End-Of-Day	10	string
+ATTRIBUTE	Bandwidth-Max-Down			8	integer
+ATTRIBUTE	Session-Terminate-Time			9	string
+ATTRIBUTE	Session-Terminate-End-Of-Day		10	string
 ATTRIBUTE	Billing-Class-Of-Service		11	string
 
 END-VENDOR	WISPr

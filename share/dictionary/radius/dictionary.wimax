@@ -200,7 +200,7 @@ VALUE	Classifer-Direction		OUT			2
 VALUE	Classifer-Direction		Bi-Directional		3
 VALUE	Classifer-Direction		FF			4
 
-ATTRIBUTE	Src-Spec			28.11.5	tlv
+ATTRIBUTE	Src-Spec				28.11.5	tlv
 
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
@@ -210,7 +210,7 @@ ATTRIBUTE	Port-Range				.5	octets
 ATTRIBUTE	Inverted				.6	octets
 ATTRIBUTE	Assigned				.7	octets
 
-ATTRIBUTE	Dst-Spec		28.11.6	tlv
+ATTRIBUTE	Dst-Spec				28.11.6	tlv
 
 ATTRIBUTE	IPAddress				.1	ipaddr
 ATTRIBUTE	IPAddressRange				.2	combo-ip
@@ -446,20 +446,20 @@ ATTRIBUTE	Service-Data-Flow-Id			.2	short
 ATTRIBUTE	Service-Profile-Id			.3	integer
 
 ATTRIBUTE	Direction				.4	byte
-VALUE		Direction		Uplink		1
-VALUE		Direction		Downlink	2
-VALUE		Direction		Bi-Directional	3
+VALUE	Direction			Uplink			1
+VALUE	Direction			Downlink		2
+VALUE	Direction			Bi-Directional		3
 
 ATTRIBUTE	Activation-Trigger			.5	byte
-VALUE		Activation-Trigger	Provisioned		1
-VALUE		Activation-Trigger	Admit			2
-VALUE		Activation-Trigger	Activate		4
-VALUE		Activation-Trigger	Dynamic			8
+VALUE	Activation-Trigger		Provisioned		1
+VALUE	Activation-Trigger		Admit			2
+VALUE	Activation-Trigger		Activate		4
+VALUE	Activation-Trigger		Dynamic			8
 
 ATTRIBUTE	Transport-Type				.6	byte
-VALUE		Transport-Type		IPv4-CS		1
-VALUE		Transport-Type		IPv6-CS		2
-VALUE		Transport-Type		Ethernet	3
+VALUE	Transport-Type			IPv4-CS			1
+VALUE	Transport-Type			IPv6-CS			2
+VALUE	Transport-Type			Ethernet		3
 
 ATTRIBUTE	Uplink-QoS-Id				.7	byte
 ATTRIBUTE	Downlink-QoS-Id				.8	byte
@@ -473,7 +473,7 @@ ATTRIBUTE	Priority				.2	byte
 ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
-ATTRIBUTE	Src-Spec				84.9.5	tlv
+ATTRIBUTE	Src-Spec				.5	tlv
 ATTRIBUTE	IP-Address				.1	combo-ip
 # really two IPv4 OR IPv6 addresses
 ATTRIBUTE	IP-Address-Range			.2	octets
@@ -484,9 +484,9 @@ ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
 
 ATTRIBUTE	Assigned				.7	byte
-VALUE		Assigned	Src-Assigned		1
-VALUE		Assigned	Dst-Assigned		2
-VALUE		Assigned	Src-Dst-Assigned 	3
+VALUE	Assigned			Src-Assigned		1
+VALUE	Assigned			Dst-Assigned		2
+VALUE	Assigned			Src-Dst-Assigned	3
 
 ATTRIBUTE	MAC-Address				.8	ether
 ATTRIBUTE	MAC-Mask				.9	ether
@@ -502,9 +502,9 @@ ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
 
 ATTRIBUTE	Assigned				.7	byte
-VALUE		Assigned	Src-Assigned		1
-VALUE		Assigned	Dst-Assigned		2
-VALUE		Assigned	Src-Dst-Assigned 	3
+VALUE	Assigned			Src-Assigned		1
+VALUE	Assigned			Dst-Assigned		2
+VALUE	Assigned			Src-Dst-Assigned	3
 
 ATTRIBUTE	MAC-Address				.8	ether
 ATTRIBUTE	MAC-Mask				.9	ether
@@ -515,15 +515,15 @@ ATTRIBUTE	Classifier-Action			84.9.8	byte
 
 ATTRIBUTE	Classifier-Eth-Option			84.9.9	tlv
 
-ATTRIBUTE	Eth-Proto-Type				84.9.9.1	tlv
+ATTRIBUTE	Eth-Proto-Type				.1	tlv
 ATTRIBUTE	Ethertype				.1	short
 ATTRIBUTE	Type-DSAP				.2	byte
 
-ATTRIBUTE	Eth-VLAN-Id				84.9.9.2	tlv
+ATTRIBUTE	Eth-VLAN-Id				.2	tlv
 ATTRIBUTE	S-VID					.1	integer
 ATTRIBUTE	C-VID					.2	integer
 
-ATTRIBUTE	Eth-Priority-Range			84.9.9.3	tlv
+ATTRIBUTE	Eth-Priority-Range			.3	tlv
 ATTRIBUTE	Low					.1	byte
 ATTRIBUTE	High					.2	byte
 ATTRIBUTE	XXX					.4	byte

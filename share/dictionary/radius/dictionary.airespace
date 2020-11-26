@@ -21,14 +21,14 @@ ATTRIBUTE	Real-Time-Bandwidth-Average-Contract	8	integer
 ATTRIBUTE	Data-Bandwidth-Burst-Contract		9	integer
 ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract	10	integer
 ATTRIBUTE	Guest-Role-Name				11	string
-ATTRIBUTE	Data-Bandwidth-Average-Contract-Upstream	13	integer
-ATTRIBUTE	Real-Time-Bandwidth-Average-Contract-Upstream	14	integer
-ATTRIBUTE	Data-Bandwidth-Burst-Contract-Upstream		15	integer
-ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract-Upstream	16	integer
+ATTRIBUTE	Data-Bandwidth-Average-Contract-Upstream 13	integer
+ATTRIBUTE	Real-Time-Bandwidth-Average-Contract-Upstream 14	integer
+ATTRIBUTE	Data-Bandwidth-Burst-Contract-Upstream	15	integer
+ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract-Upstream 16	integer
 
-VALUE	QOS-Level		Bronze			3
-VALUE	QOS-Level		Silver			0
-VALUE	QOS-Level		Gold			1
-VALUE	QOS-Level		Platinum		2
+VALUE	QOS-Level			Bronze			3
+VALUE	QOS-Level			Silver			0
+VALUE	QOS-Level			Gold			1
+VALUE	QOS-Level			Platinum		2
 
 END-VENDOR Airespace

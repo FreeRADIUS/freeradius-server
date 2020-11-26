@@ -14,18 +14,18 @@ VENDOR		EfficientIP			2440
 
 BEGIN-VENDOR	EfficientIP
 
-ATTRIBUTE	Version			1	integer
-ATTRIBUTE	Service-Class		2	integer
-ATTRIBUTE	Identity-Type		3	integer
-ATTRIBUTE	First-Name			16	string
-ATTRIBUTE	Last-Name			17	string
-ATTRIBUTE	Pseudonym			18	string
-ATTRIBUTE	IP-Host			19	string
-ATTRIBUTE	Email			20	string
-ATTRIBUTE	First-Login-Path		32	string
-ATTRIBUTE	Maintainer-Group		33	string
-ATTRIBUTE	Groups			34	string
-ATTRIBUTE	Admin-Group			35	string
-ATTRIBUTE	Extra-Blob			64	string
+ATTRIBUTE	Version					1	integer
+ATTRIBUTE	Service-Class				2	integer
+ATTRIBUTE	Identity-Type				3	integer
+ATTRIBUTE	First-Name				16	string
+ATTRIBUTE	Last-Name				17	string
+ATTRIBUTE	Pseudonym				18	string
+ATTRIBUTE	IP-Host					19	string
+ATTRIBUTE	Email					20	string
+ATTRIBUTE	First-Login-Path			32	string
+ATTRIBUTE	Maintainer-Group			33	string
+ATTRIBUTE	Groups					34	string
+ATTRIBUTE	Admin-Group				35	string
+ATTRIBUTE	Extra-Blob				64	string
 
 END-VENDOR	EfficientIP

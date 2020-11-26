@@ -13,25 +13,25 @@ VENDOR		Netscreen			3224
 
 BEGIN-VENDOR	Netscreen
 
-ATTRIBUTE	Admin-Privilege			1	integer
+ATTRIBUTE	Admin-Privilege				1	integer
 ATTRIBUTE	VSYS-Name				2	string
 ATTRIBUTE	User-Group				3	string
 ATTRIBUTE	Primary-DNS				4	ipaddr
-ATTRIBUTE	Secondary-DNS			5	ipaddr
+ATTRIBUTE	Secondary-DNS				5	ipaddr
 ATTRIBUTE	Primary-WINS				6	ipaddr
-ATTRIBUTE	Secondary-WINS			7	ipaddr
+ATTRIBUTE	Secondary-WINS				7	ipaddr
 
 ATTRIBUTE	NSM-User-Domain-Name			220	string
-ATTRIBUTE	NSM-User-Role-Mapping		221	string
+ATTRIBUTE	NSM-User-Role-Mapping			221	string
 
 #
 #  Values VSYS-Admin and Read-Only-VSYS-Admin require a VSYS-Name
 #  attribute in the response packet.
 #
-VALUE	Admin-Privilege		Root-Admin		1
-VALUE	Admin-Privilege		All-VSYS-Root-Admin	2
-VALUE	Admin-Privilege		VSYS-Admin		3
-VALUE	Admin-Privilege		Read-Only-Admin		4
-VALUE	Admin-Privilege		Read-Only-VSYS-Admin	5
+VALUE	Admin-Privilege			Root-Admin		1
+VALUE	Admin-Privilege			All-VSYS-Root-Admin	2
+VALUE	Admin-Privilege			VSYS-Admin		3
+VALUE	Admin-Privilege			Read-Only-Admin		4
+VALUE	Admin-Privilege			Read-Only-VSYS-Admin	5
 
 END-VENDOR	Netscreen

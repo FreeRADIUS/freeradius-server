@@ -9,127 +9,122 @@
 #
 # TACACS+ Op codes
 #
-ATTRIBUTE	Packet				1	struct
+ATTRIBUTE	Packet					1	struct
 MEMBER		Version-Major				bit[4]
-VALUE		Version-Major	Plus			12
+VALUE	Version-Major			Plus			12
 
 MEMBER		Version-Minor				bit[4]
 MEMBER		Packet-Type				uint8
-VALUE		Packet-Type	Authentication	1
-VALUE		Packet-Type	Authorization	2
-VALUE		Packet-Type	Accounting	3
+VALUE	Packet-Type			Authentication		1
+VALUE	Packet-Type			Authorization		2
+VALUE	Packet-Type			Accounting		3
 
 MEMBER		Sequence-Number				uint8
 MEMBER		Flags					uint8
-VALUE		Flags		None		0
-VALUE		Flags		Unencrypted	1
-VALUE		Flags		Single-Connect	4
-VALUE		Flags		Unencrypred-Single-Connect 5
+VALUE	Flags				None			0
+VALUE	Flags				Unencrypted		1
+VALUE	Flags				Single-Connect		4
+VALUE	Flags				Unencrypred-Single-Connect 5
 
-MEMBER		Session-Id			uint32
-MEMBER		Length				uint32
+MEMBER		Session-Id				uint32
+MEMBER		Length					uint32
 
 #
 # TACACS+ Attributes
 #
-ATTRIBUTE	Packet-Body-Type		2	byte
-VALUE		Packet-Body-Type	Unknown	0
-VALUE		Packet-Body-Type	Start	1
-VALUE		Packet-Body-Type	Reply	2
-VALUE		Packet-Body-Type	Continue 3
-VALUE		Packet-Body-Type	Request	4
-VALUE		Packet-Body-Type	Response 5
+ATTRIBUTE	Packet-Body-Type			2	byte
+VALUE	Packet-Body-Type		Unknown			0
+VALUE	Packet-Body-Type		Start			1
+VALUE	Packet-Body-Type		Reply			2
+VALUE	Packet-Body-Type		Continue		3
+VALUE	Packet-Body-Type		Request			4
+VALUE	Packet-Body-Type		Response		5
 
+ATTRIBUTE	Authentication-Flags			3	byte
+VALUE	Authentication-Flags		No-Echo			1
 
-ATTRIBUTE	Authentication-Flags		3	byte
-VALUE		Authentication-Flags	No-Echo	1
+ATTRIBUTE	Authentication-Continue-Flags		4	byte
+VALUE	Authentication-Continue-Flags	Unset			0
+VALUE	Authentication-Continue-Flags	Abort			1
 
-ATTRIBUTE	Authentication-Continue-Flags	4	byte
-VALUE		Authentication-Continue-Flags Unset		0
-VALUE		Authentication-Continue-Flags Abort		1
+ATTRIBUTE	Authentication-Method			6	byte
+VALUE	Authentication-Method		Not-Set			0
+VALUE	Authentication-Method		None			1
+VALUE	Authentication-Method		KRB5			2
+VALUE	Authentication-Method		Line			3
+VALUE	Authentication-Method		Enable			4
+VALUE	Authentication-Method		Local			5
+VALUE	Authentication-Method		TACACSPLUS		6
+VALUE	Authentication-Method		Guest			8
+VALUE	Authentication-Method		RADIUS			16
+VALUE	Authentication-Method		KRB4			17
+VALUE	Authentication-Method		RCMD			32
 
-ATTRIBUTE	Authentication-Method		6	byte
-VALUE		Authentication-Method	Not-Set			0
-VALUE		Authentication-Method	None			1
-VALUE		Authentication-Method	KRB5			2
-VALUE		Authentication-Method	Line			3
-VALUE		Authentication-Method	Enable			4
-VALUE		Authentication-Method	Local			5
-VALUE		Authentication-Method	TACACSPLUS		6
-VALUE		Authentication-Method	Guest			8
-VALUE		Authentication-Method	RADIUS			16
-VALUE		Authentication-Method	KRB4			17
-VALUE		Authentication-Method	RCMD			32
+ATTRIBUTE	Authentication-Status			7	byte
+VALUE	Authentication-Status		Pass			1
+VALUE	Authentication-Status		Fail			2
+VALUE	Authentication-Status		Get-Data		3
+VALUE	Authentication-Status		Get-User		4
+VALUE	Authentication-Status		Get-Pass		5
+VALUE	Authentication-Status		Restart			6
+VALUE	Authentication-Status		Error			7
+VALUE	Authentication-Status		Follow			33
 
+ATTRIBUTE	Authentication-Service			8	byte
+VALUE	Authentication-Service		None			0
+VALUE	Authentication-Service		LOGIN			1
+VALUE	Authentication-Service		ENABLE			2
+VALUE	Authentication-Service		PPP			3
+VALUE	Authentication-Service		PT			5
+VALUE	Authentication-Service		RCMD			6
+VALUE	Authentication-Service		X25			7
+VALUE	Authentication-Service		NASI			8
+VALUE	Authentication-Service		FWPROXY			9
 
-ATTRIBUTE	Authentication-Status		7	byte
-VALUE		Authentication-Status	Pass			1
-VALUE		Authentication-Status	Fail			2
-VALUE		Authentication-Status	Get-Data		3
-VALUE		Authentication-Status	Get-User		4
-VALUE		Authentication-Status	Get-Pass		5
-VALUE		Authentication-Status	Restart			6
-VALUE		Authentication-Status	Error			7
-VALUE		Authentication-Status	Follow			33
+ATTRIBUTE	Authentication-Type			9	byte
+VALUE	Authentication-Type		ASCII			1
+VALUE	Authentication-Type		PAP			2
+VALUE	Authentication-Type		CHAP			3
+VALUE	Authentication-Type		ARAP			4	# deprecated
+VALUE	Authentication-Type		MSCHAP			5
+VALUE	Authentication-Type		MSCHAPv2		6
 
+ATTRIBUTE	User-Name				10	string
+ATTRIBUTE	Client-Port				11	string
+ATTRIBUTE	Remote-Address				12	string
+ATTRIBUTE	Data					13	octets
 
-ATTRIBUTE	Authentication-Service		8	byte
-VALUE		Authentication-Service	None			0
-VALUE		Authentication-Service	LOGIN			1
-VALUE		Authentication-Service	ENABLE			2
-VALUE		Authentication-Service	PPP			3
-VALUE		Authentication-Service	PT			5
-VALUE		Authentication-Service	RCMD			6
-VALUE		Authentication-Service	X25			7
-VALUE		Authentication-Service	NASI			8
-VALUE		Authentication-Service	FWPROXY			9
+ATTRIBUTE	Server-Message				14	string
+ATTRIBUTE	User-Message				15	string
 
-ATTRIBUTE	Authentication-Type		9	byte
-VALUE		Authentication-Type	ASCII			1
-VALUE		Authentication-Type	PAP			2
-VALUE		Authentication-Type	CHAP			3
-VALUE		Authentication-Type	ARAP			4	# deprecated
-VALUE		Authentication-Type	MSCHAP			5
-VALUE		Authentication-Type	MSCHAPv2		6
+ATTRIBUTE	Action					16	byte
+VALUE	Action				LOGIN			1
+VALUE	Action				CHPASS			2
+VALUE	Action				SENDAUTH		3
 
-ATTRIBUTE	User-Name			10	string
-ATTRIBUTE	Client-Port			11	string
-ATTRIBUTE	Remote-Address			12	string
-ATTRIBUTE	Data				13	octets
+ATTRIBUTE	Privilege-Level				17	byte
+VALUE	Privilege-Level			Minimum			0
+VALUE	Privilege-Level			User			1
+VALUE	Privilege-Level			Root			15
+VALUE	Privilege-Level			Maximum			15
 
-ATTRIBUTE	Server-Message			14	string
-ATTRIBUTE	User-Message			15	string
+ATTRIBUTE	Authorization-Status			18	byte
+VALUE	Authorization-Status		Pass-Add		1
+VALUE	Authorization-Status		Pass-Repl		2
+VALUE	Authorization-Status		Fail			16
+VALUE	Authorization-Status		Error			17
+VALUE	Authorization-Status		Follow			33
 
-ATTRIBUTE	Action				16	byte
-VALUE		Action			LOGIN			1
-VALUE		Action			CHPASS			2
-VALUE		Action			SENDAUTH		3
+ATTRIBUTE	Accounting-Status			19	byte
+VALUE	Accounting-Status		Success			1
+VALUE	Accounting-Status		Error			2
+VALUE	Accounting-Status		Follow			33
 
-ATTRIBUTE	Privilege-Level			17	byte
-VALUE		Privilege-Level		Minimum			0
-VALUE		Privilege-Level		User			1
-VALUE		Privilege-Level		Root			15
-VALUE		Privilege-Level		Maximum			15
+ATTRIBUTE	Accounting-Flags			20	byte
+VALUE	Accounting-Flags		Start			2
+VALUE	Accounting-Flags		Stop			4
+VALUE	Accounting-Flags		Watchdog		8
+VALUE	Accounting-Flags		Watchdog-Update		10
 
-ATTRIBUTE	Authorization-Status		18	byte
-VALUE		Authorization-Status	Pass-Add		1
-VALUE		Authorization-Status	Pass-Repl		2
-VALUE		Authorization-Status	Fail			16
-VALUE		Authorization-Status	Error			17
-VALUE		Authorization-Status	Follow			33
-
-ATTRIBUTE	Accounting-Status		19	byte
-VALUE		Accounting-Status	Success			1
-VALUE		Accounting-Status	Error			2
-VALUE		Accounting-Status	Follow			33
-
-ATTRIBUTE	Accounting-Flags		20	byte
-VALUE		Accounting-Flags	Start			2
-VALUE		Accounting-Flags	Stop			4
-VALUE		Accounting-Flags	Watchdog		8
-VALUE		Accounting-Flags	Watchdog-Update		10
-
-ATTRIBUTE	ArgumentList			21	string array
-
-
+ATTRIBUTE	ArgumentList				21	string array
 

@@ -16,11 +16,11 @@ VENDOR		Alcatel-ESAM			637	format=2,1
 
 BEGIN-VENDOR	Alcatel-ESAM
 ATTRIBUTE	VRF-Name				0x0700	string
-ATTRIBUTE	Vlan-Id				0x0701	integer
+ATTRIBUTE	Vlan-Id					0x0701	integer
 ATTRIBUTE	QOS-Profile-Name			0x0702	string
-ATTRIBUTE	QOS-Params			0x0703	string
+ATTRIBUTE	QOS-Params				0x0703	string
 
-ATTRIBUTE	Termination-Cause		0x0704	integer
+ATTRIBUTE	Termination-Cause			0x0704	integer
 
 #
 #	Integer Translations
@@ -28,23 +28,23 @@ ATTRIBUTE	Termination-Cause		0x0704	integer
 
 #	Termination-Cause Values
 
-VALUE	Termination-Cause	Unknown-VRF		1
-VALUE	Termination-Cause	No-VRF			2
+VALUE	Termination-Cause		Unknown-VRF		1
+VALUE	Termination-Cause		No-VRF			2
 
-VALUE	Termination-Cause	Unknown-Vlan		3
-VALUE	Termination-Cause	No-Vlan			4
-VALUE	Termination-Cause	Unknown-Pool-Id		5
-VALUE	Termination-Cause	Pool-Admin-Locked	6
-VALUE	Termination-Cause	No-Pool-Id		7
+VALUE	Termination-Cause		Unknown-Vlan		3
+VALUE	Termination-Cause		No-Vlan			4
+VALUE	Termination-Cause		Unknown-Pool-Id		5
+VALUE	Termination-Cause		Pool-Admin-Locked	6
+VALUE	Termination-Cause		No-Pool-Id		7
 
-VALUE	Termination-Cause	Pool-VRF-Inconsistent	8
-VALUE	Termination-Cause	Unknown-QOS-Profile	9
-VALUE	Termination-Cause	QOS-Params-Syntax-Err	10
-VALUE	Termination-Cause	IP-Addr-In-Use		11
+VALUE	Termination-Cause		Pool-VRF-Inconsistent	8
+VALUE	Termination-Cause		Unknown-QOS-Profile	9
+VALUE	Termination-Cause		QOS-Params-Syntax-Err	10
+VALUE	Termination-Cause		IP-Addr-In-Use		11
 
-VALUE	Termination-Cause	No-IP-Addr-Available	12
-VALUE	Termination-Cause	No-User-IP-Addr		13
-VALUE	Termination-Cause	Missing-Attributes	14
+VALUE	Termination-Cause		No-IP-Addr-Available	12
+VALUE	Termination-Cause		No-User-IP-Addr		13
+VALUE	Termination-Cause		Missing-Attributes	14
 
 #	VSAs for Operator Authentication
 

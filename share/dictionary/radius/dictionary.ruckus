@@ -12,66 +12,66 @@ VENDOR		Ruckus				25053
 BEGIN-VENDOR	Ruckus
 
 # Value Format:    group_attr1,group_attr2,...
-ATTRIBUTE	User-Groups			1	string
+ATTRIBUTE	User-Groups				1	string
 ATTRIBUTE	Sta-RSSI				2	integer
-ATTRIBUTE	SSID				3	string
-ATTRIBUTE	Wlan-Id				4	integer
+ATTRIBUTE	SSID					3	string
+ATTRIBUTE	Wlan-Id					4	integer
 ATTRIBUTE	Location				5	string
-ATTRIBUTE	Grace-Period			6	integer
-ATTRIBUTE	SCG-CBlade-IP			7	integer
-ATTRIBUTE	SCG-DBlade-IP			8	integer
-ATTRIBUTE	VLAN-ID				9	integer
-ATTRIBUTE	Sta-Expiration			10	integer # not used by AP anymore. Please check SCG-33602
+ATTRIBUTE	Grace-Period				6	integer
+ATTRIBUTE	SCG-CBlade-IP				7	integer
+ATTRIBUTE	SCG-DBlade-IP				8	integer
+ATTRIBUTE	VLAN-ID					9	integer
+ATTRIBUTE	Sta-Expiration				10	integer # not used by AP anymore. Please check SCG-33602
 ATTRIBUTE	Sta-UUID				11	string
-ATTRIBUTE	Accept-Enhancement-Reason	12	integer
-ATTRIBUTE	Sta-Inner-Id			13	string
-ATTRIBUTE	BSSID				14	octets
+ATTRIBUTE	Accept-Enhancement-Reason		12	integer
+ATTRIBUTE	Sta-Inner-Id				13	string
+ATTRIBUTE	BSSID					14	octets
 
-ATTRIBUTE	FlexAuth-AVP			20	string
+ATTRIBUTE	FlexAuth-AVP				20	string
 
 ATTRIBUTE	WSG-User				10	string
 
 ATTRIBUTE	Triplets				101	octets
-ATTRIBUTE	IMSI				102	octets
-ATTRIBUTE	MSISDN				103	octets
-ATTRIBUTE	APN-NI				104	string
-ATTRIBUTE	QoS				105	octets
-ATTRIBUTE	Selection-Mode			106	integer
-ATTRIBUTE	APN-Resolution-Req		107	integer
-ATTRIBUTE	Start-Time			108	octets
+ATTRIBUTE	IMSI					102	octets
+ATTRIBUTE	MSISDN					103	octets
+ATTRIBUTE	APN-NI					104	string
+ATTRIBUTE	QoS					105	octets
+ATTRIBUTE	Selection-Mode				106	integer
+ATTRIBUTE	APN-Resolution-Req			107	integer
+ATTRIBUTE	Start-Time				108	octets
 ATTRIBUTE	NAS-Type				109	integer
-ATTRIBUTE	Status				110	integer
-ATTRIBUTE	APN-OI				111	string
-ATTRIBUTE	Auth-Type			112	integer
-ATTRIBUTE	Gn-User-Name			113	string
-ATTRIBUTE	Brand-Code			114	string
-ATTRIBUTE	Policy-Name			115	string
-ATTRIBUTE	Client-Local-IP			116	ipaddr
-ATTRIBUTE	SGSN-IP				117	ipaddr
-ATTRIBUTE	Charging-Charac			118	octets
+ATTRIBUTE	Status					110	integer
+ATTRIBUTE	APN-OI					111	string
+ATTRIBUTE	Auth-Type				112	integer
+ATTRIBUTE	Gn-User-Name				113	string
+ATTRIBUTE	Brand-Code				114	string
+ATTRIBUTE	Policy-Name				115	string
+ATTRIBUTE	Client-Local-IP				116	ipaddr
+ATTRIBUTE	SGSN-IP					117	ipaddr
+ATTRIBUTE	Charging-Charac				118	octets
 ATTRIBUTE	PDP-Type				119	octets
-ATTRIBUTE	Dynamic-Address-Flag		120	octets
-ATTRIBUTE	ChCh-Selection-Mode		121	octets
-ATTRIBUTE	AAA-IP				122	ipaddr
+ATTRIBUTE	Dynamic-Address-Flag			120	octets
+ATTRIBUTE	ChCh-Selection-Mode			121	octets
+ATTRIBUTE	AAA-IP					122	ipaddr
 ATTRIBUTE	CDR-TYPE				123	integer
-ATTRIBUTE	SGSN-Number			124	octets
-ATTRIBUTE	Session-Type			125	integer
-ATTRIBUTE	Accounting-Status		126	integer
-ATTRIBUTE	Zone-Id				127	string
-ATTRIBUTE	Auth-Server-Id			128	string
-ATTRIBUTE	Utp-Id				129	string
-ATTRIBUTE	Area-Code			130	octets
-ATTRIBUTE	Cell-Identifier			131	octets
-ATTRIBUTE	Wispr-Redirect-Policy		132	string
-ATTRIBUTE	Eth-Profile-Id			133	integer
-ATTRIBUTE	Zone-Name			134	string
-ATTRIBUTE	Wlan-Name			135	string
+ATTRIBUTE	SGSN-Number				124	octets
+ATTRIBUTE	Session-Type				125	integer
+ATTRIBUTE	Accounting-Status			126	integer
+ATTRIBUTE	Zone-Id					127	string
+ATTRIBUTE	Auth-Server-Id				128	string
+ATTRIBUTE	Utp-Id					129	string
+ATTRIBUTE	Area-Code				130	octets
+ATTRIBUTE	Cell-Identifier				131	octets
+ATTRIBUTE	Wispr-Redirect-Policy			132	string
+ATTRIBUTE	Eth-Profile-Id				133	integer
+ATTRIBUTE	Zone-Name				134	string
+ATTRIBUTE	Wlan-Name				135	string
 
-ATTRIBUTE	Read-Preference			137	octets
+ATTRIBUTE	Read-Preference				137	octets
 ATTRIBUTE	Client-Host-Name			138	string
-ATTRIBUTE	Client-Os-Type			139	string
-ATTRIBUTE	Client-Os-Class			140	string
-ATTRIBUTE	Vlan-Pool			141	string
+ATTRIBUTE	Client-Os-Type				139	string
+ATTRIBUTE	Client-Os-Class				140	string
+ATTRIBUTE	Vlan-Pool				141	string
 
 #
 #  Integer Translations
@@ -79,43 +79,43 @@ ATTRIBUTE	Vlan-Pool			141	string
 
 #  Selection-Mode Values
 
-VALUE	Selection-Mode		Subscribed		0
-VALUE	Selection-Mode		SentByMS		1
-VALUE	Selection-Mode		ChosenBySGSN		2
+VALUE	Selection-Mode			Subscribed		0
+VALUE	Selection-Mode			SentByMS		1
+VALUE	Selection-Mode			ChosenBySGSN		2
 
 #  APN-Resolution-Req Values
 
-VALUE	APN-Resolution-Req	NotRequired		0
-VALUE	APN-Resolution-Req	Required		1
+VALUE	APN-Resolution-Req		NotRequired		0
+VALUE	APN-Resolution-Req		Required		1
 
 #  Status Values
 
-VALUE	Status			Success			0
-VALUE	Status			Failure			1
+VALUE	Status				Success			0
+VALUE	Status				Failure			1
 
 #  Auth-Type Values
 
-VALUE	Auth-Type		PPP-SIM			1
-VALUE	Auth-Type		DummyIMSI		2
-VALUE	Auth-Type		SoftSIM			3
-VALUE	Auth-Type		RadiusSIM		4
-VALUE	Auth-Type		Postpaid		5
-VALUE	Auth-Type		Prepaid			6
-VALUE	Auth-Type		LocalRadius		7
-VALUE	Auth-Type		ProxyRadius		8
-VALUE	Auth-Type		Voucher			9
-VALUE	Auth-Type		EAP-SIM			10
+VALUE	Auth-Type			PPP-SIM			1
+VALUE	Auth-Type			DummyIMSI		2
+VALUE	Auth-Type			SoftSIM			3
+VALUE	Auth-Type			RadiusSIM		4
+VALUE	Auth-Type			Postpaid		5
+VALUE	Auth-Type			Prepaid			6
+VALUE	Auth-Type			LocalRadius		7
+VALUE	Auth-Type			ProxyRadius		8
+VALUE	Auth-Type			Voucher			9
+VALUE	Auth-Type			EAP-SIM			10
 
 # Session-Type Values
 # Updated as per SCG2.1
 #Value (1) No more valid for SCG2.1
-VALUE	Session-Type		TTG			2
-VALUE	Session-Type		Local-Breakout		3
-VALUE	Session-Type		Local-Breakout-AP	4
-VALUE	Session-Type		L3GRE			5
-VALUE	Session-Type		L2GRE			6
-VALUE	Session-Type		QinQL3			7
-VALUE	Session-Type		PMIP			8
+VALUE	Session-Type			TTG			2
+VALUE	Session-Type			Local-Breakout		3
+VALUE	Session-Type			Local-Breakout-AP	4
+VALUE	Session-Type			L3GRE			5
+VALUE	Session-Type			L2GRE			6
+VALUE	Session-Type			QinQL3			7
+VALUE	Session-Type			PMIP			8
 
 #NAS_Type
 
@@ -123,8 +123,8 @@ VALUE	NAS-Type			SCG			1
 VALUE	NAS-Type			Others			2
 
 #Accounting-Status
-VALUE	Accounting-Status	Accounting-On		1
-VALUE	Accounting-Status	Accounting-Off		0
+VALUE	Accounting-Status		Accounting-On		1
+VALUE	Accounting-Status		Accounting-Off		0
 
 END-VENDOR Ruckus
 

@@ -56,46 +56,46 @@ ATTRIBUTE	Output-Octets-Diff			131	integer
 ATTRIBUTE	User-MAC-Address			132	string
 ATTRIBUTE	ATM-Traffic-Profile			133	string
 
-VALUE	MCast-Client		Multicast-No		0
-VALUE	MCast-Client		Multicast-Yes		1
+VALUE	MCast-Client			Multicast-No		0
+VALUE	MCast-Client			Multicast-Yes		1
 
-VALUE	Require-Auth		Not-Require-Auth	0
-VALUE	Require-Auth		Require-Auth		1
+VALUE	Require-Auth			Not-Require-Auth	0
+VALUE	Require-Auth			Require-Auth		1
 
-VALUE	FR-Direct		No			0
-VALUE	FR-Direct		Yes			1
+VALUE	FR-Direct			No			0
+VALUE	FR-Direct			Yes			1
 
-VALUE	Source-IP-Check		Source-IP-Check-No	0
-VALUE	Source-IP-Check		Source-IP-Check-Yes	1
+VALUE	Source-IP-Check			Source-IP-Check-No	0
+VALUE	Source-IP-Check			Source-IP-Check-Yes	1
 
-VALUE	IP-TOS			IP-TOS-Normal		0
-VALUE	IP-TOS			IP-TOS-Disabled		1
-VALUE	IP-TOS			IP-TOS-Cost		2
-VALUE	IP-TOS			IP-TOS-Reliability	4
-VALUE	IP-TOS			IP-TOS-Throughput	8
-VALUE	IP-TOS			IP-TOS-Latency		16
+VALUE	IP-TOS				IP-TOS-Normal		0
+VALUE	IP-TOS				IP-TOS-Disabled		1
+VALUE	IP-TOS				IP-TOS-Cost		2
+VALUE	IP-TOS				IP-TOS-Reliability	4
+VALUE	IP-TOS				IP-TOS-Throughput	8
+VALUE	IP-TOS				IP-TOS-Latency		16
 
-VALUE	IP-TOS-Apply-To		IP-TOS-Apply-To-Incoming 1024
-VALUE	IP-TOS-Apply-To		IP-TOS-Apply-To-Both	3072
-VALUE	IP-TOS-Apply-To		IP-TOS-Apply-To-Outgoing 2048
+VALUE	IP-TOS-Apply-To			IP-TOS-Apply-To-Incoming 1024
+VALUE	IP-TOS-Apply-To			IP-TOS-Apply-To-Both	3072
+VALUE	IP-TOS-Apply-To			IP-TOS-Apply-To-Outgoing 2048
 
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Normal 0
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-One 32
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Two 64
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Three 96
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Four 128
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Five 160
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Six 192
-VALUE	IP-TOS-Precedence	IP-TOS-Precedence-Pri-Seven 224
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Normal 0
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-One 32
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Two 64
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Three 96
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Four 128
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Five 160
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Six 192
+VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Seven 224
 
-VALUE	Auth-Type		Auth-None		0
-VALUE	Auth-Type		Auth-Default	1
-VALUE	Auth-Type		Auth-Any		2
-VALUE	Auth-Type		Auth-PAP		3
-VALUE	Auth-Type		Auth-CHAP		4
-VALUE	Auth-Type		Auth-MS-CHAP	5
+VALUE	Auth-Type			Auth-None		0
+VALUE	Auth-Type			Auth-Default		1
+VALUE	Auth-Type			Auth-Any		2
+VALUE	Auth-Type			Auth-PAP		3
+VALUE	Auth-Type			Auth-CHAP		4
+VALUE	Auth-Type			Auth-MS-CHAP		5
 
-VALUE	Client-Assign-DNS	DNS-Assign-No		0
-VALUE	Client-Assign-DNS	DNS-Assign-Yes		1
+VALUE	Client-Assign-DNS		DNS-Assign-No		0
+VALUE	Client-Assign-DNS		DNS-Assign-Yes		1
 
 END-VENDOR	Alcatel

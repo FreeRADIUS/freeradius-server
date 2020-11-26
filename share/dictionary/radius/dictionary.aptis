@@ -9,45 +9,45 @@
 VENDOR		Aptis				2637
 
 BEGIN-VENDOR	Aptis
-ATTRIBUTE	Identification			1	string
-ATTRIBUTE	VPOP-ID				2	integer
+ATTRIBUTE	Identification				1	string
+ATTRIBUTE	VPOP-ID					2	integer
 ATTRIBUTE	SS7-Session-ID-Type			3	integer
-ATTRIBUTE	Radius-Redirect			4	integer
-ATTRIBUTE	IPSVC-AZNLVL			5	integer
+ATTRIBUTE	Radius-Redirect				4	integer
+ATTRIBUTE	IPSVC-AZNLVL				5	integer
 ATTRIBUTE	IPSVC-Mask				6	integer
-ATTRIBUTE	Multilink-Match-Info		7	integer
-ATTRIBUTE	Multilink-Group-Number		8	integer
-ATTRIBUTE	PPP-Log-Mask			9	integer
+ATTRIBUTE	Multilink-Match-Info			7	integer
+ATTRIBUTE	Multilink-Group-Number			8	integer
+ATTRIBUTE	PPP-Log-Mask				9	integer
 
-ATTRIBUTE	Modem-Begin-Modulation		10	string
-ATTRIBUTE	Modem-End-Modulation		11	string
-ATTRIBUTE	Modem-Error-Correction		12	string
-ATTRIBUTE	Modem-Data-Compression		13	string
+ATTRIBUTE	Modem-Begin-Modulation			10	string
+ATTRIBUTE	Modem-End-Modulation			11	string
+ATTRIBUTE	Modem-Error-Correction			12	string
+ATTRIBUTE	Modem-Data-Compression			13	string
 ATTRIBUTE	Modem-Tx-Packets			14	integer
 ATTRIBUTE	Modem-ReTx-Packets			15	integer
 ATTRIBUTE	Modem-SNR				16	integer
-ATTRIBUTE	Modem-Local-Retrains		17	integer
-ATTRIBUTE	Modem-Remote-Retrains		18	integer
-ATTRIBUTE	Modem-Local-Rate-Negs		19	integer
-ATTRIBUTE	Modem-Remote-Rate-Negs		20	integer
+ATTRIBUTE	Modem-Local-Retrains			17	integer
+ATTRIBUTE	Modem-Remote-Retrains			18	integer
+ATTRIBUTE	Modem-Local-Rate-Negs			19	integer
+ATTRIBUTE	Modem-Remote-Rate-Negs			20	integer
 ATTRIBUTE	Modem-Begin-Recv-Line-Lvl		21	integer
-ATTRIBUTE	Modem-End-Recv-Line-Lvl		22	integer
+ATTRIBUTE	Modem-End-Recv-Line-Lvl			22	integer
 ATTRIBUTE	Terminate-Component			23	integer
-ATTRIBUTE	Terminate-Cause			24	integer
-ATTRIBUTE	Reject-Reason			25	integer
+ATTRIBUTE	Terminate-Cause				24	integer
+ATTRIBUTE	Reject-Reason				25	integer
 
 #
 #	These are similar to the Ascend attributes
 #
 ATTRIBUTE	Primary-DNS				135	ipaddr
-ATTRIBUTE	Secondary-DNS			136	ipaddr
+ATTRIBUTE	Secondary-DNS				136	ipaddr
 ATTRIBUTE	Client-Assign-DNS			137	integer
-ATTRIBUTE	Multicast-Rate-Limit		152	integer
+ATTRIBUTE	Multicast-Rate-Limit			152	integer
 ATTRIBUTE	Multicast-Client			155	integer
 ATTRIBUTE	Disconnect-Cause			195	integer
 ATTRIBUTE	Data-Rate				197	integer
-ATTRIBUTE	PreSession-Time			198	integer
-ATTRIBUTE	Assign-IP-Pool			218	integer
+ATTRIBUTE	PreSession-Time				198	integer
+ATTRIBUTE	Assign-IP-Pool				218	integer
 ATTRIBUTE	Maximum-Channels			235	integer
 ATTRIBUTE	Data-Filter				242	string
 ATTRIBUTE	Idle-Limit				244	integer

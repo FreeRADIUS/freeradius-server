@@ -25,191 +25,191 @@ VENDOR		Starent				8164	format=1,1
 
 BEGIN-VENDOR	Starent
 
-ATTRIBUTE	VPN-ID				1	integer
+ATTRIBUTE	VPN-ID					1	integer
 ATTRIBUTE	VPN-Name				2	string
 ATTRIBUTE	Disconnect-Reason			3	integer
 ATTRIBUTE	PPP-Progress-Code			4	integer
 ATTRIBUTE	Primary-DNS-Server			5	ipaddr
-ATTRIBUTE	Secondary-DNS-Server		6	ipaddr
+ATTRIBUTE	Secondary-DNS-Server			6	ipaddr
 ATTRIBUTE	Re-CHAP-Interval			7	integer
-ATTRIBUTE	IP-Pool-Name			8	string
-ATTRIBUTE	PPP-Data-Compression		9	integer
-ATTRIBUTE	IP-Filter-In			10	string
-ATTRIBUTE	IP-Filter-Out			11	string
+ATTRIBUTE	IP-Pool-Name				8	string
+ATTRIBUTE	PPP-Data-Compression			9	integer
+ATTRIBUTE	IP-Filter-In				10	string
+ATTRIBUTE	IP-Filter-Out				11	string
 ATTRIBUTE	Local-IP-Address			13	ipaddr
-ATTRIBUTE	IP-Source-Validation		14	integer
-ATTRIBUTE	PPP-Outbound-Password		15	string
-ATTRIBUTE	PPP-Keepalive			16	integer
+ATTRIBUTE	IP-Source-Validation			14	integer
+ATTRIBUTE	PPP-Outbound-Password			15	string
+ATTRIBUTE	PPP-Keepalive				16	integer
 ATTRIBUTE	IP-In-ACL				17	string
 ATTRIBUTE	IP-Out-ACL				18	string
 ATTRIBUTE	PPP-Data-Compression-Mode		19	integer
-ATTRIBUTE	Subscriber-Permission		20	integer
+ATTRIBUTE	Subscriber-Permission			20	integer
 ATTRIBUTE	Admin-Permission			21	integer
-ATTRIBUTE	Simultaneous-SIP-MIP		22	integer
+ATTRIBUTE	Simultaneous-SIP-MIP			22	integer
 ATTRIBUTE	Min-Compress-Size			23	integer
-ATTRIBUTE	Service-Type			24	integer
+ATTRIBUTE	Service-Type				24	integer
 ATTRIBUTE	DNS-Proxy-Use-Subscr-Addr		25	integer
-ATTRIBUTE	Tunnel-Password			26	octets
-ATTRIBUTE	Tunnel-Load-Balancing		27	integer
+ATTRIBUTE	Tunnel-Password				26	octets
+ATTRIBUTE	Tunnel-Load-Balancing			27	integer
 ATTRIBUTE	MN-HA-Timestamp-Tolerance		30	integer
 ATTRIBUTE	Prepaid-Compressed-Count		31	integer
-ATTRIBUTE	Prepaid-Inbound-Octets		32	integer
-ATTRIBUTE	Prepaid-Outbound-Octets		33	integer
-ATTRIBUTE	Prepaid-Total-Octets		34	integer
-ATTRIBUTE	Prepaid-Timeout			35	integer
+ATTRIBUTE	Prepaid-Inbound-Octets			32	integer
+ATTRIBUTE	Prepaid-Outbound-Octets			33	integer
+ATTRIBUTE	Prepaid-Total-Octets			34	integer
+ATTRIBUTE	Prepaid-Timeout				35	integer
 ATTRIBUTE	Prepaid-Watermark			36	integer
-ATTRIBUTE	NAI-Construction-Domain		37	string
+ATTRIBUTE	NAI-Construction-Domain			37	string
 ATTRIBUTE	Tunnel-ISAKMP-Crypto-Map		38	string
-ATTRIBUTE	Tunnel-ISAKMP-Secret		39	string
-ATTRIBUTE	Ext-Inline-Srvr-Context		41	string
+ATTRIBUTE	Tunnel-ISAKMP-Secret			39	string
+ATTRIBUTE	Ext-Inline-Srvr-Context			41	string
 ATTRIBUTE	L3-to-L2-Tun-Addr-Policy		43	integer
-ATTRIBUTE	Long-Duration-Timeout		44	integer
-ATTRIBUTE	Long-Duration-Action		45	integer
-ATTRIBUTE	PDHandoff-Req-IP-Addr		46	integer
+ATTRIBUTE	Long-Duration-Timeout			44	integer
+ATTRIBUTE	Long-Duration-Action			45	integer
+ATTRIBUTE	PDHandoff-Req-IP-Addr			46	integer
 ATTRIBUTE	HA-Send-DNS-ADDRESS			47	integer
 ATTRIBUTE	MIP-Send-Term-Verification		48	integer
 ATTRIBUTE	Data-Tunnel-Ignore-DF-Bit		49	integer
 ATTRIBUTE	MIP-AAA-Assign-Addr			50	integer
 ATTRIBUTE	Proxy-MIP				52	integer
 ATTRIBUTE	MIP-Match-AAA-Assign-Addr		51	integer
-ATTRIBUTE	IP-Alloc-Method			53	integer
+ATTRIBUTE	IP-Alloc-Method				53	integer
 ATTRIBUTE	Gratuitous-ARP-Aggressive		54	integer
-ATTRIBUTE	Ext-Inline-Srvr-Up-Addr		55	ipaddr
+ATTRIBUTE	Ext-Inline-Srvr-Up-Addr			55	ipaddr
 ATTRIBUTE	Ext-Inline-Srvr-Down-Addr		56	ipaddr
 ATTRIBUTE	Ext-Inline-Srvr-Preference		57	integer
-ATTRIBUTE	Ext-Inline-Srvr-Up-VLAN		58	octets
+ATTRIBUTE	Ext-Inline-Srvr-Up-VLAN			58	octets
 ATTRIBUTE	Ext-Inline-Srvr-Down-VLAN		59	octets
-ATTRIBUTE	IP-Hide-Service-Address		60	integer
-ATTRIBUTE	PPP-Outbound-Username		61	string
+ATTRIBUTE	IP-Hide-Service-Address			60	integer
+ATTRIBUTE	PPP-Outbound-Username			61	string
 ATTRIBUTE	GTP-Version				62	integer
 ATTRIBUTE	Access-link-IP-Frag			63	integer
-ATTRIBUTE	Subscriber-Accounting		64	integer
+ATTRIBUTE	Subscriber-Accounting			64	integer
 ATTRIBUTE	Nw-Reachability-Server-Name		65	string
 ATTRIBUTE	Subscriber-IP-Hdr-Neg-Mode		67	integer
-ATTRIBUTE	GGMIP-Required			68	integer
-ATTRIBUTE	Subscriber-Acct-Start		69	integer
-ATTRIBUTE	Subscriber-Acct-Interim		70	integer
-ATTRIBUTE	Subscriber-Acct-Stop		71	integer
+ATTRIBUTE	GGMIP-Required				68	integer
+ATTRIBUTE	Subscriber-Acct-Start			69	integer
+ATTRIBUTE	Subscriber-Acct-Interim			70	integer
+ATTRIBUTE	Subscriber-Acct-Stop			71	integer
 ATTRIBUTE	QoS-Tp-Dnlk				73	integer
 ATTRIBUTE	Tp-Dnlk-Committed-Data-Rate		74	integer
-ATTRIBUTE	Tp-Dnlk-Peak-Data-Rate		75	integer
+ATTRIBUTE	Tp-Dnlk-Peak-Data-Rate			75	integer
 ATTRIBUTE	Tp-Dnlk-Burst-Size			76	integer
-ATTRIBUTE	Tp-Dnlk-Exceed-Action		77	integer
-ATTRIBUTE	Tp-Dnlk-Violate-Action		78	integer
+ATTRIBUTE	Tp-Dnlk-Exceed-Action			77	integer
+ATTRIBUTE	Tp-Dnlk-Violate-Action			78	integer
 ATTRIBUTE	QoS-Tp-Uplk				79	integer
 ATTRIBUTE	Tp-Uplk-Committed-Data-Rate		80	integer
-ATTRIBUTE	Tp-Uplk-Peak-Data-Rate		81	integer
+ATTRIBUTE	Tp-Uplk-Peak-Data-Rate			81	integer
 ATTRIBUTE	Tp-Uplk-Burst-Size			82	integer
-ATTRIBUTE	Tp-Uplk-Exceed-Action		83	integer
-ATTRIBUTE	Tp-Uplk-Violate-Action		84	integer
-ATTRIBUTE	Subscriber-IP-TOS-Copy		85	integer
-ATTRIBUTE	QoS-Conversation-Class		86	octets
+ATTRIBUTE	Tp-Uplk-Exceed-Action			83	integer
+ATTRIBUTE	Tp-Uplk-Violate-Action			84	integer
+ATTRIBUTE	Subscriber-IP-TOS-Copy			85	integer
+ATTRIBUTE	QoS-Conversation-Class			86	octets
 ATTRIBUTE	QoS-Streaming-Class			87	octets
-ATTRIBUTE	QoS-Interactive1-Class		88	octets
-ATTRIBUTE	QoS-Interactive2-Class		89	octets
-ATTRIBUTE	QoS-Interactive3-Class		90	octets
-ATTRIBUTE	QoS-Background-Class		91	octets
+ATTRIBUTE	QoS-Interactive1-Class			88	octets
+ATTRIBUTE	QoS-Interactive2-Class			89	octets
+ATTRIBUTE	QoS-Interactive3-Class			90	octets
+ATTRIBUTE	QoS-Background-Class			91	octets
 ATTRIBUTE	PPP-NW-Layer-IPv4			92	integer
 ATTRIBUTE	PPP-NW-Layer-IPv6			93	integer
 ATTRIBUTE	Virtual-APN-Name			94	string
-ATTRIBUTE	PPP-Accept-Peer-v6Ifid		95	integer
-ATTRIBUTE	IPv6-rtr-advt-interval		96	integer
+ATTRIBUTE	PPP-Accept-Peer-v6Ifid			95	integer
+ATTRIBUTE	IPv6-rtr-advt-interval			96	integer
 ATTRIBUTE	IPv6-num-rtr-advt			97	integer
 ATTRIBUTE	NPU-Qos-Priority			98	integer
-ATTRIBUTE	MN-HA-Hash-Algorithm		99	integer
+ATTRIBUTE	MN-HA-Hash-Algorithm			99	integer
 ATTRIBUTE	Subscriber-Acct-Rsp-Action		100	integer
 ATTRIBUTE	IPv6-Primary-DNS			101	ipv6addr
 ATTRIBUTE	IPv6-Secondary-DNS			102	octets
-ATTRIBUTE	IPv6-Egress-Filtering		103	integer
+ATTRIBUTE	IPv6-Egress-Filtering			103	integer
 ATTRIBUTE	Mediation-VPN-Name			104	string
 ATTRIBUTE	Mediation-Acct-Rsp-Action		105	integer
 ATTRIBUTE	Home-Sub-Use-GGSN			106	integer
-ATTRIBUTE	Visiting-Sub-Use-GGSN		107	integer
-ATTRIBUTE	Roaming-Sub-Use-GGSN		108	integer
-ATTRIBUTE	Home-Profile			109	integer
-ATTRIBUTE	IP-Src-Validation-Drop-Limit	110	integer
-ATTRIBUTE	QoS-Class-Conversational-PHB	111	integer
-ATTRIBUTE	QoS-Class-Streaming-PHB		112	integer
+ATTRIBUTE	Visiting-Sub-Use-GGSN			107	integer
+ATTRIBUTE	Roaming-Sub-Use-GGSN			108	integer
+ATTRIBUTE	Home-Profile				109	integer
+ATTRIBUTE	IP-Src-Validation-Drop-Limit		110	integer
+ATTRIBUTE	QoS-Class-Conversational-PHB		111	integer
+ATTRIBUTE	QoS-Class-Streaming-PHB			112	integer
 ATTRIBUTE	QoS-Class-Background-PHB		113	integer
 ATTRIBUTE	QoS-Class-Interactive-1-PHB		114	integer
 ATTRIBUTE	QoS-Class-Interactive-2-PHB		115	integer
 ATTRIBUTE	QoS-Class-Interactive-3-PHB		116	integer
 ATTRIBUTE	Visiting-Profile			117	integer
-ATTRIBUTE	Roaming-Profile			118	integer
-ATTRIBUTE	Home-Behavior			119	integer
+ATTRIBUTE	Roaming-Profile				118	integer
+ATTRIBUTE	Home-Behavior				119	integer
 ATTRIBUTE	Visiting-Behavior			120	integer
 ATTRIBUTE	Roaming-Behavior			121	integer
 ATTRIBUTE	Internal-SM-Index			122	integer
 ATTRIBUTE	Mediation-Enabled			123	integer
-ATTRIBUTE	IPv6-Sec-Pool			124	string
-ATTRIBUTE	IPv6-Sec-Prefix			125	octets
-ATTRIBUTE	IPv6-DNS-Proxy			126	integer
+ATTRIBUTE	IPv6-Sec-Pool				124	string
+ATTRIBUTE	IPv6-Sec-Prefix				125	octets
+ATTRIBUTE	IPv6-DNS-Proxy				126	integer
 ATTRIBUTE	Subscriber-Nexthop-Address		127	integer
-ATTRIBUTE	Prepaid				128	integer
+ATTRIBUTE	Prepaid					128	integer
 ATTRIBUTE	Prepaid-Preference			129	integer
 ATTRIBUTE	PPP-Always-On-Vse			130	integer
-ATTRIBUTE	Voice-Push-List-Name		131	string
-ATTRIBUTE	Unclassify-List-Name		132	string
-ATTRIBUTE	Subscriber-No-Interims		133	integer
-ATTRIBUTE	Permit-User-Mcast-PDUs		134	integer
+ATTRIBUTE	Voice-Push-List-Name			131	string
+ATTRIBUTE	Unclassify-List-Name			132	string
+ATTRIBUTE	Subscriber-No-Interims			133	integer
+ATTRIBUTE	Permit-User-Mcast-PDUs			134	integer
 ATTRIBUTE	Prepaid-Final-Duration-Alg		135	integer
 ATTRIBUTE	IPv6-Min-Link-MTU			136	integer
 ATTRIBUTE	Charging-VPN-Name			137	string
 ATTRIBUTE	Chrg-Char-Selection-Mode		138	integer
-ATTRIBUTE	Cause-For-Rec-Closing		139	integer
+ATTRIBUTE	Cause-For-Rec-Closing			139	integer
 ATTRIBUTE	Change-Condition			140	integer
 ATTRIBUTE	Dynamic-Addr-Alloc-Ind-Flag		141	octets
 ATTRIBUTE	Ntk-Initiated-Ctx-Ind-Flag		142	octets
 ATTRIBUTE	Ntk-Session-Disconnect-Flag		143	integer
 ATTRIBUTE	Enable-QoS-Renegotiation		144	integer
 ATTRIBUTE	QoS-Renegotiation-Timeout		145	integer
-ATTRIBUTE	QoS-Negotiated			147	string
-ATTRIBUTE	Mediation-No-Interims		146	integer
+ATTRIBUTE	QoS-Negotiated				147	string
+ATTRIBUTE	Mediation-No-Interims			146	integer
 ATTRIBUTE	Primary-NBNS-Server			148	ipaddr
-ATTRIBUTE	Secondary-NBNS-Server		149	ipaddr
-ATTRIBUTE	IP-Header-Compression		150	integer
-ATTRIBUTE	Mode				151	integer
+ATTRIBUTE	Secondary-NBNS-Server			149	ipaddr
+ATTRIBUTE	IP-Header-Compression			150	integer
+ATTRIBUTE	Mode					151	integer
 #ATTRIBUTE	ROHC-Mode				151	integer
 ATTRIBUTE	Assigned-VLAN-ID			152	short
 ATTRIBUTE	Direction				153	integer
-ATTRIBUTE	MIP-HA-Assignment-Table		154	string
-ATTRIBUTE	Tun-Addr-Policy			156	integer
+ATTRIBUTE	MIP-HA-Assignment-Table			154	string
+ATTRIBUTE	Tun-Addr-Policy				156	integer
 ATTRIBUTE	DHCP-Lease-Expiry-Policy		157	integer
 ATTRIBUTE	Subscriber-Template-Name		158	string
-ATTRIBUTE	Subs-IMSA-Service-Name		159	string
-ATTRIBUTE	Traffic-Group			161	integer
-ATTRIBUTE	Rad-APN-Name			162	octets
-ATTRIBUTE	MIP-Send-Ancid			163	integer
-ATTRIBUTE	MIP-Send-Imsi			164	integer
-ATTRIBUTE	MIP-Dual-Anchor			165	integer
+ATTRIBUTE	Subs-IMSA-Service-Name			159	string
+ATTRIBUTE	Traffic-Group				161	integer
+ATTRIBUTE	Rad-APN-Name				162	octets
+ATTRIBUTE	MIP-Send-Ancid				163	integer
+ATTRIBUTE	MIP-Send-Imsi				164	integer
+ATTRIBUTE	MIP-Dual-Anchor				165	integer
 ATTRIBUTE	MIP-ANCID				166	octets
-ATTRIBUTE	IMS-AM-Address			167	ipaddr
+ATTRIBUTE	IMS-AM-Address				167	ipaddr
 ATTRIBUTE	IMS-AM-Domain-Name			168	octets
-ATTRIBUTE	Service-Address			169	ipaddr
+ATTRIBUTE	Service-Address				169	ipaddr
 ATTRIBUTE	PDIF-MIP-Required			170	integer
-ATTRIBUTE	FMC-Location			171	octets
-ATTRIBUTE	PDIF-MIP-Release-TIA		172	integer
+ATTRIBUTE	FMC-Location				171	octets
+ATTRIBUTE	PDIF-MIP-Release-TIA			172	integer
 ATTRIBUTE	PDIF-MIP-Simple-IP-Fallback		173	integer
 ATTRIBUTE	Tunnel-Gn				174	integer
-ATTRIBUTE	MIP-Reg-Lifetime-Realm		175	integer
-ATTRIBUTE	Ecs-Data-Volume			176	octets
+ATTRIBUTE	MIP-Reg-Lifetime-Realm			175	integer
+ATTRIBUTE	Ecs-Data-Volume				176	octets
 ATTRIBUTE	QoS-Traffic-Policy			177	octets
-ATTRIBUTE	ANID				178	octets
-ATTRIBUTE	PPP-Reneg-Disc			187	integer
+ATTRIBUTE	ANID					178	octets
+ATTRIBUTE	PPP-Reneg-Disc				187	integer
 ATTRIBUTE	MIP-Send-Correlation-Info		188	integer
-ATTRIBUTE	PDCorrelation-Id		189	octets
-ATTRIBUTE	PDNAS-Id			190	string
-ATTRIBUTE	PDNAS-IP-Address		191	ipaddr
-ATTRIBUTE	Subscriber-Acct-Mode		192	integer
-ATTRIBUTE	IP-In-Plcy-Grp			193	string
-ATTRIBUTE	IP-Out-Plcy-Grp			194	string
+ATTRIBUTE	PDCorrelation-Id			189	octets
+ATTRIBUTE	PDNAS-Id				190	string
+ATTRIBUTE	PDNAS-IP-Address			191	ipaddr
+ATTRIBUTE	Subscriber-Acct-Mode			192	integer
+ATTRIBUTE	IP-In-Plcy-Grp				193	string
+ATTRIBUTE	IP-Out-Plcy-Grp				194	string
 ATTRIBUTE	IP-Source-Violate-No-Acct		196	integer
 ATTRIBUTE	Firewall-Enabled			198	integer
 ATTRIBUTE	SNA-PPP-Unfr-data-In-Oct		200	integer
 ATTRIBUTE	SNA-PPP-Unfr-data-Out-Oct		201	integer
 ATTRIBUTE	SNA-PPP-Unfr-Data-In-Gig		202	integer
 ATTRIBUTE	SNA-PPP-Unfr-Data-Out-Gig		203	integer
-ATTRIBUTE	Admin-Expiry			204	integer
+ATTRIBUTE	Admin-Expiry				204	integer
 ATTRIBUTE	SNA-Input-Gigawords			206	integer
 ATTRIBUTE	SNA-Output-Gigawords			207	integer
 ATTRIBUTE	DNS-Proxy-Intercept-List		214	string
@@ -223,22 +223,22 @@ ATTRIBUTE	Acct-Input-Packets-Dropped		226	integer
 ATTRIBUTE	Acct-Output-Packets-Dropped		227	integer
 ATTRIBUTE	Acct-Input-Octets-Dropped		228	integer64
 ATTRIBUTE	Acct-Output-Octets-Dropped		229	integer64
-ATTRIBUTE	Acct-Input-Giga-Dropped		230	integer
+ATTRIBUTE	Acct-Input-Giga-Dropped			230	integer
 ATTRIBUTE	Acct-Output-Giga-Dropped		231	integer
 ATTRIBUTE	Overload-Disc-Connect-Time		233	integer
 ATTRIBUTE	Overload-Disconnect			235	integer
 ATTRIBUTE	Radius-Returned-Username		236	integer
 ATTRIBUTE	ROHC-Profile-Name			238	string
-ATTRIBUTE	Firewall-Policy			239	octets
+ATTRIBUTE	Firewall-Policy				239	octets
 ATTRIBUTE	Transparent-Data			247	octets
-ATTRIBUTE	MS-ISDN				248	octets
-ATTRIBUTE	Routing-Area-Id			249	string
+ATTRIBUTE	MS-ISDN					248	octets
+ATTRIBUTE	Routing-Area-Id				249	string
 #ATTRIBUTE	Rulebase				249	string
-ATTRIBUTE	Call-Id				251	integer
-ATTRIBUTE	IMSI				252	octets
+ATTRIBUTE	Call-Id					251	integer
+ATTRIBUTE	IMSI					252	octets
 ATTRIBUTE	Long-Duration-Notification		253	integer
 ATTRIBUTE	SIP-Method				254	integer
-ATTRIBUTE	Event				255	string
+ATTRIBUTE	Event					255	string
 
 VALUE	Disconnect-Reason		Not-Defined		0
 VALUE	Disconnect-Reason		Admin-Disconnect	1
@@ -746,31 +746,31 @@ VALUE	PPP-Progress-Code		Call-SGW-Connected	245
 VALUE	PPP-Progress-Code		Call-MME-Attached	246
 VALUE	PPP-Progress-Code		Call-Auth-Only-Connected 247
 
-VALUE	PPP-Data-Compression	None			0
-VALUE	PPP-Data-Compression	Stac-LZS		1
-VALUE	PPP-Data-Compression	MPPC			2
-VALUE	PPP-Data-Compression	MPCC-Stac-LZS		3
-VALUE	PPP-Data-Compression	Deflate			4
-VALUE	PPP-Data-Compression	Deflate-Stac-LZS	5
-VALUE	PPP-Data-Compression	Deflate-MPCC		6
-VALUE	PPP-Data-Compression	Deflate-MPCC-Stac-LZS	7
+VALUE	PPP-Data-Compression		None			0
+VALUE	PPP-Data-Compression		Stac-LZS		1
+VALUE	PPP-Data-Compression		MPPC			2
+VALUE	PPP-Data-Compression		MPCC-Stac-LZS		3
+VALUE	PPP-Data-Compression		Deflate			4
+VALUE	PPP-Data-Compression		Deflate-Stac-LZS	5
+VALUE	PPP-Data-Compression		Deflate-MPCC		6
+VALUE	PPP-Data-Compression		Deflate-MPCC-Stac-LZS	7
 
-VALUE	IP-Source-Validation	No			0
-VALUE	IP-Source-Validation	Yes			1
+VALUE	IP-Source-Validation		No			0
+VALUE	IP-Source-Validation		Yes			1
 
-VALUE	Subscriber-Permission	None			0
-VALUE	Subscriber-Permission	Simple-IP		1
-VALUE	Subscriber-Permission	Mobile-IP		2
-VALUE	Subscriber-Permission	Simple-IP-Mobile-IP	3
-VALUE	Subscriber-Permission	HA-Mobile-IP		4
-VALUE	Subscriber-Permission	Simple-IP-HA-Mobile-IP	5
-VALUE	Subscriber-Permission	Mobile-IP-HA-Mobile-IP	6
-VALUE	Subscriber-Permission	All			7
-VALUE	Subscriber-Permission	GGSN-PDP-TYPE-IP	8
-VALUE	Subscriber-Permission	GGSN-PDP-TYPE-PPP	16
-VALUE	Subscriber-Permission	Network-Mobility	32
-VALUE	Subscriber-Permission	FA-HA-NEMO		38
-VALUE	Subscriber-Permission	All_			63
+VALUE	Subscriber-Permission		None			0
+VALUE	Subscriber-Permission		Simple-IP		1
+VALUE	Subscriber-Permission		Mobile-IP		2
+VALUE	Subscriber-Permission		Simple-IP-Mobile-IP	3
+VALUE	Subscriber-Permission		HA-Mobile-IP		4
+VALUE	Subscriber-Permission		Simple-IP-HA-Mobile-IP	5
+VALUE	Subscriber-Permission		Mobile-IP-HA-Mobile-IP	6
+VALUE	Subscriber-Permission		All			7
+VALUE	Subscriber-Permission		GGSN-PDP-TYPE-IP	8
+VALUE	Subscriber-Permission		GGSN-PDP-TYPE-PPP	16
+VALUE	Subscriber-Permission		Network-Mobility	32
+VALUE	Subscriber-Permission		FA-HA-NEMO		38
+VALUE	Subscriber-Permission		All_			63
 
 VALUE	Admin-Permission		None			0
 VALUE	Admin-Permission		CLI			1
@@ -785,8 +785,8 @@ VALUE	Admin-Permission		CLI-FTP-ECS		11
 VALUE	Admin-Permission		CLI-Intercept-ECS	13
 VALUE	Admin-Permission		CLI-Intercept-FTP-ECS	15
 
-VALUE	Simultaneous-SIP-MIP	Disabled		0
-VALUE	Simultaneous-SIP-MIP	Enabled			1
+VALUE	Simultaneous-SIP-MIP		Disabled		0
+VALUE	Simultaneous-SIP-MIP		Enabled			1
 
 VALUE	PPP-Data-Compression-Mode	Normal			0
 VALUE	PPP-Data-Compression-Mode	Stateless		1
@@ -818,8 +818,8 @@ VALUE	Enable-QoS-Renegotiation	Yes			1
 VALUE	Firewall-Enabled		False			0
 VALUE	Firewall-Enabled		True			1
 
-VALUE	GGMIP-Required		Disabled		0
-VALUE	GGMIP-Required		Enabled			1
+VALUE	GGMIP-Required			Disabled		0
+VALUE	GGMIP-Required			Enabled			1
 
 VALUE	Gratuitous-ARP-Aggressive	Disabled		0
 VALUE	Gratuitous-ARP-Aggressive	Enabled			1
@@ -834,38 +834,38 @@ VALUE	HA-Send-DNS-ADDRESS		Enabled			1
 VALUE	Home-Sub-Use-GGSN		Deny			0
 VALUE	Home-Sub-Use-GGSN		Accept			1
 
-VALUE	IP-Alloc-Method		Alloc_Local_Pool	0
-VALUE	IP-Alloc-Method		Alloc_Dhcp_Client	1
-VALUE	IP-Alloc-Method		Alloc_Radius		2
-VALUE	IP-Alloc-Method		Alloc_No_Alloc		3
-VALUE	IP-Alloc-Method		Alloc_Static_Alloc	4
-VALUE	IP-Alloc-Method		Alloc_Dhcp_Relay	5
+VALUE	IP-Alloc-Method			Alloc_Local_Pool	0
+VALUE	IP-Alloc-Method			Alloc_Dhcp_Client	1
+VALUE	IP-Alloc-Method			Alloc_Radius		2
+VALUE	IP-Alloc-Method			Alloc_No_Alloc		3
+VALUE	IP-Alloc-Method			Alloc_Static_Alloc	4
+VALUE	IP-Alloc-Method			Alloc_Dhcp_Relay	5
 
-VALUE	IP-Header-Compression	None			0
-VALUE	IP-Header-Compression	VJ			1
-VALUE	IP-Header-Compression	ROHC			2
-VALUE	IP-Header-Compression	VJ_ROHC			3
+VALUE	IP-Header-Compression		None			0
+VALUE	IP-Header-Compression		VJ			1
+VALUE	IP-Header-Compression		ROHC			2
+VALUE	IP-Header-Compression		VJ_ROHC			3
 
-VALUE	IP-Hide-Service-Address	Disabled		0
-VALUE	IP-Hide-Service-Address	Enabled			1
+VALUE	IP-Hide-Service-Address		Disabled		0
+VALUE	IP-Hide-Service-Address		Enabled			1
 
 VALUE	IP-Source-Violate-No-Acct	Disabled		0
 VALUE	IP-Source-Violate-No-Acct	Enabled			1
 
-VALUE	IPv6-DNS-Proxy		Disabled		0
-VALUE	IPv6-DNS-Proxy		Enabled			1
+VALUE	IPv6-DNS-Proxy			Disabled		0
+VALUE	IPv6-DNS-Proxy			Enabled			1
 
-VALUE	IPv6-Egress-Filtering	Disabled		0
-VALUE	IPv6-Egress-Filtering	Enabled			1
+VALUE	IPv6-Egress-Filtering		Disabled		0
+VALUE	IPv6-Egress-Filtering		Enabled			1
 
 VALUE	L3-to-L2-Tun-Addr-Policy	no-local-alloc-validate	0
 VALUE	L3-to-L2-Tun-Addr-Policy	local-alloc		1
 VALUE	L3-to-L2-Tun-Addr-Policy	local-alloc-validate	2
 
-VALUE	Long-Duration-Action	Detection		1
-VALUE	Long-Duration-Action	Disconnection		2
-VALUE	Long-Duration-Action	Dormant-Only-Disconnection 3
-VALUE	Long-Duration-Action	Dormant-Only-Detection	4
+VALUE	Long-Duration-Action		Detection		1
+VALUE	Long-Duration-Action		Disconnection		2
+VALUE	Long-Duration-Action		Dormant-Only-Disconnection 3
+VALUE	Long-Duration-Action		Dormant-Only-Detection	4
 
 VALUE	Long-Duration-Notification	Suppress		0
 VALUE	Long-Duration-Notification	Send			1
@@ -877,20 +877,20 @@ VALUE	Mediation-Acct-Rsp-Action	Delay_GTP_Response	2
 VALUE	Mediation-Enabled		Disabled		0
 VALUE	Mediation-Enabled		Enabled			1
 
-VALUE	Mediation-No-Interims	Disabled		0
-VALUE	Mediation-No-Interims	Enabled			1
+VALUE	Mediation-No-Interims		Disabled		0
+VALUE	Mediation-No-Interims		Enabled			1
 
 VALUE	MIP-AAA-Assign-Addr		Disabled		0
 VALUE	MIP-AAA-Assign-Addr		Enabled			1
 
-VALUE	MIP-Dual-Anchor		Disabled		0
-VALUE	MIP-Dual-Anchor		Enabled			1
+VALUE	MIP-Dual-Anchor			Disabled		0
+VALUE	MIP-Dual-Anchor			Enabled			1
 
 VALUE	MIP-Match-AAA-Assign-Addr	Disabled		0
 VALUE	MIP-Match-AAA-Assign-Addr	Enabled			1
 
-VALUE	MIP-Send-Ancid		Disabled		0
-VALUE	MIP-Send-Ancid		Enabled			1
+VALUE	MIP-Send-Ancid			Disabled		0
+VALUE	MIP-Send-Ancid			Enabled			1
 
 VALUE	MIP-Send-Correlation-Info	Disabled		0
 # In StarOS 8.3 and later, supported value 1 is NVSE_Starent, before 8.3 it is Enabled.
@@ -898,23 +898,23 @@ VALUE	MIP-Send-Correlation-Info	EnabledOrNVSE_Starent	1
 VALUE	MIP-Send-Correlation-Info	NVSE_CUstom1		2
 VALUE	MIP-Send-Correlation-Info	NVSE_Custom2		3
 
-VALUE	MIP-Send-Imsi		NoneOrDisabled		0
-VALUE	MIP-Send-Imsi		Starent_NVSE		1
-VALUE	MIP-Send-Imsi		NVSE_Custom1		2
-VALUE	MIP-Send-Imsi		NVSE_Custom2		3
+VALUE	MIP-Send-Imsi			NoneOrDisabled		0
+VALUE	MIP-Send-Imsi			Starent_NVSE		1
+VALUE	MIP-Send-Imsi			NVSE_Custom1		2
+VALUE	MIP-Send-Imsi			NVSE_Custom2		3
 
 VALUE	MIP-Send-Term-Verification	Disabled		0
 VALUE	MIP-Send-Term-Verification	EnabledOrNVSE_Custom1	1
 VALUE	MIP-Send-Term-Verification	NVSE_Custom2		2
 VALUE	MIP-Send-Term-Verification	NVSE_Starent		3
 
-VALUE	MN-HA-Hash-Algorithm	MD5			1
-VALUE	MN-HA-Hash-Algorithm	MD5_RFC2002		2
-VALUE	MN-HA-Hash-Algorithm	HMAC_MD5		3
+VALUE	MN-HA-Hash-Algorithm		MD5			1
+VALUE	MN-HA-Hash-Algorithm		MD5_RFC2002		2
+VALUE	MN-HA-Hash-Algorithm		HMAC_MD5		3
 
-VALUE	Mode			Reliable		0
-VALUE	Mode			Optimistic		1
-VALUE	Mode			Unidirectional		2
+VALUE	Mode				Reliable		0
+VALUE	Mode				Optimistic		1
+VALUE	Mode				Unidirectional		2
 
 VALUE	NPU-Qos-Priority		Best_Effort		0
 VALUE	NPU-Qos-Priority		Bronze			1
@@ -924,8 +924,8 @@ VALUE	NPU-Qos-Priority		From_DSCP		4
 
 VALUE	Ntk-Session-Disconnect-Flag	Session-Disconnect	1
 
-VALUE	PDIF-MIP-Release-TIA	No			0
-VALUE	PDIF-MIP-Release-TIA	Yes			1
+VALUE	PDIF-MIP-Release-TIA		No			0
+VALUE	PDIF-MIP-Release-TIA		Yes			1
 
 VALUE	PDIF-MIP-Required		No			0
 VALUE	PDIF-MIP-Required		Yes			1
@@ -933,14 +933,14 @@ VALUE	PDIF-MIP-Required		Yes			1
 VALUE	PDIF-MIP-Simple-IP-Fallback	No			0
 VALUE	PDIF-MIP-Simple-IP-Fallback	Yes			1
 
-VALUE	PDHandoff-Req-IP-Addr	Disabled		0
-VALUE	PDHandoff-Req-IP-Addr	Enabled			1
+VALUE	PDHandoff-Req-IP-Addr		Disabled		0
+VALUE	PDHandoff-Req-IP-Addr		Enabled			1
 
-VALUE	Permit-User-Mcast-PDUs	Disabled		0
-VALUE	Permit-User-Mcast-PDUs	Enabled			1
+VALUE	Permit-User-Mcast-PDUs		Disabled		0
+VALUE	Permit-User-Mcast-PDUs		Enabled			1
 
-VALUE	PPP-Accept-Peer-v6Ifid	Disabled		0
-VALUE	PPP-Accept-Peer-v6Ifid	Enabled			1
+VALUE	PPP-Accept-Peer-v6Ifid		Disabled		0
+VALUE	PPP-Accept-Peer-v6Ifid		Enabled			1
 
 VALUE	PPP-Always-On-Vse		Disabled		0
 VALUE	PPP-Always-On-Vse		Enabled			1
@@ -953,14 +953,14 @@ VALUE	PPP-NW-Layer-IPv6		Disabled		0
 VALUE	PPP-NW-Layer-IPv6		Enabled			1
 VALUE	PPP-NW-Layer-IPv6		Passive			2
 
-VALUE	PPP-Reneg-Disc		Never			0
-VALUE	PPP-Reneg-Disc		Always			1
-VALUE	PPP-Reneg-Disc		NAI_Prefix_MSID_Mismatch 2
+VALUE	PPP-Reneg-Disc			Never			0
+VALUE	PPP-Reneg-Disc			Always			1
+VALUE	PPP-Reneg-Disc			NAI_Prefix_MSID_Mismatch 2
 
-VALUE	Prepaid			no_prepaid		0
-VALUE	Prepaid			custom_prepaid		1
-VALUE	Prepaid			standard_prepaid	2
-VALUE	Prepaid			wimax_prepaid		4
+VALUE	Prepaid				no_prepaid		0
+VALUE	Prepaid				custom_prepaid		1
+VALUE	Prepaid				standard_prepaid	2
+VALUE	Prepaid				wimax_prepaid		4
 
 VALUE	Prepaid-Compressed-Count	Uncompressed		0
 VALUE	Prepaid-Compressed-Count	Compressed		1
@@ -992,21 +992,21 @@ VALUE	QoS-Class-Background-PHB	AF42			36
 VALUE	QoS-Class-Background-PHB	AF43			38
 VALUE	QoS-Class-Background-PHB	EF			46
 
-VALUE	QoS-Class-Conversational-PHB Best-Effort		0
-VALUE	QoS-Class-Conversational-PHB Pass-Through		1
-VALUE	QoS-Class-Conversational-PHB AF11			10
-VALUE	QoS-Class-Conversational-PHB AF12			12
-VALUE	QoS-Class-Conversational-PHB AF13			14
-VALUE	QoS-Class-Conversational-PHB AF21			18
-VALUE	QoS-Class-Conversational-PHB AF22			20
-VALUE	QoS-Class-Conversational-PHB AF23			22
-VALUE	QoS-Class-Conversational-PHB AF31			26
-VALUE	QoS-Class-Conversational-PHB AF32			28
-VALUE	QoS-Class-Conversational-PHB AF33			30
-VALUE	QoS-Class-Conversational-PHB AF41			34
-VALUE	QoS-Class-Conversational-PHB AF42			36
-VALUE	QoS-Class-Conversational-PHB AF43			38
-VALUE	QoS-Class-Conversational-PHB EF			46
+VALUE	QoS-Class-Conversational-PHB	Best-Effort		0
+VALUE	QoS-Class-Conversational-PHB	Pass-Through		1
+VALUE	QoS-Class-Conversational-PHB	AF11			10
+VALUE	QoS-Class-Conversational-PHB	AF12			12
+VALUE	QoS-Class-Conversational-PHB	AF13			14
+VALUE	QoS-Class-Conversational-PHB	AF21			18
+VALUE	QoS-Class-Conversational-PHB	AF22			20
+VALUE	QoS-Class-Conversational-PHB	AF23			22
+VALUE	QoS-Class-Conversational-PHB	AF31			26
+VALUE	QoS-Class-Conversational-PHB	AF32			28
+VALUE	QoS-Class-Conversational-PHB	AF33			30
+VALUE	QoS-Class-Conversational-PHB	AF41			34
+VALUE	QoS-Class-Conversational-PHB	AF42			36
+VALUE	QoS-Class-Conversational-PHB	AF43			38
+VALUE	QoS-Class-Conversational-PHB	EF			46
 
 VALUE	QoS-Class-Interactive-1-PHB	Best-Effort		0
 VALUE	QoS-Class-Interactive-1-PHB	Pass-Through		1
@@ -1056,21 +1056,21 @@ VALUE	QoS-Class-Interactive-3-PHB	AF42			36
 VALUE	QoS-Class-Interactive-3-PHB	AF43			38
 VALUE	QoS-Class-Interactive-3-PHB	EF			46
 
-VALUE	QoS-Class-Streaming-PHB	Best-Effort		0
-VALUE	QoS-Class-Streaming-PHB	Pass-Through		1
-VALUE	QoS-Class-Streaming-PHB	AF11			10
-VALUE	QoS-Class-Streaming-PHB	AF12			12
-VALUE	QoS-Class-Streaming-PHB	AF13			14
-VALUE	QoS-Class-Streaming-PHB	AF21			18
-VALUE	QoS-Class-Streaming-PHB	AF22			20
-VALUE	QoS-Class-Streaming-PHB	AF23			22
-VALUE	QoS-Class-Streaming-PHB	AF31			26
-VALUE	QoS-Class-Streaming-PHB	AF32			28
-VALUE	QoS-Class-Streaming-PHB	AF33			30
-VALUE	QoS-Class-Streaming-PHB	AF41			34
-VALUE	QoS-Class-Streaming-PHB	AF42			36
-VALUE	QoS-Class-Streaming-PHB	AF43			38
-VALUE	QoS-Class-Streaming-PHB	EF			46
+VALUE	QoS-Class-Streaming-PHB		Best-Effort		0
+VALUE	QoS-Class-Streaming-PHB		Pass-Through		1
+VALUE	QoS-Class-Streaming-PHB		AF11			10
+VALUE	QoS-Class-Streaming-PHB		AF12			12
+VALUE	QoS-Class-Streaming-PHB		AF13			14
+VALUE	QoS-Class-Streaming-PHB		AF21			18
+VALUE	QoS-Class-Streaming-PHB		AF22			20
+VALUE	QoS-Class-Streaming-PHB		AF23			22
+VALUE	QoS-Class-Streaming-PHB		AF31			26
+VALUE	QoS-Class-Streaming-PHB		AF32			28
+VALUE	QoS-Class-Streaming-PHB		AF33			30
+VALUE	QoS-Class-Streaming-PHB		AF41			34
+VALUE	QoS-Class-Streaming-PHB		AF42			36
+VALUE	QoS-Class-Streaming-PHB		AF43			38
+VALUE	QoS-Class-Streaming-PHB		EF			46
 
 VALUE	QoS-Tp-Dnlk			Disabled		0
 VALUE	QoS-Tp-Dnlk			Policing		1
@@ -1083,56 +1083,56 @@ VALUE	QoS-Tp-Uplk			Shaping			2
 VALUE	Radius-Returned-Username	No			0
 VALUE	Radius-Returned-Username	Yes			1
 
-VALUE	Roaming-Sub-Use-GGSN	Deny			0
-VALUE	Roaming-Sub-Use-GGSN	Accept			1
+VALUE	Roaming-Sub-Use-GGSN		Deny			0
+VALUE	Roaming-Sub-Use-GGSN		Accept			1
 
-VALUE	Service-Type		None			0
-VALUE	Service-Type		PDSN			1
-VALUE	Service-Type		Management		2
-VALUE	Service-Type		HA			3
-VALUE	Service-Type		GGSN			4
-VALUE	Service-Type		LNS			5
-VALUE	Service-Type		IPSG			6
-VALUE	Service-Type		CSCF			7
-VALUE	Service-Type		ASNGW			8
-VALUE	Service-Type		PDIF			9
-VALUE	Service-Type		STANDALONE_FA		10
-VALUE	Service-Type		SGSN			11
-VALUE	Service-Type		PHSGW			12
-VALUE	Service-Type		PDG			13
-VALUE	Service-Type		MIPV6HA			14
-VALUE	Service-Type		PGW			15
-VALUE	Service-Type		SGW			16
-VALUE	Service-Type		FNG			17
-VALUE	Service-Type		OGW			18
-VALUE	Service-Type		HNBGW			19
-VALUE	Service-Type		BNG			20
+VALUE	Service-Type			None			0
+VALUE	Service-Type			PDSN			1
+VALUE	Service-Type			Management		2
+VALUE	Service-Type			HA			3
+VALUE	Service-Type			GGSN			4
+VALUE	Service-Type			LNS			5
+VALUE	Service-Type			IPSG			6
+VALUE	Service-Type			CSCF			7
+VALUE	Service-Type			ASNGW			8
+VALUE	Service-Type			PDIF			9
+VALUE	Service-Type			STANDALONE_FA		10
+VALUE	Service-Type			SGSN			11
+VALUE	Service-Type			PHSGW			12
+VALUE	Service-Type			PDG			13
+VALUE	Service-Type			MIPV6HA			14
+VALUE	Service-Type			PGW			15
+VALUE	Service-Type			SGW			16
+VALUE	Service-Type			FNG			17
+VALUE	Service-Type			OGW			18
+VALUE	Service-Type			HNBGW			19
+VALUE	Service-Type			BNG			20
 
 VALUE	Subs-Acc-Flow-Traffic-Valid	Disabled		0
 VALUE	Subs-Acc-Flow-Traffic-Valid	Enabled			1
 
-VALUE	Subscriber-Accounting	None			0
-VALUE	Subscriber-Accounting	Radius			1
-VALUE	Subscriber-Accounting	GTPP			2
+VALUE	Subscriber-Accounting		None			0
+VALUE	Subscriber-Accounting		Radius			1
+VALUE	Subscriber-Accounting		GTPP			2
 
-VALUE	Subscriber-Acct-Interim	Normal			0
-VALUE	Subscriber-Acct-Interim	Suppress		1
+VALUE	Subscriber-Acct-Interim		Normal			0
+VALUE	Subscriber-Acct-Interim		Suppress		1
 
-VALUE	Subscriber-Acct-Mode	flow-based-auxilliary	0
-VALUE	Subscriber-Acct-Mode	flow-based-all		1
-VALUE	Subscriber-Acct-Mode	flow-based-none		2
-VALUE	Subscriber-Acct-Mode	session-based		3
-VALUE	Subscriber-Acct-Mode	main-a10-only		4
+VALUE	Subscriber-Acct-Mode		flow-based-auxilliary	0
+VALUE	Subscriber-Acct-Mode		flow-based-all		1
+VALUE	Subscriber-Acct-Mode		flow-based-none		2
+VALUE	Subscriber-Acct-Mode		session-based		3
+VALUE	Subscriber-Acct-Mode		main-a10-only		4
 
 VALUE	Subscriber-Acct-Rsp-Action	None			0
 VALUE	Subscriber-Acct-Rsp-Action	No_Early_PDUs		1
 VALUE	Subscriber-Acct-Rsp-Action	Delay_GTP_Response	2
 
-VALUE	Subscriber-Acct-Start	Normal			0
-VALUE	Subscriber-Acct-Start	Suppress		1
+VALUE	Subscriber-Acct-Start		Normal			0
+VALUE	Subscriber-Acct-Start		Suppress		1
 
-VALUE	Subscriber-Acct-Stop	Normal			0
-VALUE	Subscriber-Acct-Stop	Suppress		1
+VALUE	Subscriber-Acct-Stop		Normal			0
+VALUE	Subscriber-Acct-Stop		Suppress		1
 
 VALUE	Subscriber-Class		Normal_Subscriber	0
 VALUE	Subscriber-Class		Ting_100		1
@@ -1148,55 +1148,55 @@ VALUE	Subscriber-Class		Reserved		9
 VALUE	Subscriber-IP-Hdr-Neg-Mode	Force			0
 VALUE	Subscriber-IP-Hdr-Neg-Mode	Detect			1
 
-VALUE	Subscriber-IP-TOS-Copy	None			0
-VALUE	Subscriber-IP-TOS-Copy	Access-Tunnel		1
-VALUE	Subscriber-IP-TOS-Copy	Data-Tunnel		2
-VALUE	Subscriber-IP-TOS-Copy	Both			3
+VALUE	Subscriber-IP-TOS-Copy		None			0
+VALUE	Subscriber-IP-TOS-Copy		Access-Tunnel		1
+VALUE	Subscriber-IP-TOS-Copy		Data-Tunnel		2
+VALUE	Subscriber-IP-TOS-Copy		Both			3
 
-VALUE	Subscriber-No-Interims	Disabled		0
-VALUE	Subscriber-No-Interims	Enabled			1
+VALUE	Subscriber-No-Interims		Disabled		0
+VALUE	Subscriber-No-Interims		Enabled			1
 
 VALUE	Subs-VJ-Slotid-Cmp-Neg-Mode	None			0
 VALUE	Subs-VJ-Slotid-Cmp-Neg-Mode	Receive			1
 VALUE	Subs-VJ-Slotid-Cmp-Neg-Mode	Transmit		2
 VALUE	Subs-VJ-Slotid-Cmp-Neg-Mode	Both			3
 
-VALUE	Tp-Dnlk-Exceed-Action	Transmit		0
-VALUE	Tp-Dnlk-Exceed-Action	Drop			1
-VALUE	Tp-Dnlk-Exceed-Action	Lower-IP-Precedence	2
-VALUE	Tp-Dnlk-Exceed-Action	Buffer			3
-VALUE	Tp-Dnlk-Exceed-Action	Transmit-On-Buffer-Full	4
+VALUE	Tp-Dnlk-Exceed-Action		Transmit		0
+VALUE	Tp-Dnlk-Exceed-Action		Drop			1
+VALUE	Tp-Dnlk-Exceed-Action		Lower-IP-Precedence	2
+VALUE	Tp-Dnlk-Exceed-Action		Buffer			3
+VALUE	Tp-Dnlk-Exceed-Action		Transmit-On-Buffer-Full	4
 
-VALUE	Tp-Dnlk-Violate-Action	Transmit		0
-VALUE	Tp-Dnlk-Violate-Action	Drop			1
-VALUE	Tp-Dnlk-Violate-Action	Lower-IP-Precedence	2
-VALUE	Tp-Dnlk-Violate-Action	Buffer			3
-VALUE	Tp-Dnlk-Violate-Action	Transmit-On-Buffer-Full	4
+VALUE	Tp-Dnlk-Violate-Action		Transmit		0
+VALUE	Tp-Dnlk-Violate-Action		Drop			1
+VALUE	Tp-Dnlk-Violate-Action		Lower-IP-Precedence	2
+VALUE	Tp-Dnlk-Violate-Action		Buffer			3
+VALUE	Tp-Dnlk-Violate-Action		Transmit-On-Buffer-Full	4
 
-VALUE	Tp-Uplk-Exceed-Action	Transmit		0
-VALUE	Tp-Uplk-Exceed-Action	Drop			1
-VALUE	Tp-Uplk-Exceed-Action	Lower-IP-Precedence	2
-VALUE	Tp-Uplk-Exceed-Action	Buffer			3
-VALUE	Tp-Uplk-Exceed-Action	Transmit-On-Buffer-Full	4
+VALUE	Tp-Uplk-Exceed-Action		Transmit		0
+VALUE	Tp-Uplk-Exceed-Action		Drop			1
+VALUE	Tp-Uplk-Exceed-Action		Lower-IP-Precedence	2
+VALUE	Tp-Uplk-Exceed-Action		Buffer			3
+VALUE	Tp-Uplk-Exceed-Action		Transmit-On-Buffer-Full	4
 
-VALUE	Tp-Uplk-Violate-Action	Transmit		0
-VALUE	Tp-Uplk-Violate-Action	Drop			1
-VALUE	Tp-Uplk-Violate-Action	Lower-IP-Precedence	2
-VALUE	Tp-Uplk-Violate-Action	Buffer			3
-VALUE	Tp-Uplk-Violate-Action	Transmit-On-Buffer-Full	4
+VALUE	Tp-Uplk-Violate-Action		Transmit		0
+VALUE	Tp-Uplk-Violate-Action		Drop			1
+VALUE	Tp-Uplk-Violate-Action		Lower-IP-Precedence	2
+VALUE	Tp-Uplk-Violate-Action		Buffer			3
+VALUE	Tp-Uplk-Violate-Action		Transmit-On-Buffer-Full	4
 
-VALUE	Tun-Addr-Policy		no-local-alloc-validate	0
-VALUE	Tun-Addr-Policy		local-alloc		1
-VALUE	Tun-Addr-Policy		local-alloc-validate	2
+VALUE	Tun-Addr-Policy			no-local-alloc-validate	0
+VALUE	Tun-Addr-Policy			local-alloc		1
+VALUE	Tun-Addr-Policy			local-alloc-validate	2
 
 VALUE	Tunnel-Gn			Disabled		0
 VALUE	Tunnel-Gn			Enabled			1
 
-VALUE	Tunnel-Load-Balancing	random			1
-VALUE	Tunnel-Load-Balancing	balanced		2
-VALUE	Tunnel-Load-Balancing	prioritized		3
+VALUE	Tunnel-Load-Balancing		random			1
+VALUE	Tunnel-Load-Balancing		balanced		2
+VALUE	Tunnel-Load-Balancing		prioritized		3
 
-VALUE	Visiting-Sub-Use-GGSN	Deny			0
-VALUE	Visiting-Sub-Use-GGSN	Accept			1
+VALUE	Visiting-Sub-Use-GGSN		Deny			0
+VALUE	Visiting-Sub-Use-GGSN		Accept			1
 
 END-VENDOR	Starent

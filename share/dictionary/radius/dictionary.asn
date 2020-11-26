@@ -18,38 +18,38 @@ BEGIN-VENDOR	ASN
 
 ## Server-side extensions
 # dynamic IP pool name
-ATTRIBUTE	IP-Pool-Name			1	string
+ATTRIBUTE	IP-Pool-Name				1	string
 
 ### 2-99: free ###
 
 ## limits
 ATTRIBUTE	Kbps-Down				100	integer
-ATTRIBUTE	Kbps-Down-Localmedia		112	integer
-ATTRIBUTE	Kbps-Up				101	integer
+ATTRIBUTE	Kbps-Down-Localmedia			112	integer
+ATTRIBUTE	Kbps-Up					101	integer
 ATTRIBUTE	Pps-Down				102	integer
-ATTRIBUTE	Pps-Up				103	integer
-ATTRIBUTE	TCP-Connlimit			104	integer
+ATTRIBUTE	Pps-Up					103	integer
+ATTRIBUTE	TCP-Connlimit				104	integer
 
 ## firewall
 ATTRIBUTE	Firewall-Available			110	integer
 VALUE	Firewall-Available		Yes			1
 VALUE	Firewall-Available		No			2
 
-ATTRIBUTE	Firewall-State			105	integer
-VALUE	Firewall-State		Enabled			1
-VALUE	Firewall-State		Disabled		2
+ATTRIBUTE	Firewall-State				105	integer
+VALUE	Firewall-State			Enabled			1
+VALUE	Firewall-State			Disabled		2
 
 ATTRIBUTE	Firewall-Block-Ping			107	integer
 VALUE	Firewall-Block-Ping		Enabled			1
 VALUE	Firewall-Block-Ping		Disabled		2
 
 # hosts to allow "<tcp/udp/sctp> <host> <port1,port2,...>"
-ATTRIBUTE	Firewall-Open			106	string
+ATTRIBUTE	Firewall-Open				106	string
 
 ## QoS
-ATTRIBUTE	QoS-Available			111	integer
-VALUE	QoS-Available		Yes			1
-VALUE	QoS-Available		No			2
+ATTRIBUTE	QoS-Available				111	integer
+VALUE	QoS-Available			Yes			1
+VALUE	QoS-Available			No			2
 
 ATTRIBUTE	QoS-State				108	integer
 VALUE	QoS-State			Enabled			1
@@ -63,9 +63,9 @@ ATTRIBUTE	IP-Redirect				109	string
 
 ## web filtering
 # decides whether to deny or to allow only the specified web topics
-ATTRIBUTE	Webfilter-Mode			113	integer
-VALUE	Webfilter-Mode		Deny			1
-VALUE	Webfilter-Mode		Allow			2
+ATTRIBUTE	Webfilter-Mode				113	integer
+VALUE	Webfilter-Mode			Deny			1
+VALUE	Webfilter-Mode			Allow			2
 
 # where to redirect blocked request
 #  "[301:302]<new url>"
@@ -88,7 +88,7 @@ ATTRIBUTE	Webfilter-Redirect			114	string
 #   ads adult audioandvideo banks blogs chatandforum finance freemail games
 #   home jobsearch keylogger news onlineGames phishing proxies recreation
 #   reference science searchengine
-ATTRIBUTE	Webfilter-Destination		115	string
+ATTRIBUTE	Webfilter-Destination			115	string
 
 # web domain to match (will match all subdomains, too)
 ATTRIBUTE	Webfilter-Domain			116	string

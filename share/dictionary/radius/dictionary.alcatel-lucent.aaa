@@ -14,75 +14,75 @@ VENDOR		ALU-AAA				831
 
 BEGIN-VENDOR	ALU-AAA
 
-ATTRIBUTE	Access-Rule			1	string
-ATTRIBUTE	AV-Pair				2	string
-ATTRIBUTE	GSM-Triplets-Needed		3	integer
-ATTRIBUTE	GSM-Triplet			4	octets
-ATTRIBUTE	AKA-Quintets-Needed		5	integer
-ATTRIBUTE	AKA-Quintet			6	octets
-ATTRIBUTE	AKA-RAND			7	octets
-ATTRIBUTE	AKA-AUTS			8	octets
-ATTRIBUTE	Service-Profile			9	string
-ATTRIBUTE	Lawful-Intercept-Status		10	byte
-ATTRIBUTE	DF-CC-Address			11	ipaddr
-ATTRIBUTE	DF-CC-Port			12	short
-ATTRIBUTE	Client-Program			13	string
-ATTRIBUTE	Client-Error-Action		14	integer
-ATTRIBUTE	Client-OS			15	string
-ATTRIBUTE	Client-Version			16	string
-ATTRIBUTE	Nonce				17	octets
-ATTRIBUTE	Femto-Public-Key-Hash		18	octets
-ATTRIBUTE	Femto-Associated-User-Name	19	string
-ATTRIBUTE	String-0			100	string
-ATTRIBUTE	String-1			101	string
-ATTRIBUTE	String-2			102	string
-ATTRIBUTE	String-3			103	string
-ATTRIBUTE	Integer-0			104	integer
-ATTRIBUTE	Integer-1			105	integer
-ATTRIBUTE	Integer-2			106	integer
-ATTRIBUTE	Integer-3			107	integer
-ATTRIBUTE	Address-0			108	combo-ip
-ATTRIBUTE	Address-1			109	combo-ip
-ATTRIBUTE	Address-2			110	combo-ip
-ATTRIBUTE	Address-3			111	combo-ip
-ATTRIBUTE	Value-0				112	octets
-ATTRIBUTE	Value-1				113	octets
-ATTRIBUTE	Value-2				114	octets
-ATTRIBUTE	Value-3				115	octets
-ATTRIBUTE	Key-0				116	octets	encrypt=2
-ATTRIBUTE	Key-1				117	octets	encrypt=2
-ATTRIBUTE	Key-2				118	octets	encrypt=2
-ATTRIBUTE	Key-3				119	octets	encrypt=2
-ATTRIBUTE	Opaque-0			120	octets
-ATTRIBUTE	Opaque-1			121	octets
-ATTRIBUTE	Opaque-2			122	octets
-ATTRIBUTE	Opaque-3			123	octets
-ATTRIBUTE	Eval-0				124	string
-ATTRIBUTE	Eval-1				125	string
-ATTRIBUTE	Eval-2				126	string
-ATTRIBUTE	Eval-3				127	string
-ATTRIBUTE	Exec-0				128	string
-ATTRIBUTE	Exec-1				129	string
-ATTRIBUTE	Exec-2				130	string
-ATTRIBUTE	Exec-3				131	string
-ATTRIBUTE	Original-Receipt-Time		199	octets
-ATTRIBUTE	Reply-Message			201	string
-ATTRIBUTE	Called-Station-Id		202	string
-ATTRIBUTE	NAS-IP-Address			203	ipaddr
-ATTRIBUTE	NAS-Port			204	integer
-ATTRIBUTE	Old-State			205	string
-ATTRIBUTE	New-State			206	string
-ATTRIBUTE	Event				207	string
-ATTRIBUTE	Old-Timestamp			208	date
-ATTRIBUTE	New-Timestamp			209	date
-ATTRIBUTE	Delta-Session			210	integer
-ATTRIBUTE	Civic-Location			211	octets
-ATTRIBUTE	Geospatial-Location		212	octets
+ATTRIBUTE	Access-Rule				1	string
+ATTRIBUTE	AV-Pair					2	string
+ATTRIBUTE	GSM-Triplets-Needed			3	integer
+ATTRIBUTE	GSM-Triplet				4	octets
+ATTRIBUTE	AKA-Quintets-Needed			5	integer
+ATTRIBUTE	AKA-Quintet				6	octets
+ATTRIBUTE	AKA-RAND				7	octets
+ATTRIBUTE	AKA-AUTS				8	octets
+ATTRIBUTE	Service-Profile				9	string
+ATTRIBUTE	Lawful-Intercept-Status			10	byte
+ATTRIBUTE	DF-CC-Address				11	ipaddr
+ATTRIBUTE	DF-CC-Port				12	short
+ATTRIBUTE	Client-Program				13	string
+ATTRIBUTE	Client-Error-Action			14	integer
+ATTRIBUTE	Client-OS				15	string
+ATTRIBUTE	Client-Version				16	string
+ATTRIBUTE	Nonce					17	octets
+ATTRIBUTE	Femto-Public-Key-Hash			18	octets
+ATTRIBUTE	Femto-Associated-User-Name		19	string
+ATTRIBUTE	String-0				100	string
+ATTRIBUTE	String-1				101	string
+ATTRIBUTE	String-2				102	string
+ATTRIBUTE	String-3				103	string
+ATTRIBUTE	Integer-0				104	integer
+ATTRIBUTE	Integer-1				105	integer
+ATTRIBUTE	Integer-2				106	integer
+ATTRIBUTE	Integer-3				107	integer
+ATTRIBUTE	Address-0				108	combo-ip
+ATTRIBUTE	Address-1				109	combo-ip
+ATTRIBUTE	Address-2				110	combo-ip
+ATTRIBUTE	Address-3				111	combo-ip
+ATTRIBUTE	Value-0					112	octets
+ATTRIBUTE	Value-1					113	octets
+ATTRIBUTE	Value-2					114	octets
+ATTRIBUTE	Value-3					115	octets
+ATTRIBUTE	Key-0					116	octets	encrypt=2
+ATTRIBUTE	Key-1					117	octets	encrypt=2
+ATTRIBUTE	Key-2					118	octets	encrypt=2
+ATTRIBUTE	Key-3					119	octets	encrypt=2
+ATTRIBUTE	Opaque-0				120	octets
+ATTRIBUTE	Opaque-1				121	octets
+ATTRIBUTE	Opaque-2				122	octets
+ATTRIBUTE	Opaque-3				123	octets
+ATTRIBUTE	Eval-0					124	string
+ATTRIBUTE	Eval-1					125	string
+ATTRIBUTE	Eval-2					126	string
+ATTRIBUTE	Eval-3					127	string
+ATTRIBUTE	Exec-0					128	string
+ATTRIBUTE	Exec-1					129	string
+ATTRIBUTE	Exec-2					130	string
+ATTRIBUTE	Exec-3					131	string
+ATTRIBUTE	Original-Receipt-Time			199	octets
+ATTRIBUTE	Reply-Message				201	string
+ATTRIBUTE	Called-Station-Id			202	string
+ATTRIBUTE	NAS-IP-Address				203	ipaddr
+ATTRIBUTE	NAS-Port				204	integer
+ATTRIBUTE	Old-State				205	string
+ATTRIBUTE	New-State				206	string
+ATTRIBUTE	Event					207	string
+ATTRIBUTE	Old-Timestamp				208	date
+ATTRIBUTE	New-Timestamp				209	date
+ATTRIBUTE	Delta-Session				210	integer
+ATTRIBUTE	Civic-Location				211	octets
+ATTRIBUTE	Geospatial-Location			212	octets
 
-VALUE	Client-Error-Action	Ignore			1
-VALUE	Client-Error-Action	Disconnect		2
+VALUE	Client-Error-Action		Ignore			1
+VALUE	Client-Error-Action		Disconnect		2
 
-VALUE	Delta-Session		False			0
-VALUE	Delta-Session		True			1
+VALUE	Delta-Session			False			0
+VALUE	Delta-Session			True			1
 
 END-VENDOR	ALU-AAA

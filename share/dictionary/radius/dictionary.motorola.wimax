@@ -14,24 +14,24 @@ VENDOR		Motorola			161
 
 BEGIN-VENDOR	Motorola
 
-ATTRIBUTE	WiMAX-MIP-MN-HOME-ADDRESS	10	ipaddr
-ATTRIBUTE	WiMAX-MIP-KEY			11	string encrypt=2
-ATTRIBUTE	WiMAX-MIP-SPI			12	integer
-ATTRIBUTE	WiMAX-MN-HA			13	ipaddr
-ATTRIBUTE	WiMAX-DNS-Server-IP-Address	20	octets
-ATTRIBUTE	WiMAX-User-NAI			22	string
-ATTRIBUTE	WiMAX-Network-Domain-Name	30	string
-ATTRIBUTE	WiMAX-EMS-Address		31	ipaddr
-ATTRIBUTE	WiMAX-Provisioning-Server	32	string
-ATTRIBUTE	WiMAX-NTP-Server		34	octets
-ATTRIBUTE	WiMAX-HO-SVC-CLASS		35	octets
-ATTRIBUTE	WiMAX-Home-BTS			50	octets
-ATTRIBUTE	WiMAX-Maximum-Total-Bandwidth	60	octets
-ATTRIBUTE	WiMAX-Maximum-Commit-Bandwidth	61	octets
-ATTRIBUTE	WiMAX-Convergence-Sublayer	63	octets
-ATTRIBUTE	WiMAX-Service-Flows		64	string
-ATTRIBUTE	WiMAX-VLAN-ID			65	octets
+ATTRIBUTE	WiMAX-MIP-MN-HOME-ADDRESS		10	ipaddr
+ATTRIBUTE	WiMAX-MIP-KEY				11	string encrypt=2
+ATTRIBUTE	WiMAX-MIP-SPI				12	integer
+ATTRIBUTE	WiMAX-MN-HA				13	ipaddr
+ATTRIBUTE	WiMAX-DNS-Server-IP-Address		20	octets
+ATTRIBUTE	WiMAX-User-NAI				22	string
+ATTRIBUTE	WiMAX-Network-Domain-Name		30	string
+ATTRIBUTE	WiMAX-EMS-Address			31	ipaddr
+ATTRIBUTE	WiMAX-Provisioning-Server		32	string
+ATTRIBUTE	WiMAX-NTP-Server			34	octets
+ATTRIBUTE	WiMAX-HO-SVC-CLASS			35	octets
+ATTRIBUTE	WiMAX-Home-BTS				50	octets
+ATTRIBUTE	WiMAX-Maximum-Total-Bandwidth		60	octets
+ATTRIBUTE	WiMAX-Maximum-Commit-Bandwidth		61	octets
+ATTRIBUTE	WiMAX-Convergence-Sublayer		63	octets
+ATTRIBUTE	WiMAX-Service-Flows			64	string
+ATTRIBUTE	WiMAX-VLAN-ID				65	octets
 
-ATTRIBUTE	Accounting-Message		80	string
+ATTRIBUTE	Accounting-Message			80	string
 
 END-VENDOR    Motorola

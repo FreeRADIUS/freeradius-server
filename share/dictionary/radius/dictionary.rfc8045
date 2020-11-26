@@ -22,9 +22,9 @@ ATTRIBUTE	Int-Port				.6	integer
 ATTRIBUTE	Ext-Port				.7	integer
 ATTRIBUTE	Alloc					.8	integer
 
-VALUE	Alloc			Reserved		0
-VALUE	Alloc			Allocation		1
-VALUE	Alloc			Deallocation		2
+VALUE	Alloc				Reserved		0
+VALUE	Alloc				Allocation		1
+VALUE	Alloc				Deallocation		2
 
 ATTRIBUTE	Range-Start				.9	integer
 ATTRIBUTE	Range-End				.10	integer
@@ -40,14 +40,13 @@ ATTRIBUTE	Int-Port				.6	integer
 ATTRIBUTE	Ext-Port				.7	integer
 ATTRIBUTE	Alloc					.8	integer
 
-VALUE	Alloc		Reserved			0
-VALUE	Alloc		Allocation			1
-VALUE	Alloc		Deallocation			2
+VALUE	Alloc				Reserved		0
+VALUE	Alloc				Allocation		1
+VALUE	Alloc				Deallocation		2
 
 ATTRIBUTE	Range-Start				.9	integer
 ATTRIBUTE	Range-End				.10	integer
 ATTRIBUTE	Local-Id				.11	string
-
 
 ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv
 ATTRIBUTE	Type					.1	integer
@@ -59,9 +58,9 @@ ATTRIBUTE	Int-Port				.6	integer
 ATTRIBUTE	Ext-Port				.7	integer
 ATTRIBUTE	Alloc					.8	integer
 
-VALUE	Alloc		Reserved			0
-VALUE	Alloc		Allocation			1
-VALUE	Alloc		Deallocation			2
+VALUE	Alloc				Reserved		0
+VALUE	Alloc				Allocation		1
+VALUE	Alloc				Deallocation		2
 
 ATTRIBUTE	Range-Start				.9	integer
 ATTRIBUTE	Range-End				.10	integer

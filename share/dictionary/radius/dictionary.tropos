@@ -13,34 +13,34 @@ VENDOR		Tropos				14529
 
 BEGIN-VENDOR	Tropos
 
-ATTRIBUTE	Unicast-Cipher			1	integer
-ATTRIBUTE	Layer2-Input-Octets		2	integer
-ATTRIBUTE	Layer2-Output-Octets		3	integer
-ATTRIBUTE	Layer2-Input-Frames		4	integer
-ATTRIBUTE	Layer2-Output-Frames		5	integer
-ATTRIBUTE	Layer2-Input-Drops		6	integer
-ATTRIBUTE	Noise-Floor			7	ifid
-ATTRIBUTE	Noise-Upper-Bound		8	ifid
-ATTRIBUTE	Release				9	string
-ATTRIBUTE	Secondary-IP			11	octets
-ATTRIBUTE	Terminate-Cause			12	integer
-ATTRIBUTE	Average-RSSI			13	integer
-ATTRIBUTE	Channel				15	ifid
-ATTRIBUTE	Retries-Sent			16	integer
-ATTRIBUTE	Retry-Bits			17	integer
-ATTRIBUTE	Rates-Sent			18	octets
-ATTRIBUTE	Rates-Received			19	octets
-ATTRIBUTE	Routed-Time			21	integer
-ATTRIBUTE	Routless-Since			22	integer
-ATTRIBUTE	Capability-Info			23	octets
-ATTRIBUTE	Input-Cap			24	integer
-ATTRIBUTE	Output-Cap			25	integer
-ATTRIBUTE	Class-Mult			26	integer
-ATTRIBUTE	Cell-Name			27	string
-ATTRIBUTE	Cell-Location			28	string
-ATTRIBUTE	Serial-Number			29	string
+ATTRIBUTE	Unicast-Cipher				1	integer
+ATTRIBUTE	Layer2-Input-Octets			2	integer
+ATTRIBUTE	Layer2-Output-Octets			3	integer
+ATTRIBUTE	Layer2-Input-Frames			4	integer
+ATTRIBUTE	Layer2-Output-Frames			5	integer
+ATTRIBUTE	Layer2-Input-Drops			6	integer
+ATTRIBUTE	Noise-Floor				7	ifid
+ATTRIBUTE	Noise-Upper-Bound			8	ifid
+ATTRIBUTE	Release					9	string
+ATTRIBUTE	Secondary-IP				11	octets
+ATTRIBUTE	Terminate-Cause				12	integer
+ATTRIBUTE	Average-RSSI				13	integer
+ATTRIBUTE	Channel					15	ifid
+ATTRIBUTE	Retries-Sent				16	integer
+ATTRIBUTE	Retry-Bits				17	integer
+ATTRIBUTE	Rates-Sent				18	octets
+ATTRIBUTE	Rates-Received				19	octets
+ATTRIBUTE	Routed-Time				21	integer
+ATTRIBUTE	Routless-Since				22	integer
+ATTRIBUTE	Capability-Info				23	octets
+ATTRIBUTE	Input-Cap				24	integer
+ATTRIBUTE	Output-Cap				25	integer
+ATTRIBUTE	Class-Mult				26	integer
+ATTRIBUTE	Cell-Name				27	string
+ATTRIBUTE	Cell-Location				28	string
+ATTRIBUTE	Serial-Number				29	string
 ATTRIBUTE	Latitude				30	string
-ATTRIBUTE	Longitude			31	string
+ATTRIBUTE	Longitude				31	string
 
 #   These are commented out because FreeRadius does not have a way of
 #   putting the numerical value into SQL.

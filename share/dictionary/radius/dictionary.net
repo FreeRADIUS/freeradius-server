@@ -11,123 +11,123 @@ BEGIN-VENDOR	NET
 
 #  MSC/Media related attributes
 ATTRIBUTE	Fwd-Flow-In-Realm			11	string  #  unsupported
-ATTRIBUTE	Fwd-Flow-In-Src-Addr		12	string
-ATTRIBUTE	Fwd-Flow-In-Src-Port		13	integer
-ATTRIBUTE	Fwd-Flow-In-Dst-Addr		14	string
-ATTRIBUTE	Fwd-Flow-In-Dst-Port		15	integer
+ATTRIBUTE	Fwd-Flow-In-Src-Addr			12	string
+ATTRIBUTE	Fwd-Flow-In-Src-Port			13	integer
+ATTRIBUTE	Fwd-Flow-In-Dst-Addr			14	string
+ATTRIBUTE	Fwd-Flow-In-Dst-Port			15	integer
 ATTRIBUTE	Fwd-Flow-Out-Realm			16	string  #  unsupported
-ATTRIBUTE	Fwd-Flow-Out-Src-Addr		17	string
-ATTRIBUTE	Fwd-Flow-Out-Src-Port		18	integer
-ATTRIBUTE	Fwd-Flow-Out-Dst-Addr		19	string
-ATTRIBUTE	Fwd-Flow-Out-Dst-Port		20	integer
+ATTRIBUTE	Fwd-Flow-Out-Src-Addr			17	string
+ATTRIBUTE	Fwd-Flow-Out-Src-Port			18	integer
+ATTRIBUTE	Fwd-Flow-Out-Dst-Addr			19	string
+ATTRIBUTE	Fwd-Flow-Out-Dst-Port			20	integer
 ATTRIBUTE	Bwd-Flow-In-Realm			21	string  #  unsupported
-ATTRIBUTE	Bwd-Flow-In-Src-Addr		22	string
-ATTRIBUTE	Bwd-Flow-In-Src-Port		23	integer
-ATTRIBUTE	Bwd-Flow-In-Dst-Addr		24	string
-ATTRIBUTE	Bwd-Flow-In-Dst-Port		25	integer
+ATTRIBUTE	Bwd-Flow-In-Src-Addr			22	string
+ATTRIBUTE	Bwd-Flow-In-Src-Port			23	integer
+ATTRIBUTE	Bwd-Flow-In-Dst-Addr			24	string
+ATTRIBUTE	Bwd-Flow-In-Dst-Port			25	integer
 ATTRIBUTE	Bwd-Flow-Out-Realm			26	string  #  unsupported
-ATTRIBUTE	Bwd-Flow-Out-Src-Addr		27	string
-ATTRIBUTE	Bwd-Flow-Out-Src-Port		28	integer
-ATTRIBUTE	Bwd-Flow-Out-Dst-Addr		29	string
-ATTRIBUTE	Bwd-Flow-Out-Dst-Port		30	integer
+ATTRIBUTE	Bwd-Flow-Out-Src-Addr			27	string
+ATTRIBUTE	Bwd-Flow-Out-Src-Port			28	integer
+ATTRIBUTE	Bwd-Flow-Out-Dst-Addr			29	string
+ATTRIBUTE	Bwd-Flow-Out-Dst-Port			30	integer
 ATTRIBUTE	Fwd-Flow-Media-Type			31	string
-ATTRIBUTE	Fwd-Flow-PTime			32	integer
+ATTRIBUTE	Fwd-Flow-PTime				32	integer
 ATTRIBUTE	Fwd-Octets				33	integer
 ATTRIBUTE	Fwd-Packets				34	integer
-ATTRIBUTE	Fwd-RTCP-Packets-Lost		35	integer  #  future
+ATTRIBUTE	Fwd-RTCP-Packets-Lost			35	integer  #  future
 ATTRIBUTE	Fwd-RTCP-Avg-Jitter			36	integer  #  future
 ATTRIBUTE	Fwd-RTP-Avg-Latency			37	integer
 ATTRIBUTE	Fwd-RTCP-MaxJitter			38	integer  #  future
 ATTRIBUTE	Fwd-RTP-MaxLatency			39	integer
-ATTRIBUTE	Fwd-RTP-Packets-Lost		40	integer
+ATTRIBUTE	Fwd-RTP-Packets-Lost			40	integer
 ATTRIBUTE	Fwd-RTP-Avg-Jitter			41	integer
 ATTRIBUTE	Fwd-RTP-MaxJitter			42	integer
 ATTRIBUTE	Bwd-Octets				43	integer
 ATTRIBUTE	Bwd-Packets				44	integer
-ATTRIBUTE	Bwd-RTCP-Packets-Lost		45	integer  #  future
+ATTRIBUTE	Bwd-RTCP-Packets-Lost			45	integer  #  future
 ATTRIBUTE	Bwd-RTCP-Avg-Jitter			46	integer  #  future
 ATTRIBUTE	Bwd-RTP-Avg-Latency			47	integer
 ATTRIBUTE	Bwd-RTCP-MaxJitter			48	integer  #  future
 ATTRIBUTE	Bwd-RTP-MaxLatency			49	integer
-ATTRIBUTE	Bwd-RTP-Packets-Lost		50	integer
+ATTRIBUTE	Bwd-RTP-Packets-Lost			50	integer
 ATTRIBUTE	Bwd-RTP-Avg-Jitter			51	integer
 ATTRIBUTE	Bwd-RTP-MaxJitter			52	integer
 
 #  Generic Session and Signaling Group related metrics
-ATTRIBUTE	Session-Ingress-CallId		60	integer
-ATTRIBUTE	Session-Egress-CallId		61	integer
+ATTRIBUTE	Session-Ingress-CallId			60	integer
+ATTRIBUTE	Session-Egress-CallId			61	integer
 ATTRIBUTE	Session-Generic-Id			62	integer
-ATTRIBUTE	Routing-Table-Number		63	integer
-ATTRIBUTE	Ingress-Signaling-Group		64	integer
-ATTRIBUTE	Egress-Signaling-Group		65	integer
-ATTRIBUTE	Primary-Routing-Number		66	string
+ATTRIBUTE	Routing-Table-Number			63	integer
+ATTRIBUTE	Ingress-Signaling-Group			64	integer
+ATTRIBUTE	Egress-Signaling-Group			65	integer
+ATTRIBUTE	Primary-Routing-Number			66	string
 ATTRIBUTE	Egress-Final-Routing-Num		67	string
-ATTRIBUTE	Ingress-Channel-Number		68	integer
-ATTRIBUTE	Egress-Channel-Number		69	integer
+ATTRIBUTE	Ingress-Channel-Number			68	integer
+ATTRIBUTE	Egress-Channel-Number			69	integer
 ATTRIBUTE	Call-Type				70	integer
 ATTRIBUTE	Call-Origin				71	integer
-ATTRIBUTE	Calling-Number			72	string
-ATTRIBUTE	Called-Number			73	string
-ATTRIBUTE	Calling-Name			74	string
+ATTRIBUTE	Calling-Number				72	string
+ATTRIBUTE	Called-Number				73	string
+ATTRIBUTE	Calling-Name				74	string
 ATTRIBUTE	Disconnect-Cause			75	integer
 ATTRIBUTE	Abort-Cause				76	integer
 ATTRIBUTE	Ingress-Channel-Id			77	string
 ATTRIBUTE	Egress-Channel-Id			78	string
-ATTRIBUTE	Call-Priority			79	string
+ATTRIBUTE	Call-Priority				79	string
 
 #  Generic Call related attributes
 ATTRIBUTE	Call-Number-Type			90	string
 ATTRIBUTE	Call-Plan				91	string
-ATTRIBUTE	Original-Called-Number		92	string
-ATTRIBUTE	Original-Called-Type		93	string
-ATTRIBUTE	Original-Called-Plan		94	string
+ATTRIBUTE	Original-Called-Number			92	string
+ATTRIBUTE	Original-Called-Type			93	string
+ATTRIBUTE	Original-Called-Plan			94	string
 ATTRIBUTE	Called-Name				95	string
 ATTRIBUTE	Namespace				96	string
 ATTRIBUTE	Precedence				97	string
-ATTRIBUTE	Presentation			98	string
+ATTRIBUTE	Presentation				98	string
 ATTRIBUTE	Screening				99	string
 ATTRIBUTE	Transfer-Capability			100	string
-ATTRIBUTE	Transfer-Mode			101	string
-ATTRIBUTE	Transfer-Rate			102	string
+ATTRIBUTE	Transfer-Mode				101	string
+ATTRIBUTE	Transfer-Rate				102	string
 ATTRIBUTE	User-Rate				103	string
 
 #  Generic time related attributes
 ATTRIBUTE	Setup-Time				110	string
 ATTRIBUTE	Alert-Time				111	string
-ATTRIBUTE	Connect-Time			112	string
-ATTRIBUTE	Disconnect-Time			113	string
+ATTRIBUTE	Connect-Time				112	string
+ATTRIBUTE	Disconnect-Time				113	string
 ATTRIBUTE	Inbound-Seize-Time			114	string
 ATTRIBUTE	Outbound-Seize-Time			115	string
-ATTRIBUTE	Call-Duration			116	integer
-ATTRIBUTE	Post-Dial-Delay			117	integer
-ATTRIBUTE	Disconnect-Initiator		118	integer
+ATTRIBUTE	Call-Duration				116	integer
+ATTRIBUTE	Post-Dial-Delay				117	integer
+ATTRIBUTE	Disconnect-Initiator			118	integer
 
 #  SIP related
-ATTRIBUTE	P-Asserted-ID			130	string
-ATTRIBUTE	SIP-Diversion			131	string
+ATTRIBUTE	P-Asserted-ID				130	string
+ATTRIBUTE	SIP-Diversion				131	string
 ATTRIBUTE	Ingress-Local-Addr			132	string
 ATTRIBUTE	Ingress-Remote-Addr			133	string
 ATTRIBUTE	Egress-Local-Addr			134	string
 ATTRIBUTE	Egress-Remote-Addr			135	string
-ATTRIBUTE	Ingress-Interface-Id		136	integer
-ATTRIBUTE	Egress-Interface-Id		137	integer
-ATTRIBUTE	Refer-Call-Transfer-Id		138	string
-ATTRIBUTE	Session-Forked-Call-Id		139	string
-ATTRIBUTE	Redirect-Number			140	string
+ATTRIBUTE	Ingress-Interface-Id			136	integer
+ATTRIBUTE	Egress-Interface-Id			137	integer
+ATTRIBUTE	Refer-Call-Transfer-Id			138	string
+ATTRIBUTE	Session-Forked-Call-Id			139	string
+ATTRIBUTE	Redirect-Number				140	string
 ATTRIBUTE	Redirect-Ip-Address			141	string
-ATTRIBUTE	Session-Ingress-Realm		142	string
-ATTRIBUTE	Session-Egress-Realm		143	string
+ATTRIBUTE	Session-Ingress-Realm			142	string
+ATTRIBUTE	Session-Egress-Realm			143	string
 ATTRIBUTE	Ingress-Signaling-Port-Num		144	integer
 ATTRIBUTE	Egress-Signaling-Port-Num		145	integer
-ATTRIBUTE	Transport-Type			146	integer
-ATTRIBUTE	P-Preferred-ID			147	string
-ATTRIBUTE	Replaced-Header			148	string
+ATTRIBUTE	Transport-Type				146	integer
+ATTRIBUTE	P-Preferred-ID				147	string
+ATTRIBUTE	Replaced-Header				148	string
 
 #  Generic parameters
 ATTRIBUTE	Firmware-Version			160	string
-ATTRIBUTE	Local-Time-Zone			161	string
-ATTRIBUTE	Gw-Id				162	string
-ATTRIBUTE	Time-And-Day			163	string
+ATTRIBUTE	Local-Time-Zone				161	string
+ATTRIBUTE	Gw-Id					162	string
+ATTRIBUTE	Time-And-Day				163	string
 ATTRIBUTE	Log-Time				164	string
 
 END-VENDOR	NET

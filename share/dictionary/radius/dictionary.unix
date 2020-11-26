@@ -12,11 +12,11 @@ VENDOR		Unix				4
 
 BEGIN-VENDOR	Unix
 
-ATTRIBUTE	FTP-UID				10	integer
-ATTRIBUTE	FTP-GID				11	integer
+ATTRIBUTE	FTP-UID					10	integer
+ATTRIBUTE	FTP-GID					11	integer
 ATTRIBUTE	FTP-Home				12	string
 ATTRIBUTE	FTP-Shell				13	string
-ATTRIBUTE	FTP-Group-Names			14	string
-ATTRIBUTE	FTP-Group-Ids			15	string
+ATTRIBUTE	FTP-Group-Names				14	string
+ATTRIBUTE	FTP-Group-Ids				15	string
 
 END-VENDOR	Unix

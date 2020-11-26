@@ -18,8 +18,8 @@ VENDOR		HP				11
 BEGIN-VENDOR	HP
 
 # Management authorization
-ATTRIBUTE	Privilege-Level			1	integer
-ATTRIBUTE	Command-String			2	string
+ATTRIBUTE	Privilege-Level				1	integer
+ATTRIBUTE	Command-String				2	string
 ATTRIBUTE	Command-Exception			3	integer
 
 VALUE	Command-Exception		Permit-List		0
@@ -31,7 +31,7 @@ VALUE	Management-Protocol		HTTP			5
 VALUE	Management-Protocol		HTTPS			6
 
 # Dynamic port-access attributes
-ATTRIBUTE	Port-Client-Limit-Dot1x		10	integer
+ATTRIBUTE	Port-Client-Limit-Dot1x			10	integer
 ATTRIBUTE	Port-Client-Limit-MA			11	integer
 ATTRIBUTE	Port-Client-Limit-WA			12	integer
 ATTRIBUTE	Port-Auth-Mode-Dot1x			13	integer
@@ -57,29 +57,29 @@ ATTRIBUTE	Port-Priority-Regeneration-Table	40	string
 ATTRIBUTE	Cos					40	string
 #ATTRIBUTE	Rate-Limit				46	integer
 
-ATTRIBUTE	Bandwidth-Max-Ingress		46	integer
+ATTRIBUTE	Bandwidth-Max-Ingress			46	integer
 ATTRIBUTE	Bandwidth-Max-Egress			48	integer
 
-ATTRIBUTE	Ip-Filter-Raw			61	string
+ATTRIBUTE	Ip-Filter-Raw				61	string
 
 # Client ACL attributes
-ATTRIBUTE	Nas-Filter-Rule			61	string
-ATTRIBUTE	Access-Profile			62	string
-ATTRIBUTE	Nas-Rules-IPv6			63	integer
+ATTRIBUTE	Nas-Filter-Rule				61	string
+ATTRIBUTE	Access-Profile				62	string
+ATTRIBUTE	Nas-Rules-IPv6				63	integer
 
 # VLAN assignment attributes
-ATTRIBUTE	Egress-VLANID			64	integer
+ATTRIBUTE	Egress-VLANID				64	integer
 ATTRIBUTE	Egress-VLAN-Name			65	string
 
 # Bonjour Profile
-ATTRIBUTE	Bonjour-Inbound-Profile		66	string
+ATTRIBUTE	Bonjour-Inbound-Profile			66	string
 ATTRIBUTE	Bonjour-Outbound-Profile		67	string
 
 # AAA for REST
 ATTRIBUTE	URI-String				80	string
-ATTRIBUTE	URI-Json-String			81	string
+ATTRIBUTE	URI-Json-String				81	string
 ATTRIBUTE	URI-Access				82	string
-ATTRIBUTE	URI-Exception			83	integer
+ATTRIBUTE	URI-Exception				83	integer
 
 ATTRIBUTE	VC-groups				192	string
 

@@ -10,22 +10,22 @@ VENDOR		ADSL-Forum			3561
 
 BEGIN-VENDOR	ADSL-Forum
 
-ATTRIBUTE	Manufacturer-OUI		1	octets
-ATTRIBUTE	Device-Serial-Number		2	octets
-ATTRIBUTE	Device-Product-Class		3	octets
-ATTRIBUTE	Gateway-Manufacturer-OUI	4	octets
-ATTRIBUTE	Gateway-Serial-Number		5	octets
-ATTRIBUTE	Gateway-Product-Class		6	octets
+ATTRIBUTE	Manufacturer-OUI			1	octets
+ATTRIBUTE	Device-Serial-Number			2	octets
+ATTRIBUTE	Device-Product-Class			3	octets
+ATTRIBUTE	Gateway-Manufacturer-OUI		4	octets
+ATTRIBUTE	Gateway-Serial-Number			5	octets
+ATTRIBUTE	Gateway-Product-Class			6	octets
 
-ATTRIBUTE	ACS-URL				11	octets
-ATTRIBUTE	Provisioning-Code		12	octets
-ATTRIBUTE	CWMP-Retry-Minimum-Interval	13	octets
-ATTRIBUTE	CWMP-Retry-Interval-Multiplier 14	octets
+ATTRIBUTE	ACS-URL					11	octets
+ATTRIBUTE	Provisioning-Code			12	octets
+ATTRIBUTE	CWMP-Retry-Minimum-Interval		13	octets
+ATTRIBUTE	CWMP-Retry-Interval-Multiplier		14	octets
 
-ATTRIBUTE	Tunnel-Type			21  	octets
-ATTRIBUTE	Server-Endpoint			22	octets
-ATTRIBUTE	Client-Endpoint			23	octets
+ATTRIBUTE	Tunnel-Type				21	octets
+ATTRIBUTE	Server-Endpoint				22	octets
+ATTRIBUTE	Client-Endpoint				23	octets
 
-ATTRIBUTE	Client-Type			24	octets
+ATTRIBUTE	Client-Type				24	octets
 
 END-VENDOR	ADSL-Forum

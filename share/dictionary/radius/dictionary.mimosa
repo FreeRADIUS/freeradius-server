@@ -7,34 +7,34 @@ VENDOR		Mimosa				43356
 
 BEGIN-VENDOR	Mimosa
 
-ATTRIBUTE	Device-Configuration	1	string
-ATTRIBUTE	Firmware-Version	2	string
-ATTRIBUTE	Firmware-Location	3	string
-ATTRIBUTE	Wireless-Protocol	4	string
-ATTRIBUTE	Management-IP-Address-Mode 5	string
-ATTRIBUTE	Management-IP-Address	6	ipaddr
-ATTRIBUTE	Management-IP-Netmask	7	ipaddr
-ATTRIBUTE	Management-IP-Gateway	8	ipaddr
-ATTRIBUTE	Management-Vlan-Status	9	byte
-ATTRIBUTE	Management-Vlan		10	string
-ATTRIBUTE	Management-Password	11	string
-ATTRIBUTE	Device-Name		12	string
-ATTRIBUTE	Traffic-Shaping-Peak	13	string
-ATTRIBUTE	Traffic-Shaping-Committed 14	string
-ATTRIBUTE	Ethernet-Port-Speed	15	string
-ATTRIBUTE	DNS1			16	ipaddr
-ATTRIBUTE	DNS2			17	ipaddr
-ATTRIBUTE	HTTP-Port		18	integer
-ATTRIBUTE	Enable-HTTPS		19	byte
-ATTRIBUTE	HTTPS-Port		20	integer
-ATTRIBUTE	Cloud-Management	21	byte
-ATTRIBUTE	Enable-SNMP		22	byte
-ATTRIBUTE	SNMP-Community-String	23	string
-ATTRIBUTE	SNMP-Trap-Server		24	ipaddr
-ATTRIBUTE	NTP-Server-Address	25	string
-ATTRIBUTE	Enable-Syslog		26	byte
-ATTRIBUTE	Syslog-Server-Address	27	ipaddr
-ATTRIBUTE	Syslog-Port		28	integer
-ATTRIBUTE	Syslog-Protocol		29	string
+ATTRIBUTE	Device-Configuration			1	string
+ATTRIBUTE	Firmware-Version			2	string
+ATTRIBUTE	Firmware-Location			3	string
+ATTRIBUTE	Wireless-Protocol			4	string
+ATTRIBUTE	Management-IP-Address-Mode		5	string
+ATTRIBUTE	Management-IP-Address			6	ipaddr
+ATTRIBUTE	Management-IP-Netmask			7	ipaddr
+ATTRIBUTE	Management-IP-Gateway			8	ipaddr
+ATTRIBUTE	Management-Vlan-Status			9	byte
+ATTRIBUTE	Management-Vlan				10	string
+ATTRIBUTE	Management-Password			11	string
+ATTRIBUTE	Device-Name				12	string
+ATTRIBUTE	Traffic-Shaping-Peak			13	string
+ATTRIBUTE	Traffic-Shaping-Committed		14	string
+ATTRIBUTE	Ethernet-Port-Speed			15	string
+ATTRIBUTE	DNS1					16	ipaddr
+ATTRIBUTE	DNS2					17	ipaddr
+ATTRIBUTE	HTTP-Port				18	integer
+ATTRIBUTE	Enable-HTTPS				19	byte
+ATTRIBUTE	HTTPS-Port				20	integer
+ATTRIBUTE	Cloud-Management			21	byte
+ATTRIBUTE	Enable-SNMP				22	byte
+ATTRIBUTE	SNMP-Community-String			23	string
+ATTRIBUTE	SNMP-Trap-Server			24	ipaddr
+ATTRIBUTE	NTP-Server-Address			25	string
+ATTRIBUTE	Enable-Syslog				26	byte
+ATTRIBUTE	Syslog-Server-Address			27	ipaddr
+ATTRIBUTE	Syslog-Port				28	integer
+ATTRIBUTE	Syslog-Protocol				29	string
 
 END-VENDOR Mimosa

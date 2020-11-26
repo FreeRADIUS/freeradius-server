@@ -56,36 +56,36 @@ MEMBER		Type					uint8	key
 #
 MEMBER		PLMN-ID					octets[3]
 
-STRUCT		CGI					Type	0
+STRUCT	CGI				Type			0
 MEMBER		LAC					uint16
 MEMBER		CAI					uint16
 
-STRUCT		SAI					Type	1
+STRUCT	SAI				Type			1
 MEMBER		LAC					uint16
 MEMBER		SAC					uint16
 
-STRUCT		RAI					Type	2
+STRUCT	RAI				Type			2
 MEMBER		RAI					uint16
 MEMBER		RAC					uint16
 
-STRUCT		LAI					Type	32
+STRUCT	LAI				Type			32
 MEMBER		LAI					uint16
 
-STRUCT		TAI					Type	128
+STRUCT	TAI				Type			128
 MEMBER		TAC					uint16
 
-STRUCT		ECGI					Type	129
+STRUCT	ECGI				Type			129
 MEMBER		ECI					octets[4]
 
-STRUCT		TAI-ECGI				Type 130
+STRUCT	TAI-ECGI				Type		130
 MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
 
-ATTRIBUTE	MS-TimeZone			23	octets[2]
-ATTRIBUTE	CAMEL-Charging-Info		24	octets
-ATTRIBUTE	Packet-Filter			25	octets
-ATTRIBUTE	Negotiated-DSCP			26	byte
+ATTRIBUTE	MS-TimeZone				23	octets[2]
+ATTRIBUTE	CAMEL-Charging-Info			24	octets
+ATTRIBUTE	Packet-Filter				25	octets
+ATTRIBUTE	Negotiated-DSCP				26	byte
 ATTRIBUTE	Allocate-IP-Type			27	byte
 
 VALUE	RAT-Type			UTRAN			1
@@ -106,7 +106,7 @@ VALUE	Allocate-IP-Type		Allocate-IPv6-Prefix	2
 VALUE	Allocate-IP-Type		Allocate-IPv4-and-IPv6	3
 
 ATTRIBUTE	TWAN-Identifier				29	octets
-ATTRIBUTE	User-Location-Info-Time		30	octets
-ATTRIBUTE	Secondary-RAT-Usage		31	octets
+ATTRIBUTE	User-Location-Info-Time			30	octets
+ATTRIBUTE	Secondary-RAT-Usage			31	octets
 
 END-VENDOR	3GPP

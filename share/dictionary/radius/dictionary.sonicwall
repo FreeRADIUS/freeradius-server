@@ -16,16 +16,16 @@ BEGIN-VENDOR	SonicWall
 ATTRIBUTE	SS3-Firewall-User-Privilege		1	integer
 
 #  New names.
-ATTRIBUTE	User-Privilege		1	integer
-VALUE	User-Privilege	Remote-Access		1 # deprecated
-VALUE	User-Privilege	Bypass-Filters		2
-VALUE	User-Privilege	VPN-Client-Access	3 # standard
-VALUE	User-Privilege	Access-To-VPN		4 # standard
-VALUE	User-Privilege	Limited-Management	5
-VALUE	User-Privilege	L2TP-Client-Access	6 # standard
-VALUE	User-Privilege	Wireless-Guest		7 # standard
-VALUE	User-Privilege	Wireless-Add-ACL	8
-VALUE	User-Privilege	Internet-Access		9 # standard
+ATTRIBUTE	User-Privilege				1	integer
+VALUE	User-Privilege			Remote-Access		1 # deprecated
+VALUE	User-Privilege			Bypass-Filters		2
+VALUE	User-Privilege			VPN-Client-Access	3 # standard
+VALUE	User-Privilege			Access-To-VPN		4 # standard
+VALUE	User-Privilege			Limited-Management	5
+VALUE	User-Privilege			L2TP-Client-Access	6 # standard
+VALUE	User-Privilege			Wireless-Guest		7 # standard
+VALUE	User-Privilege			Wireless-Add-ACL	8
+VALUE	User-Privilege			Internet-Access		9 # standard
 
 # Those values indicated as "standard" are applicable only on a SonicWall
 # firewall running standard firmware and not on one running enhanced firmware.
@@ -49,7 +49,7 @@ VALUE	User-Privilege	Internet-Access		9 # standard
 # alternatively be achieved by use of the Filter-Id attribute.
 # This is applicable only on a SonicWall firewall running enhanced firmware.
 #
-ATTRIBUTE	User-Group			3	string
+ATTRIBUTE	User-Group				3	string
 
 # This attribute is to use in place of User-Group with RADIUS
 # servers that allow only one instance of a Vendor-Specific attribute to be
