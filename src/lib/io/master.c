@@ -1528,7 +1528,7 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
-			track = new_track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
+			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
 			if (!track) {
 				DEBUG("Failed tracking packet from client %s - discarding it",
 				      client->radclient->shortname);
@@ -1572,6 +1572,11 @@ have_client:
 							track, track->timestamp);
 				return 0;
 			}
+
+			/*
+			 *	Got to free this if we don't process the packet.
+			 */
+			new_track = track;
 		}
 
 		/*
