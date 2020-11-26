@@ -95,9 +95,9 @@ static fr_dict_attr_t const *attr_freeradius_stats4_type;
 
 extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
 fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
-	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "FreeRADIUS-Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "FreeRADIUS-Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_type, .name = "FreeRADIUS-Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 

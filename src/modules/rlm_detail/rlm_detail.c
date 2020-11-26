@@ -186,7 +186,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			if (!attr) continue; /* pair-anoia */
 
 			da = fr_dict_attr_by_qualified_oid(NULL, dict_radius, attr, false);
-			if (da) {
+			if (!da) {
 				cf_log_perr(conf, "Failed resolving attribute");
 				return -1;
 			}

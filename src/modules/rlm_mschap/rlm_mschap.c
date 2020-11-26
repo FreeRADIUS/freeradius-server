@@ -168,27 +168,27 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_eap_identity, .name = "EAP-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_ms_chap_new_cleartext_password, .name = "MS-CHAP-New-Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_new_cleartext_password, .name = "MS-CHAP-New-Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_new_nt_password, .name = "MS-CHAP-New-NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_use_ntlm_auth, .name = "MS-CHAP-Use-NTLM-Auth", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_smb_account_ctrl, .name = "SMB-Account-Ctrl", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_error, .name = "Vendor-Specific.Microsoft.CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_mppe_keys, .name = "MS-CHAP-MPPE-Keys", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_response, .name = "Vendor-Specific.Microsoft.CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_response, .name = "Vendor-Specific.Microsoft.CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_success, .name = "Vendor-Specific.Microsoft.CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_mppe_keys, .name = "Vendor-Specific.Microsoft.CHAP-MPPE-Keys", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_policy, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_encryption_types, .name = "MS-MPPE-Encryption-Types", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_types, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Types", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_cpw, .name = "Vendor-Specific.Microsoft.CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -339,7 +339,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 			response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response);
 			if (!response) {
-				REDEBUG("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge");
+				REDEBUG("Vendor-Specific.Microsoft.CHAP2-Response is required to calculate MS-CHAPv1 challenge");
 				return -1;
 			}
 
@@ -353,7 +353,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 *	Responses are 50 octets.
 			 */
 			if (response->vp_length < 50) {
-				REDEBUG("MS-CHAP-Response has the wrong format");
+				REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
 				return -1;
 			}
 
@@ -1454,7 +1454,7 @@ static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *i
 		rcode = RLM_MODULE_DISALLOW;
 
 	} else if (mschap_result < 0) {
-		REDEBUG("MS-CHAP2-Response is incorrect");
+		REDEBUG("Vendor-Specific.Microsoft.CHAP2-Response is incorrect");
 		error = 691;
 		retry = inst->allow_retry;
 		message = "Authentication failed";
@@ -1606,12 +1606,12 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 	RDEBUG2("MS-CHAPv2 password change request received");
 
 	if (cpw->vp_length != 68) {
-		REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
+		REDEBUG("Vendor-Specific.Microsoft.CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
 	if (cpw->vp_octets[0] != 7) {
-		REDEBUG("MS-CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
+		REDEBUG("Vendor-Specific.Microsoft.CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -1637,12 +1637,12 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW) continue;
 
 			if (nt_enc->vp_length < 4) {
-				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
+				REDEBUG("Vendor-Specific.Microsoft.CHAP-NT-Enc-PW with invalid format");
 				RETURN_MODULE_INVALID;
 			}
 
 			if (nt_enc->vp_octets[0] != 6) {
-				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
+				REDEBUG("Vendor-Specific.Microsoft.CHAP-NT-Enc-PW with invalid format");
 				RETURN_MODULE_INVALID;
 			}
 
@@ -1730,7 +1730,7 @@ static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(r
 	 *	MS-CHAPv1 challenges are 8 octets.
 	 */
 	if (challenge->vp_length < 8) {
-		REDEBUG("MS-CHAP-Challenge has the wrong format");
+		REDEBUG("Vendor-Specific.Microsoft.CHAP-Challenge has the wrong format");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -1738,7 +1738,7 @@ static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(r
 	 *	Responses are 50 octets.
 	 */
 	if (response->vp_length < 50) {
-		REDEBUG("MS-CHAP-Response has the wrong format");
+		REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -1793,7 +1793,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 		 *	MS-CHAPv2 challenges are 16 octets.
 		 */
 		if (challenge->vp_length < 16) {
-			REDEBUG("MS-CHAP-Challenge has the wrong format");
+			REDEBUG("Vendor-Specific.Microsoft.CHAP-Challenge has the wrong format");
 			RETURN_MODULE_INVALID;
 		}
 
@@ -1801,7 +1801,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 		 *	Responses are 50 octets.
 		 */
 		if (response->vp_length < 50) {
-			REDEBUG("MS-CHAP-Response has the wrong format");
+			REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
 			RETURN_MODULE_INVALID;
 		}
 

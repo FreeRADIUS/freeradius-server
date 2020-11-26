@@ -65,7 +65,7 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_quarantine_soh, .name = "Vendor-Specific.Microsoft.Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
