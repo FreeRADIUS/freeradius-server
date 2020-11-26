@@ -1056,7 +1056,7 @@ int fr_snmp_process(request_t *request)
 /** Internal SNMP initialisation function (used for recursion)
  *
  */
-static int _fr_snmp_init(fr_snmp_map_t map[])
+static int _fr_snmp_init(fr_snmp_map_t map[], fr_dict_attr_t const *parent)
 {
 	unsigned int i;
 
@@ -1066,19 +1066,19 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
 
 			fr_assert(map[i].child);
 
-			map[i].da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_snmp), map[i].name);
+			map[i].da = fr_dict_attr_by_name(NULL, parent, map[i].name);
 			if (!map[i].da) {
 				ERROR("Incomplete dictionary: Missing definition for \"%s\"", map[i].name);
 				return -1;
 			}
 
-			ret = _fr_snmp_init(map[i].child);
+			ret = _fr_snmp_init(map[i].child, map[i].da);
 			if (ret < 0) return -1;
 
 			continue;
 		}
 
-		map[i].da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_snmp), map[i].name);
+		map[i].da = fr_dict_attr_by_name(NULL, parent, map[i].name);
 		if (!map[i].da) {
 			ERROR("Incomplete dictionary: Missing definition for \"%s\"", map[i].name);
 			return -1;
@@ -1118,7 +1118,7 @@ int fr_snmp_init(void)
 		return -1;
 	}
 
-	return _fr_snmp_init(snmp_iso);	/* The SNMP root node */
+	return _fr_snmp_init(snmp_iso, fr_dict_root(dict_snmp));	/* The SNMP root node */
 }
 
 void fr_snmp_free(void)
