@@ -1260,14 +1260,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	fr_cond_op_t		cond_op;
 
 	fr_sbuff_marker_t	m_lhs, m_lhs_cast, m_op, m_rhs, m_rhs_cast;
-	tmpl_rules_t		our_t_rules;
-
-	/*
-	 *	We allow unknown and undefined attributes here
-	 */
-	our_t_rules = *t_rules;
-	our_t_rules.allow_unknown = true;
-	our_t_rules.allow_unresolved = true;
 
 	MEM(c = talloc_zero(ctx, fr_cond_t));
 
@@ -1307,7 +1299,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		c->type = COND_TYPE_CHILD;
 		c->ci = cf_section_to_item(cs);
 
-		slen = cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, &our_t_rules);
+		slen = cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1333,7 +1325,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 *	Grab the LHS
 	 */
 	fr_sbuff_marker(&m_lhs_cast, &our_in);
-	slen = cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, &our_t_rules);
+	slen = cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules);
 	if (!lhs) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1494,7 +1486,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	Grab the RHS
 		 */
 		fr_sbuff_marker(&m_rhs_cast, &our_in);
-		slen = cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, &our_t_rules);
+		slen = cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, t_rules);
 		if (!rhs) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1612,7 +1604,7 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, &c->next, cs, &our_in, brace, &our_t_rules);
+	slen = cond_tokenize(c, &c->next, cs, &our_in, brace, t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1633,13 +1625,13 @@ done:
  *
  * @param[in] cs	current CONF_SECTION and talloc ctx
  * @param[out] head	the parsed condition structure
- * @param[in] dict	dictionary to resolve attributes in.
+ * @param[in] rules	for parsing operands.
  * @param[in] in	the start of the string to process.
  * @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, fr_dict_t const *dict, fr_sbuff_t *in)
+ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in)
 {
 	char buffer[8192];
 	ssize_t diff, slen;
@@ -1652,13 +1644,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, fr_dict_t const *di
 	}
 
 	diff = fr_sbuff_remaining(in) - strlen(buffer); /* Hack so that we appear to consume more of the string */
-	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0,
-			     &(tmpl_rules_t){
-			     		.dict_def = dict,
-			     		.allow_unresolved = true,
-			     		.allow_unknown = true,
-			     		.allow_foreign = (dict == NULL)	/* Allow foreign attributes if we have no dict */
-			     });
+	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
 	if (slen < 0) return slen;
 
 	return slen + diff;

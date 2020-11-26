@@ -103,7 +103,7 @@ struct fr_cond_s {
 	fr_cond_t		*next;
 };
 
-ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, fr_dict_t const *dict, fr_sbuff_t *in) CC_HINT(nonnull(1,2,4));
+ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in) CC_HINT(nonnull(1,2,4));
 
 ssize_t	cond_print(fr_sbuff_t *out, fr_cond_t const *c);
 

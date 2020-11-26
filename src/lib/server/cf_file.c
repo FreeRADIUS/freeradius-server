@@ -1204,7 +1204,13 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Skip (...) to find the {
 	 */
 	while (true) {
-		slen = fr_cond_tokenize(cs, &cond, dict, &FR_SBUFF_IN(ptr, strlen(ptr)));
+		slen = fr_cond_tokenize(cs, &cond,
+					&(tmpl_rules_t){
+			     			.dict_def = dict,
+			     			.allow_unresolved = true,
+			     			.allow_unknown = true,
+			     			.allow_foreign = (dict == NULL)	/* Allow foreign attributes if we have no dict */
+			    		}, &FR_SBUFF_IN(ptr, strlen(ptr)));
 		if (slen < 0) {
 			ssize_t end = -slen;
 

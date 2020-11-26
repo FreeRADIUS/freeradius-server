@@ -6,6 +6,7 @@
 #
 
 proto-dictionary radius
+tmpl-rules allow_unresolved=yes allow_unknown=yes
 
 condition &request.User-Name == &reply.User-Name
 match &User-Name == &reply.User-Name
@@ -624,4 +625,4 @@ condition &radius.User-Name == 'bob'
 match &User-Name == 'bob'
 
 count
-match 308
+match 309

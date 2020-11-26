@@ -1204,9 +1204,7 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 	cf_filename_set(cs, cc->filename);
 	cf_lineno_set(cs, cc->lineno);
 
-	dec_len = fr_cond_tokenize(cs, &cond,
-				   cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-				   &FR_SBUFF_IN(in, inlen));
+	dec_len = fr_cond_tokenize(cs, &cond, &cc->tmpl_rules, &FR_SBUFF_IN(in, inlen));
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 
@@ -2079,6 +2077,118 @@ static size_t command_test_dictionary(command_result_t *result, command_file_ctx
 	return ret;
 }
 
+/** Callback for a tmpl rule parser
+ *
+ */
+typedef ssize_t(*command_tmpl_rule_func)(tmpl_rules_t *rules, fr_sbuff_t *value);
+
+static ssize_t command_tmpl_rule_allow_foreign(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_sbuff_out_bool(&rules->allow_foreign, value);
+}
+
+static ssize_t command_tmpl_rule_allow_unknown(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_sbuff_out_bool(&rules->allow_unknown, value);
+}
+
+static ssize_t command_tmpl_rule_allow_unresolved(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_sbuff_out_bool(&rules->allow_unresolved, value);
+}
+
+static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_dict_attr_by_oid_substr(NULL,
+					  &rules->attr_parent,
+					  rules->dict_def ? fr_dict_root(rules->dict_def) :
+					  		    fr_dict_root(fr_dict_internal()),
+					  value, NULL);
+}
+
+static ssize_t command_tmpl_rule_disallow_internal(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_sbuff_out_bool(&rules->disallow_internal, value);
+}
+
+static ssize_t command_tmpl_rule_disallow_qualifiers(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	return fr_sbuff_out_bool(&rules->disallow_qualifiers, value);
+}
+
+static ssize_t command_tmpl_rule_list_def(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	ssize_t slen;
+
+	fr_sbuff_out_by_longest_prefix(&slen, &rules->list_def, pair_list_table, value, PAIR_LIST_UNKNOWN);
+
+	if (rules->list_def == PAIR_LIST_UNKNOWN) {
+		fr_strerror_printf("Invalid list specifier \"%pV\"",
+				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
+	}
+
+	return slen;
+}
+
+static ssize_t command_tmpl_rule_request_def(tmpl_rules_t *rules, fr_sbuff_t *value)
+{
+	ssize_t slen;
+
+	fr_sbuff_out_by_longest_prefix(&slen, &rules->request_def, request_ref_table, value, REQUEST_UNKNOWN);
+
+	if (rules->request_def == REQUEST_UNKNOWN) {
+		fr_strerror_printf("Invalid request specifier \"%pV\"",
+				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
+	}
+
+	return slen;
+}
+
+static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(in, inlen);
+	ssize_t			slen;
+	command_tmpl_rule_func	func;
+
+	static fr_table_ptr_sorted_t tmpl_rule_func_table[] = {
+		{ L("allow_foreign"),		(void *)command_tmpl_rule_allow_foreign		},
+		{ L("allow_unknown"),		(void *)command_tmpl_rule_allow_unknown		},
+		{ L("allow_unresolved"),	(void *)command_tmpl_rule_allow_unresolved	},
+		{ L("attr_parent"),		(void *)command_tmpl_rule_attr_parent		},
+		{ L("disallow_internal"),	(void *)command_tmpl_rule_disallow_internal	},
+		{ L("disallow_qualifiers"), 	(void *)command_tmpl_rule_disallow_qualifiers	},
+		{ L("list_def"),		(void *)command_tmpl_rule_list_def		},
+		{ L("request_def"),		(void *)command_tmpl_rule_request_def		}
+	};
+	static size_t tmpl_rule_func_table_len = NUM_ELEMENTS(tmpl_rule_func_table);
+
+	while (fr_sbuff_extend(&sbuff)) {
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+
+		fr_sbuff_out_by_longest_prefix(&slen, &func, tmpl_rule_func_table, &sbuff, NULL);
+		if (func == NULL) {
+			fr_strerror_printf("Specified rule \"%pV\" is invalid",
+					   fr_box_strvalue_len(fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff)));
+			RETURN_COMMAND_ERROR();
+		}
+
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+
+		if (!fr_sbuff_next_if_char(&sbuff, '=')) {
+			fr_strerror_printf("Expected '=' after rule identifier, got \"%pV\"",
+					   fr_box_strvalue_len(fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff)));
+			RETURN_COMMAND_ERROR();
+		}
+
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+
+		if (func(&cc->tmpl_rules, &sbuff) <= 0) RETURN_COMMAND_ERROR();
+	}
+
+	return fr_sbuff_used(&sbuff);
+}
+
 static size_t command_value_box_normalise(command_result_t *result, UNUSED command_file_ctx_t *cc,
 					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
@@ -2404,6 +2514,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_test_dictionary,
 					.usage = "test-dictionary <proto_name> [<test_dir>]",
 					.description = "Switch the active dictionary.  Root is set to the path containing the current test file (override with cd <path>).  <test_dir> is relative to the root.",
+				}},
+
+	{ L("tmpl-rules "),	&(command_entry_t){
+					.func = command_tmpl_rules,
+					.usage = "tmpl-rule [allow_foreign=yes] [allow_unknown=yes|no] [allow_unresolved=yes|no] [attr_parent=<oid>] [disallow_internal=yes|no] [disallow_qualifiers=yes|no] [list_def=request|reply|control|session-state] [request_def=current|outer|parent]",
+					.description = "Alter the tmpl parsing rules for subsequent tmpl parsing commands in the same command context"
 				}},
 	{ L("touch "),		&(command_entry_t){
 					.func = command_touch,
