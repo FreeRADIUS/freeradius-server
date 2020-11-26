@@ -1070,7 +1070,6 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	being NULL (no attribute at that index).
 	 */
 	found = tmpl_cursor_init(NULL, request, &cc, &list, request, mod->lhs);
-	fr_assert(!found || (tmpl_da(mod->lhs) == found->da));
 
 	/*
 	 *	The destination is an attribute
