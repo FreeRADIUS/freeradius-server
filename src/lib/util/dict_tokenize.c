@@ -1163,7 +1163,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 {
 	int				i;
 	fr_dict_attr_t const   		*da;
-	fr_dict_attr_t const	       	*parent;
+	fr_dict_attr_t const	       	*parent = NULL;
 	fr_value_box_t			value;
 	fr_type_t			type;
 	unsigned int			attr;

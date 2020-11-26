@@ -176,17 +176,13 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	 *	another method to create the attribute.
 	 */
 	da = fr_dict_attr_by_qualified_oid(NULL, dict, attrname, true);
-	if (da) {
+	if (!da) {
 		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
 		if (vps) fr_pair_add(vps, vp);
 		return vp;
 	}
-
-#ifndef NDEBUG
-	if (!da) return NULL;
-#endif
 
 	if (da->type == FR_TYPE_GROUP) {
 		fr_strerror_printf("Attributes of type 'group' are not supported");
