@@ -30,6 +30,7 @@ $(eval $(call TEST_BOOTSTRAP))
 TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
 TACACS_RADIUS_LOG := $(TACACS_BUILD_DIR)/radiusd.log
 TACACS_GDB_LOG    := $(TACACS_BUILD_DIR)/gdb.log
+TACACS_LIBS	  := libfreeradius-tacacs.a proto_tacacs.a proto_tacacs_auth.a proto_tacacs_autz.a proto_tacacs_acct.a
 
 #
 #	Local TACACS+ client
@@ -45,7 +46,7 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #
 #	Run the tacacs_client commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% $(TACACS_LIBS) | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
@@ -90,4 +91,8 @@ else
 test.tacacs:
 	$(Q)echo "WARNING: 'tests.tacacs' requires 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
 	$(Q)echo "Skipping 'test.tacacs'"
+
+.PHONY: clean.test.tacacs
+clean.test.tacacs:
+	@rm -f $(TACACS_BUILD_DIR)/depends.mk
 endif
