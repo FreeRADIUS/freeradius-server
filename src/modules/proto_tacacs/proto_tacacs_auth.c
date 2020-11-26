@@ -106,18 +106,18 @@ extern fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ .out = &attr_tacacs_action, .name = "TACACS-Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_flags, .name = "TACACS-Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_type, .name = "TACACS-Authentication-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_service, .name = "TACACS-Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_client_port, .name = "TACACS-Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_privilege_level, .name = "TACACS-Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_remote_address, .name = "TACACS-Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_session_id, .name = "TACACS-Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_state, .name = "TACACS-State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_action, .name = "Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_flags, .name = "Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_type, .name = "Authentication-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_service, .name = "Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_status, .name = "Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_client_port, .name = "Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_data, .name = "Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_privilege_level, .name = "Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_remote_address, .name = "Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_session_id, .name = "Packet.Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_server_message, .name = "Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -178,7 +178,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 		/*
 		 *	Grab the VPS and data associated with the
-		 *	TACACS-State attribute.  This is a synthetic /
+		 *	State attribute.  This is a synthetic /
 		 *	internal attribute, which is composed of the
 		 *	listener followed by the session ID
 		 *
@@ -241,7 +241,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		}
 
 		/*
-		 *	Find TACACS-Authentication-Type, and complain if they have too many.
+		 *	Find Authentication-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
 		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
@@ -261,16 +261,16 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		if (!auth_type) {
 			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_authentication_type);
 			if (!vp) {
-				authentication_failed(request, "No Auth-Type or TACACS-Authentication-Type configured: rejecting authentication.");
+				authentication_failed(request, "No Auth-Type or Authentication-Type configured: rejecting authentication.");
 				goto setup_send;
 			}
 
 			/*
-			 *	Look up the name of TACACS-Authentication-Type
+			 *	Look up the name of Authentication-Type
 			 */
 			dv = fr_dict_enum_by_value(vp->da, &vp->data);
 			if (!dv) {
-				authentication_failed(request, "Unknown value for TACACS-Authentication-Type: rejecting authentication.");
+				authentication_failed(request, "Unknown value for Authentication-Type: rejecting authentication.");
 				goto setup_send;
 			}
 
@@ -279,7 +279,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			 */
 			dv = fr_dict_enum_by_name(attr_auth_type, dv->name, -1);
 			if (!dv) {
-				authentication_failed(request, "No Auth-Type found to match TACACS-Authentication-Type: rejecting authentication.");
+				authentication_failed(request, "No Auth-Type found to match Authentication-Type: rejecting authentication.");
 				goto setup_send;
 			}
 		} else {
@@ -427,7 +427,7 @@ static virtual_server_compile_t compile_list[] = {
 	 *	to allow the user to have different logic for that.
 	 *
 	 *	If you want to cry, just take a look at
-	 *	https://tools.ietf.org/id/draft-ietf-opsawg-tacacs-07.html#rfc.section.4
+	 *	https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4
 	 */
 	{
 		.name = "recv",
@@ -474,7 +474,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	/*
 	 *	Usually we use the 'State' attribute. But, in this
 	 *	case we are using the listener followed by the
-	 *	TACACS-Session-ID as the state id.  It is 32-bits of
+	 *	Session-ID as the state id.  It is 32-bits of
 	 *	(allegedly) random value.  It MUST be unique per TCP
 	 *	connection.
 	 */

@@ -83,11 +83,11 @@ static fr_dict_attr_t const *attr_tacacs_state;
 
 extern fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_acct_dict_attr[] = {
-	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_state, .name = "TACACS-State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_accounting_status, .name = "Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_accounting_flags, .name = "Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_data, .name = "Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_server_message, .name = "Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -135,7 +135,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 		/*
 		 *	Grab the VPS and data associated with the
-		 *	TACACS-State attribute.  This is a synthetic /
+		 *	State attribute.  This is a synthetic /
 		 *	internal attribute, which is composed of the
 		 *	listener followed by the session ID
 		 *
@@ -337,7 +337,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	/*
 	 *	Usually we use the 'State' attribute. But, in this
 	 *	case we are using the listener followed by the
-	 *	TACACS-Session-ID as the state id.  It is 32-bits of
+	 *	Session-ID as the state id.  It is 32-bits of
 	 *	(allegedly) random value.  It MUST be unique per TCP
 	 *	connection.
 	 */

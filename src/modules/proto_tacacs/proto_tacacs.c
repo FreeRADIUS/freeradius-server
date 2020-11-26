@@ -81,7 +81,7 @@ static fr_dict_attr_t const *attr_tacacs_user_name;
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
-	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ NULL }
 };
 

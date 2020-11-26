@@ -5,11 +5,11 @@
 tacacs_set_authentication_status {
 	if (ok) {
 		update reply {
-			&TACACS-Authentication-Status = Pass
+			&Authentication-Status = Pass
 		}
 	} else {
 		update reply {
-			&TACACS-Authentication-Status = Fail
+			&Authentication-Status = Fail
 		}
 	}
 }
@@ -17,8 +17,8 @@ tacacs_set_authentication_status {
 tacacs_pap {
 	subrequest RADIUS.Access-Request {
 		update {
-			&request.User-Name := &parent.request.TACACS-User-Name
-			&request.User-Password := &parent.request.TACACS-Data
+			&request.User-Name := &parent.request.User-Name
+			&request.User-Password := &parent.request.Data
 			&control.Password.Cleartext := &parent.control.Password.Cleartext
 		}
 		pap.authorize
@@ -31,10 +31,10 @@ tacacs_pap {
 tacacs_chap {
 	subrequest RADIUS.Access-Request {
 		update {
-			&request.User-Name := &parent.request.TACACS-User-Name
+			&request.User-Name := &parent.request.User-Name
 
 			#
-			#  TACACS-Data length N is 1 octet of ID, followed by
+			#  Data length N is 1 octet of ID, followed by
 			#  N-17 octets of challenge, followed by 16 octets of
 			#  CHAP-Password.
 			#
@@ -54,10 +54,10 @@ tacacs_chap {
 tacacs_mschap {
 	subrequest RADIUS.Access-Request {
 		update {
-			&request.User-Name := &parent.request.TACACS-User-Name
+			&request.User-Name := &parent.request.User-Name
 
 			#
-			#  TACACS-Data length N is 1 octet of ID, followed by
+			#  Data length N is 1 octet of ID, followed by
 			#  N-49 octets of challenge, followed by 49 octets of
 			#  MS-CHAP stuff.
 			#

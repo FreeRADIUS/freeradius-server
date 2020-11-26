@@ -25,4 +25,4 @@ VALUE	Packet-Type			Accounting-Request	6
 VALUE	Packet-Type			Accounting-Reply	7
 VALUE	Packet-Type			Do-Not-Respond		8
 
-ATTRIBUTE	Tacacs-State				65537	octets
+ATTRIBUTE	State				65537	octets

@@ -21,7 +21,7 @@ server tacacs {
 		#  Multiple types can be accepted by using multiple
 		#  lines of `type = ...`.
 		#
-		#  As described in RFC https://tools.ietf.org/id/draft-ietf-opsawg-tacacs-07.html#rfc.section.5,
+		#  As described in RFC https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.5,
 		#  the packet types are:
 		#
 		type = Authentication-Start
@@ -99,7 +99,7 @@ server tacacs {
 		#  Set _our_ authentication method to the _requested_ one.
 		#
 		update control {
-			&Auth-Type := &TACACS-Authentication-Type
+			&Auth-Type := &Authentication-Type
 		}
 	}
 
@@ -130,9 +130,9 @@ server tacacs {
 	#  ### Send
 	#
 	send Authentication-Start-Reply {
-		if (&TACACS-Authentication-Status == Pass) {
+		if (&Authentication-Status == Pass) {
 			update reply {
-				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
+				&Server-Message := "Hello %{User-Name}"
 			}
 		}
 	}
@@ -148,20 +148,20 @@ server tacacs {
 	#
 	recv Authentication-Continue {
 		#
-		#	https://tools.ietf.org/id/draft-ietf-opsawg-tacacs-07.html#rfc.section.4.3
+		#	https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
 		#
-		"%{TACACS-Authentication-Continue-Flags}"
-		"%{TACACS-User-Message}"
-		"%{TACACS-Data}"
+		"%{Authentication-Continue-Flags}"
+		"%{User-Message}"
+		"%{Data}"
 	}
 
 	#
 	#  ### Send
 	#
 	send Authentication-Continue-Reply {
-		if (&TACACS-Authentication-Status == Pass) {
+		if (&Authentication-Status == Pass) {
 			update reply {
-				&TACACS-Server-Message := "Hello %{TACACS-User-Name}"
+				&Server-Message := "Hello %{User-Name}"
 			}
 		}
 	}
@@ -174,14 +174,14 @@ server tacacs {
 	#	### Recv
 	#
 	recv Authorization-Request {
-		"%{TACACS-Authentication-Method}"
-		"%{TACACS-Privilege-Level}"
-		"%{TACACS-Authentication-Type}"
-		"%{TACACS-Authentication-Service}"
-		"%{TACACS-User-Name}"
-		"%{TACACS-Client-Port}"
-		"%{TACACS-Remote-Address}"
-		"%{TACACS-ArgumentList}"
+		"%{Authentication-Method}"
+		"%{Privilege-Level}"
+		"%{Authentication-Type}"
+		"%{Authentication-Service}"
+		"%{User-Name}"
+		"%{Client-Port}"
+		"%{Remote-Address}"
+		"%{ArgumentList}"
 	}
 
 	#
@@ -189,10 +189,10 @@ server tacacs {
 	#
 	send Authorization-Reply {
 		update reply {
-			&TACACS-Authorization-Status := Pass-Add
-			&TACACS-Server-Message := "authorization-response-server"
-			&TACACS-Data := "authorization-response-data"
-			&TACACS-ArgumentList := "key1=var1"
+			&Authorization-Status := Pass-Add
+			&Server-Message := "authorization-response-server"
+			&Data := "authorization-response-data"
+			&ArgumentList := "key1=var1"
 		}
 	}
 
@@ -231,9 +231,9 @@ server tacacs {
 	#
 	send Accounting-Reply {
 		update reply {
-			&TACACS-Accounting-Status := Success
-			&TACACS-Server-Message := "Success"
-			&TACACS-Data := 0x00
+			&Accounting-Status := Success
+			&Server-Message := "Success"
+			&Data := 0x00
 		}
 	}
 
