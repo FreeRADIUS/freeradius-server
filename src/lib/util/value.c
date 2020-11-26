@@ -1178,7 +1178,26 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	switch (value->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, value->vb_length);
+		max = value->vb_length;
+
+		/*
+		 *	Sometimes variable length *inside* the server
+		 *	has maximum length on the wire.
+		 */
+		if (value->enumv && value->enumv->flags.length) {
+			if (max < value->enumv->flags.length) {
+				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
+				FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, value->enumv->flags.length - max);
+				return fr_dbuff_set(dbuff, &work_dbuff);
+			}
+
+			/*
+			 *	Truncate the input to the maximum allowed length.
+			 */
+			max = value->enumv->flags.length;
+		}
+
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 
 	case FR_TYPE_DATE:
