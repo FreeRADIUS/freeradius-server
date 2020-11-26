@@ -532,7 +532,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 						return false;
 					}
 
-					if (!da_is_key_field(sibling)) continue;
+					if (!fr_dict_attr_is_key_field(sibling)) continue;
 
 					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
 							   name, sibling->name, parent->name);
@@ -554,7 +554,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
-		if (da_is_key_field(parent)) break;
+		if (fr_dict_attr_is_key_field(parent)) break;
 		FALL_THROUGH;
 
 	default:

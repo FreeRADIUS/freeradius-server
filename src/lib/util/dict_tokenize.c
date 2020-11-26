@@ -989,7 +989,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, i);
 			if (!da) continue; /* really should be WTF? */
 
-			if (da_is_key_field(da)) {
+			if (fr_dict_attr_is_key_field(da)) {
 				fr_strerror_printf("'struct' %s has a 'key' field %s, and cannot end with a TLV %s",
 						   ctx->stack[ctx->stack_depth].da->name, da->name, argv[0]);
 				return -1;
@@ -1228,7 +1228,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
-	if (!da_is_key_field(parent)) {
+	if (!fr_dict_attr_is_key_field(parent)) {
 		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
 		return -1;
 	}

@@ -230,7 +230,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 			p += slen;   	/* not always the same as child->flags.length */
 			child_num++;	/* go to the next child */
-			if (da_is_key_field(child)) key_vp = fr_cursor_tail(&child_cursor);
+			if (fr_dict_attr_is_key_field(child)) key_vp = fr_cursor_tail(&child_cursor);
 			continue;
 		}
 
@@ -279,7 +279,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		vp->vp_tainted = true;
 		fr_cursor_append(&child_cursor, vp);
 
-		if (da_is_key_field(vp->da)) key_vp = vp;
+		if (fr_dict_attr_is_key_field(vp->da)) key_vp = vp;
 
 		/*
 		 *	Note that we're decoding fixed fields here.
@@ -512,7 +512,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 				continue;
 			}
 
-			if (da_is_key_field(child)) {
+			if (fr_dict_attr_is_key_field(child)) {
 				key_da = child;
 			}
 
@@ -582,7 +582,7 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 		/*
 		 *	Remember key_da before we do any encoding.
 		 */
-		if (da_is_key_field(child)) {
+		if (fr_dict_attr_is_key_field(child)) {
 			key_da = child;
 		}
 

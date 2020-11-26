@@ -48,7 +48,7 @@ static void *fr_dict_attr_ext_enumv_copy(void **chunk_p, int ext, void *ext_ptr,
 	fr_dict_attr_ext_enumv_t	*new_ext, *old_ext;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_t			*enumv;
-	bool				has_child = da_is_key_field(*da_p);
+	bool				has_child = fr_dict_attr_is_key_field(*da_p);
 
 	new_ext = dict_attr_ext_alloc(da_p, ext);
 	if (!new_ext) return NULL;

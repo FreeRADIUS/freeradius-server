@@ -858,7 +858,7 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 		 *	Children are allowed here, but ONLY if this
 		 *	attribute is a key field.
 		 */
-		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && da_is_key_field(da)) return true;
+		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
 		break;
 
 	default:
@@ -1242,7 +1242,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	/*
 	 *	Key fields CANNOT define VALUEs, and MUST define a child struct.
 	 */
-	if (da_is_key_field(da)) {
+	if (fr_dict_attr_is_key_field(da)) {
 		if (!child_struct) {
 			fr_strerror_printf("VALUEs cannot be defined for MEMBER attributes which are a 'key' field.");
 			return -1;
