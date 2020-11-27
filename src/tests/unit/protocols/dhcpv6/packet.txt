@@ -16,8 +16,18 @@ match 00 05 00 18 20 01 0d b8 00 00 00 00 00 00 00 00 00 0c 78 eb 00 00 00 00 00
 decode-pair -
 match IA-Addr.IPv6-Address = 2001:db8::c:78eb, IA-Addr.Preferred-Lifetime = 0, IA-Addr.Valid-Lifetime = 3600
 
-#encode-pair IA-Addr = { IPv6-Address = 2001:db8::c:78eb, Valid-Lifetime = 3600 }
-#match 00 05 00 18 20 01 0d b8 00 00 00 00 00 00 00 00 00 0c 78 eb 00 00 00 00 00 00 0e 10
+#
+#  Allow structs as groups, in which case they are encoded properly.
+#
+encode-pair IA-Addr = { IPv6-Address = 2001:db8::c:78eb, Valid-Lifetime = 3600 }
+match 00 05 00 18 20 01 0d b8 00 00 00 00 00 00 00 00 00 0c 78 eb 00 00 00 00 00 00 0e 10
+
+#
+#  But the decoding portion isn't done yet.
+#
+decode-pair -
+match IA-Addr.IPv6-Address = 2001:db8::c:78eb, IA-Addr.Preferred-Lifetime = 0, IA-Addr.Valid-Lifetime = 3600
+
 
 encode-proto Packet-Type = Reply, Transaction-ID = 0x000005, Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = Ethernet, Client-ID.DUID.LLT.Time = "Nov 27 2020 16:46:12 UTC", Client-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:0c:01:02:03:06, IA-NA.IAID = 1, IA-NA.Options = { IA-Addr.IPv6-Address = 2001:db8::c:78eb, IA-Addr.Valid-Lifetime = 3600}, Server-ID.DUID = LL, Server-ID.DUID.LL.Hardware-Type = Ethernet, Server-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:aa:bb:cc:dd:ff
 
@@ -31,4 +41,4 @@ decode-proto -
 match Packet-Type = Request, Transaction-ID = 0xabcdef, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 count
-match 12
+match 16

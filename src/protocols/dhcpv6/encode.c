@@ -154,14 +154,29 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		fr_cursor_init(&child_cursor, &vp->vp_group);
 
+		/*
+		 *	Build the da_stack for the new structure.
+		 */
+		vp = fr_cursor_head(&child_cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
 		slen = encode_struct(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx);
 		if (slen < 0) return slen;
 
-		vp = fr_cursor_current(&child_cursor);
+		(void) fr_cursor_next(cursor); /* skip the VP containing the struct */
+
+		/*
+		 *	Rebuild the da_stack for the next option.
+		 */
+		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
+	/*
+	 *	If there's a struct on the da_stack, then the struct
+	 *	members MUST be in a flat list.
+	 */
 	if (da->type == FR_TYPE_STRUCT) {
 		slen = encode_struct(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
