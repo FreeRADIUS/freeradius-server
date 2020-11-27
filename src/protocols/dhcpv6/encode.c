@@ -132,6 +132,14 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static int8_t pair_sort_increasing(void const *a, void const *b)
+{
+	fr_pair_t const *my_a = a;
+	fr_pair_t const *my_b = b;
+
+	return (my_a->da->attr > my_b->da->attr) - (my_a->da->attr < my_b->da->attr);
+}
+
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
@@ -149,10 +157,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	if (vp->da->type == FR_TYPE_STRUCT) {
 		fr_cursor_t child_cursor;
+		fr_pair_t *sorted = fr_cursor_current(cursor); /* NOT const */
 
 		fr_assert(vp->da == da);
 
-		fr_cursor_init(&child_cursor, &vp->vp_group);
+		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
+		fr_cursor_init(&child_cursor, &sorted->vp_group);
 
 		/*
 		 *	Build the da_stack for the new structure.
