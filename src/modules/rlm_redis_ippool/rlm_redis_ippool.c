@@ -899,26 +899,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 		}
 	}
 
-	/*
-	 *	Copy expiry time to expires attribute (if set)
-	 */
-	if (inst->expiry_attr) {
-		tmpl_t expiry_rhs;
-		map_t expiry_map = {
-			.lhs = inst->expiry_attr,
-			.op = T_OP_SET,
-			.rhs = &expiry_rhs
-		};
-
-
-		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
-
-		fr_value_box_shallow(&expiry_map.rhs->data.literal, expires, false);
-		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-	}
 
 finish:
 	fr_redis_reply_free(&reply);
@@ -1173,6 +1153,26 @@ static unlang_action_t mod_action(rlm_rcode_t *p_result, rlm_redis_ippool_t cons
 
 				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
 			}
+
+			/*
+			 *	Copy expiry time to expires attribute (if set)
+			 */
+			if (inst->expiry_attr) {
+				tmpl_t expiry_rhs;
+				map_t expiry_map = {
+						    .lhs = inst->expiry_attr,
+						    .op = T_OP_SET,
+						    .rhs = &expiry_rhs
+				};
+
+				tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
+
+				fr_value_box_shallow(&expiry_map.rhs->data.literal, expires, false);
+				if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
+					RETURN_MODULE_FAIL;
+				}
+			}
+
 			RETURN_MODULE_UPDATED;
 
 		/*
@@ -1416,6 +1416,7 @@ module_t rlm_redis_ippool = {
 	},
 	.method_names = (module_method_names_t[]) {
 		{ "recv",	"DHCP-Request",	mod_request },
+		{ "recv",	"Request", mod_request },
 		MODULE_NAME_TERMINATOR
 	}
 };
