@@ -652,8 +652,6 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
  */
 static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
-	uint64_t number;
-
 	request->el = worker->el;
 	request->backlog = worker->runnable;
 	MEM(request->packet = fr_radius_alloc(request, false));
@@ -662,15 +660,8 @@ static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time
 	request->reply = fr_radius_alloc(request, false);
 	fr_assert(request->reply != NULL);
 
-	/*
-	 *	Keep loading the number until we successfully
-	 *	increment it in-place.
-	 */
-	do {
-		number = load(request_number);
-	} while (!cas_incr(request_number, number));
+	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);
 
-	request->number = number;
 	request->name = itoa_internal(request, request->number);
 
 	request->async = talloc_zero(request, fr_async_t);
