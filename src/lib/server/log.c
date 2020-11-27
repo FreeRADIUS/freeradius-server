@@ -44,6 +44,7 @@ RCSID("$Id$")
 #include <pthread.h>
 
 static _Thread_local TALLOC_CTX *fr_vlog_request_pool;
+static _Thread_local fr_sbuff_t *fr_log_request_oid_buff;
 
 /** Syslog facility table
  *
@@ -708,23 +709,69 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	}
 }
 
+/** Cleanup the memory pool used by the OID sbuff
+ *
+ */
+static void _fr_log_request_oid_buff_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Allocate an extensible sbuff for printing OID strings
+ *
+ */
+static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
+{
+	fr_sbuff_t		*sbuff;
+	fr_sbuff_uctx_talloc_t	*tctx;
+
+	sbuff = fr_log_request_oid_buff;
+	if (unlikely(!sbuff)) {
+		sbuff = talloc(NULL, fr_sbuff_t);
+		if (!sbuff) {
+			fr_perror("Failed allocating memory for fr_log_request_oid_buff");
+			return NULL;
+		}
+		tctx = talloc(sbuff, fr_sbuff_uctx_talloc_t);
+		if (!tctx) {
+			fr_perror("Failed allocating memory for fr_sbuff_uctx_talloc_t");
+			talloc_free(sbuff);
+			return NULL;
+		}
+
+		fr_sbuff_init_talloc(sbuff, sbuff, tctx, 1024, 8192);
+
+		fr_thread_local_set_destructor(fr_log_request_oid_buff, _fr_log_request_oid_buff_free, sbuff);
+	} else {
+		fr_sbuff_set(sbuff, fr_sbuff_start(sbuff));	/* Reset position */
+	}
+
+	return sbuff;
+}
+
 /** Print a list of fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
+ * @param[in] parent	of vp to print, may be NULL.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix)
+void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
+			   fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
 {
-	fr_cursor_t cursor;
+	fr_cursor_t 		cursor;
+	fr_pair_t		*m_vp;
+	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!vp || !request || !request->log.dst) return;
+	if (!request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
+	memcpy(&m_vp, &vp, sizeof(m_vp));
+
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &m_vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
@@ -732,14 +779,24 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_pair_list(lvl, request, (fr_pair_t *) vp->vp_group, prefix);
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+		{
+			fr_sbuff_t *oid_buff = log_request_oid_buff();
+
+			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+
+			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+			log_request_pair_list(lvl, request, vp, (fr_pair_t *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
 			continue;
 		}
-
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+		default:
+			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			break;
+		}
 	}
 	REXDENT();
 }
@@ -748,19 +805,25 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, 
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
+ * @param[in] parent	of vp to print, may be NULL.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t *vp, char const *prefix)
+void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
+				 fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
 {
-	fr_cursor_t cursor;
+	fr_cursor_t 		cursor;
+	fr_pair_t		*m_vp;
+	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!vp || !request || !request->log.dst) return;
+	if (!request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
+	memcpy(&m_vp, &vp, sizeof(m_vp));
+
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &m_vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
@@ -770,14 +833,25 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request, fr_pair_t
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_proto_pair_list(lvl, request, (fr_pair_t *) vp->vp_group, prefix);
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+		{
+			fr_sbuff_t *oid_buff = log_request_oid_buff();
+
+			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+
+			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+			log_request_proto_pair_list(lvl, request, vp, (fr_pair_t *) vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s}", prefix ? prefix : "");
 			continue;
 		}
 
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+		default:
+			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			break;
+		}
 	}
 	REXDENT();
 }

@@ -76,7 +76,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received ARP %s", fr_arp_packet_codes[request->packet->code]);
-			log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 		}
 
 		request->component = "arp";
@@ -215,7 +215,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s", fr_arp_packet_codes[request->reply->code]);
-			log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
 		}
 		break;
 

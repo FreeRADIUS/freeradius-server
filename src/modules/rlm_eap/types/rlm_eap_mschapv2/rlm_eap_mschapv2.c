@@ -523,7 +523,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 			}
 
 			RDEBUG2("Built change password packet");
-			log_request_pair_list(L_DBG_LVL_2, request, request->request_pairs, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, request->request_pairs, NULL);
 
 			/*
 			 * jump to "authentication"
@@ -557,7 +557,7 @@ failure:
 
 			if (data->mppe_keys) {
 				RDEBUG2("Adding stored attributes to parent");
-				log_request_pair_list(L_DBG_LVL_2, request, data->mppe_keys, "&parent.reply.");
+				log_request_pair_list(L_DBG_LVL_2, request, NULL, data->mppe_keys, "&parent.reply.");
 				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");

@@ -880,7 +880,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 
 
 	RDEBUG2("Encoding attributes");
-	log_request_pair_list(L_DBG_LVL_2, request, head, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, head, NULL);
 
 	eap_session->this_round->request->type.num = eap_aka_sim_session->type;
 	eap_session->this_round->request->id = eap_aka_sim_session->id++ & 0xff;
@@ -3383,7 +3383,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_t **vps,
 	aka_vps = fr_cursor_next(&cursor);
 	if (aka_vps && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded attributes");
-		log_request_pair_list(L_DBG_LVL_2, request, aka_vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, aka_vps, NULL);
 	}
 
 	*subtype_vp = fr_pair_find_by_da(&aka_vps, attr_eap_aka_sim_subtype);

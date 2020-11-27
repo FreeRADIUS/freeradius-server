@@ -51,7 +51,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 	rlm_rcode_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
-	log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
 	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
 	if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
@@ -217,8 +217,8 @@ void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool re
 		       packet->data_len);
 
 	if (received) {
-		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 	}
 }

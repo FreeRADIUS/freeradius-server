@@ -426,7 +426,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	request->packet->code = u->code;
 
 	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_codes[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, request->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_3, request, NULL, request->request_pairs, NULL);
 
 	MEM(h->status_r = talloc_zero(request, udp_result_t));
 	h->status_u = u;
@@ -1251,7 +1251,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *respons
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 	       fr_packet_codes[code], code, packet_len, h->name);
-	log_request_pair_list(L_DBG_LVL_2, request, *reply, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, *reply, NULL);
 
 	*response_code = code;
 
@@ -1840,8 +1840,8 @@ static void request_mux(fr_event_list_t *el,
 			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 		}
 
-		log_request_pair_list(L_DBG_LVL_2, request, request->request_pairs, NULL);
-		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, request->request_pairs, NULL);
+		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, NULL, u->extra, NULL);
 
 		/*
 		 *	Record pointers to the buffer we'll be writing

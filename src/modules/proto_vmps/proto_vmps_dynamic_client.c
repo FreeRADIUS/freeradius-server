@@ -67,7 +67,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
 		request->component = "vmps";
 
@@ -184,7 +184,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, NULL);
+		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
 		break;
 
 	default:

@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	if (tunnel_vps) {
 		RDEBUG2("Sending tunneled reply attributes");
-		log_request_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, tunnel_vps, NULL);
 
 		vp2diameter(request, tls_session, tunnel_vps);
 		fr_pair_list_free(&tunnel_vps);

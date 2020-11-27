@@ -360,7 +360,7 @@ static void request_running(request_t *request, fr_state_signal_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, true);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
 		request->server_cs = request->listener->server_cs;
 		request->component = "ldap";

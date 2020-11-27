@@ -134,7 +134,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
 
 	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_radius",
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),					 
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
 					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
@@ -289,7 +289,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->request_pairs, "");
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 	}
 
 	if (!inst->io.app_io->decode) return 0;
@@ -410,7 +410,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->reply_pairs, "");
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
 	}
 
 	return data_len;
