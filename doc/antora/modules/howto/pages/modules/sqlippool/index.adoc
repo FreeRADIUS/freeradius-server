@@ -1101,7 +1101,7 @@ In many fixed-line configurations a unique identifier for a device may be the
 `NAS-Port` or `NAS-Port-Id`. In other scenarios identifiers based on the NAS
 port may be shared by several devices and are unsuitable for uniquely
 identifying devices. In some cases a circuit-specific identifier such as
-`ADSL-Agent-Circuit-Id` may be present.
+`Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` may be present.
 
 CAUTION: However, a circuit-specific identifier is unsuitable if there are
 multiple hosts on the circuit with which you issue individual addresses (for
@@ -1113,7 +1113,7 @@ The `Calling-Station-Id` attribute may contain host specific information (such
 as a hardware address). You should consider the provenance of the data and
 whether you trust it, e.g. does it report a MAC address that is under an
 untrusted user's control.  Sometimes a combination of attributes including one
-that you trust (such as "%{ADSL-Agent-Circuit-Id}:%{Calling-Station-Id}") may
+that you trust (such as "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}:%{Calling-Station-Id}") may
 be appropriate.
 
 The `pool_key` is used to issue indexed lookups into the `radippool` table so for

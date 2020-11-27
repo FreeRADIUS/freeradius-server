@@ -14,17 +14,11 @@ VENDOR		ADSL-Forum			3561
 BEGIN-VENDOR	ADSL-Forum
 
 #
-#  Glue attribute to allow decoding of ADSL-Form vendor specific
-#  DHCP options.
-#
-ATTRIBUTE	ADSL-Forum-DHCP-Vendor-Specific		0	tlv
-
-#
 #  The first two attributes are prefixed with "ADSL-" because of
 #  conflicting names in dictionary.redback.
 #
-ATTRIBUTE	ADSL-Agent-Circuit-Id			1	octets
-ATTRIBUTE	ADSL-Agent-Remote-Id			2	octets
+ATTRIBUTE	Agent-Circuit-Id			1	octets
+ATTRIBUTE	Agent-Remote-Id				2	octets
 ATTRIBUTE	Actual-Data-Rate-Upstream		129	integer
 ATTRIBUTE	Actual-Data-Rate-Downstream		130	integer
 ATTRIBUTE	Minimum-Data-Rate-Upstream		131	integer

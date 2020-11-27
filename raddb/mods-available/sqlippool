@@ -88,7 +88,7 @@ sqlippool {
 	#  manipulation of the user-controlled data (i.e. the mac or identifier)
 	#  provided by the user's device.
 	#
-	#  For example it might be that the value `ADSL-Agent-Circuit-Id` is
+	#  For example it might be that the value `Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` is
 	#  considered trusted as it's set by a controlled device at the edge of
 	#  the network.  Calling-Station-Id however, is usually provided by
 	#  the user's device so may be spoofed.
@@ -98,11 +98,11 @@ sqlippool {
 	#  that it contains both the trusted and untrusted attributes, or if
 	#  the trusted attribute is sufficiently stable and unique, only the
 	#  trusted attribute.
-	#  One example would be `%{ADSL-Agent-Circuit-Id}.%{Calling-Station-Id}`.`
+	#  One example would be `%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
 	#
 	owner = "%{radius.Calling-Station-ID}"
 
-#       owner = "%{radius.ADSL-Agent-Circuit-Id}.%{radius.Calling-Station-Id}"
+#       owner = "%{radius.Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{radius.Calling-Station-Id}"
 
 #	owner = "%{%{dhcpv4.DHCP-Client-Identifier}:-%{dhcpv4.DHCP-Client-Hardware-Address}}"
 
