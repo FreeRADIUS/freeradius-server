@@ -303,7 +303,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
 	RADCLIENT const		*client;
@@ -321,6 +321,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 */
 	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
+		track->do_not_respond = true;
 		*buffer = false;
 		return 1;
 	}
