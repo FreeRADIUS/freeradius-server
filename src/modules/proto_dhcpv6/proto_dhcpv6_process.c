@@ -153,7 +153,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	static int reply_ok[] = {
 		[0]				= FR_DHCPV6_DO_NOT_RESPOND,
 		[FR_DHCPV6_SOLICIT]		= FR_DHCPV6_ADVERTISE,
-		[FR_DHCPV6_REQUEST]		= FR_DHCPV6_CONFIRM,
+		[FR_DHCPV6_REQUEST]		= FR_DHCPV6_REPLY,
 		[FR_DHCPV6_RENEW]		= FR_DHCPV6_REPLY,
 		[FR_DHCPV6_REBIND]		= FR_DHCPV6_REPLY,
 		[FR_DHCPV6_RELEASE]		= FR_DHCPV6_REPLY,
