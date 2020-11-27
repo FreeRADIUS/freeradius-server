@@ -1249,10 +1249,11 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  *	- <0 on error.
  *	- 0 on success.
  */
-static inline int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-							 tmpl_t *vpt, fr_dict_attr_t const *parent,
-							 fr_sbuff_t *name, tmpl_rules_t const *rules,
-							 unsigned int depth)
+static inline CC_HINT(nonnull(3,5))
+int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+					   tmpl_t *vpt, fr_dict_attr_t const *parent,
+					   fr_sbuff_t *name, tmpl_rules_t const *rules,
+					   unsigned int depth)
 {
 	tmpl_attr_t		*ar = NULL;
 	int			ret;
@@ -2863,6 +2864,13 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 /** Resolve an unresolved attribute
  *
  * Multi-pass parsing fixups for attribute references.
+ *
+ * @param[in] vpt	to resolve.
+ * @return
+ *	- 0 if all references were resolved.
+ *	- -1 if there are unknown attributes which need
+ *	    adding to the global dictionary first.
+ *	- -2 if there are attributes we couldn't resolve.
  */
 static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 {
@@ -2873,63 +2881,50 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 	fr_assert(tmpl_is_attr_unresolved(vpt));
 
 	/*
-	 *	First ref is special as it can resolve in the
-	 *	internal dictionary or the protocol specific
-	 *	dictionary.
-	 */
-	ar = fr_dlist_head(&vpt->data.attribute.ar);
-	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
-		da = fr_dict_attr_by_qualified_oid(NULL, vpt->rules.dict_def,
-						   ar->ar_unresolved, true);
-		if (!da) {
-			parent = fr_dict_root(vpt->rules.dict_def);
-			goto unknown;
-		}
-
-		ar->da = da;
-		ar->type = TMPL_ATTR_TYPE_NORMAL;
-		parent = ar->da;
-	} else {
-		parent = ar->da;
-	}
-
-	/*
 	 *	Loop, resolving each unresolved attribute in turn
 	 */
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
 		ssize_t		slen;
 		bool		is_raw;
 
-		if ((ar->type == TMPL_ATTR_TYPE_NORMAL) || (ar->type == TMPL_ATTR_TYPE_UNKNOWN)) break;
+		switch (ar->type) {
+		case TMPL_ATTR_TYPE_NORMAL:
+			parent = ar->ar_da;
+			continue;
+
+		case TMPL_ATTR_TYPE_UNKNOWN:
+			return -1;	/* Unknown attributes must be resolved first */
+
+		default:
+			break;
+		}
 
 		is_raw = ar->ar_unresolved_raw;
 
-		slen = fr_dict_attr_child_by_name_substr(NULL, &da, parent,
-							 &FR_SBUFF_IN(ar->ar_unresolved, strlen(ar->ar_unresolved)),
-							 false);
-		if (slen <= 0) {
-			fr_dict_attr_t	*unknown_da;
-			fr_sbuff_t	sbuff;
-
-		unknown:
-			sbuff = FR_SBUFF_IN(ar->ar_unresolved,
-					    talloc_array_length(ar->ar_unresolved) - 1);
-
-			/*
-			 *	Can't find it under its regular name.  Try an unknown attribute.
-			 */
-			slen = fr_dict_unknown_afrom_oid_substr(vpt, NULL, &unknown_da, parent,
-								&sbuff, NULL);
-			if ((slen <= 0) || (fr_sbuff_remaining(&sbuff))) {
-				fr_strerror_printf_push("Failed resolving unresolved attribute");
-				return -1;
-			}
-
-			ar->type = TMPL_ATTR_TYPE_UNKNOWN;
-			ar->da = ar->unknown.da = unknown_da;
-			parent = ar->da;
-			continue;
+		/*
+		 *	Fallback to internal if we're
+		 *	allowed to.
+		 *
+		 *	FIXME - We should be using a function which implements
+		 *	fallback to internal, but doesn't look for a dictionary
+		 *	qualifier.
+		 *
+		 *	It should be the same logic as the original parse
+		 *	function.
+		 */
+		if (!parent) {
+			slen = fr_dict_attr_by_qualified_name_substr(NULL, &da, vpt->rules.dict_def,
+								     &FR_SBUFF_IN(ar->ar_unresolved,
+								     		  strlen(ar->ar_unresolved)),
+								     NULL,
+								     !vpt->rules.disallow_internal);
+		} else {
+			slen = fr_dict_attr_child_by_name_substr(NULL, &da, parent,
+								 &FR_SBUFF_IN(ar->ar_unresolved,
+								 	      strlen(ar->ar_unresolved)),
+								 false);
 		}
+		if (slen <= 0) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
 		/*
 		 *	Known attribute, just rewrite.
@@ -3527,7 +3522,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			 *	chain of unresolved components.  Print the path up to
 			 *	the last known parent.
 			 */
-			if (ar->ar_unresolved_parent) {
+			if (ar->ar_unresolved_parent && !ar->ar_unresolved_parent->flags.is_root) {
 				fr_proto_da_stack_build_partial(&stack, parent, ar->ar_unresolved_parent);
 				if (!parent) parent = stack.da[0];
 
