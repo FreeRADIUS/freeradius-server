@@ -598,15 +598,15 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 
 		} else {
 			/*
-			 *	Encode fixed-size octets fields so that they
-			 *	are exactly the fixed size, UNLESS the entire
-			 *	output is truncated.
+			 *	Hack until we find all places that don't set data.enumv
 			 */
-#ifndef NDEBUG
-			if ((vp->da->type == FR_TYPE_OCTETS) && vp->da->flags.length) {
-				fr_assert(vp->data.enumv == vp->da);
+			if (vp->da->flags.length && (vp->data.enumv != vp->da)) {
+				fr_dict_attr_t const * const *c = &vp->data.enumv;
+				fr_dict_attr_t **u;
+
+				memcpy(&u, &c, sizeof(c)); /* const issues */
+				memcpy(u, &vp->da, sizeof(vp->da));			
 			}
-#endif
 
 			/*
 			 *	Determine the nested type and call the appropriate encoder

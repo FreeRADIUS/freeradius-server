@@ -389,7 +389,16 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	to_network:
 	case FR_TYPE_OCTETS:
-		fr_assert(!vp->da->flags.length || (vp->data.enumv == vp->da));
+		/*
+		 *	Hack until we find all places that don't set data.enumv
+		 */
+		if (vp->da->flags.length && (vp->data.enumv != vp->da)) {
+			fr_dict_attr_t const * const *c = &vp->data.enumv;
+			fr_dict_attr_t **u;
+
+			memcpy(&u, &c, sizeof(c)); /* const issues */
+			memcpy(u, &vp->da, sizeof(vp->da));			
+		}
 		FALL_THROUGH;
 
 	/*
