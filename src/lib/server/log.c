@@ -739,7 +739,7 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 			return NULL;
 		}
 
-		fr_sbuff_init_talloc(sbuff, sbuff, tctx, 1024, 8192);
+		fr_sbuff_init_talloc(sbuff, sbuff, tctx, 1024, (FR_DICT_ATTR_MAX_NAME_LEN + 1) * FR_DICT_MAX_TLV_STACK);
 
 		fr_thread_local_set_destructor(fr_log_request_oid_buff, _fr_log_request_oid_buff_free, sbuff);
 	} else {
