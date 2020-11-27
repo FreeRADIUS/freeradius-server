@@ -267,7 +267,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @note the valuepair list should probably be freed.
  *
  * @param[in] ctx	for talloc
- * @param[in] dict	to resolve attributes in.
+ * @param[in] parent	parent to start referencing from
  * @param[in] buffer	to read valuepairs from.
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
@@ -276,17 +276,16 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer,
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer,
 					 fr_pair_list_t *list, fr_token_t *token, int depth)
 {
 	fr_pair_t	*vp, *head, **tail;
 	char const	*p, *next;
 	fr_token_t	last_token = T_INVALID;
 	fr_pair_t_RAW	raw;
-	fr_dict_attr_t const *root = fr_dict_root(dict);
 	fr_dict_attr_t const *internal = fr_dict_root(fr_dict_internal());
 
-	if (internal == root) internal = NULL;
+	if (internal == parent) internal = NULL;
 
 	/*
 	 *	We allow an empty line.
@@ -325,7 +324,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Parse the name.
 		 */
-		slen = fr_dict_attr_by_oid_substr(NULL, &da, root,
+		slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
 						  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
 		if ((slen <= 0) && internal) {
 			slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
@@ -333,7 +332,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		}
 		if (slen <= 0) {
 		do_unknown:
-			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, root,
+			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
 								&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
 			if (slen <= 0) {
 				p += -slen;
@@ -377,9 +376,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		/*
 		 *	Allow grouping attributes.
 		 */
-		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV)) {
-			fr_pair_t *child = NULL;
-
+		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV) || (da->type == FR_TYPE_STRUCT)) {
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
 				goto error;
@@ -389,7 +386,13 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) goto error;
 
-			slen = fr_pair_list_afrom_substr(vp, dict, p, &child, &last_token, depth + 1);
+			/*
+			 *	Find the new root attribute to start encoding from.
+			 */
+			parent = fr_dict_attr_ref(da);
+			if (!parent) parent = da;
+
+			slen = fr_pair_list_afrom_substr(vp, parent, p, &vp->vp_group, &last_token, depth + 1);
 			if (slen <= 0) {
 				talloc_free(vp);
 				goto error;
@@ -406,7 +409,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
-			vp->vp_group = child;
 
 		} else {
 			fr_token_t quote;
@@ -565,7 +567,7 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 {
 	fr_token_t token;
 
-	(void) fr_pair_list_afrom_substr(ctx, dict, buffer, list, &token, 0);
+	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, list, &token, 0);
 	return token;
 }
 
