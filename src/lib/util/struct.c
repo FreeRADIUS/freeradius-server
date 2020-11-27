@@ -507,7 +507,10 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 			 */
 			if (da_is_bit_field(child)) {
 				offset = put_bits_dbuff(&work_dbuff, &bit_buffer, offset, child->flags.length, 0);
-				if (offset < 0) return offset;
+				if (offset < 0) {
+					fr_strerror_printf("Failed encoding bit field %s", child->name);
+					return offset;
+				}
 				child_num++;
 				continue;
 			}
@@ -562,7 +565,10 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 			}
 
 			offset = put_bits_dbuff(&work_dbuff, &bit_buffer, offset, child->flags.length, value);
-			if (offset < 0) return offset;
+			if (offset < 0) {
+				fr_strerror_printf("Failed encoding bit field %s", child->name);
+				return offset;
+			}
 
 			do {
 				vp = fr_cursor_next(cursor);
@@ -663,7 +669,10 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 done:
 	if (do_length) {
 		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
-		if (len > 65535) return -1;
+		if (len > 65535) {
+			fr_strerror_printf("Structure size is too large for 16-bit length field.");
+			return -1;
+		}
 		fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
 	}
 
