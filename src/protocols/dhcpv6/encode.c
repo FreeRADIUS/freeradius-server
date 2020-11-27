@@ -85,6 +85,8 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 			     fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t		slen;
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	fr_pair_t	*vp;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	VP_VERIFY(fr_cursor_current(cursor));
@@ -103,6 +105,29 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 
 	slen = fr_struct_to_network_dbuff(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value);
 	if (slen < 0) return slen;
+
+	/*
+	 *	Encode any TLV, attributes which are part of this
+	 *	structure.
+	 *
+	 *	The fr_struct_to_network() function can't do this
+	 *	work, as it's not protocol aware, and doesn't have the
+	 *	da_stack or encoder_ctx.
+	 *
+	 *	Note that we call the "internal" encode function, as
+	 *	we don't want the encapsulating TLV to be encoded
+	 *	here.  It's number is just the field number in the
+	 *	struct.
+	 */
+	vp = fr_cursor_current(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+	while (vp && (vp->da->type == FR_TYPE_TLV) && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth)) {
+		slen = encode_tlv(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		if (slen < 0) return slen;
+
+		vp = fr_cursor_current(cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -134,33 +159,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		vp = fr_cursor_current(&child_cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-
-		/*
-		 *	Encode any TLV, attributes which are part of
-		 *	this structure.
-		 *
-		 *	The fr_struct_to_network() function can't do
-		 *	this work, as it's not protocol aware, and
-		 *	doesn't have the da_stack or encoder_ctx.
-		 *
-		 *	Note that we call the "internal" encode
-		 *	function, as we don't want the encapsulating
-		 *	TLV to be encoded here.  It's number is just
-		 *	the field number in the struct.
-		 */
-		while (vp && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth)) {
-			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, &child_cursor, encoder_ctx);
-			if (slen < 0) return slen;
-
-			vp = fr_cursor_current(cursor);
-			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		}
-
-		/*
-		 *	Skip the attribute we just encoded, and re-build the da_stack.
-		 */
-		vp = fr_cursor_next(cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
@@ -168,14 +166,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		slen = encode_struct(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
 		if (slen < 0) return slen;
 
-		/*
-		 *	The encode_struct() routine eats all relevant
-		 *	VPs.  It stops when the cursor is pointing to
-		 *	a VP which is *not* part of the struct... but
-		 * 	with the move to an iterator, whatever that is
-		 * 	will be encodable; the iterator filters out
-		 * 	anything that isn't.
-		 */
 		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
@@ -893,7 +883,19 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_dhcpv6_encode(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
+	ssize_t slen;
+
+	slen = fr_dhcpv6_encode(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
+
+#ifndef NDEBUG
+	if (slen <= 0) return slen;
+
+	if (fr_debug_lvl > 2) {
+		fr_dhcpv6_print_hex(stdout, data, slen);
+	}
+#endif
+
+	return slen;
 }
 
 /*

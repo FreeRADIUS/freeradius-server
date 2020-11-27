@@ -40,6 +40,9 @@ proto-dictionary dhcpv6
 encode-pair IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304 }
 match 00 61 00 18 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00
 
+#
+#  The same as the input, with an added IP4RD-Map-Rule.IPv6-Prefix = 0x00..
+#
 decode-pair -
 match IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000 }
 #
