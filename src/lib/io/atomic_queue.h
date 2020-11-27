@@ -39,6 +39,7 @@ RCSIDH(atomic_queue_h, "$Id$")
  */
 #define atomic_int64_t _Atomic(int64_t)
 #define atomic_uint32_t _Atomic(uint32_t)
+#define atomic_uint64_t _Atomic(uint64_t)
 
 #define cas_incr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var + 1, memory_order_release, memory_order_relaxed)
 #define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)

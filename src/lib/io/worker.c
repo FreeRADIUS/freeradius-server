@@ -62,6 +62,8 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/dlist.h>
 
+#include <stdalign.h>
+
 #ifdef WITH_VERIFY_PTR
 static void worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY worker_verify(worker)
@@ -70,6 +72,9 @@ static void worker_verify(fr_worker_t *worker);
 #endif
 
 static _Thread_local fr_worker_t *thread_local_worker;
+
+#define CACHE_LINE_SIZE	64
+static alignas(CACHE_LINE_SIZE) atomic_uint64_t request_number = 0;
 
 /**
  *  A worker which takes packets from a master, and processes them.
@@ -88,8 +93,6 @@ struct fr_worker_s {
 	fr_control_t		*control;	//!< the control plane
 
 	fr_event_list_t		*el;		//!< our event list
-
-	uint64_t		number;		//!< Per worker request id.
 
 	int			num_channels;	//!< actual number of channels
 
@@ -649,6 +652,8 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
  */
 static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
+	uint64_t number;
+
 	request->el = worker->el;
 	request->backlog = worker->runnable;
 	MEM(request->packet = fr_radius_alloc(request, false));
@@ -657,7 +662,15 @@ static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time
 	request->reply = fr_radius_alloc(request, false);
 	fr_assert(request->reply != NULL);
 
-	request->number = worker->number++;
+	/*
+	 *	Keep loading the number until we successfully
+	 *	increment it in-place.
+	 */
+	do {
+		number = load(request_number);
+	} while (!cas_incr(request_number, number));
+
+	request->number = number;
 	request->name = itoa_internal(request, request->number);
 
 	request->async = talloc_zero(request, fr_async_t);
