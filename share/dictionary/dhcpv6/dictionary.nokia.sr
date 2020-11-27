@@ -15,12 +15,12 @@
 #
 ##############################################################################
 
-VENDOR		Nokia-Service-Router		6527
-BEGIN-VENDOR	Nokia-Service-Router
+VENDOR		Nokia-SR		6527
+BEGIN-VENDOR	Nokia-SR
 
 ATTRIBUTE	WAN-Pool				1	string
 ATTRIBUTE	PFX-Pool				2	string
 ATTRIBUTE	PFX-Len					3	uint8
 ATTRIBUTE	Reserved-NA-Len				4	uint8
 
-END-VENDOR Nokia-Service-Router
+END-VENDOR Nokia-SR

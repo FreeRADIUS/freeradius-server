@@ -13,9 +13,9 @@
 #
 ##############################################################################
 
-VENDOR		Nokia-Service-Router		6527
+VENDOR		Nokia-SR		6527
 
-BEGIN-VENDOR	Nokia-Service-Router
+BEGIN-VENDOR	Nokia-SR
 
 # Alcatel Timetra attributes
 ATTRIBUTE	Timetra-Access				1	integer
@@ -524,4 +524,4 @@ ATTRIBUTE	Dhcp6-Rebind-Time			203	integer
 # in both authentication and accounting
 ATTRIBUTE	Wlan-SSID-VLAN				206	string
 
-END-VENDOR	Nokia-Service-Router
+END-VENDOR	Nokia-SR
