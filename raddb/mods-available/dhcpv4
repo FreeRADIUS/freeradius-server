@@ -59,14 +59,14 @@ dhcpv4 {
 #    reject
 #  }
 #  update reply {
-#    &Reply-Message := "The value of DHCP-Relay-Circuit-Id=%{DHCP-Relay-Circuit-Id}, DHCP-Relay-Remote-Id=%{DHCP-Relay-Remote-Id}"
+#    &Reply-Message := "The value of Relay-Agent-Information.Circuit-ID=%{Relay-Agent-Information.Circuit-ID}, Relay-Agent-Information.Remote-ID=%{Relay-Agent-Information.Remote-ID}"
 #  }
 #  ----
 #
 #  .Output
 #
 #  ```
-#  "The value of DHCP-Relay-Circuit-Id=0xabcdef, DHCP-Relay-Remote-Id=0x010203040506"
+#  "The value of Relay-Agent-Information.Circuit-ID=0xabcdef, Relay-Agent-Information.Remote-ID=0x010203040506"
 #  ```
 #
 #  ### %{dhcpv4_encode:...}
@@ -80,8 +80,8 @@ dhcpv4 {
 #  [source,unlang]
 #  ----
 #  update request {
-#    &DHCP-Relay-Circuit-Id := 0xabcdef
-#    &DHCP-Relay-Remote-Id := 0x010203040506
+#    &Relay-Agent-Information.Circuit-ID := 0xabcdef
+#    &Relay-Agent-Information.Remote-ID := 0x010203040506
 #  }
 #  update request {
 #    &Tmp-Octets-0 := "%{dhcpv4_encode:&request[*]}"
