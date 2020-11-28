@@ -388,9 +388,18 @@ static int put_bits_dbuff(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t 
 	return start_bit % 8;
 }
 
+static int8_t pair_sort_increasing(void const *a, void const *b)
+{
+	fr_pair_t const *my_a = a;
+	fr_pair_t const *my_b = b;
+
+	return (my_a->da->attr > my_b->da->attr) - (my_a->da->attr < my_b->da->attr);
+}
+
+
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_cursor_t *cursor, void *encoder_ctx,
+			     fr_cursor_t *parent_cursor, void *encoder_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -399,8 +408,9 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	unsigned int		child_num = 1;
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
-	fr_pair_t const		*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_cursor_current(parent_cursor);
 	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
+	fr_cursor_t		child_cursor, *cursor;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -414,6 +424,33 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return -1;
+	}
+
+	/*
+	 *	If we get passed a struct VP, sort it's children.
+	 */
+	if (vp->da->type == FR_TYPE_STRUCT) {
+		fr_pair_t *sorted = fr_cursor_current(parent_cursor); /* NOT const */
+
+		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
+		fr_cursor_init(&child_cursor, &sorted->vp_group);
+
+		/*
+		 *	Always skip the VP containing the struct.
+		 *
+		 *	@todo - do this only on success.
+		 */
+		(void) fr_cursor_next(parent_cursor);
+
+		/*
+		 *	Build the da_stack for the new structure.
+		 */
+		vp = fr_cursor_current(&child_cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+		cursor = &child_cursor;
+	} else {
+		cursor = parent_cursor;
 	}
 
 	/*

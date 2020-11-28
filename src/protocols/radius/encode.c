@@ -393,29 +393,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	This has special requirements.
 	 */
-	if (vp->da->type == FR_TYPE_STRUCT) {
-		fr_cursor_t child_cursor;
-
-		fr_assert(vp->da == da);
-
-		fr_cursor_init(&child_cursor, &vp->vp_group);
-
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx, encode_value,
-					    encode_tlv_hdr_internal);
-		if (slen <= 0) return slen;
-
-		/*
-		 *	Skip the attribute we just encoded, and re-build the da_stack.
-		 */
-		vp = fr_cursor_next(cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return fr_dbuff_set(dbuff, &work_dbuff);
-	}
-
-	/*
-	 *	Old-style struct fields in a flat list.
-	 */
-	if (da->type == FR_TYPE_STRUCT) {
+	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value,
 					    encode_tlv_hdr_internal);
 		if (slen <= 0) return slen;

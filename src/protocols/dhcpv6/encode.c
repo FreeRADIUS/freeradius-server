@@ -81,14 +81,6 @@ static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size
 }
 
 
-static int8_t pair_sort_increasing(void const *a, void const *b)
-{
-	fr_pair_t const *my_a = a;
-	fr_pair_t const *my_b = b;
-
-	return (my_a->da->attr > my_b->da->attr) - (my_a->da->attr < my_b->da->attr);
-}
-
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
@@ -104,42 +96,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Pack multiple attributes into into a single option
 	 */
-	if (vp->da->type == FR_TYPE_STRUCT) {
-		fr_cursor_t child_cursor;
-		fr_pair_t *sorted = fr_cursor_current(cursor); /* NOT const */
-
-		fr_assert(vp->da == da);
-
-		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
-		fr_cursor_init(&child_cursor, &sorted->vp_group);
-
-		/*
-		 *	Build the da_stack for the new structure.
-		 */
-		vp = fr_cursor_head(&child_cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-
+	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
 		if (slen <= 0) return slen;
-
-		(void) fr_cursor_next(cursor); /* skip the VP containing the struct */
 
 		/*
 		 *	Rebuild the da_stack for the next option.
 		 */
-		vp = fr_cursor_current(cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return fr_dbuff_set(dbuff, &work_dbuff);
-	}
-
-	/*
-	 *	If there's a struct on the da_stack, then the struct
-	 *	members MUST be in a flat list.
-	 */
-	if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
-		if (slen <= 0) return slen;
-
 		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
