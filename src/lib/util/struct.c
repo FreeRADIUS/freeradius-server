@@ -400,7 +400,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
 	fr_pair_t const		*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const   	*key_da, *parent;
+	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -460,9 +460,9 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			if (offset != 0) goto leftover_bits;
 
 			fr_assert(!key_da);
-			fr_assert(!do_length);
 
-			return fr_dbuff_set(dbuff, &work_dbuff);
+			tlv = child;
+			goto done;
 		}
 
 		/*
@@ -612,6 +612,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
 			ssize_t	len;
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
+
 			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encoder_ctx, encode_value, encode_tlv);
 			if (len < 0) return len;
@@ -634,6 +635,24 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	}
 
 done:
+	vp = fr_cursor_current(cursor);
+	if (tlv) {
+		ssize_t slen;
+
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+		/*
+		 *	Encode any TLV attributes which are part of this structure.
+		 */
+		while (vp && (da_stack->da[depth] == parent) && (da_stack->depth >= parent->depth)) {
+			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			if (slen < 0) return slen;
+
+			vp = fr_cursor_current(cursor);
+			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		}
+	}
+
 	if (do_length) {
 		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
 		if (len > 65535) {

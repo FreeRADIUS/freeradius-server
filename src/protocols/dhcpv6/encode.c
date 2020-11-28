@@ -85,8 +85,6 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 			     fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t		slen;
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_pair_t	*vp;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	VP_VERIFY(fr_cursor_current(cursor));
@@ -105,29 +103,6 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 
 	slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
 	if (slen < 0) return slen;
-
-	/*
-	 *	Encode any TLV, attributes which are part of this
-	 *	structure.
-	 *
-	 *	The fr_struct_to_network() function can't do this
-	 *	work, as it's not protocol aware, and doesn't have the
-	 *	da_stack or encoder_ctx.
-	 *
-	 *	Note that we call the "internal" encode function, as
-	 *	we don't want the encapsulating TLV to be encoded
-	 *	here.  It's number is just the field number in the
-	 *	struct.
-	 */
-	vp = fr_cursor_current(cursor);
-	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-	while (vp && (vp->da->type == FR_TYPE_TLV) && (da_stack->da[depth] == da) && (da_stack->depth >= da->depth)) {
-		slen = encode_tlv(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
-		if (slen < 0) return slen;
-
-		vp = fr_cursor_current(cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
