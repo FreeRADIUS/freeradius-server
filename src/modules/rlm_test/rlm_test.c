@@ -385,11 +385,9 @@ module_t rlm_test = {
 		[MOD_ACCOUNTING]	= mod_accounting,
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"Access-Challenge", mod_return },
-//		{ "recv",	CF_IDENT_ANY,	mod_return },
-		{ "name1_null",	NULL,		mod_return },
-		{ "send",	CF_IDENT_ANY,	mod_return },
-//		{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
+		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
+		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
 
 		MODULE_NAME_TERMINATOR
 	}

@@ -858,16 +858,16 @@ module_t rlm_sqlippool = {
 		[MOD_POST_AUTH]		= mod_alloc
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"Discover",	mod_alloc },
-		{ "recv",	"Request",		mod_update },
-		{ "recv",	"Release",		mod_release },
-		{ "recv",	"Decline",		mod_mark },
+		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_alloc },
+		{ .name1 = "recv",	.name2 = "Request",	.method = mod_update },
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
+		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_mark },
 
-		{ "ippool",	"alloc",		mod_alloc },
-		{ "ippool",	"update",		mod_update },
-		{ "ippool",	"release",		mod_release },
-		{ "ippool",	"bulk-release",		mod_bulk_release },
-		{ "ippool",	"mark",			mod_mark },
+		{ .name1 = "ippool",	.name2 = "alloc",	.method = mod_alloc },
+		{ .name1 = "ippool",	.name2 = "update",	.method = mod_update },
+		{ .name1 = "ippool",	.name2 = "release",	.method = mod_release },
+		{ .name1 = "ippool",	.name2 = "bulk-release",.method = mod_bulk_release },
+		{ .name1 = "ippool",	.name2 = "mark",	.method = mod_mark },
 
 		MODULE_NAME_TERMINATOR
 	}

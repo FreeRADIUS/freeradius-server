@@ -157,12 +157,13 @@ struct submodule_s {
  *
  */
 struct module_method_names_s {
-	char const	*name1;
-	char const	*name2;
-	module_method_t	method;
+	char const		*name1;			//!< i.e. "recv", "send", "process"
+	char const		*name2;			//!< The packet type i.e Access-Request, Access-Reject.
+
+	module_method_t		method;			//!< Module method to call
 };
 
-#define MODULE_NAME_TERMINATOR { .name1 = NULL }
+#define MODULE_NAME_TERMINATOR { NULL }
 
 /** Struct exported by a rlm_* module
  *

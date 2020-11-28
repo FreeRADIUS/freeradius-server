@@ -1415,7 +1415,7 @@ module_t rlm_redis_ippool = {
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
 	.method_names = (module_method_names_t[]) {
-		{ "recv",	"Request",	mod_request },
+		{ .name1 = "recv",	.name2 = "Request",	.method = mod_request },
 		MODULE_NAME_TERMINATOR
 	}
 };
