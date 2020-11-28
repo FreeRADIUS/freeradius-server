@@ -1344,7 +1344,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	}
 
 	/*
-	 *	We should have at mininum 64-byte packets, so don't
+	 *	We should have at minimum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
 	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
