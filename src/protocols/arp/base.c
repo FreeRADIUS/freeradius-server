@@ -179,7 +179,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	slen = fr_struct_to_network_dbuff(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL);
+	slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL, NULL);
 	if (slen <= 0) return slen;
 
 	if (slen != FR_ARP_PACKET_SIZE) return slen;

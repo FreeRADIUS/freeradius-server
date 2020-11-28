@@ -388,10 +388,10 @@ static int put_bits_dbuff(fr_dbuff_t *dbuff, uint8_t *p, int start_bit, uint8_t 
 	return start_bit % 8;
 }
 
-ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
-				   fr_da_stack_t *da_stack, unsigned int depth,
-				   fr_cursor_t *cursor, void *encoder_ctx,
-				   fr_encode_value_dbuff_t encode_value)
+ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_cursor_t *cursor, void *encoder_ctx,
+			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -612,8 +612,8 @@ ssize_t fr_struct_to_network_dbuff(fr_dbuff_t *dbuff,
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
 			ssize_t	len;
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
-			len = fr_struct_to_network_dbuff(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-							 cursor, encoder_ctx, encode_value);
+			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
+						   cursor, encoder_ctx, encode_value, encode_tlv);
 			if (len < 0) return len;
 			goto done;
 		}

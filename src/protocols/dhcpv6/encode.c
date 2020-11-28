@@ -103,7 +103,7 @@ static ssize_t encode_struct(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	slen = fr_struct_to_network_dbuff(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value);
+	slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
 	if (slen < 0) return slen;
 
 	/*

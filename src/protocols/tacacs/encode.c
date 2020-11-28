@@ -215,7 +215,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		/*
 		 *	Call the struct encoder to do the actual work.
 		 */
-		len = fr_struct_to_network_dbuff(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL);
+		len = fr_struct_to_network(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL, NULL);
 		if (len != sizeof(fr_tacacs_packet_hdr_t)) {
 			fr_strerror_printf("%s: Failed encoding %s using fr_struct_to_network()",
 					   __FUNCTION__, attr_tacacs_packet->name);

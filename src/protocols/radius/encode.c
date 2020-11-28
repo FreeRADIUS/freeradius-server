@@ -400,7 +400,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		fr_cursor_init(&child_cursor, &vp->vp_group);
 
-		slen = fr_struct_to_network_dbuff(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx, encode_value);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx, encode_value,
+					    encode_tlv_hdr_internal);
 		if (slen <= 0) return slen;
 
 		vp = fr_cursor_current(&child_cursor);
@@ -439,7 +440,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Old-style struct fields in a flat list.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_to_network_dbuff(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value,
+					    encode_tlv_hdr_internal);
 		if (slen <= 0) return slen;
 
 		vp = fr_cursor_current(cursor);
