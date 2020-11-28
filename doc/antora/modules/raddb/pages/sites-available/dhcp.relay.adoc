@@ -24,7 +24,7 @@ server dhcp.eth1 {
 		type = dhcp
 		interface = eth1
 	}
-	dhcp DHCP-Discover {
+	dhcp Discover {
 		update config {
 			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}
@@ -33,7 +33,7 @@ server dhcp.eth1 {
 		}
 		ok
 	}
-	dhcp DHCP-Request {
+	dhcp Request {
 		update config {
 			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}

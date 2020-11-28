@@ -18,7 +18,7 @@ refer to parent requests.
 +
 The _<type>_ field is a either a packet name such as `Access-Request`,
 or a protocol name followed by a packet name, such as
-`dhcpv4.DHCP-Discover`.  Please see the protocol dictionaries for a
+`dhcpv4.Discover`.  Please see the protocol dictionaries for a
 complete list of packet types for each protocol.
 +
 The _<type>_ field cannot be a dynamic expansion.
@@ -70,14 +70,14 @@ subrequest Disconnect-Request {
 
 The `subrequest` keyword can also be used to change protocols.  For
 example, the server can receive a RADIUS `Access-Request`, and then
-create a DHCPv4 packet of type `DHCP-Discover`.  Note that when the
+create a DHCPv4 packet of type `Discover`.  Note that when the
 protocol changes, the attributes in the `subrequest` section are
 parsed in the context of the new protocol.
 
 .Example
 [source,unlang]
 ----
-subrequest dhcpv4.DHCP-Discover {
+subrequest dhcpv4.Discover {
     update request {
         &DHCP-Your-IP-Address := &parent.request.Framed-IP-Address
         ...

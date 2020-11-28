@@ -289,7 +289,7 @@ changing the second parameter to the subrequest.  That parameter can
 be:
 
 * packet name, e.g. "Access-Request"
-* protocol followed by packet name, e.g. "dhcpv4.DHCP-Discover".
+* protocol followed by packet name, e.g. "dhcpv4.Discover".
 
 This configuration allows the server to receive one type of packet,
 and then create another.  For example, the server can receive an
@@ -301,7 +301,7 @@ by the subrequest should be manually copied from the parent request.
 
 The subrequest can also be used to change protocols.  For example, the
 server can receive a RADIUS Access-Request, and then create a DHCPv4
-packet of type DHCP-Discover.  Note that when the protocol changes,
+packet of type Discover.  Note that when the protocol changes,
 the attributes in the "subrequest" section are parsed in the context
 of the new protocol.
 

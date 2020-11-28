@@ -83,28 +83,28 @@ ATTRIBUTE	DHCP-NETBIOS-Node-Type			46	byte
 ATTRIBUTE	DHCP-NETBIOS				47	octets
 ATTRIBUTE	DHCP-X-Window-Font-Server		48	ipaddr array
 ATTRIBUTE	DHCP-X-Window-Display-Mgr		49	ipaddr array
-ATTRIBUTE	DHCP-Requested-IP-Address		50	ipaddr
+ATTRIBUTE	Requested-IP-Address		50	ipaddr
 ATTRIBUTE	DHCP-IP-Address-Lease-Time		51	integer
 # Overload "sname" or "file"
 ATTRIBUTE	DHCP-Overload				52	byte
 ATTRIBUTE	DHCP-Message-Type			53	byte
 
-VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	0
-VALUE	DHCP-Message-Type		DHCP-Discover		1
-VALUE	DHCP-Message-Type		DHCP-Offer		2
-VALUE	DHCP-Message-Type		DHCP-Request		3
-VALUE	DHCP-Message-Type		DHCP-Decline		4
-VALUE	DHCP-Message-Type		DHCP-Ack		5
-VALUE	DHCP-Message-Type		DHCP-NAK		6
-VALUE	DHCP-Message-Type		DHCP-Release		7
-VALUE	DHCP-Message-Type		DHCP-Inform		8
-VALUE	DHCP-Message-Type		DHCP-Force-Renew	9
-VALUE	DHCP-Message-Type		DHCP-Lease-Query	10
-VALUE	DHCP-Message-Type		DHCP-Lease-Unassigned	11
-VALUE	DHCP-Message-Type		DHCP-Lease-Unknown	12
-VALUE	DHCP-Message-Type		DHCP-Lease-Active	13
-VALUE	DHCP-Message-Type		DHCP-Bulk-Lease-Query	14
-VALUE	DHCP-Message-Type		DHCP-Lease-Query-Done	15
+VALUE	DHCP-Message-Type		Do-Not-Respond		0
+VALUE	DHCP-Message-Type		Discover		1
+VALUE	DHCP-Message-Type		Offer			2
+VALUE	DHCP-Message-Type		Request			3
+VALUE	DHCP-Message-Type		Decline			4
+VALUE	DHCP-Message-Type		Ack			5
+VALUE	DHCP-Message-Type		NAK			6
+VALUE	DHCP-Message-Type		Release			7
+VALUE	DHCP-Message-Type		Inform			8
+VALUE	DHCP-Message-Type		Force-Renew		9
+VALUE	DHCP-Message-Type		Lease-Query		10
+VALUE	DHCP-Message-Type		Lease-Unassigned	11
+VALUE	DHCP-Message-Type		Lease-Unknown		12
+VALUE	DHCP-Message-Type		Lease-Active		13
+VALUE	DHCP-Message-Type		Bulk-Lease-Query	14
+VALUE	DHCP-Message-Type		Lease-Query-Done	15
 
 ATTRIBUTE	DHCP-DHCP-Server-Identifier		54	ipaddr
 
@@ -415,7 +415,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-NETBIOS-Node-Type	46
 VALUE	DHCP-Parameter-Request-List	DHCP-NETBIOS		47
 VALUE	DHCP-Parameter-Request-List	DHCP-X-Window-Font-Server 48
 VALUE	DHCP-Parameter-Request-List	DHCP-X-Window-Display-Mgr 49
-VALUE	DHCP-Parameter-Request-List	DHCP-Requested-IP-Address 50
+VALUE	DHCP-Parameter-Request-List	Requested-IP-Address 50
 VALUE	DHCP-Parameter-Request-List	DHCP-IP-Address-Lease-Time 51
 VALUE	DHCP-Parameter-Request-List	DHCP-Overload		52
 VALUE	DHCP-Parameter-Request-List	DHCP-Message-Type	53

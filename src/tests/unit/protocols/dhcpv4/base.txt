@@ -35,7 +35,7 @@ match DHCP-ANDSF-IPv6-Address = fe80::1, DHCP-ANDSF-IPv6-Address = fe80::2, DHCP
 #  A long one... with a weird DHCP-specific vendor ID.
 #
 decode-pair 3501013d0701001ceaadac1e37070103060f2c2e2f3c094d5346545f495054565232011c4c41424f4c54322065746820312f312f30312f30312f31302f312f3209120000197f0d050b4c4142373336304f4c5432
-match DHCP-Message-Type = DHCP-Discover, DHCP-Client-Identifier = 0x01001ceaadac1e, DHCP-Parameter-Request-List = DHCP-Subnet-Mask, DHCP-Parameter-Request-List = DHCP-Router-Address, DHCP-Parameter-Request-List = DHCP-Domain-Name-Server, DHCP-Parameter-Request-List = DHCP-Domain-Name, DHCP-Parameter-Request-List = DHCP-NETBIOS-Name-Servers, DHCP-Parameter-Request-List = DHCP-NETBIOS-Node-Type, DHCP-Parameter-Request-List = DHCP-NETBIOS, DHCP-Vendor-Class-Identifier = 0x4d5346545f49505456, Relay-Agent-Information.Circuit-Id = 0x4c41424f4c54322065746820312f312f30312f30312f31302f312f32, Relay-Agent-Information.DHCP-Vendor-Specific-Information = 0x0000197f0d050b4c4142373336304f4c5432
+match DHCP-Message-Type = Discover, DHCP-Client-Identifier = 0x01001ceaadac1e, DHCP-Parameter-Request-List = DHCP-Subnet-Mask, DHCP-Parameter-Request-List = DHCP-Router-Address, DHCP-Parameter-Request-List = DHCP-Domain-Name-Server, DHCP-Parameter-Request-List = DHCP-Domain-Name, DHCP-Parameter-Request-List = DHCP-NETBIOS-Name-Servers, DHCP-Parameter-Request-List = DHCP-NETBIOS-Node-Type, DHCP-Parameter-Request-List = DHCP-NETBIOS, DHCP-Vendor-Class-Identifier = 0x4d5346545f49505456, Relay-Agent-Information.Circuit-Id = 0x4c41424f4c54322065746820312f312f30312f30312f31302f312f32, Relay-Agent-Information.DHCP-Vendor-Specific-Information = 0x0000197f0d050b4c4142373336304f4c5432
 
 #
 #  Two sub-options 82, that cannot fit in a single option.

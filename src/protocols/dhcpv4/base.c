@@ -124,21 +124,21 @@ fr_dict_attr_t const **dhcp_header_attrs[] = {
 
 char const *dhcp_message_types[] = {
 	"invalid",
-	"DHCP-Discover",
-	"DHCP-Offer",
-	"DHCP-Request",
-	"DHCP-Decline",
-	"DHCP-Ack",
-	"DHCP-NAK",
-	"DHCP-Release",
-	"DHCP-Inform",
-	"DHCP-Force-Renew",
-	"DHCP-Lease-Query",
-	"DHCP-Lease-Unassigned",
-	"DHCP-Lease-Unknown",
-	"DHCP-Lease-Active",
-	"DHCP-Bulk-Lease-Query",
-	"DHCP-Lease-Query-Done"
+	"Discover",
+	"Offer",
+	"Request",
+	"Decline",
+	"Ack",
+	"NAK",
+	"Release",
+	"Inform",
+	"Force-Renew",
+	"Lease-Query",
+	"Lease-Unassigned",
+	"Lease-Unknown",
+	"Lease-Active",
+	"Bulk-Lease-Query",
+	"Lease-Query-Done"
 };
 
 #define DHCP_MAX_MESSAGE_TYPE (NUM_ELEMENTS(dhcp_message_types))

@@ -858,10 +858,10 @@ module_t rlm_sqlippool = {
 		[MOD_POST_AUTH]		= mod_alloc
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"DHCP-Discover",	mod_alloc },
-		{ "recv",	"DHCP-Request",		mod_update },
-		{ "recv",	"DHCP-Release",		mod_release },
-		{ "recv",	"DHCP-Decline",		mod_mark },
+		{ "recv",	"Discover",	mod_alloc },
+		{ "recv",	"Request",		mod_update },
+		{ "recv",	"Release",		mod_release },
+		{ "recv",	"Decline",		mod_mark },
 
 		{ "ippool",	"alloc",		mod_alloc },
 		{ "ippool",	"update",		mod_update },

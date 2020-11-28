@@ -119,7 +119,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
 	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply.DHCP-Your-IP-Address", .quote = T_BARE_WORD },
@@ -1415,7 +1415,7 @@ module_t rlm_redis_ippool = {
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
 	.method_names = (module_method_names_t[]) {
-		{ "recv",	"DHCP-Request",	mod_request },
+		{ "recv",	"Request",	mod_request },
 		MODULE_NAME_TERMINATOR
 	}
 };

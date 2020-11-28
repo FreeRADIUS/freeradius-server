@@ -117,7 +117,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	fr_pair_t *vp;
 
 	static int reply_ok[] = {
-		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
 		[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
 		[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
@@ -130,7 +130,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	};
 
 	static int reply_fail[] = {
-		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_DISCOVER]	= 0,
 		[FR_DHCP_OFFER]		= FR_DHCP_NAK,
 		[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
@@ -138,7 +138,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		[FR_DHCP_ACK]		= FR_DHCP_NAK,
 		[FR_DHCP_NAK]		= FR_DHCP_NAK,
 		[FR_DHCP_RELEASE]	= 0,
-		[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+		[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
 	};
 
@@ -164,7 +164,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv %s' section", dv->name);
-			request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
+			request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
 
@@ -197,22 +197,22 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = REPLY_OK(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND);
+			request->reply->code = REPLY_OK(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
 			break;
 
 		default:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_FAIL:
-			request->reply->code = REPLY_FAIL(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND);
+			request->reply->code = REPLY_FAIL(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
 			break;
 
 		case RLM_MODULE_HANDLED:
-			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
+			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 			break;
 		}
 
 		/*
-		 *	DHCP-Release / Decline doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
+		 *	Release / Decline doesn't send a reply, and doesn't run "send Do-Not-Respond"
 		 */
 		if (!request->reply->code) {
 			RETURN_MODULE_HANDLED;
@@ -267,11 +267,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			 *	If we over-ride an ACK with a NAK, run
 			 *	the NAK section.
 			 */
-			if (request->reply->code != FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
+			if (request->reply->code != FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
 				dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->name);
 
-				request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
+				request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 
 				dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 				unlang = NULL;
@@ -289,7 +289,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
+		if (request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client");
 			RETURN_MODULE_HANDLED;
 		}
@@ -307,7 +307,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
-		.name2 = "DHCP-Discover",
+		.name2 = "Discover",
 		.component = MOD_POST_AUTH,
 
 		.methods = (const virtual_server_method_t[]) {
@@ -320,12 +320,12 @@ static const virtual_server_compile_t compile_list[] = {
 	},
 	{
 		.name = "send",
-		.name2 = "DHCP-Offer",
+		.name2 = "Offer",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "recv",
-		.name2 = "DHCP-Request",
+		.name2 = "Request",
 		.component = MOD_POST_AUTH,
 
 		.methods = (const virtual_server_method_t[]) {
@@ -339,17 +339,17 @@ static const virtual_server_compile_t compile_list[] = {
 
 	{
 		.name = "send",
-		.name2 = "DHCP-Ack",
+		.name2 = "Ack",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
-		.name2 = "DHCP-NAK",
+		.name2 = "NAK",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "recv",
-		.name2 = "DHCP-Decline",
+		.name2 = "Decline",
 		.component = MOD_POST_AUTH,
 
 		.methods = (const virtual_server_method_t[]) {
@@ -363,7 +363,7 @@ static const virtual_server_compile_t compile_list[] = {
 
 	{
 		.name = "recv",
-		.name2 = "DHCP-Release",
+		.name2 = "Release",
 		.component = MOD_POST_AUTH,
 
 		.methods = (const virtual_server_method_t[]) {
@@ -376,7 +376,7 @@ static const virtual_server_compile_t compile_list[] = {
 	},
 	{
 		.name = "recv",
-		.name2 = "DHCP-Inform",
+		.name2 = "Inform",
 		.component = MOD_POST_AUTH,
 	},
 	{
@@ -387,22 +387,22 @@ static const virtual_server_compile_t compile_list[] = {
 
 	{
 		.name = "recv",
-		.name2 = "DHCP-Lease-Query",
+		.name2 = "Lease-Query",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
-		.name2 = "DHCP-Lease-Unassigned",
+		.name2 = "Lease-Unassigned",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
-		.name2 = "DHCP-Lease-Unknown",
+		.name2 = "Lease-Unknown",
 		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
-		.name2 = "DHCP-Lease-Active",
+		.name2 = "Lease-Active",
 		.component = MOD_POST_AUTH,
 	},
 

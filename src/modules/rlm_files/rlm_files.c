@@ -467,11 +467,11 @@ module_t rlm_files = {
 		 * Use mod_authorize for all DHCP processing - for consistent
 		 * use of data in the file referenced by "filename"
 		 */
-		{ "recv",	"DHCP-Discover",	mod_authorize },
-		{ "recv",	"DHCP-Request",		mod_authorize },
-		{ "recv",	"DHCP-Inform",		mod_authorize },
-		{ "recv",	"DHCP-Release",		mod_authorize },
-		{ "recv",	"DHCP-Decline",		mod_authorize },
+		{ "recv",	"Discover",	mod_authorize },
+		{ "recv",	"Request",		mod_authorize },
+		{ "recv",	"Inform",		mod_authorize },
+		{ "recv",	"Release",		mod_authorize },
+		{ "recv",	"Decline",		mod_authorize },
 
 		MODULE_NAME_TERMINATOR
 	}

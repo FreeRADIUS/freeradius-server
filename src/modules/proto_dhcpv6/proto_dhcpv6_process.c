@@ -242,7 +242,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		}
 
 		/*
-		 *	DHCP-Release / Decline doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
+		 *	Release / Decline doesn't send a reply, and doesn't run "send Do-Not-Respond"
 		 */
 		if (!request->reply->code) {
 			RETURN_MODULE_HANDLED;

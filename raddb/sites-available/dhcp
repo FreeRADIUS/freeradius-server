@@ -39,11 +39,11 @@ server dhcp {
 #  section per interface.
 #
 listen {
-	type = DHCP-Discover
-	type = DHCP-Request
-	type = DHCP-Inform
-	type = DHCP-Release
-	type = DHCP-Decline
+	type = Discover
+	type = Request
+	type = Inform
+	type = Release
+	type = Decline
 
 	transport = udp
 
@@ -124,7 +124,7 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
-recv DHCP-Discover {
+recv Discover {
 
 	#  The DHCP Server Identifier is set here since it is returned in OFFERs
 	update control {
@@ -159,10 +159,10 @@ recv DHCP-Discover {
 	#
 	#  The server will look at the DHCP-Message-Type attribute to
 	#  determine which type of packet to send in reply. Common
-	#  values would be DHCP-Offer, DHCP-Ack or DHCP-NAK. See
+	#  values would be Offer, Ack or NAK. See
 	#  dictionary.dhcp for all the possible values.
 	#
-	#  DHCP-Do-Not-Respond can be used to tell the server to not
+	#  Do-Not-Respond can be used to tell the server to not
 	#  respond.
 	#
 	#  In the event that DHCP-Message-Type is not set then the
@@ -170,18 +170,18 @@ recv DHCP-Discover {
 	#  based on the rcode of this section.
 
 	#update reply {
-	#       &DHCP-Message-Type = DHCP-Offer
+	#       &DHCP-Message-Type = Offer
 	#}
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
-	#  "updated" from this section will respond with a DHCP-Offer
+	#  "updated" from this section will respond with a Offer
 	#  message.
 	#
 	#  Other rcodes will tell the server to not return any response.
 	#ok
 }
 
-recv DHCP-Request {
+recv Request {
 
 	#  The DHCP Server Identifier is set here since it is returned in OFFERs
 	update control {
@@ -194,9 +194,9 @@ recv DHCP-Request {
 	        do_not_respond
 	}
 
-	#  Response packet type. See DHCP-Discover section above.
+	#  Response packet type. See Discover section above.
 	#update reply {
-	#       &DHCP-Message-Type = DHCP-Ack
+	#       &DHCP-Message-Type = Ack
 	#}
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -225,16 +225,16 @@ recv DHCP-Request {
 
 	if (ok) {
 		update reply {
-			&DHCP-Your-IP-Address := "%{%{request.DHCP-Requested-IP-Address}:-{request.DHCP-Client-IP-Address}}"
+			&DHCP-Your-IP-Address := "%{%{request.Requested-IP-Address}:-{request.DHCP-Client-IP-Address}}"
 		}
 	}
 
 	#  If DHCP-Message-Type is not set, returning "ok" or
-	#  "updated" from this section will respond with a DHCP-Ack
+	#  "updated" from this section will respond with a Ack
 	#  packet.
 	#
 	#  "handled" will not return a packet, all other rcodes will
-	#  send back a DHCP-NAK.
+	#  send back a NAK.
 	#ok
 }
 
@@ -243,9 +243,9 @@ recv DHCP-Request {
 #
 #  There should be a separate section for each DHCP message type.
 #  By default this configuration will ignore them all. Any packet type
-#  not defined here will be responded to with a DHCP-NAK.
+#  not defined here will be responded to with a NAK.
 
-recv DHCP-Decline {
+recv Decline {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
 #	update control {
@@ -261,7 +261,7 @@ recv DHCP-Decline {
 #  options set in the Request section above, except Inform replies
 #  must not set Your-IP-Address or IP-Address-Lease-Time
 #
-recv DHCP-Inform {
+recv Inform {
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
 
@@ -271,17 +271,17 @@ recv DHCP-Inform {
 #
 #  For Windows 7 boxes
 #
-#recv DHCP-Inform {
+#recv Inform {
 #	update reply {
 #		Packet-Dst-Port = 67
-#		DHCP-Message-Type = DHCP-ACK
+#		DHCP-Message-Type = Ack
 #		DHCP-DHCP-Server-Identifier = "%{Packet-Dst-IP-Address}"
 #		DHCP-Site-specific-28 = 0x0a00
 #	}
 #	ok
 #}
 
-recv DHCP-Release {
+recv Release {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
 #	update control {
@@ -293,7 +293,7 @@ recv DHCP-Release {
 }
 
 
-recv DHCP-Lease-Query {
+recv Lease-Query {
 	#  The thing being queried for is implicit
 	#  in the packets.
 
@@ -313,7 +313,7 @@ recv DHCP-Lease-Query {
 	}
 	else {
 		update reply {
-			&DHCP-Message-Type = DHCP-Lease-Unknown
+			&DHCP-Message-Type = Lease-Unknown
 		}
 
 		ok
@@ -328,7 +328,7 @@ recv DHCP-Lease-Query {
 	#
 	if (notfound) {
 		update reply {
-			&DHCP-Message-Type = DHCP-Lease-Unknown
+			&DHCP-Message-Type = Lease-Unknown
 		}
 		ok
 		return
@@ -336,9 +336,9 @@ recv DHCP-Lease-Query {
 
 	#
 	#	Add more logic here.  Is the lease inactive?
-	#	If so, respond with DHCP-Lease-Unassigned.
+	#	If so, respond with Lease-Unassigned.
 	#
-	#	Otherwise, respond with DHCP-Lease-Active
+	#	Otherwise, respond with Lease-Active
 	#
 
 	#
@@ -349,12 +349,12 @@ recv DHCP-Lease-Query {
 	#
 	#	The reply types are:
 	#
-	#	DHCP-Lease-Unknown
-	#	DHCP-Lease-Active
-	#	DHCP-Lease-Unassigned
+	#	Lease-Unknown
+	#	Lease-Active
+	#	Lease-Unassigned
 	#
 	update reply {
-		&DHCP-Message-Type = DHCP-Lease-Unassigned
+		&DHCP-Message-Type = Lease-Unassigned
 	}
 
 }

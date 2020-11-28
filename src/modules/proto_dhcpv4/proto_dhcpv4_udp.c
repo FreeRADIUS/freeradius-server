@@ -35,7 +35,6 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/dhcpv4/freeradius.internal.h>
-#include <freeradius-devel/arp/arp.h>
 #include "proto_dhcpv4.h"
 
 extern fr_app_io_t proto_dhcpv4_udp;
