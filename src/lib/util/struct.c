@@ -26,16 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/proto.h>
 
-/*
- *	Context wrapper to let us, pro tempore, support both dbuff and ptr/len flavored
- *	struct-to-network encoding without code replication.
- */
-
-typedef struct {
-     void		*ectx;
-     fr_encode_value_t	encoder;
-} encode_ctx_wrapper;
-
 fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	fr_pair_t *vp;
@@ -360,29 +350,6 @@ done:
 	return data_len;
 }
 
-static ssize_t wrapped_encoder(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
-					   fr_cursor_t *cursor, void *encoder_ctx)
-{
-	encode_ctx_wrapper	*wrapper = (encode_ctx_wrapper *) encoder_ctx;
-	ssize_t			slen;
-
-	slen = wrapper->encoder(dbuff->p, fr_dbuff_remaining(dbuff), da_stack, depth, cursor, wrapper->ectx);
-	if (slen < 0) return slen;
-	return fr_dbuff_advance(dbuff, slen);
-}
-
-ssize_t fr_struct_to_network(uint8_t *out, size_t outlen, fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_cursor_t *cursor, void *encoder_ctx,
-			     fr_encode_value_t encode_value)
-{
-	fr_dbuff_t		dbuff = FR_DBUFF_TMP(out, outlen);
-	encode_ctx_wrapper	wrapper = {.ectx = encoder_ctx, .encoder = encode_value};
-
-	if (encode_value == NULL) return fr_struct_to_network_dbuff(&dbuff, da_stack, depth, cursor, NULL, NULL);
-
-	return fr_struct_to_network_dbuff(&FR_DBUFF_TMP(out, outlen), da_stack, depth,
-					  cursor, (void *) &wrapper, wrapped_encoder);
-}
 
 /** Put bits into an output dbuff
  *
