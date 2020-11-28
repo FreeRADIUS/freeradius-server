@@ -470,8 +470,8 @@ module_t rlm_files = {
 		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_authorize },
 		{ .name1 = "recv",	.name2 = "Request",	.method = mod_authorize },
 		{ .name1 = "recv",	.name2 = "Inform",	.method = mod_authorize },
-		{ .name1 = "recv",	.name2 = "Release",	.method = mod_authorize }
-		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_authorize }
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_authorize },
 
 		MODULE_NAME_TERMINATOR
 	}
