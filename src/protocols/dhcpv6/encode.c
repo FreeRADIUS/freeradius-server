@@ -80,32 +80,6 @@ static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_struct(fr_dbuff_t *dbuff,
-			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_cursor_t *cursor, void *encoder_ctx)
-{
-	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-
-	VP_VERIFY(fr_cursor_current(cursor));
-	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	if (da_stack->da[depth]->type != FR_TYPE_STRUCT) {
-		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	if (!da_stack->da[depth + 1]) {
-		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
-	if (slen < 0) return slen;
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
 
 static int8_t pair_sort_increasing(void const *a, void const *b)
 {
@@ -145,8 +119,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		vp = fr_cursor_head(&child_cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-		slen = encode_struct(&work_dbuff, da_stack, depth, &child_cursor, encoder_ctx);
-		if (slen < 0) return slen;
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
+		if (slen <= 0) return slen;
 
 		(void) fr_cursor_next(cursor); /* skip the VP containing the struct */
 
@@ -163,8 +137,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	members MUST be in a flat list.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = encode_struct(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
-		if (slen < 0) return slen;
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
+		if (slen <= 0) return slen;
 
 		vp = fr_cursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
