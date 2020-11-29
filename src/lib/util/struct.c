@@ -436,13 +436,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		fr_cursor_init(&child_cursor, &sorted->vp_group);
 
 		/*
-		 *	Always skip the VP containing the struct.
-		 *
-		 *	@todo - do this only on success.
-		 */
-		(void) fr_cursor_next(parent_cursor);
-
-		/*
 		 *	Build the da_stack for the new structure.
 		 */
 		vp = fr_cursor_current(&child_cursor);
@@ -698,6 +691,12 @@ done:
 		}
 		fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
 	}
+
+	/*
+	 *	We've encoded the children, so tell the parent cursor
+	 *	that we've encoded the parent.
+	 */
+	if (cursor != parent_cursor) (void) fr_cursor_next(parent_cursor);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
