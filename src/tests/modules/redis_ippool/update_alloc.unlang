@@ -28,7 +28,7 @@ if (updated) {
 update {
 	&request.Framed-IP-Address := 192.168.0.1
 	&request.NAS-IP-Address := 127.0.0.1
-	&control.Pool-Action := Renew
+	&control.IP-Pool.Action := Renew
 }
 redis_ippool
 

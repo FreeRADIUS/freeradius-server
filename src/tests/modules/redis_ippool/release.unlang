@@ -37,7 +37,7 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 #
 update {
 	&request.Framed-IP-Address := &reply.Framed-IP-Address
-	&control.Pool-Action := Release
+	&control.IP-Pool.Action := Release
 }
 redis_ippool {
 	invalid = 1
@@ -100,7 +100,7 @@ if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-
 #
 update {
 	&request.Framed-IP-Address := &reply.Framed-IP-Address
-	&control.Pool-Action := Release
+	&control.IP-Pool.Action := Release
 }
 redis_ippool {
 	invalid = 1

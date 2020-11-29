@@ -52,7 +52,7 @@ update request {
 update {
 	&request.Framed-IP-Address := &reply.Framed-IP-Address
 	&request.NAS-IP-Address := 127.0.0.2
-	&control.Pool-Action := Renew
+	&control.IP-Pool.Action := Renew
 }
 redis_ippool
 if (updated) {

@@ -157,7 +157,7 @@ static fr_dict_attr_t const *attr_message_type;
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
-	{ .out = &attr_pool_action, .name = "Pool-Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_pool_action, .name = "IP-Pool.Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ NULL }
@@ -1254,7 +1254,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	fr_pair_t			*vp;
 
 	/*
-	 *	Pool-Action override
+	 *	IP-Pool.Action override
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
 	if (vp) return mod_action(p_result, inst, request, vp->vp_uint32);
@@ -1264,7 +1264,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
-		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.Pool-Action, doing nothing...");
+		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.IP-Pool.Action, doing nothing...");
 		RETURN_MODULE_NOOP;
 	}
 
