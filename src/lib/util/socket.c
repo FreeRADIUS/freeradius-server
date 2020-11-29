@@ -859,7 +859,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	equivalent capabilities so we don't need to check.
 	 */
 	if (src_port && (*src_port < 1024) && (geteuid() != 0)) {
-		(void)fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
+		(void)fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);	/* Sets error on failure, which will be seen if the bind fails */
 	}
 #endif
 
@@ -895,6 +895,11 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 *	and set the scope_id.
 		 */
 		if (!my_ipaddr.scope_id) {
+			/*
+			 *	The internet hints that CAP_NET_RAW
+			 *	is required to use SO_BINDTODEVICE.
+			 */
+			(void)fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE);	/* Sets error on failure, which will be seen if the bind fails */
 			ret = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
 			if (ret < 0) {
 				fr_strerror_printf_push("Bind failed on interface %s: %s",
