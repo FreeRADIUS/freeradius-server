@@ -2383,7 +2383,8 @@ error:
  */
 ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					     fr_dict_t const *dict_def,
-					     fr_sbuff_t *name, fr_sbuff_term_t const *tt, bool fallback)
+					     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+					     bool fallback)
 {
 	return dict_attr_search(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
 }
@@ -2675,54 +2676,6 @@ inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsi
 fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	return dict_attr_child_by_num(parent, attr);
-}
-
-
-/** Look up an attribute by name in the dictionary that contains the parent
- *
- */
-ssize_t fr_dict_attr_child_by_name_substr(fr_dict_attr_err_t *err,
-					  fr_dict_attr_t const **out, fr_dict_attr_t const *parent, fr_sbuff_t *name,
-					  bool is_direct_decendent)
-{
-	ssize_t			slen;
-	fr_dict_attr_t const	*ref;
-	DA_VERIFY(parent);
-
-	/*
-	 *	Do any necessary dereferencing
-	 */
-	ref = fr_dict_attr_ref(parent);
-	if (ref) parent = ref;
-
-	if (!fr_dict_attr_has_ext(parent, FR_DICT_ATTR_EXT_CHILDREN)) {
-		fr_strerror_printf("Parent (%s) is a %s, it cannot contain nested attributes",
-				   parent->name,
-				   fr_table_str_by_value(fr_value_box_type_table,
-				   			 parent->type, "?Unknown?"));
-		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
-		return 0;
-
-	} else if (!dict_attr_children(parent)) {
-		fr_strerror_printf("Parent (%s) has no children", parent->name);
-		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
-		return 0;
-	}
-
-	slen = fr_dict_attr_by_name_substr(err, out, parent, name, NULL);
-	if (slen <= 0) return slen;
-
-	if (is_direct_decendent) {
-		if ((*out)->parent != parent) {
-		not_decendent:
-			fr_strerror_printf("%s is not a descendent of parent (%s)", parent->name, (*out)->name);
-			if (err) *err = FR_DICT_ATTR_NOT_DESCENDENT;
-			*out = NULL;
-			return 0;
-		}
-	} else if (!fr_dict_attr_common_parent(parent, *out, true)) goto not_decendent;
-
-	return slen;
 }
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t

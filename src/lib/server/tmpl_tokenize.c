@@ -1408,7 +1408,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		slen = fr_dict_attr_child_by_name_substr(&dict_err, &da, parent, name, false);
+		slen = fr_dict_attr_by_name_substr(&dict_err, &da, parent,
+						   name, p_rules ? p_rules->terminals : NULL);
 	}
 
 	/*
@@ -2919,10 +2920,9 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 								     NULL,
 								     !vpt->rules.disallow_internal);
 		} else {
-			slen = fr_dict_attr_child_by_name_substr(NULL, &da, parent,
-								 &FR_SBUFF_IN(ar->ar_unresolved,
-								 	      strlen(ar->ar_unresolved)),
-								 false);
+			slen = fr_dict_attr_by_name_substr(NULL, &da, parent,
+							   &FR_SBUFF_IN(ar->ar_unresolved, strlen(ar->ar_unresolved)),
+							   NULL);
 		}
 		if (slen <= 0) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
