@@ -263,6 +263,10 @@ match ERROR offset 19: Missing closing brace
 xlat %{myfirstxlat
 match ERROR offset 13: Missing closing brace
 
+# Issue seen in the wild that caused an SEGV during pass2
+xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
+match ERROR offset 25: Expected ':-' after first expansion
+
 #
 #  API to split xlat strings into argv-style arguments.
 #
@@ -297,4 +301,4 @@ xlat_argv echo hello %{Tmp-String-0}:1234 world
 match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
 
 count
-match 177
+match 179

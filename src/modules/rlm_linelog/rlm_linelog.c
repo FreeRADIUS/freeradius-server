@@ -530,7 +530,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 	.allow_unresolved = false,
 					 	.at_runtime = true
 					 });
-		if (slen <= 0) {
+		if (!vpt) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			RETURN_MODULE_FAIL;
 		}

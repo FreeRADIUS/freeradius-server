@@ -421,7 +421,7 @@ static bool pass2_fixup_map(fr_cond_t *c)
 					 &(tmpl_rules_t){
 					 	.allow_unknown = true
 					 });
-		if (slen < 0) {
+		if (!vpt) {
 			char *spaces, *text;
 
 			fr_canonicalize_error(map->ci, &spaces, &text, slen, fr_strerror());
@@ -1299,7 +1299,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 					 type,
 					 NULL,
 					 &parse_rules);
-		if (slen < 0) {
+		if (!vpt) {
 			cf_log_perr(cs, "Failed parsing map");
 		error:
 			talloc_free(g);
@@ -1964,7 +1964,7 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 				 type,
 				 NULL,
 				 &parse_rules);
-	if (slen < 0) {
+	if (!gext->vpt) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2109,7 +2109,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 					 type,
 					 NULL,
 					 &parse_rules);
-		if (slen < 0) {
+		if (!vpt) {
 			char *spaces, *text;
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2250,7 +2250,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 type,
 				 NULL,
 				 &parse_rules);
-	if (slen <= 0) {
+	if (!vpt) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2423,7 +2423,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 				 cf_pair_attr_quote(cp),
 				 NULL,
 				 unlang_ctx->rules);
-	if (slen <= 0) {
+	if (!vpt) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cp, &spaces, &text, slen, fr_strerror());
@@ -2678,7 +2678,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 					 type,
 					 NULL,
 					 &parse_rules);
-		if (slen < 0) {
+		if (!gext->vpt) {
 			char *spaces, *text;
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2953,7 +2953,7 @@ get_packet_type:
 			slen = tmpl_afrom_substr(parent, &src_vpt,
 						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
-			if (slen <= 0) {
+			if (!src_vpt) {
 				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
 			error:
 				talloc_free(vpt);
@@ -2972,7 +2972,7 @@ get_packet_type:
 				slen = tmpl_afrom_substr(parent, &dst_vpt,
 							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
-				if (slen <= 0) {
+				if (!dst_vpt) {
 					cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing dst");
 					goto error;
 				}

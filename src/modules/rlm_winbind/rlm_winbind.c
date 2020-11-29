@@ -424,6 +424,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			          	.allow_unknown = true,
 			          	.allow_unresolved = true
 			          });
+		if (!inst->wb_domain) {
+			cf_log_perr(conf, "Bad domain");
+			wbcFreeMemory(wb_info);
+			return -1;
+		}
 
 		cf_log_err(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
 

@@ -130,7 +130,7 @@ static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *p
 				 &rules);
 
 	/* There was an error */
-	if (slen < 0) {
+	if (!vpt) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);

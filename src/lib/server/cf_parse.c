@@ -247,7 +247,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
 					 tmpl_parse_rules_unquoted[cp->rhs_quote],
 					 &rules);
-		if (slen < 0) goto tmpl_error;
+		if (!vpt) goto tmpl_error;
 
 		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
 			cf_log_err(cp, "Expected attr got %s",
@@ -1359,6 +1359,8 @@ finish:
 static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
 {
 	tmpl_t *vpt = *out;
+
+	fr_assert(vpt);	/* We need something to resolve */
 
 	if (tmpl_resolve(vpt) < 0) {
 		cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);

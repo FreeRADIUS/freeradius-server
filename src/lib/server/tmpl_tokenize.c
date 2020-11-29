@@ -2384,7 +2384,8 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 /** Convert an arbitrary string into a #tmpl_t
  *
  * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
- *	may just mean a 0 length string was parsed.
+ *	may just mean a 0 length string was parsed. Check to see if the function emitted
+ *	a #tmpl_t in *out.
  *
  * @note xlats and regexes are left uncompiled.  This is to support the two pass parsing
  *	done by the modcall code.  Compilation on pass1 of that code could fail, as

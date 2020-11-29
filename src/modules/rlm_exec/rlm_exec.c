@@ -229,14 +229,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (!inst->program) return 0;
 
-	slen = tmpl_afrom_substr(inst, &inst->tmpl, &FR_SBUFF_IN(inst->program, strlen(inst->program)),
+	slen = tmpl_afrom_substr(inst, &inst->tmpl,
+				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
 				 T_BACK_QUOTED_STRING, NULL,
 				 &(tmpl_rules_t) {
 				 	.allow_foreign = true,
 				 	.allow_unresolved = false,
 				 	.allow_unknown = false
 				 });
-	if (slen <= 0) {
+	if (!inst->tmpl) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
