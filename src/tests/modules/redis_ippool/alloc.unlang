@@ -70,7 +70,7 @@ if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} range
 	test_fail
 }
 
-if (&reply.Pool-Range == '192.168.0.0') {
+if (&reply.IP-Pool.Range == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -95,7 +95,7 @@ if (&reply.Session-Timeout == 30) {
 }
 
 update {
-	&request.Pool-Range := &reply.Pool-Range
+	&request.IP-Pool.Range := &reply.IP-Pool.Range
 	&request.Framed-IP-Address := &reply.Framed-IP-Address
 	&request.Session-Timeout := &reply.Session-Timeout # We should get the same lease time
 	&reply !* ANY
@@ -121,7 +121,7 @@ if (updated) {
 #
 #  Check the ranges are the same
 #
-if (&request.Pool-Range == &reply.Pool-Range) {
+if (&request.IP-Pool.Range == &reply.IP-Pool.Range) {
 	test_pass
 } else {
 	test_fail

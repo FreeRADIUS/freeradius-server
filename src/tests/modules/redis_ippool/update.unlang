@@ -108,7 +108,7 @@ if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{request.Framed-IP-Address} gat
 }
 
 # 13. and that the range attribute was set
-if (&reply.Pool-Range && (&reply.Pool-Range == '192.168.0.0')) {
+if (&reply.IP-Pool.Range && (&reply.IP-Pool.Range == '192.168.0.0')) {
 	test_pass
 } else {
 	test_fail

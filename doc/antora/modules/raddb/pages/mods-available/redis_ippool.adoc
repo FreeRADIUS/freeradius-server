@@ -78,9 +78,9 @@ allocated_address_attr:: List and attribute where the allocated address is writt
 
 
 
-range_attr:: List and attribute where the `Pool-Range` ID (if set) is written to.
+range_attr:: List and attribute where the `IP-Pool.Range` ID (if set) is written to.
 
-The idea of the `Pool-Range` is that it provides a key into other datastores
+The idea of the `IP-Pool.Range` is that it provides a key into other datastores
 or caches, which store the additional options associated with the range an
 IP address belongs to.
 
@@ -126,7 +126,7 @@ redis_ippool {
 	requested_address = "%{%{Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
 #	ipv4_integer = yes
 	allocated_address_attr = &reply.DHCP-Your-IP-Address
-	range_attr = &reply.Pool-Range
+	range_attr = &reply.IP-Pool.Range
 	expiry_attr = &reply.DHCP-IP-Address-Lease-Time
 	copy_on_update = yes
 	redis {

@@ -116,16 +116,16 @@ redis_ippool {
 	allocated_address_attr = &reply.DHCP-Your-IP-Address
 
 	#
-	#  range_attr:: List and attribute where the `Pool-Range` ID (if set) is written to.
+	#  range_attr:: List and attribute where the `IP-Pool.Range` ID (if set) is written to.
 	#
-	#  The idea of the `Pool-Range` is that it provides a key into other datastores
+	#  The idea of the `IP-Pool.Range` is that it provides a key into other datastores
 	#  or caches, which store the additional options associated with the range an
 	#  IP address belongs to.
 	#
 	#  There may be multiple ranges of IP address contained within any given pool,
 	#  which is why this is provided in addition to the pool name.
 	#
-	range_attr = &reply.Pool-Range
+	range_attr = &reply.IP-Pool.Range
 
 	#
 	#  expiry_attr:: If set - the list and attribute to write the remaining lease time to.
