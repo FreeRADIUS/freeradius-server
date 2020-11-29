@@ -459,7 +459,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	This allows us to encode structures automatically,
 	 *	even if key fields are omitted.
 	 */
-	if (vp->da->parent != parent) {
+	if (vp && (vp->da->parent != parent)) {
 		fr_strerror_printf("%s: struct encoding is missing previous attributes", __FUNCTION__);
 		return -1;
 	}
