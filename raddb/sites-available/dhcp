@@ -151,7 +151,7 @@ recv Discover {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 
@@ -219,7 +219,7 @@ recv Request {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 
@@ -249,7 +249,7 @@ recv Decline {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 
@@ -285,7 +285,7 @@ recv Release {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 

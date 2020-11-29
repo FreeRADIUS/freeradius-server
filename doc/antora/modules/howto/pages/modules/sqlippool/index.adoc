@@ -56,13 +56,13 @@ an individual IP address, MAC address, etc.
 === `Access-Request`: A device connects to the NAS with correct credentials
 
 . FreeRADIUS receives an `Access-Request` from the NAS.  After some
-processing (modules. `unlang`, etc.), the `Pool-Name` attribute is
+processing (modules. `unlang`, etc.), the `IP-Pool.Name` attribute is
 added to the `control` list.  This attribute indicates that the IP
 address should be allocated from the named pool.  This attribute can
 be added from any module, database, `unlang`, etc.
 
 . When the `sqlippool` module is eventually run, it looks for the
-`Pool-Name` attribute, and runs the various SQL queries in order to
+`IP-Pool.Name` attribute, and runs the various SQL queries in order to
 perform IP address allocation.  If the module is configured to place
 address into the `Framed-IP-Address` attribute (as it is by default),
 and that attribute already exists, the module does nothing, and
@@ -70,13 +70,13 @@ returns `noop`.
 
 . The module then runs the `alloc_existing` query, which looks for
 the IP address last assigned to the device from the pool indicated by
-`Pool-Name`.  The device is identified using the `pool_key`
+`IP-Pool.Name`.  The device is identified using the `pool_key`
 configuration item (typically `NAS-Port`) and a NAS identifier (the
 `NAS-IP-Address`).
 
 . If no address was found using `alloc_existing`, the module then
 runs the `alloc_find` query, which chooses a free IP address from
-the pool indicated by `Pool-Name`.  If `alloc_find` does not return
+the pool indicated by `IP-Pool.Name`.  If `alloc_find` does not return
 an IP address, the `pool_check` query is run in order to determine
 why the allocation failed.  For example, either the requested pool is
 empty (i.e.  no free addresses), or it is non-existent.  This
@@ -495,24 +495,24 @@ interval).
 
 === 7. Enable a pool user
 
-For a request to acquire an address from the pool you must set a `Pool-Name`
+For a request to acquire an address from the pool you must set a `IP-Pool.Name`
 check attribute, either directly in the virtual server configuration or via a
 data source such as `sql` (for example using the `radcheck` table).
 
-.Example of setting a Pool-Name attribute using the `radcheck` table
+.Example of setting a IP-Pool.Name attribute using the `radcheck` table
 =============================================
 
 [source,shell]
 ----
 echo "INSERT INTO radcheck (username,attribute,op,value)   \
-      VALUES ('bob','Pool-Name',':=','internet');"         \
+      VALUES ('bob','IP-Pool.Name',':=','internet');"         \
      | mysql radius
 ----
 
 =============================================
 
 
-.Example of setting a Pool-Name attribute using in the server config
+.Example of setting a IP-Pool.Name attribute using in the server config
 =============================================
 
 .[raddb]/sites-enabled/default
@@ -521,7 +521,7 @@ echo "INSERT INTO radcheck (username,attribute,op,value)   \
 send Access-Accept {
 ...
         update control {
-                &Pool-Name := 'internet'
+                &IP-Pool.Name := 'internet'
         }
 
         sqlippool
@@ -531,7 +531,7 @@ send Access-Accept {
 
 =============================================
 
-NOTE: Recall that if `sqlippool` is invoked without a `Pool-Name` check
+NOTE: Recall that if `sqlippool` is invoked without a `IP-Pool.Name` check
 attribute then no action is taken. Also recall that if `sqlippool` is invoked
 whilst the attribute configured in the `attribute_name` configuration item
 (e.g. `Framed-IP-Address`) already exists then no action is taken.

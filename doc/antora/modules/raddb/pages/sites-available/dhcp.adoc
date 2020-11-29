@@ -286,7 +286,7 @@ recv Discover {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 	ok
@@ -304,7 +304,7 @@ recv Request {
 		&DHCP-DHCP-Server-Identifier = 192.0.2.1
 	}
 #	update control {
-#		&Pool-Name := "local"
+#		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 	ok
