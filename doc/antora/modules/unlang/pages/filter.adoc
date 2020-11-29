@@ -15,7 +15,7 @@ Attributes that are not named in the `filter` section are unchanged.
 
 The `filter` statement consists of the following syntax elements:
 
-<list>:: The attribute list which will be filtered.  The list is
+<list>.: The attribute list which will be filtered.  The list is
 usually `request`, `reply`, or `control`.
 +
 If the _<list>_ qualifier is omitted, then each entry inside of the

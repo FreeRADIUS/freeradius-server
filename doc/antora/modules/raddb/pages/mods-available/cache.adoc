@@ -159,7 +159,7 @@ are available in cache entries. Attempting to store attributes
 in other lists *will raise an error* during config validation.
 
 
-<list>:<attribute> <op> <value>::
+<list>.<attribute> <op> <value>::
 
 
 Cache all instances of `Reply-Message in the reply list.

@@ -4,12 +4,12 @@ Attributes in a list may be referenced via one of the following two
 syntaxes:
 
 `%{Attribute-Name}` +
-`%{<list>:Attribute-Name}`
+`%{<list>.Attribute-Name}`
 
-The `<list>:` prefix is optional. If given, it must be a valid
+The `<list>.` prefix is optional. If given, it must be a valid
 reference to an xref:list.adoc[attribute list].
 
-If the `<list>:` prefix is omitted, then the `request` list is
+If the `<list>.` prefix is omitted, then the `request` list is
 assumed.
 
 For EAP methods with tunneled authentication sessions (i.e. PEAP and

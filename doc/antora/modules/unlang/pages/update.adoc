@@ -14,7 +14,7 @@ the named _<list>_.
 
 The `update` statement consists of the following syntax elements:
 
-<list>:: The attribute list which will be updated.  The list is
+<list>.: The attribute list which will be updated.  The list is
 usually `request`, `reply`, or `control`.
 +
 If the _<list>_ qualifier is omitted, then each entry inside of the

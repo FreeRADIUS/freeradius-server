@@ -214,7 +214,7 @@ POST - All attributes and values are urlencoded.
 
 e.g:
 
-`[outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>`
+`[outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attributeN>=<valueN>`
 
 JSON - All attributes and values are escaped according to the JSON specification.
 
@@ -256,7 +256,7 @@ The response format adds three optional fields:
 [source,json]
 ----
 {
-    "[outer.][<list>:]<attribute0>":{
+    "[outer.][<list>.]<attribute0>":{
         "is_json":<bool>,
         "do_xlat":<bool>,
         "op":"<operator>",

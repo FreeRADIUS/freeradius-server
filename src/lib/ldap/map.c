@@ -50,10 +50,10 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, m
 	switch (map->lhs->type) {
 	/*
 	 *	This is a mapping in the form of:
-	 *		<list>: += <ldap attr>
+	 *		<list>. += <ldap attr>
 	 *
 	 *	Where <ldap attr> is:
-	 *		<list>:<attr> <op> <value>
+	 *		<list>.<attr> <op> <value>
 	 *
 	 *	It is to allow for legacy installations which stored
 	 *	RADIUS control and reply attributes in separate LDAP

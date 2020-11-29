@@ -442,14 +442,12 @@ ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
 Attributes may be referenced via the following syntax:
 .DS
 	&Attribute-Name
-	&Attribute-Name:TAG
 	&Attribute-Name[NUM]
-	&<list>:Attribute-Name
-	&<list>:Attribute-Name:TAG[NUM]
+	&<list>.Attribute-Name
 .DE
 Where <list> is one of "request", "reply", "control",
 or "outer.request", "outer.reply", "outer.control",
-just as with the "update" section, above.  The "<list>:"
+just as with the "update" section, above.  The "<list>."
 prefix is optional, and if omitted, is assumed to refer to the
 "request" list.
 

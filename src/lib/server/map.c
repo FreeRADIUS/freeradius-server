@@ -694,7 +694,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
  *
  * Attribute string is in the format (where @verbatim <qu> @endverbatim is a quotation char ['"]):
  @verbatim
-   [<list>:][<qu>]<attribute>[<qu>] <op> [<qu>]<value>[<qu>]
+   [<list>.][<qu>]<attribute>[<qu>] <op> [<qu>]<value>[<qu>]
  @endverbatim
  *
  * @param[in] ctx		where to allocate the map.

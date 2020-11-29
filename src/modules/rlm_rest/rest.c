@@ -684,7 +684,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  * If no qualifiers are specified, will default to the request list.
  *
  * POST response format is:
- * @verbatim [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attribute1>=<value1>&[outer.][<list>:]<attributeN>=<valueN> @endverbatim
+ * @verbatim [outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attribute1>=<value1>&[outer.][<list>.]<attributeN>=<valueN> @endverbatim
  *
  * @see rest_encode_post
  *

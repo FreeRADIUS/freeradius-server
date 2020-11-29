@@ -196,7 +196,7 @@ cache {
 	#
 	update {
 		#
-		#  <list>:<attribute> <op> <value>::
+		#  <list>.<attribute> <op> <value>::
 		#
 
 		#  Cache all instances of `Reply-Message in the reply list.
