@@ -520,7 +520,7 @@ static int mod_open(fr_listen_t *li)
 	 *	Set SO_REUSEPORT before bind, so that all packets can
 	 *	listen on the same destination IP address.
 	 */
-	if (1) {
+	{
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
