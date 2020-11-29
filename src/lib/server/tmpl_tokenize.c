@@ -1913,11 +1913,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *
 	 *      This will either be after:
 	 *	- A zero length list, i.e. just after the prefix '&', in which case we require an attribue
-	 *	- A ':' or '.' and then an allowed char, so we're sure it's not just a bare list ref.
+	 *	- '.' and then an allowed char, so we're sure it's not just a bare list ref.
 	 */
 	if ((list_len == 0) ||
-	    (((fr_sbuff_next_if_char(&our_name, ':') && (vpt->data.attribute.old_list_sep = true)) ||
-	     fr_sbuff_next_if_char(&our_name, '.')) && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
+	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
 						  vpt, t_rules->attr_parent, &our_name, p_rules, t_rules, 0);
 		if (ret < 0) goto error;
@@ -3436,11 +3435,11 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 
 		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, pair_list_table, tmpl_list(vpt), "<INVALID>");
 		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 		}
 	} else if (printed_rr) {			/* Request qualifier with no list qualifier */
 		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, vpt->data.attribute.old_list_sep ? ':' : '.');
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 		}
 	}
 
