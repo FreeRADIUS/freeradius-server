@@ -2176,7 +2176,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	packet.  We don't respond, but we do cache the
 		 *	"do not respond" reply for a period of time.
 		 */
-		if (buffer_len == 1) {
+		if ((buffer_len == 1) || track->do_not_respond) {
 			track->do_not_respond = true;
 			goto setup_timer;
 		}
