@@ -434,6 +434,7 @@ rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
@@ -699,6 +700,7 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/counter
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/main
@@ -709,6 +711,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/mysql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/mysql/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mysql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/mysql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mysql
@@ -725,6 +729,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/postgresql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/postgresql/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/postgresql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/postgresql
@@ -739,6 +745,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/sqlite
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/sqlite/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/sqlite
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/sqlite
@@ -749,6 +757,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/moonshot-targeted-ids/sqlite/*
 #
 # freetds
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mssql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mssql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/mssql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/mssql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mssql
@@ -758,6 +768,8 @@ fi
 #
 # oracle
 %if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/oracle/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
@@ -768,27 +780,32 @@ fi
 
 %files utils
 %defattr(-,root,root)
-/usr/bin/rlm_ippool_tool
-/usr/bin/smbencrypt
+/usr/bin/dhcpclient
+/usr/bin/map_unit
+/usr/bin/rad_counter
+/usr/bin/radattr
 /usr/bin/radclient
+/usr/bin/radcrypt
 /usr/bin/radeapclient
-/usr/bin/radwho
-/usr/bin/radsniff
 /usr/bin/radlast
 /usr/bin/radtest
-/usr/bin/radzap
+/usr/bin/radsniff
 /usr/bin/radsqlrelay
-/usr/bin/radcrypt
+/usr/bin/radwho
+/usr/bin/radzap
+/usr/bin/rlm_ippool_tool
+/usr/bin/smbencrypt
 # man-pages
 %doc %{_mandir}/man1/dhcpclient.1.gz
-%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/rad_counter.1.gz
+%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
+%doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
 %doc %{_mandir}/man1/radzap.1.gz
-%doc %{_mandir}/man8/radsqlrelay.8.gz
+%doc %{_mandir}/man8/rlm_ippool_tool.8.gz
 
 %files perl-util
 %defattr(-,root,root)
