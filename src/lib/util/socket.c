@@ -898,8 +898,17 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			/*
 			 *	The internet hints that CAP_NET_RAW
 			 *	is required to use SO_BINDTODEVICE.
+			 *
+			 *	This function also sets fr_strerror()
+			 *	on failure, which will be seen if the
+			 *	bind fails.  If the bind succeeds,
+			 *	then we don't really care that the
+			 *	capability change has failed.  We must
+			 *	already have that capability.
 			 */
-			(void)fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE);	/* Sets error on failure, which will be seen if the bind fails */
+#ifdef HAVE_CAPABILITY_H
+			(void)fr_cap_enable(CAP_NET_RAW, CAP_EFFECTIVE);
+#endif
 			ret = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
 			if (ret < 0) {
 				fr_strerror_printf_push("Bind failed on interface %s: %s",
