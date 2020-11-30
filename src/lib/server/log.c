@@ -790,7 +790,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
 				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
 			log_request_pair_list(lvl, request, vp, (fr_pair_t *) vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
+			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
 			continue;
 		}
 		default:
