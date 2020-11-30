@@ -1626,6 +1626,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		if (n_ar) {
 			ar = n_ar;
 			list_head = &curr->vp_group;
+			list_ctx = curr;	/* Allocations are under the group */
 			_tmpl_cursor_init(list_ctx, list_head, ar, &cc);
 			curr = *list_head;
 			prev = NULL;
