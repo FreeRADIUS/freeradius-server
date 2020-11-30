@@ -137,7 +137,7 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     ar->num != NUM_ANY ? "]" : "",
 			     ar->da->attr
 		);
-		if (ar->da->parent) FR_FAULT_LOG("\t    parent     : %s", ar->da->parent->name);
+		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s", ar->ar_parent->name);
 		FR_FAULT_LOG("\t    is_raw     : %s", ar->da->flags.is_raw ? "yes" : "no");
 		FR_FAULT_LOG("\t    is_unknown : %s", ar->da->flags.is_unknown ? "yes" : "no");
 		break;
@@ -151,6 +151,8 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     ar->num != NUM_ANY ? "[" : "",
 			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
 			     ar->num != NUM_ANY ? "]" : "");
+		if (ar->ar_parent) 			FR_FAULT_LOG("\t    parent     : %s", ar->ar_parent->name);
+		if (ar->ar_unresolved_namespace)	FR_FAULT_LOG("\t    namespace  : %s", ar->ar_unresolved_namespace->name);
 		break;
 
 	default:
@@ -804,6 +806,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
 	}
+	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
 
 	TMPL_ATTR_VERIFY(vpt);
 
@@ -855,6 +858,10 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
 	}
+	/*
+	 *	FIXME - Should be calculated from existing ar
+	 */
+	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
 
 	TMPL_ATTR_VERIFY(vpt);
 
@@ -1249,9 +1256,10 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  *	- <0 on error.
  *	- 0 on success.
  */
-static inline CC_HINT(nonnull(3,5))
+static inline CC_HINT(nonnull(3,6))
 int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-					   tmpl_t *vpt, fr_dict_attr_t const *parent,
+					   tmpl_t *vpt,
+					   fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 					   fr_sbuff_t *name, tmpl_rules_t const *rules,
 					   unsigned int depth)
 {
@@ -1308,7 +1316,8 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 		.ar_num = NUM_ANY,
 		.ar_type = TMPL_ATTR_TYPE_UNRESOLVED,
 		.ar_unresolved = unresolved,
-		.ar_unresolved_parent = parent
+		.ar_unresolved_namespace = namespace,
+		.ar_parent = parent,
 	};
 
 	if (tmpl_attr_parse_filter(err, ar, name) < 0) goto error;
@@ -1323,7 +1332,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	 *	future OID components are also unresolved.
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, name, rules, depth + 1);
+		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, NULL, name, rules, depth + 1);
 		if (ret < 0) {
 			fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			return -1;
@@ -1340,7 +1349,8 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
  * @param[in] ctx		to allocate new attribute reference in.
  * @param[out] err		Parse error.
  * @param[in,out] vpt		to append this reference to.
- * @param[in] parent		Result of parsing the previous attribute reference.
+ * @param[in] parent		Parent to associate with the attribute reference.
+ * @param[in] namespace		Where to search to resolve the next reference.
  * @param[in] name		to parse.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] t_rules		which places constraints on attribute reference parsing.
@@ -1363,7 +1373,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
  */
 static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					      tmpl_t *vpt,
-					      fr_dict_attr_t const *parent,
+					      fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 					      fr_sbuff_t *name,
 					      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 					      unsigned int depth)
@@ -1403,13 +1413,46 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 								    t_rules->dict_def,
 								    name, p_rules ? p_rules->terminals : NULL,
 								    !t_rules->disallow_internal);
+		/*
+		 *	We can't know which dictionary the
+		 *	attribute will be resolved in, so the
+		 *	only way of recording the parent is
+		 *	by looking at the da.
+		 */
+		if (da) parent = da->parent;
 	/*
 	 *	Otherwise we're resolving in the context of the last component,
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		slen = fr_dict_attr_by_name_substr(&dict_err, &da, parent,
-						   name, p_rules ? p_rules->terminals : NULL);
+		slen = fr_dict_attr_by_name_substr(&dict_err,
+						   &da,
+						   namespace,
+						   name,
+						   p_rules ? p_rules->terminals : NULL);
+		/*
+		 *	Allow fallback to internal attributes
+		 *	if the parent was a group, and we're
+		 *	allowing internal resolution.
+		 *
+		 *	Discard any errors here... It's more
+		 *	useful to have the original.
+		 */
+		if (!da && !vpt->rules.disallow_internal &&
+		    (ar = fr_dlist_tail(&vpt->data.attribute.ar)) && (ar->type == TMPL_ATTR_TYPE_NORMAL) &&
+		    (ar->ar_da->type == FR_TYPE_GROUP)) {
+			ssize_t tmp_slen;
+
+			tmp_slen = fr_dict_attr_by_name_substr(NULL,
+							       &da, fr_dict_root(fr_dict_internal()),
+							       name,
+							       p_rules ? p_rules->terminals : NULL);
+			if (da) {
+				dict_err = FR_DICT_ATTR_OK;
+				slen = tmp_slen;
+				parent = fr_dict_root(fr_dict_internal());
+			}
+		}
 	}
 
 	/*
@@ -1437,10 +1480,33 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_ANY,
 			.ar_type = TMPL_ATTR_TYPE_NORMAL,
-			.ar_da = da
+			.ar_da = da,
+			.ar_parent = parent
 		};
 
 		goto check_attr;
+	}
+
+	/*
+	 *	Locating OID/Unresolved attributes is
+	 *	different than locating named attributes
+	 *	because we have significantly more numberspace
+	 *	overlap between the protocols so we can't just go
+	 *	hunting and expect to hit the right
+	 *	dictionary.
+	 *
+	 *	FIXME - We should really fix the above named
+	 *	resolution calls to hunt for a dictionary prefix
+	 *	first, and then run the rest of the logic in this
+	 *	function.
+	 */
+	if (!namespace && t_rules->dict_def) parent = namespace = fr_dict_root(t_rules->dict_def);
+	if (!namespace && !t_rules->disallow_internal) parent = namespace = fr_dict_root(fr_dict_internal());
+	if (!namespace) {
+		fr_strerror_printf("Attribute references must be qualified with a protocol when used here");
+		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
+		fr_sbuff_set(name, &m_s);
+		goto error;
 	}
 
 	/*
@@ -1456,25 +1522,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		fr_strerror();	/* Clear out any existing errors */
 
 		/*
-		 *	Locating OID attributes is different than
-		 *	locating named attributes because we have
-		 *	significantly more numberspace overlap
-		 *	between the protocols.
-		 */
-		if (!parent && t_rules->dict_def) parent = fr_dict_root(t_rules->dict_def);
-		if (!parent && !t_rules->disallow_internal) parent = fr_dict_root(fr_dict_internal());
-		if (!parent) {
-			fr_strerror_printf("OID references must be qualified with a protocol when used here");
-			if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
-			fr_sbuff_set(name, &m_s);
-			goto error;
-		}
-		/*
 		 *	If it's numeric and not a known attribute
 		 *      then we create an unknown attribute with
 		 *	the specified attribute number.
 		 */
-		da = fr_dict_attr_child_by_num(parent, oid);
+		da = fr_dict_attr_child_by_num(namespace, oid);
 		if (da) {
 			/*
 			 *	The OID component was a known attribute
@@ -1486,6 +1538,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 				.ar_num = NUM_ANY,
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
 				.ar_da = da,
+				.ar_parent = parent,
 			};
 			vpt->data.attribute.was_oid = true;
 
@@ -1501,9 +1554,9 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 
 		MEM(ar = talloc(ctx, tmpl_attr_t));
 
-		switch (parent->type) {
+		switch (namespace->type) {
 		case FR_TYPE_VSA:
-			da_unknown = fr_dict_unknown_vendor_afrom_num(ar, parent, oid);
+			da_unknown = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
 			if (!da_unknown) {
 				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
@@ -1511,7 +1564,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			break;
 
 		default:
-			da_unknown = fr_dict_unknown_attr_afrom_num(ar, parent, oid);
+			da_unknown = fr_dict_unknown_attr_afrom_num(ar, namespace, oid);
 			if (!da_unknown) {
 				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
 				goto error;
@@ -1525,6 +1578,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			.ar_type = TMPL_ATTR_TYPE_UNKNOWN,
 			.ar_unknown = da_unknown,
 			.ar_da = da_unknown,
+			.ar_parent = parent,
 		};
 		da = da_unknown;
 		vpt->data.attribute.was_oid = true;
@@ -1551,7 +1605,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, name, t_rules, depth);
+	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, namespace, name, t_rules, depth);
 
 check_attr:
 	/*
@@ -1631,9 +1685,16 @@ do_suffix:
 		/*
 		 *	If this is a group then the parent is the
 		 *	group ref.
+		 *
+		 *	The dictionary resolution functions will
+		 *	automatically follow the ref, so we don't
+		 *	need to do it here, especially as some
+		 *	of the logic in this function depends
+		 *	on having the group attribute and not what
+		 *	it points to.
 		 */
 		case FR_TYPE_GROUP:
-			parent = fr_dict_attr_ref(da);
+			parent = namespace = fr_dict_attr_ref(da);
 			break;
 
 		case FR_TYPE_STRUCT:
@@ -1655,8 +1716,10 @@ do_suffix:
 			 */
 			if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
 				TALLOC_FREE(ar);
+			} else {
+				parent = da;	/* Only update the parent if we're not stripping */
 			}
-			parent = da;
+			namespace = da;
 			break;
 
 		default:
@@ -1672,7 +1735,7 @@ do_suffix:
 		}
 
 		if (ar) tmpl_attr_insert(vpt, ar);
-		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, name, p_rules, t_rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, namespace, name, p_rules, t_rules, depth + 1) < 0) {
 			if (ar) fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
 		}
@@ -1919,7 +1982,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if ((list_len == 0) ||
 	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
-						  vpt, t_rules->attr_parent, &our_name, p_rules, t_rules, 0);
+						  vpt,
+						  t_rules->attr_parent, t_rules->attr_parent,
+						  &our_name, p_rules, t_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -2875,23 +2940,49 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
  */
 static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 {
-	tmpl_attr_t		*ar = NULL;
-	fr_dict_attr_t const	*parent = NULL;
+	tmpl_attr_t		*ar = NULL, *next, *prev;
 	fr_dict_attr_t const	*da;
 
 	fr_assert(tmpl_is_attr_unresolved(vpt));
+
+	TMPL_VERIFY(vpt);
+
+	/*
+	 *	First component is special becase we may need
+	 *	to search for it in multiple dictionaries.
+	 *
+	 *	This emulates what's done in the initial
+	 *	tokenizer function.
+	 */
+	ar = fr_dlist_head(&vpt->data.attribute.ar);
+	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
+		(void)fr_dict_attr_search_by_name_substr(NULL,
+							 &da,
+							 vpt->rules.dict_def,
+							 &FR_SBUFF_IN(ar->ar_unresolved,
+							 	      talloc_array_length(ar->ar_unresolved) - 1),
+							 NULL,
+							 !vpt->rules.disallow_internal);
+		if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
+
+		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
+		ar->ar_da = da;
+
+		/*
+		 *	Reach into the next reference
+		 *	and correct its parent.
+		 */
+		next = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		if (next) next->ar_parent = da;
+	}
 
 	/*
 	 *	Loop, resolving each unresolved attribute in turn
 	 */
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		ssize_t		slen;
-		bool		is_raw;
-
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
-			parent = ar->ar_da;
-			continue;
+			continue;	/* Don't need to resolve */
 
 		case TMPL_ATTR_TYPE_UNKNOWN:
 			return -1;	/* Unknown attributes must be resolved first */
@@ -2900,44 +2991,59 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 			break;
 		}
 
-		is_raw = ar->ar_unresolved_raw;
-
+		(void)fr_dict_attr_by_name_substr(NULL,
+						  &da,
+						  ar->ar_unresolved_namespace,
+						  &FR_SBUFF_IN(ar->ar_unresolved,
+						  	       talloc_array_length(ar->ar_unresolved) - 1),
+						  NULL);
 		/*
-		 *	Fallback to internal if we're
-		 *	allowed to.
+		 *	Still can't resolve, check to see if
+		 *	the last attribute reference was a
+		 *	group.
 		 *
-		 *	FIXME - We should be using a function which implements
-		 *	fallback to internal, but doesn't look for a dictionary
-		 *	qualifier.
-		 *
-		 *	It should be the same logic as the original parse
-		 *	function.
+		 *	If it was, then we may be able to
+		 *	fall back to resolving the attribute
+		 *	in the internal dictionary.
 		 */
-		if (!parent) {
-			slen = fr_dict_attr_search_by_qualified_name_substr(NULL, &da, vpt->rules.dict_def,
-								     	    &FR_SBUFF_IN(ar->ar_unresolved,
-											 strlen(ar->ar_unresolved)),
-									    NULL,
-									    !vpt->rules.disallow_internal);
-		} else {
-			slen = fr_dict_attr_by_name_substr(NULL, &da, parent,
-							   &FR_SBUFF_IN(ar->ar_unresolved, strlen(ar->ar_unresolved)),
-							   NULL);
+		if (!da) {
+			prev = fr_dlist_prev(&vpt->data.attribute.ar, ar);
+			if (!vpt->rules.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
+				(void)fr_dict_attr_by_name_substr(NULL,
+								  &da,
+								  fr_dict_root(fr_dict_internal()),
+								  &FR_SBUFF_IN(ar->ar_unresolved,
+									       talloc_array_length(ar->ar_unresolved) - 1),
+								  NULL);
+			}
+			if (!da) return -2;
 		}
-		if (slen <= 0) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
 		/*
 		 *	Known attribute, just rewrite.
 		 */
-		ar->da = da;
-		parent = ar->da;
+		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
+		ar->ar_da = da;
+
+		/*
+		 *	Parent should have been corrected in
+		 *	the previous loop iteration.
+		 */
+		fr_assert(ar->ar_parent && !ar->ar_parent->flags.is_unknown);
+
+		/*
+		 *	Reach into the next reference
+		 *	and correct its parent.
+		 */
+		next = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		if (next) next->ar_parent = da;
 
 		/*
 		 *	If the user wanted the leaf
 		 *	to be raw, and it's not, correct
 		 *	that now.
 		 */
-		if (is_raw) attr_to_raw(vpt, ar);
+		if (ar->ar_unresolved_raw) attr_to_raw(vpt, ar);
 	}
 
 	vpt->type ^= TMPL_FLAG_UNRESOLVED;
@@ -2966,6 +3072,7 @@ static inline CC_HINT(always_inline) int tmpl_xlat_resolve(tmpl_t *vpt)
 	if (xlat_resolve(&vpt->data.xlat.ex, &vpt->data.xlat.flags, false) < 0) return -1;
 
 	vpt->type ^= TMPL_FLAG_UNRESOLVED;
+	TMPL_VERIFY(vpt);
 
 	return 0;
 }
@@ -3014,11 +3121,10 @@ int tmpl_resolve(tmpl_t *vpt)
 			if (ret < 0) goto done;
 		}
 		vpt->type = TMPL_TYPE_DATA;
+		TMPL_VERIFY(vpt);
 	}
 
 done:
-	TMPL_VERIFY(vpt);
-
 	return ret;
 }
 
@@ -3204,7 +3310,7 @@ int tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type)
  */
 int tmpl_attr_unknown_add(tmpl_t *vpt)
 {
-	tmpl_attr_t		*ar = NULL, *next_ar = NULL;;
+	tmpl_attr_t		*ar = NULL, *next = NULL;;
 
 	if (!vpt) return 1;
 
@@ -3222,14 +3328,14 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 			continue;
 
 		case TMPL_ATTR_TYPE_UNRESOLVED:		/* Shouldn't have been called */
-			fr_assert(0);
+			fr_strerror_printf("Remaining attributes are unresolved");
 			return -1;
 
 		case TMPL_ATTR_TYPE_UNKNOWN:
 			break;
 		}
 
-		unknown = ar->ar_da;
+		unknown = ar->ar_unknown;
 		known = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
 		if (!known) return -1;
 
@@ -3237,11 +3343,12 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	Fixup the parent of the next unknown
 		 *	now it's known.
 		 */
-		next_ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
-		if (next_ar && (next_ar->type == TMPL_ATTR_TYPE_UNKNOWN) &&
-		    (next_ar->ar_da->parent == unknown)) {
-			if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next_ar->ar_da),
+		next = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		if (next && (next->type == TMPL_ATTR_TYPE_UNKNOWN) &&
+		    (next->ar_da->parent == unknown)) {
+			if (fr_dict_attr_unknown_parent_to_known(fr_dict_attr_unconst(next->ar_da),
 								 known) < 0) return -1;
+			next->ar_parent = known;
 		}
 
 		/*
@@ -3267,7 +3374,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		if (!ar->ar_da->flags.is_raw) {
 			fr_dict_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
-		} else if (!fr_cond_assert(!next_ar)) {
+		} else if (!fr_cond_assert(!next)) {
 			fr_strerror_printf("Only the leaf may be raw");
 			return -1;
 		}
@@ -3387,7 +3494,6 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 {
 	tmpl_request_t		*rr = NULL;
 	tmpl_attr_t		*ar = NULL;
-	fr_dict_attr_t const	*parent = NULL;
 	fr_da_stack_t		stack;
 	char			printed_rr = false;
 	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
@@ -3435,13 +3541,13 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 		if (printed_rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
 		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, pair_list_table, tmpl_list(vpt), "<INVALID>");
-		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-		}
-	} else if (printed_rr) {			/* Request qualifier with no list qualifier */
-		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) {
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-		}
+		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+
+	/*
+	 *	Request qualifier with no list qualifier
+	 */
+	} else if (printed_rr) {
+		if (fr_dlist_num_elements(&vpt->data.attribute.ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 
 	/*
@@ -3471,16 +3577,36 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 	 */
 	ar = NULL;
 	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
-		fr_dict_attr_t const *ref = NULL;
+		tmpl_attr_t		*prev = NULL;
 
 		if (!tmpl_is_list(vpt)) switch(ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
 		case TMPL_ATTR_TYPE_UNKNOWN:
 		{
-			unsigned int i;
+			int	i, depth = 0;
 
-			fr_proto_da_stack_build_partial(&stack, parent, ar->ar_da);
-			if (!parent) parent = stack.da[0];
+			fr_assert(ar->ar_parent);	/* All normal and unknown attributes must have parents */
+
+			fr_proto_da_stack_build_partial(&stack, ar->ar_parent, ar->ar_da);
+
+			/*
+			 *	First component in the list has everything built
+			 */
+			if (ar == fr_dlist_head(&vpt->data.attribute.ar)) {
+				depth = ar->ar_parent->depth - 1;	/* Adjust for array index */
+			/*
+			 *	Everything else skips the first component
+			 */
+			} else {
+				depth = ar->ar_parent->depth;
+			}
+
+			/*
+			 *	Root attributes will be skipped by the build
+			 *	function, so da[0] contains the attribute
+			 *	we're looking for.
+			 */
+			if (depth < 0) depth = 0;
 
 			/*
 			 *	Print from our parent depth to the AR we're processing
@@ -3488,23 +3614,14 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 			 *	For refs we skip the attribute pointed to be the ref
 			 *	and just print its children.
 			 */
-			for (i = (parent->depth - 1) + (ar != fr_dlist_head(&vpt->data.attribute.ar));
-			     i < ar->ar_da->depth;
-			     i++) {
+			for (i = depth; (unsigned int)i < ar->ar_da->depth; i++) {
 				FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
 
 				/*
 				 *	Print intermediary separators
 				 *	if necessary.
 				 */
-				if ((i + 1) < ar->ar_da->depth) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-			}
-
-			parent = ar->ar_da;
-			ref = fr_dict_attr_ref(parent);
-			if (ref) {
-				parent = ref;	/* Follow refs */
-				if (parent->flags.is_root) parent = NULL;	/* Else everything goes boom */
+				if (((unsigned int)i + 1) < ar->ar_da->depth) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 			}
 		}
 			break;
@@ -3515,18 +3632,22 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 		 */
 		case TMPL_ATTR_TYPE_UNRESOLVED:
 		{
-			unsigned int i;
+			unsigned int	i, depth;
 
 			/*
 			 *	This is the first unresolved component in a potential
 			 *	chain of unresolved components.  Print the path up to
 			 *	the last known parent.
 			 */
-			if (ar->ar_unresolved_parent && !ar->ar_unresolved_parent->flags.is_root) {
-				fr_proto_da_stack_build_partial(&stack, parent, ar->ar_unresolved_parent);
-				if (!parent) parent = stack.da[0];
+			if (ar->ar_parent && !ar->ar_parent->flags.is_root) {
+				fr_proto_da_stack_build_partial(&stack, ar->ar_parent, ar->ar_parent);
+				if (ar->ar_parent->flags.is_root) {
+					depth = 0;
+				} else {
+					depth = ar->ar_parent->depth - 1;
+				}
 
-				for (i = (parent->depth - 1); i < ar->ar_unresolved_parent->depth; i++) {
+				for (i = depth; i < ar->ar_parent->depth; i++) {
 					FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
 					FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 				}
@@ -3781,7 +3902,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 	 *	Known attribute cannot come after unresolved or unknown attributes
 	 *	Unknown attributes cannot come after unresolved attributes
 	 */
-	while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
+	if (!tmpl_is_list(vpt)) while ((ar = fr_dlist_next(&vpt->data.attribute.ar, ar))) {
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
 			if (seen_unknown) {
@@ -3804,10 +3925,16 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 						     ar->da->name,
 						     ar->ar_unresolved);
 			}
+			fr_fatal_assert_msg(ar->ar_parent,
+					    "CONSISTENCY CHECK FAILED %s[%u]: attr ref missing parent",
+					    file, line);
 			break;
 
 		case TMPL_ATTR_TYPE_UNRESOLVED:
 			seen_unresolved = ar;
+			fr_fatal_assert_msg(ar->ar_unresolved_namespace,
+					    "CONSISTENCY CHECK FAILED %s[%u]: unresolved attr ref missing namespace",
+					    file, line);
 			break;
 
 		case TMPL_ATTR_TYPE_UNKNOWN:

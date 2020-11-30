@@ -756,7 +756,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	map->lhs = tmpl_alloc(map, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0);
 	if (!map->lhs) goto oom;
 
-	tmpl_attr_set_da(map->lhs, vp->da);
+	tmpl_attr_set_leaf_da(map->lhs, vp->da);
 	tmpl_attr_set_leaf_num(map->lhs, NUM_ANY);
 
 	tmpl_attr_set_request(map->lhs, rules->request_def);
