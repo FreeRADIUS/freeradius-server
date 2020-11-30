@@ -2207,9 +2207,26 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		break;
 
        case FR_TYPE_STRUCTURAL:
-	       if (!vp->vp_group) break;
+       {
+		fr_pair_t	*child;
+		fr_cursor_t	cursor;
 
-	       fr_pair_list_verify(file, line, vp, &vp->vp_group);
+		for (child = fr_cursor_init(&cursor, &vp->vp_group);
+		     child;
+		     child = fr_cursor_next(&cursor)) {
+			TALLOC_CTX *parent = talloc_parent(child);
+
+			fr_fatal_assert_msg(parent == vp,
+					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "by fr_pair_t \"%s\".  Expected talloc parent %p (%s) got %p (%s)",
+					    file, line,
+					    child->da->name, vp->da->name,
+					    vp, talloc_get_name(vp),
+					    parent, talloc_get_name(parent));
+
+			fr_pair_verify(file, line, child);
+		}
+	}
 	       break;
 
 	default:
