@@ -166,7 +166,7 @@ void fr_proto_da_stack_build_partial(fr_da_stack_t *stack, fr_dict_attr_t const 
 {
 	fr_dict_attr_t const	*da_p, **da_q, **da_o;
 
-	if (!parent) {
+	if (!parent || (parent->depth == 0)) {
 		fr_proto_da_stack_build(stack, da);
 		return;
 	}

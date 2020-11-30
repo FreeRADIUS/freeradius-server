@@ -2349,7 +2349,7 @@ error:
  * the attribute identifier.
  */
 static inline CC_HINT(always_inline)
-ssize_t dict_attr_qualified_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 				   fr_dict_t const *dict_def,
 				   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
 				   bool fallback, dict_attr_resolve_func_t func)
@@ -2394,6 +2394,12 @@ ssize_t dict_attr_qualified_search(fr_dict_attr_err_t *err, fr_dict_attr_t const
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
  *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute in the top level namespace.
+ *
+ * This attribute may be qualified with `<protcol>.` to selection an attribute
+ * in a specific case.
+ *
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
  *
@@ -2408,12 +2414,91 @@ ssize_t dict_attr_qualified_search(fr_dict_attr_err_t *err, fr_dict_attr_t const
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					     fr_dict_t const *dict_def,
-					     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-					     bool fallback)
+ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						     fr_dict_t const *dict_def,
+						     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+						     bool fallback)
 {
-	return dict_attr_qualified_search(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+}
+
+/** Locate a #fr_dict_attr_t by its name in the top level namespace of a dictionary
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute in the top level namespace.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					   fr_dict_t const *dict_def,
+					   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+					   bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+}
+
+/** Locate a qualified #fr_dict_attr_t by a dictionary qualified OID string
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] in		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						    fr_dict_t const *dict_def,
+						    fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+}
+
+/** Locate a qualified #fr_dict_attr_t by a dictionary using a non-qualified OID string
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] in		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					  fr_dict_t const *dict_def,
+					  fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
 }
 
 /** Look up a dictionary attribute by a name embedded in another string
@@ -2532,29 +2617,6 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 	return dict_attr_by_name(err, parent, name);
 }
 
-/** Locate a qualified #fr_dict_attr_t by a dictionary qualified OID string
- *
- * @note If calling this function from the server any list or request qualifiers
- *  should be stripped first.
- *
- * @param[out] err		Why parsing failed. May be NULL.
- *				@see fr_dict_attr_err_t
- * @param[out] out		Dictionary found attribute.
- * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] in		Dictionary/Attribute name.
- * @param[in] tt		Terminal strings.
- * @param[in] fallback		If true, fallback to the internal dictionary.
- * @return
- *	- <= 0 on failure.
- *	- The number of bytes of name consumed on success.
- */
-ssize_t fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					     fr_dict_t const *dict_def,
-					     fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
-{
-	return dict_attr_qualified_search(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
-}
-
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
  *
  * @param[out] err		Why parsing failed. May be NULL.
@@ -2573,7 +2635,7 @@ fr_dict_attr_t const *fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err, fr_
 
 	fr_sbuff_init(&our_name, name, strlen(name) + 1);
 
-	slen = fr_dict_attr_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
+	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
 	if (slen <= 0) return NULL;
 
 	if ((size_t)slen != fr_sbuff_len(&our_name)) {
