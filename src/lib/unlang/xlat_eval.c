@@ -579,7 +579,10 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 	 *	virtual.
 	 */
 	if (!vp) {
-		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
+		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+			tmpl_cursor_clear(&cc);
+			return xlat_eval_pair_virtual(ctx, out, request, vpt);
+		}
 
 		/*
 		 *	Zero count.
@@ -589,17 +592,16 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 			if (!value) {
 			oom:
 				fr_strerror_printf("Out of memory");
+
 				tmpl_cursor_clear(&cc);
 				return XLAT_ACTION_FAIL;
 			}
 			value->datum.int32 = 0;
 			fr_cursor_append(out, value);
 			fr_cursor_next(out);			/* Advance to our first value */
+		} /* Fall through to being done */
 
-			return XLAT_ACTION_DONE;
-		}
-
-		return XLAT_ACTION_DONE;
+		goto done;
 	}
 
 
@@ -619,16 +621,14 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 		value->datum.uint32 = count;
 		fr_cursor_append(out, value);
 		fr_cursor_next(out);				/* Advance to our first value */
-		tmpl_cursor_clear(&cc);
-
-		return XLAT_ACTION_DONE;
+		goto done;
 	}
 
 	/*
 	 *	Output multiple #value_box_t, one per attribute.
 	 */
 	case NUM_ALL:
-		if (!fr_cursor_current(&cursor)) return XLAT_ACTION_DONE;
+		if (!fr_cursor_current(&cursor)) goto done;
 
 		/*
 		 *	Loop over all matching #fr_value_pair
@@ -642,9 +642,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 			fr_cursor_append(out, value);
 		}
 		fr_cursor_next(out);				/* Advance to our first value */
-		tmpl_cursor_clear(&cc);
-
-		return XLAT_ACTION_DONE;
+		break;
 
 	default:
 		/*
@@ -658,10 +656,12 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_cursor_append(out, value);
 		fr_cursor_next(out);				/* Advance to our first value */
-		tmpl_cursor_clear(&cc);
-
-		return XLAT_ACTION_DONE;
+		break;
 	}
+
+done:
+	tmpl_cursor_clear(&cc);
+	return XLAT_ACTION_DONE;
 }
 
 #ifdef DEBUG_XLAT
