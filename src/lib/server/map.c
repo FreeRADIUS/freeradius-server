@@ -427,7 +427,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		 */
 		if (tmpl_resolve(map->rhs) < 0) goto error;
 
-	} else if (tmpl_is_attr(map->lhs)) {
+	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
 		/*
 		 *	If the operator is "true" or "false", just
 		 *	cast the RHS to string, as no one will care
