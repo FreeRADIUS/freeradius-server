@@ -224,7 +224,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 
 	case FR_TYPE_STRUCT:
 		slen = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv,
-					       decode_value_trampoline, decoder_ctx);
+					      decoder_ctx, decode_value_trampoline, NULL);
 		if (slen < 0) return slen;
 
 		if (tlv) {

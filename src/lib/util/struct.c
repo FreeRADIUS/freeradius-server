@@ -64,8 +64,8 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       fr_dict_attr_t const **child_p,
-			       fr_decode_value_t decode_value, void *decoder_ctx)
+			       fr_dict_attr_t const **child_p, void *decoder_ctx,
+			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -323,7 +323,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
 			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
-						      decode_value, decoder_ctx);
+						      decoder_ctx, decode_value, decode_tlv);
 			if (slen <= 0) goto unknown_child;
 			p += slen;
 		}

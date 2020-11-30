@@ -1447,7 +1447,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	into a contiguous memory buffer.
 		 */
 		ret = fr_struct_from_network(ctx, cursor, parent, p, attr_len, &child,
-					     decode_value, decoder_ctx);
+					     decoder_ctx, decode_value, NULL);
 		if (ret < 0) goto raw;
 
 		/*
