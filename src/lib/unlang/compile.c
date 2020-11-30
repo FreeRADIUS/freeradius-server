@@ -610,21 +610,26 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 	 *	Sanity check sublists.
 	 */
 	if (map->child) {
+		fr_dict_attr_t const *da;
+
 		if (!tmpl_is_attr(map->lhs)) {
 			cf_log_err(map->ci, "Sublists can only be assigned to a known attribute");
 			return false;
 		}
 
-		switch (tmpl_da(map->lhs)->type) {
+		da = tmpl_da(map->lhs);
+
+		switch (da->type) {
 		case FR_TYPE_STRUCTURAL:
-			cf_log_err(map->ci, "Sublists can only be assigned to structural attributes");
-			return false;
+			break;
 
 		default:
-			break;
+			cf_log_err(map->ci, "Sublists can only be assigned to structural attributes, not to type %s",
+				fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+			return false;
 		}
 
-		return pass2_fixup_update_map(map->child, rules, tmpl_da(map->lhs));
+		return pass2_fixup_update_map(map->child, rules, da);
 	}
 
 	return true;
