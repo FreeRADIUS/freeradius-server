@@ -116,10 +116,11 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
  *
  */
 bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_TLV] = true,
+	[FR_TYPE_GROUP] = true,
 	[FR_TYPE_STRUCT] = true,
-	[FR_TYPE_VSA] = true,
-	[FR_TYPE_VENDOR] = true
+	[FR_TYPE_TLV] = true,
+	[FR_TYPE_VENDOR] = true,
+	[FR_TYPE_VSA] = true
 };
 
 /*

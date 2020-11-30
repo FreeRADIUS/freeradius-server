@@ -4052,7 +4052,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 			break;
 
-		case FR_TYPE_TLV:
+		case FR_TYPE_STRUCTURAL:
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA is of type TLV",
 					     file, line);
 

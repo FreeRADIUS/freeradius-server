@@ -615,10 +615,13 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 			return false;
 		}
 
-		if ((tmpl_da(map->lhs)->type != FR_TYPE_GROUP) &&
-		    (tmpl_da(map->lhs)->type != FR_TYPE_TLV)) {
-			cf_log_err(map->ci, "Sublists can only be assigned to attributes of type 'group' or 'tlv'");
+		switch (tmpl_da(map->lhs)->type) {
+		case FR_TYPE_STRUCTURAL:
+			cf_log_err(map->ci, "Sublists can only be assigned to structural attributes");
 			return false;
+
+		default:
+			break;
 		}
 
 		return pass2_fixup_update_map(map->child, rules, tmpl_da(map->lhs));
