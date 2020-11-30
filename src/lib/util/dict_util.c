@@ -2267,46 +2267,24 @@ typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
 /** Internal function for searching for attributes in multiple dictionaries
  *
  */
-static inline CC_HINT(always_inline) ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-							      fr_dict_t const *dict_def,
-							      fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-							      bool fallback, dict_attr_resolve_func_t func)
+static inline CC_HINT(always_inline)
+ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+		         fr_dict_t const *dict_def,
+		         fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+		         bool fallback, dict_attr_resolve_func_t func)
 {
 	fr_dict_attr_err_t	our_err;
 	fr_hash_iter_t  	iter;
-	fr_dict_t		*dict = NULL, *initial;
+	fr_dict_t		*dict = NULL;
 
 	ssize_t			slen;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 
-	INTERNAL_IF_NULL(dict_def, -1);
-
 	/*
-	 *	Check for dictionary prefix
+	 *	dict_def search in the specified dictionary
 	 */
-	slen = dict_by_protocol_substr(&our_err, &initial, &our_in, dict_def);
-	if (our_err != FR_DICT_ATTR_OK) goto error;
-
-	/*
- 	 *	Has dictionary qualifier, can't fallback
-	 */
-	if (slen > 0) {
-		/*
-		 *	Next thing SHOULD be a '.'
-		 */
-		if (!fr_sbuff_next_if_char(&our_in, '.')) {
-			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			return 0;
-		}
-
-		fallback = false;
-	}
-
-	/*
-	 *	Initial search in the specified dictionary
-	 */
-	if (initial) {
-		slen = func(&our_err, out, fr_dict_root(initial), &our_in, tt);
+	if (dict_def) {
+		slen = func(&our_err, out, fr_dict_root(dict_def), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
 			return fr_sbuff_set(in, &our_in);
@@ -2342,7 +2320,7 @@ static inline CC_HINT(always_inline) ssize_t dict_attr_search(fr_dict_attr_err_t
 	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
-		if (dict == initial) continue;
+		if (dict == dict_def) continue;
 		if (dict == dict_gctx->internal) continue;
 
 		(void)func(&our_err, out, fr_dict_root(dict), &our_in, tt);
@@ -2363,6 +2341,55 @@ error:
 	*out = NULL;
 
 	FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+}
+
+/** Internal function for searching for attributes in multiple dictionaries
+ *
+ * Unlike #dict_attr_search this function searches for a protocol name preceding
+ * the attribute identifier.
+ */
+static inline CC_HINT(always_inline)
+ssize_t dict_attr_qualified_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+				   fr_dict_t const *dict_def,
+				   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+				   bool fallback, dict_attr_resolve_func_t func)
+{
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_dict_attr_err_t	our_err;
+	fr_dict_t 		*initial;
+	ssize_t			slen;
+
+	/*
+	 *	Check for dictionary prefix
+	 */
+	slen = dict_by_protocol_substr(&our_err, &initial, &our_in, dict_def);
+	if (our_err != FR_DICT_ATTR_OK) {
+	error:
+		if (err) *err = our_err;
+		*out = NULL;
+
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+	}
+
+	/*
+ 	 *	Has dictionary qualifier, can't fallback
+	 */
+	if (slen > 0) {
+		/*
+		 *	Next thing SHOULD be a '.'
+		 */
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			return 0;
+		}
+
+		fallback = false;
+	}
+
+	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, fallback, func);
+	if (our_err != FR_DICT_ATTR_OK) goto error;
+
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -2386,7 +2413,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 					     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
 					     bool fallback)
 {
-	return dict_attr_search(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+	return dict_attr_qualified_search(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
 }
 
 /** Look up a dictionary attribute by a name embedded in another string
@@ -2525,7 +2552,7 @@ ssize_t fr_dict_attr_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_at
 					     fr_dict_t const *dict_def,
 					     fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
 {
-	return dict_attr_search(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+	return dict_attr_qualified_search(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
