@@ -852,6 +852,7 @@ void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t c
 	if (prev && prev->ar_da) switch (prev->ar_da->type) {
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
+	case FR_TYPE_STRUCT:
 	case FR_TYPE_VENDOR:
 		span = ar->ar_da->depth - prev->ar_da->depth;
 		partial = true;
@@ -1082,6 +1083,7 @@ void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
+	case FR_TYPE_STRUCT:
 	case FR_TYPE_VENDOR:
 		_tmpl_cursor_tlv_init(list_ctx, list, ar, cc);
 		break;
