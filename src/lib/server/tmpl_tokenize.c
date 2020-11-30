@@ -2967,13 +2967,18 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 
 		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
 		ar->ar_da = da;
+		ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
 
 		/*
 		 *	Reach into the next reference
-		 *	and correct its parent.
+		 *	and correct its parent and
+		 *	namespace.
 		 */
 		next = fr_dlist_next(&vpt->data.attribute.ar, ar);
-		if (next) next->ar_parent = da;
+		if (next) {
+			next->ar_parent = da;
+			next->ar_unresolved_namespace = da;
+		}
 	}
 
 	/*
@@ -3036,7 +3041,10 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		 *	and correct its parent.
 		 */
 		next = fr_dlist_next(&vpt->data.attribute.ar, ar);
-		if (next) next->ar_parent = da;
+		if (next) {
+			next->ar_parent = da;
+			next->ar_unresolved_namespace = da;
+		}
 
 		/*
 		 *	If the user wanted the leaf
@@ -3044,6 +3052,12 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		 *	that now.
 		 */
 		if (ar->ar_unresolved_raw) attr_to_raw(vpt, ar);
+
+		/*
+		 *	FIXME - We need logic similar to
+		 *	the original tokenize function which
+		 *	drops redundant ars.
+		 */
 	}
 
 	vpt->type ^= TMPL_FLAG_UNRESOLVED;
