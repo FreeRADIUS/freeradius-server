@@ -38,7 +38,7 @@ typedef ssize_t (*fr_decode_value_t)(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       fr_dict_attr_t const **child, void *decoder_ctx,
+			       void *decoder_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv) CC_HINT(nonnull(2,3,4));
 
 typedef ssize_t (*fr_encode_dbuff_t)(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,

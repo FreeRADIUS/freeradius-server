@@ -224,7 +224,6 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 {
 	fr_arp_packet_t const *arp;
 	fr_cursor_t cursor;
-	fr_dict_attr_t const *child;
 
 	if (packet_len < FR_ARP_PACKET_SIZE) {
 		fr_strerror_printf("Packet is too small (%d) to be ARP", (int) packet_len);
@@ -260,7 +259,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	 */
 	fr_pair_list_init(list);
 	fr_cursor_init(&cursor, list);
-	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, &child,
+	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE,
 				      NULL, NULL, NULL);
 }
 

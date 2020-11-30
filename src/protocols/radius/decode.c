@@ -989,6 +989,17 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 	return fr_radius_decode_pair_value(ctx, cursor, dict, parent, data, data_len, data_len, decoder_ctx);
 }
 
+/** Wrapper called by fr_struct_from_network()
+ */
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+			    fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t data_len, void *decoder_ctx)
+{
+	FR_PROTO_HEX_DUMP(data, data_len, "%s", __FUNCTION__ );
+
+	return fr_radius_decode_tlv(ctx, cursor, dict, parent, data, data_len, decoder_ctx);
+}
+
 
 /** Create any kind of VP from the attribute contents
  *
@@ -1446,31 +1457,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	attribute, OR it's already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		ret = fr_struct_from_network(ctx, cursor, parent, p, attr_len, &child,
-					     decoder_ctx, decode_value, NULL);
+		ret = fr_struct_from_network(ctx, cursor, parent, p, attr_len,
+					     decoder_ctx, decode_value, decode_tlv);
 		if (ret < 0) goto raw;
-
-		/*
-		 *	The above function only decodes fixed fields
-		 *	and strings.  If there are TLVs at the end of
-		 *	the struct, we have to decode them manually
-		 *	here.
-		 */
-		if (child && ((size_t) ret < attr_len)) {
-			ssize_t tlv_len;
-
-			/*
-			 *	Try to decode the TLVs
-			 */
-			tlv_len = fr_radius_decode_tlv(ctx, cursor, dict,
-						       child, p + ret, attr_len - ret,
-						       decoder_ctx);
-			if (tlv_len < 0) {
-				vp = fr_raw_from_network(ctx, child, p + ret, attr_len - ret);
-				if (vp) fr_cursor_append(cursor, vp);
-			}
-		}
-
 		return attr_len;
 
 	default:

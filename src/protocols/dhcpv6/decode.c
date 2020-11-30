@@ -45,6 +45,14 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const
 			   fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t const data_len, void *decoder_ctx, bool do_raw);
 
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				     fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const data_len, void *decoder_ctx)
+{
+	return decode_tlvs(ctx, cursor, dict, parent, data, data_len, decoder_ctx, true);
+}
+
+
 static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decoder_ctx)
@@ -126,7 +134,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
-	fr_dict_attr_t const	*tlv;
 	uint8_t			prefix_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
@@ -223,15 +230,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, cursor, parent, data, data_len, &tlv,
-					      decoder_ctx, decode_value_trampoline, NULL);
+		slen = fr_struct_from_network(ctx, cursor, parent, data, data_len,
+					      decoder_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
-
-		if (tlv) {
-			fr_strerror_printf("decode children not implemented");
-			return PAIR_DECODE_FATAL_ERROR;
-		}
-
 		return data_len;
 
 	case FR_TYPE_GROUP:

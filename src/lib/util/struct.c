@@ -37,7 +37,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 #endif
 
 	/*
-	 *	Build an unknown attr of the entire STRUCT.
+	 *	Build an unknown attr of the entire data.
 	 */
 	unknown = fr_dict_unknown_attr_afrom_da(ctx, parent);
 	if (!unknown) return NULL;
@@ -64,7 +64,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       fr_dict_attr_t const **child_p, void *decoder_ctx,
+			       void *decoder_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
@@ -84,7 +84,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 *	Record where we were in the list when this function was called
 	 */
 	fr_cursor_init(&child_cursor, &head);
-	*child_p = NULL;
 	child_num = 1;
 	key_vp = NULL;
 
@@ -177,20 +176,27 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		/*
 		 *	Decode child TLVs, according to the parent attribute.
-		 *
-		 *	Return only PARTIALLY decoded data.  Let the
-		 *	caller decode the rest.
-		 *
-		 *	@todo - pass TLVs to the "decode_value"
-		 *	function, so it can decode them.
 		 */
 		if (child->type == FR_TYPE_TLV) {
-			*child_p = child;
+			ssize_t slen;
 
-			fr_cursor_head(&child_cursor);
-			fr_cursor_tail(cursor);
-			fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
-			return (p - data);
+			fr_assert(!key_vp);
+
+			if (!decode_tlv) {
+				fr_strerror_printf("Decoding TLVs requires a decode_tlv() function to be passed");
+				return -(p - data);
+			}
+
+			/*
+			 *	Decode EVERYTHING as a TLV.
+			 */
+			while (p < end) {
+				slen = decode_tlv(ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decoder_ctx);
+				if (slen < 0) goto unknown;
+				p += slen;
+			}
+
+			goto done;
 		}
 
 		child_length = child->flags.length;
@@ -322,7 +328,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
-			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p, child_p,
+			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p,
 						      decoder_ctx, decode_value, decode_tlv);
 			if (slen <= 0) goto unknown_child;
 			p += slen;

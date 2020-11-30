@@ -157,7 +157,6 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
  */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_cursor_t *cursor)
 {
-	fr_dict_attr_t const	*tlv;
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
 	uint8_t const  		*p, *end;
@@ -232,7 +231,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, cursor, attr_tacacs_packet, buffer, buffer_len, &tlv, NULL, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, cursor, attr_tacacs_packet, buffer, buffer_len, NULL, NULL, NULL) < 0) {
 		fr_strerror_printf("Problems to decode %s using fr_struct_from_network()", attr_tacacs_packet->name);
 		return -1;
 	}
