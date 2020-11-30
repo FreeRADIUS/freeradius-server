@@ -1246,7 +1246,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 
 	unlang_t		*c;
 	CONF_SECTION		*modules;
-	ssize_t			slen;
 	char const		*tmpl_str;
 
 	map_t		*head;
@@ -1302,7 +1301,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		/*
 		 *	Try to parse the template.
 		 */
-		slen = tmpl_afrom_substr(gext, &vpt,
+		(void) tmpl_afrom_substr(gext, &vpt,
 					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
 					 type,
 					 NULL,
@@ -2954,11 +2953,10 @@ get_packet_type:
 	 */
 	{
 		char const	*dst, *src;
-		ssize_t		slen;
 
 		src = cf_section_argv(cs, 0);
 		if (src) {
-			slen = tmpl_afrom_substr(parent, &src_vpt,
+			(void) tmpl_afrom_substr(parent, &src_vpt,
 						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (!src_vpt) {
@@ -2977,7 +2975,7 @@ get_packet_type:
 
 			dst = cf_section_argv(cs, 1);
 			if (dst) {
-				slen = tmpl_afrom_substr(parent, &dst_vpt,
+				(void) tmpl_afrom_substr(parent, &dst_vpt,
 							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
 				if (!dst_vpt) {
