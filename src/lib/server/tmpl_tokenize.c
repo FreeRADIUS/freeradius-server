@@ -1379,6 +1379,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					      unsigned int depth)
 {
 	uint32_t		oid = 0;
+	ssize_t			slen;
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
@@ -1408,10 +1409,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!parent) {
-		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
-								   t_rules->dict_def,
-								   name, p_rules ? p_rules->terminals : NULL,
-								   !t_rules->disallow_internal);
+		slen = fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
+								    t_rules->dict_def,
+								    name, p_rules ? p_rules->terminals : NULL,
+								    !t_rules->disallow_internal);
 		/*
 		 *	We can't know which dictionary the
 		 *	attribute will be resolved in, so the
@@ -1424,11 +1425,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		(void)fr_dict_attr_by_name_substr(&dict_err,
-						  &da,
-						  namespace,
-						  name,
-						  p_rules ? p_rules->terminals : NULL);
+		slen = fr_dict_attr_by_name_substr(&dict_err,
+						   &da,
+						   namespace,
+						   name,
+						   p_rules ? p_rules->terminals : NULL);
 		/*
 		 *	Allow fallback to internal attributes
 		 *	if the parent was a group, and we're
@@ -1457,9 +1458,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	switch (dict_err) {
 	case FR_DICT_ATTR_NO_CHILDREN:
 		if (parent && parent->flags.is_unknown) break;
+		fr_sbuff_advance(name, slen * -1);
 		goto error;
 
 	case FR_DICT_ATTR_NOT_DESCENDENT:
+		fr_sbuff_advance(name, slen * -1);
 		goto error;
 
 	default:
