@@ -394,17 +394,27 @@ eap {
 		#  use these.  Instead, set tls_min_version and
 		#  tls_max_version.
 		#
-	#	disable_tlsv1_2 = no
-		disable_tlsv1_1 = yes
-		disable_tlsv1 = yes
+#		disable_tlsv1_2 = yes
+#		disable_tlsv1_1 = yes
+#		disable_tlsv1 = yes
 
-		#  Set min / max TLS version.  Mainly for Debian
-		#  "trusty", which disables older versions of TLS, and
-		#  requires the application to manually enable them.
+
+		#  Set min / max TLS version.
 		#
-		#  If you are running Debian trusty, you should set
-		#  these options, otherwise older clients will not be
-		#  able to connect.
+		#  Generally speaking you should NOT use TLS 1.0 or
+		#  TLS 1.1.  They are old, possibly insecure, and
+		#  deprecated.  However, it is sometimes necessary to
+		#  enable it for compatibility with legact systems.
+		#  We recommend replacing those legacy systems, and
+		#  using at least TLS 1.2.
+		#
+		#  Some Debian versions disable older versions of TLS,
+		#  and requires the application to manually enable
+		#  them.
+		#
+		#  If you are running such a distribution, you should
+		#  set these options, otherwise older clients will not
+		#  be able to connect.
 		#
 		#  Allowed values are "1.0", "1.1", "1.2", and "1.3".
 		#
