@@ -554,7 +554,7 @@ done:
  * @param[in] vpt	Representing the attribute.
  * @return
  *	- #XLAT_ACTION_FAIL		we failed getting a value for the attribute.
- *	- #XLAT_ACTION_DONE		we
+ *	- #XLAT_ACTION_DONE		we successfully evaluated the xlat.
  */
 static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, tmpl_t const *vpt)
 {
@@ -563,6 +563,8 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 
 	fr_cursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
+
+	xlat_action_t		ret = XLAT_ACTION_DONE;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
@@ -580,8 +582,8 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 	 */
 	if (!vp) {
 		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
-			tmpl_cursor_clear(&cc);
-			return xlat_eval_pair_virtual(ctx, out, request, vpt);
+			ret = xlat_eval_pair_virtual(ctx, out, request, vpt);
+			goto done;
 		}
 
 		/*
@@ -592,9 +594,8 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 			if (!value) {
 			oom:
 				fr_strerror_printf("Out of memory");
-
-				tmpl_cursor_clear(&cc);
-				return XLAT_ACTION_FAIL;
+				ret = XLAT_ACTION_FAIL;
+				goto done;
 			}
 			value->datum.int32 = 0;
 			fr_cursor_append(out, value);
@@ -621,7 +622,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 		value->datum.uint32 = count;
 		fr_cursor_append(out, value);
 		fr_cursor_next(out);				/* Advance to our first value */
-		goto done;
+		break;
 	}
 
 	/*
@@ -661,7 +662,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 
 done:
 	tmpl_cursor_clear(&cc);
-	return XLAT_ACTION_DONE;
+	return ret;
 }
 
 #ifdef DEBUG_XLAT
