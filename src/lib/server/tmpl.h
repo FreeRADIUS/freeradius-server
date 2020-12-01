@@ -521,7 +521,7 @@ struct tmpl_cursor_nested_s {
  */
 struct tmpl_cursor_ctx_s {
 	TALLOC_CTX		*ctx;		//!< Temporary allocations go here.
-
+	TALLOC_CTX		*pool;		//!< Temporary pool.
 	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
 
 	request_t		*request;	//!< Result of following the request references.
@@ -846,7 +846,7 @@ void			tmpl_debug(tmpl_t const *vpt);
 
 fr_pair_t		**radius_list(request_t *request, pair_list_t list);
 
-fr_radius_packet_t		*radius_packet(request_t *request, pair_list_t list_name);
+fr_radius_packet_t	*radius_packet(request_t *request, pair_list_t list_name);
 
 TALLOC_CTX		*radius_list_ctx(request_t *request, pair_list_t list_name);
 

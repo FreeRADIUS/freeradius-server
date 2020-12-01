@@ -832,6 +832,12 @@ static fr_pair_t *_tmpl_cursor_tlv_eval(fr_pair_t **prev, UNUSED fr_pair_t *curr
 	return NULL;
 }
 
+static inline CC_HINT(always_inline)
+void _tmpl_cursor_pool_init(tmpl_cursor_ctx_t *cc)
+{
+	if (!cc->pool) MEM(cc->pool = talloc_pool(cc->ctx, sizeof(tmpl_cursor_nested_t) * 5));
+}
+
 /** Initialise an evaluation ctx for traversing a TLV attribute
  *
  */
@@ -865,7 +871,8 @@ void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t c
 		break;
 	} else goto no_prev;
 
-	MEM(ns = talloc_pooled_object(cc->ctx, tmpl_cursor_nested_t,
+	_tmpl_cursor_pool_init(cc);
+	MEM(ns = talloc_pooled_object(cc->pool, tmpl_cursor_nested_t,
 				      1, sizeof(fr_cursor_stack_t) + (sizeof(fr_cursor_t) * span)));
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
@@ -929,7 +936,8 @@ void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t
 {
 	tmpl_cursor_nested_t *ns;
 
-	MEM(ns = talloc(cc->ctx, tmpl_cursor_nested_t));
+	_tmpl_cursor_pool_init(cc);
+	MEM(ns = talloc(cc->pool, tmpl_cursor_nested_t));
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
 		.func = _tmpl_cursor_group_eval,
@@ -1243,13 +1251,6 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	fr_dlist_init(&cc->nested, tmpl_cursor_nested_t, entry);
 
 	/*
-	 *	Create a CHILD context, so that we don't have to track
-	 *	any child allocations.  We can just
-	 *	talloc_free(cc->ctx) in tmpl_cursor_clear().
-	 */
-	cc->ctx = talloc(cc->ctx, uint8_t);
-
-	/*
 	 *	Prime the stack!
 	 */
 	switch (vpt->type) {
@@ -1290,12 +1291,12 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
  */
 void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 {
+	TALLOC_FREE(cc->pool);				/* just in case we somehow leaked memory */
+
 	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
 
 	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
 	fr_dlist_talloc_free(&cc->nested);
-
-	talloc_free(cc->ctx);				/* free our private talloc ctx */
 }
 
 /** Copy pairs matching a #tmpl_t in the current #request_t
