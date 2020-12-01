@@ -1291,12 +1291,12 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
  */
 void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 {
-	TALLOC_FREE(cc->pool);				/* just in case we somehow leaked memory */
-
 	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
 
 	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
 	fr_dlist_talloc_free(&cc->nested);
+
+	TALLOC_FREE(cc->pool);
 }
 
 /** Copy pairs matching a #tmpl_t in the current #request_t

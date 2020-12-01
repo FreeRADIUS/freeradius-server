@@ -409,7 +409,11 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
  */
 static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_head(fr_dlist_head_t *list_head)
 {
-	return fr_dlist_remove(list_head, fr_dlist_head(list_head));
+	void *item = fr_dlist_head(list_head);
+
+	(void)fr_dlist_remove(list_head, item);
+
+	return item;	/* fr_dlist_remove returns the previous item */
 }
 
 /** Remove the tail item in a list
@@ -421,7 +425,11 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_head(fr_dlist_head_t *list_
  */
 static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_tail(fr_dlist_head_t *list_head)
 {
-	return fr_dlist_remove(list_head, fr_dlist_tail(list_head));
+	void *item = fr_dlist_tail(list_head);
+
+	(void)fr_dlist_remove(list_head, item);
+
+	return item;	/* fr_dlist_remove returns the previous item */
 }
 
 /** Check all items in the list are valid
