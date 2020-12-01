@@ -3251,9 +3251,6 @@ static const FR_NAME_NUMBER version2int[] = {
 #ifdef TLS1_3_VERSION
 	{ "1.3",    TLS1_3_VERSION },
 #endif
-#ifdef TLS1_4_VERSION
-	{ "1.4",    TLS1_4_VERSION },
-#endif
 	{ NULL, 0 }
 };
 
@@ -3274,13 +3271,13 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	SSL_CTX		*ctx;
 	X509_STORE	*certstore;
 	int		verify_mode = SSL_VERIFY_NONE;
-	int		ctx_options = 0;
-	int		ctx_tls_versions = 0;
+	int		ctx_options = 0, ctx_available = 0;
 	int		type;
 #ifdef CHECK_FOR_PSK_CERTS
 	bool		psk_and_certs = false;
 #endif
-	bool		insecure_tls_version = false;
+	int		min_version;
+	int		max_version;
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -3575,164 +3572,190 @@ post_ca:
 	 *	below, so we don't need to check for them explicitly.
 	 *
 	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
-	 *
-	 *	TLS1_4_VERSION in speculative.
 	 */
-	{
-		int min_version = 0;
-		int max_version = 0;
 
+	/*
+	 *	Get the max version from the configuration files.
+	 */
+	if (conf->tls_max_version && *conf->tls_max_version) {
+		max_version = fr_str2int(version2int, conf->tls_max_version, 0);
+		if (!max_version) {
+			ERROR("Invalid value for tls_max_version '%s'", conf->tls_max_version);
+			return NULL;
+		}
+	} else {
 		/*
-		 *	Get the max version.
+		 *	Pick the maximum version available at compile
+		 *	time.
 		 */
-		if (conf->tls_max_version && *conf->tls_max_version) {
-			max_version = fr_str2int(version2int, conf->tls_max_version, 0);
-			if (!max_version) {
-				ERROR("Invalid value for tls_max_version '%s'", conf->tls_max_version);
-				return NULL;
-			}
-		} else {
-			/*
-			 *	Pick the maximum one we know about.
-			 */
-#ifdef TLS1_4_VERSION
-			max_version = TLS1_3_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
-#elif defined(TLS1_3_VERSION)
-			max_version = TLS1_3_VERSION;
+#if defined(TLS1_3_VERSION)
+		max_version = TLS1_3_VERSION;
 #elif defined(TLS1_2_VERSION)
-			max_version = TLS1_2_VERSION;
+		max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
-			max_version = TLS1_1_VERSION;
+		max_version = TLS1_1_VERSION;
 #else
-			max_version = TLS1_VERSION;
+		max_version = TLS1_VERSION;
 #endif
-		}
-
-		/*
-		 *	Set these for the rest of the code.
-		 */
-#ifdef TLS1_2_VERSION
-		if (max_version < TLS1_2_VERSION) {
-			conf->disable_tlsv1_2 = true;
-		}
-#endif
-#ifdef TLS1_1_VERSION
-		if (max_version < TLS1_1_VERSION) {
-			conf->disable_tlsv1_1 = true;
-		}
-#endif
-
-		/*
-		 *	Get the min version.
-		 */
-		if (conf->tls_min_version && *conf->tls_min_version) {
-			min_version = fr_str2int(version2int, conf->tls_min_version, 0);
-			if (!min_version) {
-				ERROR("Unknown or unsupported value for tls_min_version '%s'", conf->tls_min_version);
-				return NULL;
-			}
-		} else {
-			min_version = TLS1_VERSION;
-		}
-
-		/*
-		 *	Compare the two.
-		 */
-		if (min_version > max_version) {
-			ERROR("tls_min_version '%s' must be <= tls_max_version '%s'",
-			      conf->tls_min_version, conf->tls_max_version);
-			return NULL;
-		}
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-#ifdef CHECK_FOR_PSK_CERTS
-		/*
-		 *	Disable TLS 1.3 when using PSKs and certs.
-		 *	This doesn't work.
-		 *
-		 *	It's best to disable the offending
-		 *	configuration and warn about it.  The
-		 *	alternative is to have the admin wonder why it
-		 *	doesn't work.
-		 *
-		 *	Note that the admin can over-ride this by
-		 *	setting "min_version = max_version = 1.3"
-		 */
-		if (psk_and_certs &&
-		    (min_version < TLS1_3_VERSION) && (max_version >= TLS1_3_VERSION)) {
-			max_version = TLS1_2_VERSION;
-			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneously.  This is not supported by the standards.");
-		}
-#endif
-
-		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			ERROR("Failed setting TLS maximum version");
-			return NULL;
-		}
-
-		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			ERROR("Failed setting TLS minimum version");
-			return NULL;
-		}
-
-		/*
-		 *	No one should be using TLS 1.0 or TLS 1.1 any more
-		 */
-		if (min_version < TLS1_2_VERSION) insecure_tls_version = true;
-#else  /* OpenSSL version < 1.1.0 */
-
-#ifdef SSL_OP_NO_TLSv1
-		insecure_tls_version |= (conf->disable_tlsv1 == false);
-#endif
-#ifdef SSL_OP_NO_TLSv1_1
-		insecure_tls_version |= (conf->disable_tlsv1_1 == false);
-#endif
-#endif	/* OpenSSL version ? 1.1.0 */
-
-		if (rad_debug_lvl && insecure_tls_version) {
-			WARN("The configuration allows TLS 1.0 and/or TLS 1.1.  We STRONGLY recommned using only TLS 1.2 for security");
-			WARN("Please set: tls_min_version = \"1.2\"");
-		}
 	}
 
 	/*
-	 *	For historical config compatibility, we also allow
-	 *	these, but complain if the admin uses them.
+	 *	Get the min version from the configuration files.
 	 */
+	if (conf->tls_min_version && *conf->tls_min_version) {
+		min_version = fr_str2int(version2int, conf->tls_min_version, 0);
+		if (!min_version) {
+			ERROR("Unknown or unsupported value for tls_min_version '%s'", conf->tls_min_version);
+			return NULL;
+		}
+	} else {
+		/*
+		 *	Allow TLS 1.0.  It is horribly insecure, but
+		 *	some systems still use it.
+		 */
+		min_version = TLS1_VERSION;
+	}
+
+	/*
+	 *	Compare the two.
+	 */
+	if ((min_version > max_version) || (max_version < min_version)) {
+		ERROR("tls_min_version '%s' must be <= tls_max_version '%s'",
+		      conf->tls_min_version, conf->tls_max_version);
+		return NULL;
+	}
+
+#ifdef CHECK_FOR_PSK_CERTS
+	/*
+	 *	Disable TLS 1.3 when using PSKs and certs.
+	 *	This doesn't work.
+	 *
+	 *	It's best to disable the offending
+	 *	configuration and warn about it.  The
+	 *	alternative is to have the admin wonder why it
+	 *	doesn't work.
+	 *
+	 *	Note that the admin can over-ride this by
+	 *	setting "min_version = max_version = 1.3"
+	 */
+	if (psk_and_certs &&
+	    (min_version < TLS1_3_VERSION) && (max_version >= TLS1_3_VERSION)) {
+		max_version = TLS1_2_VERSION;
+		radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneously.  This is not supported by the standards.");
+	}
+#endif
+
+	/*
+	 *	No one should be using TLS 1.0 or TLS 1.1 any more
+	 *
+	 *	If TLS1.2 isn't defined by OpenSSL, then we _know_
+	 *	it's an insecure version of OpenSSL.
+	 */
+#ifdef TLS1_2_VERSION
+	if (max_version < TLS1_2_VERSION)
+#endif
+	{
+		if (rad_debug_lvl) {
+			WARN(LOG_PREFIX ": The configuration allows TLS 1.0 and/or TLS 1.1.  We STRONGLY recommned using only TLS 1.2 for security");
+			WARN(LOG_PREFIX ": Please set: tls_min_version = '1.2'");
+		}
+	}
+
 #ifdef SSL_OP_NO_TLSv1
+	/*
+	 *	Check min / max against the old-style "disable" flag.
+	 */
 	if (conf->disable_tlsv1) {
+		if (min_version == TLS1_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1' is set, but 'min_version = 1.0'.  These cannot both be true.");
+			return NULL;
+		}
+		if (max_version == TLS1_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1' is set, but 'max_version = 1.0'.  These cannot both be true.");
+			return NULL;
+		}
 		ctx_options |= SSL_OP_NO_TLSv1;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1");
-#endif
 	}
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1;
+	if (min_version > TLS1_VERSION) ctx_options |= SSL_OP_NO_TLSv1;
+
+	ctx_available |= SSL_OP_NO_TLSv1;
 #endif
+
 #ifdef SSL_OP_NO_TLSv1_1
+	/*
+	 *	Check min / max against the old-style "disable" flag.
+	 */
 	if (conf->disable_tlsv1_1) {
+		if (min_version <= TLS1_1_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1_1' is set, but 'min_version <= 1.1'.  These cannot both be true.");
+			return NULL;
+		}
+		if (max_version == TLS1_1_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1_1' is set, but 'max_version = 1.1'.  These cannot both be true.");
+			return NULL;
+		}
 		ctx_options |= SSL_OP_NO_TLSv1_1;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
-#endif
 	}
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
+	if (min_version > TLS1_1_VERSION) ctx_options |= SSL_OP_NO_TLSv1_1;
+	if (max_version < TLS1_1_VERSION) ctx_options |= SSL_OP_NO_TLSv1_1;
+
+	ctx_available |= SSL_OP_NO_TLSv1_1;
 #endif
+
 #ifdef SSL_OP_NO_TLSv1_2
-
+	/*
+	 *	Check min / max against the old-style "disable" flag.
+	 */
 	if (conf->disable_tlsv1_2) {
+		if (min_version <= TLS1_2_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1_2' is set, but 'min_version <= 1.2'.  These cannot both be true.");
+			return NULL;
+		}
+		if (max_version == TLS1_2_VERSION) {
+			ERROR(LOG_PREFIX ": 'disable_tlsv1_1' is set, but 'max_version = 1.2'.  These cannot both be true.");
+			return NULL;
+		}
 		ctx_options |= SSL_OP_NO_TLSv1_2;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
+	}
+	ctx_available |= SSL_OP_NO_TLSv1_2;
+
+	if (min_version > TLS1_2_VERSION) ctx_options |= SSL_OP_NO_TLSv1_2;
+	if (max_version < TLS1_2_VERSION) ctx_options |= SSL_OP_NO_TLSv1_2;
 #endif
+
+#ifdef SSL_OP_NO_TLSv1_3
+	ctx_available |= SSL_OP_NO_TLSv1_3;
+	if (min_version > TLS1_3_VERSION) ctx_options |= SSL_OP_NO_TLSv1_3;
+	if (max_version < TLS1_3_VERSION) ctx_options |= SSL_OP_NO_TLSv1_3;
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	if (conf->disable_tlsv1) {
+		WARN(LOG_PREFIX ": Please use 'tls_min_version' and 'tls_max_version' instead of 'disable_tlsv1'");
+	}
+	if (conf->disable_tlsv1_1) {
+		WARN(LOG_PREFIX ": Please use 'tls_min_version' and 'tls_max_version' instead of 'disable_tlsv1_1'");
+	}
+	if (conf->disable_tlsv1_2) {
+		WARN(LOG_PREFIX ": Please use 'tls_min_version' and 'tls_max_version' instead of 'disable_tlsv1_2'");
 	}
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
+	ctx_options &= ~(ctx_available); /* clear these flags, as they're not needed. */
 
-#endif
+	if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
+		ERROR("Failed setting TLS maximum version");
+		return NULL;
+	}
 
-	if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
+	if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
+		ERROR("Failed setting TLS minimum version");
+		return NULL;
+	}
+#endif	/* OpenSSL version < 1.1.0 */
+
+	if ((ctx_options & ctx_available) == ctx_available) {
 		ERROR(LOG_PREFIX ": You have disabled all available TLS versions.  EAP will not work");
 		return NULL;
 	}
