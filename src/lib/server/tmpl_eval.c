@@ -1243,6 +1243,13 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	fr_dlist_init(&cc->nested, tmpl_cursor_nested_t, entry);
 
 	/*
+	 *	Create a CHILD context, so that we don't have to track
+	 *	any child allocations.  We can just
+	 *	talloc_free(cc->ctx) in tmpl_cursor_clear().
+	 */
+	cc->ctx = talloc(cc->ctx, uint8_t);
+
+	/*
 	 *	Prime the stack!
 	 */
 	switch (vpt->type) {
@@ -1287,6 +1294,8 @@ void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 
 	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
 	fr_dlist_talloc_free(&cc->nested);
+
+	talloc_free(cc->ctx);				/* free our private talloc ctx */
 }
 
 /** Copy pairs matching a #tmpl_t in the current #request_t
