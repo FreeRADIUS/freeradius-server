@@ -1476,6 +1476,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	reference.
 	 */
 	if (slen > 0) {
+		fr_assert(da != NULL);
+
 		MEM(ar = talloc(ctx, tmpl_attr_t));
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_ANY,
