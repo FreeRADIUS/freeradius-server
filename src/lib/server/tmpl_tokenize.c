@@ -1379,7 +1379,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					      unsigned int depth)
 {
 	uint32_t		oid = 0;
-	ssize_t			slen;
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
@@ -1409,10 +1408,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!parent) {
-		slen = fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
-								    t_rules->dict_def,
-								    name, p_rules ? p_rules->terminals : NULL,
-								    !t_rules->disallow_internal);
+		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
+								   t_rules->dict_def,
+								   name, p_rules ? p_rules->terminals : NULL,
+								   !t_rules->disallow_internal);
 		/*
 		 *	We can't know which dictionary the
 		 *	attribute will be resolved in, so the
@@ -1425,11 +1424,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		slen = fr_dict_attr_by_name_substr(&dict_err,
-						   &da,
-						   namespace,
-						   name,
-						   p_rules ? p_rules->terminals : NULL);
+		(void)fr_dict_attr_by_name_substr(&dict_err,
+						  &da,
+						  namespace,
+						  name,
+						  p_rules ? p_rules->terminals : NULL);
 		/*
 		 *	Allow fallback to internal attributes
 		 *	if the parent was a group, and we're
@@ -1439,17 +1438,14 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	useful to have the original.
 		 */
 		if (!da && !vpt->rules.disallow_internal &&
-		    (ar = fr_dlist_tail(&vpt->data.attribute.ar)) && (ar->type == TMPL_ATTR_TYPE_NORMAL) &&
-		    (ar->ar_da->type == FR_TYPE_GROUP)) {
-			ssize_t tmp_slen;
-
-			tmp_slen = fr_dict_attr_by_name_substr(NULL,
-							       &da, fr_dict_root(fr_dict_internal()),
-							       name,
-							       p_rules ? p_rules->terminals : NULL);
+		    (ar = fr_dlist_tail(&vpt->data.attribute.ar)) &&
+		    (ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP)) {
+			(void)fr_dict_attr_by_name_substr(NULL,
+							  &da, fr_dict_root(fr_dict_internal()),
+							  name,
+							  p_rules ? p_rules->terminals : NULL);
 			if (da) {
 				dict_err = FR_DICT_ATTR_OK;
-				slen = tmp_slen;
 				parent = fr_dict_root(fr_dict_internal());
 			}
 		}
@@ -1467,26 +1463,22 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		goto error;
 
 	default:
+		/*
+		 *	The named component was a known attribute
+		 *	so record it as a normal attribute
+		 *	reference.
+		 */
+		if (da) {
+			MEM(ar = talloc(ctx, tmpl_attr_t));
+			*ar = (tmpl_attr_t){
+				.ar_num = NUM_ANY,
+				.ar_type = TMPL_ATTR_TYPE_NORMAL,
+				.ar_da = da,
+				.ar_parent = parent
+			};
+			goto check_attr;
+		}
 		break;
-	}
-
-	/*
-	 *	The named component was a known attribute
-	 *	so record it as a normal attribute
-	 *	reference.
-	 */
-	if (slen > 0) {
-		fr_assert(da != NULL);
-
-		MEM(ar = talloc(ctx, tmpl_attr_t));
-		*ar = (tmpl_attr_t){
-			.ar_num = NUM_ANY,
-			.ar_type = TMPL_ATTR_TYPE_NORMAL,
-			.ar_da = da,
-			.ar_parent = parent
-		};
-
-		goto check_attr;
 	}
 
 	/*
@@ -1517,8 +1509,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *
 	 *	.<oid>
 	 */
-	slen = fr_sbuff_out(NULL, &oid, name);
-	if (slen > 0) {
+	if (fr_sbuff_out(NULL, &oid, name) > 0) {
 		fr_dict_attr_t *da_unknown;
 
 		fr_strerror();	/* Clear out any existing errors */
