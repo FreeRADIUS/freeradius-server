@@ -39,6 +39,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Treat DHCP Discover and Request differently for lease allocation times.
 	* Add support for PBKDF2 keys. Fixes #2649
 	* Update dictionary.mikrotik
+	* Update default PostgreSQL schema to use "text" instead of
+	  a fixed-size "varchar".
+	* The default minimum TLS version is not TLS 1.2
+	  Older versions can be allowed by setting tls_min_version
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
@@ -70,6 +74,12 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Parse locale-dependent dates.  Fixes #3602.
 	* Strip out "-frecord-gcc-switches" from rlm_python3 configure build. Fixes #3693
 	* Fix radiusd.conf ENV LD_PRELOAD function.
+	* Update the "sql" module so that it uses fewer handles for group selection,
+	  which means that it is less likely to complain that the
+	  connection pool is exhausted.
+	* Make the "date" module handle UTC more consistently.
+	* Check for, and complain about, inconsistent use of tls_min_version
+	  versus disable_tlsv1
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
