@@ -308,7 +308,7 @@ fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 	 */
 	ht->next_grow = (ht->num_buckets << 1) + (ht->num_buckets >> 1);
 
-	ht->buckets = talloc_zero_array(NULL, fr_hash_entry_t *, ht->num_buckets);
+	ht->buckets = talloc_zero_array(ht, fr_hash_entry_t *, ht->num_buckets);
 	if (!ht->buckets) {
 		talloc_free(ht);
 		return NULL;
@@ -387,7 +387,7 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
 
-	buckets = talloc_zero_array(NULL, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
+	buckets = talloc_array(ht, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
 	memcpy(buckets, ht->buckets, sizeof(*buckets) * ht->num_buckets);
@@ -426,7 +426,7 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	 *	If we try to do our own memory allocation here, the
 	 *	speedup is only ~15% or so, which isn't worth it.
 	 */
-	node = talloc_zero(NULL, fr_hash_entry_t);
+	node = talloc_zero(ht, fr_hash_entry_t);
 	if (!node) return 0;
 
 	node->next = &ht->null;
