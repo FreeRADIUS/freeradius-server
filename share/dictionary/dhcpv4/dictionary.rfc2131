@@ -83,7 +83,7 @@ ATTRIBUTE	DHCP-NETBIOS-Node-Type			46	byte
 ATTRIBUTE	DHCP-NETBIOS				47	octets
 ATTRIBUTE	DHCP-X-Window-Font-Server		48	ipaddr array
 ATTRIBUTE	DHCP-X-Window-Display-Mgr		49	ipaddr array
-ATTRIBUTE	Requested-IP-Address		50	ipaddr
+ATTRIBUTE	DHCP-Requested-IP-Address		50	ipaddr
 ATTRIBUTE	DHCP-IP-Address-Lease-Time		51	integer
 # Overload "sname" or "file"
 ATTRIBUTE	DHCP-Overload				52	byte
