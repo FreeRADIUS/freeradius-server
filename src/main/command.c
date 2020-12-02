@@ -1245,24 +1245,107 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 	return 1;
 }
 
+/*
+ *	@todo - copied from clients.c.  Better to re-use, but whatever.
+ */
+struct radclient_list {
+	char const	*name;	/* name of this list */
+	char const	*server; /* virtual server associated with this client list */
 
-static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+	/*
+	 *	FIXME: One set of trees for IPv4, and another for IPv6?
+	 */
+	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
+	uint32_t       	min_prefix;
+};
+
+
+static int command_show_clients(rad_listen_t *listener, int argc, char *argv[])
 {
 	int i;
 	RADCLIENT *client;
 	char buffer[256];
 
-	for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
-		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
+	if (argc == 0) {
+		for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
+			ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
 
-		if (((client->ipaddr.af == AF_INET) &&
-		     (client->ipaddr.prefix != 32)) ||
-		    ((client->ipaddr.af == AF_INET6) &&
-		     (client->ipaddr.prefix != 128))) {
-			cprintf(listener, "%s/%d\n", buffer, client->ipaddr.prefix);
-		} else {
-			cprintf(listener, "%s\n", buffer);
+			if (((client->ipaddr.af == AF_INET) &&
+			     (client->ipaddr.prefix != 32)) ||
+			    ((client->ipaddr.af == AF_INET6) &&
+			     (client->ipaddr.prefix != 128))) {
+				cprintf(listener, "%s/%d\n", buffer, client->ipaddr.prefix);
+			} else {
+				cprintf(listener, "%s\n", buffer);
+			}
 		}
+
+		return CMD_OK;
+	}
+
+	if (argc != 1) {
+		cprintf_error(listener, "Unknown command %s %s ...\n", argv[0], argv[1]);
+		return -1;
+	}
+
+	if (strcmp(argv[0], "verbose") != 0) {
+		cprintf_error(listener, "Unknown command %s\n", argv[0]);
+		return -1;
+	}
+
+	for (i = 0; (client = client_findbynumber(NULL, i)) != NULL; i++) {
+		if (client->cs) {
+			cprintf(listener, "client %s {\n", cf_section_name2(client->cs));
+		} else {
+			cprintf(listener, "client {\n");
+		}
+
+		fr_ntop(buffer, sizeof(buffer), &client->ipaddr);
+		cprintf(listener, "\tipaddr = %s\n", buffer);
+
+		if (client->src_ipaddr.af != AF_UNSPEC) {
+			fr_ntop(buffer, sizeof(buffer), &client->src_ipaddr);
+			cprintf(listener, "\tsrc_ipaddr = %s\n", buffer);
+		}
+
+		if (client->proto == IPPROTO_UDP) {
+			cprintf(listener, "\tproto = udp\n");
+		} else if (client->proto == IPPROTO_TCP) {
+			cprintf(listener, "\tproto = tcp\n");
+		} else {
+			cprintf(listener, "\tproto = *\n");
+		}
+
+		cprintf(listener, "\tsecret = %s\n", client->secret);
+		cprintf(listener, "\tlongname = %s\n", client->longname);
+		cprintf(listener, "\tshortname = %s\n", client->shortname);
+		if (client->nas_type) cprintf(listener, "\tnas_type = %s\n", client->nas_type);
+		cprintf(listener, "\tnumber = %d\n", client->number);
+
+		if (client->server) {
+			cprintf(listener, "\tvirtual_server = %s\n", client->server);
+		}
+
+#ifdef WITH_DYNAMIC_CLIENTS
+		if (client->dynamic) {
+			cprintf(listener, "\tdynamic = yes\n");
+			cprintf(listener, "\tlifetime = %u\n", client->lifetime);
+		}
+#endif
+
+#ifdef WITH_TLS
+		if (client->tls_required) {
+			cprintf(listener, "\ttls = yes\n");
+		}
+#endif
+
+		if (client->list->server) {
+			cprintf(listener, "\tparent_virtual_server = %s\n", client->list->server);
+		} else {
+			cprintf(listener, "\tglobal = yes\n");
+		}
+
+		cprintf(listener, "}\n");
 	}
 
 	return CMD_OK;
@@ -2050,7 +2133,7 @@ static fr_command_table_t command_table_show_client[] = {
 	  "- show configuration for given client",
 	  command_show_client_config, NULL },
 	{ "list", FR_READ,
-	  "show client list - shows list of global clients",
+	  "show client list [verbose] - shows list of global clients",
 	  command_show_clients, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
