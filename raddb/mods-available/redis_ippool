@@ -102,7 +102,7 @@ redis_ippool {
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	requested_address = "%{%{Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
 
 	#
 	#  ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.

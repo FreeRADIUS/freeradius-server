@@ -123,7 +123,7 @@ redis_ippool {
 #	wait_timeout = 2
 #	gateway = &NAS-Identifier
 	device = &DHCP-Client-Hardware-Address
-	requested_address = "%{%{Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
 #	ipv4_integer = yes
 	allocated_address_attr = &reply.DHCP-Your-IP-Address
 	range_attr = &reply.IP-Pool.Range

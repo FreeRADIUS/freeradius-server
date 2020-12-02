@@ -415,7 +415,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-NETBIOS-Node-Type	46
 VALUE	DHCP-Parameter-Request-List	DHCP-NETBIOS		47
 VALUE	DHCP-Parameter-Request-List	DHCP-X-Window-Font-Server 48
 VALUE	DHCP-Parameter-Request-List	DHCP-X-Window-Display-Mgr 49
-VALUE	DHCP-Parameter-Request-List	Requested-IP-Address 50
+VALUE	DHCP-Parameter-Request-List	DHCP-Requested-IP-Address 50
 VALUE	DHCP-Parameter-Request-List	DHCP-IP-Address-Lease-Time 51
 VALUE	DHCP-Parameter-Request-List	DHCP-Overload		52
 VALUE	DHCP-Parameter-Request-List	DHCP-Message-Type	53
