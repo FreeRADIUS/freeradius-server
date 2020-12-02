@@ -148,6 +148,7 @@ Adds support for rlm_memcached as a cache driver.
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
+Requires: make
 
 %description config
 FreeRADIUS default config files
@@ -213,8 +214,8 @@ Requires: freeradius-libfreeradius-util = %{version}-%{release}
 
 %description libfreeradius-curl
 Integrates libcurl with FreeRADIUS' internal event loop.
-Requires: libcurl >= 7.45.0
-BuildRequires: libcurl-devel >= 7.45.0
+Requires: libcurl >= 7.24.0
+BuildRequires: libcurl-devel >= 7.24.0
 
 %package libfreeradius-util
 Summary: Utility library used by all other FreeRADIUS libraries
@@ -715,6 +716,7 @@ fi
 %config(noreplace) %{_sysconfdir}/raddb/users
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*
+%attr(755,root,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-enabled
