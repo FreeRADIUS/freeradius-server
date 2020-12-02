@@ -1339,7 +1339,7 @@ static int command_show_clients(rad_listen_t *listener, int argc, char *argv[])
 		}
 #endif
 
-		if (client->list->server) {
+		if (client->list && client->list->server) {
 			cprintf(listener, "\tparent_virtual_server = %s\n", client->list->server);
 		} else {
 			cprintf(listener, "\tglobal = yes\n");
