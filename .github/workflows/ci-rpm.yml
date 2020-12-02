@@ -1,0 +1,129 @@
+name: CI RPM
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  pull_request:
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+
+jobs:
+  rpm-build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: centos:8
+
+    name: "RPM build"
+
+    steps:
+
+    - name: Install recent git
+      run: |
+        yum install -y git
+
+    - uses: actions/checkout@v2
+      with:
+        repository: mheily/libkqueue
+        path: libkqueue
+
+    - name: Install build tools
+      run: |
+        yum install -y cmake make gcc rpm-build
+
+    - name: Build libkqueue
+      run: |
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./
+        make
+        cpack -G RPM
+        yum localinstall -y *.rpm
+      working-directory: libkqueue
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Extra repos
+      run: |
+        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        yum install -y epel-release yum-utils
+        yum config-manager --enable PowerTools
+
+    - name: Install build dependencies
+      run: |
+        yum install -y \
+          bzip2 \
+          gcc \
+          libcurl-devel \
+          make \
+          perl \
+          rpm-build \
+          yum-utils
+        yum-builddep -y freeradius/redhat/freeradius.spec
+
+    - name: Build RPMs
+      run: |
+        make rpm
+      working-directory: freeradius
+
+    - name: Collect RPMs
+      run: |
+        mkdir rpms
+        mv libkqueue/*.rpm rpms
+        mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
+
+    - name: Store RPMs
+      uses: actions/upload-artifact@v2
+      with:
+        name: rpms
+        path: rpms
+
+  rpm-test:
+
+    needs:
+      - rpm-build
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: centos:8
+
+    name: "RPM install test"
+
+    steps:
+
+    - name: Extra repos
+      run: |
+        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        yum install -y epel-release yum-utils
+        yum config-manager --enable PowerTools
+
+    - name: Load RPMs
+      uses: actions/download-artifact@v2
+      with:
+        name: rpms
+
+    - name: Install RPMs
+      run: |
+        yum install -y *.rpm
+
+    - name: Startup test
+      run: |
+        radiusd -XC
+
