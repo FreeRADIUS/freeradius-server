@@ -41,6 +41,9 @@ RCSID("$Id$")
 #endif
 
 struct radclient_list {
+	char const	*name;	/* name of this list */
+	char const	*server; /* virtual server associated with this client list */
+
 	/*
 	 *	FIXME: One set of trees for IPv4, and another for IPv6?
 	 */
@@ -516,9 +519,17 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	clients = client_list_init(section);
 	if (!clients) return NULL;
 
-	if (cf_top_section(section) == section) global = true;
+	if (cf_top_section(section) == section) {
+		global = true;
+		clients->name = "global";
+		clients->server = NULL;
+	}
 
-	if (strcmp("server", cf_section_name1(section)) == 0) in_server = true;
+	if (strcmp("server", cf_section_name1(section)) == 0) {
+		clients->name = NULL;
+		clients->server = cf_section_name2(section);
+		in_server = true;
+	}
 
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs;
