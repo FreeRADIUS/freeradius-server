@@ -387,7 +387,7 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
 
-	buckets = talloc_array(ht, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
+	buckets = talloc_zero_array(ht, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
 	memcpy(buckets, ht->buckets, sizeof(*buckets) * ht->num_buckets);
