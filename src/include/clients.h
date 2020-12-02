@@ -26,10 +26,14 @@
  * @copyright 2015 The FreeRADIUS server project
  */
 
+typedef struct radclient_list RADCLIENT_LIST;
+
+
 /** Describes a host allowed to send packets to the server
  *
  */
 typedef struct radclient {
+	RADCLIENT_LIST		*list;			//!< parent list
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
 	fr_ipaddr_t		src_ipaddr;		//!< IPv4/IPv6 address to send responses
 							//!< from (family must match ipaddr).
@@ -98,8 +102,6 @@ typedef struct radclient {
 	bool			defines_coa_server;	//!< Client also defines a home_server.
 #endif
 } RADCLIENT;
-
-typedef struct radclient_list RADCLIENT_LIST;
 
 /** Callback for retrieving values when building client sections
  *

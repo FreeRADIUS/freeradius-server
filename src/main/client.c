@@ -164,6 +164,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!client) return false;
 
+	client->list = clients;
+
 	/*
 	 *	Hack to fixup wildcard clients
 	 *
