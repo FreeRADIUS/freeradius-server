@@ -298,6 +298,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	while ((rlm_sql_fetch_row(inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
 		int num_rows;
 		char *server = NULL;
+		char const *nas_type = NULL;
 
 		i++;
 
@@ -334,8 +335,12 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			continue;
 		}
 
+		if ((row[3] != NULL) && *row[3]) {	/* valid 'type' ? */
+			nas_type = row[3];
+		}
+
 		if ((num_rows > 5) && (row[5] != NULL) && *row[5]) {
-			server = row[5];
+			server = row[5];		/* valid virtual 'server' ? */
 		}
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to %s clients list",
@@ -347,7 +352,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 				      row[1],	/* identifier */
 				      row[4],	/* secret */
 				      row[2],	/* shortname */
-				      row[3],	/* type */
+				      nas_type,	/* type */
 				      server,	/* server */
 				      false);	/* require message authenticator */
 		if (!c) {
