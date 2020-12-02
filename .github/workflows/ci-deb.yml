@@ -1,0 +1,83 @@
+name: CI DEB
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  pull_request:
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  deb-build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: debian:buster
+
+    name: "DEB build"
+
+    steps:
+
+    - name: Package manager performance improvements
+      run: |
+        echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
+        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+
+    - name: Install recent git
+      run: |
+        apt-get update
+        apt-get install -y git
+
+    - uses: actions/checkout@v2
+
+    - name: Install build dependencies
+      run: |
+        apt-get install -y build-essential devscripts quilt
+        debian/rules debian/control
+        mk-build-deps -irt"apt-get -y" debian/control ;
+
+    - name: Build DEBs
+      run: |
+        make deb
+        mkdir debs
+        mv ../*.deb debs
+
+    - name: Store DEBs
+      uses: actions/upload-artifact@v2
+      with:
+        name: debs
+        path: debs
+
+  deb-test:
+
+    needs:
+      - deb-build
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: debian:buster
+
+    name: "DEB install test"
+
+    steps:
+
+    - name: Load DEBs
+      uses: actions/download-artifact@v2
+      with:
+        name: debs
+
+    - name: Install DEBs
+      run: |
+        apt-get update
+        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y
+
+    - name: Startup test
+      run: |
+        freeradius -XC
+
