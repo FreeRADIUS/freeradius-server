@@ -250,6 +250,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			}
 			clients = root_clients;
 		}
+
+		client->list = clients; /* reset it */
 	}
 
 	/*
