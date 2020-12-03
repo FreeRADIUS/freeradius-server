@@ -714,6 +714,49 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 	return n;
 }
 
+/** Copy the children of an existing attribute
+ *
+ * @param[in] dict		to allocate the children in
+ * @param[in] dst		where to copy the children to
+ * @param[in] src		where to copy the children from
+ * @return
+ *	- 0 on success
+ *	- <0 on error
+ */
+int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
+{
+	fr_dict_attr_t const *child = NULL;
+	fr_dict_attr_t *copy;
+
+	if (dst->type != FR_TYPE_TLV) return -1;
+
+	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
+
+	for (child = fr_dict_attr_iterate_children(src, &child);
+	     child != NULL;
+	     child = fr_dict_attr_iterate_children(src, &child)) {
+		copy = dict_attr_acopy(dict->pool, child, NULL);
+		if (!copy) {
+			fr_strerror_printf("Failed cloning child %s", child->name);
+			return -1;
+		}
+
+		copy->parent = dst;
+
+		if (dict_attr_child_add(dst, copy) < 0) return -1;
+
+		if (dict_attr_add_to_namespace(dict, dst, copy) < 0) return -1;
+		
+		if (!dict_attr_children(child)) continue;
+
+		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
+	}
+
+	return 0;
+}
+
+
+
 /** Add a protocol to the global protocol table
  *
  * Inserts a protocol into the global protocol table.  Uses the root attributes
