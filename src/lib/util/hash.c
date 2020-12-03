@@ -386,12 +386,12 @@ static void fr_hash_table_fixup(fr_hash_table_t *ht, uint32_t entry)
 static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
+	size_t existing = talloc_get_size(ht->buckets);
 
-	buckets = talloc_zero_array(ht, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
+	buckets = talloc_realloc(ht, ht->buckets, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
-	memcpy(buckets, ht->buckets, sizeof(*buckets) * ht->num_buckets);
-	talloc_free(ht->buckets); /* Free the old buckets */
+	memset(((uint8_t *)buckets) + existing, 0, talloc_get_size(buckets) - existing);
 
 	ht->buckets = buckets;
 	ht->num_buckets *= GROW_FACTOR;
