@@ -860,6 +860,9 @@ module_t rlm_sqlippool = {
 	.method_names = (module_method_names_t[]){
 		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_alloc },
 		{ .name1 = "recv",	.name2 = "Request",	.method = mod_update },
+		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_update },
+		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_update },
+		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_update },
 		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
 		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_mark },
 
