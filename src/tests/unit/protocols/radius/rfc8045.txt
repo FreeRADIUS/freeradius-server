@@ -1,0 +1,32 @@
+proto radius
+proto-dictionary radius
+
+#
+#  RADIUS does not (yet) support nested TLVs.
+#
+#encode-pair IP-Port-Limit-Info = { IP-Port-Type = 1, IP-Port-Limit = 2 }
+#match fo
+
+encode-pair Extended-Attribute-1.IP-Port-Limit-Info.Type = 1
+match f1 09 05 01 06 00 00 00 01
+
+encode-pair Extended-Attribute-1.IP-Port-Limit-Info.Limit = 2
+match f1 09 05 02 06 00 00 00 02
+
+encode-pair Extended-Attribute-1.IP-Port-Limit-Info.Type = 1, Extended-Attribute-1.IP-Port-Limit-Info.Limit = 2
+match f1 0f 05 01 06 00 00 00 01 02 06 00 00 00 02
+
+decode-pair -
+match Extended-Attribute-1.IP-Port-Limit-Info.Type = 1, Extended-Attribute-1.IP-Port-Limit-Info.Limit = 2
+
+#
+#  And for the other attributes
+#
+encode-pair Extended-Attribute-1.IP-Port-Range.Type = 1, Extended-Attribute-1.IP-Port-Range.Limit = 2
+match f1 0f 06 01 06 00 00 00 01 02 06 00 00 00 02
+
+decode-pair -
+match Extended-Attribute-1.IP-Port-Range.Type = 1, Extended-Attribute-1.IP-Port-Range.Limit = 2
+
+count
+match 14

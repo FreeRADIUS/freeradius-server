@@ -64,6 +64,20 @@ struct dict_group_fixup_s {
 	dict_group_fixup_t	*next;			//!< Next in the linked list of fixups.
 };
 
+typedef struct dict_clone_fixup_s dict_clone_fixup_t;
+
+/** A clone call, which we'll resolve later
+ *
+ */
+struct dict_clone_fixup_s {
+	char			*filename;		//!< where the "group" was defined
+	int			line;			//!< ditto
+	fr_dict_attr_t   	*parent;		//!< parent where we add the clone
+	fr_dict_attr_t		*da;			//!< FR_TYPE_TLV to clone
+	char 			*ref;			//!< the target attribute to clone
+	dict_clone_fixup_t	*next;			//!< Next in the linked list of fixups.
+};
+
 /** Parser context for dict_from_file
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -94,6 +108,7 @@ typedef struct {
 
 	dict_enum_fixup_t	*enum_fixup;
 	dict_group_fixup_t	*group_fixup;
+	dict_clone_fixup_t	*clone_fixup;
 
 	fr_dict_attr_t		*ext_fixup;		//!< Head of a list of attributes to apply fixups to.
 } dict_tokenize_ctx_t;
@@ -477,7 +492,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
+			if (type != FR_TYPE_GROUP) {
 				fr_strerror_printf("The 'ref' flag cannot be used for type '%s'",
 						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 				return -1;
@@ -486,6 +501,20 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			*ref = talloc_strdup(ctx->dict->pool, value);
 			flags->extra = true;
 			flags->subtype = FLAG_HAS_REF;
+
+		} else if (strcmp(key, "clone") == 0) {
+			if (!value) {
+				fr_strerror_printf("Missing attribute name for 'clone=...'");
+				return -1;
+			}
+
+			if (type != FR_TYPE_TLV) {
+				fr_strerror_printf("The 'clone' flag cannot be used for type '%s'",
+						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+				return -1;
+			}
+
+			*ref = talloc_strdup(ctx->dict->pool, value);
 
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
@@ -757,14 +786,19 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		return -1;
 	}
 
+#ifndef NDEBUG
+	if (!dict_attr_by_name(NULL, parent, argv[0])) {
+		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		return -1;
+	}
+#endif
+
 	if (set_relative_attr) ctx->relative_attr = da;
 
 	/*
-	 *	Update 'ref'.  GROUPs always have refs.  For TLVs and
-	 *	STRUCTs, we add the ref after the attribute has been
-	 *	created.
+	 *	Groups can refer to other dictionaries, or other attributes.
 	 */
-	if (ref || (type == FR_TYPE_GROUP)) {
+	if (type == FR_TYPE_GROUP) {
 		fr_dict_attr_t		*self;
 		fr_dict_t		*dict;
 		char			*p;
@@ -775,7 +809,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	No qualifiers, just point it to the root of the current dictionary.
 		 */
 		if (!ref) {
-			fr_assert(type == FR_TYPE_GROUP);
 			dict = ctx->dict;
 			da = ctx->dict->root;
 			goto check;
@@ -833,6 +866,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			 */
 			fixup->next = ctx->group_fixup;
 			ctx->group_fixup = fixup;
+			return 0;
 
 		} else if (ref[slen] == '\0') {
 			da = dict->root;
@@ -850,17 +884,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			}
 
 		check:
-			if ((self->type == FR_TYPE_STRUCT) && (da->type != FR_TYPE_STRUCT)) {
-				fr_strerror_printf("References MUST be to attributes of type 'struct'");
-				talloc_free(ref);
-				return -1;
-
-			} else if (da->type != FR_TYPE_TLV) {
-				fr_strerror_printf("References MUST be to attributes of type 'tlv'");
-				talloc_free(ref);
-				return -1;
-			}
-
 			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
 				talloc_free(ref);
@@ -872,6 +895,34 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 			dict_attr_ref_set(self, da);
 		}
+	}
+
+	/*
+	 *	It's a "clone" thing.
+	 */
+	if (ref) {
+		dict_clone_fixup_t	*fixup;
+		fr_dict_attr_t		*self;
+
+		memcpy(&self, &da, sizeof(self)); /* const issues */
+
+		fixup = talloc_zero(ctx->fixup_pool, dict_clone_fixup_t);
+		if (!fixup) goto oom;
+
+		fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
+		if (!fixup->filename) goto oom;
+		fixup->line = ctx->stack[ctx->stack_depth].line;
+
+		memcpy(&fixup->parent, &parent, sizeof(parent)); /* const issues */
+		fixup->da = self;
+		fixup->ref = ref;
+
+		/*
+		 *	Insert to the head of the list.
+		 */
+		fixup->next = ctx->clone_fixup;
+		ctx->clone_fixup = fixup;
+		return 0;
 	}
 
 	/*
@@ -1753,6 +1804,149 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 
 			ctx->ext_fixup = this->fixup;
 			this->fixup = NULL;
+		}
+	}
+
+	if (ctx->clone_fixup) {
+		dict_clone_fixup_t *mine, *this, *next;
+
+		mine = ctx->clone_fixup;
+		ctx->clone_fixup = NULL;
+
+		/*
+		 *	Loop over references, cloning the da.
+		 */
+		for (this = mine; this != NULL; this = next) {
+			fr_dict_t		*dict;
+			fr_dict_attr_t const	*da;
+			fr_dict_attr_t		*cloned;
+			char			*p;
+			ssize_t			slen;
+
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), this->ref);
+			if (da) {
+				dict = ctx->dict;
+				goto clone_check;
+			}
+
+			/*
+			 *	The attribute doesn't exist, and the reference
+			 *	isn't in a "PROTO.ATTR" format, die.
+			 */
+			p = strchr(this->ref, '.');
+
+			/*
+			 *	Get / skip protocol name.
+			 */
+			slen = dict_by_protocol_substr(NULL,
+						       &dict, &FR_SBUFF_IN(this->ref, strlen(this->ref)),
+						       ctx->dict);
+			if (slen <= 0) {
+				fr_dict_t *other;
+
+				if (p) *p = '\0';
+
+				if (fr_dict_protocol_afrom_file(&other, this->ref, NULL) < 0) {
+					return -1;
+				}
+
+				if (p) *p = '.';
+
+				/*
+				 *	Grab the protocol name again
+				 */
+				dict = other;
+				if (!p) {
+					dict = other;
+					da = other->root;
+					goto clone_check;
+				}
+
+				slen = p - this->ref;
+			}
+
+			if (slen < 0) {
+			clone_invalid_reference:
+				fr_strerror_printf("Invalid reference '%s' at %s[%d]",
+						   this->ref,
+						   fr_cwd_strip(this->filename), this->line);
+			clone_error:
+				/*
+				 *	Just so we don't lose track of things.
+				 */
+				// @todo - don't leak clone_fixup stuff? things?
+				return -1;
+			}
+
+			/*
+			 *	No known dictionary, so we're asked to just
+			 *	use the whole string.  Which we did above.  So
+			 *	either it's a bad ref, OR it's a ref to a
+			 *	dictionary which doesn't exist.
+			 */
+			if (slen == 0) goto clone_invalid_reference;
+
+			/*
+			 *	Look up the attribute.
+			 */
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), this->ref + slen + 1);
+			if (!da) {
+				fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
+						   this->ref + slen + 1, fr_cwd_strip(this->filename), this->line);
+				goto clone_error;
+			}
+
+		clone_check:
+			if (da->type != FR_TYPE_TLV) {
+				fr_strerror_printf("Clone references MUST be to attributes of type 'tlv' at %s[%d]",
+						   fr_cwd_strip(this->filename), this->line);
+				goto clone_error;
+			}
+
+			if (fr_dict_attr_ref(da)) {
+				fr_strerror_printf("Clone references MUST NOT refer to an ATTRIBUTE which has 'ref=...' at %s[%d]",
+						   fr_cwd_strip(this->filename), this->line);
+				goto clone_error;
+			}
+
+			/*
+			 *	Copy the source attribute, but with a
+			 *	new name and a new attribute number.
+			 */
+			cloned = dict_attr_acopy(dict->pool, da, this->da->name);
+			if (!cloned) {
+				fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, this->ref);
+				goto clone_error;
+			}
+
+			cloned->attr = this->da->attr;
+			cloned->parent = this->parent;
+
+			/*
+			 *	Copy any pre-existing children over.
+			 */
+			if (dict_attr_children(this->da)) {
+				if (dict_attr_acopy_children(dict, cloned, this->da) < 0) {
+					fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
+					goto clone_error;
+				}
+			}
+
+			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
+				fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
+				goto clone_error;
+			}
+
+			if (dict_attr_child_add(this->parent, cloned) < 0) {
+				fr_strerror_printf("Failed adding cloned attribute %s", da->name);
+				talloc_free(cloned);
+				goto clone_error;
+			}
+
+			if (dict_attr_add_to_namespace(dict, this->parent, cloned) < 0) goto clone_error;
+
+			talloc_free(this->ref);
+			next = this->next;
 		}
 	}
 

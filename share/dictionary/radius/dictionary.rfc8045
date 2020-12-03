@@ -8,11 +8,6 @@
 #
 
 ATTRIBUTE	IP-Port-Limit-Info			241.5	tlv
-#
-#  These attributes can appear in all of the above TLVs.  There is
-#  currently no way to describe this using the existing dictionary
-#  format.
-#
 ATTRIBUTE	Type					.1	integer
 ATTRIBUTE	Limit					.2	integer
 ATTRIBUTE	Ext-IPv4-Addr				.3	ipaddr
@@ -30,38 +25,9 @@ ATTRIBUTE	Range-Start				.9	integer
 ATTRIBUTE	Range-End				.10	integer
 ATTRIBUTE	Local-Id				.11	string
 
-ATTRIBUTE	IP-Port-Range				241.6	tlv
-ATTRIBUTE	Type					.1	integer
-ATTRIBUTE	Limit					.2	integer
-ATTRIBUTE	Ext-IPv4-Addr				.3	ipaddr
-ATTRIBUTE	Int-IPv4-Addr				.4	ipaddr
-ATTRIBUTE	Int-IPv6-Addr				.5	ipv6addr
-ATTRIBUTE	Int-Port				.6	integer
-ATTRIBUTE	Ext-Port				.7	integer
-ATTRIBUTE	Alloc					.8	integer
-
-VALUE	Alloc				Reserved		0
-VALUE	Alloc				Allocation		1
-VALUE	Alloc				Deallocation		2
-
+ATTRIBUTE	IP-Port-Range				241.6	tlv clone=Extended-Attribute-1.IP-Port-Limit-Info
 ATTRIBUTE	Range-Start				.9	integer
 ATTRIBUTE	Range-End				.10	integer
 ATTRIBUTE	Local-Id				.11	string
 
-ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv
-ATTRIBUTE	Type					.1	integer
-ATTRIBUTE	Limit					.2	integer
-ATTRIBUTE	Ext-IPv4-Addr				.3	ipaddr
-ATTRIBUTE	Int-IPv4-Addr				.4	ipaddr
-ATTRIBUTE	Int-IPv6-Addr				.5	ipv6addr
-ATTRIBUTE	Int-Port				.6	integer
-ATTRIBUTE	Ext-Port				.7	integer
-ATTRIBUTE	Alloc					.8	integer
-
-VALUE	Alloc				Reserved		0
-VALUE	Alloc				Allocation		1
-VALUE	Alloc				Deallocation		2
-
-ATTRIBUTE	Range-Start				.9	integer
-ATTRIBUTE	Range-End				.10	integer
-ATTRIBUTE	Local-Id				.11	string
+ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv clone=Extended-Attribute-1.IP-Port-Range
