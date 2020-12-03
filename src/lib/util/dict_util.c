@@ -624,6 +624,15 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	return 0;
 }
 
+static int _dict_attr_free(fr_dict_attr_t *da)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (ext) talloc_free(ext->value_by_name);		/* Ensure this is freed before the enumvs */
+
+	return 0;
+}
 /** Allocate a partially completed attribute
  *
  * This is useful in some instances where we need to pre-allocate the attribute
@@ -642,7 +651,7 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 	da = talloc(ctx, fr_dict_attr_t);
 	if (unlikely(!da)) return NULL;
 
-	talloc_set_type(da, fr_dict_attr_t);
+	talloc_set_destructor(da, _dict_attr_free);
 
 	return da;
 }
@@ -1269,7 +1278,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			return -1;
 		}
 
-		ext->name_by_value = fr_hash_table_create(da, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
+		ext->name_by_value = fr_hash_table_create(da, dict_enum_value_hash, dict_enum_value_cmp, NULL);
 		if (!ext->name_by_value) {
 			fr_strerror_printf("Failed allocating \"name_by_value\" table");
 			return -1;
@@ -1282,7 +1291,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(dict->pool, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * (child_struct != NULL));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * (child_struct != NULL));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
@@ -2891,6 +2900,14 @@ static int _dict_free(fr_dict_t *dict)
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
 		return -1;
 	}
+
+	/*
+	 *	Free the hash tables with free functions first
+	 *	so that the things the hash tables reference
+	 *	are still there.
+	 */
+	talloc_free(dict->vendors_by_name);
+	talloc_free(dict->attributes_combo);
 
 	if (dict->autoref &&
 	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
