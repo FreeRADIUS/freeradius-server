@@ -1356,6 +1356,20 @@ static unlang_action_t CC_HINT(nonnull) mod_request(rlm_rcode_t *p_result, modul
 	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
 }
 
+static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
+
+	/*
+	 *	Unless it's overridden the default action is to release
+	 *	when called by DHCP release
+	 */
+
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_RELEASE);
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	static bool			done_hash = false;
@@ -1432,6 +1446,7 @@ module_t rlm_redis_ippool = {
 		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_request },
 		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_request },
 		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
 		MODULE_NAME_TERMINATOR
 	}
 };
