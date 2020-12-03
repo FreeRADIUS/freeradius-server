@@ -1069,6 +1069,8 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 	{
 		fr_dict_attr_t *v4, *v6;
 
+		fr_assert(dict->attributes_combo);
+
 		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_ADDR;
@@ -1092,6 +1094,8 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 	case FR_TYPE_COMBO_IP_PREFIX:
 	{
 		fr_dict_attr_t *v4, *v6;
+
+		fr_assert(dict->attributes_combo);
 
 		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
