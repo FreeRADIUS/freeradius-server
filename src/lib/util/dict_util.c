@@ -590,8 +590,11 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 			break;
 		}
 
-		if (type == FR_TYPE_TLV) {
-			if (dict_attr_ref_init(da_p) < 0) return -1;	/* TLVs can reference common attribute sets */
+		/*
+		 *	TLVs and STRUCTs can refer to other TLVs and STRUCTs.
+		 */
+		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_STRUCT)) {
+			if (dict_attr_ref_init(da_p) < 0) return -1;
 		}
 
 		if (dict_attr_children_init(da_p) < 0) return -1;

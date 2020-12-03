@@ -472,8 +472,14 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV)) {
-				fr_strerror_printf("The 'ref' flag can only be used for attributes of type 'group'");
+			if (flags->extra) {
+				fr_strerror_printf("Cannot use 'ref' with other flags");
+				return -1;
+			}
+
+			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
+				fr_strerror_printf("The 'ref' flag cannot be used for type '%s'",
+						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 				return -1;
 			}
 
@@ -735,14 +741,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	}
 
 	/*
-	 *	TLVs can only refer to attributes in the same dictionary.
-	 */
-	if (ref && (type == FR_TYPE_TLV) && !fr_dict_attr_by_oid(NULL, parent, ref)) {
-		fr_strerror_printf("Attributes of type 'tlv' MUST refer to a pre-existing ATTRIBUTE in the same protocol");
-		return -1;
-	}
-
-	/*
 	 *	Add in an attribute
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
@@ -767,7 +765,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (fr_dict_attr_ref(da)) {
 		fr_dict_attr_t		*self;
 		fr_dict_t		*dict;
-		char *p;
+		char			*p;
 
 		memcpy(&self, &da, sizeof(self)); /* const issues */
 
@@ -850,7 +848,12 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			}
 
 		check:
-			if (da->type != FR_TYPE_TLV) {
+			if ((self->type == FR_TYPE_STRUCT) && (da->type != FR_TYPE_STRUCT)) {
+				fr_strerror_printf("References MUST be to attributes of type 'struct'");
+				talloc_free(ref);
+				return -1;
+
+			} else if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("References MUST be to attributes of type 'tlv'");
 				talloc_free(ref);
 				return -1;

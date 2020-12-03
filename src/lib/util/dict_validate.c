@@ -244,6 +244,18 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
+		if (flags->subtype == FLAG_HAS_REF) {
+			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
+				fr_strerror_printf("The 'ref' flag cannot be used used with type %s",
+						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+				return false;
+			}
+
+			/*
+			 *	@todo - double-check refs here, and not in dict_read_process_attribute().
+			 */
+		}
+
 		FORBID_OTHER_FLAGS(extra);
 	}
 
