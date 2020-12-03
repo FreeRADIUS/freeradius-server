@@ -172,8 +172,8 @@ fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[] = {
 	{ .out = &enum_acct_status_type_start, .name = "Start", .attr = &attr_acct_status_type },
 	{ .out = &enum_acct_status_type_interim_update, .name = "Interim-Update", .attr = &attr_acct_status_type },
 	{ .out = &enum_acct_status_type_interim_update, .name = "Stop", .attr = &attr_acct_status_type},
-	{ .out = &enum_acct_status_type_on, .name = "On", .attr = &attr_acct_status_type },
-	{ .out = &enum_acct_status_type_off, .name = "Off", .attr = &attr_acct_status_type},
+	{ .out = &enum_acct_status_type_on, .name = "Accounting-On", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_off, .name = "Accounting-Off", .attr = &attr_acct_status_type},
 	{ NULL }
 };
 
