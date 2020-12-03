@@ -39,25 +39,19 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 $(FILES.$(TEST)): export TZ = GMT
 
+#
+#  Ensure that the protocol tests are run if any of the protocol dictionaries change
+#
+PROTOCOLS := $(subst $(DIR)/protocols/,,$(wildcard $(DIR)/protocols/*))
+define UNIT_TEST_PROTOCOLS
+$(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/share/dictionary/${1}/dictionary*) $(BUILD_DIR)/lib/libfreeradius-${1}.la
+endef
+$(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
+
+
 #export ASAN_SYMBOLIZER_PATH=$(shell which llvm-symbolizer)
 #export ASAN_OPTIONS=malloc_context_size=50 detect_leaks=1 symbolize=1
 #export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0
-
-#
-#  Look in each file for `proto foo`, and then make that file depend in `libfreeradius-foo.a`
-#
-DEPENDS_MK := $(OUTPUT)/depends.mk
-$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
-	${Q}rm -f $@
-	${Q}touch $@
-	${Q}for x in $^; do \
-		y=`grep '^proto ' $$x | sed 's/^proto //'`; \
-		if [ "$$y" != "" ]; then \
-			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
-			echo "$$z: $(BUILD_DIR)/lib/libfreeradius-$$y.la" >> $@; \
-			echo "" >> $@; \
-		fi \
-	done
 
 #
 #  And the actual script to run each test.
