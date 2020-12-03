@@ -202,23 +202,34 @@ VALUE	Classifer-Direction		FF			4
 
 ATTRIBUTE	Src-Spec				28.11.5	tlv
 
-ATTRIBUTE	IPAddress				.1	ipaddr
-ATTRIBUTE	IPAddressRange				.2	combo-ip
-ATTRIBUTE	IPAddressMask				.3	octets
+ATTRIBUTE	IP-Address				.1	combo-ip
+# Really "combo-ip start, end"
+ATTRIBUTE	IP-Address-Range			.2	octets
+ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
+# Really "uint16 start, end"
 ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
 ATTRIBUTE	Assigned				.7	byte
+VALUE	Assigned			Src-Assigned		1
+VALUE	Assigned			Dst-Assigned		2
+VALUE	Assigned			Src-Dst-Assigned	3
 
 ATTRIBUTE	Dst-Spec				28.11.6	tlv
 
-ATTRIBUTE	IPAddress				.1	ipaddr
-ATTRIBUTE	IPAddressRange				.2	combo-ip
-ATTRIBUTE	IPAddressMask				.3	octets
+# Copied from 28.11.5
+ATTRIBUTE	IP-Address				.1	combo-ip
+# Really "combo-ip start, end"
+ATTRIBUTE	IP-Address-Range			.2	octets
+ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
+# Really "uint16 start, end"
 ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
 ATTRIBUTE	Assigned				.7	byte
+VALUE	Assigned			Src-Assigned		1
+VALUE	Assigned			Dst-Assigned		2
+VALUE	Assigned			Src-Dst-Assigned	3
 
 ATTRIBUTE	IP-TOS/DSCP-Range-and-Mask		28.11.7	octets
 ATTRIBUTE	VLAN-ID					28.11.8	integer
@@ -474,15 +485,15 @@ ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
 ATTRIBUTE	Src-Spec				84.9.5	tlv
+# Copied from 28.11.5
 ATTRIBUTE	IP-Address				.1	combo-ip
-# really two IPv4 OR IPv6 addresses
+# Really "combo-ip start, end"
 ATTRIBUTE	IP-Address-Range			.2	octets
-ATTRIBUTE	IP-Address-Mask				.3	combo-ip
+ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
-# 2 shorts
+# Really "uint16 start, end"
 ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
-
 ATTRIBUTE	Assigned				.7	byte
 VALUE	Assigned			Src-Assigned		1
 VALUE	Assigned			Dst-Assigned		2
@@ -492,15 +503,15 @@ ATTRIBUTE	MAC-Address				.8	ether
 ATTRIBUTE	MAC-Mask				.9	ether
 
 ATTRIBUTE	Dest-Spec				84.9.6	tlv
+# Copied from 28.11.5
 ATTRIBUTE	IP-Address				.1	combo-ip
-# really two IPv4 OR IPv6 addresses
+# Really "combo-ip start, end"
 ATTRIBUTE	IP-Address-Range			.2	octets
-ATTRIBUTE	IP-Address-Mask				.3	combo-ip
+ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
-# 2 shorts
+# Really "uint16 start, end"
 ATTRIBUTE	Port-Range				.5	integer
 ATTRIBUTE	Inverted				.6	byte
-
 ATTRIBUTE	Assigned				.7	byte
 VALUE	Assigned			Src-Assigned		1
 VALUE	Assigned			Dst-Assigned		2
