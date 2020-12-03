@@ -624,8 +624,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 			fr_sbuff_marker(&c_start, in);
 			fr_sbuff_adv_past_allowed(in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars);
-			fr_strerror_printf("Unknown attribute \"%.*s\"",
-					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start));
+			fr_strerror_printf("Unknown attribute  \"%.*s\" for parent \"%s\"",
+					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start), our_parent->name);
 			goto error;
 		}
 		}
