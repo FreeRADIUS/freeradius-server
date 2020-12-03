@@ -255,24 +255,7 @@ static int list_delete(fr_hash_table_t *ht,
 
 static int _fr_hash_table_free(fr_hash_table_t *ht)
 {
-	int i;
-	fr_hash_entry_t *node, *next;
-
-	/*
-	 *	Walk over the buckets, freeing them all.
-	 */
-	for (i = 0; i < ht->num_buckets; i++) {
-		if (ht->buckets[i]) for (node = ht->buckets[i];
-					 node != &ht->null;
-					 node = next) {
-			next = node->next;
-			if (!node->data) continue; /* dummy entry */
-
-			talloc_free(node);
-		}
-	}
-	talloc_free(ht->buckets);
-
+	talloc_free_children(ht);
 	return 0;
 }
 
@@ -290,10 +273,9 @@ fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 
 	if (!hash_func) return NULL;
 
-	ht = talloc_zero(NULL, fr_hash_table_t);
+	ht = talloc_zero(ctx, fr_hash_table_t);
 	if (!ht) return NULL;
 	talloc_set_destructor(ht, _fr_hash_table_free);
-	talloc_link_ctx(ctx, ht);
 
 	ht->free = free_func;
 	ht->hash = hash_func;
