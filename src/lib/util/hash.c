@@ -255,7 +255,22 @@ static int list_delete(fr_hash_table_t *ht,
 
 static int _fr_hash_table_free(fr_hash_table_t *ht)
 {
-	talloc_free_children(ht);
+	int i;
+	fr_hash_entry_t *node, *next;
+
+	if (ht->free) {
+		for (i = 0; i < ht->num_buckets; i++) {
+			if (ht->buckets[i]) for (node = ht->buckets[i];
+						 node != &ht->null;
+						 node = next) {
+				next = node->next;
+				if (!node->data) continue; /* dummy entry */
+
+				ht->free(node->data);
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -550,40 +565,6 @@ int fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 
 	return 1;
 }
-
-
-/*
- *	Free a hash table
- */
-void fr_hash_table_free(fr_hash_table_t *ht)
-{
-	int i;
-	fr_hash_entry_t *node, *next;
-
-	if (!ht) return;
-
-	/*
-	 *	Walk over the buckets, freeing them all.
-	 */
-	if (ht->free) {
-		for (i = 0; i < ht->num_buckets; i++) {
-			if (ht->buckets[i]) for (node = ht->buckets[i];
-						 node != &ht->null;
-						 node = next) {
-				next = node->next;
-				if (!node->data) continue; /* dummy entry */
-
-				ht->free(node->data);
-			}
-		}
-	}
-
-	/*
-	 *	Also frees nodes and buckets
-	 */
-	talloc_free(ht);
-}
-
 
 /*
  *	Count number of elements

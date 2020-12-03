@@ -116,18 +116,6 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *	Clean up.
- */
-static int mod_detach(void *instance)
-{
-	rlm_detail_t *inst = instance;
-
-	if (inst->ht) fr_hash_table_free(inst->ht);
-	return 0;
-}
-
-
 static uint32_t detail_hash(void const *data)
 {
 	fr_dict_attr_t const *da = data;
@@ -172,7 +160,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = fr_hash_table_create(NULL, detail_hash, detail_cmp, NULL);
+		inst->ht = fr_hash_table_create(inst, detail_hash, detail_cmp, NULL);
 
 		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
@@ -212,8 +200,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	If we didn't suppress anything, delete the hash table.
 		 */
 		if (fr_hash_table_num_elements(inst->ht) == 0) {
-			fr_hash_table_free(inst->ht);
-			inst->ht = NULL;
+			TALLOC_FREE(inst->ht);
+		} else {
+			fr_hash_table_fill(inst->ht);
 		}
 	}
 
@@ -484,7 +473,6 @@ module_t rlm_detail = {
 	.inst_size	= sizeof(rlm_detail_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_accounting,
