@@ -760,9 +760,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (set_relative_attr) ctx->relative_attr = da;
 
 	/*
-	 *	Update 'ref'
+	 *	Update 'ref'.  GROUPs always have refs.  For TLVs and
+	 *	STRUCTs, we add the ref after the attribute has been
+	 *	created.
 	 */
-	if (fr_dict_attr_ref(da)) {
+	if (ref || (type == FR_TYPE_GROUP)) {
 		fr_dict_attr_t		*self;
 		fr_dict_t		*dict;
 		char			*p;
