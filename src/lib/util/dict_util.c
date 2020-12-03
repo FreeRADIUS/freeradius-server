@@ -585,17 +585,13 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
 	structural:
-		if (type == FR_TYPE_GROUP) {
-			if (dict_attr_ref_init(da_p) < 0) return -1;
-			break;
-		}
+		if (dict_attr_ref_init(da_p) < 0) return -1;
 
 		/*
-		 *	TLVs and STRUCTs can refer to other TLVs and STRUCTs.
+		 *	Groups don't have children or
+		 *	namespaces.
 		 */
-		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_STRUCT)) {
-			if (dict_attr_ref_init(da_p) < 0) return -1;
-		}
+		if (type == FR_TYPE_GROUP) break;
 
 		if (dict_attr_children_init(da_p) < 0) return -1;
 		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
