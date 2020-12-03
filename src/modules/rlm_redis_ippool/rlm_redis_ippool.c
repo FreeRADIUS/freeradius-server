@@ -1429,6 +1429,9 @@ module_t rlm_redis_ippool = {
 	},
 	.method_names = (module_method_names_t[]) {
 		{ .name1 = "recv",	.name2 = "Request",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_request },
 		MODULE_NAME_TERMINATOR
 	}
 };
