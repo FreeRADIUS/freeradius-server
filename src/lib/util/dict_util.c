@@ -1701,7 +1701,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	fr_sbuff_marker_t	start;
 	uint32_t		num = 0;
 	fr_sbuff_parse_error_t	sberr;
-	fr_dict_attr_t const	*child;
+	fr_dict_attr_t const	*child, *ref;
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
@@ -1724,6 +1724,9 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
 		return -fr_sbuff_marker_release_behind(&start);
 	}
+
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
 	fr_sbuff_out(&sberr, &num, in);
 	switch (sberr) {
