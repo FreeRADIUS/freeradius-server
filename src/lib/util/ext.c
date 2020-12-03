@@ -239,9 +239,9 @@ void fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk)
 {
 	int i;
 
-	FR_FAULT_LOG("%sext total_len=%zu", name, talloc_get_size(chunk));
+	FR_FAULT_LOG("%s ext total_len=%zu", name, talloc_get_size(chunk));
 	for (i = 0; i < (int)def->max; i++) {
-		uint8_t *chunk_ext = CHUNK_EXT(def->info, def->offset_of_exts);
+		uint8_t *chunk_ext = CHUNK_EXT(chunk, def->offset_of_exts);
 		if (chunk_ext[i]) {
 			void		*ext = CHUNK_EXT_PTR(chunk, chunk_ext, i);
 			size_t		ext_len = fr_ext_len(def, chunk, i);
@@ -251,12 +251,12 @@ void fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk)
 										i, "<INVALID>");
 
 			if (ext_len > 1024) {
-				FR_FAULT_LOG("%sext id=%s - possibly bad length %zu - limiting dump to 1024",
+				FR_FAULT_LOG("%s ext id=%s - possibly bad length %zu - limiting dump to 1024",
 					     name, ext_name, ext_len);
 				ext_len = 1024;
 			}
 
-			FR_FAULT_LOG("%sext id=%s start=%p end=%p len=%zu",
+			FR_FAULT_LOG("%s ext id=%s start=%p end=%p len=%zu",
 				     name, ext_name, ext, ((uint8_t *)ext) + ext_len, ext_len);
 			FR_FAULT_LOG_HEX(ext, ext_len);
 		}

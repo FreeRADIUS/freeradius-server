@@ -30,12 +30,14 @@ RCSID("$Id$")
 #include <freeradius-devel/util/talloc.h>
 
 static fr_table_num_ordered_t const dict_attr_ext_table[] = {
-	{ L("name"),		FR_DICT_ATTR_EXT_NAME		},
-	{ L("children"),	FR_DICT_ATTR_EXT_CHILDREN	},
-	{ L("vendor"),		FR_DICT_ATTR_EXT_REF		},
-	{ L("enumv"),		FR_DICT_ATTR_EXT_VENDOR		},
-	{ L("da_stack"),	FR_DICT_ATTR_EXT_ENUMV		},
-	{ L("name"),		FR_DICT_ATTR_EXT_DA_STACK	}
+	{ L("name"),			FR_DICT_ATTR_EXT_NAME			},
+	{ L("children"),		FR_DICT_ATTR_EXT_CHILDREN		},
+	{ L("ref"),			FR_DICT_ATTR_EXT_REF			},
+	{ L("vendor"),			FR_DICT_ATTR_EXT_VENDOR			},
+	{ L("da_stack"),		FR_DICT_ATTR_EXT_DA_STACK		},
+	{ L("enumv"),			FR_DICT_ATTR_EXT_ENUMV			},
+	{ L("namespace"),		FR_DICT_ATTR_EXT_NAMESPACE		},
+	{ L("protocol-specific"),	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC	}
 };
 static size_t dict_attr_ext_table_len = NUM_ELEMENTS(dict_attr_ext_table);
 
@@ -187,6 +189,11 @@ static fr_table_num_ordered_t const dict_enum_ext_table[] = {
 	{ L("union_ref"),	FR_DICT_ENUM_EXT_UNION_REF	}
 };
 static size_t dict_enum_ext_table_len = NUM_ELEMENTS(dict_enum_ext_table);
+
+void fr_dict_attr_ext_debug(fr_dict_attr_t const *da)
+{
+	fr_ext_debug(&fr_dict_attr_ext_def, da->name, da);
+}
 
 /** Holds additional information about extension structures
  *

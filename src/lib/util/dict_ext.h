@@ -209,6 +209,8 @@ static inline fr_dict_attr_t const *fr_dict_vendor_da_by_da(fr_dict_attr_t const
 
 /** @} */
 
+void fr_dict_attr_ext_debug(fr_dict_attr_t const *da);
+
 #ifdef __cplusplus
 }
 #endif
