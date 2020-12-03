@@ -124,8 +124,8 @@ static fr_dict_attr_t const *attr_dhcp_server_identifier;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
-	{ .out = &attr_dhcp_server_identifier, .name = "DHCP-DHCP-Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -610,7 +610,7 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t pac
 		if (dhcp->hlen == 6) memcpy(&track->chaddr, &dhcp->chaddr, 6);
 	}
 
-	track->broadcast = ((dhcp->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0);
+	track->broadcast = ((dhcp->flags & FR_FLAGS_VALUE_BROADCAST) != 0);
 	track->hops = dhcp->hops;
 	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->ciaddr));
 	memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));

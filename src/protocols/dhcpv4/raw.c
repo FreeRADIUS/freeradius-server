@@ -115,7 +115,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, fr_rad
 	uint16_t		l4_len = (UDP_HDR_SIZE + packet->data_len);
 	fr_pair_t		*vp;
 
-	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
+	/* set ethernet source address to our MAC address (Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
 	if ((vp = fr_pair_find_by_da(&packet->vps, attr_dhcp_client_hardware_address))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
@@ -223,7 +223,7 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 
 	/*
 	 *	If Ethernet destination is not broadcast (ff:ff:ff:ff:ff:ff)
-	 *	Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
+	 *	Check if it matches the source HW address used (Client-Hardware-Address = 267)
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0) &&
 	    (vp = fr_pair_find_by_da(&request->vps, attr_dhcp_client_hardware_address)) &&

@@ -72,29 +72,29 @@ fr_dict_attr_t const *attr_dhcp_network_subnet;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
-	{ .out = &attr_dhcp_boot_filename, .name = "DHCP-Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_client_ip_address, .name = "DHCP-Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_flags, .name = "DHCP-Flags", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_gateway_ip_address, .name = "DHCP-Gateway-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_hardware_address_length, .name = "DHCP-Hardware-Address-Length", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_hardware_type, .name = "DHCP-Hardware-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_hop_count, .name = "DHCP-Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_number_of_seconds, .name = "DHCP-Number-of-Seconds", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_opcode, .name = "DHCP-Opcode", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_server_host_name, .name = "DHCP-Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_server_ip_address, .name = "DHCP-Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_transaction_id, .name = "DHCP-Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "DHCP-DHCP-Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_interface_mtu_size, .name = "DHCP-Interface-MTU-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_parameter_request_list, .name = "DHCP-Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_overload, .name = "DHCP-Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_vendor_class_identifier, .name = "DHCP-Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_boot_filename, .name = "Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_client_hardware_address, .name = "Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_flags, .name = "Flags", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_gateway_ip_address, .name = "Gateway-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_hardware_address_length, .name = "Hardware-Address-Length", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_hardware_type, .name = "Hardware-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_number_of_seconds, .name = "Number-of-Seconds", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_opcode, .name = "Opcode", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_server_host_name, .name = "Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_server_ip_address, .name = "Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_your_ip_address, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_interface_mtu_size, .name = "Interface-MTU-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_parameter_request_list, .name = "Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_overload, .name = "Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_vendor_class_identifier, .name = "Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_relay_link_selection, .name = "Relay-Agent-Information.Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_subnet_selection_option, .name = "DHCP-Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_network_subnet, .name = "DHCP-Network-Subnet", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_subnet_selection_option, .name = "Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_network_subnet, .name = "Network-Subnet", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -182,7 +182,7 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	 */
 
 	/*
-	 *	DHCP-Message-Type is first, for simplicity.
+	 *	Message-Type is first, for simplicity.
 	 */
 	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da == attr_dhcp_message_type)) &&
 	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da != attr_dhcp_message_type))) return -1;
@@ -313,7 +313,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 *	larger than MTU.
 	 */
 
-	/* DHCP-DHCP-Maximum-Msg-Size */
+	/* Maximum-Msg-Size */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_dhcp_maximum_msg_size);
 	if (vp && (vp->vp_uint32 > mms)) {
 		mms = vp->vp_uint32;
@@ -329,7 +329,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x01);	/* client message */
 	}
 
-	/* DHCP-Hardware-Type */
+	/* Hardware-Type */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_hardware_type);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint8);
@@ -341,7 +341,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x01);
 	}
 
-	/* DHCP-Hardware-Address-len */
+	/* Hardware-Address-len */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_hardware_address_length);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint8);
@@ -353,7 +353,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x06);
 	}
 
-	/* DHCP-Hop-Count */
+	/* Hop-Count */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_hop_count);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint8);
@@ -365,10 +365,10 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x00);
 	}
 
-	/* DHCP-Transaction-Id */
+	/* Transaction-Id */
 	FR_DBUFF_IN_RETURN(&work_dbuff, xid);
 
-	/* DHCP-Number-of-Seconds */
+	/* Number-of-Seconds */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_number_of_seconds);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint16);
@@ -376,7 +376,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, sizeof(vp->vp_uint16));
 	}
 
-	/* DHCP-Flags */
+	/* Flags */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_flags);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint16);
@@ -384,7 +384,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, sizeof(vp->vp_uint16));
 	}
 
-	/* DHCP-Client-IP-Address */
+	/* Client-IP-Address */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_client_ip_address);
 	if (vp) {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
@@ -392,7 +392,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, sizeof(vp->vp_ipv4addr));
 	}
 
-	/* DHCP-Your-IP-address */
+	/* Your-IP-address */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_your_ip_address);
 	if (vp) {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
@@ -400,7 +400,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) INADDR_ANY);
 	}
 
-	/* DHCP-Server-IP-Address */
+	/* Server-IP-Address */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_server_ip_address);
 	if (vp) {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
@@ -409,7 +409,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/*
-	 *	DHCP-Gateway-IP-Address
+	 *	Gateway-IP-Address
 	 */
 	vp = fr_pair_find_by_da(&vps, attr_dhcp_gateway_ip_address);
 	if (vp) {
@@ -422,7 +422,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) INADDR_ANY);
 	}
 
-	/* DHCP-Client-Hardware-Address */
+	/* Client-Hardware-Address */
 	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_client_hardware_address))) {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)vp->vp_ether, sizeof(vp->vp_ether));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, DHCP_CHADDR_LEN - sizeof(vp->vp_ether));
@@ -434,7 +434,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, DHCP_CHADDR_LEN);
 	}
 
-	/* DHCP-Server-Host-Name */
+	/* Server-Host-Name */
 	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_server_host_name))) {
 		if (vp->vp_length > DHCP_SNAME_LEN) {
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, DHCP_SNAME_LEN);
@@ -447,7 +447,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	}
 
 	/*
-	 *	Copy over DHCP-Boot-Filename.
+	 *	Copy over Boot-Filename.
 	 *
 	 *	FIXME: This copy should be delayed until AFTER the options
 	 *	have been processed.  If there are too many options for
@@ -456,7 +456,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 *	instead of being placed verbatim in the filename field.
 	 */
 
-	/* DHCP-Boot-Filename */
+	/* Boot-Filename */
 	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_boot_filename))) {
 		if (vp->vp_length > DHCP_FILE_LEN) {
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, DHCP_FILE_LEN);
@@ -472,9 +472,9 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) DHCP_OPTION_MAGIC_NUMBER);
 
 	if ((vp = fr_pair_find_by_da(&vps, attr_dhcp_message_type))) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 0x01, vp->vp_uint8);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, vp->vp_uint8);
 	} else {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_DHCP_MESSAGE_TYPE, 0x01, (uint8_t)code);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, (uint8_t)code);
 	}
 
 	/*
@@ -506,7 +506,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		if (len <= 0) break;
 	};
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_DHCP_END_OF_OPTIONS, 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_END_OF_OPTIONS, 0x00);
 
 	/*
 	 *	FIXME: if (fr_dbuff_used(&work_dbuff) > mms),
@@ -552,7 +552,7 @@ int fr_dhcpv4_global_init(void)
 	}
 
 	/*
-	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
+	 *	Fixup dictionary entry for Paramter-Request-List adding all the options
 	 */
 	for (i = 1; i < 255; i++) {
 		fr_dict_attr_t const *attr;

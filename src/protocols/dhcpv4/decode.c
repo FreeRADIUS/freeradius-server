@@ -30,7 +30,6 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include "dhcpv4.h"
@@ -256,7 +255,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
  * So although the vendor is identified, the format of the data isn't
  * specified so we can't actually resolve the suboption to an
  * attribute.  For now, we just convert it to an attribute of
- * DHCP-Vendor-Specific-Information with raw octets contents.
+ * Vendor-Specific-Information with raw octets contents.
  */
 
 /** Decode DHCP suboptions

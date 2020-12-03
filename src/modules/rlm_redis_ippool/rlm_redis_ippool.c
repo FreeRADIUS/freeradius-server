@@ -48,8 +48,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
 
-#include <freeradius-devel/radius/radius.h>
-
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
@@ -119,10 +117,10 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply.DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply.Your-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_DEPRECATED("reply_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
 	{ FR_CONF_OFFSET("range_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply.IP-Pool.Range", .quote = T_BARE_WORD },
@@ -159,7 +157,23 @@ extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_pool_action, .name = "IP-Pool.Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ NULL }
+};
+
+fr_value_box_t const	*enum_acct_status_type_start;
+fr_value_box_t const	*enum_acct_status_type_interim_update;
+fr_value_box_t const	*enum_acct_status_type_stop;
+fr_value_box_t const	*enum_acct_status_type_on;
+fr_value_box_t const	*enum_acct_status_type_off;
+
+extern fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[];
+fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[] = {
+	{ .out = &enum_acct_status_type_start, .name = "Start", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_interim_update, .name = "Interim-Update", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_interim_update, .name = "Stop", .attr = &attr_acct_status_type},
+	{ .out = &enum_acct_status_type_on, .name = "On", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_off, .name = "Off", .attr = &attr_acct_status_type},
 	{ NULL }
 };
 
@@ -1268,21 +1282,20 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		RETURN_MODULE_NOOP;
 	}
 
-	switch (vp->vp_uint32) {
-	case FR_STATUS_START:
-	case FR_STATUS_ALIVE:
+	if ((vp->vp_uint32 == enum_acct_status_type_start->vb_uint32) ||
+	    (vp->vp_uint32 == enum_acct_status_type_interim_update->vb_uint32)) {
 		return mod_action(p_result, inst, request, POOL_ACTION_UPDATE);
 
-	case FR_STATUS_STOP:
+	} else if (vp->vp_uint32 == enum_acct_status_type_stop->vb_uint32) {
 		return mod_action(p_result, inst, request, POOL_ACTION_RELEASE);
 
-	case FR_STATUS_ACCOUNTING_OFF:
-	case FR_STATUS_ACCOUNTING_ON:
+	} else if ((vp->vp_uint32 == enum_acct_status_type_on->vb_uint32) ||
+		   (vp->vp_uint32 == enum_acct_status_type_off->vb_uint32)) {
 		return mod_action(p_result, inst, request, POOL_ACTION_BULK_RELEASE);
 
-	default:
-		RETURN_MODULE_NOOP;
 	}
+
+	RETURN_MODULE_NOOP;
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

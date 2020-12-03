@@ -19,8 +19,8 @@ EOF
 
 do_test $TEST_BIN/unit_test_module -d src/tests/bin/ -D $DICT_DIR -xx -i - -n dhcpv4 -p dhcpv4 <<EOF
 Packet-Type = Discover,
-DHCP-Hardware-Type = Ethernet
-DHCP-Hardware-Address-Length = 6
+Hardware-Type = Ethernet
+Hardware-Address-Length = 6
 
 Packet-Type = Offer
 EOF

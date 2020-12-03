@@ -25,8 +25,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/soh/base.h>
 
 typedef struct {
@@ -54,6 +52,7 @@ static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
 static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
 static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
 static fr_dict_attr_t const *attr_ms_quarantine_soh;
+static fr_dict_attr_t const *attr_ms_vendor;
 static fr_dict_attr_t const *attr_dhcp_vendor;
 
 extern fr_dict_attr_autoload_t rlm_soh_dict_attr[];
@@ -65,8 +64,9 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_vendor, .name = "Vendor-Specific.Microsoft", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
 	{ .out = &attr_ms_quarantine_soh, .name = "Vendor-Specific.Microsoft.Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_vendor, .name = "Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -100,7 +100,7 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		vp[4] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_sp_version);
 		vp[5] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_sp_release);
 
-		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
+		if (vp[0] && vp[0]->vp_uint32 == attr_ms_vendor->attr) {
 			if (!vp[1]) {
 				snprintf(*out, outlen, "Windows unknown");
 			} else {

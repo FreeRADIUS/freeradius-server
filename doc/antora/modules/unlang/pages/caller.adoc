@@ -39,7 +39,7 @@ which would not have been as clear as using `caller`.
 
 .Example
 
-This example copies the `DHCP-Client-Identifer` from the parent DHCPv4
+This example copies the `Client-Identifer` from the parent DHCPv4
 request to the current RADIUS reply packet, as the contents of the
 `Filter-Id` attribute.
 
@@ -47,7 +47,7 @@ request to the current RADIUS reply packet, as the contents of the
 ----
 caller dhcpv4 {
     update reply {
-        &Filter-Id := &parent.request:DHCP-Client-Identifier
+        &Filter-Id := &parent.request:Client-Identifier
     }
 }
 ----

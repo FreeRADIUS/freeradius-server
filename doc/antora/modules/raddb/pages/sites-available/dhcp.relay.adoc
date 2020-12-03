@@ -26,19 +26,19 @@ server dhcp.eth1 {
 	}
 	dhcp Discover {
 		update config {
-			&DHCP-Relay-To-IP-Address := 192.0.2.2
+			&Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
-			&DHCP-Gateway-IP-Address := 192.0.2.1
+			&Gateway-IP-Address := 192.0.2.1
 		}
 		ok
 	}
 	dhcp Request {
 		update config {
-			&DHCP-Relay-To-IP-Address := 192.0.2.2
+			&Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
-			&DHCP-Gateway-IP-Address := 192.0.2.2
+			&Gateway-IP-Address := 192.0.2.2
 		}
 		ok
 	}

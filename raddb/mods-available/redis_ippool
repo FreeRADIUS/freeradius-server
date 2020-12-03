@@ -74,16 +74,16 @@ redis_ippool {
 	#
 	#  For DHCP it is often simply the MAC address of the owner.
 	#
-	owner = &DHCP-Client-Hardware-Address
+	owner = &Client-Hardware-Address
 
 	#
 	#  RFC 2132 specifies that the DHCP client may supply a unique
-	#  identifier ("uid") using Option 61 (DHCP-Client-Identifier) in which
+	#  identifier ("uid") using Option 61 (Client-Identifier) in which
 	#  case it must be used as the lookup key for configuration data.
 	#  Otherwise the client hardware address must be used. To comply with
 	#  this requirement use the following:
 	#
-#	owner = "%{%{DHCP-Client-Identifier}:-%{DHCP-Client-Hardware-Address}}"
+#	owner = "%{%{Client-Identifier}:-%{Client-Hardware-Address}}"
 
 	#
 	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
@@ -102,7 +102,7 @@ redis_ippool {
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	requested_address = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}"
 
 	#
 	#  ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.
@@ -113,7 +113,7 @@ redis_ippool {
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
 	#
-	allocated_address_attr = &reply.DHCP-Your-IP-Address
+	allocated_address_attr = &reply.Your-IP-Address
 
 	#
 	#  range_attr:: List and attribute where the `IP-Pool.Range` ID (if set) is written to.
@@ -133,14 +133,14 @@ redis_ippool {
 	#  This attribute can be populated on alloc, or renew, if an
 	#  IP address was available for the alloc.
 	#
-	expiry_attr = &reply.DHCP-IP-Address-Lease-Time
+	expiry_attr = &reply.IP-Address-Lease-Time
 
 	#
 	#  copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
 	#  `allocated_address_attr` when performing an update/renew.
 	#
 	#  This behavior is needed for DHCP where we need to send back
-	#  `DHCP-Your-IP-Address` in ACKs.
+	#  `Your-IP-Address` in ACKs.
 	#
 	copy_on_update = yes
 

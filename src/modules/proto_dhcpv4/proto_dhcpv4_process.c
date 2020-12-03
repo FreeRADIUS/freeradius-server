@@ -46,8 +46,8 @@ static fr_dict_attr_t const *attr_yiaddr;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
-	{ .out = &attr_yiaddr, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_yiaddr, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -117,7 +117,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	fr_pair_t *vp;
 
 	static int reply_ok[] = {
-		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
+		[0]			= FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
 		[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
 		[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
@@ -130,7 +130,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	};
 
 	static int reply_fail[] = {
-		[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
+		[0]			= FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_DISCOVER]	= 0,
 		[FR_DHCP_OFFER]		= FR_DHCP_NAK,
 		[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
@@ -138,7 +138,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		[FR_DHCP_ACK]		= FR_DHCP_NAK,
 		[FR_DHCP_NAK]		= FR_DHCP_NAK,
 		[FR_DHCP_RELEASE]	= 0,
-		[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
+		[FR_DHCP_INFORM]	= FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND,
 		[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
 	};
 
@@ -164,7 +164,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv %s' section", dv->name);
-			request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
+			request->reply->code = FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 			goto send_reply;
 		}
 
@@ -197,17 +197,17 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = REPLY_OK(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
+			request->reply->code = REPLY_OK(request->packet->code, FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
 			break;
 
 		default:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_FAIL:
-			request->reply->code = REPLY_FAIL(request->packet->code, FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
+			request->reply->code = REPLY_FAIL(request->packet->code, FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND);
 			break;
 
 		case RLM_MODULE_HANDLED:
-			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
+			if (!request->reply->code) request->reply->code = FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 			break;
 		}
 
@@ -267,11 +267,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			 *	If we over-ride an ACK with a NAK, run
 			 *	the NAK section.
 			 */
-			if (request->reply->code != FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
+			if (request->reply->code != FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
 				dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->name);
 
-				request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
+				request->reply->code = FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND;
 
 				dv = fr_dict_enum_by_value(attr_message_type, fr_box_uint8(request->reply->code));
 				unlang = NULL;
@@ -289,7 +289,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
+		if (request->reply->code == FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client");
 			RETURN_MODULE_HANDLED;
 		}

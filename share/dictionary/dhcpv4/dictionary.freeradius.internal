@@ -20,71 +20,71 @@
 
 #
 FLAGS	internal
-ATTRIBUTE	DHCP-Opcode				256	byte
+ATTRIBUTE	Opcode				256	byte
 
-VALUE	DHCP-Opcode			Client-Message		1
-VALUE	DHCP-Opcode			Server-Message		2
+VALUE	Opcode			Client-Message		1
+VALUE	Opcode			Server-Message		2
 
-ATTRIBUTE	DHCP-Hardware-Type			257	byte
-ATTRIBUTE	DHCP-Hardware-Address-Length		258	byte
-ATTRIBUTE	DHCP-Hop-Count				259	byte
-ATTRIBUTE	DHCP-Transaction-Id			260	integer
-ATTRIBUTE	DHCP-Number-of-Seconds			261	short
-ATTRIBUTE	DHCP-Flags				262	short
-ATTRIBUTE	DHCP-Client-IP-Address			263	ipaddr
-ATTRIBUTE	DHCP-Your-IP-Address			264	ipaddr
-ATTRIBUTE	DHCP-Server-IP-Address			265	ipaddr
-ATTRIBUTE	DHCP-Gateway-IP-Address			266	ipaddr
-ATTRIBUTE	DHCP-Client-Hardware-Address		267	ether	  # 16 octets
-ATTRIBUTE	DHCP-Server-Host-Name			268	string	  # 64 octets
-ATTRIBUTE	DHCP-Boot-Filename			269	string	  # 128 octets
+ATTRIBUTE	Hardware-Type			257	byte
+ATTRIBUTE	Hardware-Address-Length		258	byte
+ATTRIBUTE	Hop-Count				259	byte
+ATTRIBUTE	Transaction-Id			260	integer
+ATTRIBUTE	Number-of-Seconds			261	short
+ATTRIBUTE	Flags				262	short
+ATTRIBUTE	Client-IP-Address			263	ipaddr
+ATTRIBUTE	Your-IP-Address			264	ipaddr
+ATTRIBUTE	Server-IP-Address			265	ipaddr
+ATTRIBUTE	Gateway-IP-Address			266	ipaddr
+ATTRIBUTE	Client-Hardware-Address		267	ether	  # 16 octets
+ATTRIBUTE	Server-Host-Name			268	string	  # 64 octets
+ATTRIBUTE	Boot-Filename			269	string	  # 128 octets
 
-ATTRIBUTE	DHCP-Relay-To-IP-Address		270	ipaddr
-ATTRIBUTE	DHCP-Relay-Max-Hop-Count		271	integer
+ATTRIBUTE	Relay-To-IP-Address		270	ipaddr
+ATTRIBUTE	Relay-Max-Hop-Count		271	integer
 
 # This is copied from the request packet, giaddr, and
 # added to the reply packet by the server core.
-ATTRIBUTE	DHCP-Relay-IP-Address			272	ipaddr
+ATTRIBUTE	Relay-IP-Address			272	ipaddr
 
-VALUE	DHCP-Flags			Broadcast		0x8000
+VALUE	Flags			Broadcast		0x8000
 
-VALUE	DHCP-Hardware-Type		Ethernet		1
-VALUE	DHCP-Hardware-Type		Experiemental-Ethernet	2
-VALUE	DHCP-Hardware-Type		AX.25			3
-VALUE	DHCP-Hardware-Type		Proteon-Token-Ring	4
-VALUE	DHCP-Hardware-Type		Chaos			5
-VALUE	DHCP-Hardware-Type		IEEE-802		6
-VALUE	DHCP-Hardware-Type		Arcnet			7
-VALUE	DHCP-Hardware-Type		Hyperchannel		8
-VALUE	DHCP-Hardware-Type		Lanstar			9
-VALUE	DHCP-Hardware-Type		Autonet-Short-Address	10
-VALUE	DHCP-Hardware-Type		LocalTalk		11
-VALUE	DHCP-Hardware-Type		LocalNet		12
-VALUE	DHCP-Hardware-Type		Ultra-Link		13
-VALUE	DHCP-Hardware-Type		SMDS			14
-VALUE	DHCP-Hardware-Type		Frame-Relay		15
-VALUE	DHCP-Hardware-Type		ATM-16			16
-VALUE	DHCP-Hardware-Type		HDLC			17
-VALUE	DHCP-Hardware-Type		Fibre-Channel		18
-VALUE	DHCP-Hardware-Type		ATM-19			19
-VALUE	DHCP-Hardware-Type		Serial-Line		20
-VALUE	DHCP-Hardware-Type		ATM-21			21
-VALUE	DHCP-Hardware-Type		MIL-STD-188-220		22
-VALUE	DHCP-Hardware-Type		Metricom		23
-VALUE	DHCP-Hardware-Type		IEEE-1394		24
-VALUE	DHCP-Hardware-Type		MAPOS			25
-VALUE	DHCP-Hardware-Type		Twinaxial		26
-VALUE	DHCP-Hardware-Type		EUI-64			27
-VALUE	DHCP-Hardware-Type		HIPARP			28
-VALUE	DHCP-Hardware-Type		IP-Over-ISO-7816-3	29
-VALUE	DHCP-Hardware-Type		ARPSec			30
-VALUE	DHCP-Hardware-Type		IPSec-Tunnel		31
-VALUE	DHCP-Hardware-Type		Infiniband		32
-VALUE	DHCP-Hardware-Type		CAI-TIA-102		33
-VALUE	DHCP-Hardware-Type		Wiegand-Interface	34
-VALUE	DHCP-Hardware-Type		Pure-IP			35
-VALUE	DHCP-Hardware-Type		HW-EXP1			36
-VALUE	DHCP-Hardware-Type		HFI			37
+VALUE	Hardware-Type		Ethernet		1
+VALUE	Hardware-Type		Experiemental-Ethernet	2
+VALUE	Hardware-Type		AX.25			3
+VALUE	Hardware-Type		Proteon-Token-Ring	4
+VALUE	Hardware-Type		Chaos			5
+VALUE	Hardware-Type		IEEE-802		6
+VALUE	Hardware-Type		Arcnet			7
+VALUE	Hardware-Type		Hyperchannel		8
+VALUE	Hardware-Type		Lanstar			9
+VALUE	Hardware-Type		Autonet-Short-Address	10
+VALUE	Hardware-Type		LocalTalk		11
+VALUE	Hardware-Type		LocalNet		12
+VALUE	Hardware-Type		Ultra-Link		13
+VALUE	Hardware-Type		SMDS			14
+VALUE	Hardware-Type		Frame-Relay		15
+VALUE	Hardware-Type		ATM-16			16
+VALUE	Hardware-Type		HDLC			17
+VALUE	Hardware-Type		Fibre-Channel		18
+VALUE	Hardware-Type		ATM-19			19
+VALUE	Hardware-Type		Serial-Line		20
+VALUE	Hardware-Type		ATM-21			21
+VALUE	Hardware-Type		MIL-STD-188-220		22
+VALUE	Hardware-Type		Metricom		23
+VALUE	Hardware-Type		IEEE-1394		24
+VALUE	Hardware-Type		MAPOS			25
+VALUE	Hardware-Type		Twinaxial		26
+VALUE	Hardware-Type		EUI-64			27
+VALUE	Hardware-Type		HIPARP			28
+VALUE	Hardware-Type		IP-Over-ISO-7816-3	29
+VALUE	Hardware-Type		ARPSec			30
+VALUE	Hardware-Type		IPSec-Tunnel		31
+VALUE	Hardware-Type		Infiniband		32
+VALUE	Hardware-Type		CAI-TIA-102		33
+VALUE	Hardware-Type		Wiegand-Interface	34
+VALUE	Hardware-Type		Pure-IP			35
+VALUE	Hardware-Type		HW-EXP1			36
+VALUE	Hardware-Type		HFI			37
 
 ATTRIBUTE	Packet-Type				273	integer
 
@@ -109,8 +109,8 @@ VALUE	Packet-Type			Lease-Query-Done	15
 # This subnet is assigned on a hierarchical basis to then determine
 # the subnet which the client belongs to.  Stored as a prefix to
 # enable closest subnet matching
-ATTRIBUTE	DHCP-Network-Subnet			274	ipv4prefix
+ATTRIBUTE	Network-Subnet			274	ipv4prefix
 
 # This is a name for the group(s) a client belongs to, used for
 # looking up of options
-ATTRIBUTE	DHCP-Group-Name				275	string
+ATTRIBUTE	Group-Name				275	string

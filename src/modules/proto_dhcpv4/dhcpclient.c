@@ -103,9 +103,9 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
-	{ .out = &attr_dhcp_dhcp_server_identifier, .name = "DHCP-DHCP-Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_your_ip_address, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -196,7 +196,7 @@ static fr_radius_packet_t *request_init(char const *filename)
 		}
 
 		/*
-		 *	Allow to set packet type using DHCP-Message-Type
+		 *	Allow to set packet type using Message-Type
 		 */
 	     	if (vp->da == attr_dhcp_message_type) {
 			packet->code = vp->vp_uint8;
@@ -705,7 +705,7 @@ int main(int argc, char **argv)
 	 *	Sanity check.
 	 */
 	if (!packet->code) {
-		ERROR("Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type",
+		ERROR("Command was %s, and request did not contain Message-Type nor Packet-Type",
 		      (argc >= 3) ? "'auto'" : "unspecified");
 		fr_exit(EXIT_FAILURE);
 	}

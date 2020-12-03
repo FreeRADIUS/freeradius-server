@@ -71,8 +71,8 @@ listen {
 		#
 		#       src_ipaddr
 		#       ipaddr
-		#       reply.DHCP-Server-IP-Address
-		#       reply.DHCP-DHCP-Server-Identifier
+		#       reply.Server-IP-Address
+		#       reply.Server-Identifier
 		#
 #		src_ipaddr = 127.0.0.1
 
@@ -118,9 +118,9 @@ listen {
 #  See dictionary.dhcpv4 for the packet types.
 
 #  Return packets will be sent to, in preference order:
-#     DHCP-Gateway-IP-Address
-#     DHCP-Client-IP-Address
-#     DHCP-Your-IP-Address
+#     Gateway-IP-Address
+#     Client-IP-Address
+#     Your-IP-Address
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
@@ -128,7 +128,7 @@ recv Discover {
 
 	#  The DHCP Server Identifier is set here since it is returned in OFFERs
 	update control {
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&Server-Identifier = 192.0.2.1
 	}
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -157,7 +157,7 @@ recv Discover {
 
 	#  Set the type of packet to send in reply.
 	#
-	#  The server will look at the DHCP-Message-Type attribute to
+	#  The server will look at the Message-Type attribute to
 	#  determine which type of packet to send in reply. Common
 	#  values would be Offer, Ack or NAK. See
 	#  dictionary.dhcp for all the possible values.
@@ -165,15 +165,15 @@ recv Discover {
 	#  Do-Not-Respond can be used to tell the server to not
 	#  respond.
 	#
-	#  In the event that DHCP-Message-Type is not set then the
+	#  In the event that Message-Type is not set then the
 	#  server will fall back to determining the type of reply
 	#  based on the rcode of this section.
 
 	#update reply {
-	#       &DHCP-Message-Type = Offer
+	#       &Message-Type = Offer
 	#}
 
-	#  If DHCP-Message-Type is not set, returning "ok" or
+	#  If Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a Offer
 	#  message.
 	#
@@ -185,18 +185,18 @@ recv Request {
 
 	#  The DHCP Server Identifier is set here since it is returned in OFFERs
 	update control {
-		&DHCP-DHCP-Server-Identifier = 192.0.2.1
+		&Server-Identifier = 192.0.2.1
 	}
 
 	#  If the request is not for this server then silently discard it
-	if (&request.DHCP-DHCP-Server-Identifier && \
-	    &request.DHCP-DHCP-Server-Identifier != &control.DHCP-DHCP-Server-Identifier) {
+	if (&request.Server-Identifier && \
+	    &request.Server-Identifier != &control.Server-Identifier) {
 	        do_not_respond
 	}
 
 	#  Response packet type. See Discover section above.
 	#update reply {
-	#       &DHCP-Message-Type = Ack
+	#       &Message-Type = Ack
 	#}
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -225,11 +225,11 @@ recv Request {
 
 	if (ok) {
 		update reply {
-			&DHCP-Your-IP-Address := "%{%{request.DHCP-Requested-IP-Address}:-{request.DHCP-Client-IP-Address}}"
+			&Your-IP-Address := "%{%{request.Requested-IP-Address}:-{request.Client-IP-Address}}"
 		}
 	}
 
-	#  If DHCP-Message-Type is not set, returning "ok" or
+	#  If Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a Ack
 	#  packet.
 	#
@@ -274,9 +274,9 @@ recv Inform {
 #recv Inform {
 #	update reply {
 #		Packet-Dst-Port = 67
-#		DHCP-Message-Type = Ack
-#		DHCP-DHCP-Server-Identifier = "%{Packet-Dst-IP-Address}"
-#		DHCP-Site-specific-28 = 0x0a00
+#		Message-Type = Ack
+#		Server-Identifier = "%{Packet-Dst-IP-Address}"
+#		Site-specific-28 = 0x0a00
 #	}
 #	ok
 #}
@@ -298,22 +298,22 @@ recv Lease-Query {
 	#  in the packets.
 
 	#  has MAC, asking for IP, etc.
-	if (&DHCP-Client-Hardware-Address) {
+	if (&Client-Hardware-Address) {
 		#  look up MAC in database
 	}
 
 	#  has IP, asking for MAC, etc.
-	elsif (&DHCP-Your-IP-Address) {
+	elsif (&Your-IP-Address) {
 		#  look up IP in database
 	}
 
 	#  has host name, asking for IP, MAC, etc.
-	elsif (&DHCP-Client-Identifier) {
+	elsif (&Client-Identifier) {
 		#  look up identifier in database
 	}
 	else {
 		update reply {
-			&DHCP-Message-Type = Lease-Unknown
+			&Message-Type = Lease-Unknown
 		}
 
 		ok
@@ -328,7 +328,7 @@ recv Lease-Query {
 	#
 	if (notfound) {
 		update reply {
-			&DHCP-Message-Type = Lease-Unknown
+			&Message-Type = Lease-Unknown
 		}
 		ok
 		return
@@ -354,7 +354,7 @@ recv Lease-Query {
 	#	Lease-Unassigned
 	#
 	update reply {
-		&DHCP-Message-Type = Lease-Unassigned
+		&Message-Type = Lease-Unassigned
 	}
 
 }
@@ -393,6 +393,6 @@ recv Lease-Query {
 #
 #passwd mac2ip {
 #	filename = ${confdir}/mac2ip
-#	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
+#	format = "*Client-Hardware-Address:=Your-IP-Address"
 #	delimiter = ","
 #}

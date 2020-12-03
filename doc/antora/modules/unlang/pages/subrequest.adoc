@@ -79,7 +79,7 @@ parsed in the context of the new protocol.
 ----
 subrequest dhcpv4.Discover {
     update request {
-        &DHCP-Your-IP-Address := &parent.request.Framed-IP-Address
+        &Your-IP-Address := &parent.request.Framed-IP-Address
         ...
     }
 

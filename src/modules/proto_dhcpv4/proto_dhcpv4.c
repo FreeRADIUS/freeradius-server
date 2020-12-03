@@ -100,7 +100,7 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
 	{ NULL }
 };
@@ -262,7 +262,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	/*
 	 *	"Do not respond".  We also never send replies to a release.
 	 */
-	if ((request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) ||
+	if ((request->reply->code == FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_MAX) ||
 	    (request->packet->code == FR_DHCP_RELEASE)) {
 		track->do_not_respond = true;
