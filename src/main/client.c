@@ -49,6 +49,8 @@ struct radclient_list {
 	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
 	uint32_t       	min_prefix;
+
+	bool		parsed;
 };
 
 
@@ -554,10 +556,23 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	it.  Otherwise create a new one.
 	 */
 	clients = cf_data_find(section, "clients");
-	if (clients) return clients;
-
-	clients = client_list_init(section);
-	if (!clients) return NULL;
+	if (clients) {
+		/*
+		 *	Modules are initialized before the listeners.
+		 *	Which means that we MIGHT have read clients
+		 *	from SQL before parsing this "clients"
+		 *	section.  So there may already be a clients
+		 *	list.
+		 *
+		 *	But the list isn't _our_ list that we parsed,
+		 *	so we still need to parse the clients here.
+		 */
+		if (clients->parsed) return clients;		
+		clients->parsed = true;
+	} else {
+		clients = client_list_init(section);
+		if (!clients) return NULL;
+	}
 
 	if (cf_top_section(section) == section) {
 		global = true;
