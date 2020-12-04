@@ -728,7 +728,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	fr_dict_attr_t const *child = NULL;
 	fr_dict_attr_t *copy;
 
-	if (dst->type != FR_TYPE_TLV) return -1;
+	if ((dst->type != FR_TYPE_TLV) && (dst->type != FR_TYPE_STRUCT)) return -1;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 

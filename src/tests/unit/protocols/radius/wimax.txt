@@ -231,5 +231,17 @@ match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06
 # decode-pair -
 # data Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Idle-Mode-Notification-Cap = Supported
 
+#
+#  Port ranges
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range = { Start = 2112, End = 6809 }
+match 1a 1d 00 00 60 b5 1c 17 00 0b 14 05 12 01 06 7f 00 00 01 04 04 08 40 05 06 08 40 1a 99
+
+#
+#  Structs not yet decoded into sub-groups
+#
+decode-pair -
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.Start = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.End = 6809
+
 count
-match 108
+match 112

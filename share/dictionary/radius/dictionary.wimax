@@ -208,7 +208,10 @@ ATTRIBUTE	IP-Address-Range			.2	octets
 ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
 # Really "uint16 start, end"
-ATTRIBUTE	Port-Range				.5	integer
+ATTRIBUTE	Port-Range				.5	struct
+MEMBER		Start						uint16
+MEMBER		End						uint16
+
 ATTRIBUTE	Inverted				.6	byte
 ATTRIBUTE	Assigned				.7	byte
 VALUE	Assigned			Src-Assigned		1
