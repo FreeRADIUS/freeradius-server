@@ -1609,6 +1609,81 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
+static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, char const *ref, char const *filename, int line)
+{
+	fr_dict_t		*dict;
+	fr_dict_attr_t const	*da;
+	char			*p;
+	ssize_t			slen;
+
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
+	if (da) return da;
+
+	/*
+	 *	The attribute doesn't exist, and the reference
+	 *	isn't in a "PROTO.ATTR" format, die.
+	 */
+	p = strchr(ref, '.');
+
+	/*
+	 *	Get / skip protocol name.
+	 */
+	slen = dict_by_protocol_substr(NULL,
+				       &dict, &FR_SBUFF_IN(ref, strlen(ref)),
+				       *dict_def);
+	if (slen <= 0) {
+		fr_dict_t *other;
+
+		if (p) *p = '\0';
+
+		if (fr_dict_protocol_afrom_file(&other, ref, NULL) < 0) {
+			return NULL;
+		}
+
+		if (p) *p = '.';
+
+		/*
+		 *	Grab the protocol name again
+		 */
+		dict = other;
+		if (!p) {
+			*dict_def = other;
+			return other->root;
+		}
+
+		slen = p - ref;
+	}
+
+	if (slen < 0) {
+	invalid_reference:
+		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]",
+				   ref,
+				   fr_cwd_strip(filename), line);
+		return NULL;
+	}
+
+	/*
+	 *	No known dictionary, so we're asked to just
+	 *	use the whole string.  Which we did above.  So
+	 *	either it's a bad ref, OR it's a ref to a
+	 *	dictionary which doesn't exist.
+	 */
+	if (slen == 0) goto invalid_reference;
+
+	/*
+	 *	Look up the attribute.
+	 */
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref + slen + 1);
+	if (!da) {
+		fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
+				   ref + slen + 1, fr_cwd_strip(filename), line);
+		return NULL;
+	}
+
+	*dict_def = dict;
+	return da;
+}
+
 static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 {
 	/*
@@ -1692,95 +1767,22 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		 *	table.
 		 */
 		for (this = mine; this != NULL; this = next) {
-			fr_dict_t		*dict;
-			fr_dict_attr_t const	*da;
-			char			*p;
-			ssize_t			slen;
+			fr_dict_attr_t const *da;
+			fr_dict_t *dict = ctx->dict;
 
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), this->ref);
-			if (da) {
-				dict = ctx->dict;
-				goto check;
-			}
+			da = dict_find_or_load_reference(&dict, this->ref, this->filename, this->line);
+			if (!da) return -1;
 
-			/*
-			 *	The attribute doesn't exist, and the reference
-			 *	isn't in a "PROTO.ATTR" format, die.
-			 */
-			p = strchr(this->ref, '.');
-
-			/*
-			 *	Get / skip protocol name.
-			 */
-			slen = dict_by_protocol_substr(NULL,
-						       &dict, &FR_SBUFF_IN(this->ref, strlen(this->ref)),
-						       ctx->dict);
-			if (slen <= 0) {
-				fr_dict_t *other;
-
-				if (p) *p = '\0';
-
-				if (fr_dict_protocol_afrom_file(&other, this->ref, NULL) < 0) {
-					return -1;
-				}
-
-				if (p) *p = '.';
-
-				/*
-				 *	Grab the protocol name again
-				 */
-				dict = other;
-				if (!p) {
-					dict = other;
-					da = other->root;
-					goto check;
-				}
-
-				slen = p - this->ref;
-			}
-
-			if (slen < 0) {
-			invalid_reference:
-				fr_strerror_printf("Invalid reference '%s' at %s[%d]",
-						   this->ref,
-						   fr_cwd_strip(this->filename), this->line);
-			group_error:
-				/*
-				 *	Just so we don't lose track of things.
-				 */
-				// @todo - don't leak group_fixup stuff? things?
-				return -1;
-			}
-
-			/*
-			 *	No known dictionary, so we're asked to just
-			 *	use the whole string.  Which we did above.  So
-			 *	either it's a bad ref, OR it's a ref to a
-			 *	dictionary which doesn't exist.
-			 */
-			if (slen == 0) goto invalid_reference;
-
-			/*
-			 *	Look up the attribute.
-			 */
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), this->ref + slen + 1);
-			if (!da) {
-				fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
-						   this->ref + slen + 1, fr_cwd_strip(this->filename), this->line);
-				goto group_error;
-			}
-
-		check:
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
 						   fr_cwd_strip(this->filename), this->line);
-				goto group_error;
+				return -1;
 			}
 
 			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
 						   fr_cwd_strip(this->filename), this->line);
-				goto group_error;
+				return -1;
 			}
 
 			talloc_free(this->ref);
@@ -1817,96 +1819,23 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 		 *	Loop over references, cloning the da.
 		 */
 		for (this = mine; this != NULL; this = next) {
-			fr_dict_t		*dict;
-			fr_dict_attr_t const	*da;
-			fr_dict_attr_t		*cloned;
-			char			*p;
-			ssize_t			slen;
+			fr_dict_attr_t const *da;
+			fr_dict_attr_t *cloned;
+			fr_dict_t *dict = ctx->dict;
 
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), this->ref);
-			if (da) {
-				dict = ctx->dict;
-				goto clone_check;
-			}
+			da = dict_find_or_load_reference(&dict, this->ref, this->filename, this->line);
+			if (!da) return -1;
 
-			/*
-			 *	The attribute doesn't exist, and the reference
-			 *	isn't in a "PROTO.ATTR" format, die.
-			 */
-			p = strchr(this->ref, '.');
-
-			/*
-			 *	Get / skip protocol name.
-			 */
-			slen = dict_by_protocol_substr(NULL,
-						       &dict, &FR_SBUFF_IN(this->ref, strlen(this->ref)),
-						       ctx->dict);
-			if (slen <= 0) {
-				fr_dict_t *other;
-
-				if (p) *p = '\0';
-
-				if (fr_dict_protocol_afrom_file(&other, this->ref, NULL) < 0) {
-					return -1;
-				}
-
-				if (p) *p = '.';
-
-				/*
-				 *	Grab the protocol name again
-				 */
-				dict = other;
-				if (!p) {
-					dict = other;
-					da = other->root;
-					goto clone_check;
-				}
-
-				slen = p - this->ref;
-			}
-
-			if (slen < 0) {
-			clone_invalid_reference:
-				fr_strerror_printf("Invalid reference '%s' at %s[%d]",
-						   this->ref,
-						   fr_cwd_strip(this->filename), this->line);
-			clone_error:
-				/*
-				 *	Just so we don't lose track of things.
-				 */
-				// @todo - don't leak clone_fixup stuff? things?
-				return -1;
-			}
-
-			/*
-			 *	No known dictionary, so we're asked to just
-			 *	use the whole string.  Which we did above.  So
-			 *	either it's a bad ref, OR it's a ref to a
-			 *	dictionary which doesn't exist.
-			 */
-			if (slen == 0) goto clone_invalid_reference;
-
-			/*
-			 *	Look up the attribute.
-			 */
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), this->ref + slen + 1);
-			if (!da) {
-				fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
-						   this->ref + slen + 1, fr_cwd_strip(this->filename), this->line);
-				goto clone_error;
-			}
-
-		clone_check:
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("Clone references MUST be to attributes of type 'tlv' at %s[%d]",
 						   fr_cwd_strip(this->filename), this->line);
-				goto clone_error;
+				return -1;
 			}
 
 			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("Clone references MUST NOT refer to an ATTRIBUTE which has 'ref=...' at %s[%d]",
 						   fr_cwd_strip(this->filename), this->line);
-				goto clone_error;
+				return -1;
 			}
 
 			/*
@@ -1916,7 +1845,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			cloned = dict_attr_acopy(dict->pool, da, this->da->name);
 			if (!cloned) {
 				fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, this->ref);
-				goto clone_error;
+				return -1;
 			}
 
 			cloned->attr = this->da->attr;
@@ -1928,22 +1857,22 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			if (dict_attr_children(this->da)) {
 				if (dict_attr_acopy_children(dict, cloned, this->da) < 0) {
 					fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
-					goto clone_error;
+					return -1;
 				}
 			}
 
 			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
 				fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
-				goto clone_error;
+				return -1;
 			}
 
 			if (dict_attr_child_add(this->parent, cloned) < 0) {
 				fr_strerror_printf("Failed adding cloned attribute %s", da->name);
 				talloc_free(cloned);
-				goto clone_error;
+				return -1;
 			}
 
-			if (dict_attr_add_to_namespace(dict, this->parent, cloned) < 0) goto clone_error;
+			if (dict_attr_add_to_namespace(dict, this->parent, cloned) < 0) return -1;
 
 			talloc_free(this->ref);
 			next = this->next;
