@@ -1045,7 +1045,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 		return 1;
 	}
 
-	ERROR("Compiling %s %s for attr %s", cf_section_name1(cs), name2, da->name);
+	DEBUG("Compiling %s %s for attr %s", cf_section_name1(cs), name2, da->name);
 
 	/*
 	 *	Compile the group.
