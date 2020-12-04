@@ -83,7 +83,7 @@ json {
 	#  The only options for the JSON module are to control the output
 	#  format of the `json_encode` xlat.
 	#
-	encode_format {
+	encode {
 
 		#
 		#  output_mode:: set the format of JSON documenta
@@ -97,7 +97,7 @@ json {
 		#
 		#  Examples of each format are given below.
 		#
-#		output_format = object
+#		output_mode = object
 
 		#
 		#  ### Formatting options for attribute names
