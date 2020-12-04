@@ -83,17 +83,26 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	for (enumv = fr_hash_table_iter_init(src_ext->value_by_name, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(src_ext->value_by_name, &iter)) {
-		fr_dict_attr_t const *child_struct;
+		fr_dict_attr_t *child_struct;
 
 		if (!has_child) {
 			child_struct = NULL;
 		} else {
-			child_struct = enumv->child_struct[0];
+			fr_dict_t *dict = dict_by_da(enumv->child_struct[0]);
+
+			/*
+			 *	Copy the child_struct, and all if it's children recursively.
+			 */
+			child_struct = dict_attr_acopy(dict->pool, enumv->child_struct[0], NULL);
+			if (!child_struct) return -1;
+
+			child_struct->parent = da_dst; /* we need to re-parent this attribute */
+
+			if (dict_attr_children(enumv->child_struct[0])) {
+				if (dict_attr_acopy_children(dict, child_struct, enumv->child_struct[0]) < 0) return -1;
+			}
 		}
 
-	     	/*
-	     	 *	Fixme - Child struct copying is probably wrong
-	     	 */
 		if (dict_attr_enum_add_name(da_dst, enumv->name, enumv->value,
 					    true, true, child_struct) < 0) return -1;
 	}
