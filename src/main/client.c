@@ -150,6 +150,15 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 
 	clients->min_prefix = 128;
 
+	/*
+	 *	Associate the "clients" list with the virtual server.
+	 */
+	if (cs && (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0)) {
+		ERROR("Failed to associate client list with section %s\n", cf_section_name1(cs));
+		client_list_free(clients);
+		return false;
+	}
+
 	return clients;
 }
 
@@ -275,15 +284,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (!clients) {
 			ERROR("Cannot add client - failed creating client list %s for server %s", section_name,
 			      client->server);
-			return false;
-		}
-
-		/*
-		 *	Associate the "clients" list with the virtual server, 
-		 */
-		if (cf_data_add(subcs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
-			ERROR("Cannot add client - failed to associate client list with virtual server %s", client->server);
-			client_list_free(clients);
 			return false;
 		}
 	}
@@ -695,15 +695,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 			goto error;
 		}
 
-	}
-
-	/*
-	 *	Associate the clients structure with the section.
-	 */
-	if (cf_data_add(section, "clients", clients, NULL) < 0) {
-		cf_log_err_cs(section, "Failed to associate clients with section %s", cf_section_name1(section));
-		client_list_free(clients);
-		return NULL;
 	}
 
 	/*
