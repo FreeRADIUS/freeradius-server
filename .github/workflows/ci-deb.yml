@@ -31,7 +31,7 @@ jobs:
     - name: Install recent git
       run: |
         apt-get update
-        apt-get install -y git
+        apt-get install -y --no-install-recommends git-core ca-certificates
 
     - uses: actions/checkout@v2
       with:
@@ -40,7 +40,7 @@ jobs:
 
     - name: Install build tools
       run: |
-        apt-get install -y cmake make gcc file
+        apt-get install -y --no-install-recommends cmake make gcc libc6-dev equivs file
 
     - name: Build libkqueue
       run: |
@@ -56,15 +56,14 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        apt-get install -y build-essential devscripts quilt
+        apt-get install -y --no-install-recommends build-essential devscripts quilt
         debian/rules debian/control
-        mk-build-deps -irt"apt-get -y" debian/control ;
+        mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius
 
     - name: Build DEBs
       run: |
         make deb
-        mkdir debs
       working-directory: freeradius
 
     - name: Collect DEBs
@@ -98,10 +97,15 @@ jobs:
       with:
         name: debs
 
+    - name: Package manager performance improvements
+      run: |
+        echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
+        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+
     - name: Install DEBs
       run: |
         apt-get update
-        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y
+        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
     - name: Startup test
       run: |
