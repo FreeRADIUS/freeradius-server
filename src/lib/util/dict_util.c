@@ -728,9 +728,15 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	fr_dict_attr_t const *child = NULL;
 	fr_dict_attr_t *copy;
 
-	if ((dst->type != FR_TYPE_TLV) && (dst->type != FR_TYPE_STRUCT)) return -1;
+	if ((dst->type != FR_TYPE_TLV) && (dst->type != FR_TYPE_STRUCT) && !fr_dict_attr_is_key_field(src)) {
+		fr_strerror_printf_push("Invalid destination type %s",
+					fr_table_str_by_value(fr_value_box_type_table, dst->type, "<UNKNOWN>"));
+		return -1;
+	}
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
+	fr_assert(dst->type == src->type);
+	fr_assert(fr_dict_attr_is_key_field(src) == fr_dict_attr_is_key_field(dst));
 
 	for (child = fr_dict_attr_iterate_children(src, &child);
 	     child != NULL;

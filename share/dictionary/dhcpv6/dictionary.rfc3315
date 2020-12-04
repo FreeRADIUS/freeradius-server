@@ -38,27 +38,10 @@ MEMBER		Hardware-Type				uint16 key
 STRUCT	Ethernet			Hardware-Type		1
 MEMBER		Address					ether
 
-ATTRIBUTE	Server-ID				2	struct
-MEMBER		DUID					uint16 key
-
-STRUCT	LLT				DUID			1
-MEMBER		Hardware-Type				uint16 key
-MEMBER		Time					date
-
-#  Sub-struct of Server-ID.LLT.Hardware-Type
-STRUCT	Ethernet			Hardware-Type		1
-MEMBER		Address					ether
-
-STRUCT	EN				DUID			2
-MEMBER		Enterprise-Number			uint32
-MEMBER		Identifier				octets
-
-STRUCT	LL				DUID			3
-MEMBER		Hardware-Type				uint16 key
-
-#  Sub-struct of Server-ID.LL.Hardware-Type
-STRUCT	Ethernet			Hardware-Type		1
-MEMBER		Address					ether
+#
+#  Server-ID is a clone of Client-ID
+#
+ATTRIBUTE	Server-ID				2	struct clone=Client-ID
 
 ATTRIBUTE	IA-NA					3	struct
 MEMBER		IAID					uint32

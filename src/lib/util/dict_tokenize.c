@@ -518,7 +518,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			if (type != FR_TYPE_TLV) {
+			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
 				fr_strerror_printf("The 'clone' flag cannot be used for type '%s'",
 						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 				return -1;
@@ -1759,8 +1759,12 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			da = dict_find_or_load_reference(&dict, fixup->ref, fixup->filename, fixup->line);
 			if (!da) return -1;
 
-			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_printf("Clone references MUST be to attributes of type 'tlv' at %s[%d]",
+			/*
+			 *	We can only clone attributes of the same data type.
+			 */
+			if (da->type != fixup->da->type) {
+				fr_strerror_printf("Clone references MUST be to attributes of type '%s' at %s[%d]",
+						   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
 						   fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
@@ -1782,7 +1786,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			}
 
 			cloned->attr = fixup->da->attr;
-			cloned->parent = fixup->parent;
+			cloned->parent = fixup->parent; /* we need to re-parent this attribute */
 
 			/*
 			 *	Copy any pre-existing children over.
@@ -1795,7 +1799,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			}
 
 			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
-				fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, fixup->ref);
+				fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
 				return -1;
 			}
 

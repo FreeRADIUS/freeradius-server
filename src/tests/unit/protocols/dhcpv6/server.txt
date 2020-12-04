@@ -1,0 +1,24 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+
+encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
+match 00 01 00 12 00 04 00 01 00 01 27 50 f5 27 02 42 0a 00 00 09 00 00
+
+decode-pair -
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
+
+encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
+match 00 02 00 12 00 04 00 01 00 01 27 50 f5 27 02 42 0a 00 00 09 00 00
+
+decode-pair -
+match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
+
+count
+match 10
