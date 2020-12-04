@@ -164,7 +164,16 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!client) return false;
 
-	client->list = clients;
+	/*
+	 *	Initialize the global list, if not done already.
+	 */
+	if (!root_clients) {
+		root_clients = client_list_init(NULL);
+		if (!root_clients) {
+			ERROR("Cannot add client - failed creating client list");
+			return false;
+		}
+	}
 
 	/*
 	 *	Hack to fixup wildcard clients
@@ -196,63 +205,90 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_server)) return false;
 
 	/*
-	 *	If "clients" is NULL, it means add to the global list,
-	 *	unless we're trying to add it to a virtual server...
+	 *	If there's no client list, BUT there's a virtual
+	 *	server, try to add the client to the appropriate
+	 *	"clients" section for that virtual server.
 	 */
-	if (!clients) {
-		if (client->server != NULL) {
-			CONF_SECTION *cs;
-			CONF_SECTION *subcs;
+	if (!clients && client->server) {
+		CONF_SECTION *cs;
+		CONF_SECTION *subcs;
+		CONF_PAIR *cp;
+		char const *section_name;
 
-			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
-			if (!cs) {
-				ERROR("Failed to find virtual server %s", client->server);
-				return false;
-			}
-
-			/*
-			 *	If this server has no "listen" section, add the clients
-			 *	to the global client list.
-			 */
-			subcs = cf_section_sub_find(cs, "listen");
-			if (!subcs) {
-				DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
-				      client->server);
-				goto global_clients;
-			}
-
-			/*
-			 *	If the client list already exists, use that.
-			 *	Otherwise, create a new client list.
-			 */
-			clients = cf_data_find(cs, "clients");
-			if (!clients) {
-				clients = client_list_init(cs);
-				if (!clients) {
-					ERROR("Out of memory");
-					return false;
-				}
-			}
-
-			if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
-				ERROR("Failed to associate clients with virtual server %s", client->server);
-				client_list_free(clients);
-				return false;
-			}
-		} else {
-		global_clients:
-			/*
-			 *	Initialize the global list, if not done already.
-			 */
-			if (!root_clients) {
-				root_clients = client_list_init(NULL);
-				if (!root_clients) return false;
-			}
-			clients = root_clients;
+		cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
+		if (!cs) {
+			ERROR("Cannot add client - virtual server %s does not exist", client->server);
+			return false;
 		}
 
-		client->list = clients; /* reset it */
+		/*
+		 *	If this server has no "listen" section, add the clients
+		 *	to the global client list.
+		 */
+		subcs = cf_section_sub_find(cs, "listen");
+		if (!subcs) {
+			DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
+			      client->server);
+			goto check_list;
+		}
+
+		cp = cf_pair_find(subcs, "clients");
+		if (!cp) {
+			DEBUG("No 'clients' configuration item in first listener of virtual server %s.  Adding client to global client list",
+			      client->server);
+			goto check_list;
+		}
+
+		/*
+		 *	Duplicate the lookup logic in common_socket_parse()
+		 *
+		 *	Explicit list given: use it.
+		 */
+		section_name = cf_pair_value(cp);
+		if (!section_name) goto check_list;
+
+		subcs = cf_section_sub_find_name2(main_config.config, "clients", section_name);
+		if (!subcs) {
+			subcs = cf_section_find(section_name);
+		}
+		if (!subcs) {
+			cf_log_err_cs(cs,
+				   "Failed to find clients %s {...}",
+				   section_name);
+			return false;
+		}
+
+		DEBUG("Adding client to client list %s", section_name);
+
+		/*
+		 *	If the client list already exists, use that.
+		 *	Otherwise, create a new client list.
+		 *
+		 *	@todo - add the client to _all_ listeners?
+		 */
+		clients = cf_data_find(subcs, "clients");
+		if (clients) goto check_list;
+
+		clients = client_list_init(subcs);
+		if (!clients) {
+			ERROR("Cannot add client - failed creating client list %s for server %s", section_name,
+			      client->server);
+			return false;
+		}
+
+		/*
+		 *	Associate the "clients" list with the virtual server, 
+		 */
+		if (cf_data_add(subcs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
+			ERROR("Cannot add client - failed to associate client list with virtual server %s", client->server);
+			client_list_free(clients);
+			return false;
+		}
 	}
+
+check_list:
+	if (!clients) clients = root_clients;
+	client->list = clients;
 
 	/*
 	 *	Create a tree for it.
