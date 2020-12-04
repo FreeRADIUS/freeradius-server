@@ -33,49 +33,39 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <ctype.h>
 
-typedef struct dict_enum_fixup_s dict_enum_fixup_t;
+typedef struct dict_fixup_s dict_fixup_t;
 
 #define MAX_ARGV (16)
+typedef enum {
+	DICT_FIXUP_ENUM,
+	DICT_FIXUP_GROUP,
+	DICT_FIXUP_CLONE,
+} dict_fixup_type_t;
+
 
 /** A temporary enum value, which we'll resolve later
  *
  */
-struct dict_enum_fixup_s {
+struct dict_fixup_s {
 	char			*filename;		//!< where the "enum" was defined
 	int			line;			//!< ditto
-	char			*attribute;		//!< we couldn't find (and will need to resolve later).
-	char			*name;			//!< Raw enum name.
-	char			*value;			//!< Raw enum value.  We can't do anything with this until
-							//!< we know the attribute type, which we only find out later.
+	dict_fixup_t		*next;			//!< Next in the linked list of fixups.
+	dict_fixup_type_t	type;			//!< type of the fixup
 
-	fr_dict_attr_t const	*parent;		//!< Parent namespace.
-	dict_enum_fixup_t	*next;			//!< Next in the linked list of fixups.
-};
-typedef struct dict_group_fixup_s dict_group_fixup_t;
+	fr_dict_attr_t const   	*parent;		//!< Parent namespace.
 
-/** A temporary group reference, which we'll resolve later
- *
- */
-struct dict_group_fixup_s {
-	char			*filename;		//!< where the "group" was defined
-	int			line;			//!< ditto
-	fr_dict_attr_t		*da;			//!< FR_TYPE_GROUP to fix
-	char 			*ref;			//!< the reference name
-	dict_group_fixup_t	*next;			//!< Next in the linked list of fixups.
-};
-
-typedef struct dict_clone_fixup_s dict_clone_fixup_t;
-
-/** A clone call, which we'll resolve later
- *
- */
-struct dict_clone_fixup_s {
-	char			*filename;		//!< where the "group" was defined
-	int			line;			//!< ditto
-	fr_dict_attr_t   	*parent;		//!< parent where we add the clone
-	fr_dict_attr_t		*da;			//!< FR_TYPE_TLV to clone
-	char 			*ref;			//!< the target attribute to clone
-	dict_clone_fixup_t	*next;			//!< Next in the linked list of fixups.
+	union {
+		struct {
+			char			*attribute;		//!< we couldn't find (and will need to resolve later).
+			char			*name;			//!< Raw enum name.
+			char			*value;			//!< Raw enum value.  We can't do anything with this until
+									//!< we know the attribute type, which we only find out later.
+		};
+		struct {
+			fr_dict_attr_t		*da;			//!< FR_TYPE_GROUP to fix
+			char 			*ref;			//!< the reference name
+		};
+	};
 };
 
 /** Parser context for dict_from_file
@@ -106,9 +96,7 @@ typedef struct {
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 
-	dict_enum_fixup_t	*enum_fixup;
-	dict_group_fixup_t	*group_fixup;
-	dict_clone_fixup_t	*clone_fixup;
+	dict_fixup_t		*fixups;		//! various fixups
 
 	fr_dict_attr_t		*ext_fixup;		//!< Head of a list of attributes to apply fixups to.
 } dict_tokenize_ctx_t;
@@ -194,6 +182,28 @@ static inline CC_HINT(always_inline) void dict_attr_fixup_mark(dict_tokenize_ctx
 
 	da->fixup = ctx->ext_fixup;
 	ctx->ext_fixup = da;
+}
+
+static dict_fixup_t *dict_fixup_alloc(dict_tokenize_ctx_t *ctx, dict_fixup_type_t type)
+{
+	dict_fixup_t *fixup;
+
+	fixup = talloc_zero(ctx->fixup_pool, dict_fixup_t);
+	if (!fixup) return NULL;
+
+	fixup->type = type;
+
+	fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
+	if (!fixup->filename) {
+		talloc_free(fixup);
+		return NULL;
+	}
+	fixup->line = ctx->stack[ctx->stack_depth].line;
+
+	fixup->next = ctx->fixups;
+	ctx->fixups = fixup;
+
+	return fixup;
 }
 
 /** Set a new root dictionary attribute
@@ -844,28 +854,18 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	dictionary which doesn't exist.
 		 */
 		if (slen == 0) {
-			dict_group_fixup_t *fixup;
+			dict_fixup_t *fixup;
 
 		save:
-			fixup = talloc_zero(ctx->fixup_pool, dict_group_fixup_t);
+			fixup = dict_fixup_alloc(ctx, DICT_FIXUP_GROUP);
 			if (!fixup) {
 			oom:
 				talloc_free(ref);
 				return -1;
 			}
 
-			fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
-			if (!fixup->filename) goto oom;
-			fixup->line = ctx->stack[ctx->stack_depth].line;
-
 			fixup->da = self;
 			fixup->ref = ref;
-
-			/*
-			 *	Insert to the head of the list.
-			 */
-			fixup->next = ctx->group_fixup;
-			ctx->group_fixup = fixup;
 			return 0;
 
 		} else if (ref[slen] == '\0') {
@@ -901,27 +901,17 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	It's a "clone" thing.
 	 */
 	if (ref) {
-		dict_clone_fixup_t	*fixup;
-		fr_dict_attr_t		*self;
+		dict_fixup_t	*fixup;
+		fr_dict_attr_t	*self;
 
 		memcpy(&self, &da, sizeof(self)); /* const issues */
 
-		fixup = talloc_zero(ctx->fixup_pool, dict_clone_fixup_t);
+		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_CLONE);
 		if (!fixup) goto oom;
 
-		fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
-		if (!fixup->filename) goto oom;
-		fixup->line = ctx->stack[ctx->stack_depth].line;
-
-		memcpy(&fixup->parent, &parent, sizeof(parent)); /* const issues */
+		fixup->parent = parent;
 		fixup->da = self;
 		fixup->ref = ref;
-
-		/*
-		 *	Insert to the head of the list.
-		 */
-		fixup->next = ctx->clone_fixup;
-		ctx->clone_fixup = fixup;
 		return 0;
 	}
 
@@ -1138,24 +1128,18 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	up later.
 	 */
 	if (!da) {
-		dict_enum_fixup_t *fixup;
+		dict_fixup_t *fixup;
 
 	fixup:
 
 		if (!fr_cond_assert_msg(ctx->fixup_pool, "fixup pool context invalid")) return -1;
 
-		fixup = talloc_zero(ctx->fixup_pool, dict_enum_fixup_t);
+		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_ENUM);
 		if (!fixup) {
 		oom:
-			talloc_free(fixup);
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
-
-		fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
-		if (!fixup->filename) goto oom;
-		fixup->line = ctx->stack[ctx->stack_depth].line;
-
 		fixup->attribute = talloc_strdup(fixup, argv[0]);
 		if (!fixup->attribute) goto oom;
 		fixup->name = talloc_strdup(fixup, argv[1]);
@@ -1163,14 +1147,6 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		fixup->value = talloc_strdup(fixup, argv[2]);
 		if (!fixup->value) goto oom;
 		fixup->parent = parent;
-
-		/*
-		 *	Insert to the head of the list.
-		 */
-		fixup->next = ctx->enum_fixup;
-		ctx->enum_fixup = fixup;
-
-		return 0;
 	}
 
 	/*
@@ -1686,155 +1662,112 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 
 static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 {
-	/*
-	 *	Resolve any VALUE aliases (enums) that were defined
-	 *	before the attributes they reference.
-	 */
-	if (ctx->enum_fixup) {
-		fr_dict_attr_t *da;
-		dict_enum_fixup_t *this, *next;
+	dict_fixup_t *fixup, *next;
 
-		for (this = ctx->enum_fixup; this != NULL; this = next) {
+	for (fixup = ctx->fixups; fixup != NULL; fixup = next) {
+		next = fixup->next;
+
+		switch (fixup->type) {
+		case DICT_FIXUP_ENUM: {
+			fr_dict_attr_t *da;
 			fr_value_box_t		value;
 			fr_type_t		type;
 			int			ret;
 			fr_dict_attr_t const	*da_const;
 
-			next = this->next;
-			da_const = fr_dict_attr_by_oid(NULL, this->parent, this->attribute);
+			da_const = fr_dict_attr_by_oid(NULL, fixup->parent, fixup->attribute);
 			if (!da_const) {
 				fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
-							this->name, fr_cwd_strip(this->filename), this->line);
+							fixup->name, fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
 			da = fr_dict_attr_unconst(da_const);
 			type = da->type;
 
-			if (fr_value_box_from_str(this, &value, &type, NULL,
-						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
+			if (fr_value_box_from_str(fixup, &value, &type, NULL,
+						  fixup->value, talloc_array_length(fixup->value) - 1, '\0', false) < 0) {
 				fr_strerror_printf_push("Invalid VALUE for Attribute '%s' at %s[%d]",
 							da->name,
-							fr_cwd_strip(this->filename), this->line);
+							fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
 
-			ret = fr_dict_attr_enum_add_name(da, this->name, &value, false, false);
+			ret = fr_dict_attr_enum_add_name(da, fixup->name, &value, false, false);
 			fr_value_box_clear(&value);
 
 			if (ret < 0) return -1;
 
 			dict_attr_fixup_mark(ctx, da);
-
-			/*
-			 *	Just so we don't lose track of things.
-			 */
-			ctx->enum_fixup = next;
 		}
-	}
+			break;
 
-	if (ctx->group_fixup) {
-		dict_group_fixup_t *mine, *this, *next;
-
-		mine = ctx->group_fixup;
-		ctx->group_fixup = NULL;
-
-		/*
-		 *	Loop over references, adding the dictionaries
-		 *	and attributes to the da.
-		 *
-		 *	We avoid refcount loops by using the "autoref"
-		 *	table.  If a "group" attribute refers to a
-		 *	dictionary which does not exist, we load it,
-		 *	increment its reference count, and add it to
-		 *	the autoref table.
-		 *
-		 *	If a group attribute refers to a dictionary
-		 *	which does exist, we check that dictionaries
-		 *	"autoref" table.  If OUR dictionary is there,
-		 *	then we do nothing else.  That dictionary
-		 *	points to us via refcounts, so we can safely
-		 *	point to it.  The refcounts ensure that we
-		 *	won't be free'd before the other one is
-		 *	free'd.
-		 *
-		 *	If our dictionary is NOT in the other
-		 *	dictionaries autoref table, then it was loaded
-		 *	via some other method.  We increment its
-		 *	refcount, and add it to our autoref table.
-		 *
-		 *	Then when this dictionary is being free'd, we
-		 *	also free the dictionaries in our autoref
-		 *	table.
-		 */
-		for (this = mine; this != NULL; this = next) {
+		case DICT_FIXUP_GROUP: {
 			fr_dict_attr_t const *da;
 			fr_dict_t *dict = ctx->dict;
 
-			da = dict_find_or_load_reference(&dict, this->ref, this->filename, this->line);
+			/*
+			 *
+			 *	We avoid refcount loops by using the "autoref"
+			 *	table.  If a "group" attribute refers to a
+			 *	dictionary which does not exist, we load it,
+			 *	increment its reference count, and add it to
+			 *	the autoref table.
+			 *
+			 *	If a group attribute refers to a dictionary
+			 *	which does exist, we check that dictionaries
+			 *	"autoref" table.  If OUR dictionary is there,
+			 *	then we do nothing else.  That dictionary
+			 *	points to us via refcounts, so we can safely
+			 *	point to it.  The refcounts ensure that we
+			 *	won't be free'd before the other one is
+			 *	free'd.
+			 *
+			 *	If our dictionary is NOT in the other
+			 *	dictionaries autoref table, then it was loaded
+			 *	via some other method.  We increment its
+			 *	refcount, and add it to our autoref table.
+			 *
+			 *	Then when this dictionary is being free'd, we
+			 *	also free the dictionaries in our autoref
+			 *	table.
+			 */
+
+			da = dict_find_or_load_reference(&dict, fixup->ref, fixup->filename, fixup->line);
 			if (!da) return -1;
 
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
-						   fr_cwd_strip(this->filename), this->line);
+						   fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
 
 			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
-						   fr_cwd_strip(this->filename), this->line);
+						   fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
-
-			talloc_free(this->ref);
-			dict_attr_ref_set(this->da, da);
-
-			next = this->next;
+			dict_attr_ref_set(fixup->da, da);
+			talloc_free(fixup->ref); /* talloc'd from ctx->dict->pool */
 		}
-	}
+			break;
 
-	if (ctx->ext_fixup) {
-		fr_dict_attr_t *this;
-
-		for (this = ctx->ext_fixup; this; this = this->fixup) {
-			fr_dict_attr_ext_enumv_t *ext;
-
-			ext = fr_dict_attr_ext(this, FR_DICT_ATTR_EXT_ENUMV);
-			if (!ext) continue;
-
-			fr_hash_table_fill(ext->value_by_name);
-			fr_hash_table_fill(ext->name_by_value);
-
-			ctx->ext_fixup = this->fixup;
-			this->fixup = NULL;
-		}
-	}
-
-	if (ctx->clone_fixup) {
-		dict_clone_fixup_t *mine, *this, *next;
-
-		mine = ctx->clone_fixup;
-		ctx->clone_fixup = NULL;
-
-		/*
-		 *	Loop over references, cloning the da.
-		 */
-		for (this = mine; this != NULL; this = next) {
+		case DICT_FIXUP_CLONE: {
 			fr_dict_attr_t const *da;
 			fr_dict_attr_t *cloned;
 			fr_dict_t *dict = ctx->dict;
 
-			da = dict_find_or_load_reference(&dict, this->ref, this->filename, this->line);
+			da = dict_find_or_load_reference(&dict, fixup->ref, fixup->filename, fixup->line);
 			if (!da) return -1;
 
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("Clone references MUST be to attributes of type 'tlv' at %s[%d]",
-						   fr_cwd_strip(this->filename), this->line);
+						   fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
 
 			if (fr_dict_attr_ref(da)) {
 				fr_strerror_printf("Clone references MUST NOT refer to an ATTRIBUTE which has 'ref=...' at %s[%d]",
-						   fr_cwd_strip(this->filename), this->line);
+						   fr_cwd_strip(fixup->filename), fixup->line);
 				return -1;
 			}
 
@@ -1842,40 +1775,59 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			 *	Copy the source attribute, but with a
 			 *	new name and a new attribute number.
 			 */
-			cloned = dict_attr_acopy(dict->pool, da, this->da->name);
+			cloned = dict_attr_acopy(dict->pool, da, fixup->da->name);
 			if (!cloned) {
-				fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, this->ref);
+				fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, fixup->ref);
 				return -1;
 			}
 
-			cloned->attr = this->da->attr;
-			cloned->parent = this->parent;
+			cloned->attr = fixup->da->attr;
+			cloned->parent = fixup->parent;
 
 			/*
 			 *	Copy any pre-existing children over.
 			 */
-			if (dict_attr_children(this->da)) {
-				if (dict_attr_acopy_children(dict, cloned, this->da) < 0) {
-					fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
+			if (dict_attr_children(fixup->da)) {
+				if (dict_attr_acopy_children(dict, cloned, fixup->da) < 0) {
+					fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, fixup->ref);
 					return -1;
 				}
 			}
 
 			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
-				fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, this->ref);
+				fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, fixup->ref);
 				return -1;
 			}
 
-			if (dict_attr_child_add(this->parent, cloned) < 0) {
+			if (dict_attr_child_add(fr_dict_attr_unconst(fixup->parent), cloned) < 0) {
 				fr_strerror_printf("Failed adding cloned attribute %s", da->name);
 				talloc_free(cloned);
 				return -1;
 			}
 
-			if (dict_attr_add_to_namespace(dict, this->parent, cloned) < 0) return -1;
+			if (dict_attr_add_to_namespace(dict, fixup->parent, cloned) < 0) return -1;
+			talloc_free(fixup->ref); /* talloc'd from ctx->dict->pool */
+		}
+			break;
 
-			talloc_free(this->ref);
-			next = this->next;
+		} /* switch over fixup type */
+	}	  /* loop over fixups */
+	ctx->fixups = NULL;
+
+	if (ctx->ext_fixup) {
+		fr_dict_attr_t *da;
+
+		while ((da = ctx->ext_fixup) != NULL) {
+			fr_dict_attr_ext_enumv_t *ext;
+
+			ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+			if (ext) {
+				fr_hash_table_fill(ext->value_by_name);
+				fr_hash_table_fill(ext->name_by_value);
+			}
+
+			ctx->ext_fixup = da->fixup;
+			da->fixup = NULL;
 		}
 	}
 
