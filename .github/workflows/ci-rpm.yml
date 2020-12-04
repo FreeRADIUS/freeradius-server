@@ -24,7 +24,7 @@ jobs:
 
     - name: Install recent git
       run: |
-        yum install -y git
+        yum install -y git-core
 
     - uses: actions/checkout@v2
       with:
@@ -62,13 +62,8 @@ jobs:
     - name: Install build dependencies
       run: |
         yum install -y \
-          bzip2 \
-          gcc \
           libcurl-devel \
-          make \
-          perl \
-          rpm-build \
-          yum-utils
+          perl
         yum-builddep -y freeradius/redhat/freeradius.spec
 
     - name: Build RPMs
