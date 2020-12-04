@@ -887,7 +887,7 @@ post-auth {
 	#
 	if (EAP-Key-Name && &reply:EAP-Session-Id) {
 		update reply {
-			EAP-Key-Name := &reply:EAP-Session-Id
+			&EAP-Key-Name := &reply:EAP-Session-Id
 		}
 	}
 }
