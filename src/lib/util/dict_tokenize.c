@@ -1789,7 +1789,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 			 */
 			if (dict_attr_children(fixup->da)) {
 				if (dict_attr_acopy_children(dict, cloned, fixup->da) < 0) {
-					fr_strerror_printf("Failed cloned attribute '%s' from children of %s", da->name, fixup->ref);
+					fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
 					return -1;
 				}
 			}
