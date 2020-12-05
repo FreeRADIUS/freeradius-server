@@ -48,4 +48,8 @@ VALUE	Client-Arch-Type		RISC-V-128-Bit-UEFI-Boot-From-HTTP 30
 VALUE	Client-Arch-Type		S390-Basic		31
 VALUE	Client-Arch-Type		S390-Extended		32
 
-ATTRIBUTE	Client-Network-Interface-ID		62	octets		# Complex struct see RFC 5970
+ATTRIBUTE	Client-Network-Interface-ID		62	struct
+MEMBER		Type					uint8
+MEMBER		Major					uint8
+MEMBER		Minor					uint8
+
