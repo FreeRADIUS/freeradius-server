@@ -30,9 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
-#define CHUNK_EXT_PTR(_chunk, _chunk_ext, _ext) ((void *)((chunk_ext[_ext] * FR_EXT_ALIGNMENT) + ((uintptr_t)(_chunk))))
-#define CHUNK_EXT(_chunk, _offset) ((uint8_t *)(((uintptr_t)_chunk) + (_offset)))
-
 /** Add a variable length extension to a talloc chunk
  *
  * This is used to build a structure from a primary struct type and one or more
@@ -65,17 +62,16 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 
 	size_t			offset;
 
-	fr_ext_info_t const	*info;
+	fr_ext_info_t const	*info = &def->info[ext];
 	void			*n_chunk, *chunk = *chunk_p;
-	uint8_t			*chunk_ext;
+	uint8_t			*ext_offsets;
 	uint8_t			*ext_ptr;
 	char const		*type;
 
-	chunk_ext = CHUNK_EXT(*chunk_p, def->offset_of_exts);
-	if (chunk_ext[ext]) return CHUNK_EXT_PTR(*chunk_p, chunk_ext, ext);
+	ext_offsets = fr_ext_offsets(def, *chunk_p);
+	if (ext_offsets[ext]) return fr_ext_ptr(*chunk_p, ext_offsets[ext], info->has_hdr);
 
- 	info = &def->info[ext];
-	if (info->has_hdr) hdr_len = sizeof(dict_ext_hdr_t);	/* Add space for a length prefix */
+	if (info->has_hdr) hdr_len = sizeof(fr_ext_hdr_t);	/* Add space for a length prefix */
 
 	/*
 	 *	Packing the offsets into a uint8_t array
@@ -84,7 +80,7 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	 *	UINT8_MAX * FR_EXT_ALIGNMENT.
 	 */
 	chunk_len = talloc_get_size(chunk);
-	offset = (chunk_len + hdr_len) / FR_EXT_ALIGNMENT;
+	offset = ROUND_UP_DIV(chunk_len, FR_EXT_ALIGNMENT);
 	if (unlikely(offset > UINT8_MAX)) {
 		fr_strerror_printf("Insufficient space remaining for extensions");
 		return NULL;
@@ -96,22 +92,23 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	 *	record it and set it back again.
 	 */
 	type = talloc_get_name(chunk);
-	n_chunk = talloc_realloc_size(NULL, chunk, chunk_len + hdr_len + aligned_len);
+	n_chunk = talloc_realloc_size(NULL, chunk, (offset * FR_EXT_ALIGNMENT) + hdr_len + aligned_len);
 	if (!n_chunk) {
 		fr_strerror_printf("Failed reallocing %s (%s).  Tried to realloc %zu bytes -> %zu bytes",
 				   type, fr_syserror(errno), chunk_len, chunk_len + aligned_len);
 		return NULL;
 	}
 	talloc_set_name_const(n_chunk, type);
-	*chunk_p = n_chunk;
 
-	chunk_ext = CHUNK_EXT(*chunk_p, def->offset_of_exts);
-	chunk_ext[ext] = (uint8_t)offset;
+	ext_offsets = fr_ext_offsets(def, n_chunk);
+	ext_offsets[ext] = (uint8_t)offset;
 
 	ext_ptr = ((uint8_t *)n_chunk) + chunk_len;
 
+	*chunk_p = n_chunk;
+
 	if (info->has_hdr) {
-		dict_ext_hdr_t *ext_hdr = (dict_ext_hdr_t *)ext_ptr;
+		fr_ext_hdr_t *ext_hdr = (fr_ext_hdr_t *)ext_ptr;
 
 		ext_hdr->len = ext_len;		/* Record the real size */
 		return &ext_hdr->data;		/* Pointer to the data portion */
@@ -129,97 +126,190 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
  *	- 0 if no extension exists or is of zero length.
  *	- >0 the length of the extension.
  */
-size_t fr_ext_len(fr_ext_t const *def, void const *chunk, int ext)
+size_t fr_ext_len(fr_ext_t const *def, TALLOC_CTX const *chunk, int ext)
 {
 	uint8_t			offset;
 	fr_ext_info_t const	*info;
-	dict_ext_hdr_t		*ext_hdr;
-	uint8_t			*chunk_ext;
+	fr_ext_hdr_t		*ext_hdr;
+	uint8_t			*ext_offsets;
 
-	chunk_ext = CHUNK_EXT(chunk, def->offset_of_exts);
-	offset = chunk_ext[ext];
+	ext_offsets = fr_ext_offsets(def, chunk);
+	offset = ext_offsets[ext];
 	if (!offset) return 0;
 
 	info = &def->info[ext];
-	if (!info->has_hdr) return info->min;	/* Fixed size */
+	if (!info->has_hdr) return info->min;		/* Fixed size */
 
-	ext_hdr = (dict_ext_hdr_t *)((uintptr_t)chunk) + ((offset * FR_EXT_ALIGNMENT) - sizeof(dict_ext_hdr_t));
+	ext_hdr = fr_ext_ptr(chunk, offset, false);	/* false as we're getting the header */
 	return ext_hdr->len;
 }
 
 /** Copy extension data from one attribute to another
  *
  * @param[in] def		Extension definitions.
- * @param[in,out] chunk_out	to copy extension to.
- *				Under certain circumstances the value of *chunk_out will
+ * @param[in,out] chunk_dst	to copy extension to.
+ *				Under certain circumstances the value of *chunk_dst will
  *				be changed to point to a new memory block.
  *				All cached copies of the previous pointer should be
  *				updated.
- * @param[in] chunk_in		to copy extension from.
+ * @param[in] chunk_src		to copy extension from.
  * @param[in] ext		to copy.
  * @return
  *	- NULL if we failed to allocate an extension structure.
  *	- A pointer to the offset of the extension in da_out.
  */
-void *fr_ext_copy(fr_ext_t const *def, void **chunk_out, void const *chunk_in, int ext)
+void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const *chunk_src, int ext)
 {
-	void	*ext_ptr, *new_ext_ptr;
-	uint8_t	*chunk_ext;
-	size_t	ext_len;
+	int			i;
+	uint8_t			*ext_src_offsets = fr_ext_offsets(def, chunk_src);
+	uint8_t			*ext_dst_offsets;
+	void			*ext_src_ptr, *ext_dst_ptr;
+	fr_ext_info_t const	*info = &def->info[ext];
 
-	fr_ext_info_t const *info;
-
-	info = &def->info[ext];
 	if (!info->can_copy) {
 		fr_strerror_printf("Extension cannot be copied");
 		return NULL;
 	}
 
-	chunk_ext = CHUNK_EXT(chunk_in, def->offset_of_exts);
-	ext_ptr = CHUNK_EXT_PTR(chunk_in, chunk_ext, ext);
-	if (!ext_ptr) return NULL;
+	if (!ext_src_offsets[ext]) return NULL;
 
-	ext_len = fr_ext_len(def, chunk_in, ext);
+	ext_src_ptr = fr_ext_ptr(chunk_src, ext_src_offsets[ext], info->has_hdr);
+
+
+	if (info->alloc) {
+		ext_dst_ptr = info->alloc(def, chunk_dst, ext,
+			    		  ext_src_ptr,
+			    		  fr_ext_len(def, chunk_src, ext));
+	/*
+	 *	If there's no special alloc function
+	 *	we just allocate a chunk of the same
+	 *	size.
+	 */
+	} else {
+		ext_dst_ptr = fr_ext_alloc_size(def, chunk_dst, ext,
+						fr_ext_len(def, chunk_src, ext));
+	}
+
+	if (info->copy) {
+		info->copy(ext,
+			   *chunk_dst,
+			   ext_dst_ptr, fr_ext_len(def, *chunk_dst, ext),
+			   ext_src_ptr, fr_ext_len(def, chunk_src, ext));
+	/*
+	 *	If there's no special copy function
+	 *	we just copy the data from the old
+	 *	extension to the new one.
+	 */
+	} else {
+		memcpy(ext_dst_ptr, ext_src_ptr, fr_ext_len(def, *chunk_dst, ext));
+	}
 
 	/*
-	 *	Use the special copy function.
-	 *	Its responsible for allocating the extension in the
-	 *      destination attribute.
+	 *	Call any fixup functions
 	 */
-	if (info->copy) return info->copy(chunk_out, ext, ext_ptr, ext_len);
+	ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);
+	for (i = 0; i < def->max; i++) {
+		if (i == ext) continue;
 
-	/*
-	 *	If there's no special function
-	 *	just memcpy the data over.
-	 */
-	new_ext_ptr = fr_ext_alloc_size(def, chunk_out, ext, ext_len);
-	if (!new_ext_ptr) return NULL;
-	memcpy(new_ext_ptr, ext_ptr, ext_len);
+		if (!ext_dst_offsets[i]) continue;
 
-	return new_ext_ptr;
+		if (info->fixup &&
+		    info->fixup(i, *chunk_dst,
+				fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),
+				fr_ext_len(def, *chunk_dst, i)) < 0) return NULL;
+	}
+
+	return ext_dst_ptr;
 }
 
 /** Copy all the extensions from one attribute to another
  *
  * @param[in] def		Extension definitions.
- * @param[in,out] chunk_out	to copy extensions to.
- *				Under certain circumstances the value of *chunk_out will
+ * @param[in,out] chunk_dst	to copy extensions to.
+ *				Under certain circumstances the value of *chunk_dst will
  *				be changed to point to a new memory block.
  *				All cached copies of the previous pointer should be
  *				updated.
- * @param[in] chunk_in		to copy extensions from.
+ * @param[in] chunk_src		to copy extensions from.
  * @return
  *	- 0 on success.
  *	- -1 if a copy operation failed.
  */
-int fr_ext_copy_all(fr_ext_t const *def, void **chunk_out, void const *chunk_in)
+int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const *chunk_src)
 {
 	int	i;
-	uint8_t	*ext_in = CHUNK_EXT(chunk_in, def->offset_of_exts);
+	uint8_t	*ext_src_offsets = fr_ext_offsets(def, chunk_src);	/* old chunk array */
+	uint8_t *ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);	/* new chunk array */
+	bool	ext_copied[def->max];
 
+	/*
+	 *	Do the operation in two phases.
+	 *
+	 *	Phase 1 allocates space for all the extensions.
+	 */
 	for (i = 0; i < def->max; i++) {
-		if (!ext_in[i] || !def->info[i].can_copy) continue;
-		if (!fr_ext_copy(def, chunk_out, chunk_in, i)) return -1;
+		fr_ext_info_t const *info = &def->info[i];
+
+		if (!ext_src_offsets[i] || ext_dst_offsets[i] || !info->can_copy) {
+		no_copy:
+			ext_copied[i] = false;
+			continue;
+		}
+
+		if (info->alloc) {
+			if (!info->alloc(def, chunk_dst, i,
+				    	 fr_ext_ptr(chunk_src, ext_src_offsets[i], info->has_hdr),
+				    	 fr_ext_len(def, chunk_src, i))) goto no_copy;
+		/*
+		 *	If there's no special alloc function
+		 *	we just allocate a chunk of the same
+		 *	size.
+		 */
+		} else {
+			fr_ext_alloc_size(def, chunk_dst, i, fr_ext_len(def, chunk_src, i));
+		}
+		ext_copied[i] = true;
+		ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);	/* Grab new offsets, chunk might have changed */
+	}
+
+	/*
+	 *	Phase 2 populates the extension memory.
+	 *
+	 *	We do this in two phases to avoid invalidating
+	 *	any pointers from extensions back to the extended
+	 *	talloc chunk.
+	 */
+	for (i = 0; i < def->max; i++) {
+		fr_ext_info_t const *info = &def->info[i];
+
+		if (!ext_src_offsets[i] || !ext_dst_offsets[i]) continue;
+
+		if (!ext_copied[i]) {
+			if (info->fixup &&
+			    info->fixup(i, *chunk_dst,
+					fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),
+					fr_ext_len(def, *chunk_dst, i)) < 0) return -1;
+			continue;
+		}
+		if (!info->can_copy) continue;
+
+		if (info->copy) {
+			if (info->copy(i,
+				       *chunk_dst,
+				       fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),
+				       fr_ext_len(def, *chunk_dst, i),
+				       fr_ext_ptr(chunk_src, ext_src_offsets[i], info->has_hdr),
+				       fr_ext_len(def, chunk_src, i)) < 0) return -1;
+		/*
+		 *	If there's no special copy function
+		 *	we just copy the data from the old
+		 *	extension to the new one.
+		 */
+		} else {
+			memcpy(fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),
+			       fr_ext_ptr(chunk_src, ext_src_offsets[i], info->has_hdr),
+			       fr_ext_len(def, *chunk_dst, i));
+		}
 	}
 
 	return 0;
@@ -241,11 +331,10 @@ void fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk)
 
 	FR_FAULT_LOG("%s ext total_len=%zu", name, talloc_get_size(chunk));
 	for (i = 0; i < (int)def->max; i++) {
-		uint8_t *chunk_ext = CHUNK_EXT(chunk, def->offset_of_exts);
-		if (chunk_ext[i]) {
-			void		*ext = CHUNK_EXT_PTR(chunk, chunk_ext, i);
+		uint8_t *ext_offsets = fr_ext_offsets(def, chunk);
+		if (ext_offsets[i]) {
+			void		*ext = fr_ext_ptr(chunk, ext_offsets[i], def[i].info->has_hdr);
 			size_t		ext_len = fr_ext_len(def, chunk, i);
-
 			char const	*ext_name = fr_table_ordered_str_by_num(def->name_table,
 										*def->name_table_len,
 										i, "<INVALID>");

@@ -54,10 +54,54 @@ extern "C" {
 #  define FR_EXT_ALIGNMENT	sizeof(uint64_t)
 #endif
 
-/** Function for fixing up extensions after they're copied
+typedef struct fr_ext_s fr_ext_t;
+
+/** Function for pre-allocating extension memory for extensions before they're copied
  *
+ * @param[in] def		Extension definitions.
+ * @param[in,out] dst_chunk_p	to add extensions to.
+ * @param[in] ext		that's being copied.
+ * @param[in] src_ext_ptr	Pointer for the src extension.
+ * @param[in] src_ext_len	Length of the src extension.
+ * @return
+ *	- NULL on error.
+ *	- Pointer to the new extension on success.
  */
-typedef void *(* fr_ext_copy_t)(void **chunk_p, int ext, void *ext_ptr, size_t ext_len);
+typedef void *(* fr_ext_alloc_t)(fr_ext_t const *def, TALLOC_CTX **dst_chunk_p,
+				 int ext, void *src_ext_ptr, size_t src_ext_len);
+
+/** Function for re-populating extensions after they're copied
+ *
+ * @param[in] ext		that's being copied.
+ * @param[in] chunk		Talloc chunk we're copying to.
+ * @param[in] dst_ext_ptr	Pointer to the dst extension to populate.
+ * @param[in] dst_ext_len	The length of the dst extension.
+ * @param[in] src_ext_ptr	Pointer for the src extension.
+ * @param[in] src_ext_len	Length of the src extension.
+ * @return
+ *	- NULL on error.
+ *	- Pointer to the new extension on success.
+ */
+typedef int (* fr_ext_copy_t)(int ext, TALLOC_CTX *chunk,
+			      void *dst_ext_ptr, size_t dst_ext_len,
+			      void *src_ext_ptr, size_t src_ext_len);
+
+/** Function for re-establishing internal consistency on realloc
+ *
+ * In some cases the chunk may cache a pointer to an extension.
+ * On realloc this pointer may be invalidated.  This provides a
+ * callback to fixup consistency issues after a realloc.
+ *
+ * @param[in] ext		that's being copied.
+ * @param[in] chunk		Talloc chunk.
+ * @param[in] ext_ptr		Pointer to the extension to fixup.
+ * @param[in] ext_len		The length of the extension to fixup.
+ * @return
+ *	- NULL on error.
+ *	- Pointer to the new extension on success.
+ */
+typedef int (* fr_ext_fixup_t)(int ext, TALLOC_CTX *chunk,
+			       void *ext_ptr, size_t ext_len);
 
 /** Additional information for a given extension
  */
@@ -67,19 +111,22 @@ typedef struct {
 							///< the extension data to record the exact length
 							///< of the extension.
 	bool			can_copy;		//!< Copying this extension between structs is allowed.
+
+	fr_ext_alloc_t		alloc;			//!< Override the normal alloc operation with a callback.
 	fr_ext_copy_t		copy;			//!< Override the normal copy operation with a callback.
+	fr_ext_fixup_t		fixup;			//!< Callback for fixing up internal consistency issues.
 } fr_ext_info_t;
 
 /** Structure to define a set of extensions
  *
  */
-typedef struct {
+struct fr_ext_s {
 	size_t			offset_of_exts;		//!< Where in the extended struct the extensions array starts.
 	fr_table_num_ordered_t const	*name_table;	//!< String identifiers for the extensions.
 	size_t			*name_table_len;	//!< How many extensions there are in the table.
 	int			max;			//!< The highest extension value.
 	fr_ext_info_t const	info[];			//!< Additional information about each extension.
-} fr_ext_t;
+};
 
 /** Optional extension header struct
  *
@@ -87,25 +134,36 @@ typedef struct {
 typedef struct {
 	size_t			len;			//!< Length of extension data.
 	uint8_t			data[];			//!< Extension data
-} CC_HINT(aligned(FR_EXT_ALIGNMENT)) dict_ext_hdr_t;
+} CC_HINT(aligned(FR_EXT_ALIGNMENT)) fr_ext_hdr_t;
 
-/** Return a pointer to the specified extension structure
+static inline CC_HINT(always_inline) uint8_t *fr_ext_offsets(fr_ext_t const *def, TALLOC_CTX const *chunk)
+{
+	return (uint8_t *)(((uintptr_t)chunk) + def->offset_of_exts);
+}
+
+/** Return a pointer to an extension in a chunk
  *
- * @param[in] _ptr	to fetch extension for.
- * @param[in] _field	Array of extensions.
- * @param[in] _ext	to retrieve.
  */
-#define FR_EXT_PTR(_ptr, _field, _ext) ((void *)(((_ptr)->_field[_ext] * FR_EXT_ALIGNMENT) + ((uintptr_t)(_ptr))))
+static inline CC_HINT(always_inline) void *fr_ext_ptr(TALLOC_CTX const *chunk, size_t offset, bool has_hdr)
+{
+	uintptr_t out;
 
-void	*fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext_len);
+	out = (uintptr_t)chunk;					/* chunk start */
+	out += offset * FR_EXT_ALIGNMENT;			/* offset described by the extension */
+	out += sizeof(fr_ext_hdr_t) * (has_hdr == true);	/* data field offset by length header */
 
-size_t	fr_ext_len(fr_ext_t const *def, void const *chunk_in, int ext);
+	return (void *)out;
+}
 
-void	*fr_ext_copy(fr_ext_t const *def, void **chunk_out, void const *chunk_in, int ext);
+void	*fr_ext_alloc_size(fr_ext_t const *def, TALLOC_CTX **chunk_p, int ext, size_t ext_len);
 
-int	fr_ext_copy_all(fr_ext_t const *def, void **chunk_out, void const *chunk_in);
+size_t	fr_ext_len(fr_ext_t const *def, TALLOC_CTX const *chunk_in, int ext);
 
-void	fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk);
+void	*fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_out, TALLOC_CTX  const *chunk_in, int ext);
+
+int	fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_out, TALLOC_CTX  const *chunk_in);
+
+void	fr_ext_debug(fr_ext_t const *def, char const *name, TALLOC_CTX const *chunk);
 
 #ifdef __cplusplus
 }

@@ -41,34 +41,46 @@ static fr_table_num_ordered_t const dict_attr_ext_table[] = {
 };
 static size_t dict_attr_ext_table_len = NUM_ELEMENTS(dict_attr_ext_table);
 
+/** Fixup name pointer on realloc
+ *
+ */
+static int fr_dict_attr_ext_name_fixup(UNUSED int ext,
+				       TALLOC_CTX *chunk,
+				       void *ext_ptr, UNUSED size_t ext_ptr_len)
+{
+	fr_dict_attr_t			*da = talloc_get_type_abort(chunk, fr_dict_attr_t);
+
+	da->name = ext_ptr;
+
+	return 0;
+}
+
 /** Copy all enumeration values from one attribute to another
  *
  */
-static void *fr_dict_attr_ext_enumv_copy(void **chunk_p, int ext, void *ext_ptr, UNUSED size_t ext_len)
+static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
+				       TALLOC_CTX *chunk,
+				       void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+				       void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t			**da_p = (fr_dict_attr_t **)chunk_p;
-	fr_dict_attr_ext_enumv_t	*new_ext, *old_ext;
+	fr_dict_attr_t			*da_src = talloc_get_type_abort(chunk, fr_dict_attr_t);
+	fr_dict_attr_ext_enumv_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_t			*enumv;
-	bool				has_child = fr_dict_attr_is_key_field(*da_p);
+	bool				has_child = fr_dict_attr_is_key_field(da_src);
 
-	new_ext = dict_attr_ext_alloc(da_p, ext);
-	if (!new_ext) return NULL;
-
-	old_ext = ext_ptr;
-
-	if (!old_ext->value_by_name && !old_ext->name_by_value) {
-		memset(new_ext, 0, sizeof(*new_ext));
-		return new_ext;
+	if (!src_ext->value_by_name && !src_ext->name_by_value) {
+		memset(dst_ext, 0, sizeof(*dst_ext));
+		return 0;
 	}
 
 	/*
 	 *	Add all the enumeration values from
 	 *      the old attribute to the new attribute.
 	 */
-	for (enumv = fr_hash_table_iter_init(old_ext->value_by_name, &iter);
+	for (enumv = fr_hash_table_iter_init(src_ext->value_by_name, &iter);
 	     enumv;
-	     enumv = fr_hash_table_iter_next(old_ext->value_by_name, &iter)) {
+	     enumv = fr_hash_table_iter_next(src_ext->value_by_name, &iter)) {
 		fr_dict_attr_t const *child_struct;
 
 		if (!has_child) {
@@ -80,39 +92,43 @@ static void *fr_dict_attr_ext_enumv_copy(void **chunk_p, int ext, void *ext_ptr,
 	     	/*
 	     	 *	Fixme - Child struct copying is probably wrong
 	     	 */
-		if (dict_attr_enum_add_name(*da_p, enumv->name, enumv->value, true, true, child_struct) < 0) {
-			return NULL;
-		}
+		if (dict_attr_enum_add_name(da_src, enumv->name, enumv->value,
+					    true, true, child_struct) < 0) return -1;
 	}
 
-	return new_ext;
+	return 0;
 }
 
 /** Rediscover the parent of this attribute, and cache it
  *
  */
-static void *fr_dict_attr_ext_vendor_copy(void **chunk_p, int ext, void *ext_ptr, UNUSED size_t ext_len)
+static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
+					TALLOC_CTX *chunk,
+					void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+					void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t			**da_p = (fr_dict_attr_t **)chunk_p;
-	fr_dict_attr_ext_vendor_t	*new_ext, *old_ext = ext_ptr;
+	fr_dict_attr_t			*da_src = talloc_get_type_abort(chunk, fr_dict_attr_t);
+	fr_dict_attr_ext_vendor_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
 	fr_dict_attr_t const		**da_stack;
-	fr_dict_attr_t const		*old_vendor = old_ext->vendor;
+	fr_dict_attr_t const		*old_vendor = src_ext->vendor;
 	fr_dict_attr_t const		*new_vendor, *da;
+
+	if (!old_vendor) {
+		dst_ext->vendor = NULL;
+		return 0;
+	}
 
 	/*
 	 *	If we have a da stack, see if we can
 	 *	find a vendor at the same depth as
 	 *	the old depth.
 	 */
-	da_stack = fr_dict_attr_da_stack(*da_p);
+	da_stack = fr_dict_attr_da_stack(da_src);
 	if (da_stack) {
 		new_vendor = da_stack[old_vendor->depth];
 		if ((new_vendor->type == old_vendor->type) && (new_vendor->attr == old_vendor->attr)) {
-			new_ext = dict_attr_ext_alloc(da_p, ext);
-			if (!new_ext) return NULL;
-
-			new_ext->vendor = new_vendor;
-			return new_ext;
+			dst_ext->vendor = new_vendor;
+			return 0;
 		}
 	}
 
@@ -123,17 +139,14 @@ static void *fr_dict_attr_ext_vendor_copy(void **chunk_p, int ext, void *ext_ptr
 	 *	Theoretically the attribute could
 	 *	have been moved to a different depth.
 	 */
-	for (da = (*da_p)->parent; da; da = da->parent) {
+	for (da = da_src->parent; da; da = da->parent) {
 		if ((da->type == old_vendor->type) && (da->attr == old_vendor->attr)) {
-			new_ext = dict_attr_ext_alloc(da_p, ext);
-			if (!new_ext) return NULL;
-
-			new_ext->vendor = da;
-			return new_ext;
+			dst_ext->vendor = da;
+			return 0;
 		}
 	}
 
-	return NULL;
+	return -1;
 }
 
 /** Holds additional information about extension structures
@@ -148,6 +161,7 @@ fr_ext_t const fr_dict_attr_ext_def = {
 		[FR_DICT_ATTR_EXT_NAME]		= {
 							.min = sizeof(char),
 							.has_hdr = true,
+							.fixup = fr_dict_attr_ext_name_fixup,
 							.can_copy = false,	/* Name may change, and we can only set it once */
 						},
 		[FR_DICT_ATTR_EXT_CHILDREN]	= {

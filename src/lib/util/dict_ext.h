@@ -33,6 +33,9 @@ RCSIDH(dict_ext_h, "$Id$")
 extern "C" {
 #endif
 
+extern fr_ext_t const fr_dict_attr_ext_def;
+extern fr_ext_t const fr_dict_enum_ext_def;
+
 /** Attribute extension - Holds children for an attribute
  *
  * Children are possible for:
@@ -117,7 +120,7 @@ static inline void *fr_dict_attr_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_
 {
 	if (!da->ext[ext]) return NULL;
 
-	return FR_EXT_PTR(da, ext, ext);
+	return fr_ext_ptr(da, da->ext[ext], fr_dict_attr_ext_def.info[ext].has_hdr);
 }
 
 /** Return whether a da has a given extension or not

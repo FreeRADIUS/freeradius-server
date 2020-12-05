@@ -31,9 +31,6 @@ RCSIDH(dict_ext_priv_h, "$Id$")
 extern "C" {
 #endif
 
-extern fr_ext_t const fr_dict_attr_ext_def;
-extern fr_ext_t const fr_dict_enum_ext_def;
-
 /** @name Add extension structures to attributes
  *
  * @{
