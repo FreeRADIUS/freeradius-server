@@ -1,0 +1,22 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL <legal@networkradius.com>
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  A1 = "ON"
+#
+encode-pair Geoconf-Civic = { What = Client-Location, Country-Code = "CA", Civic-Address-Elements = 0x01024f4e }
+match 00 24 00 07 02 43 41 01 02 4f 4e
+
+decode-pair -
+match Geoconf-Civic.What = Client-Location, Geoconf-Civic.Country-Code = "CA", Geoconf-Civic.Civic-Address-Elements = 0x01024f4e
+#match Geoconf-Civic = { What = Client-Location, Country-Code = "CA", Civic-Address-Elements = 0x01024f4e }
+
+count
+match 6
