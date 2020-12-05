@@ -1150,6 +1150,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		fixup->value = talloc_strdup(fixup, argv[2]);
 		if (!fixup->value) goto oom;
 		fixup->parent = parent;
+		return 0;
 	}
 
 	/*
