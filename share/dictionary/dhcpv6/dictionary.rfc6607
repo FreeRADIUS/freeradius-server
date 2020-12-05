@@ -10,4 +10,16 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Virtual-Subnet-Selection		68	octets		# Complex struct see RFC 6607
+ATTRIBUTE	Virtual-Subnet-Selection		68	struct
+MEMBER		Type					uint8 key
+#
+#  Not a struct, because there must not be any data after the key
+#
+VALUE	Type				Global-VPN		255
+
+STRUCT	NVT-Ascii-VPN				Type		0
+MEMBER		Identifier				string
+
+STRUCT	VPN				Type			1
+MEMBER		ID					octets[7]
+

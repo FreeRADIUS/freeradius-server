@@ -1302,14 +1302,9 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 
 	/*
-	 *	Key fields CANNOT define VALUEs, and MUST define a child struct.
+	 *	If the parent isn't a key field, then we CANNOT add a child struct.
 	 */
-	if (fr_dict_attr_is_key_field(da)) {
-		if (!child_struct) {
-			fr_strerror_printf("VALUEs cannot be defined for MEMBER attributes which are a 'key' field.");
-			return -1;
-		}
-	} else if (child_struct) {
+	if (!fr_dict_attr_is_key_field(da) && child_struct) {
 		fr_strerror_printf("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
 		return -1;
 	}
