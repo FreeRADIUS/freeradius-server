@@ -282,6 +282,9 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 		if (strcmp(name, "octets") == 0) {
 			type = FR_TYPE_OCTETS;
 
+		} else if (strcmp(name, "string") == 0) {
+			type = FR_TYPE_STRING;
+
 		} else if (strcmp(name, "struct") == 0) {
 			type = FR_TYPE_STRUCT;
 

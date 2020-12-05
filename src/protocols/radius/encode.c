@@ -472,24 +472,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	switch (da->type) {
 	/*
-	 *	If asked to encode more data than allowed, we
-	 *	encode only the allowed data.
-	 */
-	case FR_TYPE_STRING:
-		if (flag_abinary(&da->flags)) {
-			slen = fr_radius_encode_abinary(vp, fr_dbuff_current(&value_dbuff), fr_dbuff_remaining(&value_dbuff));
-			if (slen <= 0) return slen;
-
-			FR_DBUFF_ADVANCE_RETURN(&value_dbuff, (size_t) slen);
-			break;
-		}
-		FALL_THROUGH;
-
-	case FR_TYPE_OCTETS:
-		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)(vp->vp_ptr), len);
-		break;
-
-	/*
 	 *	Common encoder might add scope byte
 	 */
 	case FR_TYPE_IPV6_ADDR:
@@ -515,11 +497,27 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	/*
+	 *	Special handling for "abinary".  Otherwise, fall
+	 *	through to using the common encoder.
+	 */
+	case FR_TYPE_STRING:
+		if (flag_abinary(&da->flags)) {
+			slen = fr_radius_encode_abinary(vp, fr_dbuff_current(&value_dbuff), fr_dbuff_remaining(&value_dbuff));
+			if (slen <= 0) return slen;
+
+			FR_DBUFF_ADVANCE_RETURN(&value_dbuff, (size_t) slen);
+			break;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_OCTETS:
+
+	/*
 	 *	Simple data types use the common encoder.
 	 */
 	default:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
-		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
+		if (slen < 0) return slen;
 		break;
 	}
 

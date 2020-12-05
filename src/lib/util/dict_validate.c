@@ -524,8 +524,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	the first member.
 			 */
 			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
-			    !((sibling->type == FR_TYPE_OCTETS) &&
-			      (sibling->flags.length > 0))) {
+			    (sibling->flags.length == 0)) {
 				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
 				return false;
 			}
