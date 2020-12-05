@@ -59,11 +59,13 @@ static int fr_dict_attr_ext_name_fixup(UNUSED int ext,
  *
  */
 static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
-				       TALLOC_CTX *chunk,
+				       TALLOC_CTX *chunk_dst,
 				       void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+				       TALLOC_CTX const *chunk_src,
 				       void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t			*da_src = talloc_get_type_abort(chunk, fr_dict_attr_t);
+	fr_dict_attr_t const		*da_src = talloc_get_type_abort_const(chunk_src, fr_dict_attr_t);
+	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_enumv_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_t			*enumv;
@@ -92,7 +94,7 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	     	/*
 	     	 *	Fixme - Child struct copying is probably wrong
 	     	 */
-		if (dict_attr_enum_add_name(da_src, enumv->name, enumv->value,
+		if (dict_attr_enum_add_name(da_dst, enumv->name, enumv->value,
 					    true, true, child_struct) < 0) return -1;
 	}
 
@@ -103,11 +105,12 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
  *
  */
 static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
-					TALLOC_CTX *chunk,
+					TALLOC_CTX *chunk_dst,
 					void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+					UNUSED TALLOC_CTX const *chunk_src,
 					void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t			*da_src = talloc_get_type_abort(chunk, fr_dict_attr_t);
+	fr_dict_attr_t			*da_dst = talloc_get_type_abort_const(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_vendor_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
 	fr_dict_attr_t const		**da_stack;
 	fr_dict_attr_t const		*old_vendor = src_ext->vendor;
@@ -123,7 +126,7 @@ static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
 	 *	find a vendor at the same depth as
 	 *	the old depth.
 	 */
-	da_stack = fr_dict_attr_da_stack(da_src);
+	da_stack = fr_dict_attr_da_stack(da_dst);
 	if (da_stack) {
 		new_vendor = da_stack[old_vendor->depth];
 		if ((new_vendor->type == old_vendor->type) && (new_vendor->attr == old_vendor->attr)) {
@@ -139,7 +142,7 @@ static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
 	 *	Theoretically the attribute could
 	 *	have been moved to a different depth.
 	 */
-	for (da = da_src->parent; da; da = da->parent) {
+	for (da = da_dst->parent; da; da = da->parent) {
 		if ((da->type == old_vendor->type) && (da->attr == old_vendor->attr)) {
 			dst_ext->vendor = da;
 			return 0;

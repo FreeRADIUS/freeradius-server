@@ -194,6 +194,7 @@ void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const 
 		info->copy(ext,
 			   *chunk_dst,
 			   ext_dst_ptr, fr_ext_len(def, *chunk_dst, ext),
+			   chunk_src,
 			   ext_src_ptr, fr_ext_len(def, chunk_src, ext));
 	/*
 	 *	If there's no special copy function
@@ -298,6 +299,7 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 				       *chunk_dst,
 				       fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),
 				       fr_ext_len(def, *chunk_dst, i),
+				       chunk_src,
 				       fr_ext_ptr(chunk_src, ext_src_offsets[i], info->has_hdr),
 				       fr_ext_len(def, chunk_src, i)) < 0) return -1;
 		/*

@@ -73,17 +73,20 @@ typedef void *(* fr_ext_alloc_t)(fr_ext_t const *def, TALLOC_CTX **dst_chunk_p,
 /** Function for re-populating extensions after they're copied
  *
  * @param[in] ext		that's being copied.
- * @param[in] chunk		Talloc chunk we're copying to.
+ * @param[in] dst_chunk		Talloc chunk we're copying to.
  * @param[in] dst_ext_ptr	Pointer to the dst extension to populate.
  * @param[in] dst_ext_len	The length of the dst extension.
+ * @param[in] src_chunk		Talloc chunk we're copying from.
  * @param[in] src_ext_ptr	Pointer for the src extension.
  * @param[in] src_ext_len	Length of the src extension.
  * @return
  *	- NULL on error.
  *	- Pointer to the new extension on success.
  */
-typedef int (* fr_ext_copy_t)(int ext, TALLOC_CTX *chunk,
+typedef int (* fr_ext_copy_t)(int ext,
+			      TALLOC_CTX *dst_chunk,
 			      void *dst_ext_ptr, size_t dst_ext_len,
+			      TALLOC_CTX const *src_chunk,
 			      void *src_ext_ptr, size_t src_ext_len);
 
 /** Function for re-establishing internal consistency on realloc
