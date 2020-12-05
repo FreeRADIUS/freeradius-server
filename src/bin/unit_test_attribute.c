@@ -922,9 +922,10 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	}
 
 	ret = fr_dict_protocol_afrom_file(&dict, name, dir);
-	cc->tmpl_rules.dict_def = dict;
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
+
+	cc->tmpl_rules.dict_def = dict;
 
 	/*
 	 *	Dump the dictionary if we're in super debug mode
