@@ -251,7 +251,7 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 	for (i = 0; i < def->max; i++) {
 		fr_ext_info_t const *info = &def->info[i];
 
-		if (!ext_src_offsets[i] || ext_dst_offsets[i] || !info->can_copy) {
+		if (!ext_src_offsets[i] || !ext_dst_offsets[i] || !info->can_copy) {
 		no_copy:
 			ext_copied[i] = false;
 			continue;
