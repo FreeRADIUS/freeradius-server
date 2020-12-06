@@ -1802,6 +1802,9 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 				}
 			}
 
+			/*
+			 *	Copy children of the DA we're cloning.
+			 */
 			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
 				fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
 				return -1;
