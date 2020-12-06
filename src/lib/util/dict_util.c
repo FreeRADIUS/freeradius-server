@@ -1283,7 +1283,6 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_dict_attr_t const *child_struct)
 {
 	size_t				len;
-	fr_dict_t			*dict;
 	fr_dict_enum_t			*enumv = NULL;
 	fr_value_box_t			*enum_value = NULL;
 	fr_dict_attr_ext_enumv_t	*ext;
@@ -1335,8 +1334,6 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			return -1;
 		}
 	}
-
-	dict = dict_by_da(da);
 
 	/*
 	 *	Allocate a structure to map between
