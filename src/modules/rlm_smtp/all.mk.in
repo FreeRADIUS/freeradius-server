@@ -1,3 +1,5 @@
+ifneq "@targetname@" ""
+
 #  Check to see if we libfreeradius-curl, as that's a hard dependency
 #  which in turn depends on json-c.
 TARGETNAME	:=
@@ -5,8 +7,10 @@ TARGETNAME	:=
 TARGET		:=
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= rlm_smtp.a
+TARGET		:= @targetname@.a
 TGT_PREREQS	+= libfreeradius-curl.a
 endif
 
 SOURCES		:= rlm_smtp.c
+
+endif
