@@ -37,7 +37,7 @@ RCSID("$Id$")
  * has performance benefits, and means we don't have the overhead of talloc headers
  * for each of the extensions.
  *
- * @note When a new extension is allocated its memory will not be initialised.
+ * @note When a new extension is allocated its memory will be zeroed.
  *
  * @note It is highly recommended to allocate composed structures within a talloc_pool
  * to avoid the overhead of malloc+memcpy.
@@ -104,6 +104,7 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	ext_offsets[ext] = (uint8_t)offset;
 
 	ext_ptr = ((uint8_t *)n_chunk) + chunk_len;
+	memset(ext_ptr, 0, hdr_len + aligned_len);
 
 	*chunk_p = n_chunk;
 
@@ -162,7 +163,7 @@ void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const 
 {
 	int			i;
 	uint8_t			*ext_src_offsets = fr_ext_offsets(def, chunk_src);
-	uint8_t			*ext_dst_offsets;
+	uint8_t			*ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);
 	void			*ext_src_ptr, *ext_dst_ptr;
 	fr_ext_info_t const	*info = &def->info[ext];
 
@@ -175,19 +176,24 @@ void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const 
 
 	ext_src_ptr = fr_ext_ptr(chunk_src, ext_src_offsets[ext], info->has_hdr);
 
-
-	if (info->alloc) {
-		ext_dst_ptr = info->alloc(def, chunk_dst, ext,
-			    		  ext_src_ptr,
-			    		  fr_ext_len(def, chunk_src, ext));
 	/*
-	 *	If there's no special alloc function
-	 *	we just allocate a chunk of the same
-	 *	size.
+	 *	Only alloc if the extension doesn't
+	 *	already exist.
 	 */
-	} else {
-		ext_dst_ptr = fr_ext_alloc_size(def, chunk_dst, ext,
-						fr_ext_len(def, chunk_src, ext));
+	if (!ext_dst_offsets[ext]) {
+		if (info->alloc) {
+			ext_dst_ptr = info->alloc(def, chunk_dst, ext,
+						  ext_src_ptr,
+						  fr_ext_len(def, chunk_src, ext));
+		/*
+		 *	If there's no special alloc function
+		 *	we just allocate a chunk of the same
+		 *	size.
+		 */
+		} else {
+			ext_dst_ptr = fr_ext_alloc_size(def, chunk_dst, ext,
+							fr_ext_len(def, chunk_src, ext));
+		}
 	}
 
 	if (info->copy) {
@@ -241,7 +247,7 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 	int	i;
 	uint8_t	*ext_src_offsets = fr_ext_offsets(def, chunk_src);	/* old chunk array */
 	uint8_t *ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);	/* new chunk array */
-	bool	ext_copied[def->max];
+	bool	ext_new_alloc[def->max];
 
 	/*
 	 *	Do the operation in two phases.
@@ -251,9 +257,9 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 	for (i = 0; i < def->max; i++) {
 		fr_ext_info_t const *info = &def->info[i];
 
-		if (!ext_src_offsets[i] || !ext_dst_offsets[i] || !info->can_copy) {
+		if (!ext_src_offsets[i] || !info->can_copy) {
 		no_copy:
-			ext_copied[i] = false;
+			ext_new_alloc[i] = false;
 			continue;
 		}
 
@@ -269,7 +275,7 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 		} else {
 			fr_ext_alloc_size(def, chunk_dst, i, fr_ext_len(def, chunk_src, i));
 		}
-		ext_copied[i] = true;
+		ext_new_alloc[i] = true;
 		ext_dst_offsets = fr_ext_offsets(def, *chunk_dst);	/* Grab new offsets, chunk might have changed */
 	}
 
@@ -285,7 +291,7 @@ int fr_ext_copy_all(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX cons
 
 		if (!ext_src_offsets[i] || !ext_dst_offsets[i]) continue;
 
-		if (!ext_copied[i]) {
+		if (!ext_new_alloc[i]) {
 			if (info->fixup &&
 			    info->fixup(i, *chunk_dst,
 					fr_ext_ptr(*chunk_dst, ext_dst_offsets[i], info->has_hdr),

@@ -412,7 +412,6 @@ static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t 
 
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) return -1;
-	memset(ext, 0, sizeof(*ext));
 
 	return 0;
 }
@@ -429,7 +428,6 @@ static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_
 
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
 	if (unlikely(!ext)) return -1;
-	memset(ext, 0, sizeof(*ext));
 
 	return 0;
 }
@@ -497,7 +495,6 @@ static inline CC_HINT(always_inline) int dict_attr_enumv_init(fr_dict_attr_t **d
 
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_ENUMV);
 	if (unlikely(!ext)) return -1;
-	memset(ext, 0, sizeof(*ext));
 
 	return 0;
 }
@@ -518,11 +515,17 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
 	/*
 	 *	Create the table of attributes by name.
 	 *      There MAY NOT be multiple attributes of the same name.
+	 *
+	 *	If the attribute already has extensions
+	 *	then we don't want to leak the old
+	 *	namespace hash table.
 	 */
-	ext->namespace = fr_hash_table_create(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
 	if (!ext->namespace) {
-		fr_strerror_printf("Failed allocating \"namespace\" table");
-		return -1;
+		ext->namespace = fr_hash_table_create(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+		if (!ext->namespace) {
+			fr_strerror_printf("Failed allocating \"namespace\" table");
+			return -1;
+		}
 	}
 
 	return 0;
@@ -752,7 +755,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 		if (dict_attr_child_add(dst, copy) < 0) return -1;
 
 		if (dict_attr_add_to_namespace(dict, dst, copy) < 0) return -1;
-		
+
 		if (!dict_attr_children(child)) continue;
 
 		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;

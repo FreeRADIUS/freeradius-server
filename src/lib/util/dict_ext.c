@@ -71,10 +71,7 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	fr_dict_enum_t			*enumv;
 	bool				has_child = fr_dict_attr_is_key_field(da_src);
 
-	if (!src_ext->value_by_name && !src_ext->name_by_value) {
-		memset(dst_ext, 0, sizeof(*dst_ext));
-		return 0;
-	}
+	if (!src_ext->value_by_name && !src_ext->name_by_value) return 0;
 
 	/*
 	 *	Add all the enumeration values from
